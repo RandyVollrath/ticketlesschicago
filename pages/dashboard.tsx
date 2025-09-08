@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import type { Database } from '../lib/database.types'
 
 interface CitySticker {
   id: string
@@ -56,6 +57,7 @@ export default function Dashboard() {
   }
 
   const toggleAutoRenew = async (stickerId: string, currentValue: boolean) => {
+    // @ts-ignore
     const { error } = await supabase
       .from('city_sticker_reminders')
       .update({ auto_renew_enabled: !currentValue })
@@ -111,28 +113,28 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className=\"min-h-screen bg-gray-100 flex items-center justify-center\">
-        <div className=\"animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600\"></div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     )
   }
 
   return (
-    <div className=\"min-h-screen bg-gray-100\">
+    <div className="min-h-screen bg-gray-100">
       <Head>
         <title>Dashboard - TicketLess Chicago</title>
       </Head>
 
       {/* Header */}
-      <header className=\"bg-white shadow-sm\">
-        <div className=\"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8\">
-          <div className=\"flex justify-between items-center py-4\">
-            <h1 className=\"text-2xl font-bold text-gray-900\">TicketLess Chicago</h1>
-            <div className=\"flex items-center space-x-4\">
-              <span className=\"text-sm text-gray-600\">{user?.email}</span>
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900">TicketLess Chicago</h1>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">{user?.email}</span>
               <button
                 onClick={signOut}
-                className=\"bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm\"
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm"
               >
                 Sign Out
               </button>
@@ -141,25 +143,25 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className=\"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8\">
-        <div className=\"mb-8\">
-          <h2 className=\"text-3xl font-bold text-gray-900 mb-2\">Your City Sticker Reminders</h2>
-          <p className=\"text-gray-600\">We'll remind you before each renewal deadline so you never get a ticket.</p>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Your City Sticker Reminders</h2>
+          <p className="text-gray-600">We'll remind you before each renewal deadline so you never get a ticket.</p>
         </div>
 
         {cityStickers.length === 0 ? (
-          <div className=\"bg-white rounded-lg shadow-sm p-8 text-center\">
-            <h3 className=\"text-lg font-medium text-gray-900 mb-2\">No reminders set up yet</h3>
-            <p className=\"text-gray-600 mb-4\">Go back to the homepage to set up your first city sticker reminder.</p>
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No reminders set up yet</h3>
+            <p className="text-gray-600 mb-4">Go back to the homepage to set up your first city sticker reminder.</p>
             <button
               onClick={() => router.push('/')}
-              className=\"bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg\"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
             >
               Set Up Reminder
             </button>
           </div>
         ) : (
-          <div className=\"grid gap-6 md:grid-cols-2 lg:grid-cols-3\">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {cityStickers.map((sticker) => {
               const daysUntil = getDaysUntilRenewal(sticker.renewal_date)
               const isOverdue = daysUntil < 0
@@ -178,10 +180,10 @@ export default function Dashboard() {
                           : 'border-blue-500'
                   }`}
                 >
-                  <div className=\"flex justify-between items-start mb-4\">
+                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className=\"text-lg font-semibold text-gray-900\">City Sticker Renewal</h3>
-                      <p className=\"text-sm text-gray-600\">Due: {formatDate(sticker.renewal_date)}</p>
+                      <h3 className="text-lg font-semibold text-gray-900">City Sticker Renewal</h3>
+                      <p className="text-sm text-gray-600">Due: {formatDate(sticker.renewal_date)}</p>
                     </div>
                     <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                       sticker.completed
@@ -201,26 +203,26 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className=\"space-y-3\">
-                    <div className=\"flex items-center justify-between\">
-                      <span className=\"text-sm text-gray-600\">Auto-renewal:</span>
-                      <label className=\"flex items-center\">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Auto-renewal:</span>
+                      <label className="flex items-center">
                         <input
-                          type=\"checkbox\"
+                          type="checkbox"
                           checked={sticker.auto_renew_enabled}
                           onChange={() => toggleAutoRenew(sticker.id, sticker.auto_renew_enabled)}
                           disabled={sticker.completed}
-                          className=\"h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded\"
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
-                        <span className=\"ml-2 text-sm text-gray-900\">
+                        <span className="ml-2 text-sm text-gray-900">
                           {sticker.auto_renew_enabled ? 'Enabled' : 'Disabled'}
                         </span>
                       </label>
                     </div>
 
                     {sticker.auto_renew_enabled && (
-                      <div className=\"bg-blue-50 p-3 rounded-lg\">
-                        <p className=\"text-xs text-blue-800\">
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <p className="text-xs text-blue-800">
                           🚀 <strong>Auto-renewal is coming soon!</strong> We'll notify you when this feature is available.
                         </p>
                       </div>
@@ -229,15 +231,15 @@ export default function Dashboard() {
                     {!sticker.completed && (
                       <button
                         onClick={() => markCompleted(sticker.id)}
-                        className=\"w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium\"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
                       >
                         Mark as Completed
                       </button>
                     )}
 
                     {sticker.completed && (
-                      <div className=\"bg-green-50 p-3 rounded-lg\">
-                        <p className=\"text-sm text-green-800\">
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <p className="text-sm text-green-800">
                           ✅ Great job! You've renewed your city sticker on time.
                         </p>
                       </div>
@@ -250,10 +252,10 @@ export default function Dashboard() {
         )}
 
         {/* Add new reminder button */}
-        <div className=\"mt-8 text-center\">
+        <div className="mt-8 text-center">
           <button
             onClick={() => router.push('/')}
-            className=\"bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium\"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
           >
             Add Another Reminder
           </button>
