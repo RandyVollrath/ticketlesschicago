@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "pages/api/notifications/process.ts": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/notifications/process",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}
