@@ -1,0 +1,37 @@
+{
+  "name": "ticketless-chicago",
+  "version": "1.0.0",
+  "description": "Chicago city obligations reminder and auto-registration service",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "deploy": "vercel --prod",
+    "deploy:staging": "vercel"
+  },
+  "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.3",
+    "date-fns": "^2.30.0",
+    "next": "15.2.4",
+    "next-auth": "^4.24.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4",
+    "@tailwindcss/forms": "^0.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.28",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.6",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "15.3.1",
+    "typescript": "^5.8.3"
+  },
+  "keywords": ["chicago", "city-sticker", "emissions", "reminders", "automation"],
+  "author": "",
+  "license": "ISC"
+}
