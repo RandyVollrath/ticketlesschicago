@@ -143,7 +143,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Head>
-        <title>TicketLess Chicago - Complete Vehicle Compliance Protection</title>
+        <title>TicketLess Chicago - Complete Chicago Vehicle Compliance Protection</title>
         <meta name="description" content="Avoid all Chicago parking tickets and vehicle violations. City Sticker, Emissions, Street Cleaning, Snow Removal, and License Renewal reminders. Starting at $69/year - less than one ticket!" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
