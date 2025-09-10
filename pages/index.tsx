@@ -14,6 +14,11 @@ export default function Home() {
     phone: '',
     reminderMethod: 'email',
     servicePlan: 'essential',
+    // Mailing address fields (for Premium plan)
+    mailingAddress: '',
+    mailingCity: '',
+    mailingState: 'IL',
+    mailingZip: '',
     consent: false
   });
   const [loading, setLoading] = useState(false);
@@ -37,6 +42,14 @@ export default function Home() {
     if (!formData.consent) {
       setMessage('Error: You must consent to receive notifications to continue.');
       return;
+    }
+
+    // Validate Premium plan required fields
+    if (formData.servicePlan === 'premium') {
+      if (!formData.mailingAddress || !formData.mailingCity || !formData.mailingZip) {
+        setMessage('Error: Mailing address is required for Premium plan.');
+        return;
+      }
     }
     
     setLoading(true);
@@ -69,6 +82,10 @@ export default function Home() {
             phone: formData.phone,
             reminder_method: formData.reminderMethod,
             service_plan: formData.servicePlan,
+            mailing_address: formData.servicePlan === 'premium' ? formData.mailingAddress : null,
+            mailing_city: formData.servicePlan === 'premium' ? formData.mailingCity : null,
+            mailing_state: formData.servicePlan === 'premium' ? formData.mailingState : null,
+            mailing_zip: formData.servicePlan === 'premium' ? formData.mailingZip : null,
             completed: false
           }]);
 
@@ -88,6 +105,10 @@ export default function Home() {
         phone: '',
         reminderMethod: 'email',
         servicePlan: 'essential',
+        mailingAddress: '',
+        mailingCity: '',
+        mailingState: 'IL',
+        mailingZip: '',
         consent: false
       });
 
@@ -403,6 +424,94 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Mailing Address - Only for Premium Plan */}
+                {formData.servicePlan === 'premium' && (
+                  <div className="border-l-4 border-purple-500 pl-4 mb-6">
+                    <h3 className="font-semibold text-gray-900 mb-3">Mailing Address for Sticker Delivery</h3>
+                    <p className="text-sm text-gray-600 mb-4">We'll mail your renewed city stickers to this address</p>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="mailingAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                          Street Address *
+                        </label>
+                        <input
+                          type="text"
+                          id="mailingAddress"
+                          name="mailingAddress"
+                          value={formData.mailingAddress}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="123 Main St, Apt 4B"
+                          required={formData.servicePlan === 'premium'}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="mailingCity" className="block text-sm font-medium text-gray-700 mb-2">
+                            City *
+                          </label>
+                          <input
+                            type="text"
+                            id="mailingCity"
+                            name="mailingCity"
+                            value={formData.mailingCity}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Chicago"
+                            required={formData.servicePlan === 'premium'}
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="mailingState" className="block text-sm font-medium text-gray-700 mb-2">
+                            State *
+                          </label>
+                          <select
+                            id="mailingState"
+                            name="mailingState"
+                            value={formData.mailingState}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required={formData.servicePlan === 'premium'}
+                          >
+                            <option value="IL">Illinois</option>
+                            <option value="IN">Indiana</option>
+                            <option value="WI">Wisconsin</option>
+                            <option value="IA">Iowa</option>
+                            <option value="MO">Missouri</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="w-1/2">
+                        <label htmlFor="mailingZip" className="block text-sm font-medium text-gray-700 mb-2">
+                          ZIP Code *
+                        </label>
+                        <input
+                          type="text"
+                          id="mailingZip"
+                          name="mailingZip"
+                          value={formData.mailingZip}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="60601"
+                          maxLength={5}
+                          required={formData.servicePlan === 'premium'}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                      <p className="text-sm text-blue-800">
+                        <strong>Note:</strong> City stickers are mailed to this address if you don't pick them up in person. 
+                        We handle the entire renewal process for Premium subscribers.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Consent */}
                 <div className="space-y-4">
                   <div className="flex items-start">
@@ -484,7 +593,7 @@ export default function Home() {
                   <div className="grid grid-cols-1 gap-3 text-sm text-blue-800">
                     <div><strong>City Sticker:</strong> $96.50 renewal vs $200+ fine</div>
                     <div><strong>Emissions Test:</strong> ~$30 test vs $75+ fine</div>
-                    <div><strong>Street Cleaning:</strong> Move car vs $60-75 ticket</div>
+                    <div><strong>Street Cleaning:</strong> Move car vs $60 ticket</div>
                     <div><strong>Snow Removal:</strong> Move car vs $150+ fine</div>
                     <div><strong>License Renewal:</strong> Renew on time vs $120+ late fees</div>
                   </div>
