@@ -13,8 +13,8 @@ export default function Home() {
     email: '',
     phone: '',
     reminderMethod: 'email',
-    servicePlan: 'essential',
-    // Mailing address fields (for Premium plan)
+    servicePlan: 'free',
+    // Mailing address fields (for Pro plan)
     mailingAddress: '',
     mailingCity: '',
     mailingState: 'IL',
@@ -44,10 +44,10 @@ export default function Home() {
       return;
     }
 
-    // Validate Premium plan required fields
-    if (formData.servicePlan === 'premium') {
+    // Validate Pro plan required fields
+    if (formData.servicePlan === 'pro') {
       if (!formData.mailingAddress || !formData.mailingCity || !formData.mailingZip) {
-        setMessage('Error: Mailing address is required for Premium plan.');
+        setMessage('Error: Mailing address is required for Pro plan.');
         return;
       }
     }
@@ -82,10 +82,10 @@ export default function Home() {
             phone: formData.phone,
             reminder_method: formData.reminderMethod,
             service_plan: formData.servicePlan,
-            mailing_address: formData.servicePlan === 'premium' ? formData.mailingAddress : null,
-            mailing_city: formData.servicePlan === 'premium' ? formData.mailingCity : null,
-            mailing_state: formData.servicePlan === 'premium' ? formData.mailingState : null,
-            mailing_zip: formData.servicePlan === 'premium' ? formData.mailingZip : null,
+            mailing_address: formData.servicePlan === 'pro' ? formData.mailingAddress : null,
+            mailing_city: formData.servicePlan === 'pro' ? formData.mailingCity : null,
+            mailing_state: formData.servicePlan === 'pro' ? formData.mailingState : null,
+            mailing_zip: formData.servicePlan === 'pro' ? formData.mailingZip : null,
             completed: false
           }]);
 
@@ -104,7 +104,7 @@ export default function Home() {
         email: '',
         phone: '',
         reminderMethod: 'email',
-        servicePlan: 'essential',
+        servicePlan: 'free',
         mailingAddress: '',
         mailingCity: '',
         mailingState: 'IL',
@@ -155,11 +155,11 @@ export default function Home() {
               TicketLess Chicago
             </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Complete Chicago vehicle compliance protection. Never get tickets for expired stickers, missed renewals, or parking violations.
+              Never think about Chicago vehicle compliance again. We track, notify, and handle renewals for you.
             </p>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8 inline-block">
               <p className="text-red-800 font-medium">
-                💸 <strong>Average Chicago driver: $400+ in violations yearly</strong> — We make sure you get $0
+                💸 <strong>Skip the DMV, avoid the fines, save the time</strong> — Starting free forever
               </p>
             </div>
           </div>
@@ -243,7 +243,7 @@ export default function Home() {
                   <div className="space-y-4">
                     <div>
                       <label htmlFor="cityStickerExpiry" className="block text-sm font-medium text-gray-700 mb-2">
-                        When does your city sticker expire? *
+                        When does your city sticker expire? {formData.servicePlan === 'pro' ? '*' : '(Pro plan only)'}
                       </label>
                       <input
                         type="date"
@@ -253,7 +253,8 @@ export default function Home() {
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         min={new Date().toISOString().split('T')[0]}
-                        required
+                        required={formData.servicePlan === 'pro'}
+                        disabled={formData.servicePlan === 'free'}
                       />
                       <p className="text-sm text-gray-500 mt-1">
                         Not sure? Chicago city stickers expire July 31st each year.{' '}
@@ -365,29 +366,29 @@ export default function Home() {
                   <h3 className="font-semibold text-gray-900 mb-3">Choose Your Plan</h3>
                   
                   <div className="space-y-4">
-                    <div className="border border-gray-300 rounded-lg p-4 relative">
+                    <div className="border border-green-500 rounded-lg p-4 relative bg-green-50">
                       <div className="flex items-start">
                         <input
                           type="radio"
-                          id="essential"
+                          id="free"
                           name="servicePlan"
-                          value="essential"
-                          checked={formData.servicePlan === 'essential'}
+                          value="free"
+                          checked={formData.servicePlan === 'free'}
                           onChange={handleInputChange}
-                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                          className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
                         />
                         <div className="ml-3 flex-1">
-                          <label htmlFor="essential" className="block font-medium text-gray-900">
-                            ESSENTIAL - $69/year
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">MOST POPULAR</span>
+                          <label htmlFor="free" className="block font-medium text-gray-900">
+                            FREE PLAN - $0/month
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">FOREVER FREE</span>
                           </label>
                           <p className="text-sm text-gray-600 mt-1">
-                            All 5 services: City Sticker, Emissions, Street Cleaning, Snow Removal, License Renewal
+                            Street cleaning + snow removal alerts (email only)
                           </p>
                           <ul className="text-xs text-gray-500 mt-2 space-y-1">
-                            <li>✓ Email + SMS alerts (30, 7, 1 day warnings)</li>
-                            <li>✓ Calendar sync</li>
-                            <li>✓ Basic support</li>
+                            <li>✓ Email alerts for street cleaning ($60 fine avoidance)</li>
+                            <li>✓ Snow removal parking alerts ($150+ fine avoidance)</li>
+                            <li>✓ 30, 7, and 1-day warnings</li>
                           </ul>
                         </div>
                       </div>
@@ -397,26 +398,26 @@ export default function Home() {
                       <div className="flex items-start">
                         <input
                           type="radio"
-                          id="premium"
+                          id="pro"
                           name="servicePlan"
-                          value="premium"
-                          checked={formData.servicePlan === 'premium'}
+                          value="pro"
+                          checked={formData.servicePlan === 'pro'}
                           onChange={handleInputChange}
                           className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                         />
                         <div className="ml-3 flex-1">
-                          <label htmlFor="premium" className="block font-medium text-gray-900">
-                            PREMIUM - $99/year
-                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">BEST VALUE</span>
+                          <label htmlFor="pro" className="block font-medium text-gray-900">
+                            PRO PLAN - $12/month
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">HANDS-OFF</span>
                           </label>
                           <p className="text-sm text-gray-600 mt-1">
-                            Everything in Essential PLUS auto-renewal handling
+                            Complete vehicle compliance - we handle everything
                           </p>
                           <ul className="text-xs text-gray-500 mt-2 space-y-1">
-                            <li>✓ We handle all renewals for you</li>
-                            <li>✓ Priority support</li>
-                            <li>✓ Multiple vehicles</li>
-                            <li>✓ Concierge service</li>
+                            <li>✓ All services: City sticker, license plate, emissions, street cleaning, snow</li>
+                            <li>✓ We handle city sticker & license plate renewals</li>
+                            <li>✓ SMS + email alerts</li>
+                            <li>✓ Never think about DMV again</li>
                           </ul>
                         </div>
                       </div>
@@ -424,8 +425,8 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Mailing Address - Only for Premium Plan */}
-                {formData.servicePlan === 'premium' && (
+                {/* Mailing Address - Only for Pro Plan */}
+                {formData.servicePlan === 'pro' && (
                   <div className="border-l-4 border-purple-500 pl-4 mb-6">
                     <h3 className="font-semibold text-gray-900 mb-3">Mailing Address for Sticker Delivery</h3>
                     <p className="text-sm text-gray-600 mb-4">We'll mail your renewed city stickers to this address</p>
@@ -443,7 +444,7 @@ export default function Home() {
                           onChange={handleInputChange}
                           className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="123 Main St, Apt 4B"
-                          required={formData.servicePlan === 'premium'}
+                          required={formData.servicePlan === 'pro'}
                         />
                       </div>
 
@@ -460,7 +461,7 @@ export default function Home() {
                             onChange={handleInputChange}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="Chicago"
-                            required={formData.servicePlan === 'premium'}
+                            required={formData.servicePlan === 'pro'}
                           />
                         </div>
 
@@ -474,7 +475,7 @@ export default function Home() {
                             value={formData.mailingState}
                             onChange={handleInputChange}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            required={formData.servicePlan === 'premium'}
+                            required={formData.servicePlan === 'pro'}
                           >
                             <option value="IL">Illinois</option>
                             <option value="IN">Indiana</option>
@@ -498,7 +499,7 @@ export default function Home() {
                           className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="60601"
                           maxLength={5}
-                          required={formData.servicePlan === 'premium'}
+                          required={formData.servicePlan === 'pro'}
                         />
                       </div>
                     </div>
@@ -506,7 +507,7 @@ export default function Home() {
                     <div className="bg-blue-50 p-4 rounded-lg mt-4">
                       <p className="text-sm text-blue-800">
                         <strong>Note:</strong> City stickers are mailed to this address if you don't pick them up in person. 
-                        We handle the entire renewal process for Premium subscribers.
+                        We handle the entire renewal process for Pro subscribers.
                       </p>
                     </div>
                   </div>
@@ -591,21 +592,21 @@ export default function Home() {
                 <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
                   <h3 className="text-lg font-semibold mb-3 text-blue-900">All Services We Cover</h3>
                   <div className="grid grid-cols-1 gap-3 text-sm text-blue-800">
-                    <div><strong>City Sticker:</strong> $96.50 renewal vs $200+ fine</div>
-                    <div><strong>Emissions Test:</strong> ~$30 test vs $75+ fine</div>
+                    <div><strong>City Sticker:</strong> $100-159 renewal vs $200 fine</div>
+                    <div><strong>License Renewal:</strong> $151 renewal vs $90+ fine</div>
+                    <div><strong>Emissions Test:</strong> $20 test (every 2 years) vs $50-300 fine</div>
                     <div><strong>Street Cleaning:</strong> Move car vs $60 ticket</div>
                     <div><strong>Snow Removal:</strong> Move car vs $150+ fine</div>
-                    <div><strong>License Renewal:</strong> Renew on time vs $120+ late fees</div>
                   </div>
                 </div>
 
                 <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                  <h3 className="text-lg font-semibold mb-3 text-green-900">The Math is Simple</h3>
+                  <h3 className="text-lg font-semibold mb-3 text-green-900">The Value</h3>
                   <div className="space-y-2 text-sm text-green-800">
-                    <div><strong>Average Chicago driver:</strong> $400+ in tickets yearly</div>
-                    <div><strong>TicketlessChicago Essential:</strong> $69/year</div>
-                    <div><strong>Your savings:</strong> $300+ every year</div>
-                    <div className="text-lg font-bold text-green-900 mt-3">Just avoiding ONE ticket pays for the whole year!</div>
+                    <div><strong>FREE Plan:</strong> Avoid street cleaning & snow tickets</div>
+                    <div><strong>PRO Plan:</strong> $12/month = Complete hands-off service</div>
+                    <div><strong>One missed renewal:</strong> Costs more than a year of PRO</div>
+                    <div className="text-lg font-bold text-green-900 mt-3">Start free, upgrade when you want total convenience!</div>
                   </div>
                 </div>
               </div>
