@@ -21,12 +21,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           price_data: {
             currency: 'usd',
             product_data: {
-              name: service === 'both' 
-                ? 'TicketlessChicago - Full Year Service (City Sticker + Emissions)' 
-                : 'TicketlessChicago - City Sticker Reminders',
-              description: `Automated reminders for vehicle ${licensePlate}`
+              name: service === 'premium' 
+                ? 'TicketlessChicago PREMIUM - Complete Vehicle Compliance Protection' 
+                : 'TicketlessChicago ESSENTIAL - All Ticket Prevention Alerts',
+              description: service === 'premium'
+                ? `Full service: City Sticker, Emissions, Street Cleaning, Snow Removal, License Renewal + Auto-pay for ${licensePlate}`
+                : `All alerts: City Sticker, Emissions, Street Cleaning, Snow Removal, License Renewal for ${licensePlate}`
             },
-            unit_amount: service === 'both' ? 1999 : 999, // $19.99 or $9.99
+            unit_amount: service === 'premium' ? 9900 : 6900, // $99/year or $69/year
             recurring: {
               interval: 'year'
             }

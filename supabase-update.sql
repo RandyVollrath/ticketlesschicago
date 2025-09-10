@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reminders (
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
   reminder_method TEXT CHECK (reminder_method IN ('email', 'sms', 'both')) DEFAULT 'email',
-  auto_pay_enabled BOOLEAN DEFAULT FALSE,
+  service_plan TEXT CHECK (service_plan IN ('essential', 'premium')) DEFAULT 'essential',
   completed BOOLEAN DEFAULT FALSE,
   city_sticker_completed BOOLEAN DEFAULT FALSE,
   emissions_completed BOOLEAN DEFAULT FALSE,
