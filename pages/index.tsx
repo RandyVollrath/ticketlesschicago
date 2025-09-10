@@ -13,7 +13,7 @@ export default function Home() {
     email: '',
     phone: '',
     reminderMethod: 'email',
-    autoPayConsent: false,
+    servicePlan: 'essential',
     consent: false
   });
   const [loading, setLoading] = useState(false);
@@ -68,7 +68,7 @@ export default function Home() {
             email: formData.email,
             phone: formData.phone,
             reminder_method: formData.reminderMethod,
-            auto_pay_enabled: formData.autoPayConsent,
+            service_plan: formData.servicePlan,
             completed: false
           }]);
 
@@ -87,7 +87,7 @@ export default function Home() {
         email: '',
         phone: '',
         reminderMethod: 'email',
-        autoPayConsent: false,
+        servicePlan: 'essential',
         consent: false
       });
 
@@ -122,8 +122,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Head>
-        <title>TicketLess Chicago - Never Miss City Sticker or Emissions Deadlines</title>
-        <meta name="description" content="Get reminded about Chicago city sticker renewals and emissions testing before they expire. Comprehensive vehicle compliance tracking with optional auto-renewal service." />
+        <title>TicketLess Chicago - Complete Vehicle Compliance Protection</title>
+        <meta name="description" content="Avoid all Chicago parking tickets and vehicle violations. City Sticker, Emissions, Street Cleaning, Snow Removal, and License Renewal reminders. Starting at $69/year - less than one ticket!" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -134,11 +134,11 @@ export default function Home() {
               TicketLess Chicago
             </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Never miss a city sticker or emissions deadline again. We'll remind you before they expire.
+              Complete Chicago vehicle compliance protection. Never get tickets for expired stickers, missed renewals, or parking violations.
             </p>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8 inline-block">
               <p className="text-red-800 font-medium">
-                💸 <strong>City sticker tickets cost $200+, emissions violations $75+</strong> — but renewals cost much less
+                💸 <strong>Average Chicago driver: $400+ in violations yearly</strong> — We make sure you get $0
               </p>
             </div>
           </div>
@@ -339,25 +339,72 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Service Options */}
-                <div className="space-y-4">
-                  <div className="flex items-start">
-                    <input
-                      type="checkbox"
-                      id="autoPayConsent"
-                      name="autoPayConsent"
-                      checked={formData.autoPayConsent}
-                      onChange={handleInputChange}
-                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="autoPayConsent" className="ml-3 block text-sm text-gray-700">
-                      <strong>I want TicketlessChicago to automatically pay my renewals</strong>
-                      <p className="text-gray-500 text-sm mt-1">
-                        We'll ask for payment details later. You'll be notified before we take any action.
-                      </p>
-                    </label>
-                  </div>
+                {/* Service Plan Selection */}
+                <div className="border-l-4 border-orange-500 pl-4 mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">Choose Your Plan</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="border border-gray-300 rounded-lg p-4 relative">
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          id="essential"
+                          name="servicePlan"
+                          value="essential"
+                          checked={formData.servicePlan === 'essential'}
+                          onChange={handleInputChange}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <div className="ml-3 flex-1">
+                          <label htmlFor="essential" className="block font-medium text-gray-900">
+                            ESSENTIAL - $69/year
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">MOST POPULAR</span>
+                          </label>
+                          <p className="text-sm text-gray-600 mt-1">
+                            All 5 services: City Sticker, Emissions, Street Cleaning, Snow Removal, License Renewal
+                          </p>
+                          <ul className="text-xs text-gray-500 mt-2 space-y-1">
+                            <li>✓ Email + SMS alerts (30, 7, 1 day warnings)</li>
+                            <li>✓ Calendar sync</li>
+                            <li>✓ Basic support</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
 
+                    <div className="border border-blue-500 rounded-lg p-4 relative bg-blue-50">
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          id="premium"
+                          name="servicePlan"
+                          value="premium"
+                          checked={formData.servicePlan === 'premium'}
+                          onChange={handleInputChange}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <div className="ml-3 flex-1">
+                          <label htmlFor="premium" className="block font-medium text-gray-900">
+                            PREMIUM - $99/year
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">BEST VALUE</span>
+                          </label>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Everything in Essential PLUS auto-renewal handling
+                          </p>
+                          <ul className="text-xs text-gray-500 mt-2 space-y-1">
+                            <li>✓ We handle all renewals for you</li>
+                            <li>✓ Priority support</li>
+                            <li>✓ Multiple vehicles</li>
+                            <li>✓ Concierge service</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Consent */}
+                <div className="space-y-4">
                   <div className="flex items-start">
                     <input
                       type="checkbox"
@@ -406,8 +453,8 @@ export default function Home() {
                       <div className="w-2 h-2 bg-green-600 rounded-full"></div>
                     </div>
                     <div className="ml-3">
-                      <strong>Comprehensive reminders</strong>
-                      <p className="text-gray-600 text-sm">Track both city sticker AND emissions testing deadlines in one place</p>
+                      <strong>Complete vehicle compliance</strong>
+                      <p className="text-gray-600 text-sm">Track all 5 services: City Sticker, Emissions, Street Cleaning, Snow Removal, License Renewal</p>
                     </div>
                   </li>
                   <li className="flex items-start">
@@ -433,23 +480,24 @@ export default function Home() {
 
               <div className="space-y-4">
                 <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-                  <h3 className="text-lg font-semibold mb-3 text-blue-900">City Sticker Requirements</h3>
-                  <ul className="space-y-2 text-sm text-blue-800">
-                    <li>• <strong>Deadline:</strong> July 31st every year</li>
-                    <li>• <strong>Cost:</strong> $96.50 for most vehicles</li>
-                    <li>• <strong>Penalty:</strong> $200+ fine for expired sticker</li>
-                    <li>• <strong>Required:</strong> All vehicles parked on Chicago streets</li>
-                  </ul>
+                  <h3 className="text-lg font-semibold mb-3 text-blue-900">All Services We Cover</h3>
+                  <div className="grid grid-cols-1 gap-3 text-sm text-blue-800">
+                    <div><strong>City Sticker:</strong> $96.50 renewal vs $200+ fine</div>
+                    <div><strong>Emissions Test:</strong> ~$30 test vs $75+ fine</div>
+                    <div><strong>Street Cleaning:</strong> Move car vs $60-75 ticket</div>
+                    <div><strong>Snow Removal:</strong> Move car vs $150+ fine</div>
+                    <div><strong>License Renewal:</strong> Renew on time vs $120+ late fees</div>
+                  </div>
                 </div>
 
                 <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                  <h3 className="text-lg font-semibold mb-3 text-green-900">Emissions Testing Info</h3>
-                  <ul className="space-y-2 text-sm text-green-800">
-                    <li>• <strong>Who needs it:</strong> Varies by zip code and vehicle age</li>
-                    <li>• <strong>Cost:</strong> Usually under $30</li>
-                    <li>• <strong>Penalty:</strong> $75+ fine for expired test</li>
-                    <li>• <strong>Don't know your date?</strong> We can help you find it</li>
-                  </ul>
+                  <h3 className="text-lg font-semibold mb-3 text-green-900">The Math is Simple</h3>
+                  <div className="space-y-2 text-sm text-green-800">
+                    <div><strong>Average Chicago driver:</strong> $400+ in tickets yearly</div>
+                    <div><strong>TicketlessChicago Essential:</strong> $69/year</div>
+                    <div><strong>Your savings:</strong> $300+ every year</div>
+                    <div className="text-lg font-bold text-green-900 mt-3">Just avoiding ONE ticket pays for the whole year!</div>
+                  </div>
                 </div>
               </div>
             </div>
