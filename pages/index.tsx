@@ -15,6 +15,7 @@ export default function Home() {
     email: '',
     phone: '',
     reminderMethod: 'both',
+    billingPlan: 'monthly',
     // Mailing address fields
     mailingAddress: '',
     mailingCity: '',
@@ -107,6 +108,7 @@ export default function Home() {
         email: '',
         phone: '',
         reminderMethod: 'both',
+        billingPlan: 'monthly',
         mailingAddress: '',
         mailingCity: '',
         mailingState: 'IL',
@@ -386,17 +388,60 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Service Description */}
+                {/* Billing Plan Selection */}
                 <div className="border-l-4 border-orange-500 pl-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Complete Vehicle Compliance Service</h3>
+                  <h3 className="font-semibold text-gray-900 mb-3">Choose Your Plan</h3>
                   
-                  <div className="bg-blue-50 rounded-lg p-6 border border-blue-300">
-                    <div className="mb-4">
-                      <span className="text-2xl font-bold text-blue-900">$12/month</span>
-                      <span className="text-gray-600 ml-2">Complete hands-off service</span>
+                  <div className="space-y-4">
+                    <div className="border border-blue-500 rounded-lg p-4 relative bg-blue-50">
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          id="monthly"
+                          name="billingPlan"
+                          value="monthly"
+                          checked={formData.billingPlan === 'monthly'}
+                          onChange={handleInputChange}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <div className="ml-3 flex-1">
+                          <label htmlFor="monthly" className="block font-medium text-gray-900">
+                            Monthly Plan - $12/month
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">MOST FLEXIBLE</span>
+                          </label>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Complete vehicle compliance service - cancel anytime
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+
+                    <div className="border border-green-500 rounded-lg p-4 relative bg-green-50">
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          id="annual"
+                          name="billingPlan"
+                          value="annual"
+                          checked={formData.billingPlan === 'annual'}
+                          onChange={handleInputChange}
+                          className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                        />
+                        <div className="ml-3 flex-1">
+                          <label htmlFor="annual" className="block font-medium text-gray-900">
+                            Annual Plan - $120/year
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">SAVE $24</span>
+                          </label>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Same service, 2 months free - best value for committed users
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 bg-gray-50 rounded-lg p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div className="space-y-2">
                         <h4 className="font-semibold text-gray-900">We Track & Alert:</h4>
                         <ul className="space-y-1 text-gray-700">
@@ -421,7 +466,7 @@ export default function Home() {
                     </div>
                     
                     <div className="mt-4 p-3 bg-green-100 rounded text-sm text-green-900">
-                      <strong>Value:</strong> One avoided ticket pays for 5+ months of service
+                      <strong>Never deal with Chicago vehicle bureaucracy again!</strong> One missed renewal costs more than our entire annual service.
                     </div>
                   </div>
                 </div>
@@ -538,7 +583,10 @@ export default function Home() {
                   disabled={loading}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  {loading ? 'Setting up...' : 'Start Complete Vehicle Compliance - $12/month'}
+                  {loading ? 'Setting up...' : 
+                    formData.billingPlan === 'annual' 
+                      ? 'Get Started - $120/year (Save $24!)' 
+                      : 'Get Started - $12/month'}
                 </button>
               </form>
             </div>
@@ -602,10 +650,10 @@ export default function Home() {
                 <div className="bg-green-50 rounded-xl p-6 border border-green-200">
                   <h3 className="text-lg font-semibold mb-3 text-green-900">The Value</h3>
                   <div className="space-y-2 text-sm text-green-800">
-                    <div><strong>FREE Plan:</strong> Avoid street cleaning & snow tickets</div>
-                    <div><strong>PRO Plan:</strong> $12/month = Complete hands-off service</div>
-                    <div><strong>One missed renewal:</strong> Costs more than a year of PRO</div>
-                    <div className="text-lg font-bold text-green-900 mt-3">Start free, upgrade when you want total convenience!</div>
+                    <div><strong>Monthly:</strong> $12/month for complete peace of mind</div>
+                    <div><strong>Annual:</strong> $120/year (2 months free!)</div>
+                    <div><strong>One missed renewal:</strong> Costs more than our entire service</div>
+                    <div className="text-lg font-bold text-green-900 mt-3">Never deal with Chicago bureaucracy again!</div>
                   </div>
                 </div>
               </div>
