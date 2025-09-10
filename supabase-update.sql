@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reminders (
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
   reminder_method TEXT CHECK (reminder_method IN ('email', 'sms', 'both')) DEFAULT 'email',
-  service_plan TEXT CHECK (service_plan IN ('essential', 'premium')) DEFAULT 'essential',
+  service_plan TEXT CHECK (service_plan IN ('free', 'pro')) DEFAULT 'free',
   mailing_address TEXT,
   mailing_city TEXT,
   mailing_state TEXT,
