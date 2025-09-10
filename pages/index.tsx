@@ -9,12 +9,13 @@ export default function Home() {
     zipCode: '',
     vin: '',
     cityStickerExpiry: '',
+    licensePlateExpiry: '',
     emissionsDate: '',
+    streetCleaningSchedule: '',
     email: '',
     phone: '',
-    reminderMethod: 'email',
-    servicePlan: 'free',
-    // Mailing address fields (for Pro plan)
+    reminderMethod: 'both',
+    // Mailing address fields
     mailingAddress: '',
     mailingCity: '',
     mailingState: 'IL',
@@ -44,12 +45,10 @@ export default function Home() {
       return;
     }
 
-    // Validate Pro plan required fields
-    if (formData.servicePlan === 'pro') {
-      if (!formData.mailingAddress || !formData.mailingCity || !formData.mailingZip) {
-        setMessage('Error: Mailing address is required for Pro plan.');
-        return;
-      }
+    // Validate required fields
+    if (!formData.mailingAddress || !formData.mailingCity || !formData.mailingZip) {
+      setMessage('Error: Mailing address is required for renewal service.');
+      return;
     }
     
     setLoading(true);
@@ -77,15 +76,17 @@ export default function Home() {
             vin: formData.vin || null,
             zip_code: formData.zipCode,
             city_sticker_expiry: formData.cityStickerExpiry,
+            license_plate_expiry: formData.licensePlateExpiry,
             emissions_due_date: formData.emissionsDate || null,
+            street_cleaning_schedule: formData.streetCleaningSchedule,
             email: formData.email,
             phone: formData.phone,
             reminder_method: formData.reminderMethod,
-            service_plan: formData.servicePlan,
-            mailing_address: formData.servicePlan === 'pro' ? formData.mailingAddress : null,
-            mailing_city: formData.servicePlan === 'pro' ? formData.mailingCity : null,
-            mailing_state: formData.servicePlan === 'pro' ? formData.mailingState : null,
-            mailing_zip: formData.servicePlan === 'pro' ? formData.mailingZip : null,
+            service_plan: 'pro',
+            mailing_address: formData.mailingAddress,
+            mailing_city: formData.mailingCity,
+            mailing_state: formData.mailingState,
+            mailing_zip: formData.mailingZip,
             completed: false
           }]);
 
@@ -100,11 +101,12 @@ export default function Home() {
         zipCode: '',
         vin: '',
         cityStickerExpiry: '',
+        licensePlateExpiry: '',
         emissionsDate: '',
+        streetCleaningSchedule: '',
         email: '',
         phone: '',
-        reminderMethod: 'email',
-        servicePlan: 'free',
+        reminderMethod: 'both',
         mailingAddress: '',
         mailingCity: '',
         mailingState: 'IL',
@@ -236,14 +238,14 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Renewal Dates Section */}
+                {/* All Services Section */}
                 <div className="border-l-4 border-green-500 pl-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Renewal Dates</h3>
+                  <h3 className="font-semibold text-gray-900 mb-3">Vehicle Compliance Dates</h3>
                   
                   <div className="space-y-4">
                     <div>
                       <label htmlFor="cityStickerExpiry" className="block text-sm font-medium text-gray-700 mb-2">
-                        When does your city sticker expire? {formData.servicePlan === 'pro' ? '*' : '(Pro plan only)'}
+                        City Sticker Expiration Date *
                       </label>
                       <input
                         type="date"
@@ -253,11 +255,10 @@ export default function Home() {
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         min={new Date().toISOString().split('T')[0]}
-                        required={formData.servicePlan === 'pro'}
-                        disabled={formData.servicePlan === 'free'}
+                        required
                       />
                       <p className="text-sm text-gray-500 mt-1">
-                        Not sure? Chicago city stickers expire July 31st each year.{' '}
+                        Chicago city stickers expire July 31st each year.{' '}
                         <button
                           type="button"
                           onClick={() => setFormData(prev => ({...prev, cityStickerExpiry: getSuggestedRenewalDate()}))}
@@ -269,8 +270,27 @@ export default function Home() {
                     </div>
 
                     <div>
+                      <label htmlFor="licensePlateExpiry" className="block text-sm font-medium text-gray-700 mb-2">
+                        License Plate Renewal Date *
+                      </label>
+                      <input
+                        type="date"
+                        id="licensePlateExpiry"
+                        name="licensePlateExpiry"
+                        value={formData.licensePlateExpiry}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        min={new Date().toISOString().split('T')[0]}
+                        required
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Illinois plates renew annually based on your registration month
+                      </p>
+                    </div>
+
+                    <div>
                       <label htmlFor="emissionsDate" className="block text-sm font-medium text-gray-700 mb-2">
-                        When is your emissions test due?
+                        Emissions Test Due Date (if applicable)
                       </label>
                       <input
                         type="date"
@@ -280,26 +300,31 @@ export default function Home() {
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                      
-                      <div className="bg-gray-50 p-3 rounded-lg mt-2">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Don't know your emissions due date?</p>
-                        <div className="space-y-2">
-                          <button
-                            type="button"
-                            onClick={callEPAHotline}
-                            className="w-full text-sm bg-blue-600 text-white py-2 px-3 rounded hover:bg-blue-700"
-                          >
-                            Call IL EPA Hotline
-                          </button>
-                          <button
-                            type="button"
-                            onClick={requestEmissionsLookup}
-                            className="w-full text-sm bg-green-600 text-white py-2 px-3 rounded hover:bg-green-700"
-                          >
-                            Let us find it for you
-                          </button>
-                        </div>
-                      </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Required every 2 years for vehicles 4+ years old
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="streetCleaningSchedule" className="block text-sm font-medium text-gray-700 mb-2">
+                        Street Cleaning Schedule *
+                      </label>
+                      <select
+                        id="streetCleaningSchedule"
+                        name="streetCleaningSchedule"
+                        value={formData.streetCleaningSchedule}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Select your schedule</option>
+                        <option value="april-november">April-November (Standard)</option>
+                        <option value="year-round">Year-round cleaning</option>
+                        <option value="not-sure">I'll provide my address for lookup</option>
+                      </select>
+                      <p className="text-sm text-gray-500 mt-1">
+                        We'll track your specific street's cleaning days
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -361,73 +386,48 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Service Plan Selection */}
+                {/* Service Description */}
                 <div className="border-l-4 border-orange-500 pl-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Choose Your Plan</h3>
+                  <h3 className="font-semibold text-gray-900 mb-3">Complete Vehicle Compliance Service</h3>
                   
-                  <div className="space-y-4">
-                    <div className="border border-green-500 rounded-lg p-4 relative bg-green-50">
-                      <div className="flex items-start">
-                        <input
-                          type="radio"
-                          id="free"
-                          name="servicePlan"
-                          value="free"
-                          checked={formData.servicePlan === 'free'}
-                          onChange={handleInputChange}
-                          className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
-                        />
-                        <div className="ml-3 flex-1">
-                          <label htmlFor="free" className="block font-medium text-gray-900">
-                            FREE PLAN - $0/month
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">FOREVER FREE</span>
-                          </label>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Street cleaning + snow removal alerts (email only)
-                          </p>
-                          <ul className="text-xs text-gray-500 mt-2 space-y-1">
-                            <li>✓ Email alerts for street cleaning ($60 fine avoidance)</li>
-                            <li>✓ Snow removal parking alerts ($150+ fine avoidance)</li>
-                            <li>✓ 30, 7, and 1-day warnings</li>
-                          </ul>
-                        </div>
+                  <div className="bg-blue-50 rounded-lg p-6 border border-blue-300">
+                    <div className="mb-4">
+                      <span className="text-2xl font-bold text-blue-900">$12/month</span>
+                      <span className="text-gray-600 ml-2">Complete hands-off service</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-900">We Track & Alert:</h4>
+                        <ul className="space-y-1 text-gray-700">
+                          <li>✓ City sticker expiration ($200 fine)</li>
+                          <li>✓ License plate renewal ($90+ fine)</li>
+                          <li>✓ Emissions testing ($50-300 fine)</li>
+                          <li>✓ Street cleaning days ($60 fine)</li>
+                          <li>✓ SMS + email + phone alerts</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-900">We Handle For You:</h4>
+                        <ul className="space-y-1 text-gray-700">
+                          <li>✓ City sticker renewal & mailing</li>
+                          <li>✓ License plate renewal</li>
+                          <li>✓ All DMV paperwork</li>
+                          <li>✓ Payment processing</li>
+                          <li>✓ Confirmation tracking</li>
+                        </ul>
                       </div>
                     </div>
-
-                    <div className="border border-blue-500 rounded-lg p-4 relative bg-blue-50">
-                      <div className="flex items-start">
-                        <input
-                          type="radio"
-                          id="pro"
-                          name="servicePlan"
-                          value="pro"
-                          checked={formData.servicePlan === 'pro'}
-                          onChange={handleInputChange}
-                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <div className="ml-3 flex-1">
-                          <label htmlFor="pro" className="block font-medium text-gray-900">
-                            PRO PLAN - $12/month
-                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">HANDS-OFF</span>
-                          </label>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Complete vehicle compliance - we handle everything
-                          </p>
-                          <ul className="text-xs text-gray-500 mt-2 space-y-1">
-                            <li>✓ All services: City sticker, license plate, emissions, street cleaning, snow</li>
-                            <li>✓ We handle city sticker & license plate renewals</li>
-                            <li>✓ SMS + email alerts</li>
-                            <li>✓ Never think about DMV again</li>
-                          </ul>
-                        </div>
-                      </div>
+                    
+                    <div className="mt-4 p-3 bg-green-100 rounded text-sm text-green-900">
+                      <strong>Value:</strong> One avoided ticket pays for 5+ months of service
                     </div>
                   </div>
                 </div>
 
-                {/* Mailing Address - Only for Pro Plan */}
-                {formData.servicePlan === 'pro' && (
-                  <div className="border-l-4 border-purple-500 pl-4 mb-6">
+                {/* Mailing Address */}
+                <div className="border-l-4 border-purple-500 pl-4 mb-6">
                     <h3 className="font-semibold text-gray-900 mb-3">Mailing Address for Sticker Delivery</h3>
                     <p className="text-sm text-gray-600 mb-4">We'll mail your renewed city stickers to this address</p>
                     
@@ -444,7 +444,7 @@ export default function Home() {
                           onChange={handleInputChange}
                           className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="123 Main St, Apt 4B"
-                          required={formData.servicePlan === 'pro'}
+                          required
                         />
                       </div>
 
@@ -461,7 +461,7 @@ export default function Home() {
                             onChange={handleInputChange}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="Chicago"
-                            required={formData.servicePlan === 'pro'}
+                            required
                           />
                         </div>
 
@@ -475,7 +475,7 @@ export default function Home() {
                             value={formData.mailingState}
                             onChange={handleInputChange}
                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            required={formData.servicePlan === 'pro'}
+                            required
                           >
                             <option value="IL">Illinois</option>
                             <option value="IN">Indiana</option>
@@ -499,7 +499,7 @@ export default function Home() {
                           className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="60601"
                           maxLength={5}
-                          required={formData.servicePlan === 'pro'}
+                          required
                         />
                       </div>
                     </div>
@@ -507,11 +507,10 @@ export default function Home() {
                     <div className="bg-blue-50 p-4 rounded-lg mt-4">
                       <p className="text-sm text-blue-800">
                         <strong>Note:</strong> City stickers are mailed to this address if you don't pick them up in person. 
-                        We handle the entire renewal process for Pro subscribers.
+                        We handle the entire renewal process as part of our service.
                       </p>
                     </div>
                   </div>
-                )}
 
                 {/* Consent */}
                 <div className="space-y-4">
@@ -539,7 +538,7 @@ export default function Home() {
                   disabled={loading}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  {loading ? 'Setting up...' : 'Get Started with TicketlessChicago'}
+                  {loading ? 'Setting up...' : 'Start Complete Vehicle Compliance - $12/month'}
                 </button>
               </form>
             </div>
