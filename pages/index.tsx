@@ -1131,7 +1131,7 @@ export default function Home() {
           color: '#888', 
           marginBottom: '40px' 
         }}>
-          Questions? Email us at support@ticketlesschicago.com
+          Questions? Email us at ticketlesschicago@gmail.com
         </p>
         
         <div style={{ 
