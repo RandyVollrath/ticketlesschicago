@@ -1,4 +1,28 @@
 import { supabase } from './supabase';
+import { Resend } from 'resend';
+
+// ClickSend types (basic)
+interface ClickSendConfig {
+  authentications: {
+    BasicAuth: {
+      username: string;
+      password: string;
+    };
+  };
+}
+
+interface ClickSendMessage {
+  source: string;
+  to: string;
+  body: string;
+  from?: string;
+  voice?: string;
+  custom_string?: string;
+}
+
+interface ClickSendCollection {
+  messages: ClickSendMessage[];
+}
 
 // Types for notifications
 export interface NotificationPreferences {
@@ -41,79 +65,161 @@ export interface VoiceNotification {
 }
 
 export class NotificationService {
-  // Email service - CRITICAL: Currently mocked, needs real integration
+  private resend: Resend | null = null;
+  private clicksendConfig: ClickSendConfig | null = null;
+
+  constructor() {
+    // Initialize Resend for email
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+    }
+    
+    // Store ClickSend config for dynamic loading
+    if (process.env.CLICKSEND_USERNAME && process.env.CLICKSEND_API_KEY) {
+      this.clicksendConfig = {
+        authentications: {
+          BasicAuth: {
+            username: process.env.CLICKSEND_USERNAME,
+            password: process.env.CLICKSEND_API_KEY
+          }
+        }
+      };
+    }
+  }
+
+  private async getClickSend() {
+    if (!this.clicksendConfig) return null;
+    
+    try {
+      const ClickSend = await import('clicksend');
+      const client = new ClickSend.default.ApiClient();
+      client.authentications.BasicAuth.username = this.clicksendConfig.authentications.BasicAuth.username;
+      client.authentications.BasicAuth.password = this.clicksendConfig.authentications.BasicAuth.password;
+      return { client, ClickSend: ClickSend.default };
+    } catch (error) {
+      console.error('Failed to load ClickSend:', error);
+      return null;
+    }
+  }
+
+  // Email service using Resend
   async sendEmail(notification: EmailNotification): Promise<boolean> {
     try {
-      console.log('📧 MOCK: Email notification would be sent:', {
+      if (!this.resend) {
+        console.log('📧 MOCK: No Resend API key, would send email:', {
+          to: notification.to,
+          subject: notification.subject,
+          preview: notification.text.substring(0, 100) + '...'
+        });
+        return true; // Mock success when no API key
+      }
+
+      console.log('📧 Sending email via Resend:', {
         to: notification.to,
-        subject: notification.subject,
-        preview: notification.text.substring(0, 100) + '...'
+        subject: notification.subject
       });
-      
-      // TODO URGENT: Replace with real email service (SendGrid, AWS SES, etc.)
-      // Example integration:
-      // const sgMail = require('@sendgrid/mail');
-      // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      // await sgMail.send({
-      //   to: notification.to,
-      //   from: 'noreply@ticketlesschicago.com',
-      //   subject: notification.subject,
-      //   html: notification.html,
-      //   text: notification.text
-      // });
-      
-      return true; // Mock success - WILL NOT SEND REAL EMAILS
+
+      const { data, error } = await this.resend.emails.send({
+        from: 'TicketLess Chicago <noreply@ticketlesschicago.com>',
+        to: [notification.to],
+        subject: notification.subject,
+        html: notification.html,
+        text: notification.text,
+      });
+
+      if (error) {
+        console.error('Resend error:', error);
+        return false;
+      }
+
+      console.log('✅ Email sent successfully:', data);
+      return true;
     } catch (error) {
       console.error('Email sending failed:', error);
       return false;
     }
   }
 
-  // SMS service - CRITICAL: Currently mocked, needs real integration  
+  // SMS service using ClickSend
   async sendSMS(notification: SMSNotification): Promise<boolean> {
     try {
-      console.log('📱 MOCK: SMS notification would be sent:', {
+      const clicksend = await this.getClickSend();
+      
+      if (!clicksend) {
+        console.log('📱 MOCK: No ClickSend credentials, would send SMS:', {
+          to: notification.to,
+          message: notification.message,
+          length: notification.message.length + ' chars'
+        });
+        return true; // Mock success when no credentials
+      }
+
+      console.log('📱 Sending SMS via ClickSend:', {
         to: notification.to,
-        message: notification.message,
         length: notification.message.length + ' chars'
       });
+
+      const smsApi = new clicksend.ClickSend.SMSApi(clicksend.client);
+      const smsMessage = new clicksend.ClickSend.SmsMessage();
+      smsMessage.source = 'nodejs';
+      smsMessage.to = notification.to;
+      smsMessage.body = notification.message;
+      smsMessage.from = 'TicketLess';
+
+      const smsCollection = new clicksend.ClickSend.SmsMessageCollection();
+      smsCollection.messages = [smsMessage];
+
+      const result = await smsApi.smsSendPost(smsCollection);
       
-      // TODO URGENT: Replace with real SMS service (Twilio, AWS SNS, etc.)
-      // Example integration:
-      // const twilio = require('twilio');
-      // const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
-      // await client.messages.create({
-      //   to: notification.to,
-      //   from: process.env.TWILIO_PHONE_NUMBER,
-      //   body: notification.message
-      // });
-      
-      return true; // Mock success - WILL NOT SEND REAL SMS
+      if (result.response.statusCode === 200) {
+        console.log('✅ SMS sent successfully:', result.body);
+        return true;
+      } else {
+        console.error('ClickSend SMS error:', result.body);
+        return false;
+      }
     } catch (error) {
       console.error('SMS sending failed:', error);
       return false;
     }
   }
 
-  // Voice service - CRITICAL: Currently mocked, needs real integration
+  // Voice service using ClickSend
   async sendVoiceCall(notification: VoiceNotification): Promise<boolean> {
     try {
-      console.log('📞 MOCK: Voice call would be made:', {
-        to: notification.to,
-        message: notification.message
+      const clicksend = await this.getClickSend();
+      
+      if (!clicksend) {
+        console.log('📞 MOCK: No ClickSend credentials, would make voice call:', {
+          to: notification.to,
+          message: notification.message
+        });
+        return true; // Mock success when no credentials
+      }
+
+      console.log('📞 Making voice call via ClickSend:', {
+        to: notification.to
       });
+
+      const voiceApi = new clicksend.ClickSend.VoiceApi(clicksend.client);
+      const voiceMessage = new clicksend.ClickSend.VoiceMessage();
+      voiceMessage.to = notification.to;
+      voiceMessage.body = notification.message;
+      voiceMessage.voice = 'female'; // ClickSend voice options: male, female
+      voiceMessage.custom_string = 'ticketless-chicago';
+
+      const voiceMessageCollection = new clicksend.ClickSend.VoiceMessageCollection();
+      voiceMessageCollection.messages = [voiceMessage];
+
+      const result = await voiceApi.voiceSendPost(voiceMessageCollection);
       
-      // TODO URGENT: Replace with real voice service (Twilio Voice, etc.)
-      // Example integration:
-      // const twilio = require('twilio');
-      // const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
-      // await client.calls.create({
-      //   to: notification.to,
-      //   from: process.env.TWILIO_PHONE_NUMBER,
-      //   twiml: `<Response><Say voice="alice" rate="slow">${notification.message}</Say></Response>`
-      // });
-      
-      return true; // Mock success - WILL NOT MAKE REAL CALLS
+      if (result.response.statusCode === 200) {
+        console.log('✅ Voice call initiated successfully:', result.body);
+        return true;
+      } else {
+        console.error('ClickSend Voice error:', result.body);
+        return false;
+      }
     } catch (error) {
       console.error('Voice call failed:', error);
       return false;
