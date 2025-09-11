@@ -370,12 +370,12 @@ export default function Home() {
       </div>
 
       {/* Second CTA Section */}
-      <div style={{ 
+      <div id="signup-section" style={{ 
         textAlign: 'center', 
         padding: '80px 40px',
         backgroundColor: '#f9f9f9'
       }}>
-        <h2 id="signup-section" style={{ 
+        <h2 style={{ 
           fontSize: '48px', 
           fontWeight: 'bold', 
           color: '#1a1a1a', 
