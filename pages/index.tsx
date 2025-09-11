@@ -1123,7 +1123,7 @@ export default function Home() {
         }}>
           <strong>Vehicle compliance information</strong><br />
           Street cleaning data for Chicago residents gathered from the City of Chicago's open data portal and FOIA requests. 
-          This ensures all vehicles in the city of Chicago never get a ticket.
+          This prevents tickets for: street cleaning violations, expired city stickers, expired license plate registrations, and overdue emissions tests.
         </p>
         
         <p id="support" style={{ 
