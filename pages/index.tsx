@@ -219,7 +219,7 @@ export default function Home() {
               cursor: 'pointer'
             }}
           >
-            Sign Up
+            Get Protected
           </button>
         </div>
       </nav>
@@ -241,15 +241,23 @@ export default function Home() {
           lineHeight: '1.1',
           letterSpacing: '-1px'
         }}>
-          Chicago Vehicle Compliance Alerts.
+          Never Miss a Vehicle Renewal Again
         </h1>
         <p style={{ 
           fontSize: '32px', 
           color: '#888', 
-          marginBottom: '48px',
+          marginBottom: '24px',
           fontWeight: '300'
         }}>
-          Never get a parking ticket again.
+          Get automated reminders for city stickers, license plates, emissions testing, and street cleaning.
+        </p>
+        <p style={{ 
+          fontSize: '24px', 
+          color: '#e74c3c', 
+          marginBottom: '48px',
+          fontWeight: '500'
+        }}>
+          One missed ticket costs more than our entire annual service.
         </p>
         <button
           onClick={scrollToForm}
@@ -265,7 +273,7 @@ export default function Home() {
             marginBottom: '80px'
           }}
         >
-          Sign Up
+          Get Protected From Tickets Today
         </button>
       </div>
 
@@ -297,14 +305,14 @@ export default function Home() {
             color: '#1a1a1a', 
             marginBottom: '16px' 
           }}>
-            We handle everything.
+            Email & SMS Reminders
           </h3>
           <p style={{ 
             fontSize: '18px', 
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            We automatically renew your city stickers and registrations for you. No more waiting in lines or filling out forms.
+            Get alerted 30, 14, and 7 days before your renewals are due. Choose email, SMS, or voice calls.
           </p>
         </div>
 
@@ -327,14 +335,14 @@ export default function Home() {
             color: '#1a1a1a', 
             marginBottom: '16px' 
           }}>
-            Save money.
+            Save Money
           </h3>
           <p style={{ 
             fontSize: '18px', 
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            One missed deadline costs more than our annual service. Never risk a ticket again.
+            Avoid expensive tickets. Our annual plan costs less than a single city sticker violation.
           </p>
         </div>
 
@@ -357,14 +365,14 @@ export default function Home() {
             color: '#1a1a1a', 
             marginBottom: '16px' 
           }}>
-            Official data.
+            Official Data
           </h3>
           <p style={{ 
             fontSize: '18px', 
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            Real data from City of Chicago and Illinois DMV. Accurate and reliable.
+            Real data from City of Chicago and Illinois DMV. Accurate and reliable information.
           </p>
         </div>
       </div>
@@ -1126,6 +1134,44 @@ export default function Home() {
           This prevents tickets for: street cleaning violations, expired city stickers, expired license plate registrations, and overdue emissions tests.
         </p>
         
+        {/* Bottom CTA Section */}
+        <div style={{ 
+          textAlign: 'center',
+          padding: '60px 0',
+          marginBottom: '40px'
+        }}>
+          <h2 style={{
+            fontSize: '36px',
+            fontWeight: 'bold',
+            color: '#1a1a1a',
+            marginBottom: '16px'
+          }}>
+            Ready to Never Get Another Ticket?
+          </h2>
+          <p style={{
+            fontSize: '20px',
+            color: '#666',
+            marginBottom: '32px'
+          }}>
+            Join Chicago residents who trust us to keep their vehicles compliant.
+          </p>
+          <button
+            onClick={scrollToForm}
+            style={{
+              backgroundColor: 'black',
+              color: 'white',
+              border: 'none',
+              borderRadius: '25px',
+              padding: '16px 32px',
+              fontSize: '18px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            Get Protected From Tickets Today
+          </button>
+        </div>
+
         <p id="support" style={{ 
           fontSize: '14px', 
           color: '#888', 
