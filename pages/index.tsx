@@ -473,6 +473,9 @@ export default function Home() {
                 <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
                   Vehicle Details
                 </h4>
+                <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', textAlign: 'left' }}>
+                  💡 <strong>Tip:</strong> Your VIN is on your dashboard (visible through windshield) or driver's side door frame.
+                </p>
                 
                 <input
                   type="text"
@@ -564,6 +567,19 @@ export default function Home() {
                 <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
                   Renewal Dates
                 </h4>
+                <div style={{ 
+                  backgroundColor: '#f0f8ff', 
+                  padding: '12px', 
+                  borderRadius: '8px', 
+                  marginBottom: '16px',
+                  fontSize: '14px',
+                  color: '#333'
+                }}>
+                  <strong>📧 Can't find your renewal dates?</strong><br />
+                  • Search your email for "city sticker registration" or "vehicle registration"<br />
+                  • License plates usually renew 1 year after your last renewal<br />
+                  • City stickers typically expire July 31st each year
+                </div>
                 
                 <div>
                   <input
@@ -616,7 +632,7 @@ export default function Home() {
                     required
                   />
                   <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', textAlign: 'left' }}>
-                    License Plate Renewal *
+                    License Plate Renewal * (Check your registration sticker or email confirmation)
                   </div>
                 </div>
 
@@ -635,7 +651,7 @@ export default function Home() {
                     }}
                   />
                   <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', textAlign: 'left' }}>
-                    Emissions Test Due (optional)
+                    Emissions Test Due (optional - required every 2 years for vehicles 4+ years old)
                   </div>
                 </div>
 
@@ -678,6 +694,9 @@ export default function Home() {
                 <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
                   Contact & Alerts
                 </h4>
+                <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', textAlign: 'left' }}>
+                  📱 We'll send reminders to help you avoid tickets. Choose how you'd like to be contacted.
+                </p>
                 
                 <input
                   type="tel"
@@ -766,6 +785,16 @@ export default function Home() {
                 <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
                   Mailing Address
                 </h4>
+                <div style={{ 
+                  backgroundColor: '#fff3cd', 
+                  padding: '12px', 
+                  borderRadius: '8px', 
+                  marginBottom: '16px',
+                  fontSize: '14px',
+                  color: '#856404'
+                }}>
+                  📮 <strong>Important:</strong> We'll mail your renewed city stickers and license plate stickers to this address. Make sure it's accurate!
+                </div>
                 
                 <input
                   type="text"
@@ -856,6 +885,9 @@ export default function Home() {
                 <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
                   Choose Your Plan
                 </h4>
+                <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', textAlign: 'left' }}>
+                  💳 One missed ticket costs more than our entire annual service. Choose what works for you:
+                </p>
                 
                 <label style={{ 
                   display: 'flex', 
