@@ -176,26 +176,26 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="border-2 border-cyan-400 rounded-lg p-16 bg-gradient-to-br from-white to-gray-50">
-              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4">
+      <section className="pt-20 pb-32 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center">
+            <div className="border-2 border-cyan-400 rounded-2xl py-24 px-8 bg-white" style={{ minHeight: '400px' }}>
+              <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-none tracking-tight">
                 Stay Compliant. Avoid Tickets.
               </h1>
-              <p className="text-xl md:text-2xl text-gray-500 mb-8">
+              <p className="text-2xl md:text-3xl text-gray-500 mb-12 font-light max-w-4xl mx-auto leading-relaxed">
                 Renewals, alerts, and reminders—all in one place.
               </p>
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-6 justify-center">
                 <button
                   onClick={scrollToForm}
-                  className="bg-black text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-gray-800 transition-colors"
+                  className="bg-black text-white px-10 py-4 rounded-full text-xl font-medium hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Get Started
                 </button>
                 <button
                   onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="bg-white text-black px-8 py-3 rounded-full text-lg font-medium border-2 border-black hover:bg-gray-50 transition-colors"
+                  className="bg-white text-black px-10 py-4 rounded-full text-xl font-medium border-2 border-black hover:bg-gray-50 transition-all duration-200"
                 >
                   Learn More
                 </button>
@@ -206,51 +206,51 @@ export default function Home() {
       </section>
 
       {/* Feature Sections */}
-      <section id="features" className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-16 items-center mb-32">
+      <section id="features" className="py-32 bg-white">
+        <div className="max-w-6xl mx-auto px-8">
+          <div className="grid md:grid-cols-2 gap-24 items-center mb-40">
             <div className="order-2 md:order-1">
-              <div className="bg-white rounded-lg p-12 shadow-lg">
-                <div className="w-64 h-64 bg-gray-100 rounded-lg mx-auto"></div>
+              <div className="bg-gray-50 rounded-3xl p-16 shadow-sm">
+                <div className="w-72 h-72 bg-gray-200 rounded-2xl mx-auto"></div>
               </div>
             </div>
-            <div className="order-1 md:order-2">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <div className="order-1 md:order-2 px-8">
+              <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-8 leading-tight">
                 All-in-one form.
               </h2>
-              <p className="text-xl text-gray-500 leading-relaxed">
+              <p className="text-2xl text-gray-500 leading-relaxed font-light">
                 Renew stickers, plates, emissions, and more—no more jumping across city sites.
               </p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-16 items-center mb-32">
-            <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <div className="grid md:grid-cols-2 gap-24 items-center mb-40">
+            <div className="px-8">
+              <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-8 leading-tight">
                 Never miss a deadline.
               </h2>
-              <p className="text-xl text-gray-500 leading-relaxed">
+              <p className="text-2xl text-gray-500 leading-relaxed font-light">
                 Custom reminders to email, SMS, or phone. Avoid $60-$200 fines.
               </p>
             </div>
             <div>
-              <div className="bg-white rounded-lg p-12 shadow-lg">
-                <div className="w-64 h-64 bg-gray-100 rounded-lg mx-auto"></div>
+              <div className="bg-gray-50 rounded-3xl p-16 shadow-sm">
+                <div className="w-72 h-72 bg-gray-200 rounded-2xl mx-auto"></div>
               </div>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-24 items-center">
             <div className="order-2 md:order-1">
-              <div className="bg-gray-200 rounded-lg p-12">
-                <div className="w-64 h-64 bg-gray-300 rounded-lg mx-auto"></div>
+              <div className="bg-gray-100 rounded-3xl p-16">
+                <div className="w-72 h-72 bg-gray-300 rounded-2xl mx-auto"></div>
               </div>
             </div>
-            <div className="order-1 md:order-2">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <div className="order-1 md:order-2 px-8">
+              <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-8 leading-tight">
                 Auto-renew options.
               </h2>
-              <p className="text-xl text-gray-500 leading-relaxed">
+              <p className="text-2xl text-gray-500 leading-relaxed font-light">
                 Set up monthly or yearly billing and let us handle your compliance hassle-free.
               </p>
             </div>
@@ -259,29 +259,28 @@ export default function Home() {
       </section>
 
       {/* Multi-Step Form Section */}
-      <section id="signup-form" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Easy, step-by-step multi-service vehicle compliance form.
-              </h2>
-              <p className="text-xl text-gray-500">
-                Each service section collects the right info, shows what's required, and offers helper text—like auto-filled 'July 31' for city sticker expiry.
-              </p>
-            </div>
+      <section id="signup-form" className="py-32 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-8 leading-tight">
+              Easy, step-by-step multi-service vehicle compliance form.
+            </h2>
+            <p className="text-2xl text-gray-500 leading-relaxed font-light max-w-3xl mx-auto">
+              Each service section collects the right info, shows what's required, and offers helper text—like auto-filled 'July 31' for city sticker expiry.
+            </p>
+          </div>
 
-            {formStep === 0 ? (
-              <div className="text-center">
-                <button
-                  onClick={() => setFormStep(1)}
-                  className="bg-black text-white px-12 py-4 rounded-full text-xl font-medium hover:bg-gray-800 transition-colors"
-                >
-                  Start My Renewal
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSignup} className="bg-gray-50 rounded-lg p-8">
+          {formStep === 0 ? (
+            <div className="text-center">
+              <button
+                onClick={() => setFormStep(1)}
+                className="bg-black text-white px-16 py-5 rounded-full text-2xl font-medium hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                Start My Renewal
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSignup} className="bg-white rounded-3xl p-12 shadow-lg border border-gray-100">
                 {/* Progress Bar */}
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-2">
@@ -787,17 +786,17 @@ export default function Home() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-4xl mx-auto text-center px-4">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+      <section className="py-32 bg-white">
+        <div className="max-w-4xl mx-auto text-center px-8">
+          <h2 className="text-6xl md:text-7xl font-bold text-gray-900 mb-8 leading-tight">
             Avoid Tickets, Save Time.
           </h2>
-          <p className="text-xl text-gray-500 mb-8 max-w-2xl mx-auto">
+          <p className="text-2xl text-gray-500 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
             One platform, all city compliance needs handled—renewals, reminders, and peace of mind.
           </p>
           <button
             onClick={scrollToForm}
-            className="bg-black text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-gray-800 transition-colors"
+            className="bg-black text-white px-16 py-5 rounded-full text-2xl font-medium hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             Start My Renewal
           </button>
