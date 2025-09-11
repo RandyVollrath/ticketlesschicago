@@ -164,7 +164,7 @@ export default function Home() {
   const scrollToForm = () => {
     setFormStep(0);
     setTimeout(() => {
-      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('signup-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   };
 
@@ -375,7 +375,7 @@ export default function Home() {
         padding: '80px 40px',
         backgroundColor: '#f9f9f9'
       }}>
-        <h2 style={{ 
+        <h2 id="signup-section" style={{ 
           fontSize: '48px', 
           fontWeight: 'bold', 
           color: '#1a1a1a', 
