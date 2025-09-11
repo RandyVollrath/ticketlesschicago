@@ -162,7 +162,7 @@ export default function Home() {
   };
 
   const scrollToForm = () => {
-    setFormStep(1);
+    setFormStep(0);
     setTimeout(() => {
       document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -414,8 +414,8 @@ export default function Home() {
               marginBottom: '32px',
               lineHeight: '1.4'
             }}>
-              Vehicle information gathered from Chicago's open data portal and FOIA requests. 
-              This ensures all vehicles in the City of Chicago never get a ticket.
+              We'll handle your city sticker renewals, license plate renewals, and send you alerts for street cleaning and snow removal. 
+              Never worry about Chicago parking tickets again.
             </p>
 
 {formStep === 0 ? (
