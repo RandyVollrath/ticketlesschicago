@@ -164,7 +164,7 @@ export default function Home() {
   const scrollToForm = () => {
     setFormStep(1);
     setTimeout(() => {
-      document.getElementById('signup-form')?.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   };
 
@@ -249,7 +249,7 @@ export default function Home() {
           marginBottom: '48px',
           fontWeight: '300'
         }}>
-          Never miss a renewal deadline again.
+          Never get a parking ticket again.
         </p>
         <button
           onClick={scrollToForm}
