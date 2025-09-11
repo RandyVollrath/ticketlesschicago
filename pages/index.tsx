@@ -42,9 +42,25 @@ export default function Home() {
   };
 
   const nextStep = () => {
-    if (formStep === 1) {
-      if (!formData.licensePlate || !formData.zipCode) {
+    // Validate current step before proceeding
+    if (formStep === 0) {
+      if (!formData.licensePlate || !formData.zipCode || !formData.email) {
         setMessage('Please fill in all required fields');
+        return;
+      }
+    } else if (formStep === 2) {
+      if (!formData.cityStickerExpiry || !formData.licensePlateExpiry) {
+        setMessage('Please fill in all required renewal dates');
+        return;
+      }
+    } else if (formStep === 3) {
+      if (!formData.phone) {
+        setMessage('Please provide your phone number');
+        return;
+      }
+    } else if (formStep === 4) {
+      if (!formData.mailingAddress || !formData.mailingCity || !formData.mailingZip) {
+        setMessage('Please fill in complete mailing address');
         return;
       }
     }
@@ -97,7 +113,7 @@ export default function Home() {
             service_plan: formData.billingPlan === 'monthly' ? 'pro_monthly' : 'pro_annual',
             mailing_address: formData.mailingAddress,
             mailing_city: formData.mailingCity,
-            mailing_state: formData.mailingState,
+            mailing_state: 'IL',
             mailing_zip: formData.mailingZip,
             completed: false
           }]);
@@ -373,8 +389,8 @@ export default function Home() {
               This ensures all vehicles in the City of Chicago never get a ticket.
             </p>
 
-            {formStep === 0 ? (
-              <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+{formStep === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <input
                   type="text"
                   name="licensePlate"
@@ -423,8 +439,7 @@ export default function Home() {
                 />
                 
                 <button
-                  type="submit"
-                  disabled={loading}
+                  onClick={() => setFormStep(1)}
                   style={{
                     backgroundColor: 'black',
                     color: 'white',
@@ -437,7 +452,7 @@ export default function Home() {
                     marginTop: '16px'
                   }}
                 >
-                  {loading ? 'Setting up...' : 'Email Address'}
+                  Continue
                 </button>
 
                 {message && (
@@ -452,9 +467,507 @@ export default function Home() {
                     {message}
                   </div>
                 )}
-              </form>
+              </div>
+            ) : formStep === 1 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
+                  Vehicle Details
+                </h4>
+                
+                <input
+                  type="text"
+                  name="vin"
+                  value={formData.vin}
+                  onChange={handleInputChange}
+                  placeholder="VIN (required for trucks/large SUVs)"
+                  maxLength={17}
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                />
+                
+                <select
+                  name="vehicleType"
+                  value={formData.vehicleType}
+                  onChange={handleInputChange}
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                >
+                  <option value="passenger">Passenger Vehicle</option>
+                  <option value="large-passenger">Large Passenger (SUV/Van)</option>
+                  <option value="truck">Truck</option>
+                  <option value="motorcycle">Motorcycle</option>
+                </select>
+
+                <input
+                  type="number"
+                  name="vehicleYear"
+                  value={formData.vehicleYear}
+                  onChange={handleInputChange}
+                  placeholder="Vehicle Year"
+                  min="1990"
+                  max={new Date().getFullYear() + 1}
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                />
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setFormStep(0)}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      color: '#666',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      flex: 1
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setFormStep(2)}
+                    style={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      flex: 2
+                    }}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            ) : formStep === 2 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
+                  Renewal Dates
+                </h4>
+                
+                <div>
+                  <input
+                    type="date"
+                    name="cityStickerExpiry"
+                    value={formData.cityStickerExpiry}
+                    onChange={handleInputChange}
+                    style={{
+                      padding: '16px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      width: '100%'
+                    }}
+                    required
+                  />
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', textAlign: 'left' }}>
+                    City Sticker Expiry * 
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({...prev, cityStickerExpiry: getSuggestedRenewalDate()}))}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: '#0066cc', 
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        fontSize: '12px',
+                        marginLeft: '8px'
+                      }}
+                    >
+                      Use July 31st
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <input
+                    type="date"
+                    name="licensePlateExpiry"
+                    value={formData.licensePlateExpiry}
+                    onChange={handleInputChange}
+                    style={{
+                      padding: '16px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      width: '100%'
+                    }}
+                    required
+                  />
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', textAlign: 'left' }}>
+                    License Plate Renewal *
+                  </div>
+                </div>
+
+                <div>
+                  <input
+                    type="date"
+                    name="emissionsDate"
+                    value={formData.emissionsDate}
+                    onChange={handleInputChange}
+                    style={{
+                      padding: '16px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      width: '100%'
+                    }}
+                  />
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', textAlign: 'left' }}>
+                    Emissions Test Due (optional)
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setFormStep(1)}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      color: '#666',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      flex: 1
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setFormStep(3)}
+                    style={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      flex: 2
+                    }}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            ) : formStep === 3 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
+                  Contact & Alerts
+                </h4>
+                
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="Phone Number"
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                  required
+                />
+
+                <select
+                  name="reminderMethod"
+                  value={formData.reminderMethod}
+                  onChange={handleInputChange}
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                >
+                  <option value="email">Email Only</option>
+                  <option value="sms">SMS Only</option>
+                  <option value="both">Email + SMS</option>
+                </select>
+
+                <input
+                  type="text"
+                  name="streetAddress"
+                  value={formData.streetAddress}
+                  onChange={handleInputChange}
+                  placeholder="Street Address (for cleaning alerts)"
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                />
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setFormStep(2)}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      color: '#666',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      flex: 1
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setFormStep(4)}
+                    style={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      flex: 2
+                    }}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            ) : formStep === 4 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
+                  Mailing Address
+                </h4>
+                
+                <input
+                  type="text"
+                  name="mailingAddress"
+                  value={formData.mailingAddress}
+                  onChange={handleInputChange}
+                  placeholder="Street Address"
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                  required
+                />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <input
+                    type="text"
+                    name="mailingCity"
+                    value={formData.mailingCity}
+                    onChange={handleInputChange}
+                    placeholder="City"
+                    style={{
+                      padding: '16px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      textAlign: 'center'
+                    }}
+                    required
+                  />
+                  <input
+                    type="text"
+                    name="mailingZip"
+                    value={formData.mailingZip}
+                    onChange={handleInputChange}
+                    placeholder="ZIP"
+                    maxLength={5}
+                    style={{
+                      padding: '16px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      textAlign: 'center'
+                    }}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setFormStep(3)}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      color: '#666',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      flex: 1
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setFormStep(5)}
+                    style={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      flex: 2
+                    }}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
             ) : (
-              <div>Form steps would go here</div>
+              <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
+                  Choose Your Plan
+                </h4>
+                
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  padding: '16px', 
+                  border: `2px solid ${formData.billingPlan === 'monthly' ? 'black' : '#ddd'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="radio"
+                    name="billingPlan"
+                    value="monthly"
+                    checked={formData.billingPlan === 'monthly'}
+                    onChange={handleInputChange}
+                    style={{ marginRight: '12px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>Monthly - $12/month</div>
+                    <div style={{ fontSize: '14px', color: '#666' }}>Cancel anytime</div>
+                  </div>
+                </label>
+
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  padding: '16px', 
+                  border: `2px solid ${formData.billingPlan === 'annual' ? 'black' : '#ddd'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="radio"
+                    name="billingPlan"
+                    value="annual"
+                    checked={formData.billingPlan === 'annual'}
+                    onChange={handleInputChange}
+                    style={{ marginRight: '12px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>Annual - $120/year <span style={{ color: 'green', fontSize: '12px' }}>SAVE $24</span></div>
+                    <div style={{ fontSize: '14px', color: '#666' }}>Best value - 2 months free</div>
+                  </div>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', marginTop: '16px' }}>
+                  <input
+                    type="checkbox"
+                    name="consent"
+                    checked={formData.consent}
+                    onChange={handleInputChange}
+                    style={{ marginRight: '12px' }}
+                    required
+                  />
+                  <span style={{ fontSize: '14px' }}>
+                    I consent to receive vehicle compliance notifications *
+                  </span>
+                </label>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setFormStep(4)}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      color: '#666',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      flex: 1
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      flex: 2,
+                      opacity: loading ? 0.7 : 1
+                    }}
+                  >
+                    {loading ? 'Processing...' : 
+                      formData.billingPlan === 'annual' 
+                        ? 'Complete - $120/year' 
+                        : 'Complete - $12/month'}
+                  </button>
+                </div>
+
+                {message && (
+                  <div style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: message.startsWith('Success') ? '#d4edda' : '#f8d7da',
+                    color: message.startsWith('Success') ? '#155724' : '#721c24',
+                    fontSize: '14px',
+                    textAlign: 'center'
+                  }}>
+                    {message}
+                  </div>
+                )}
+              </form>
             )}
           </div>
         </div>
