@@ -148,7 +148,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Head>
         <title>TicketLess Chicago - Complete Vehicle Compliance Service</title>
-        <meta name="description" content="Avoid all Chicago parking tickets and vehicle violations. City Sticker, Emissions, Street Cleaning, Snow Removal, and License Renewal reminders. Starting at $69/year - less than one ticket!" />
+        <meta name="description" content="Complete Chicago vehicle compliance service. We handle city sticker & license renewals, plus comprehensive alerts for all vehicle requirements. Monthly and annual plans available." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
