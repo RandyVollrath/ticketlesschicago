@@ -1,270 +1,364 @@
-import { Reminder, Obligation, User } from '../types';
+import { supabase } from './supabase';
 
-interface EmailNotification {
-  to: string;
-  subject: string;
-  body: string;
-  html?: string;
+// Types for notifications
+export interface NotificationPreferences {
+  email: boolean;
+  sms: boolean;
+  voice: boolean;
+  reminder_days: number[];
 }
 
-interface SMSNotification {
+export interface VehicleReminder {
+  id: string;
+  user_id: string;
+  license_plate: string;
+  city_sticker_expiry: string;
+  license_plate_expiry: string;
+  emissions_due_date: string | null;
+  email: string;
+  phone: string;
+  notification_preferences: NotificationPreferences;
+  sent_reminders: string[];
+  reminder_sent: boolean;
+  reminder_sent_at: string | null;
+}
+
+export interface EmailNotification {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export interface SMSNotification {
+  to: string;
+  message: string;
+}
+
+export interface VoiceNotification {
   to: string;
   message: string;
 }
 
 export class NotificationService {
-  // Email notification service
+  // Email service - placeholder for integration with SendGrid, AWS SES, etc.
   async sendEmail(notification: EmailNotification): Promise<boolean> {
     try {
-      // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
-      console.log('Sending email:', {
+      console.log('📧 Sending email notification:', {
         to: notification.to,
         subject: notification.subject,
-        body: notification.body
+        preview: notification.text.substring(0, 100) + '...'
       });
       
-      // Mock successful send
-      return true;
+      // TODO: Integrate with actual email service
+      // Example: await sendgrid.send(notification);
+      
+      return true; // Mock success
     } catch (error) {
-      console.error('Failed to send email:', error);
+      console.error('Email sending failed:', error);
       return false;
     }
   }
 
-  // SMS notification service
+  // SMS service - placeholder for integration with Twilio, AWS SNS, etc.
   async sendSMS(notification: SMSNotification): Promise<boolean> {
     try {
-      // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
-      console.log('Sending SMS:', {
+      console.log('📱 Sending SMS notification:', {
         to: notification.to,
         message: notification.message
       });
       
-      // Mock successful send
-      return true;
+      // TODO: Integrate with actual SMS service
+      // Example: await twilio.messages.create(notification);
+      
+      return true; // Mock success
     } catch (error) {
-      console.error('Failed to send SMS:', error);
+      console.error('SMS sending failed:', error);
       return false;
     }
   }
 
-  // Generate reminder content
-  generateReminderContent(obligation: Obligation, user: User, daysUntilDue: number): {
-    email: EmailNotification;
-    sms: SMSNotification;
-  } {
-    const urgencyLevel = this.getUrgencyLevel(daysUntilDue);
-    const subject = this.generateEmailSubject(obligation, daysUntilDue, urgencyLevel);
-    const emailBody = this.generateEmailBody(obligation, user, daysUntilDue, urgencyLevel);
-    const smsMessage = this.generateSMSMessage(obligation, daysUntilDue, urgencyLevel);
+  // Voice service - placeholder for integration with Twilio Voice, etc.
+  async sendVoiceCall(notification: VoiceNotification): Promise<boolean> {
+    try {
+      console.log('📞 Sending voice notification:', {
+        to: notification.to,
+        message: notification.message
+      });
+      
+      // TODO: Integrate with actual voice service
+      // Example: await twilio.calls.create({
+      //   to: notification.to,
+      //   from: process.env.TWILIO_PHONE_NUMBER,
+      //   twiml: `<Response><Say>${notification.message}</Say></Response>`
+      // });
+      
+      return true; // Mock success
+    } catch (error) {
+      console.error('Voice call failed:', error);
+      return false;
+    }
+  }
+}
 
-    return {
-      email: {
-        to: user.email,
-        subject,
-        body: emailBody.text,
-        html: emailBody.html
-      },
-      sms: {
-        to: user.phone || '',
-        message: smsMessage
-      }
-    };
+export class NotificationScheduler {
+  private notificationService: NotificationService;
+
+  constructor() {
+    this.notificationService = new NotificationService();
   }
 
-  private getUrgencyLevel(daysUntilDue: number): 'high' | 'medium' | 'low' {
+  // Get all vehicle reminders that might need notifications
+  async getPendingReminders(): Promise<VehicleReminder[]> {
+    const { data, error } = await supabase
+      .from('vehicle_reminders')
+      .select('*')
+      .eq('completed', false);
+
+    if (error) {
+      console.error('Error fetching pending reminders:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  // Calculate days until due date
+  getDaysUntilDue(dueDate: string): number {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  // Determine urgency level for content generation
+  getUrgencyLevel(daysUntilDue: number): 'high' | 'medium' | 'low' {
     if (daysUntilDue <= 1) return 'high';
     if (daysUntilDue <= 7) return 'medium';
     return 'low';
   }
 
-  private generateEmailSubject(obligation: Obligation, daysUntilDue: number, urgency: string): string {
-    const urgencyPrefix = urgency === 'high' ? '⚠️ URGENT: ' : urgency === 'medium' ? '⏰ ' : '';
+  // Generate notification content based on renewal type and urgency
+  generateNotificationContent(
+    reminder: VehicleReminder, 
+    renewalType: 'city_sticker' | 'license_plate' | 'emissions',
+    daysUntilDue: number
+  ): { email: EmailNotification; sms: SMSNotification; voice: VoiceNotification } {
+    const urgency = this.getUrgencyLevel(daysUntilDue);
+    const urgencyEmoji = urgency === 'high' ? '🚨' : urgency === 'medium' ? '⚠️' : '📋';
     
-    if (daysUntilDue === 0) {
-      return `${urgencyPrefix}Your ${this.getObligationDisplayName(obligation.type)} is due TODAY`;
-    } else if (daysUntilDue === 1) {
-      return `${urgencyPrefix}Your ${this.getObligationDisplayName(obligation.type)} is due TOMORROW`;
-    } else {
-      return `${urgencyPrefix}Your ${this.getObligationDisplayName(obligation.type)} is due in ${daysUntilDue} days`;
-    }
-  }
-
-  private generateEmailBody(obligation: Obligation, user: User, daysUntilDue: number, urgency: string): {
-    text: string;
-    html: string;
-  } {
-    const displayName = this.getObligationDisplayName(obligation.type);
-    const dueDate = new Date(obligation.dueDate).toLocaleDateString();
+    let renewalName = '';
+    let dueDate = '';
+    let fineAmount = '';
     
-    const text = `
-Hi there,
-
-This is a friendly reminder that your ${displayName} is due ${daysUntilDue === 0 ? 'today' : daysUntilDue === 1 ? 'tomorrow' : `in ${daysUntilDue} days`} (${dueDate}).
-
-${obligation.description}
-
-${this.getObligationInstructions(obligation.type)}
-
-${obligation.autoRegister ? 
-  '✅ Auto-registration is ENABLED for this obligation. We\'ll handle the registration for you before the due date.' : 
-  '⚠️ Auto-registration is DISABLED. You\'ll need to complete this registration yourself.'
-}
-
-Don\'t let this slip by and avoid unnecessary tickets or fines!
-
-Best regards,
-TicketLess Chicago Team
-    `;
-
-    const html = `
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #1f2937;">Reminder: ${displayName}</h2>
-  
-  <div style="background-color: ${urgency === 'high' ? '#fee2e2' : urgency === 'medium' ? '#fef3c7' : '#f0f9ff'}; 
-              border-left: 4px solid ${urgency === 'high' ? '#dc2626' : urgency === 'medium' ? '#d97706' : '#0284c7'}; 
-              padding: 16px; margin: 16px 0;">
-    <p style="margin: 0; font-weight: bold;">
-      Due: ${dueDate} (${daysUntilDue === 0 ? 'TODAY' : daysUntilDue === 1 ? 'TOMORROW' : `${daysUntilDue} days`})
-    </p>
-  </div>
-
-  <p>${obligation.description}</p>
-
-  <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; margin: 16px 0;">
-    ${this.getObligationInstructionsHTML(obligation.type)}
-  </div>
-
-  <div style="margin: 24px 0; padding: 16px; border-radius: 8px; 
-              background-color: ${obligation.autoRegister ? '#d1fae5' : '#fed7d7'};
-              border: 1px solid ${obligation.autoRegister ? '#10b981' : '#f56565'};">
-    ${obligation.autoRegister ? 
-      '<strong>✅ Auto-registration is ENABLED</strong><br>We\'ll handle this registration for you before the due date.' : 
-      '<strong>⚠️ Auto-registration is DISABLED</strong><br>You\'ll need to complete this registration yourself.'
-    }
-  </div>
-
-  <p style="font-size: 14px; color: #6b7280;">
-    Don't let this slip by and avoid unnecessary tickets or fines!<br>
-    <br>
-    Best regards,<br>
-    TicketLess Chicago Team
-  </p>
-</div>
-    `;
-
-    return { text, html };
-  }
-
-  private generateSMSMessage(obligation: Obligation, daysUntilDue: number, urgency: string): string {
-    const displayName = this.getObligationDisplayName(obligation.type);
-    const urgencyEmoji = urgency === 'high' ? '⚠️' : urgency === 'medium' ? '⏰' : '📅';
-    
-    let timePhrase;
-    if (daysUntilDue === 0) timePhrase = 'TODAY';
-    else if (daysUntilDue === 1) timePhrase = 'TOMORROW';
-    else timePhrase = `in ${daysUntilDue} days`;
-
-    const autoRegStatus = obligation.autoRegister ? '✅ Auto-reg ON' : '⚠️ Manual required';
-
-    return `${urgencyEmoji} ${displayName} due ${timePhrase}. ${autoRegStatus}. Don't forget! - TicketLess Chicago`;
-  }
-
-  private getObligationDisplayName(type: string): string {
-    switch (type) {
-      case 'city-sticker': return 'Chicago City Sticker';
-      case 'emissions': return 'Illinois Emissions Test';
-      case 'vehicle-registration': return 'Vehicle Registration';
-      case 'parking-permits': return 'Parking Permits';
-      default: return 'City Obligation';
-    }
-  }
-
-  private getObligationInstructions(type: string): string {
-    switch (type) {
-      case 'city-sticker':
-        return `To complete your city sticker registration:
-1. Visit chicago.gov/vehiclestickers or go to a Currency Exchange
-2. Have your vehicle registration and ID ready
-3. Pay the annual fee (typically $96.50 for regular vehicles)
-4. Display the sticker on your vehicle's windshield`;
-
+    switch (renewalType) {
+      case 'city_sticker':
+        renewalName = 'Chicago City Sticker';
+        dueDate = reminder.city_sticker_expiry;
+        fineAmount = '$200';
+        break;
+      case 'license_plate':
+        renewalName = 'License Plate Registration';
+        dueDate = reminder.license_plate_expiry;
+        fineAmount = '$90+';
+        break;
       case 'emissions':
-        return `To complete your emissions test:
-1. Visit an approved testing station
-2. Bring your vehicle registration and payment ($20)
-3. Test typically takes 15-20 minutes
-4. Keep your certificate for your records`;
-
-      case 'vehicle-registration':
-        return `To renew your vehicle registration:
-1. Visit your local DMV or renew online
-2. Bring current registration and insurance proof
-3. Pay renewal fees
-4. Update registration documents in your vehicle`;
-
-      default:
-        return 'Please check the specific requirements for this obligation.';
+        renewalName = 'Emissions Test';
+        dueDate = reminder.emissions_due_date || '';
+        fineAmount = '$50-300';
+        break;
     }
+
+    const dueDateFormatted = new Date(dueDate).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const timeText = daysUntilDue === 0 ? 'TODAY' : 
+                     daysUntilDue === 1 ? 'TOMORROW' : 
+                     `${daysUntilDue} days`;
+
+    // Email content (rich HTML)
+    const emailSubject = `${urgencyEmoji} ${renewalName} Due ${timeText === 'TODAY' ? 'Today' : timeText === 'TOMORROW' ? 'Tomorrow' : `in ${daysUntilDue} days`}`;
+    
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: ${urgency === 'high' ? '#ff4444' : urgency === 'medium' ? '#ff8800' : '#0066cc'}; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">${urgencyEmoji} Vehicle Renewal Reminder</h1>
+        </div>
+        
+        <div style="padding: 20px; background: #f9f9f9;">
+          <h2 style="color: #333;">Your ${renewalName} is due ${timeText}!</h2>
+          <p style="font-size: 16px; color: #666;">
+            <strong>Vehicle:</strong> ${reminder.license_plate}<br>
+            <strong>Due Date:</strong> ${dueDateFormatted}<br>
+            <strong>Fine if missed:</strong> ${fineAmount}
+          </p>
+          
+          ${urgency === 'high' ? `
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <strong>⚠️ URGENT:</strong> This renewal is due very soon! Don't risk a ticket.
+            </div>
+          ` : ''}
+          
+          <p>Don't let a missed renewal turn into an expensive ticket. Take action today!</p>
+          
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="https://ticketlesschicago.vercel.app/dashboard" 
+               style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              View Dashboard
+            </a>
+          </div>
+        </div>
+        
+        <div style="padding: 15px; background: #eee; text-align: center; color: #666; font-size: 12px;">
+          TicketLess Chicago - Keeping Chicago drivers compliant<br>
+          <a href="#" style="color: #666;">Unsubscribe</a> | <a href="#" style="color: #666;">Update Preferences</a>
+        </div>
+      </div>
+    `;
+
+    const emailText = `
+${urgencyEmoji} Vehicle Renewal Reminder
+
+Your ${renewalName} is due ${timeText}!
+
+Vehicle: ${reminder.license_plate}
+Due Date: ${dueDateFormatted}
+Fine if missed: ${fineAmount}
+
+${urgency === 'high' ? 'URGENT: This renewal is due very soon! Don\'t risk a ticket.' : ''}
+
+Don't let a missed renewal turn into an expensive ticket. Take action today!
+
+View your dashboard: https://ticketlesschicago.vercel.app/dashboard
+
+TicketLess Chicago - Keeping Chicago drivers compliant
+    `;
+
+    // SMS content (concise)
+    const smsMessage = `${urgencyEmoji} ${renewalName} due ${timeText}! Vehicle: ${reminder.license_plate}. Fine: ${fineAmount}. Don't risk a ticket! Dashboard: https://ticketlesschicago.vercel.app/dashboard`;
+
+    // Voice content (clear speech)
+    const voiceMessage = `This is TicketLess Chicago. Your ${renewalName} for vehicle ${reminder.license_plate.split('').join(' ')} is due ${timeText}. The fine for missing this renewal is ${fineAmount}. Please visit your dashboard or renew immediately to avoid a ticket.`;
+
+    return {
+      email: {
+        to: reminder.email,
+        subject: emailSubject,
+        html: emailHtml,
+        text: emailText
+      },
+      sms: {
+        to: reminder.phone,
+        message: smsMessage
+      },
+      voice: {
+        to: reminder.phone,
+        message: voiceMessage
+      }
+    };
   }
 
-  private getObligationInstructionsHTML(type: string): string {
-    const instructions = this.getObligationInstructions(type);
-    return instructions.replace(/\n(\d+\.)/g, '<br><strong>$1</strong>').replace(/\n/g, '<br>');
-  }
-}
+  // Process pending reminders
+  async processPendingReminders(): Promise<{
+    processed: number;
+    successful: number;
+    failed: number;
+    errors: string[];
+  }> {
+    const results = {
+      processed: 0,
+      successful: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
 
-// Notification scheduling service
-export class NotificationScheduler {
-  private notificationService = new NotificationService();
+    try {
+      const pendingReminders = await this.getPendingReminders();
+      
+      for (const reminder of pendingReminders) {
+        results.processed++;
+        
+        try {
+          const preferences = reminder.notification_preferences;
+          
+          // Check each renewal type
+          const renewals = [
+            { type: 'city_sticker' as const, dueDate: reminder.city_sticker_expiry },
+            { type: 'license_plate' as const, dueDate: reminder.license_plate_expiry },
+            { type: 'emissions' as const, dueDate: reminder.emissions_due_date }
+          ].filter(r => r.dueDate); // Only check renewals with due dates
 
-  async scheduleRemindersForObligation(
-    obligation: Obligation, 
-    user: User, 
-    reminderDays: number[] = [30, 7, 1]
-  ): Promise<Reminder[]> {
-    const reminders: Reminder[] = [];
-    const dueDate = new Date(obligation.dueDate);
-
-    for (const days of reminderDays) {
-      const scheduledDate = new Date(dueDate);
-      scheduledDate.setDate(scheduledDate.getDate() - days);
-
-      // Don't schedule reminders in the past
-      if (scheduledDate > new Date()) {
-        // Create email reminder
-        if (user.preferences.email) {
-          reminders.push({
-            id: `reminder_email_${obligation.id}_${days}d`,
-            obligationId: obligation.id,
-            type: 'email',
-            scheduledFor: scheduledDate.toISOString(),
-            sent: false
-          });
-        }
-
-        // Create SMS reminder
-        if (user.preferences.sms && user.phone) {
-          reminders.push({
-            id: `reminder_sms_${obligation.id}_${days}d`,
-            obligationId: obligation.id,
-            type: 'sms',
-            scheduledFor: scheduledDate.toISOString(),
-            sent: false
-          });
+          for (const renewal of renewals) {
+            const daysUntilDue = this.getDaysUntilDue(renewal.dueDate);
+            
+            // Check if we should send a reminder for this timing
+            if (preferences.reminder_days.includes(daysUntilDue)) {
+              // Check if we've already sent this specific reminder
+              const reminderKey = `${renewal.type}_${daysUntilDue}d`;
+              const sentReminders = reminder.sent_reminders || [];
+              
+              if (sentReminders.includes(reminderKey)) {
+                console.log(`Already sent ${reminderKey} reminder for ${reminder.license_plate}`);
+                continue;
+              }
+              
+              const content = this.generateNotificationContent(reminder, renewal.type, daysUntilDue);
+              
+              let notificationSent = false;
+              
+              // Send email if enabled
+              if (preferences.email) {
+                const emailSent = await this.notificationService.sendEmail(content.email);
+                notificationSent = notificationSent || emailSent;
+              }
+              
+              // Send SMS if enabled
+              if (preferences.sms && reminder.phone) {
+                const smsSent = await this.notificationService.sendSMS(content.sms);
+                notificationSent = notificationSent || smsSent;
+              }
+              
+              // Send voice call if enabled (only for urgent reminders)
+              if (preferences.voice && reminder.phone && daysUntilDue <= 1) {
+                const voiceSent = await this.notificationService.sendVoiceCall(content.voice);
+                notificationSent = notificationSent || voiceSent;
+              }
+              
+              if (notificationSent) {
+                // Track this specific reminder as sent
+                const updatedSentReminders = [...sentReminders, reminderKey];
+                await supabase
+                  .from('vehicle_reminders')
+                  .update({ 
+                    sent_reminders: updatedSentReminders,
+                    reminder_sent_at: new Date().toISOString() 
+                  })
+                  .eq('id', reminder.id);
+                
+                results.successful++;
+              } else {
+                results.failed++;
+                results.errors.push(`Failed to send ${reminderKey} reminder for ${reminder.license_plate}`);
+              }
+            }
+          }
+        } catch (error) {
+          results.failed++;
+          results.errors.push(`Error processing reminder ${reminder.id}: ${error}`);
         }
       }
+    } catch (error) {
+      results.errors.push(`Error fetching pending reminders: ${error}`);
     }
 
-    return reminders;
-  }
-
-  async processPendingReminders(): Promise<void> {
-    // This would typically be called by a cron job or scheduled task
-    // TODO: Implement with actual database and job scheduler
-    console.log('Processing pending reminders...');
+    return results;
   }
 }
 
-export const notificationService = new NotificationService();
+// Export a singleton instance
 export const notificationScheduler = new NotificationScheduler();
+export const notificationService = new NotificationService();

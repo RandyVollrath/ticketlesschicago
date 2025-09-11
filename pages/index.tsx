@@ -19,6 +19,11 @@ export default function Home() {
     email: '',
     phone: '',
     reminderMethod: 'both',
+    // Notification preferences
+    emailNotifications: true,
+    smsNotifications: false,
+    voiceNotifications: false,
+    reminderDays: [30, 7, 1],
     mailingAddress: '',
     mailingCity: '',
     mailingState: 'IL',
@@ -56,6 +61,14 @@ export default function Home() {
     } else if (formStep === 3) {
       if (!formData.phone) {
         setMessage('Please provide your phone number');
+        return;
+      }
+      if (!formData.emailNotifications && !formData.smsNotifications && !formData.voiceNotifications) {
+        setMessage('Please select at least one notification method');
+        return;
+      }
+      if (formData.reminderDays.length === 0) {
+        setMessage('Please select at least one reminder timing');
         return;
       }
     } else if (formStep === 4) {
@@ -110,6 +123,12 @@ export default function Home() {
             email: formData.email,
             phone: formData.phone,
             reminder_method: formData.reminderMethod,
+            notification_preferences: {
+              email: formData.emailNotifications,
+              sms: formData.smsNotifications,
+              voice: formData.voiceNotifications,
+              reminder_days: formData.reminderDays
+            },
             service_plan: formData.billingPlan === 'monthly' ? 'pro_monthly' : 'pro_annual',
             mailing_address: formData.mailingAddress,
             mailing_city: formData.mailingCity,
@@ -153,7 +172,7 @@ export default function Home() {
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       <Head>
         <title>Chicago Vehicle Compliance Alerts</title>
-        <meta name="description" content="100% free reminders. No spam." />
+        <meta name="description" content="Chicago vehicle compliance reminders and registration service." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -172,7 +191,17 @@ export default function Home() {
         justifyContent: 'space-between',
         padding: '0 40px'
       }}>
-        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>■□▲</div>
+        <div 
+          onClick={() => window.location.reload()}
+          style={{ 
+            fontSize: '24px', 
+            fontWeight: 'bold', 
+            cursor: 'pointer',
+            userSelect: 'none' 
+          }}
+        >
+          ■□▲
+        </div>
         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
           <a href="#how-it-works" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>How It Works</a>
           <a href="#pricing" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>Pricing</a>
@@ -196,7 +225,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <div style={{ 
+      <div id="home" style={{ 
         paddingTop: '120px', 
         paddingBottom: '120px',
         textAlign: 'center',
@@ -220,7 +249,7 @@ export default function Home() {
           marginBottom: '48px',
           fontWeight: '300'
         }}>
-          100% free reminders. No spam.
+          Never miss a renewal deadline again.
         </p>
         <button
           onClick={scrollToForm}
@@ -241,7 +270,7 @@ export default function Home() {
       </div>
 
       {/* Three Feature Boxes */}
-      <div style={{ 
+      <div id="how-it-works" style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(3, 1fr)', 
         gap: '80px',
@@ -268,14 +297,14 @@ export default function Home() {
             color: '#1a1a1a', 
             marginBottom: '16px' 
           }}>
-            Email reminders.
+            We handle everything.
           </h3>
           <p style={{ 
             fontSize: '18px', 
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            Get alerted before your vehicle renewals are due so you never get a ticket.
+            We automatically renew your city stickers and registrations for you. No more waiting in lines or filling out forms.
           </p>
         </div>
 
@@ -305,7 +334,7 @@ export default function Home() {
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            Avoid expensive vehicle compliance tickets. Free for Chicago residents.
+            One missed deadline costs more than our annual service. Never risk a ticket again.
           </p>
         </div>
 
@@ -360,11 +389,11 @@ export default function Home() {
           color: '#888', 
           marginBottom: '32px' 
         }}>
-          Signup is free.
+          Get started in under 2 minutes.
         </p>
         
         {/* Form Section */}
-        <div id="signup-form" style={{ maxWidth: '400px', margin: '0 auto' }}>
+        <div id="pricing" style={{ maxWidth: '400px', margin: '0 auto' }}>
           <div style={{ 
             backgroundColor: 'white',
             borderRadius: '12px',
@@ -714,22 +743,78 @@ export default function Home() {
                   required
                 />
 
-                <select
-                  name="reminderMethod"
-                  value={formData.reminderMethod}
-                  onChange={handleInputChange}
-                  style={{
-                    padding: '16px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <option value="email">Email Only</option>
-                  <option value="sms">SMS Only</option>
-                  <option value="both">Email + SMS</option>
-                </select>
+                <div style={{ 
+                  border: '1px solid #ddd', 
+                  borderRadius: '8px', 
+                  padding: '16px',
+                  backgroundColor: '#f9f9f9'
+                }}>
+                  <h5 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', textAlign: 'left' }}>
+                    Notification Methods
+                  </h5>
+                  
+                  <label style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      name="emailNotifications"
+                      checked={formData.emailNotifications}
+                      onChange={handleInputChange}
+                      style={{ marginRight: '8px' }}
+                    />
+                    <span>📧 Email notifications (recommended)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      name="smsNotifications"
+                      checked={formData.smsNotifications}
+                      onChange={handleInputChange}
+                      style={{ marginRight: '8px' }}
+                    />
+                    <span>📱 SMS text messages</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      name="voiceNotifications"
+                      checked={formData.voiceNotifications}
+                      onChange={handleInputChange}
+                      style={{ marginRight: '8px' }}
+                    />
+                    <span>📞 Voice calls (urgent reminders only)</span>
+                  </label>
+
+                  <div style={{ marginTop: '16px' }}>
+                    <h6 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
+                      When to notify me:
+                    </h6>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {[60, 30, 14, 7, 3, 1].map(days => (
+                        <label key={days} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={formData.reminderDays.includes(days)}
+                            onChange={(e) => {
+                              const updatedDays = e.target.checked
+                                ? [...formData.reminderDays, days].sort((a, b) => b - a)
+                                : formData.reminderDays.filter(d => d !== days);
+                              setFormData(prev => ({...prev, reminderDays: updatedDays}));
+                            }}
+                            style={{ marginRight: '4px' }}
+                          />
+                          <span style={{ fontSize: '12px' }}>
+                            {days === 1 ? '1 day' : `${days} days`}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                      Select when you want to be reminded before each renewal deadline
+                    </p>
+                  </div>
+                </div>
 
                 <input
                   type="text"
@@ -812,28 +897,45 @@ export default function Home() {
                   required
                 />
 
+                <input
+                  type="text"
+                  name="mailingCity"
+                  value={formData.mailingCity}
+                  onChange={handleInputChange}
+                  placeholder="City"
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    textAlign: 'center'
+                  }}
+                  required
+                />
+                
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <input
-                    type="text"
-                    name="mailingCity"
-                    value={formData.mailingCity}
+                  <select
+                    name="mailingState"
+                    value={formData.mailingState}
                     onChange={handleInputChange}
-                    placeholder="City"
                     style={{
                       padding: '16px',
                       border: '1px solid #ddd',
                       borderRadius: '8px',
                       fontSize: '16px',
-                      textAlign: 'center'
+                      textAlign: 'center',
+                      backgroundColor: 'white'
                     }}
                     required
-                  />
+                  >
+                    <option value="IL">Illinois</option>
+                  </select>
                   <input
                     type="text"
                     name="mailingZip"
                     value={formData.mailingZip}
                     onChange={handleInputChange}
-                    placeholder="ZIP"
+                    placeholder="ZIP Code"
                     maxLength={5}
                     style={{
                       padding: '16px',
@@ -1024,13 +1126,12 @@ export default function Home() {
           This ensures all vehicles in the city of Chicago never get a ticket.
         </p>
         
-        <p style={{ 
+        <p id="support" style={{ 
           fontSize: '14px', 
           color: '#888', 
           marginBottom: '40px' 
         }}>
-          Have questions or need help? Contact Alderman Diana L by Ward 1 office or call 311. 
-          This service is provided in partnership with the Ward 1 office for residents.
+          Questions? Email us at support@ticketlesschicago.com
         </p>
         
         <div style={{ 

@@ -9,9 +9,12 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reminders (
   vin TEXT,
   zip_code TEXT NOT NULL,
   city_sticker_expiry DATE NOT NULL,
+  license_plate_expiry DATE NOT NULL,
   emissions_due_date DATE,
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
+  notification_preferences JSONB DEFAULT '{"email": true, "sms": false, "voice": false, "reminder_days": [30, 7, 1]}',
+  sent_reminders TEXT[] DEFAULT '{}',
   reminder_method TEXT CHECK (reminder_method IN ('email', 'sms', 'both')) DEFAULT 'email',
   service_plan TEXT CHECK (service_plan IN ('free', 'pro')) DEFAULT 'free',
   mailing_address TEXT,
@@ -21,6 +24,8 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reminders (
   completed BOOLEAN DEFAULT FALSE,
   city_sticker_completed BOOLEAN DEFAULT FALSE,
   emissions_completed BOOLEAN DEFAULT FALSE,
+  reminder_sent BOOLEAN DEFAULT FALSE,
+  reminder_sent_at TIMESTAMP WITH TIME ZONE,
   city_sticker_reminder_sent BOOLEAN DEFAULT FALSE,
   emissions_reminder_sent BOOLEAN DEFAULT FALSE,
   city_sticker_reminder_sent_at TIMESTAMP WITH TIME ZONE,
@@ -34,14 +39,29 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reminders (
 CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_user_id ON public.vehicle_reminders(user_id);
 CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_license_plate ON public.vehicle_reminders(license_plate);
 CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_city_sticker_expiry ON public.vehicle_reminders(city_sticker_expiry);
+CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_license_plate_expiry ON public.vehicle_reminders(license_plate_expiry);
 CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_emissions_due_date ON public.vehicle_reminders(emissions_due_date);
 CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_completed ON public.vehicle_reminders(completed);
 CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_zip_code ON public.vehicle_reminders(zip_code);
 
 -- Set up Row Level Security (RLS) policies
 ALTER TABLE public.vehicle_reminders ENABLE ROW LEVEL SECURITY;
+
+-- Policy for viewing own reminders
 CREATE POLICY "Users can view their own vehicle reminders" ON public.vehicle_reminders
-  FOR ALL USING (auth.uid() = user_id);
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Policy for inserting new reminders (allows insertions for valid user IDs)
+CREATE POLICY "Users can insert vehicle reminders" ON public.vehicle_reminders
+  FOR INSERT WITH CHECK (user_id IS NOT NULL);
+
+-- Policy for updating own reminders
+CREATE POLICY "Users can update their own vehicle reminders" ON public.vehicle_reminders
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Policy for deleting own reminders
+CREATE POLICY "Users can delete their own vehicle reminders" ON public.vehicle_reminders
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- Add updated_at trigger
 DROP TRIGGER IF EXISTS handle_updated_at ON public.vehicle_reminders;
