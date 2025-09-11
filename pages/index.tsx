@@ -41,14 +41,9 @@ export default function Home() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.consent) {
-      setMessage('Error: You must consent to receive notifications to continue.');
-      return;
-    }
-
-    // Validate required fields
-    if (!formData.mailingAddress || !formData.mailingCity || !formData.mailingZip) {
-      setMessage('Error: Mailing address is required for renewal service.');
+    // Simple validation for minimal form
+    if (!formData.licensePlate || !formData.zipCode || !formData.email) {
+      setMessage('Error: Please fill in all required fields.');
       return;
     }
     
@@ -74,20 +69,20 @@ export default function Home() {
           .insert([{
             user_id: authData.user.id,
             license_plate: formData.licensePlate,
-            vin: formData.vin || null,
+            vin: null,
             zip_code: formData.zipCode,
-            city_sticker_expiry: formData.cityStickerExpiry,
-            license_plate_expiry: formData.licensePlateExpiry,
-            emissions_due_date: formData.emissionsDate || null,
-            street_cleaning_schedule: formData.streetCleaningSchedule,
+            city_sticker_expiry: getSuggestedRenewalDate(),
+            license_plate_expiry: getSuggestedRenewalDate(),
+            emissions_due_date: null,
+            street_cleaning_schedule: 'april-november',
             email: formData.email,
-            phone: formData.phone,
-            reminder_method: formData.reminderMethod,
-            service_plan: 'pro',
-            mailing_address: formData.mailingAddress,
-            mailing_city: formData.mailingCity,
-            mailing_state: formData.mailingState,
-            mailing_zip: formData.mailingZip,
+            phone: 'TBD',
+            reminder_method: 'email',
+            service_plan: 'free',
+            mailing_address: 'TBD',
+            mailing_city: 'Chicago',
+            mailing_state: 'IL',
+            mailing_zip: '60601',
             completed: false
           }]);
 
@@ -107,13 +102,13 @@ export default function Home() {
         streetCleaningSchedule: '',
         email: '',
         phone: '',
-        reminderMethod: 'both',
+        reminderMethod: 'email',
         billingPlan: 'monthly',
         mailingAddress: '',
         mailingCity: '',
         mailingState: 'IL',
         mailingZip: '',
-        consent: false
+        consent: true
       });
 
     } catch (error: any) {
@@ -145,438 +140,150 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-white">
       <Head>
-        <title>TicketLess Chicago - Complete Vehicle Compliance Service</title>
-        <meta name="description" content="Complete Chicago vehicle compliance service. We handle city sticker & license renewals, plus comprehensive alerts for all vehicle requirements. Monthly and annual plans available." />
+        <title>TicketLess Chicago - Vehicle Compliance Alerts</title>
+        <meta name="description" content="Never miss a vehicle renewal deadline in Chicago. 100% free reminders. No spam." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-4">
-              TicketLess Chicago
+      <main className="container mx-auto px-4 py-16">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="mb-16">
+            <h1 className="text-6xl font-bold text-gray-900 mb-6">
+              Chicago Vehicle Compliance Alerts.
             </h1>
-            <p className="text-xl text-gray-600 mb-8">
-              Never think about Chicago vehicle compliance again. We track, notify, and handle renewals for you.
+            <p className="text-2xl text-gray-500 mb-12">
+              100% free reminders. No spam.
             </p>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8 inline-block">
-              <p className="text-red-800 font-medium">
-                💸 <strong>Skip the DMV, avoid the fines, save the time</strong> — Starting free forever
+            <button
+              onClick={() => document.getElementById('signup-form')?.scrollIntoView({ behavior: 'smooth' })}
+              className="bg-black text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-gray-800 transition-colors"
+            >
+              Sign Up
+            </button>
+          </div>
+
+          {/* Feature boxes */}
+          <div className="grid md:grid-cols-3 gap-12 mb-20">
+            <div className="text-center">
+              <div className="w-24 h-24 bg-gray-100 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                <div className="text-3xl">📧</div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Email reminders.</h3>
+              <p className="text-gray-600">
+                Get alerted before so your street is cleaned so you never get a ticket.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-24 h-24 bg-gray-100 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                <div className="text-3xl">💰</div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Save money.</h3>
+              <p className="text-gray-600">
+                Avoid expensive vehicle compliance tickets. Free for Chicago residents.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-24 h-24 bg-gray-100 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                <div className="text-3xl">🏛️</div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Official data.</h3>
+              <p className="text-gray-600">
+                Real data from City of Chicago and Illinois DMV. Accurate and reliable.
               </p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Signup Form */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-semibold mb-6 text-center">Get Started</h2>
-              
-              {message && (
-                <div className={`p-4 rounded-lg mb-6 ${
-                  message.startsWith('Success') 
-                    ? 'bg-green-50 text-green-800 border border-green-200' 
-                    : 'bg-red-50 text-red-800 border border-red-200'
-                }`}>
-                  {message}
-                </div>
-              )}
+          <div className="mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-8">
+              Never miss a cleaning.
+            </h2>
+            <p className="text-xl text-gray-500 mb-8">
+              Signup is free.
+            </p>
+          </div>
+          {/* Signup Form */}
+          <div id="signup-form" className="max-w-md mx-auto">
+            <div className="mb-6">
+              <h3 className="text-2xl font-semibold text-gray-900 mb-2 text-center">Chicago Vehicle Information</h3>
+              <p className="text-gray-600 text-center">
+                Vehicle information to gather from Chicago's open data portal and FOIA requests. This ensures all vehicles in the City of Chicago never get a ticket
+              </p>
+            </div>
+            
+            {message && (
+              <div className={`p-4 rounded-lg mb-6 text-center ${
+                message.startsWith('Success') 
+                  ? 'bg-green-50 text-green-800 border border-green-200' 
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {message}
+              </div>
+            )}
 
-              <form onSubmit={handleSignup} className="space-y-6">
-                {/* Vehicle Information Section */}
-                <div className="border-l-4 border-blue-500 pl-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Vehicle Information</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="licensePlate" className="block text-sm font-medium text-gray-700 mb-2">
-                        License Plate Number *
-                      </label>
-                      <input
-                        type="text"
-                        id="licensePlate"
-                        name="licensePlate"
-                        value={formData.licensePlate}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
-                        placeholder="ABC1234"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-2">
-                        Zip Code *
-                      </label>
-                      <input
-                        type="text"
-                        id="zipCode"
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="60601"
-                        maxLength={5}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="vin" className="block text-sm font-medium text-gray-700 mb-2">
-                        VIN <span className="text-gray-500 text-sm">(optional - only if required for city sticker)</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="vin"
-                        name="vin"
-                        value={formData.vin}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
-                        placeholder="1HGBH41JXMN109186"
-                        maxLength={17}
-                      />
-                    </div>
-                  </div>
+            <form onSubmit={handleSignup} className="space-y-6">
+              {/* Simple form fields */}
+              <div className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    id="licensePlate"
+                    name="licensePlate"
+                    value={formData.licensePlate}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-black focus:border-transparent uppercase text-center text-lg"
+                    placeholder="License Plate"
+                    required
+                  />
                 </div>
 
-                {/* All Services Section */}
-                <div className="border-l-4 border-green-500 pl-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Vehicle Compliance Dates</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="cityStickerExpiry" className="block text-sm font-medium text-gray-700 mb-2">
-                        City Sticker Expiration Date *
-                      </label>
-                      <input
-                        type="date"
-                        id="cityStickerExpiry"
-                        name="cityStickerExpiry"
-                        value={formData.cityStickerExpiry}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min={new Date().toISOString().split('T')[0]}
-                        required
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Chicago city stickers expire July 31st each year.{' '}
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({...prev, cityStickerExpiry: getSuggestedRenewalDate()}))}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          Use July 31st, {new Date().getFullYear() + (new Date() > new Date(new Date().getFullYear(), 6, 31) ? 1 : 0)}
-                        </button>
-                      </p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="licensePlateExpiry" className="block text-sm font-medium text-gray-700 mb-2">
-                        License Plate Renewal Date *
-                      </label>
-                      <input
-                        type="date"
-                        id="licensePlateExpiry"
-                        name="licensePlateExpiry"
-                        value={formData.licensePlateExpiry}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min={new Date().toISOString().split('T')[0]}
-                        required
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Illinois plates renew annually based on your registration month
-                      </p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="emissionsDate" className="block text-sm font-medium text-gray-700 mb-2">
-                        Emissions Test Due Date (if applicable)
-                      </label>
-                      <input
-                        type="date"
-                        id="emissionsDate"
-                        name="emissionsDate"
-                        value={formData.emissionsDate}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Required every 2 years for vehicles 4+ years old
-                      </p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="streetCleaningSchedule" className="block text-sm font-medium text-gray-700 mb-2">
-                        Street Cleaning Schedule *
-                      </label>
-                      <select
-                        id="streetCleaningSchedule"
-                        name="streetCleaningSchedule"
-                        value={formData.streetCleaningSchedule}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      >
-                        <option value="">Select your schedule</option>
-                        <option value="april-november">April-November (Standard)</option>
-                        <option value="year-round">Year-round cleaning</option>
-                        <option value="not-sure">I'll provide my address for lookup</option>
-                      </select>
-                      <p className="text-sm text-gray-500 mt-1">
-                        We'll track your specific street's cleaning days
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <input
+                    type="text"
+                    id="zipCode"
+                    name="zipCode"
+                    value={formData.zipCode}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-black focus:border-transparent text-center text-lg"
+                    placeholder="Zip Code"
+                    maxLength={5}
+                    required
+                  />
                 </div>
 
-                {/* Contact Information Section */}
-                <div className="border-l-4 border-purple-500 pl-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Contact & Preferences</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                        Email Address *
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="your@email.com"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone Number *
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="(312) 555-0123"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="reminderMethod" className="block text-sm font-medium text-gray-700 mb-2">
-                        How should we remind you? *
-                      </label>
-                      <select
-                        id="reminderMethod"
-                        name="reminderMethod"
-                        value={formData.reminderMethod}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      >
-                        <option value="email">Email</option>
-                        <option value="sms">Text Messages (SMS)</option>
-                        <option value="both">Both SMS and Email</option>
-                      </select>
-                    </div>
-                  </div>
+                <div>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-black focus:border-transparent text-center text-lg"
+                    placeholder="Email Address"
+                    required
+                  />
                 </div>
+              </div>
 
-                {/* Billing Plan Selection */}
-                <div className="border-l-4 border-orange-500 pl-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Choose Your Plan</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="border border-blue-500 rounded-lg p-4 relative bg-blue-50">
-                      <div className="flex items-start">
-                        <input
-                          type="radio"
-                          id="monthly"
-                          name="billingPlan"
-                          value="monthly"
-                          checked={formData.billingPlan === 'monthly'}
-                          onChange={handleInputChange}
-                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <div className="ml-3 flex-1">
-                          <label htmlFor="monthly" className="block font-medium text-gray-900">
-                            Monthly Plan - $12/month
-                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">MOST FLEXIBLE</span>
-                          </label>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Complete vehicle compliance service - cancel anytime
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+              {/* Hidden fields with default values */}
+              <input type="hidden" name="cityStickerExpiry" value={getSuggestedRenewalDate()} />
+              <input type="hidden" name="licensePlateExpiry" value={getSuggestedRenewalDate()} />
+              <input type="hidden" name="streetCleaningSchedule" value="april-november" />
+              <input type="hidden" name="reminderMethod" value="email" />
+              <input type="hidden" name="billingPlan" value="monthly" />
+              <input type="hidden" name="mailingAddress" value="TBD" />
+              <input type="hidden" name="mailingCity" value="Chicago" />
+              <input type="hidden" name="mailingState" value="IL" />
+              <input type="hidden" name="mailingZip" value="60601" />
+              <input type="hidden" name="phone" value="TBD" />
+              <input type="hidden" name="consent" value="true" />
 
-                    <div className="border border-green-500 rounded-lg p-4 relative bg-green-50">
-                      <div className="flex items-start">
-                        <input
-                          type="radio"
-                          id="annual"
-                          name="billingPlan"
-                          value="annual"
-                          checked={formData.billingPlan === 'annual'}
-                          onChange={handleInputChange}
-                          className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
-                        />
-                        <div className="ml-3 flex-1">
-                          <label htmlFor="annual" className="block font-medium text-gray-900">
-                            Annual Plan - $120/year
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">SAVE $24</span>
-                          </label>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Same service, 2 months free - best value for committed users
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 bg-gray-50 rounded-lg p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div className="space-y-2">
-                        <h4 className="font-semibold text-gray-900">We Track & Alert:</h4>
-                        <ul className="space-y-1 text-gray-700">
-                          <li>✓ City sticker expiration ($200 fine)</li>
-                          <li>✓ License plate renewal ($90+ fine)</li>
-                          <li>✓ Emissions testing ($50-300 fine)</li>
-                          <li>✓ Street cleaning days ($60 fine)</li>
-                          <li>✓ SMS + email + phone alerts</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <h4 className="font-semibold text-gray-900">We Handle For You:</h4>
-                        <ul className="space-y-1 text-gray-700">
-                          <li>✓ City sticker renewal & mailing</li>
-                          <li>✓ License plate renewal</li>
-                          <li>✓ All DMV paperwork</li>
-                          <li>✓ Payment processing</li>
-                          <li>✓ Confirmation tracking</li>
-                        </ul>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 p-3 bg-green-100 rounded text-sm text-green-900">
-                      <strong>Never deal with Chicago vehicle bureaucracy again!</strong> One missed renewal costs more than our entire annual service.
-                    </div>
-                  </div>
-                </div>
 
-                {/* Mailing Address */}
-                <div className="border-l-4 border-purple-500 pl-4 mb-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">Mailing Address for Sticker Delivery</h3>
-                    <p className="text-sm text-gray-600 mb-4">We'll mail your renewed city stickers to this address</p>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label htmlFor="mailingAddress" className="block text-sm font-medium text-gray-700 mb-2">
-                          Street Address *
-                        </label>
-                        <input
-                          type="text"
-                          id="mailingAddress"
-                          name="mailingAddress"
-                          value={formData.mailingAddress}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="123 Main St, Apt 4B"
-                          required
-                        />
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="mailingCity" className="block text-sm font-medium text-gray-700 mb-2">
-                            City *
-                          </label>
-                          <input
-                            type="text"
-                            id="mailingCity"
-                            name="mailingCity"
-                            value={formData.mailingCity}
-                            onChange={handleInputChange}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Chicago"
-                            required
-                          />
-                        </div>
 
-                        <div>
-                          <label htmlFor="mailingState" className="block text-sm font-medium text-gray-700 mb-2">
-                            State *
-                          </label>
-                          <select
-                            id="mailingState"
-                            name="mailingState"
-                            value={formData.mailingState}
-                            onChange={handleInputChange}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            required
-                          >
-                            <option value="IL">Illinois</option>
-                            <option value="IN">Indiana</option>
-                            <option value="WI">Wisconsin</option>
-                            <option value="IA">Iowa</option>
-                            <option value="MO">Missouri</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="w-1/2">
-                        <label htmlFor="mailingZip" className="block text-sm font-medium text-gray-700 mb-2">
-                          ZIP Code *
-                        </label>
-                        <input
-                          type="text"
-                          id="mailingZip"
-                          name="mailingZip"
-                          value={formData.mailingZip}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="60601"
-                          maxLength={5}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="bg-blue-50 p-4 rounded-lg mt-4">
-                      <p className="text-sm text-blue-800">
-                        <strong>Note:</strong> City stickers are mailed to this address if you don't pick them up in person. 
-                        We handle the entire renewal process as part of our service.
-                      </p>
-                    </div>
-                  </div>
-
-                {/* Consent */}
-                <div className="space-y-4">
-                  <div className="flex items-start">
-                    <input
-                      type="checkbox"
-                      id="consent"
-                      name="consent"
-                      checked={formData.consent}
-                      onChange={handleInputChange}
-                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      required
-                    />
-                    <label htmlFor="consent" className="ml-3 block text-sm text-gray-700">
-                      <strong>I consent to receive notifications about upcoming deadlines *</strong>
-                      <p className="text-gray-500 text-sm mt-1">
-                        Required to use TicketlessChicago service
-                      </p>
-                    </label>
-                  </div>
-                </div>
 
                 <button
                   type="submit"
@@ -591,70 +298,35 @@ export default function Home() {
               </form>
             </div>
 
-            {/* Information Panel */}
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-lg p-8">
-                <h3 className="text-xl font-semibold mb-4">Why TicketLess Chicago?</h3>
-                <ul className="space-y-3">
-                  <li className="flex items-start">
-                    <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
-                      <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    </div>
-                    <div className="ml-3">
-                      <strong>Avoid expensive tickets</strong>
-                      <p className="text-gray-600 text-sm">City sticker violations cost $200+, emissions $75+ vs much lower renewal costs</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
-                      <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    </div>
-                    <div className="ml-3">
-                      <strong>Complete vehicle compliance</strong>
-                      <p className="text-gray-600 text-sm">Track all 5 services: City Sticker, Emissions, Street Cleaning, Snow Removal, License Renewal</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
-                      <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    </div>
-                    <div className="ml-3">
-                      <strong>Multiple reminder options</strong>
-                      <p className="text-gray-600 text-sm">Get notified via SMS, email, or both - your choice</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    </div>
-                    <div className="ml-3">
-                      <strong>Auto-pay option</strong>
-                      <p className="text-gray-600 text-sm">Opt-in to let us handle renewals automatically (coming soon)</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-                  <h3 className="text-lg font-semibold mb-3 text-blue-900">All Services We Cover</h3>
-                  <div className="grid grid-cols-1 gap-3 text-sm text-blue-800">
-                    <div><strong>City Sticker:</strong> $100-159 renewal vs $200 fine</div>
-                    <div><strong>License Renewal:</strong> $151 renewal vs $90+ fine</div>
-                    <div><strong>Emissions Test:</strong> $20 test (every 2 years) vs $50-300 fine</div>
-                    <div><strong>Street Cleaning:</strong> Move car vs $60 ticket</div>
-                    <div><strong>Snow Removal:</strong> Move car vs $150+ fine</div>
-                  </div>
+          <div className="mt-16 text-center">
+            <p className="text-gray-600 mb-4">
+              <strong>Vehicle compliance information</strong><br />
+              Street cleaning data for Chicago residents gathered from the City of Chicago's open data portal and FOIA requests. This ensures all 
+              vehicles in the city of Chicago never get a ticket.
+            </p>
+            
+            <div className="mt-8">
+              <p className="text-sm text-gray-500 mb-2">
+                Have questions or need help? Contact Alderman Diana L by Ward 1 office or call 
+                311. This service is provided in partnership with the Ward 1 office for residents.
+              </p>
+            </div>
+            
+            <div className="flex justify-center space-x-8 mt-12 text-sm text-gray-500">
+              <div>
+                <h4 className="font-medium text-gray-700 mb-2">Info</h4>
+                <div className="space-y-1">
+                  <div>About</div>
+                  <div>How It Works</div>
+                  <div>Contact</div>
                 </div>
-
-                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                  <h3 className="text-lg font-semibold mb-3 text-green-900">The Value</h3>
-                  <div className="space-y-2 text-sm text-green-800">
-                    <div><strong>Monthly:</strong> $12/month for complete peace of mind</div>
-                    <div><strong>Annual:</strong> $120/year (2 months free!)</div>
-                    <div><strong>One missed renewal:</strong> Costs more than our entire service</div>
-                    <div className="text-lg font-bold text-green-900 mt-3">Never deal with Chicago bureaucracy again!</div>
-                  </div>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-700 mb-2">Data Sources</h4>
+                <div className="space-y-1">
+                  <div>Chicago Data Portal</div>
+                  <div>FOIA Requests</div>
+                  <div>Streets & Sanitation</div>
                 </div>
               </div>
             </div>
