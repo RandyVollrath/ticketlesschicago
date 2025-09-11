@@ -41,59 +41,79 @@ export interface VoiceNotification {
 }
 
 export class NotificationService {
-  // Email service - placeholder for integration with SendGrid, AWS SES, etc.
+  // Email service - CRITICAL: Currently mocked, needs real integration
   async sendEmail(notification: EmailNotification): Promise<boolean> {
     try {
-      console.log('📧 Sending email notification:', {
+      console.log('📧 MOCK: Email notification would be sent:', {
         to: notification.to,
         subject: notification.subject,
         preview: notification.text.substring(0, 100) + '...'
       });
       
-      // TODO: Integrate with actual email service
-      // Example: await sendgrid.send(notification);
+      // TODO URGENT: Replace with real email service (SendGrid, AWS SES, etc.)
+      // Example integration:
+      // const sgMail = require('@sendgrid/mail');
+      // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      // await sgMail.send({
+      //   to: notification.to,
+      //   from: 'noreply@ticketlesschicago.com',
+      //   subject: notification.subject,
+      //   html: notification.html,
+      //   text: notification.text
+      // });
       
-      return true; // Mock success
+      return true; // Mock success - WILL NOT SEND REAL EMAILS
     } catch (error) {
       console.error('Email sending failed:', error);
       return false;
     }
   }
 
-  // SMS service - placeholder for integration with Twilio, AWS SNS, etc.
+  // SMS service - CRITICAL: Currently mocked, needs real integration  
   async sendSMS(notification: SMSNotification): Promise<boolean> {
     try {
-      console.log('📱 Sending SMS notification:', {
+      console.log('📱 MOCK: SMS notification would be sent:', {
         to: notification.to,
-        message: notification.message
+        message: notification.message,
+        length: notification.message.length + ' chars'
       });
       
-      // TODO: Integrate with actual SMS service
-      // Example: await twilio.messages.create(notification);
+      // TODO URGENT: Replace with real SMS service (Twilio, AWS SNS, etc.)
+      // Example integration:
+      // const twilio = require('twilio');
+      // const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+      // await client.messages.create({
+      //   to: notification.to,
+      //   from: process.env.TWILIO_PHONE_NUMBER,
+      //   body: notification.message
+      // });
       
-      return true; // Mock success
+      return true; // Mock success - WILL NOT SEND REAL SMS
     } catch (error) {
       console.error('SMS sending failed:', error);
       return false;
     }
   }
 
-  // Voice service - placeholder for integration with Twilio Voice, etc.
+  // Voice service - CRITICAL: Currently mocked, needs real integration
   async sendVoiceCall(notification: VoiceNotification): Promise<boolean> {
     try {
-      console.log('📞 Sending voice notification:', {
+      console.log('📞 MOCK: Voice call would be made:', {
         to: notification.to,
         message: notification.message
       });
       
-      // TODO: Integrate with actual voice service
-      // Example: await twilio.calls.create({
+      // TODO URGENT: Replace with real voice service (Twilio Voice, etc.)
+      // Example integration:
+      // const twilio = require('twilio');
+      // const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+      // await client.calls.create({
       //   to: notification.to,
       //   from: process.env.TWILIO_PHONE_NUMBER,
-      //   twiml: `<Response><Say>${notification.message}</Say></Response>`
+      //   twiml: `<Response><Say voice="alice" rate="slow">${notification.message}</Say></Response>`
       // });
       
-      return true; // Mock success
+      return true; // Mock success - WILL NOT MAKE REAL CALLS
     } catch (error) {
       console.error('Voice call failed:', error);
       return false;
@@ -206,7 +226,7 @@ export class NotificationScheduler {
           <p>Don't let a missed renewal turn into an expensive ticket. Take action today!</p>
           
           <div style="text-align: center; margin: 20px 0;">
-            <a href="https://ticketlesschicago.vercel.app/dashboard" 
+            <a href="https://ticketlesschicago-b1l70m41y-randyvollraths-projects.vercel.app/dashboard" 
                style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
               View Dashboard
             </a>
@@ -215,7 +235,7 @@ export class NotificationScheduler {
         
         <div style="padding: 15px; background: #eee; text-align: center; color: #666; font-size: 12px;">
           TicketLess Chicago - Keeping Chicago drivers compliant<br>
-          <a href="#" style="color: #666;">Unsubscribe</a> | <a href="#" style="color: #666;">Update Preferences</a>
+          <a href="https://ticketlesschicago-b1l70m41y-randyvollraths-projects.vercel.app/unsubscribe?id=${reminder.id}" style="color: #666;">Unsubscribe</a> | <a href="https://ticketlesschicago-b1l70m41y-randyvollraths-projects.vercel.app/dashboard" style="color: #666;">Update Preferences</a>
         </div>
       </div>
     `;
@@ -233,16 +253,18 @@ ${urgency === 'high' ? 'URGENT: This renewal is due very soon! Don\'t risk a tic
 
 Don't let a missed renewal turn into an expensive ticket. Take action today!
 
-View your dashboard: https://ticketlesschicago.vercel.app/dashboard
+View your dashboard: https://ticketlesschicago-b1l70m41y-randyvollraths-projects.vercel.app/dashboard
 
 TicketLess Chicago - Keeping Chicago drivers compliant
     `;
 
-    // SMS content (concise)
-    const smsMessage = `${urgencyEmoji} ${renewalName} due ${timeText}! Vehicle: ${reminder.license_plate}. Fine: ${fineAmount}. Don't risk a ticket! Dashboard: https://ticketlesschicago.vercel.app/dashboard`;
+    // SMS content (concise, under 160 chars)
+    const shortUrl = 'https://tinyurl.com/ticketless-chi'; // TODO: Create actual short URL
+    const smsMessage = `${urgencyEmoji} ${renewalName} due ${timeText}! Vehicle ${reminder.license_plate}. Fine: ${fineAmount}. Renew now: ${shortUrl}`;
 
-    // Voice content (clear speech)
-    const voiceMessage = `This is TicketLess Chicago. Your ${renewalName} for vehicle ${reminder.license_plate.split('').join(' ')} is due ${timeText}. The fine for missing this renewal is ${fineAmount}. Please visit your dashboard or renew immediately to avoid a ticket.`;
+    // Voice content (clear speech with natural pauses)
+    const plateSpoken = reminder.license_plate.replace(/(\d)/g, ' $1').replace(/([A-Z])/g, ' $1').trim();
+    const voiceMessage = `This is Ticketless Chicago. Your ${renewalName} for vehicle, ${plateSpoken}, is due ${timeText}. The fine for missing this renewal is ${fineAmount}. Please visit your dashboard, or renew immediately, to avoid a ticket.`;
 
     return {
       email: {
