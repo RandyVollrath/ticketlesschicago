@@ -1,6 +1,9 @@
 -- TicketLess Chicago Database Update
 -- Add comprehensive vehicle reminders table to replace simple city_sticker_reminders
 
+-- Drop existing table if it exists without the correct schema
+DROP TABLE IF EXISTS public.vehicle_reminders CASCADE;
+
 -- Create comprehensive vehicle_reminders table
 CREATE TABLE IF NOT EXISTS public.vehicle_reminders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
