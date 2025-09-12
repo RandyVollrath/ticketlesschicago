@@ -21,10 +21,51 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [notificationResults, setNotificationResults] = useState<any>(null);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (authenticated) {
+      fetchUsers();
+    }
+  }, [authenticated]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === 'ticketless2025admin') {
+      setAuthenticated(true);
+    } else {
+      setMessage('Invalid password');
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '400px', margin: '100px auto' }}>
+        <Head>
+          <title>Admin Access</title>
+        </Head>
+        <h2>Admin Access Required</h2>
+        <form onSubmit={handleLogin}>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter admin password"
+            style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+            required
+          />
+          <button
+            type="submit"
+            style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
+          >
+            Login
+          </button>
+        </form>
+        {message && <p style={{ color: 'red', marginTop: '10px' }}>{message}</p>}
+      </div>
+    );
+  }
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -62,6 +103,29 @@ export default function AdminDashboard() {
     }
   };
 
+  const createTestUser = async () => {
+    setLoading(true);
+    setMessage('Creating test user...');
+    
+    try {
+      const response = await fetch('/api/test-webhook', {
+        method: 'POST',
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setMessage('Test user created successfully!');
+        await fetchUsers(); // Refresh the user list
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <Head>
@@ -82,9 +146,16 @@ export default function AdminDashboard() {
         <button 
           onClick={testNotifications}
           disabled={loading}
-          style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}
+          style={{ marginRight: '10px', padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}
         >
           Test Notifications
+        </button>
+        <button 
+          onClick={createTestUser}
+          disabled={loading}
+          style={{ padding: '10px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px' }}
+        >
+          Create Test User
         </button>
       </div>
 
