@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../../lib/supabase';
+import { supabaseAdmin } from '../../lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -32,7 +32,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Create user
     console.log('Creating test user...');
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase admin client not available - missing SUPABASE_SERVICE_ROLE_KEY' });
+    }
+    
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: testEmail,
       password: 'temp-password-123456',
       email_confirm: true
@@ -47,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('User created, now creating vehicle reminder...');
       
       // Create vehicle reminder
-      const { data: reminderData, error: reminderError } = await supabase
+      const { data: reminderData, error: reminderError } = await supabaseAdmin
         .from('vehicle_reminders')
         .insert([{
           user_id: authData.user.id,

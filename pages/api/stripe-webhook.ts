@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
-import { supabase } from '../../lib/supabase';
+import { supabaseAdmin } from '../../lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -77,7 +77,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Create user account
         console.log('Creating user with email:', email);
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        
+        if (!supabaseAdmin) {
+          console.error('Supabase admin client not available - missing SUPABASE_SERVICE_ROLE_KEY');
+          break;
+        }
+        
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: 'temp-password-' + Math.random().toString(36),
           email_confirm: true
@@ -95,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log('Creating vehicle reminder for user:', authData.user.id);
           console.log('Form data:', formData);
           
-          const { error: reminderError } = await supabase
+          const { error: reminderError } = await supabaseAdmin
             .from('vehicle_reminders')
             .insert([{
               user_id: authData.user.id,
@@ -139,12 +145,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const subscription = event.data.object as Stripe.Subscription;
       
       // Update subscription status
-      await supabase
-        .from('vehicle_reminders')
-        .update({ 
-          subscription_status: subscription.status
-        })
-        .eq('subscription_id', subscription.id);
+      if (supabaseAdmin) {
+        await supabaseAdmin
+          .from('vehicle_reminders')
+          .update({ 
+            subscription_status: subscription.status
+          })
+          .eq('subscription_id', subscription.id);
+      }
       
       console.log(`Subscription ${subscription.id} status updated to: ${subscription.status}`);
       break;
