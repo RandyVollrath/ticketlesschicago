@@ -107,7 +107,7 @@ export default function Home() {
       // Move to Step 2 - the detailed form
       setCommitted(true);
       setFormStep(0); // Reset to show the detailed form
-      setMessage('Great! Now complete your vehicle details to activate protection.');
+      setMessage('Success! Great! Now complete your vehicle details to activate protection.');
       
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
