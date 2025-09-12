@@ -298,27 +298,24 @@ export default function Home() {
           ■□▲
         </div>
         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
-          <a 
-            href="#how-it-works" 
-            onClick={(e) => { e.preventDefault(); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }); }}
+          <Link 
+            href="/how-it-works" 
             style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
           >
             How It Works
-          </a>
-          <a 
-            href="#pricing" 
-            onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}
+          </Link>
+          <Link 
+            href="/pricing" 
             style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
           >
             Pricing
-          </a>
-          <a 
-            href="#support" 
-            onClick={(e) => { e.preventDefault(); document.getElementById('support')?.scrollIntoView({ behavior: 'smooth' }); }}
+          </Link>
+          <Link 
+            href="/support" 
             style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
           >
             Support
-          </a>
+          </Link>
           <button
             onClick={scrollToForm}
             style={{
