@@ -55,8 +55,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
 
-        // Parse form data from metadata
-        const formData = JSON.parse(metadata.formData || '{}');
+        // Parse form data from split metadata fields
+        const vehicleInfo = JSON.parse(metadata.vehicleInfo || '{}');
+        const renewalDates = JSON.parse(metadata.renewalDates || '{}');
+        const contactInfo = JSON.parse(metadata.contactInfo || '{}');
+        const preferences = JSON.parse(metadata.preferences || '{}');
+        
+        // Reconstruct form data
+        const formData = {
+          ...vehicleInfo,
+          ...renewalDates,
+          ...contactInfo,
+          ...preferences
+        };
         const email = metadata.email || session.customer_details?.email;
         
         if (!email) {

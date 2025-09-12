@@ -40,7 +40,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         email,
         licensePlate,
         billingPlan,
-        formData: JSON.stringify(formData)
+        // Split form data into chunks to stay under 500 char limit per field
+        vehicleInfo: JSON.stringify({
+          name: formData.name,
+          licensePlate: formData.licensePlate,
+          vin: formData.vin,
+          zipCode: formData.zipCode,
+          vehicleType: formData.vehicleType,
+          vehicleYear: formData.vehicleYear
+        }),
+        renewalDates: JSON.stringify({
+          cityStickerExpiry: formData.cityStickerExpiry,
+          licensePlateExpiry: formData.licensePlateExpiry,
+          emissionsDate: formData.emissionsDate
+        }),
+        contactInfo: JSON.stringify({
+          email: formData.email,
+          phone: formData.phone,
+          streetAddress: formData.streetAddress,
+          mailingAddress: formData.mailingAddress,
+          mailingCity: formData.mailingCity,
+          mailingState: formData.mailingState,
+          mailingZip: formData.mailingZip
+        }),
+        preferences: JSON.stringify({
+          emailNotifications: formData.emailNotifications,
+          smsNotifications: formData.smsNotifications,
+          voiceNotifications: formData.voiceNotifications,
+          reminderDays: formData.reminderDays,
+          billingPlan: formData.billingPlan
+        })
       }
     });
 
