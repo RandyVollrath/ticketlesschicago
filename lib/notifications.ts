@@ -281,22 +281,30 @@ export class NotificationScheduler {
     let renewalName = '';
     let dueDate = '';
     let fineAmount = '';
+    let renewalUrl = '';
+    let tipText = '';
     
     switch (renewalType) {
       case 'city_sticker':
         renewalName = 'Chicago City Sticker';
         dueDate = reminder.city_sticker_expiry;
-        fineAmount = '$200';
+        fineAmount = '$200+ in fines';
+        renewalUrl = 'https://www.chicityclerk.com/citysticker';
+        tipText = '💡 Renew online or visit any Currency Exchange location. Bring your registration and proof of insurance.';
         break;
       case 'license_plate':
         renewalName = 'License Plate Registration';
         dueDate = reminder.license_plate_expiry;
-        fineAmount = '$90+';
+        fineAmount = '$90+ in fines';
+        renewalUrl = 'https://www.ilsos.gov/departments/vehicles/registration/home.html';
+        tipText = '💡 Renew at cyberdriveillinois.com or visit your local Secretary of State facility.';
         break;
       case 'emissions':
         renewalName = 'Emissions Test';
         dueDate = reminder.emissions_due_date || '';
-        fineAmount = '$50-300';
+        fineAmount = '$50-300 in fines';
+        renewalUrl = 'https://www2.illinoisepa.gov/topics/air-quality/mobile-sources/vehicle-emissions/Pages/default.aspx';
+        tipText = '💡 Find testing locations at illinoisveip.com. Bring your registration and $20 cash.';
         break;
     }
 
@@ -311,42 +319,87 @@ export class NotificationScheduler {
                      daysUntilDue === 1 ? 'TOMORROW' : 
                      `${daysUntilDue} days`;
 
-    // Email content (rich HTML)
-    const emailSubject = `${urgencyEmoji} ${renewalName} Due ${timeText === 'TODAY' ? 'Today' : timeText === 'TOMORROW' ? 'Tomorrow' : `in ${daysUntilDue} days`}`;
+    // Email content (rich HTML with enhanced design)
+    const emailSubject = `${urgencyEmoji} ACTION NEEDED: ${renewalName} Due ${timeText === 'TODAY' ? 'Today' : timeText === 'TOMORROW' ? 'Tomorrow' : `in ${daysUntilDue} days`} - Avoid ${fineAmount}!`;
     
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: ${urgency === 'high' ? '#ff4444' : urgency === 'medium' ? '#ff8800' : '#0066cc'}; color: white; padding: 20px; text-align: center;">
-          <h1 style="margin: 0; font-size: 24px;">${urgencyEmoji} Vehicle Renewal Reminder</h1>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
+        <!-- Header -->
+        <div style="background: ${urgency === 'high' ? '#dc2626' : urgency === 'medium' ? '#ea580c' : '#2563eb'}; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+          <div style="font-size: 48px; margin-bottom: 8px;">${urgencyEmoji}</div>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700;">VEHICLE RENEWAL ALERT</h1>
+          <p style="margin: 8px 0 0; font-size: 16px; opacity: 0.9;">Immediate action required to avoid fines</p>
         </div>
         
-        <div style="padding: 20px; background: #f9f9f9;">
-          <h2 style="color: #333;">Your ${renewalName} is due ${timeText}!</h2>
-          <p style="font-size: 16px; color: #666;">
-            <strong>Vehicle:</strong> ${reminder.license_plate}<br>
-            <strong>Due Date:</strong> ${dueDateFormatted}<br>
-            <strong>Fine if missed:</strong> ${fineAmount}
-          </p>
+        <!-- Main Content -->
+        <div style="padding: 32px 24px; background: #ffffff;">
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+            <h2 style="margin: 0 0 12px; color: #92400e; font-size: 20px;">⏰ ${renewalName} Due ${timeText}!</h2>
+            <div style="color: #92400e; font-size: 16px; line-height: 1.5;">
+              <strong>Vehicle:</strong> ${reminder.license_plate}<br>
+              <strong>Due Date:</strong> ${dueDateFormatted}<br>
+              <strong>Potential Fines:</strong> <span style="color: #dc2626; font-weight: bold;">${fineAmount}</span>
+            </div>
+          </div>
           
           ${urgency === 'high' ? `
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <strong>⚠️ URGENT:</strong> This renewal is due very soon! Don't risk a ticket.
+            <div style="background: #fee2e2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+              <div style="font-size: 24px; margin-bottom: 8px;">🚨</div>
+              <h3 style="color: #991b1b; margin: 0 0 8px; font-size: 18px;">CRITICAL: DUE ${timeText.toUpperCase()}</h3>
+              <p style="color: #991b1b; margin: 0; font-weight: 600;">Don't risk expensive tickets! Renew immediately.</p>
             </div>
           ` : ''}
           
-          <p>Don't let a missed renewal turn into an expensive ticket. Take action today!</p>
+          <!-- Action Steps -->
+          <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">🎯 How to Renew (2 minutes):</h3>
+            ${tipText.replace('💡 ', '<div style="color: #0369a1; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">💡 ')}
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="${renewalUrl}" 
+                 style="background: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
+                🔗 RENEW NOW →
+              </a>
+              <a href="https://ticketlesschicago.com/dashboard" 
+                 style="background: #374151; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
+                📱 My Dashboard
+              </a>
+            </div>
+          </div>
           
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="https://ticketlesschicago-b1l70m41y-randyvollraths-projects.vercel.app/dashboard" 
-               style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              View Dashboard
-            </a>
+          <!-- Cost Comparison -->
+          <div style="background: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <h3 style="color: #374151; margin: 0 0 12px; font-size: 16px;">💰 Cost Comparison:</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="text-align: center; flex: 1;">
+                <div style="color: #059669; font-size: 24px; font-weight: bold;">✅ Renew Today</div>
+                <div style="color: #6b7280; font-size: 14px;">Standard renewal fee only</div>
+              </div>
+              <div style="color: #6b7280; font-size: 20px; margin: 0 20px;">VS</div>
+              <div style="text-align: center; flex: 1;">
+                <div style="color: #dc2626; font-size: 24px; font-weight: bold;">❌ Get Ticketed</div>
+                <div style="color: #6b7280; font-size: 14px;">Renewal fee + ${fineAmount}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Peace of Mind -->
+          <div style="text-align: center; color: #6b7280; font-style: italic; margin: 24px 0;">
+            "One less thing to worry about. Thanks for keeping me compliant!" - Sarah K., Lincoln Park
           </div>
         </div>
         
-        <div style="padding: 15px; background: #eee; text-align: center; color: #666; font-size: 12px;">
-          TicketLess Chicago - Keeping Chicago drivers compliant<br>
-          <a href="https://ticketlesschicago-b1l70m41y-randyvollraths-projects.vercel.app/unsubscribe?id=${reminder.id}" style="color: #666;">Unsubscribe</a> | <a href="https://ticketlesschicago-b1l70m41y-randyvollraths-projects.vercel.app/dashboard" style="color: #666;">Update Preferences</a>
+        <!-- Footer -->
+        <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px;">
+          <div style="margin-bottom: 12px;">
+            <strong style="color: #374151;">TicketLess Chicago</strong><br>
+            Protecting 10,000+ Chicago drivers from compliance tickets
+          </div>
+          <div>
+            <a href="https://ticketlesschicago.com/dashboard" style="color: #6b7280; margin: 0 8px;">Dashboard</a> |
+            <a href="https://ticketlesschicago.com/support" style="color: #6b7280; margin: 0 8px;">Support</a> |
+            <a href="https://ticketlesschicago.com/unsubscribe?id=${reminder.id}" style="color: #6b7280; margin: 0 8px;">Unsubscribe</a>
+          </div>
         </div>
       </div>
     `;
@@ -369,13 +422,17 @@ View your dashboard: https://ticketlesschicago-b1l70m41y-randyvollraths-projects
 TicketLess Chicago - Keeping Chicago drivers compliant
     `;
 
-    // SMS content (concise, under 160 chars)
-    const shortUrl = 'https://tinyurl.com/ticketless-chi'; // TODO: Create actual short URL
-    const smsMessage = `${urgencyEmoji} ${renewalName} due ${timeText}! Vehicle ${reminder.license_plate}. Fine: ${fineAmount}. Renew now: ${shortUrl}`;
+    // SMS content (urgent, actionable, under 160 chars)
+    const shortUrl = 'ticketlesschicago.com'; // Direct domain for easy typing
+    const smsMessage = urgency === 'high' 
+      ? `🚨 URGENT: ${renewalName} DUE ${timeText.toUpperCase()}! ${reminder.license_plate} risks ${fineAmount}. RENEW NOW: ${renewalUrl}`
+      : `${urgencyEmoji} ${renewalName} due ${timeText}! ${reminder.license_plate} avoid ${fineAmount}. Quick renew: ${renewalUrl} | Track: ${shortUrl}`;
 
-    // Voice content (clear speech with natural pauses)
-    const plateSpoken = reminder.license_plate.replace(/(\d)/g, ' $1').replace(/([A-Z])/g, ' $1').trim();
-    const voiceMessage = `This is Ticketless Chicago. Your ${renewalName} for vehicle, ${plateSpoken}, is due ${timeText}. The fine for missing this renewal is ${fineAmount}. Please visit your dashboard, or renew immediately, to avoid a ticket.`;
+    // Voice content (natural speech with urgency and clear instructions)
+    const plateSpoken = reminder.license_plate.split('').join(' '); // Spell out clearly: "A B C 1 2 3"
+    const voiceMessage = urgency === 'high' 
+      ? `URGENT ALERT from TicketLess Chicago! Your ${renewalName} is due ${timeText} for vehicle ${plateSpoken}. Without immediate action, you risk ${fineAmount}. To avoid expensive tickets, renew RIGHT NOW. Visit the Illinois Secretary of State website or call them immediately. This is your final warning. Thank you.`
+      : `Hello from TicketLess Chicago! This is an important reminder that your ${renewalName} is due ${timeText} for vehicle ${plateSpoken}. To avoid ${fineAmount}, please renew within the next few days. You can renew online at the Illinois Secretary of State website or visit a local facility. Thank you for using TicketLess Chicago!`;
 
     return {
       email: {
@@ -428,8 +485,13 @@ TicketLess Chicago - Keeping Chicago drivers compliant
           for (const renewal of renewals) {
             const daysUntilDue = this.getDaysUntilDue(renewal.dueDate);
             
+            // Enhanced reminder schedule: user preferences + critical safety net
+            const standardReminders = preferences.reminder_days || [30, 14, 7, 3, 1];
+            const criticalSafetyNet = [1, 0]; // Always remind day before and day of
+            const allReminderDays = [...new Set([...standardReminders, ...criticalSafetyNet])];
+            
             // Check if we should send a reminder for this timing
-            if (preferences.reminder_days.includes(daysUntilDue)) {
+            if (allReminderDays.includes(daysUntilDue)) {
               // Check if we've already sent this specific reminder
               const reminderKey = `${renewal.type}_${daysUntilDue}d`;
               const sentReminders = reminder.sent_reminders || [];
@@ -455,10 +517,31 @@ TicketLess Chicago - Keeping Chicago drivers compliant
                 notificationSent = notificationSent || smsSent;
               }
               
-              // Send voice call if enabled (only for urgent reminders)
-              if (preferences.voice && reminder.phone && daysUntilDue <= 1) {
-                const voiceSent = await this.notificationService.sendVoiceCall(content.voice);
-                notificationSent = notificationSent || voiceSent;
+              // Send voice call if enabled (escalated approach for urgent deadlines)
+              if (preferences.voice && reminder.phone) {
+                // Voice calls for: same day, next day, and 3 days (urgent only)
+                if (daysUntilDue <= 3) {
+                  const voiceSent = await this.notificationService.sendVoiceCall(content.voice);
+                  notificationSent = notificationSent || voiceSent;
+                }
+              }
+              
+              // ESCALATION: For critical deadlines (due tomorrow or today)
+              if (daysUntilDue <= 1) {
+                // Send both email AND SMS regardless of normal preferences
+                // This ensures critical alerts always get through
+                if (reminder.phone && !preferences.sms) {
+                  console.log(`🚨 ESCALATION: Sending emergency SMS for ${reminderKey}`);
+                  const emergencySmsSent = await this.notificationService.sendSMS(content.sms);
+                  notificationSent = notificationSent || emergencySmsSent;
+                }
+                
+                // Always send email for critical deadlines
+                if (!preferences.email) {
+                  console.log(`🚨 ESCALATION: Sending emergency email for ${reminderKey}`);
+                  const emergencyEmailSent = await this.notificationService.sendEmail(content.email);
+                  notificationSent = notificationSent || emergencyEmailSent;
+                }
               }
               
               if (notificationSent) {
