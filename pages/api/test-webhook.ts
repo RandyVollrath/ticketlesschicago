@@ -7,16 +7,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Test creating a user directly
-    const testEmail = 'test@example.com';
+    // Test creating a user directly with dates that will trigger notifications
+    const testEmail = `test-${Date.now()}@example.com`;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    
     const testData = {
       name: 'Test User',
       licensePlate: 'TEST123',
       vin: '1234567890ABCDEFG',
       zipCode: '60614',
-      cityStickerExpiry: '2025-07-31',
-      licensePlateExpiry: '2025-12-31',
-      emissionsDate: '2025-06-30',
+      cityStickerExpiry: tomorrow.toISOString().split('T')[0], // Tomorrow - should trigger notification
+      licensePlateExpiry: nextWeek.toISOString().split('T')[0], // Next week - should trigger notification  
+      emissionsDate: null, // No emissions test needed
       email: testEmail,
       phone: '+15551234567',
       emailNotifications: true,
@@ -40,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: testEmail,
       password: 'temp-password-123456',
-      email_confirm: true
+      email_confirm: true // Auto-confirm for test users
     });
 
     if (authError) {

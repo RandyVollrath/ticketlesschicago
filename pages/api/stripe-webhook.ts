@@ -56,6 +56,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Parse form data from split metadata fields
+        console.log('Webhook metadata received:', {
+          vehicleInfo: metadata.vehicleInfo,
+          renewalDates: metadata.renewalDates,
+          contactInfo: metadata.contactInfo,
+          preferences: metadata.preferences
+        });
+
         const vehicleInfo = JSON.parse(metadata.vehicleInfo || '{}');
         const renewalDates = JSON.parse(metadata.renewalDates || '{}');
         const contactInfo = JSON.parse(metadata.contactInfo || '{}');
@@ -68,6 +75,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ...contactInfo,
           ...preferences
         };
+
+        console.log('Parsed form data for webhook:', formData);
         const email = metadata.email || session.customer_details?.email;
         
         if (!email) {
@@ -86,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: 'temp-password-' + Math.random().toString(36),
-          email_confirm: false // Let Supabase send verification email
+          email_confirm: true // Auto-confirm email for paid users
         });
 
         if (authError) {

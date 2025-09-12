@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase';
 import { Resend } from 'resend';
 
 // ClickSend types (basic)
@@ -105,13 +105,13 @@ export class NotificationService {
   // Email service using Resend
   async sendEmail(notification: EmailNotification): Promise<boolean> {
     try {
-      if (!this.resend) {
-        console.log('📧 MOCK: No Resend API key, would send email:', {
+      if (!this.resend || !process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'your-resend-api-key-here' || process.env.RESEND_API_KEY.length < 10) {
+        console.log('📧 MOCK: No valid Resend API key, would send email:', {
           to: notification.to,
           subject: notification.subject,
           preview: notification.text.substring(0, 100) + '...'
         });
-        return true; // Mock success when no API key
+        return true; // Mock success when no valid API key
       }
 
       console.log('📧 Sending email via Resend:', {
@@ -236,7 +236,12 @@ export class NotificationScheduler {
 
   // Get all vehicle reminders that might need notifications
   async getPendingReminders(): Promise<VehicleReminder[]> {
-    const { data, error } = await supabase
+    if (!supabaseAdmin) {
+      console.error('Supabase admin client not available');
+      return [];
+    }
+
+    const { data, error } = await supabaseAdmin
       .from('vehicle_reminders')
       .select('*')
       .eq('completed', false);
@@ -459,13 +464,15 @@ TicketLess Chicago - Keeping Chicago drivers compliant
               if (notificationSent) {
                 // Track this specific reminder as sent
                 const updatedSentReminders = [...sentReminders, reminderKey];
-                await supabase
-                  .from('vehicle_reminders')
-                  .update({ 
-                    sent_reminders: updatedSentReminders,
-                    reminder_sent_at: new Date().toISOString() 
-                  })
-                  .eq('id', reminder.id);
+                if (supabaseAdmin) {
+                  await supabaseAdmin
+                    .from('vehicle_reminders')
+                    .update({ 
+                      sent_reminders: updatedSentReminders,
+                      reminder_sent_at: new Date().toISOString() 
+                    })
+                    .eq('id', reminder.id);
+                }
                 
                 results.successful++;
               } else {

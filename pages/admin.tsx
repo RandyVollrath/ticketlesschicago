@@ -70,15 +70,34 @@ export default function AdminDashboard() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
+      // First check if we can access the table at all
+      console.log('Fetching users from vehicle_reminders table...');
+      
       const { data, error } = await supabase
         .from('vehicle_reminders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data || []);
+      console.log('Vehicle reminders query result:', { data, error });
+
+      if (error) {
+        console.error('Vehicle reminders error:', error);
+        setMessage(`Vehicle reminders error: ${error.message}`);
+        
+        // Also try to check auth users table to see if users exist there
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        console.log('Auth users:', { authUsers, authError });
+        
+        if (authUsers) {
+          setMessage(`Found ${authUsers.users?.length || 0} auth users, but 0 vehicle reminders. Database connection issue.`);
+        }
+      } else {
+        setUsers(data || []);
+        setMessage(data?.length ? `Found ${data.length} users` : 'No vehicle reminder records found');
+      }
     } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
+      console.error('Fetch error:', error);
+      setMessage(`Fetch error: ${error.message}`);
     } finally {
       setLoading(false);
     }
