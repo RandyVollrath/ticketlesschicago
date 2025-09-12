@@ -219,7 +219,7 @@ export default function Home() {
               marginBottom: '32px',
               lineHeight: '1.4'
             }}>
-              Your vehicle compliance reminders are now active. We'll notify you before each renewal deadline.
+              Your vehicle is now fully protected. We'll handle all renewals automatically and guarantee no compliance tickets.
             </p>
 
             {/* Next Steps */}
@@ -339,7 +339,7 @@ export default function Home() {
           marginBottom: '48px',
           fontWeight: '300'
         }}>
-          Automated reminders for city stickers, license renewals, and emissions tests. Avoid expensive tickets.
+          We handle your renewals and guarantee you'll never get another compliance ticket.
         </p>
         <button
           onClick={scrollToForm}
@@ -387,14 +387,14 @@ export default function Home() {
             color: '#1a1a1a', 
             marginBottom: '16px' 
           }}>
-            Email & SMS Reminders
+            Done-For-You Service
           </h3>
           <p style={{ 
             fontSize: '18px', 
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            Get alerted 30, 14, and 7 days before your renewals are due. Choose email, SMS, or voice calls.
+            We track all your deadlines and handle renewals automatically. You never have to remember or worry.
           </p>
         </div>
 
@@ -417,14 +417,14 @@ export default function Home() {
             color: '#1a1a1a', 
             marginBottom: '16px' 
           }}>
-            Save Money
+            Ticket Protection
           </h3>
           <p style={{ 
             fontSize: '18px', 
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            Avoid expensive tickets. Our annual plan costs less than a single city sticker violation.
+            Complete insurance against compliance tickets. One missed renewal costs more than our entire year.
           </p>
         </div>
 
@@ -565,7 +565,7 @@ export default function Home() {
               boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
               textAlign: 'center'
             }}>
-              <p style={{ fontSize: '18px', color: '#666', marginBottom: '24px' }}>
+              <p style={{ fontSize: '18px', color: '#333', marginBottom: '24px' }}>
                 ✅ <strong>Step 1 Complete!</strong> Now let's get your vehicle details...
               </p>
               <button
@@ -649,7 +649,7 @@ export default function Home() {
                 marginBottom: '32px',
                 lineHeight: '1.4'
               }}>
-                Enter your car + payment info to lock in full coverage.
+                Enter your vehicle details and we'll handle everything automatically.
               </p>
 
 {formStep === 0 ? (
@@ -1380,7 +1380,7 @@ export default function Home() {
             color: '#666',
             marginBottom: '32px'
           }}>
-            Set up automated reminders to keep your vehicle compliant.
+            Get complete protection against Chicago compliance tickets.
           </p>
           <button
             onClick={scrollToForm}
