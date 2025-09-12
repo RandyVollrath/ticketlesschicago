@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reminders (
   emissions_reminder_sent_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  notes TEXT
+  notes TEXT,
+  subscription_id TEXT,
+  subscription_status TEXT DEFAULT 'active'
 );
 
 -- Create indexes for better performance

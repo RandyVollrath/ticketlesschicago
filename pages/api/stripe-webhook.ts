@@ -86,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: 'temp-password-' + Math.random().toString(36),
-          email_confirm: true
+          email_confirm: false // Let Supabase send verification email
         });
 
         if (authError) {
@@ -131,6 +131,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (reminderError) {
             console.error('Error creating vehicle reminder:', reminderError);
+            console.error('Reminder error details:', JSON.stringify(reminderError, null, 2));
           } else {
             console.log('Successfully created user and vehicle reminder');
           }
