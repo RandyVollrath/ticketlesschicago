@@ -286,17 +286,22 @@ export default function Home() {
         justifyContent: 'space-between',
         padding: '0 40px'
       }}>
-        <div 
-          onClick={() => window.location.reload()}
+        <Link
+          href="/"
           style={{ 
             fontSize: '24px', 
             fontWeight: 'bold', 
             cursor: 'pointer',
-            userSelect: 'none' 
+            userSelect: 'none',
+            textDecoration: 'none',
+            color: '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}
         >
-          ■□▲
-        </div>
+          🛡️ Ticket Insurance
+        </Link>
         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
           <Link 
             href="/how-it-works" 
@@ -315,6 +320,12 @@ export default function Home() {
             style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
           >
             Support
+          </Link>
+          <Link 
+            href="/profile" 
+            style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
+          >
+            My Account
           </Link>
           <button
             onClick={scrollToForm}
@@ -1513,7 +1524,7 @@ export default function Home() {
             color: '#1a1a1a',
             marginBottom: '16px'
           }}>
-            Ready to Never Get Another Ticket?
+            Get Ticket Insurance Today
           </h2>
           <p style={{
             fontSize: '20px',
