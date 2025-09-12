@@ -587,7 +587,7 @@ export default function Home() {
                 ✅ <strong>Step 1 Complete!</strong> Now let's get your vehicle details...
               </p>
               <button
-                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+                onClick={() => document.getElementById('step2-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 style={{
                   backgroundColor: 'black',
                   color: 'white',
@@ -608,7 +608,7 @@ export default function Home() {
 
       {/* Step 2 - Detailed Form (only show after commitment) */}
       {committed && (
-        <div style={{ 
+        <div id="step2-form" style={{ 
           textAlign: 'center', 
           padding: '80px 40px',
           backgroundColor: '#fff'
