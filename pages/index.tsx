@@ -33,7 +33,12 @@ export default function Home() {
     mailingZip: '',
     billingPlan: 'monthly',
     autoRenew: false,
-    consent: false
+    consent: false,
+    // Concierge service options
+    conciergeService: true,
+    cityStickersOnly: true,
+    spendingLimit: 500,
+    conciergeConsent: false
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -1234,10 +1239,130 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+            ) : formStep === 5 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
+                  Concierge Service Options
+                </h4>
+                <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', textAlign: 'left' }}>
+                  🏆 <strong>Premium Feature:</strong> We can handle city sticker renewals automatically for you.
+                </p>
+
+                <div style={{ 
+                  border: '2px solid #0066cc', 
+                  borderRadius: '8px', 
+                  padding: '16px',
+                  backgroundColor: '#f0f8ff'
+                }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      name="conciergeService"
+                      checked={formData.conciergeService}
+                      onChange={handleInputChange}
+                      style={{ marginRight: '12px', marginTop: '2px' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        ✅ Handle my city sticker renewals automatically
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                        We'll use your saved payment method to purchase city stickers before they expire and mail them to you. You'll get confirmation emails for each transaction.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {formData.conciergeService && (
+                  <div style={{ 
+                    border: '1px solid #ddd', 
+                    borderRadius: '8px', 
+                    padding: '16px',
+                    backgroundColor: '#fff3cd'
+                  }}>
+                    <h5 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>
+                      Spending Authorization
+                    </h5>
+                    
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>
+                        Annual spending limit:
+                      </label>
+                      <select
+                        name="spendingLimit"
+                        value={formData.spendingLimit}
+                        onChange={handleInputChange}
+                        style={{
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '14px'
+                        }}
+                      >
+                        <option value={200}>$200/year (covers most city stickers)</option>
+                        <option value={500}>$500/year (recommended for multiple vehicles)</option>
+                        <option value={1000}>$1000/year (fleet coverage)</option>
+                      </select>
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        name="conciergeConsent"
+                        checked={formData.conciergeConsent}
+                        onChange={handleInputChange}
+                        style={{ marginRight: '8px', marginTop: '2px' }}
+                        required
+                      />
+                      <span style={{ fontSize: '13px', lineHeight: '1.4' }}>
+                        <strong>I authorize TicketLess Chicago to:</strong><br />
+                        • Use my saved payment method for city sticker purchases<br />
+                        • Act as my agent for Chicago vehicle renewals<br />
+                        • Charge up to ${formData.spendingLimit} annually for renewals<br />
+                        • Email me confirmation for all transactions *
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setFormStep(4)}
+                    style={{
+                      backgroundColor: '#f5f5f5',
+                      color: '#666',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      flex: 1
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setFormStep(6)}
+                    style={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '16px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      flex: 2
+                    }}
+                  >
+                    Continue to Payment
+                  </button>
+                </div>
+              </div>
             ) : (
               <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'left' }}>
-                  Choose Your Plan
+                  Complete Your Protection
                 </h4>
                 <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px', textAlign: 'left' }}>
                   💳 One missed ticket costs more than our entire annual service. Choose what works for you:
