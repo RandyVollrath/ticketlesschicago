@@ -4,8 +4,11 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 
 export default function Home() {
+  const [committed, setCommitted] = useState(false);
   const [formStep, setFormStep] = useState(0);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
+    name: '',
     licensePlate: '',
     vin: '',
     zipCode: '',
@@ -86,6 +89,33 @@ export default function Home() {
     setFormStep(formStep - 1);
   };
 
+  const handleCommitment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.email) {
+      setMessage('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      // Store the commitment (could save to database here)
+      console.log('Commitment data:', { name: formData.name, email: formData.email });
+      
+      // Move to Step 2 - the detailed form
+      setCommitted(true);
+      setFormStep(0); // Reset to show the detailed form
+      setMessage('Great! Now complete your vehicle details to activate protection.');
+      
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -98,54 +128,33 @@ export default function Home() {
     setMessage('');
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: 'temp-password-' + Math.random().toString(36),
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
+      // Create Stripe checkout session
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          licensePlate: formData.licensePlate,
+          billingPlan: formData.billingPlan,
+          formData: formData // Pass full form data for webhook processing
+        }),
       });
 
-      if (authError) throw authError;
+      const { sessionId, url, error } = await response.json();
 
-      if (authData.user) {
-        const { error: reminderError } = await supabase
-          .from('vehicle_reminders')
-          .insert([{
-            user_id: authData.user.id,
-            license_plate: formData.licensePlate,
-            vin: formData.vin || null,
-            zip_code: formData.zipCode,
-            city_sticker_expiry: formData.cityStickerExpiry,
-            license_plate_expiry: formData.licensePlateExpiry,
-            emissions_due_date: formData.emissionsDate || null,
-            street_cleaning_schedule: formData.streetAddress ? 'custom' : 'april-november',
-            email: formData.email,
-            phone: formData.phone,
-            reminder_method: formData.reminderMethod,
-            notification_preferences: {
-              email: formData.emailNotifications,
-              sms: formData.smsNotifications,
-              voice: formData.voiceNotifications,
-              reminder_days: formData.reminderDays
-            },
-            service_plan: formData.billingPlan === 'monthly' ? 'pro_monthly' : 'pro_annual',
-            mailing_address: formData.mailingAddress,
-            mailing_city: formData.mailingCity,
-            mailing_state: 'IL',
-            mailing_zip: formData.mailingZip,
-            completed: false
-          }]);
-
-        if (reminderError) throw reminderError;
+      if (error) {
+        throw new Error(error);
       }
 
-      setMessage("Success! Check your email to verify your account. We'll handle everything from here.");
-      setFormStep(0);
+      // Redirect to Stripe Checkout
+      if (url) {
+        window.location.href = url;
+      }
       
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
-    } finally {
       setLoading(false);
     }
   };
@@ -167,6 +176,87 @@ export default function Home() {
       document.getElementById('signup-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   };
+
+  // Step 3: Confirmation page (show after successful signup)
+  if (showConfirmation) {
+    return (
+      <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+        <Head>
+          <title>Welcome to TicketLess Chicago</title>
+          <meta name="description" content="Your vehicle protection is now active!" />
+        </Head>
+
+        <div style={{ 
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f9f9f9',
+          padding: '40px'
+        }}>
+          <div style={{ 
+            maxWidth: '600px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '60px 40px',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '24px' }}>🎉</div>
+            
+            <h1 style={{ 
+              fontSize: '36px', 
+              fontWeight: 'bold', 
+              color: '#1a1a1a', 
+              marginBottom: '16px' 
+            }}>
+              You're Protected!
+            </h1>
+            
+            <p style={{ 
+              fontSize: '20px', 
+              color: '#666', 
+              marginBottom: '32px',
+              lineHeight: '1.4'
+            }}>
+              Your vehicle compliance reminders are now active. We'll notify you before each renewal deadline.
+            </p>
+
+            {/* Next Steps */}
+            <div style={{ 
+              backgroundColor: '#fff3cd',
+              padding: '20px',
+              borderRadius: '8px',
+              marginBottom: '32px',
+              textAlign: 'left'
+            }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#856404' }}>
+                📋 What happens next:
+              </h3>
+              <ul style={{ 
+                margin: 0,
+                paddingLeft: '20px',
+                fontSize: '14px',
+                color: '#856404',
+                lineHeight: '1.6'
+              }}>
+                <li>Check your email for account verification (arrives within 5 minutes)</li>
+                <li>We'll send your first reminder 30 days before your next renewal</li>
+                <li>All renewals will be automatically tracked and handled</li>
+                <li>You'll receive SMS confirmations for every completed renewal</li>
+              </ul>
+            </div>
+
+
+            {/* Contact */}
+            <p style={{ fontSize: '14px', color: '#888' }}>
+              Questions? Email us at <strong>ticketlesschicago@gmail.com</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -241,23 +331,15 @@ export default function Home() {
           lineHeight: '1.1',
           letterSpacing: '-1px'
         }}>
-          Never Miss a Vehicle Renewal Again
+          Never Pay Another Chicago Ticket Again.
         </h1>
         <p style={{ 
           fontSize: '32px', 
           color: '#888', 
-          marginBottom: '24px',
+          marginBottom: '48px',
           fontWeight: '300'
         }}>
-          Get automated reminders for city stickers, license plates, emissions testing, and street cleaning.
-        </p>
-        <p style={{ 
-          fontSize: '24px', 
-          color: '#e74c3c', 
-          marginBottom: '48px',
-          fontWeight: '500'
-        }}>
-          One missed ticket costs more than our entire annual service.
+          Automated reminders for city stickers, license renewals, and emissions tests. Avoid expensive tickets.
         </p>
         <button
           onClick={scrollToForm}
@@ -273,7 +355,7 @@ export default function Home() {
             marginBottom: '80px'
           }}
         >
-          Get Protected From Tickets Today
+          Protect Me From Tickets
         </button>
       </div>
 
@@ -390,17 +472,18 @@ export default function Home() {
           marginBottom: '16px',
           lineHeight: '1.2'
         }}>
-          Never miss a deadline.
+          Reserve Your Protection
         </h2>
         <p style={{ 
           fontSize: '24px', 
           color: '#888', 
           marginBottom: '32px' 
         }}>
-          Get started in under 2 minutes.
+          {!committed ? 'Get started in 60 seconds.' : 'Step 2 of 2 – Complete Your Details'}
         </p>
         
-        {/* Form Section */}
+        {/* Simple Commitment Form */}
+        {!committed ? (
         <div id="pricing" style={{ maxWidth: '400px', margin: '0 auto' }}>
           <div style={{ 
             backgroundColor: 'white',
@@ -408,23 +491,166 @@ export default function Home() {
             padding: '40px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ 
-              fontSize: '24px', 
-              fontWeight: 'bold', 
-              marginBottom: '8px',
-              color: '#1a1a1a'
+            <form onSubmit={handleCommitment} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <input
+                type="text"
+                name="name"
+                value={formData.name || ''}
+                onChange={handleInputChange}
+                placeholder="Your Name"
+                style={{
+                  padding: '16px',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  fontSize: '16px'
+                }}
+                required
+              />
+              
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Email Address"
+                style={{
+                  padding: '16px',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  fontSize: '16px'
+                }}
+                required
+              />
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  backgroundColor: 'black',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  fontSize: '18px',
+                  fontWeight: '500',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? 'Reserving...' : 'Reserve My Protection →'}
+              </button>
+            </form>
+
+            {message && (
+              <div style={{ 
+                marginTop: '16px',
+                padding: '12px',
+                backgroundColor: message.includes('Error') ? '#fee' : '#efe',
+                color: message.includes('Error') ? '#c33' : '#363',
+                borderRadius: '8px',
+                fontSize: '14px'
+              }}>
+                {message}
+              </div>
+            )}
+          </div>
+        </div>
+        ) : (
+          // This will show the detailed Step 2 form after commitment
+          <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+            <div style={{ 
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '40px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+              textAlign: 'center'
             }}>
-              Chicago Vehicle Information
-            </h3>
-            <p style={{ 
-              fontSize: '16px', 
-              color: '#666', 
-              marginBottom: '32px',
-              lineHeight: '1.4'
+              <p style={{ fontSize: '18px', color: '#666', marginBottom: '24px' }}>
+                ✅ <strong>Step 1 Complete!</strong> Now let's get your vehicle details...
+              </p>
+              <button
+                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+                style={{
+                  backgroundColor: 'black',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '16px 32px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Continue to Vehicle Details →
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Step 2 - Detailed Form (only show after commitment) */}
+      {committed && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '80px 40px',
+          backgroundColor: '#fff'
+        }}>
+          <h2 style={{ 
+            fontSize: '48px', 
+            fontWeight: 'bold', 
+            color: '#1a1a1a', 
+            marginBottom: '16px',
+            lineHeight: '1.2'
+          }}>
+            Almost Done – Complete Your Protection
+          </h2>
+          <p style={{ 
+            fontSize: '24px', 
+            color: '#888', 
+            marginBottom: '32px' 
+          }}>
+            Step 2 of 2 – Finish Protection
+          </p>
+          
+          {/* Progress bar */}
+          <div style={{ 
+            maxWidth: '400px', 
+            margin: '0 auto 32px auto',
+            height: '8px',
+            backgroundColor: '#eee',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'black'
+            }} />
+          </div>
+
+          <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+            <div style={{ 
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '40px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
             }}>
-              We'll handle your city sticker renewals, license plate renewals, and send you alerts for street cleaning and snow removal. 
-              Never worry about Chicago parking tickets again.
-            </p>
+              <h3 style={{ 
+                fontSize: '24px', 
+                fontWeight: 'bold', 
+                marginBottom: '8px',
+                color: '#1a1a1a'
+              }}>
+                Complete Your Vehicle Profile
+              </h3>
+              <p style={{ 
+                fontSize: '16px', 
+                color: '#666', 
+                marginBottom: '32px',
+                lineHeight: '1.4'
+              }}>
+                Enter your car + payment info to lock in full coverage.
+              </p>
 
 {formStep === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1016,7 +1242,7 @@ export default function Home() {
                     style={{ marginRight: '12px' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 'bold' }}>Monthly - $12/month</div>
+                    <div style={{ fontWeight: 'bold' }}>Monthly - $10/month</div>
                     <div style={{ fontSize: '14px', color: '#666' }}>Cancel anytime</div>
                   </div>
                 </label>
@@ -1038,7 +1264,7 @@ export default function Home() {
                     style={{ marginRight: '12px' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 'bold' }}>Annual - $120/year <span style={{ color: 'green', fontSize: '12px' }}>SAVE $24</span></div>
+                    <div style={{ fontWeight: 'bold' }}>Annual - $100/year <span style={{ color: 'green', fontSize: '12px' }}>SAVE $20</span></div>
                     <div style={{ fontSize: '14px', color: '#666' }}>Best value - 2 months free</div>
                   </div>
                 </label>
@@ -1092,8 +1318,8 @@ export default function Home() {
                   >
                     {loading ? 'Processing...' : 
                       formData.billingPlan === 'annual' 
-                        ? 'Complete - $120/year' 
-                        : 'Complete - $12/month'}
+                        ? 'Complete - $100/year' 
+                        : 'Complete - $10/month'}
                   </button>
                 </div>
 
@@ -1111,9 +1337,10 @@ export default function Home() {
                 )}
               </form>
             )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Bottom Info Section */}
       <div style={{ 
@@ -1153,7 +1380,7 @@ export default function Home() {
             color: '#666',
             marginBottom: '32px'
           }}>
-            Join Chicago residents who trust us to keep their vehicles compliant.
+            Set up automated reminders to keep your vehicle compliant.
           </p>
           <button
             onClick={scrollToForm}

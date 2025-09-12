@@ -43,39 +43,93 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Handle the events
   switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+    case 'checkout.session.completed':
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log('Checkout session completed:', session.id);
       
-      // Update user's auto-pay status in database
-      const userEmail = paymentIntent.receipt_email;
-      if (userEmail) {
-        await supabase
-          .from('vehicle_reminders')
-          .update({ 
-            auto_pay_enabled: true,
-            payment_confirmed: true 
-          })
-          .eq('email', userEmail);
+      try {
+        // Get session metadata
+        const metadata = session.metadata;
+        if (!metadata) {
+          console.error('No metadata found in session');
+          break;
+        }
+
+        // Parse form data from metadata
+        const formData = JSON.parse(metadata.formData || '{}');
+        const email = metadata.email || session.customer_details?.email;
+        
+        if (!email) {
+          console.error('No email found in session');
+          break;
+        }
+
+        // Create user account
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: email,
+          password: 'temp-password-' + Math.random().toString(36),
+          email_confirm: true
+        });
+
+        if (authError) {
+          console.error('Error creating user:', authError);
+          break;
+        }
+
+        if (authData.user) {
+          // Create vehicle reminder record
+          const { error: reminderError } = await supabase
+            .from('vehicle_reminders')
+            .insert([{
+              user_id: authData.user.id,
+              license_plate: formData.licensePlate,
+              vin: formData.vin || null,
+              zip_code: formData.zipCode,
+              city_sticker_expiry: formData.cityStickerExpiry,
+              license_plate_expiry: formData.licensePlateExpiry,
+              emissions_due_date: formData.emissionsDate || null,
+              email: email,
+              phone: formData.phone,
+              notification_preferences: {
+                email: formData.emailNotifications,
+                sms: formData.smsNotifications,
+                voice: formData.voiceNotifications,
+                reminder_days: formData.reminderDays
+              },
+              service_plan: formData.billingPlan === 'monthly' ? 'pro' : 'pro',
+              mailing_address: formData.mailingAddress,
+              mailing_city: formData.mailingCity,
+              mailing_state: 'IL',
+              mailing_zip: formData.mailingZip,
+              completed: false,
+              subscription_id: session.subscription?.toString(),
+              subscription_status: 'active'
+            }]);
+
+          if (reminderError) {
+            console.error('Error creating vehicle reminder:', reminderError);
+          } else {
+            console.log('Successfully created user and vehicle reminder');
+          }
+        }
+      } catch (error) {
+        console.error('Error processing checkout session:', error);
       }
-      
-      console.log('Payment succeeded:', paymentIntent.id);
       break;
 
-    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted':
       const subscription = event.data.object as Stripe.Subscription;
-      console.log('Subscription created:', subscription.id);
       
-      // Update user subscription status
-      const customerEmail = subscription.metadata?.email;
-      if (customerEmail) {
-        await supabase
-          .from('vehicle_reminders')
-          .update({ 
-            subscription_id: subscription.id,
-            subscription_status: 'active'
-          })
-          .eq('email', customerEmail);
-      }
+      // Update subscription status
+      await supabase
+        .from('vehicle_reminders')
+        .update({ 
+          subscription_status: subscription.status
+        })
+        .eq('subscription_id', subscription.id);
+      
+      console.log(`Subscription ${subscription.id} status updated to: ${subscription.status}`);
       break;
 
     default:
