@@ -293,9 +293,27 @@ export default function Home() {
           ■□▲
         </div>
         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
-          <a href="#how-it-works" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>How It Works</a>
-          <a href="#pricing" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>Pricing</a>
-          <a href="#support" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>Support</a>
+          <a 
+            href="#how-it-works" 
+            onClick={(e) => { e.preventDefault(); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }); }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
+          >
+            How It Works
+          </a>
+          <a 
+            href="#pricing" 
+            onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
+          >
+            Pricing
+          </a>
+          <a 
+            href="#support" 
+            onClick={(e) => { e.preventDefault(); document.getElementById('support')?.scrollIntoView({ behavior: 'smooth' }); }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
+          >
+            Support
+          </a>
           <button
             onClick={scrollToForm}
             style={{
