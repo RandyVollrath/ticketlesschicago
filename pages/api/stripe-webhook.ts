@@ -76,6 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Create user account
+        console.log('Creating user with email:', email);
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
           email: email,
           password: 'temp-password-' + Math.random().toString(36),
@@ -87,8 +88,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
 
+        console.log('User created successfully:', authData.user?.id);
+
         if (authData.user) {
           // Create vehicle reminder record
+          console.log('Creating vehicle reminder for user:', authData.user.id);
+          console.log('Form data:', formData);
+          
           const { error: reminderError } = await supabase
             .from('vehicle_reminders')
             .insert([{
