@@ -2,12 +2,22 @@
   "functions": {
     "pages/api/notifications/process.ts": {
       "maxDuration": 60
+    },
+    "pages/api/send-renewal-reminders.background.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/api/notifications/process",
       "schedule": "0 9 * * *"
-    }
+    },
+    { "path": "/api/send-renewal-reminders.background?offset=60", "schedule": "0 7 * * *" },
+    { "path": "/api/send-renewal-reminders.background?offset=30", "schedule": "5 7 * * *" },
+    { "path": "/api/send-renewal-reminders.background?offset=14", "schedule": "10 7 * * *" },
+    { "path": "/api/send-renewal-reminders.background?offset=7",  "schedule": "15 7 * * *" },
+    { "path": "/api/send-renewal-reminders.background?offset=3",  "schedule": "20 7 * * *" },
+    { "path": "/api/send-renewal-reminders.background?offset=2",  "schedule": "25 7 * * *" },
+    { "path": "/api/send-renewal-reminders.background?offset=1",  "schedule": "30 7 * * *" }
   ]
 }
