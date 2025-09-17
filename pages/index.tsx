@@ -295,7 +295,7 @@ export default function Home() {
             userSelect: 'none' 
           }}
         >
-          TicketLess Chicago
+          Ticketless Chicago
         </div>
         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
           <a 
