@@ -114,3 +114,11 @@ select:focus {
     text-shadow: none !important;
   }
 }
+
+/* TARGETED FIX: Dropdown styling in spending authorization section only */
+/* This targets the specific yellow container with spending limit dropdown */
+div[style*="background-color: rgb(255, 243, 205)"] select[name="spendingLimit"] {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}

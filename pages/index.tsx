@@ -354,7 +354,7 @@ export default function Home() {
           lineHeight: '1.1',
           letterSpacing: '-1px'
         }}>
-          Never Pay Another Chicago Ticket Again.
+          Stop Chicago Parking Violations Before They Happen
         </h1>
         <p style={{ 
           fontSize: '32px', 
@@ -362,7 +362,7 @@ export default function Home() {
           marginBottom: '48px',
           fontWeight: '300'
         }}>
-          We handle your renewals and guarantee you'll never get another compliance ticket.
+          We guarantee protection from street cleaning & snow removal tickets, handle city sticker & plate renewals, and remind you about emissions testing.
         </p>
         <button
           onClick={scrollToForm}
