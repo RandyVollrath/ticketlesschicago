@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
@@ -42,7 +42,26 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [referralId, setReferralId] = useState<string | null>(null);
   const router = useRouter();
+
+  // Capture Rewardful referral ID on component mount
+  useEffect(() => {
+    // Wait for Rewardful to be available
+    const checkRewardful = () => {
+      if (typeof window !== 'undefined' && (window as any).rewardful) {
+        const rewardfulReferral = (window as any).rewardful('referral');
+        if (rewardfulReferral) {
+          setReferralId(rewardfulReferral);
+        }
+      } else {
+        // Retry after a short delay
+        setTimeout(checkRewardful, 100);
+      }
+    };
+    
+    checkRewardful();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -143,7 +162,8 @@ export default function Home() {
           email: formData.email,
           licensePlate: formData.licensePlate,
           billingPlan: formData.billingPlan,
-          formData: formData // Pass full form data for webhook processing
+          formData: formData, // Pass full form data for webhook processing
+          referralId: referralId // Pass Rewardful referral ID
         }),
       });
 
