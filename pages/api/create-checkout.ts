@@ -10,11 +10,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, licensePlate, billingPlan, formData } = req.body;
+  const { email, licensePlate, billingPlan, formData, referralId } = req.body;
 
   try {
     // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
+    const checkoutParams: any = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -71,7 +71,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           billingPlan: formData.billingPlan
         })
       }
-    });
+    };
+
+    // Add referral ID as client_reference_id if present
+    if (referralId) {
+      checkoutParams.client_reference_id = referralId;
+    }
+
+    const session = await stripe.checkout.sessions.create(checkoutParams);
 
     res.status(200).json({ sessionId: session.id, url: session.url });
   } catch (error: any) {
