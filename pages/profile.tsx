@@ -65,17 +65,29 @@ export default function Profile() {
     setSaving(true)
     setMessage(null)
 
-    const { error } = await supabase
-      .from('users')
-      .update(updatedData)
-      .eq('id', profile.id)
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: profile.id,
+          ...updatedData
+        })
+      })
 
-    if (error) {
-      console.error('Error updating profile:', error)
-      setMessage({ type: 'error', text: 'Failed to update profile' })
-    } else {
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update profile')
+      }
+
       setProfile({ ...profile, ...updatedData })
       setMessage({ type: 'success', text: 'Profile updated successfully!' })
+    } catch (error: any) {
+      console.error('Error updating profile:', error)
+      setMessage({ type: 'error', text: error.message || 'Failed to update profile' })
     }
 
     setSaving(false)

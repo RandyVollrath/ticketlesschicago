@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '../../lib/supabase';
+import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integration';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -145,9 +146,130 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('User created successfully:', authData.user?.id);
 
         if (authData.user) {
-          // Create vehicle reminder record
-          console.log('Creating vehicle reminder for user:', authData.user.id);
+          // Create user record in new database structure
+          console.log('Creating user profile for user:', authData.user.id);
+          
+          const { error: userError } = await supabaseAdmin
+            .from('users')
+            .insert([{
+              id: authData.user.id,
+              email: email,
+              phone: formData.phone,
+              first_name: formData.name?.split(' ')[0] || null,
+              last_name: formData.name?.split(' ').slice(1).join(' ') || null,
+              notification_preferences: {
+                email: formData.emailNotifications,
+                sms: formData.smsNotifications,
+                voice: formData.voiceNotifications,
+                reminder_days: formData.reminderDays
+              },
+              email_verified: true, // Auto-verify for paid users
+              phone_verified: false
+            }]);
+
+          if (userError) {
+            console.error('Error creating user profile:', userError);
+          } else {
+            console.log('Successfully created user profile');
+          }
+
+          // Create vehicle record
+          console.log('Creating vehicle for user:', authData.user.id);
           console.log('Form data:', formData);
+          
+          const { data: vehicleData, error: vehicleError } = await supabaseAdmin
+            .from('vehicles')
+            .insert([{
+              user_id: authData.user.id,
+              license_plate: formData.licensePlate,
+              vin: formData.vin || null,
+              year: formData.vehicleYear || null,
+              zip_code: formData.zipCode,
+              mailing_address: formData.mailingAddress,
+              mailing_city: formData.mailingCity,
+              mailing_state: 'IL',
+              mailing_zip: formData.mailingZip,
+              subscription_id: session.subscription?.toString(),
+              subscription_status: 'active'
+            }])
+            .select()
+            .single();
+
+          if (vehicleError) {
+            console.error('Error creating vehicle:', vehicleError);
+          } else {
+            console.log('Successfully created vehicle:', vehicleData.id);
+
+            // Create obligations for this vehicle
+            const obligations = [];
+            
+            if (formData.cityStickerExpiry) {
+              obligations.push({
+                vehicle_id: vehicleData.id,
+                user_id: authData.user.id,
+                type: 'city_sticker',
+                due_date: formData.cityStickerExpiry,
+                completed: false
+              });
+            }
+
+            if (formData.licensePlateExpiry) {
+              obligations.push({
+                vehicle_id: vehicleData.id,
+                user_id: authData.user.id,
+                type: 'license_plate',
+                due_date: formData.licensePlateExpiry,
+                completed: false
+              });
+            }
+
+            if (formData.emissionsDate) {
+              obligations.push({
+                vehicle_id: vehicleData.id,
+                user_id: authData.user.id,
+                type: 'emissions',
+                due_date: formData.emissionsDate,
+                completed: false
+              });
+            }
+
+            if (obligations.length > 0) {
+              const { error: obligationsError } = await supabaseAdmin
+                .from('obligations')
+                .insert(obligations);
+
+              if (obligationsError) {
+                console.error('Error creating obligations:', obligationsError);
+              } else {
+                console.log('Successfully created obligations:', obligations.length);
+              }
+            }
+          }
+
+          // Send welcome email with login instructions
+          try {
+            const { error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+              type: 'magiclink',
+              email: email,
+              options: {
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`
+              }
+            });
+
+            if (!magicLinkError) {
+              console.log('Welcome email with login link sent successfully');
+            } else {
+              console.error('Error sending welcome email:', magicLinkError);
+            }
+          } catch (emailError) {
+            console.error('Error with welcome email process:', emailError);
+          }
+
+          // Legacy: Also create vehicle reminder for backward compatibility
+          // Determine street cleaning address (use street address if provided, fallback to mailing address)
+          const streetCleaningAddress = formData.streetCleaningAddress || 
+                                      formData.streetAddress || 
+                                      `${formData.mailingAddress}, ${formData.mailingCity}, ${formData.mailingState} ${formData.mailingZip}`;
           
           const { error: reminderError } = await supabaseAdmin
             .from('vehicle_reminders')
@@ -172,6 +294,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               mailing_city: formData.mailingCity,
               mailing_state: 'IL',
               mailing_zip: formData.mailingZip,
+              street_cleaning_address: streetCleaningAddress,
               completed: false,
               subscription_id: session.subscription?.toString(),
               subscription_status: 'active'
@@ -182,6 +305,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Reminder error details:', JSON.stringify(reminderError, null, 2));
           } else {
             console.log('Successfully created user and vehicle reminder');
+            
+            // Create account on mystreetcleaning.com
+            console.log('🔄 Creating mystreetcleaning.com account for user');
+            try {
+              const mscResult = await syncUserToMyStreetCleaning(
+                email,
+                streetCleaningAddress,
+                authData.user.id
+              );
+              
+              if (mscResult.success) {
+                console.log('✅ Successfully created mystreetcleaning.com account:', mscResult.accountId);
+              } else {
+                console.error('❌ Failed to create mystreetcleaning.com account:', mscResult.error);
+              }
+            } catch (mscError) {
+              console.error('❌ Error during mystreetcleaning.com integration:', mscError);
+            }
           }
         }
       } catch (error) {
