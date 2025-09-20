@@ -398,7 +398,7 @@ export default function Home() {
               marginRight: '12px'
             }}
           >
-            Sign In
+            Log In
           </button>
           <button
             onClick={scrollToForm}
