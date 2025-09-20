@@ -46,6 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     case 'checkout.session.completed':
       const session = event.data.object as Stripe.Checkout.Session;
       console.log('Checkout session completed:', session.id);
+      console.log('Session client_reference_id (Rewardful ID):', session.client_reference_id);
       
       try {
         // Get session metadata
@@ -78,6 +79,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Parsed form data for webhook:', formData);
         const email = metadata.email || session.customer_details?.email;
+        const rewardfulReferralId = session.client_reference_id;
+        
+        if (rewardfulReferralId) {
+          console.log('Rewardful referral ID found in webhook:', rewardfulReferralId);
+          
+          // Notify Rewardful about the conversion
+          try {
+            const rewardfulConversionData = {
+              referral: rewardfulReferralId,
+              customer_id: session.customer || authData?.user?.id,
+              amount: session.amount_total ? (session.amount_total / 100) : 0, // Convert cents to dollars
+              currency: session.currency || 'usd',
+              email: email
+            };
+            
+            console.log('Sending conversion to Rewardful:', rewardfulConversionData);
+            
+            const rewardfulResponse = await fetch('https://api.rewardful.com/conversions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.REWARDFUL_API_SECRET}`
+              },
+              body: JSON.stringify(rewardfulConversionData)
+            });
+            
+            if (rewardfulResponse.ok) {
+              console.log('Successfully reported conversion to Rewardful');
+            } else {
+              const errorText = await rewardfulResponse.text();
+              console.error('Failed to report conversion to Rewardful:', rewardfulResponse.status, errorText);
+            }
+          } catch (rewardfulError) {
+            console.error('Error reporting to Rewardful:', rewardfulError);
+          }
+        } else {
+          console.log('No Rewardful referral ID found in session');
+        }
         
         if (!email) {
           console.error('No email found in session');

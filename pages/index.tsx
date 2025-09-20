@@ -47,21 +47,64 @@ export default function Home() {
 
   // Capture Rewardful referral ID on component mount
   useEffect(() => {
-    // Wait for Rewardful to be available
-    const checkRewardful = () => {
-      if (typeof window !== 'undefined' && (window as any).rewardful) {
-        const rewardfulReferral = (window as any).rewardful('referral');
-        if (rewardfulReferral) {
-          setReferralId(rewardfulReferral);
-        }
-      } else {
-        // Retry after a short delay
-        setTimeout(checkRewardful, 100);
-      }
-    };
+    console.log('Starting Rewardful tracking setup...');
     
-    checkRewardful();
-  }, []);
+    if (typeof window !== 'undefined') {
+      // Method 1: Use Rewardful ready callback
+      if ((window as any).rewardful) {
+        (window as any).rewardful('ready', function() {
+          console.log('Rewardful is ready!');
+          const referral = (window as any).rewardful('referral');
+          console.log('Rewardful referral from ready callback:', referral);
+          if (referral) {
+            setReferralId(referral);
+          }
+        });
+      }
+      
+      // Method 2: Fallback polling method
+      let retryCount = 0;
+      const maxRetries = 50;
+      
+      const checkRewardful = () => {
+        console.log('Polling for Rewardful...', retryCount);
+        
+        if ((window as any).rewardful) {
+          try {
+            const rewardfulReferral = (window as any).rewardful('referral');
+            console.log('Rewardful referral ID from polling:', rewardfulReferral);
+            
+            if (rewardfulReferral && !referralId) {
+              setReferralId(rewardfulReferral);
+              console.log('Referral ID set from polling:', rewardfulReferral);
+              return;
+            }
+          } catch (error) {
+            console.error('Error calling rewardful:', error);
+          }
+        }
+        
+        // Method 3: Check URL parameters for rwid (manual fallback)
+        const urlParams = new URLSearchParams(window.location.search);
+        const rwid = urlParams.get('rwid');
+        if (rwid && !referralId) {
+          console.log('Found rwid in URL:', rwid);
+          setReferralId(rwid);
+          return;
+        }
+        
+        retryCount++;
+        if (retryCount < maxRetries) {
+          setTimeout(checkRewardful, 100);
+        } else {
+          console.log('Gave up waiting for Rewardful after', maxRetries * 100, 'ms');
+        }
+      };
+      
+      // Start polling immediately
+      checkRewardful();
+    }
+  }, [referralId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -152,6 +195,8 @@ export default function Home() {
     setMessage('');
 
     try {
+      console.log('Creating checkout with referral ID:', referralId);
+      
       // Create Stripe checkout session
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
@@ -1405,7 +1450,7 @@ export default function Home() {
                     style={{ marginRight: '12px' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 'bold' }}>Monthly - $10/month</div>
+                    <div style={{ fontWeight: 'bold' }}>Monthly - $12/month</div>
                     <div style={{ fontSize: '14px', color: '#666' }}>Cancel anytime</div>
                   </div>
                 </label>
@@ -1427,7 +1472,7 @@ export default function Home() {
                     style={{ marginRight: '12px' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 'bold' }}>Annual - $100/year <span style={{ color: 'green', fontSize: '12px' }}>SAVE $20</span></div>
+                    <div style={{ fontWeight: 'bold' }}>Annual - $120/year <span style={{ color: 'green', fontSize: '12px' }}>SAVE $24</span></div>
                     <div style={{ fontSize: '14px', color: '#666' }}>Best value - 2 months free</div>
                   </div>
                 </label>
@@ -1481,8 +1526,8 @@ export default function Home() {
                   >
                     {loading ? 'Processing...' : 
                       formData.billingPlan === 'annual' 
-                        ? 'Complete - $100/year' 
-                        : 'Complete - $10/month'}
+                        ? 'Complete - $120/year' 
+                        : 'Complete - $12/month'}
                   </button>
                 </div>
 

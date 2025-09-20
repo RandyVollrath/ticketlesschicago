@@ -12,6 +12,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { email, licensePlate, billingPlan, formData, referralId } = req.body;
 
+  console.log('Create checkout API called with referralId:', referralId);
+
   try {
     // Create Stripe checkout session
     const checkoutParams: any = {
@@ -24,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               name: 'TicketlessChicago PRO - Complete Vehicle Compliance Service',
               description: `Hands-off vehicle compliance: We handle city sticker & license renewals, plus all alerts for ${licensePlate}`
             },
-            unit_amount: billingPlan === 'annual' ? 10000 : 1000, // $100/year or $10/month
+            unit_amount: billingPlan === 'annual' ? 12000 : 1200, // $120/year or $12/month
             recurring: {
               interval: billingPlan === 'annual' ? 'year' : 'month'
             }
@@ -76,9 +78,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Add referral ID as client_reference_id if present
     if (referralId) {
       checkoutParams.client_reference_id = referralId;
+      console.log('Added client_reference_id to Stripe:', referralId);
+    } else {
+      console.log('No referralId provided, skipping client_reference_id');
     }
 
+    console.log('Creating Stripe session with params:', JSON.stringify(checkoutParams, null, 2));
     const session = await stripe.checkout.sessions.create(checkoutParams);
+    console.log('Stripe session created with ID:', session.id);
 
     res.status(200).json({ sessionId: session.id, url: session.url });
   } catch (error: any) {
