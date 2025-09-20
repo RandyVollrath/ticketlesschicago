@@ -246,23 +246,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
 
-          // Send welcome email with login instructions
+          // Generate and send welcome email with magic link for immediate access
           try {
-            const { error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+            const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
               type: 'magiclink',
               email: email,
               options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlesschicago.com'}/dashboard`
               }
             });
 
-            if (!magicLinkError) {
-              console.log('Welcome email with login link sent successfully');
+            if (!linkError && linkData.properties?.action_link) {
+              console.log('Magic link generated successfully for auto-login');
+              
+              // Send welcome email using your email service
+              // For now, just log the link - you can implement email sending later
+              console.log('Magic link for user:', linkData.properties.action_link);
             } else {
-              console.error('Error sending welcome email:', magicLinkError);
+              console.error('Error generating magic link:', linkError);
             }
           } catch (emailError) {
-            console.error('Error with welcome email process:', emailError);
+            console.error('Error with magic link generation:', emailError);
           }
 
           // Legacy: Also create vehicle reminder for backward compatibility
