@@ -131,6 +131,12 @@ export default function Dashboard() {
           <div className="flex justify-between items-center py-4">
             <h1 className="text-2xl font-bold text-gray-900">TicketLess Chicago</h1>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/profile')}
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm"
+              >
+                Profile
+              </button>
               <span className="text-sm text-gray-600">{user?.email}</span>
               <button
                 onClick={signOut}
