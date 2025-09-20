@@ -66,16 +66,22 @@ export default function Login() {
           text: 'Check your email to verify your account!'
         })
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        // For existing users, send magic link (since they may not have passwords)
+        const { error } = await supabase.auth.signInWithOtp({
           email: email,
-          password: password
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
         })
 
         if (error) {
           throw error
         }
 
-        router.push('/dashboard')
+        setMessage({
+          type: 'success',
+          text: 'Check your email for the login link!'
+        })
       }
     } catch (error: any) {
       setMessage({
@@ -168,24 +174,24 @@ export default function Login() {
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={isSignUp ? "Create a password" : "Enter your password"}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-                minLength={isSignUp ? 6 : undefined}
-              />
-              {isSignUp && (
+            {isSignUp && (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create a password"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                  minLength={6}
+                />
                 <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
-              )}
-            </div>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -193,8 +199,8 @@ export default function Login() {
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2 px-4 rounded-lg font-medium"
             >
               {loading 
-                ? (isSignUp ? 'Creating Account...' : 'Signing In...') 
-                : (isSignUp ? 'Create Account' : 'Sign In')
+                ? (isSignUp ? 'Creating Account...' : 'Sending Login Link...') 
+                : (isSignUp ? 'Create Account' : 'Send Magic Link')
               }
             </button>
           </form>
@@ -225,6 +231,15 @@ export default function Login() {
               }
             </button>
           </div>
+
+          {!isSignUp && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs text-blue-800">
+                <strong>💡 Tip:</strong> If you paid for our service, use <strong>Google sign-in</strong> or the <strong>magic link</strong> option above. 
+                Most customers don't have passwords yet.
+              </p>
+            </div>
+          )}
 
           <div className="mt-8 pt-6 border-t border-gray-200">
             <div className="text-center">

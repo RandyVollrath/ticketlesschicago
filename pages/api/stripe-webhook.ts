@@ -124,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
 
-        // Create user account
+        // Create user account (no password - they'll use Google OAuth or set password later)
         console.log('Creating user with email:', email);
         
         if (!supabaseAdmin) {
@@ -132,15 +132,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
         
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: email,
-          password: 'temp-password-' + Math.random().toString(36),
-          email_confirm: true // Auto-confirm email for paid users
-        });
+        // Check if user already exists (in case they signed up via Google first)
+        const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
+        const userExists = existingUser?.users?.find(u => u.email === email);
+        
+        let authData;
+        if (userExists) {
+          console.log('User already exists, using existing account:', userExists.id);
+          authData = { user: userExists, session: null };
+        } else {
+          console.log('Creating new user account');
+          const { data: newAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: email,
+            email_confirm: true // Auto-confirm email for paid users
+            // No password - they'll use Google OAuth or magic links
+          });
 
-        if (authError) {
-          console.error('Error creating user:', authError);
-          break;
+          if (authError) {
+            console.error('Error creating user:', authError);
+            break;
+          }
+          authData = newAuthData;
         }
 
         console.log('User created successfully:', authData.user?.id);
