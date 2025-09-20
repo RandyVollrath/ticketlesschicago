@@ -11,6 +11,9 @@ export default function Login() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const router = useRouter()
 
+  // Check if user is coming from signup
+  const fromSignup = router.query.from === 'signup'
+
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
@@ -125,12 +128,19 @@ export default function Login() {
         <div className="bg-white rounded-lg shadow-sm p-8">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
+              {fromSignup 
+                ? 'Access Your Account'
+                : isSignUp 
+                  ? 'Create Account' 
+                  : 'Welcome Back'
+              }
             </h2>
             <p className="text-gray-600">
-              {isSignUp 
-                ? 'Sign up to protect your vehicle from tickets' 
-                : 'Sign in to access your vehicle protection dashboard'
+              {fromSignup
+                ? 'Your payment was successful! Sign in to access your dashboard'
+                : isSignUp 
+                  ? 'Sign up to protect your vehicle from tickets' 
+                  : 'Sign in to access your vehicle protection dashboard'
               }
             </p>
           </div>
@@ -215,28 +225,38 @@ export default function Login() {
             </div>
           )}
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsSignUp(!isSignUp)
-                setMessage(null)
-                setEmail('')
-                setPassword('')
-              }}
-              className="text-sm text-blue-600 hover:text-blue-700"
-            >
-              {isSignUp 
-                ? 'Already have an account? Sign in' 
-                : "Don't have an account? Sign up"
-              }
-            </button>
-          </div>
+          {!fromSignup && (
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => {
+                  setIsSignUp(!isSignUp)
+                  setMessage(null)
+                  setEmail('')
+                  setPassword('')
+                }}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                {isSignUp 
+                  ? 'Already have an account? Sign in' 
+                  : "Don't have an account? Sign up"
+                }
+              </button>
+            </div>
+          )}
 
-          {!isSignUp && (
+          {(fromSignup || (!isSignUp && !fromSignup)) && (
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-800">
-                <strong>💡 Tip:</strong> If you paid for our service, use <strong>Google sign-in</strong> or the <strong>magic link</strong> option above. 
-                Most customers don't have passwords yet.
+                {fromSignup ? (
+                  <>
+                    <strong>🎉 Welcome!</strong> Use <strong>Google sign-in</strong> (recommended) or check your email for a login link.
+                  </>
+                ) : (
+                  <>
+                    <strong>💡 Tip:</strong> If you paid for our service, use <strong>Google sign-in</strong> or the <strong>magic link</strong> option above. 
+                    Most customers don't have passwords yet.
+                  </>
+                )}
               </p>
             </div>
           )}

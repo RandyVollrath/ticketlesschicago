@@ -85,10 +85,10 @@ export default function AuthSuccess() {
                 </p>
               </div>
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => router.push('/login?from=signup')}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium"
               >
-                Go to Login Page
+                Access Your Account
               </button>
             </>
           )}
