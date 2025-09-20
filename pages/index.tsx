@@ -385,6 +385,22 @@ export default function Home() {
             Support
           </a>
           <button
+            onClick={() => router.push('/login')}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#666',
+              border: '1px solid #ddd',
+              borderRadius: '20px',
+              padding: '8px 20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              marginRight: '12px'
+            }}
+          >
+            Sign In
+          </button>
+          <button
             onClick={scrollToForm}
             style={{
               backgroundColor: 'black',
