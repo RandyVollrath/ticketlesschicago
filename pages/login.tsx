@@ -27,17 +27,22 @@ export default function Login() {
 
   const handleGoogleAuth = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log('Starting Google OAuth...')
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`
         }
       })
 
+      console.log('OAuth response:', { data, error })
+
       if (error) {
+        console.error('OAuth error:', error)
         throw error
       }
     } catch (error: any) {
+      console.error('Google auth failed:', error)
       setMessage({
         type: 'error',
         text: error.message || 'An error occurred with Google sign in'
