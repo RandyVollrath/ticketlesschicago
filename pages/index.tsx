@@ -45,6 +45,31 @@ export default function Home() {
   const [referralId, setReferralId] = useState<string | null>(null);
   const router = useRouter();
 
+  // Handle auth callback on homepage (if user gets redirected here with tokens)
+  useEffect(() => {
+    const handleAuthRedirect = async () => {
+      // Check if there's an access_token in the URL hash (from OAuth redirect)
+      if (window.location.hash.includes('access_token')) {
+        console.log('OAuth tokens detected, processing...')
+        
+        try {
+          // Get the current session
+          const { data: { session }, error } = await supabase.auth.getSession()
+          
+          if (session && !error) {
+            console.log('User authenticated, redirecting to dashboard')
+            router.push('/dashboard')
+            return
+          }
+        } catch (error) {
+          console.error('Error processing auth redirect:', error)
+        }
+      }
+    }
+
+    handleAuthRedirect()
+  }, [router])
+
   // Capture Rewardful referral ID on component mount
   useEffect(() => {
     console.log('Starting Rewardful tracking setup...');
