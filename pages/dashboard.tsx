@@ -194,21 +194,21 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Head>
-        <title>Dashboard - Ticketless Chicago</title>
+        <title>Account Settings - Ticketless Chicago</title>
       </Head>
 
-      {/* Simple header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-4">
+      {/* Clean header */}
+      <header className="border-b border-gray-100">
+        <div className="max-w-5xl mx-auto px-8 py-6">
           <div className="flex justify-between items-center">
-            <div className="text-xl font-semibold text-gray-900">Ticketless</div>
-            <div className="flex items-center space-x-6">
-              <span className="text-sm text-gray-600">{profile.email}</span>
+            <div className="text-2xl font-bold text-black">Ticketless</div>
+            <div className="flex items-center space-x-8">
+              <span className="text-sm text-gray-500">{profile.email}</span>
               <button
                 onClick={signOut}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-gray-500 hover:text-black transition-colors"
               >
                 Sign Out
               </button>
@@ -217,74 +217,79 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-8 py-16">
+        <div className="mb-12">
+          <h1 className="text-3xl font-bold text-black mb-2">Account Settings</h1>
+          <p className="text-gray-500">Manage your profile and notification preferences</p>
+        </div>
+
         {message && (
-          <div className={`mb-6 p-4 rounded-lg ${
+          <div className={`mb-8 p-4 rounded-xl border ${
             message.type === 'success' 
-              ? 'bg-green-50 text-green-800 border border-green-200' 
-              : 'bg-red-50 text-red-800 border border-red-200'
+              ? 'bg-green-50 text-green-700 border-green-200' 
+              : 'bg-red-50 text-red-700 border-red-200'
           }`}>
             {message.text}
           </div>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Profile Settings */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Personal Info */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
+        <div className="grid gap-12 lg:grid-cols-3">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-12">
+            {/* Profile Information */}
+            <div>
+              <h2 className="text-xl font-semibold text-black mb-6">Profile Information</h2>
               
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       First Name
                     </label>
                     <input
                       type="text"
                       defaultValue={profile.first_name || ''}
                       onBlur={(e) => updateProfile({ first_name: e.target.value || null })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 text-sm"
-                      placeholder="First name"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-black transition-all"
+                      placeholder="Enter first name"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Last Name
                     </label>
                     <input
                       type="text"
                       defaultValue={profile.last_name || ''}
                       onBlur={(e) => updateProfile({ last_name: e.target.value || null })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 text-sm"
-                      placeholder="Last name"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-black transition-all"
+                      placeholder="Enter last name"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email Address
                   </label>
                   <input
                     type="email"
                     value={profile.email}
                     disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                  <p className="text-xs text-gray-400 mt-2">Email address cannot be changed</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number
                   </label>
                   <input
                     type="tel"
                     defaultValue={profile.phone || ''}
                     onBlur={(e) => updateProfile({ phone: e.target.value || null })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 text-sm"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-black transition-all"
                     placeholder="+1 (555) 123-4567"
                   />
                 </div>
@@ -292,14 +297,14 @@ export default function Dashboard() {
             </div>
 
             {/* Notification Preferences */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
+            <div>
+              <h2 className="text-xl font-semibold text-black mb-6">Notification Preferences</h2>
               
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Notification Methods</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
+                  <h3 className="text-base font-medium text-gray-900 mb-4">How would you like to be notified?</h3>
+                  <div className="space-y-4">
+                    <label className="flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                       <input
                         type="checkbox"
                         checked={profile.notification_preferences.email}
@@ -307,12 +312,15 @@ export default function Dashboard() {
                           ...profile.notification_preferences,
                           email: e.target.checked
                         })}
-                        className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded"
+                        className="h-5 w-5 text-black focus:ring-black border-gray-300 rounded"
                       />
-                      <span className="ml-3 text-sm text-gray-900">Email notifications</span>
+                      <div className="ml-4">
+                        <span className="font-medium text-gray-900">Email notifications</span>
+                        <p className="text-sm text-gray-500">Get reminders sent to your email</p>
+                      </div>
                     </label>
 
-                    <label className="flex items-center">
+                    <label className="flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                       <input
                         type="checkbox"
                         checked={profile.notification_preferences.sms}
@@ -320,12 +328,15 @@ export default function Dashboard() {
                           ...profile.notification_preferences,
                           sms: e.target.checked
                         })}
-                        className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded"
+                        className="h-5 w-5 text-black focus:ring-black border-gray-300 rounded"
                       />
-                      <span className="ml-3 text-sm text-gray-900">SMS notifications</span>
+                      <div className="ml-4">
+                        <span className="font-medium text-gray-900">SMS notifications</span>
+                        <p className="text-sm text-gray-500">Get text messages on your phone</p>
+                      </div>
                     </label>
 
-                    <label className="flex items-center">
+                    <label className="flex items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                       <input
                         type="checkbox"
                         checked={profile.notification_preferences.voice}
@@ -333,20 +344,23 @@ export default function Dashboard() {
                           ...profile.notification_preferences,
                           voice: e.target.checked
                         })}
-                        className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded"
+                        className="h-5 w-5 text-black focus:ring-black border-gray-300 rounded"
                       />
-                      <span className="ml-3 text-sm text-gray-900">Voice call notifications</span>
+                      <div className="ml-4">
+                        <span className="font-medium text-gray-900">Voice call notifications</span>
+                        <p className="text-sm text-gray-500">Receive phone call reminders</p>
+                      </div>
                     </label>
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Reminder Schedule</h4>
-                  <p className="text-xs text-gray-500 mb-3">Choose when you want to be reminded before deadlines</p>
+                  <h3 className="text-base font-medium text-gray-900 mb-4">When should we remind you?</h3>
+                  <p className="text-sm text-gray-500 mb-4">Select when you want to receive reminders before your deadlines</p>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {[60, 30, 14, 7, 3, 1, 0].map((days) => (
-                      <label key={days} className="flex items-center">
+                      <label key={days} className="flex items-center p-3 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                         <input
                           type="checkbox"
                           checked={profile.notification_preferences.reminder_days.includes(days)}
@@ -361,9 +375,9 @@ export default function Dashboard() {
                               reminder_days: newDays
                             })
                           }}
-                          className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded"
+                          className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
                         />
-                        <span className="ml-2 text-sm text-gray-900">
+                        <span className="ml-3 text-sm font-medium text-gray-900">
                           {days === 0 ? 'Day of deadline' : `${days} days before`}
                         </span>
                       </label>
@@ -375,29 +389,29 @@ export default function Dashboard() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Account Status */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
+            <div className="border border-gray-200 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-black mb-4">Account Status</h3>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">Email</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  <span className="text-sm font-medium text-gray-700">Email</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                     profile.email_verified 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-yellow-100 text-yellow-700'
                   }`}>
                     {profile.email_verified ? 'Verified' : 'Pending'}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">Phone</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  <span className="text-sm font-medium text-gray-700">Phone</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                     profile.phone_verified 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-yellow-100 text-yellow-700'
                   }`}>
                     {profile.phone_verified ? 'Verified' : 'Pending'}
                   </span>
@@ -406,15 +420,15 @@ export default function Dashboard() {
             </div>
 
             {/* Vehicles */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Vehicles</h3>
+            <div className="border border-gray-200 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-black mb-4">Your Vehicles</h3>
               
               {vehicles.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 mb-3">No vehicles registered</p>
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500 mb-4">No vehicles registered yet</p>
                   <button
                     onClick={() => router.push('/')}
-                    className="text-sm text-gray-900 hover:text-gray-700 font-medium"
+                    className="text-sm text-black hover:text-gray-600 font-medium transition-colors"
                   >
                     Add your first vehicle →
                   </button>
@@ -422,13 +436,13 @@ export default function Dashboard() {
               ) : (
                 <div className="space-y-3">
                   {vehicles.map((vehicle) => (
-                    <div key={vehicle.id} className="p-3 border border-gray-200 rounded-lg">
-                      <div className="font-medium text-sm text-gray-900">{vehicle.license_plate}</div>
-                      <div className="text-xs text-gray-500">
+                    <div key={vehicle.id} className="p-4 bg-gray-50 rounded-xl">
+                      <div className="font-medium text-sm text-black">{vehicle.license_plate}</div>
+                      <div className="text-xs text-gray-500 mt-1">
                         {vehicle.year} {vehicle.make} {vehicle.model}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        Status: <span className="capitalize">{vehicle.subscription_status}</span>
+                        Status: <span className="capitalize font-medium">{vehicle.subscription_status}</span>
                       </div>
                     </div>
                   ))}
@@ -436,10 +450,10 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Upcoming Obligations */}
+            {/* Upcoming Renewals */}
             {obligations.length > 0 && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Renewals</h3>
+              <div className="border border-gray-200 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-black mb-4">Upcoming Renewals</h3>
                 
                 <div className="space-y-3">
                   {obligations.map((obligation) => {
@@ -447,19 +461,19 @@ export default function Dashboard() {
                     const isUrgent = daysUntil <= 7
                     
                     return (
-                      <div key={obligation.id} className="p-3 border border-gray-200 rounded-lg">
+                      <div key={obligation.id} className="p-4 bg-gray-50 rounded-xl">
                         <div className="flex justify-between items-start">
                           <div>
-                            <div className="font-medium text-sm text-gray-900 capitalize">
+                            <div className="font-medium text-sm text-black capitalize">
                               {obligation.type.replace('_', ' ')}
                             </div>
-                            <div className="text-xs text-gray-500">{obligation.license_plate}</div>
+                            <div className="text-xs text-gray-500 mt-1">{obligation.license_plate}</div>
                             <div className="text-xs text-gray-500">Due: {formatDate(obligation.due_date)}</div>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
                             isUrgent 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : 'bg-blue-100 text-blue-800'
+                              ? 'bg-yellow-100 text-yellow-700' 
+                              : 'bg-blue-100 text-blue-700'
                           }`}>
                             {daysUntil} days
                           </span>
