@@ -208,30 +208,46 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div style={{ minHeight: '100vh', backgroundColor: 'white' }}>
       <Head>
         <title>Account Settings - Ticketless Chicago</title>
       </Head>
 
       {/* Header with navigation */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
+      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
               onClick={() => router.push('/')}
-              className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                color: '#2563eb', 
+                fontWeight: '500',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg style={{ width: '20px', height: '20px', marginRight: '8px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back to Map
             </button>
             
-            <h1 className="text-2xl font-bold text-gray-700">Settings</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#374151', margin: 0 }}>Settings</h1>
             
             <button
               onClick={signOut}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              style={{
+                backgroundColor: '#ef4444',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: '500',
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
               Sign Out
             </button>
@@ -239,84 +255,160 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px 24px' }}>
         {/* Pro Member Banner */}
-        <div className="mb-8 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center">
-            <span className="text-2xl mr-3">🎉</span>
+        <div style={{ 
+          marginBottom: '32px', 
+          background: 'linear-gradient(to right, #10b981, #059669)', 
+          borderRadius: '16px', 
+          padding: '24px', 
+          color: 'white' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <div>
-              <h3 className="text-lg font-bold">Pro Member</h3>
-              <p className="text-green-100">You have access to SMS notifications, voice calls, and our $60 ticket guarantee!</p>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Pro Member</h3>
+              <p style={{ color: '#d1fae5', margin: 0 }}>You have access to SMS notifications, voice calls, and our $60 ticket guarantee!</p>
             </div>
           </div>
         </div>
 
         {message && (
-          <div className={`mb-6 p-4 rounded-lg border ${
-            message.type === 'success' 
-              ? 'bg-green-50 text-green-700 border-green-200' 
-              : 'bg-red-50 text-red-700 border-red-200'
-          }`}>
+          <div style={{
+            marginBottom: '24px',
+            padding: '16px',
+            borderRadius: '8px',
+            border: '1px solid',
+            backgroundColor: message.type === 'success' ? '#f0fdf4' : '#fef2f2',
+            color: message.type === 'success' ? '#166534' : '#dc2626',
+            borderColor: message.type === 'success' ? '#bbf7d0' : '#fecaca'
+          }}>
             {message.text}
           </div>
         )}
 
-        <div className="space-y-8">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           {/* Account Information */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Account Information</h2>
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '16px', 
+            border: '1px solid #e5e7eb', 
+            padding: '32px' 
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
+              Account Information
+            </h2>
             
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <input
-                  type="email"
-                  value={profile.email}
-                  disabled
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
-                />
-                <p className="text-xs text-gray-400 mt-1 italic">Email cannot be changed</p>
-              </div>
+            <div>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#374151', 
+                marginBottom: '8px' 
+              }}>
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={profile.email}
+                disabled
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  backgroundColor: '#f9fafb',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}
+              />
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                Email cannot be changed
+              </p>
             </div>
           </div>
 
           {/* Home Address */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Home Address</h2>
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '16px', 
+            border: '1px solid #e5e7eb', 
+            padding: '32px' 
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
+              Home Address
+            </h2>
             
-            <div className="space-y-6">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Street Address <span className="text-red-500">*</span>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: '500', 
+                  color: '#374151', 
+                  marginBottom: '8px' 
+                }}>
+                  Street Address <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="text"
                   defaultValue="1435 W Fullerton Ave"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
                   placeholder="Enter your street address"
                 />
-                <p className="text-sm text-gray-500 mt-1 italic">Enter your Chicago address to receive cleaning notifications</p>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  Enter your Chicago address to receive cleaning notifications
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">License Plate</label>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: '500', 
+                  color: '#374151', 
+                  marginBottom: '8px' 
+                }}>
+                  License Plate
+                </label>
                 <input
                   type="text"
                   defaultValue="CW22016"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
                   placeholder="Enter license plate"
                 />
-                <p className="text-sm text-gray-500 mt-1 italic">Required for our $60 ticket guarantee (Pro feature)</p>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  Required for our $60 ticket guarantee (Pro feature)
+                </p>
               </div>
             </div>
           </div>
 
           {/* Notification Preferences */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Notification Preferences</h2>
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '16px', 
+            border: '1px solid #e5e7eb', 
+            padding: '32px' 
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
+              Notification Preferences
+            </h2>
             
-            <div className="space-y-6">
-              <div className="flex items-center">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input
                   type="checkbox"
                   checked={profile.notification_preferences.email}
@@ -324,15 +416,24 @@ export default function Dashboard() {
                     ...profile.notification_preferences,
                     email: e.target.checked
                   })}
-                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  style={{ 
+                    width: '20px', 
+                    height: '20px', 
+                    accentColor: '#2563eb',
+                    marginRight: '16px'
+                  }}
                 />
-                <div className="ml-4">
-                  <label className="text-base font-medium text-gray-900">Email Notifications</label>
-                  <p className="text-sm text-gray-500 italic">Receive email reminders about street cleaning</p>
+                <div>
+                  <label style={{ fontSize: '16px', fontWeight: '500', color: '#111827', display: 'block' }}>
+                    Email Notifications
+                  </label>
+                  <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
+                    Receive email reminders about street cleaning
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center">
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input
                   type="checkbox"
                   checked={profile.notification_preferences.sms}
@@ -340,15 +441,24 @@ export default function Dashboard() {
                     ...profile.notification_preferences,
                     sms: e.target.checked
                   })}
-                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  style={{ 
+                    width: '20px', 
+                    height: '20px', 
+                    accentColor: '#2563eb',
+                    marginRight: '16px'
+                  }}
                 />
-                <div className="ml-4">
-                  <label className="text-base font-medium text-gray-900">SMS Notifications</label>
-                  <p className="text-sm text-gray-500 italic">Get text message alerts (Pro feature)</p>
+                <div>
+                  <label style={{ fontSize: '16px', fontWeight: '500', color: '#111827', display: 'block' }}>
+                    SMS Notifications
+                  </label>
+                  <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
+                    Get text message alerts (Pro feature)
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center">
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input
                   type="checkbox"
                   checked={profile.notification_preferences.voice}
@@ -356,11 +466,20 @@ export default function Dashboard() {
                     ...profile.notification_preferences,
                     voice: e.target.checked
                   })}
-                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  style={{ 
+                    width: '20px', 
+                    height: '20px', 
+                    accentColor: '#2563eb',
+                    marginRight: '16px'
+                  }}
                 />
-                <div className="ml-4">
-                  <label className="text-base font-medium text-gray-900">Voice Call Notifications</label>
-                  <p className="text-sm text-gray-500 italic">Receive phone call reminders (Pro feature)</p>
+                <div>
+                  <label style={{ fontSize: '16px', fontWeight: '500', color: '#111827', display: 'block' }}>
+                    Voice Call Notifications
+                  </label>
+                  <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
+                    Receive phone call reminders (Pro feature)
+                  </p>
                 </div>
               </div>
             </div>

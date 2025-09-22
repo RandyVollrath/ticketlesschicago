@@ -102,62 +102,130 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Sign In - Ticketless Chicago</title>
+        <title>Sign In - Ticketless America</title>
       </Head>
 
       {/* Clean header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="flex justify-between items-center max-w-6xl mx-auto px-8 py-6">
-          <div className="text-2xl font-bold text-gray-900">Ticketless</div>
-          <div className="flex items-center space-x-8 text-sm">
-            <a href="/" className="text-gray-600 hover:text-gray-900">How It Works</a>
-            <a href="/" className="text-gray-600 hover:text-gray-900">Pricing</a>
-            <a href="/" className="text-gray-600 hover:text-gray-900">Support</a>
+      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          maxWidth: '1200px', 
+          margin: '0 auto', 
+          padding: '24px 32px' 
+        }}>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>Ticketless</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '32px', fontSize: '14px' }}>
+            <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>How It Works</a>
+            <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Pricing</a>
+            <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Support</a>
           </div>
         </div>
       </header>
 
-      <main className="flex items-center justify-center px-8 py-20">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl border border-gray-200 p-10 shadow-sm">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+      <main style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: '80px 32px' 
+      }}>
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '16px', 
+            border: '1px solid #e5e7eb', 
+            padding: '40px',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h1 style={{ 
+                fontSize: '30px', 
+                fontWeight: 'bold', 
+                color: '#111827', 
+                marginBottom: '16px',
+                margin: '0 0 16px 0'
+              }}>
                 Never Get a $60 Ticket Again
               </h1>
               
-              <div className="text-left space-y-3 mb-8">
-                <p className="text-sm text-gray-600 font-medium">Your free account includes:</p>
+              <div style={{ textAlign: 'left', marginBottom: '32px' }}>
+                <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500', marginBottom: '12px' }}>
+                  Your free account includes:
+                </p>
                 
-                <div className="space-y-3">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-sm text-gray-700">Free email alerts before street cleaning</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      backgroundColor: '#3b82f6', 
+                      borderRadius: '50%', 
+                      marginTop: '8px',
+                      flexShrink: 0
+                    }}></div>
+                    <span style={{ fontSize: '14px', color: '#374151' }}>
+                      Free email alerts before street cleaning
+                    </span>
                   </div>
                   
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-sm text-gray-700">Calendar reminders so you never forget</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      backgroundColor: '#10b981', 
+                      borderRadius: '50%', 
+                      marginTop: '8px',
+                      flexShrink: 0
+                    }}></div>
+                    <span style={{ fontSize: '14px', color: '#374151' }}>
+                      Calendar reminders so you never forget
+                    </span>
                   </div>
                   
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-sm text-gray-700">Help avoid $60 tickets with timely reminders</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      backgroundColor: '#8b5cf6', 
+                      borderRadius: '50%', 
+                      marginTop: '8px',
+                      flexShrink: 0
+                    }}></div>
+                    <span style={{ fontSize: '14px', color: '#374151' }}>
+                      Help avoid $60 tickets with timely reminders
+                    </span>
                   </div>
 
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-sm text-gray-700">Ticket guarantee – we reimburse your first $60 ticket</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      backgroundColor: '#f59e0b', 
+                      borderRadius: '50%', 
+                      marginTop: '8px',
+                      flexShrink: 0
+                    }}></div>
+                    <span style={{ fontSize: '14px', color: '#374151' }}>
+                      Ticket guarantee – we reimburse your first $60 ticket
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
-                <div className="text-sm font-semibold text-blue-900 mb-1">
+              <div style={{ 
+                backgroundColor: '#eff6ff', 
+                border: '1px solid #bfdbfe', 
+                borderRadius: '12px', 
+                padding: '16px', 
+                marginBottom: '32px' 
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', marginBottom: '4px' }}>
                   Upgrade to Pro ($19/year):
                 </div>
-                <div className="text-sm text-blue-800">
+                <div style={{ fontSize: '14px', color: '#1e40af' }}>
                   SMS + phone alerts + track 5 addresses + enhanced guarantee
                 </div>
               </div>
@@ -166,9 +234,23 @@ export default function Login() {
             {/* Google Sign In Button */}
             <button
               onClick={handleGoogleAuth}
-              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 font-medium text-gray-900 transition-colors mb-6"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '12px 16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                backgroundColor: 'white',
+                fontWeight: '500',
+                color: '#111827',
+                cursor: 'pointer',
+                marginBottom: '24px',
+                fontSize: '16px'
+              }}
             >
-              <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+              <svg style={{ width: '20px', height: '20px', marginRight: '12px' }} viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -177,27 +259,21 @@ export default function Login() {
               Continue with Google
             </button>
 
-            <div className="space-y-2 text-center">
-              <div className="flex items-center text-xs text-gray-600">
-                <svg className="w-3 h-3 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span><strong>Secure:</strong> Login directly with Google - no third-party redirects</span>
-              </div>
-              <div className="flex items-center text-xs text-gray-600">
-                <svg className="w-3 h-3 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span><strong>Private:</strong> We only store your email and preferences</span>
-              </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '12px', color: '#6b7280' }}>
+                By continuing, you agree to our Terms of Service and Privacy Policy
+              </p>
             </div>
 
             {message && (
-              <div className={`mt-4 p-3 rounded-lg text-sm ${
-                message.type === 'success' 
-                  ? 'bg-green-50 text-green-700' 
-                  : 'bg-red-50 text-red-700'
-              }`}>
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: message.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                color: message.type === 'success' ? '#166534' : '#dc2626'
+              }}>
                 {message.text}
               </div>
             )}
