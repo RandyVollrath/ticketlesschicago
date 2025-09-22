@@ -148,10 +148,10 @@ export default function AdminDashboard() {
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <Head>
-        <title>TicketLess Chicago Admin</title>
+        <title>TicketLess America Admin</title>
       </Head>
 
-      <h1>TicketLess Chicago Admin Dashboard</h1>
+      <h1>TicketLess America Admin Dashboard</h1>
       
       <div style={{ marginBottom: '30px' }}>
         <h2>Users ({users.length})</h2>

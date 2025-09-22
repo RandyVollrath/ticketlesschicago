@@ -1,7 +1,7 @@
 {
-  "name": "ticketless-chicago",
+  "name": "ticketless-america",
   "version": "1.0.0",
-  "description": "Chicago city obligations reminder and auto-registration service",
+  "description": "Vehicle compliance reminder and auto-registration service for America",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
@@ -35,8 +35,8 @@
     "typescript": "^5.8.3"
   },
   "keywords": [
-    "chicago",
-    "city-sticker",
+    "america",
+    "vehicle-compliance",
     "emissions",
     "reminders",
     "automation"

@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 <strong>Status:</strong> ✅ Verified & Active</p>
                 
                 <div style="text-align: center; margin: 20px 0;">
-                  <a href="https://ticketlesschicago.com/dashboard" 
+                  <a href="https://ticketlessamerica.com/dashboard" 
                      style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
                     View Your Dashboard
                   </a>
@@ -88,7 +88,7 @@ Email: ${user.email}
 Account Created: ${new Date(user.created_at).toLocaleDateString()}
 Status: ✅ Verified & Active
 
-View your dashboard: https://ticketlesschicago.com/dashboard
+View your dashboard: https://ticketlessamerica.com/dashboard
 
 TicketLess Chicago - Keeping Chicago drivers compliant`
         };

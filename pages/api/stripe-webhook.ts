@@ -264,7 +264,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'magiclink',
               email: email,
               options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlesschicago.com'}/dashboard`
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/dashboard`
               }
             });
 

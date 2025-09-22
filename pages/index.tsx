@@ -277,7 +277,7 @@ export default function Home() {
     return (
       <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
         <Head>
-          <title>Welcome to TicketLess Chicago</title>
+          <title>Welcome to TicketLess America</title>
           <meta name="description" content="Your vehicle protection is now active!" />
         </Head>
 
@@ -345,7 +345,7 @@ export default function Home() {
 
             {/* Contact */}
             <p style={{ fontSize: '14px', color: '#888' }}>
-              Questions? Email us at <strong>ticketlesschicago@gmail.com</strong>
+              Questions? Email us at <strong>support@ticketlessamerica.com</strong>
             </p>
           </div>
         </div>
@@ -1421,7 +1421,7 @@ export default function Home() {
                         required
                       />
                       <span style={{ fontSize: '13px', lineHeight: '1.4' }}>
-                        <strong>I authorize TicketLess Chicago to:</strong><br />
+                        <strong>I authorize TicketLess America to:</strong><br />
                         • Use my saved payment method for city sticker purchases<br />
                         • Act as my agent for Chicago vehicle renewals<br />
                         • Charge up to ${formData.spendingLimit} annually for renewals<br />
@@ -1653,7 +1653,7 @@ export default function Home() {
           color: '#888', 
           marginBottom: '40px' 
         }}>
-          Questions? Email us at ticketlesschicago@gmail.com
+          Questions? Email us at support@ticketlessamerica.com
         </p>
         
         <div style={{ 

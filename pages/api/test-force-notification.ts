@@ -34,7 +34,7 @@ export default async function handler(
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: #2563eb; color: white; padding: 20px; text-align: center;">
-              <h1>Ticketless Chicago</h1>
+              <h1>Ticketless America</h1>
               <p>Test Notification</p>
             </div>
             <div style="padding: 20px; background: #fff;">
@@ -43,11 +43,11 @@ export default async function handler(
               <p><strong>Vehicle:</strong> TEST123</p>
               <p><strong>Test Date:</strong> Today</p>
               <p style="margin-top: 20px;">If you received this email, your notifications are set up correctly and you'll receive reminders before your actual renewal dates.</p>
-              <p>Thanks for using Ticketless Chicago!</p>
+              <p>Thanks for using Ticketless America!</p>
             </div>
           </div>
         `,
-        text: 'Test notification from Ticketless Chicago. Vehicle: TEST123. If you received this, your notifications are working correctly.'
+        text: 'Test notification from Ticketless America. Vehicle: TEST123. If you received this, your notifications are working correctly.'
       });
       results.email = {
         sent: emailResult,
@@ -75,7 +75,7 @@ export default async function handler(
       console.log('Testing voice call to:', phone);
       const voiceResult = await notificationService.sendVoiceCall({
         to: phone,
-        message: 'Hello, this is a test call from Ticketless Chicago. We are testing your notification preferences. If you received this call, your voice notifications are set up correctly. Thank you for using Ticketless Chicago. Have a great day!'
+        message: 'Hello, this is a test call from Ticketless America. We are testing your notification preferences. If you received this call, your voice notifications are set up correctly. Thank you for using Ticketless America. Have a great day!'
       });
       results.voice = {
         sent: voiceResult,

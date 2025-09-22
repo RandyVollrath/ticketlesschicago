@@ -9,9 +9,9 @@ const supabase = createClient(
 
 /** ---------- Config ---------- **/
 const BRAND = {
-  name: 'Ticketless Chicago',
-  dashboardUrl: 'https://ticketlesschicago.com/dashboard',
-  emailFrom: process.env.RESEND_FROM || 'TicketLess Chicago <ticketlesschicago@gmail.com>',
+  name: 'Ticketless America',
+  dashboardUrl: 'https://ticketlessamerica.com/dashboard',
+  emailFrom: process.env.RESEND_FROM || 'TicketLess America <noreply@ticketlessamerica.com>',
 };
 
 const VALID_OFFSETS = [60, 30, 14, 7, 3, 2, 1];
