@@ -71,6 +71,25 @@ export default function Dashboard() {
 
         if (profileError) {
           console.error('Error fetching user profile:', profileError)
+          // If profile doesn't exist, create a default one
+          if (profileError.code === 'PGRST116') {
+            const defaultProfile = {
+              id: user.id,
+              email: user.email,
+              phone: null,
+              first_name: null,
+              last_name: null,
+              notification_preferences: {
+                sms: false,
+                email: true,
+                voice: false,
+                reminder_days: [7, 1]
+              },
+              email_verified: true,
+              phone_verified: false
+            }
+            setProfile(defaultProfile)
+          }
         } else if (userProfile) {
           setProfile(userProfile)
         }
@@ -178,16 +197,11 @@ export default function Dashboard() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile not found</h2>
-          <p className="text-gray-600 mb-4">Unable to load your profile information.</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="bg-gray-900 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-          >
-            Back to Login
-          </button>
+          <h2 className="text-2xl font-bold text-black mb-2">Setting up your account...</h2>
+          <p className="text-gray-600 mb-6">We're preparing your profile settings.</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
         </div>
       </div>
     )

@@ -57,8 +57,8 @@ export default function Home() {
           const { data: { session }, error } = await supabase.auth.getSession()
           
           if (session && !error) {
-            console.log('User authenticated, redirecting to dashboard')
-            router.push('/dashboard')
+            console.log('User authenticated, redirecting to settings')
+            router.push('/settings')
             return
           }
         } catch (error) {
