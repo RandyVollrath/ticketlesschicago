@@ -148,12 +148,12 @@ export default function Login() {
                 marginBottom: '16px',
                 margin: '0 0 16px 0'
               }}>
-                Never Get a $60 Ticket Again
+                Never Miss Street Cleaning Again
               </h1>
               
               <div style={{ textAlign: 'left', marginBottom: '32px' }}>
                 <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500', marginBottom: '12px' }}>
-                  Your free account includes:
+                  Alerts for Street Cleaning and Snow Removal on your block:
                 </p>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -167,7 +167,7 @@ export default function Login() {
                       flexShrink: 0
                     }}></div>
                     <span style={{ fontSize: '14px', color: '#374151' }}>
-                      Free email alerts before street cleaning
+                      Street cleaning alerts for your block
                     </span>
                   </div>
                   
@@ -181,7 +181,7 @@ export default function Login() {
                       flexShrink: 0
                     }}></div>
                     <span style={{ fontSize: '14px', color: '#374151' }}>
-                      Calendar reminders so you never forget
+                      Snow removal notifications for your area
                     </span>
                   </div>
                   
@@ -195,7 +195,7 @@ export default function Login() {
                       flexShrink: 0
                     }}></div>
                     <span style={{ fontSize: '14px', color: '#374151' }}>
-                      Help avoid $60 tickets with timely reminders
+                      We pay 80% of tickets you receive, up to $200/year
                     </span>
                   </div>
 
@@ -209,7 +209,7 @@ export default function Login() {
                       flexShrink: 0
                     }}></div>
                     <span style={{ fontSize: '14px', color: '#374151' }}>
-                      Ticket guarantee – we reimburse your first $60 ticket
+                      Email and SMS alerts to keep you informed
                     </span>
                   </div>
                 </div>
@@ -223,10 +223,10 @@ export default function Login() {
                 marginBottom: '32px' 
               }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', marginBottom: '4px' }}>
-                  Upgrade to Pro ($19/year):
+                  Plus: City Sticker & License Renewal Service
                 </div>
                 <div style={{ fontSize: '14px', color: '#1e40af' }}>
-                  SMS + phone alerts + track 5 addresses + enhanced guarantee
+                  We handle renewals for you + up to $200/year ticket coverage
                 </div>
               </div>
             </div>

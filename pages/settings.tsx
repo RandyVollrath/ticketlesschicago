@@ -210,7 +210,7 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'white' }}>
       <Head>
-        <title>Account Settings - Ticketless Chicago</title>
+        <title>Account Settings - Ticketless America</title>
       </Head>
 
       {/* Header with navigation */}
@@ -266,8 +266,8 @@ export default function Dashboard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Pro Member</h3>
-              <p style={{ color: '#d1fae5', margin: 0 }}>You have access to SMS notifications, voice calls, and our $60 ticket guarantee!</p>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Ticketless Chicago Member</h3>
+              <p style={{ color: '#d1fae5', margin: 0 }}>Street cleaning & snow alerts + 80% ticket reimbursement up to $200/year + city sticker renewal service</p>
             </div>
           </div>
         </div>
@@ -363,7 +363,7 @@ export default function Dashboard() {
                   placeholder="Enter your street address"
                 />
                 <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
-                  Enter your Chicago address to receive cleaning notifications
+                  Enter your Chicago address to receive street cleaning and snow removal alerts
                 </p>
               </div>
 
@@ -390,7 +390,7 @@ export default function Dashboard() {
                   placeholder="Enter license plate"
                 />
                 <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
-                  Required for our $60 ticket guarantee (Pro feature)
+                  Required for 80% ticket reimbursement up to $200/year
                 </p>
               </div>
             </div>
@@ -428,7 +428,7 @@ export default function Dashboard() {
                     Email Notifications
                   </label>
                   <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
-                    Receive email reminders about street cleaning
+                    Receive email alerts about street cleaning and snow removal
                   </p>
                 </div>
               </div>
@@ -453,7 +453,7 @@ export default function Dashboard() {
                     SMS Notifications
                   </label>
                   <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
-                    Get text message alerts (Pro feature)
+                    Get text message alerts for street cleaning and snow removal
                   </p>
                 </div>
               </div>
@@ -478,7 +478,7 @@ export default function Dashboard() {
                     Voice Call Notifications
                   </label>
                   <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
-                    Receive phone call reminders (Pro feature)
+                    Receive phone call alerts for urgent notifications
                   </p>
                 </div>
               </div>
