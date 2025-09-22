@@ -1,15 +1,15 @@
-# TicketLess Chicago
+# TicketLess America
 
-An application that reminds Chicago residents about upcoming city obligations like city sticker registration and emissions testing, with optional auto-registration services.
+An application that reminds American drivers about upcoming vehicle obligations like registrations and emissions testing, with optional auto-renewal services.
 
 ## Features
 
 - **Reminder System**: Get notified via email or SMS about upcoming obligations
-- **City Sticker Tracking**: Annual Chicago vehicle sticker registration reminders
-- **Emissions Testing**: Biennial Illinois emissions test notifications
-- **Auto-Registration**: Optional service to handle registrations automatically
+- **Vehicle Registration Tracking**: Registration renewal reminders
+- **Emissions Testing**: Emissions test notifications
+- **Auto-Renewal**: Optional service to handle renewals automatically
 - **User Dashboard**: Track all your obligations and their due dates
-- **Chicago-Specific**: Tailored for Chicago residents and Illinois requirements
+- **Nationwide Coverage**: Tailored for American drivers and state requirements
 
 ## Tech Stack
 
@@ -31,7 +31,7 @@ An application that reminds Chicago residents about upcoming city obligations li
 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd ticketless-chicago
+cd ticketless-america
 ```
 
 2. Install dependencies
@@ -62,7 +62,7 @@ DATABASE_URL="your-database-connection-string"
 
 # Email Service (SendGrid, AWS SES, etc.)
 EMAIL_SERVICE_API_KEY="your-email-service-key"
-EMAIL_FROM_ADDRESS="noreply@ticketlesschicago.com"
+EMAIL_FROM_ADDRESS="noreply@ticketlessamerica.com"
 
 # SMS Service (Twilio, etc.)
 SMS_SERVICE_SID="your-sms-service-sid"
@@ -80,7 +80,7 @@ NEXTAUTH_SECRET="your-nextauth-secret"
 ## Project Structure
 
 ```
-ticketless-chicago/
+ticketless-america/
 ├── pages/                  # Next.js pages and API routes
 │   ├── api/               # Backend API endpoints
 │   │   ├── users.ts       # User management
@@ -103,16 +103,16 @@ ticketless-chicago/
 
 ## Obligations Tracked
 
-### Chicago City Sticker
-- **Due Date**: July 31st annually
-- **Cost**: ~$96.50 for regular vehicles
+### Vehicle Registration
+- **Due Date**: Varies by state
+- **Cost**: Varies by state and vehicle type
 - **Requirements**: Vehicle registration, valid ID
-- **Penalties**: $200+ ticket for expired sticker
+- **Penalties**: Fines and citations for expired registration
 
-### Illinois Emissions Testing
-- **Due Date**: December 31st (biennial)
-- **Cost**: ~$20 
-- **Requirements**: Vehicles 4+ years old in Chicago area
+### Emissions Testing
+- **Due Date**: Varies by state (annual or biennial)
+- **Cost**: Typically $15-30
+- **Requirements**: Varies by state and vehicle age
 - **Penalties**: Registration renewal blocked until completed
 
 ## Development Roadmap
@@ -152,4 +152,4 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ## Disclaimer
 
-This application is not affiliated with the City of Chicago or the State of Illinois. Users are responsible for ensuring compliance with all local and state requirements. The auto-registration service is a convenience feature and does not guarantee successful registration.
+This application is not affiliated with any state or local government. Users are responsible for ensuring compliance with all local and state requirements. The auto-renewal service is a convenience feature and does not guarantee successful renewal.

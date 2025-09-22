@@ -12,7 +12,7 @@
 const https = require('https');
 
 const testData = {
-  email: 'test-integration@ticketlesschicago.com',
+  email: 'test-integration@ticketlessamerica.com',
   streetAddress: '123 N State St, Chicago, IL 60601',
   userId: 'test-user-123'
 };

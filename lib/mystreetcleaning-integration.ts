@@ -14,7 +14,7 @@ interface RegistrationResponse {
 }
 
 /**
- * Creates an account on mystreetcleaning.com for a new ticketlesschicago.com user
+ * Creates an account on mystreetcleaning.com for a new ticketlessamerica.com user
  */
 export async function createMyStreetCleaningAccount(
   accountData: MyStreetCleaningAccount
@@ -35,7 +35,7 @@ export async function createMyStreetCleaningAccount(
     const registrationPayload = {
       email: accountData.email,
       address: accountData.streetAddress,
-      source: 'ticketlesschicago',
+      source: 'ticketlessamerica',
       referrer: 'ticketless-chicago-integration',
       auto_created: true,
       created_at: new Date().toISOString()
@@ -101,7 +101,7 @@ export async function createMyStreetCleaningAccount(
         email_enabled: true, // Enable email notifications by default
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        source: 'ticketlesschicago',
+        source: 'ticketlessamerica',
         is_paid: false
       });
 
@@ -211,7 +211,7 @@ async function logIntegration(logData: any) {
 }
 
 /**
- * Syncs user data between ticketlesschicago and mystreetcleaning
+ * Syncs user data between ticketlessamerica and mystreetcleaning
  */
 export async function syncUserToMyStreetCleaning(
   email: string,

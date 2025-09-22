@@ -120,10 +120,10 @@ export class NotificationService {
         html: notification.html,
         text: notification.text,
         headers: {
-          'List-Unsubscribe': '<https://ticketlesschicago.com/unsubscribe>',
+          'List-Unsubscribe': '<https://ticketlessamerica.com/unsubscribe>',
           'X-Entity-Ref-ID': crypto.randomUUID(),
         },
-        reply_to: 'support@ticketlesschicago.com'
+        reply_to: 'support@ticketlessamerica.com'
       });
 
       if (error) {
@@ -190,7 +190,7 @@ export class NotificationService {
               body: notification.message,
               voice: 'female',
               source: 'nodejs',
-              custom_string: 'ticketless-chicago'
+              custom_string: 'ticketless-america'
             }
           ]
         })
@@ -312,7 +312,7 @@ export class NotificationScheduler {
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
         <!-- Header -->
         <div style="background: #2563eb; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Ticketless Chicago</h1>
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Ticketless America</h1>
           <p style="margin: 8px 0 0; font-size: 16px; opacity: 0.9;">Your Vehicle Compliance Partner</p>
         </div>
         
@@ -344,7 +344,7 @@ export class NotificationScheduler {
                  style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
                 Renew Online
               </a>
-              <a href="https://ticketlesschicago.com/dashboard" 
+              <a href="https://ticketlessamerica.com/dashboard" 
                  style="background: #374151; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
                 View Dashboard
               </a>
@@ -362,20 +362,20 @@ export class NotificationScheduler {
           
           <!-- Support Message -->
           <div style="text-align: center; color: #6b7280; margin: 24px 0;">
-            <p style="margin: 0;">Questions? We're here to help at support@ticketlesschicago.com</p>
+            <p style="margin: 0;">Questions? We're here to help at support@ticketlessamerica.com</p>
           </div>
         </div>
         
         <!-- Footer -->
         <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px;">
           <div style="margin-bottom: 12px;">
-            <strong style="color: #374151;">Ticketless Chicago</strong><br>
+            <strong style="color: #374151;">Ticketless America</strong><br>
             Your trusted vehicle compliance partner
           </div>
           <div>
-            <a href="https://ticketlesschicago.com/dashboard" style="color: #6b7280; margin: 0 8px;">Dashboard</a> |
-            <a href="https://ticketlesschicago.com/support" style="color: #6b7280; margin: 0 8px;">Support</a> |
-            <a href="https://ticketlesschicago.com/unsubscribe?id=${obligation.obligation_id}" style="color: #6b7280; margin: 0 8px;">Unsubscribe</a>
+            <a href="https://ticketlessamerica.com/dashboard" style="color: #6b7280; margin: 0 8px;">Dashboard</a> |
+            <a href="https://ticketlessamerica.com/support" style="color: #6b7280; margin: 0 8px;">Support</a> |
+            <a href="https://ticketlessamerica.com/unsubscribe?id=${obligation.obligation_id}" style="color: #6b7280; margin: 0 8px;">Unsubscribe</a>
           </div>
         </div>
       </div>
@@ -384,7 +384,7 @@ export class NotificationScheduler {
     const emailText = `
 Hello,
 
-This is a friendly reminder from Ticketless Chicago about your upcoming ${renewalName}.
+This is a friendly reminder from Ticketless America about your upcoming ${renewalName}.
 
 Vehicle: ${obligation.license_plate}
 Due Date: ${dueDateFormatted}
@@ -393,16 +393,16 @@ Days Remaining: ${daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? '1 day
 ${daysUntilDue <= 1 ? 'We recommend renewing today to stay compliant.' : 'You have time to renew, but we wanted to give you a heads up.'}
 
 Renew online: ${renewalUrl}
-View your dashboard: https://ticketlesschicago.com/dashboard
+View your dashboard: https://ticketlessamerica.com/dashboard
 
 Best regards,
-Ticketless Chicago Team
+Ticketless America Team
 
-Questions? Reply to support@ticketlesschicago.com
+Questions? Reply to support@ticketlessamerica.com
     `;
 
     // SMS content (helpful, under 160 chars)
-    const shortUrl = 'ticketlesschicago.com';
+    const shortUrl = 'ticketlessamerica.com';
     const smsMessage = daysUntilDue === 0
       ? `Ticketless: ${renewalName} due today for ${obligation.license_plate}. Renew: ${shortUrl}`
       : daysUntilDue === 1
@@ -412,8 +412,8 @@ Questions? Reply to support@ticketlesschicago.com
     // Voice content (friendly and informative)
     const plateSpoken = obligation.license_plate.split('').join(' '); // Spell out clearly: "A B C 1 2 3"
     const voiceMessage = daysUntilDue <= 1
-      ? `Hello, this is Ticketless Chicago calling with a friendly reminder. Your ${renewalName} is due ${timeText === 'TODAY' ? 'today' : 'tomorrow'} for vehicle ${plateSpoken}. We recommend renewing as soon as possible to stay compliant. You can renew online or visit a local facility. Thank you for being a Ticketless Chicago customer. Have a great day!`
-      : `Hello, this is Ticketless Chicago calling. Your ${renewalName} is coming up in ${daysUntilDue} days for vehicle ${plateSpoken}. This is just a friendly reminder to help you stay on top of your renewals. You can renew online or visit a local facility when convenient. Thank you for being a Ticketless Chicago customer. Have a great day!`;
+      ? `Hello, this is Ticketless America calling with a friendly reminder. Your ${renewalName} is due ${timeText === 'TODAY' ? 'today' : 'tomorrow'} for vehicle ${plateSpoken}. We recommend renewing as soon as possible to stay compliant. You can renew online or visit a local facility. Thank you for being a Ticketless America customer. Have a great day!`
+      : `Hello, this is Ticketless America calling. Your ${renewalName} is coming up in ${daysUntilDue} days for vehicle ${plateSpoken}. This is just a friendly reminder to help you stay on top of your renewals. You can renew online or visit a local facility when convenient. Thank you for being a Ticketless America customer. Have a great day!`;
 
     return {
       email: {

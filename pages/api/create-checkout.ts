@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'TicketlessChicago PRO - Complete Vehicle Compliance Service',
+              name: 'TicketlessAmerica PRO - Complete Vehicle Compliance Service',
               description: `Hands-off vehicle compliance: We handle city sticker & license renewals, plus all alerts for ${licensePlate}`
             },
             unit_amount: billingPlan === 'annual' ? 12000 : 1200, // $120/year or $12/month
@@ -35,8 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       ],
       mode: 'subscription',
-      success_url: `https://ticketlesschicago.com/auth/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
-      cancel_url: `https://ticketlesschicago.com/`,
+      success_url: `https://ticketlessamerica.com/auth/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+      cancel_url: `https://ticketlessamerica.com/`,
       customer_email: email,
       metadata: {
         email,
