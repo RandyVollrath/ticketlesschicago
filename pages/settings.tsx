@@ -71,24 +71,59 @@ export default function Dashboard() {
 
         if (profileError) {
           console.error('Error fetching user profile:', profileError)
-          // If profile doesn't exist, create a default one
+          // If profile doesn't exist, create one in the database
           if (profileError.code === 'PGRST116') {
-            const defaultProfile = {
-              id: user.id,
-              email: user.email,
-              phone: null,
-              first_name: null,
-              last_name: null,
-              notification_preferences: {
-                sms: false,
-                email: true,
-                voice: false,
-                reminder_days: [7, 1]
-              },
-              email_verified: true,
-              phone_verified: false
+            try {
+              const defaultProfile = {
+                id: user.id,
+                email: user.email,
+                phone: null,
+                first_name: null,
+                last_name: null,
+                notification_preferences: {
+                  sms: false,
+                  email: true,
+                  voice: false,
+                  reminder_days: [7, 1]
+                },
+                email_verified: true,
+                phone_verified: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+
+              const { data: newProfile, error: createError } = await supabase
+                .from('users')
+                .insert(defaultProfile)
+                .select()
+                .single()
+
+              if (createError) {
+                console.error('Error creating user profile:', createError)
+                setProfile(defaultProfile) // Use default if DB insert fails
+              } else {
+                setProfile(newProfile)
+              }
+            } catch (error) {
+              console.error('Error creating profile:', error)
+              // Fallback to default profile
+              const defaultProfile = {
+                id: user.id,
+                email: user.email,
+                phone: null,
+                first_name: null,
+                last_name: null,
+                notification_preferences: {
+                  sms: false,
+                  email: true,
+                  voice: false,
+                  reminder_days: [7, 1]
+                },
+                email_verified: true,
+                phone_verified: false
+              }
+              setProfile(defaultProfile)
             }
-            setProfile(defaultProfile)
           }
         } else if (userProfile) {
           setProfile(userProfile)
@@ -135,34 +170,50 @@ export default function Dashboard() {
   }
 
   const updateProfile = async (updatedData: Partial<UserProfile>) => {
-    if (!profile) return
+    if (!profile) {
+      console.error('No profile found, cannot update')
+      setMessage({ type: 'error', text: 'Profile not loaded. Please refresh the page.' })
+      return
+    }
+
+    console.log('Updating profile with data:', updatedData)
+    console.log('Profile ID:', profile.id)
 
     setSaving(true)
     setMessage(null)
 
     try {
+      const requestBody = {
+        userId: profile.id,
+        ...updatedData
+      }
+      
+      console.log('Sending request to /api/profile:', requestBody)
+
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: profile.id,
-          ...updatedData
-        })
+        body: JSON.stringify(requestBody)
       })
 
       const result = await response.json()
+      console.log('API response:', { status: response.status, result })
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update profile')
+        console.error('API error:', result)
+        throw new Error(result.error || `HTTP ${response.status}: Failed to update profile`)
       }
 
       setProfile({ ...profile, ...updatedData })
-      setMessage({ type: 'success', text: 'Profile updated successfully!' })
+      setMessage({ type: 'success', text: 'Settings updated successfully!' })
     } catch (error: any) {
       console.error('Error updating profile:', error)
-      setMessage({ type: 'error', text: error.message || 'Failed to update profile' })
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Failed to update settings. Please try again.' 
+      })
     }
 
     setSaving(false)
