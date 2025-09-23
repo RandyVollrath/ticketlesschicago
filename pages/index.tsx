@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [committed, setCommitted] = useState(false);
   const [formStep, setFormStep] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -18,7 +20,6 @@ export default function Home() {
     licensePlateExpiry: '',
     emissionsDate: '',
     streetAddress: '',
-    streetSide: 'even',
     email: '',
     phone: '',
     reminderMethod: 'both',
@@ -45,30 +46,82 @@ export default function Home() {
   const [referralId, setReferralId] = useState<string | null>(null);
   const router = useRouter();
 
-  // Handle auth callback on homepage (if user gets redirected here with tokens)
+  // Check auth state on mount and handle OAuth redirect
   useEffect(() => {
-    const handleAuthRedirect = async () => {
-      // Check if there's an access_token in the URL hash (from OAuth redirect)
-      if (window.location.hash.includes('access_token')) {
-        console.log('OAuth tokens detected, processing...')
-        
-        try {
-          // Get the current session
-          const { data: { session }, error } = await supabase.auth.getSession()
+    const checkAuth = async () => {
+      try {
+        // Check if we have OAuth tokens in the URL (from redirect)
+        if (window.location.hash.includes('access_token') || window.location.hash.includes('#access_token')) {
+          console.log('OAuth tokens detected in URL, processing...')
           
-          if (session && !error) {
-            console.log('User authenticated, redirecting to settings')
-            router.push('/settings')
+          // Let Supabase handle the OAuth callback
+          const { data, error } = await supabase.auth.getSession()
+          
+          if (data.session && !error) {
+            console.log('OAuth successful, redirecting to callback')
+            // Clear the hash and redirect to callback page
+            window.history.replaceState(null, '', window.location.pathname)
+            router.push('/auth/callback')
             return
           }
-        } catch (error) {
-          console.error('Error processing auth redirect:', error)
         }
+        
+        // Normal session check
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (session && !error) {
+          console.log('User is logged in:', session.user.email)
+          setUser(session.user)
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error)
+      } finally {
+        setCheckingAuth(false)
       }
     }
 
-    handleAuthRedirect()
+    checkAuth()
+
+    // Subscribe to auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email)
+      if (event === 'SIGNED_IN' && session) {
+        setUser(session.user)
+        // Don't redirect here - let the callback handle it
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+      } else if (session) {
+        setUser(session.user)
+      }
+    })
+
+    return () => {
+      authListener?.subscription.unsubscribe()
+    }
   }, [router])
+
+  // Handle pre-filled email and step from Google OAuth redirect
+  useEffect(() => {
+    if (router.isReady) {
+      const { email, step } = router.query
+      
+      if (email && typeof email === 'string') {
+        console.log('Pre-filling email from Google OAuth:', email)
+        setFormData(prev => ({ ...prev, email: email }))
+      }
+      
+      if (step === 'signup') {
+        console.log('Auto-scrolling to signup section from Google OAuth redirect')
+        // Set committed to true to show the detailed form
+        setCommitted(true)
+        setFormStep(0)
+        // Scroll to signup section after a short delay
+        setTimeout(() => {
+          document.getElementById('signup-section')?.scrollIntoView({ behavior: 'smooth' })
+        }, 500)
+      }
+    }
+  }, [router.isReady, router.query])
 
   // Capture Rewardful referral ID on component mount
   useEffect(() => {
@@ -356,8 +409,8 @@ export default function Home() {
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       <Head>
-        <title>Chicago Vehicle Compliance Alerts</title>
-        <meta name="description" content="Chicago vehicle compliance reminders and registration service." />
+        <title>Ticketless America - Vehicle Compliance Protection</title>
+        <meta name="description" content="Nationwide vehicle compliance reminders and registration service." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -379,56 +432,111 @@ export default function Home() {
         <div 
           onClick={() => window.location.reload()}
           style={{ 
-            fontSize: '24px', 
-            fontWeight: 'bold', 
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
             cursor: 'pointer',
             userSelect: 'none' 
           }}
         >
-          Ticketless Chicago
+          <div style={{
+            width: '32px',
+            height: '40px',
+            background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 50%, #d0d0d0 100%)',
+            borderRadius: '4px 4px 16px 16px',
+            position: 'relative',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              width: '24px',
+              height: '30px',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
+              borderRadius: '2px 2px 12px 12px',
+              border: '1px solid rgba(0,0,0,0.1)'
+            }} />
+          </div>
+          <div>
+            <div style={{ 
+              fontSize: '24px', 
+              fontWeight: 'bold',
+              letterSpacing: '-0.5px'
+            }}>
+              Ticketless
+            </div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              letterSpacing: '2px',
+              color: '#666',
+              marginTop: '-4px'
+            }}>
+              AMERICA
+            </div>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
           <a 
-            href="#how-it-works" 
-            onClick={(e) => { e.preventDefault(); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }); }}
+            href="/how-it-works" 
             style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
           >
             How It Works
           </a>
           <a 
-            href="#pricing" 
-            onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}
+            href="/pricing" 
             style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
           >
             Pricing
           </a>
           <a 
-            href="#support" 
-            onClick={(e) => { e.preventDefault(); document.getElementById('support')?.scrollIntoView({ behavior: 'smooth' }); }}
+            href="/support" 
             style={{ color: '#666', textDecoration: 'none', fontSize: '15px', cursor: 'pointer' }}
           >
             Support
           </a>
-          <button
-            onClick={() => router.push('/login')}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#666',
-              border: '1px solid #ddd',
-              borderRadius: '20px',
-              padding: '8px 20px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              marginRight: '12px'
-            }}
-          >
-            Log In
-          </button>
+          {checkingAuth ? (
+            <div style={{ padding: '8px 20px', marginRight: '12px' }}>...</div>
+          ) : user ? (
+            <button
+              onClick={() => router.push('/settings')}
+              style={{
+                backgroundColor: '#0052cc',
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '8px 20px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                marginRight: '12px'
+              }}
+            >
+              My Account
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push('/login')}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#666',
+                border: '1px solid #ddd',
+                borderRadius: '20px',
+                padding: '8px 20px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                marginRight: '12px'
+              }}
+            >
+              Log In
+            </button>
+          )}
           <button
             onClick={scrollToForm}
             style={{
-              backgroundColor: 'black',
+              backgroundColor: '#0052cc',
               color: 'white',
               border: 'none',
               borderRadius: '20px',
@@ -460,7 +568,7 @@ export default function Home() {
           lineHeight: '1.1',
           letterSpacing: '-1px'
         }}>
-          Stop Chicago Parking Violations Before They Happen
+          Stop Parking Violations Before They Happen
         </h1>
         <p style={{ 
           fontSize: '32px', 
@@ -468,12 +576,12 @@ export default function Home() {
           marginBottom: '48px',
           fontWeight: '300'
         }}>
-          We guarantee protection from street cleaning & snow removal tickets, handle city sticker & plate renewals, and remind you about emissions testing.
+          Complete protection from parking violations, automated renewal handling, and timely compliance reminders.
         </p>
         <button
           onClick={scrollToForm}
           style={{
-            backgroundColor: 'black',
+            backgroundColor: '#0052cc',
             color: 'white',
             border: 'none',
             borderRadius: '25px',
@@ -553,7 +661,7 @@ export default function Home() {
             color: '#666', 
             lineHeight: '1.5' 
           }}>
-            Complete insurance against compliance tickets. One missed renewal costs more than our entire year.
+            Complete protection from compliance tickets. One missed renewal costs more than our entire year.
           </p>
         </div>
 
@@ -655,7 +763,7 @@ export default function Home() {
                 type="submit"
                 disabled={loading}
                 style={{
-                  backgroundColor: 'black',
+                  backgroundColor: '#0052cc',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -700,7 +808,7 @@ export default function Home() {
               <button
                 onClick={() => document.getElementById('step2-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 style={{
-                  backgroundColor: 'black',
+                  backgroundColor: '#0052cc',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -833,7 +941,7 @@ export default function Home() {
                 <button
                   onClick={() => setFormStep(1)}
                   style={{
-                    backgroundColor: 'black',
+                    backgroundColor: '#0052cc',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
@@ -939,7 +1047,7 @@ export default function Home() {
                   <button
                     onClick={() => setFormStep(2)}
                     style={{
-                      backgroundColor: 'black',
+                      backgroundColor: '#0052cc',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -1066,7 +1174,7 @@ export default function Home() {
                   <button
                     onClick={() => setFormStep(3)}
                     style={{
-                      backgroundColor: 'black',
+                      backgroundColor: '#0052cc',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -1213,7 +1321,7 @@ export default function Home() {
                   <button
                     onClick={() => setFormStep(4)}
                     style={{
-                      backgroundColor: 'black',
+                      backgroundColor: '#0052cc',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -1330,7 +1438,7 @@ export default function Home() {
                   <button
                     onClick={() => setFormStep(5)}
                     style={{
-                      backgroundColor: 'black',
+                      backgroundColor: '#0052cc',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -1450,7 +1558,7 @@ export default function Home() {
                   <button
                     onClick={() => setFormStep(6)}
                     style={{
-                      backgroundColor: 'black',
+                      backgroundColor: '#0052cc',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -1478,7 +1586,7 @@ export default function Home() {
                   display: 'flex', 
                   alignItems: 'center', 
                   padding: '16px', 
-                  border: `2px solid ${formData.billingPlan === 'monthly' ? 'black' : '#ddd'}`,
+                  border: `2px solid ${formData.billingPlan === 'monthly' ? '#0052cc' : '#ddd'}`,
                   borderRadius: '8px',
                   cursor: 'pointer'
                 }}>
@@ -1500,7 +1608,7 @@ export default function Home() {
                   display: 'flex', 
                   alignItems: 'center', 
                   padding: '16px', 
-                  border: `2px solid ${formData.billingPlan === 'annual' ? 'black' : '#ddd'}`,
+                  border: `2px solid ${formData.billingPlan === 'annual' ? '#0052cc' : '#ddd'}`,
                   borderRadius: '8px',
                   cursor: 'pointer'
                 }}>
@@ -1553,7 +1661,7 @@ export default function Home() {
                     type="submit"
                     disabled={loading}
                     style={{
-                      backgroundColor: 'black',
+                      backgroundColor: '#0052cc',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -1606,7 +1714,7 @@ export default function Home() {
           margin: '0 auto 24px auto'
         }}>
           <strong>Vehicle compliance information</strong><br />
-          Street cleaning data for Chicago residents gathered from the City of Chicago's open data portal and FOIA requests. 
+          Street cleaning data gathered from municipal open data portals and FOIA requests. 
           This prevents tickets for: street cleaning violations, expired city stickers, expired license plate registrations, and overdue emissions tests.
         </p>
         
@@ -1622,19 +1730,19 @@ export default function Home() {
             color: '#1a1a1a',
             marginBottom: '16px'
           }}>
-            Ready to Never Get Another Ticket?
+            Ready to Never Get Another Parking Ticket?
           </h2>
           <p style={{
             fontSize: '20px',
             color: '#666',
             marginBottom: '32px'
           }}>
-            Get complete protection against Chicago compliance tickets.
+            Get complete protection against compliance tickets.
           </p>
           <button
             onClick={scrollToForm}
             style={{
-              backgroundColor: 'black',
+              backgroundColor: '#0052cc',
               color: 'white',
               border: 'none',
               borderRadius: '25px',

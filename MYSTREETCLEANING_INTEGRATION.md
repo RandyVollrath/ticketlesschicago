@@ -1,14 +1,14 @@
 # MyStreetCleaning.com Integration
 
-This document explains how the automatic account creation integration between ticketlesschicago.com and mystreetcleaning.com works.
+This document explains how the automatic account creation integration between TicketlessAmerica.com and MyStreetCleaning.com works.
 
 ## Overview
 
-When a user creates an account on ticketlesschicago.com, an account is automatically created on mystreetcleaning.com using their email address and street cleaning address.
+When a user creates an account on TicketlessAmerica.com, an account is automatically created on MyStreetCleaning.com using their email address and street cleaning address.
 
 ## How It Works
 
-1. **User Registration**: User signs up for ticketlesschicago.com and provides:
+1. **User Registration**: User signs up for TicketlessAmerica.com and provides:
    - Email address
    - Street address (for street cleaning notifications)
    - Vehicle information

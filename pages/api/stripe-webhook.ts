@@ -140,6 +140,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (userExists) {
           console.log('User already exists, using existing account:', userExists.id);
           authData = { user: userExists, session: null };
+          
+          // Update existing user profile with subscription status
+          const { error: updateError } = await supabaseAdmin
+            .from('users')
+            .update({ 
+              subscription_status: 'active',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userExists.id);
+            
+          if (updateError) {
+            console.log('Error updating existing user subscription status:', updateError);
+          } else {
+            console.log('Updated existing user subscription status to active');
+          }
         } else {
           console.log('Creating new user account');
           const { data: newAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -158,31 +173,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('User created successfully:', authData.user?.id);
 
         if (authData.user) {
-          // Create user record in new database structure
-          console.log('Creating user profile for user:', authData.user.id);
-          
-          const { error: userError } = await supabaseAdmin
+          // Check if user profile already exists (for Google OAuth users)
+          const { data: existingProfile } = await supabaseAdmin
             .from('users')
-            .insert([{
-              id: authData.user.id,
-              email: email,
-              phone: formData.phone,
-              first_name: formData.name?.split(' ')[0] || null,
-              last_name: formData.name?.split(' ').slice(1).join(' ') || null,
-              notification_preferences: {
-                email: formData.emailNotifications,
-                sms: formData.smsNotifications,
-                voice: formData.voiceNotifications,
-                reminder_days: formData.reminderDays
-              },
-              email_verified: true, // Auto-verify for paid users
-              phone_verified: false
-            }]);
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+            
+          if (!existingProfile) {
+            // Create user record in new database structure with all form data
+            console.log('Creating user profile for user:', authData.user.id);
+            
+            const { error: userError } = await supabaseAdmin
+              .from('users')
+              .insert([{
+                id: authData.user.id,
+                email: email,
+                phone: formData.phone,
+                first_name: formData.name?.split(' ')[0] || null,
+                last_name: formData.name?.split(' ').slice(1).join(' ') || null,
+                // Vehicle information
+                license_plate: formData.licensePlate,
+                vin: formData.vin || null,
+                zip_code: formData.zipCode,
+                vehicle_type: formData.vehicleType || 'passenger',
+                vehicle_year: formData.vehicleYear || new Date().getFullYear(),
+                // Renewal dates
+                city_sticker_expiry: formData.cityStickerExpiry || null,
+                license_plate_expiry: formData.licensePlateExpiry || null,
+                emissions_date: formData.emissionsDate || null,
+                // Address information
+                street_address: formData.streetAddress || null,
+                mailing_address: formData.mailingAddress || null,
+                mailing_city: formData.mailingCity || null,
+                mailing_state: formData.mailingState || 'IL',
+                mailing_zip: formData.mailingZip || null,
+                // Concierge service options
+                concierge_service: formData.conciergeService || false,
+                city_stickers_only: formData.cityStickersOnly !== false, // Default to true
+                spending_limit: formData.spendingLimit || 500,
+                // Notification preferences
+                notification_preferences: {
+                  email: formData.emailNotifications !== false, // Default to true
+                  sms: formData.smsNotifications || false,
+                  voice: formData.voiceNotifications || false,
+                  reminder_days: formData.reminderDays || [30, 7, 1]
+                },
+                email_verified: true, // Auto-verify for paid users
+                phone_verified: false,
+                subscription_status: 'active'
+              }]);
 
-          if (userError) {
-            console.error('Error creating user profile:', userError);
+            if (userError) {
+              console.error('Error creating user profile:', userError);
+            } else {
+              console.log('Successfully created user profile');
+            }
           } else {
-            console.log('Successfully created user profile');
+            console.log('User profile already exists, skipping creation');
           }
 
           // Create vehicle record
