@@ -298,8 +298,8 @@ export default function HowItWorks() {
                 }}>
                   <li style={{ marginBottom: '4px' }}>• 80% reimbursement on eligible tickets</li>
                   <li style={{ marginBottom: '4px' }}>• Up to $200/year total coverage</li>
-                  <li style={{ marginBottom: '4px' }}>• Street cleaning tickets</li>
-                  <li style={{ marginBottom: '4px' }}>• Snow removal tickets</li>
+                  <li style={{ marginBottom: '4px' }}>• Street cleaning tickets ($60 each)</li>
+                  <li style={{ marginBottom: '4px' }}>• Snow removal tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• City sticker violations</li>
                   <li>• License plate renewal violations</li>
                 </ul>
@@ -318,7 +318,7 @@ export default function HowItWorks() {
                   listStyle: 'none',
                   color: '#bfdbfe'
                 }}>
-                  <li style={{ marginBottom: '4px' }}>• Towing fees</li>
+                  <li style={{ marginBottom: '4px' }}>• Towing fees ($150 + $25/night storage)</li>
                   <li style={{ marginBottom: '4px' }}>• Moving violations</li>
                   <li style={{ marginBottom: '4px' }}>• Meter violations</li>
                   <li style={{ marginBottom: '4px' }}>• Tickets over $200/year total</li>

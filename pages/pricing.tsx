@@ -295,10 +295,11 @@ export default function Pricing() {
                 listStyle: 'none',
                 color: '#6b7280'
               }}>
-                <li style={{ marginBottom: '8px' }}>• Average parking ticket: $75</li>
+                <li style={{ marginBottom: '8px' }}>• Street cleaning tickets: $60</li>
+                <li style={{ marginBottom: '8px' }}>• Snow removal tickets: $60</li>
+                <li style={{ marginBottom: '8px' }}>• Snow towing + storage: $235+ ($150 tow + $25/night)</li>
                 <li style={{ marginBottom: '8px' }}>• Late city sticker penalty: $200+</li>
-                <li style={{ marginBottom: '8px' }}>• Missed renewal fees: $100+</li>
-                <li>• Total potential cost: <span style={{ fontWeight: 'bold', color: '#dc2626' }}>$375+/year</span></li>
+                <li>• Total potential cost: <span style={{ fontWeight: 'bold', color: '#dc2626' }}>$500+/year</span></li>
               </ul>
             </div>
             <div>
@@ -318,7 +319,7 @@ export default function Pricing() {
                 <li style={{ marginBottom: '8px' }}>• Monthly cost: $12</li>
                 <li style={{ marginBottom: '8px' }}>• Annual cost: $144 (or $120 if paid yearly)</li>
                 <li style={{ marginBottom: '8px' }}>• Coverage up to: $200 in tickets</li>
-                <li>• Your savings: <span style={{ fontWeight: 'bold', color: '#16a34a' }}>$200+/year</span></li>
+                <li>• Your savings: <span style={{ fontWeight: 'bold', color: '#16a34a' }}>$350+/year</span></li>
               </ul>
             </div>
           </div>
