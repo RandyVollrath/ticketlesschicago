@@ -589,7 +589,7 @@ export default function Home() {
           marginBottom: '48px',
           fontWeight: '300'
         }}>
-          Complete protection from parking violations, automated renewal handling, and timely compliance reminders.
+          Complete protection from compliance violations, automated renewal handling, and timely compliance reminders.
         </p>
         <button
           onClick={scrollToForm}
@@ -1743,7 +1743,7 @@ export default function Home() {
             color: '#1a1a1a',
             marginBottom: '16px'
           }}>
-            Ready to Never Get Another Parking Ticket?
+            Ready to Never Get Another Compliance Ticket?
           </h2>
           <p style={{
             fontSize: '20px',

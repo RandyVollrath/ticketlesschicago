@@ -49,7 +49,7 @@ export default function Pricing() {
             color: '#6b7280',
             marginBottom: '32px'
           }}>
-            Protect yourself from parking tickets and never miss a renewal deadline
+            Protect yourself from compliance tickets and never miss a renewal deadline
           </p>
           
           {/* Billing Toggle */}
@@ -330,7 +330,7 @@ export default function Pricing() {
             fontWeight: '500' 
           }}>
             Worst case: You get your money back in ticket reimbursements<br/>
-            Best case: You never get another parking ticket again
+            Best case: You never get another compliance ticket again
           </p>
         </section>
 
@@ -369,7 +369,7 @@ export default function Pricing() {
                 color: '#6b7280',
                 margin: 0
               }}>
-                No, this is a protection plan that helps you avoid parking tickets and reimburses you if you still receive them despite following our alerts.
+                No, this is a protection plan that helps you avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) and reimburses you if you still receive them despite following our alerts.
               </p>
             </div>
             <div style={{
@@ -443,7 +443,7 @@ export default function Pricing() {
             color: '#374151', 
             marginBottom: '16px' 
           }}>
-            Ready to Never Worry About Parking Tickets Again?
+            Ready to Never Worry About Compliance Tickets Again?
           </h3>
           <button
             onClick={handleSelectPlan}
@@ -465,7 +465,7 @@ export default function Pricing() {
             color: '#6b7280', 
             marginTop: '16px' 
           }}>
-            30-day money back guarantee • Cancel anytime
+            Cancel anytime
           </p>
         </section>
       </div>

@@ -11,11 +11,11 @@ export default function Support() {
       questions: [
         {
           q: 'What is Ticketless Chicago?',
-          a: 'Ticketless Chicago is a protection plan that helps Chicago drivers avoid parking tickets through alerts and provides reimbursement if tickets are still received.'
+          a: 'Ticketless Chicago is a protection plan that helps Chicago drivers avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) through alerts and provides reimbursement if tickets are still received.'
         },
         {
           q: 'Is this insurance?',
-          a: 'No, this is a protection plan, not insurance. We help you avoid tickets through alerts and reimburse eligible tickets according to our coverage terms.'
+          a: 'No, this is a protection plan, not insurance. We help you avoid compliance tickets through alerts and reimburse eligible tickets according to our coverage terms.'
         },
         {
           q: 'How much does it cost?',
@@ -468,7 +468,7 @@ export default function Support() {
             color: '#b91c1c', 
             marginBottom: '16px' 
           }}>
-            If you have an urgent issue related to a parking ticket or missed alert, contact us immediately.
+            If you have an urgent issue related to a compliance ticket or missed alert, contact us immediately.
           </p>
           <div style={{ 
             display: 'flex', 

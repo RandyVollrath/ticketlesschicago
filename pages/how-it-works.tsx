@@ -61,7 +61,7 @@ export default function HowItWorks() {
               marginBottom: '24px',
               lineHeight: '1.6'
             }}>
-              Ticketless Chicago offers comprehensive protection against parking tickets and handles your vehicle registration renewals. 
+              Ticketless Chicago offers comprehensive protection against compliance tickets and handles your vehicle registration renewals. 
               We reimburse 80% of eligible tickets up to $200/year and send you alerts to help avoid tickets in the first place.
             </p>
             <div style={{
@@ -74,7 +74,7 @@ export default function HowItWorks() {
                 fontWeight: '500',
                 margin: 0
               }}>
-                This is a protection plan, not insurance. We help you avoid and manage parking tickets while handling vehicle registrations.
+                This is a protection plan, not insurance. We help you avoid and manage compliance tickets while handling vehicle registrations.
               </p>
             </div>
           </section>
@@ -343,7 +343,7 @@ export default function HowItWorks() {
               marginBottom: '24px',
               fontSize: '18px'
             }}>
-              Join thousands of Chicago drivers who never worry about parking tickets again.
+              Join thousands of Chicago drivers who never worry about compliance tickets again.
             </p>
             <button
               onClick={() => router.push('/auth/login')}
