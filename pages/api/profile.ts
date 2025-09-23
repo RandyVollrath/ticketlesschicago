@@ -23,7 +23,23 @@ export default async function handler(
       'phone',
       'notification_preferences',
       'email_verified',
-      'phone_verified'
+      'phone_verified',
+      'license_plate',
+      'vin',
+      'zip_code',
+      'vehicle_type',
+      'vehicle_year',
+      'city_sticker_expiry',
+      'license_plate_expiry',
+      'emissions_date',
+      'street_address',
+      'mailing_address',
+      'mailing_city',
+      'mailing_state',
+      'mailing_zip',
+      'concierge_service',
+      'city_stickers_only',
+      'spending_limit'
     ];
 
     const filteredData = Object.keys(updateData)

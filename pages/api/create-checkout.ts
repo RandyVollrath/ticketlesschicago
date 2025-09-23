@@ -70,7 +70,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           smsNotifications: formData.smsNotifications,
           voiceNotifications: formData.voiceNotifications,
           reminderDays: formData.reminderDays,
-          billingPlan: formData.billingPlan
+          billingPlan: formData.billingPlan,
+          conciergeService: formData.conciergeService,
+          cityStickersOnly: formData.cityStickersOnly,
+          spendingLimit: formData.spendingLimit
         })
       }
     };
