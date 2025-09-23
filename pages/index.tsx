@@ -52,10 +52,15 @@ export default function Home() {
       try {
         // Check if we have OAuth tokens in the URL (from redirect)
         if (window.location.hash.includes('access_token') || window.location.hash.includes('#access_token')) {
-          console.log('OAuth tokens detected in URL, processing...')
+          console.log('OAuth tokens detected in URL, processing...', window.location.hash)
+          
+          // Give Supabase a moment to process the OAuth tokens
+          await new Promise(resolve => setTimeout(resolve, 500))
           
           // Let Supabase handle the OAuth callback
           const { data, error } = await supabase.auth.getSession()
+          
+          console.log('OAuth session check:', { data: data.session ? 'has session' : 'no session', error })
           
           if (data.session && !error) {
             console.log('OAuth successful, redirecting to callback')
@@ -63,6 +68,8 @@ export default function Home() {
             window.history.replaceState(null, '', window.location.pathname)
             router.push('/auth/callback')
             return
+          } else {
+            console.log('OAuth session not ready, waiting for auth state change...')
           }
         }
         
@@ -87,7 +94,13 @@ export default function Home() {
       console.log('Auth state changed:', event, session?.user?.email)
       if (event === 'SIGNED_IN' && session) {
         setUser(session.user)
-        // Don't redirect here - let the callback handle it
+        // If we just signed in via OAuth (tokens in URL), redirect to callback
+        if (window.location.hash.includes('access_token')) {
+          console.log('OAuth sign in detected, redirecting to callback')
+          window.history.replaceState(null, '', window.location.pathname)
+          router.push('/auth/callback')
+          return
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
       } else if (session) {
