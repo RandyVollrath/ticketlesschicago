@@ -32,7 +32,7 @@ export default function Support() {
       questions: [
         {
           q: 'What tickets are covered?',
-          a: 'We cover street cleaning tickets, snow removal tickets, city sticker violations, and license plate renewal violations. Towing fees and moving violations are not covered.'
+          a: 'We cover street cleaning tickets ($60 each), snow removal tickets ($60 each), city sticker violations, and license plate renewal violations. Towing fees ($150 + $25/night storage) and moving violations are not covered.'
         },
         {
           q: 'How much will I be reimbursed?',
