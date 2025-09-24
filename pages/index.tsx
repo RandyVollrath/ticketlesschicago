@@ -79,10 +79,6 @@ export default function Home() {
         if (session && !error) {
           console.log('User is logged in:', session.user.email)
           setUser(session.user)
-          // Redirect authenticated users to settings page
-          console.log('Redirecting authenticated user to settings')
-          router.push('/settings')
-          return
         }
       } catch (error) {
         console.error('Error checking auth:', error)
@@ -116,15 +112,10 @@ export default function Home() {
         setUser(null)
       } else if (event === 'INITIAL_SESSION' && session) {
         setUser(session.user)
-        // For initial sessions (page load with existing auth), redirect to settings
-        console.log('Initial session detected, redirecting to settings')
-        router.push('/settings')
-        return
+        // For initial sessions (page load with existing auth), don't redirect
+        console.log('Initial session detected, not redirecting')
       } else if (session) {
         setUser(session.user)
-        console.log('User authenticated, redirecting to settings')
-        router.push('/settings')
-        return
       }
     })
 
@@ -294,41 +285,6 @@ export default function Home() {
     }
   };
 
-  const handleSignupWithGoogle = async () => {
-    if (!formData.consent) {
-      setMessage('Error: You must consent to receive notifications to continue.');
-      return;
-    }
-
-    setLoading(true);
-    setMessage('');
-
-    try {
-      // Save form data to localStorage for OAuth callback
-      localStorage.setItem('pendingSignupData', JSON.stringify(formData));
-      console.log('Saved form data for OAuth callback:', formData);
-
-      // Start Google OAuth
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) {
-        console.error('OAuth error:', error);
-        setMessage(`OAuth Error: ${error.message}`);
-        setLoading(false);
-        return;
-      }
-
-      // User will be redirected to Google, then back to callback
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
-      setLoading(false);
-    }
-  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1709,7 +1665,6 @@ export default function Home() {
                   </span>
                 </label>
 
-                {/* Navigation buttons */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                   <button
                     type="button"
@@ -1727,46 +1682,6 @@ export default function Home() {
                   >
                     Back
                   </button>
-                </div>
-
-                {/* Sign up options */}
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '12px', 
-                  marginTop: '16px' 
-                }}>
-                  <button
-                    type="button"
-                    onClick={handleSignupWithGoogle}
-                    disabled={loading}
-                    style={{
-                      backgroundColor: '#ffffff',
-                      color: '#333',
-                      border: '2px solid #ddd',
-                      borderRadius: '8px',
-                      padding: '16px',
-                      fontSize: '16px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    🔗 Sign Up with Google (Free)
-                  </button>
-                  
-                  <div style={{ 
-                    textAlign: 'center', 
-                    color: '#666', 
-                    fontSize: '14px',
-                    margin: '8px 0'
-                  }}>
-                    or
-                  </div>
-                  
                   <button
                     type="submit"
                     disabled={loading}
@@ -1779,6 +1694,7 @@ export default function Home() {
                       fontSize: '16px',
                       fontWeight: '500',
                       cursor: 'pointer',
+                      flex: 2,
                       opacity: loading ? 0.7 : 1
                     }}
                   >
