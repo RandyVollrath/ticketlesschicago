@@ -19,29 +19,8 @@ export default function AuthSuccess() {
           throw new Error('Missing session information')
         }
 
-        // Send magic link for immediate login - but handle the case where signups are disabled
-        const { error: signInError } = await supabase.auth.signInWithOtp({
-          email: email as string,
-          options: {
-            shouldCreateUser: false, // Don't create, account should already exist
-            emailRedirectTo: `${window.location.origin}/auth/callback`
-          }
-        })
-
-        if (signInError) {
-          console.error('Magic link error:', signInError.message)
-          
-          // If signups are disabled, show instructions to manually log in
-          if (signInError.message.includes('Signups not allowed') || signInError.message.includes('otp')) {
-            console.log('Signups disabled, showing manual login instructions')
-            setMagicLinkSent(false)
-            // Don't throw error, just show success without magic link
-          } else {
-            throw signInError
-          }
-        } else {
-          setMagicLinkSent(true)
-        }
+        // Modern approach: Direct Google OAuth instead of magic links
+        console.log('Payment successful, initiating modern OAuth flow for:', email)
 
         // Show success message and instructions
         setLoading(false)
@@ -89,35 +68,37 @@ export default function AuthSuccess() {
               <div className="text-green-500 text-4xl mb-4">🎉</div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Payment Successful!</h2>
               
-              {magicLinkSent ? (
-                <>
-                  <p className="text-gray-600 mb-4">
-                    We've sent a login link to your email. Click it to access your dashboard immediately!
-                  </p>
-                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                    <p className="text-sm text-blue-800">
-                      📧 <strong>Check your email now</strong> - the login link should arrive within 1-2 minutes.
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-gray-600 mb-4">
-                    Your account has been created! Please use the button below to log in to your dashboard.
-                  </p>
-                  <div className="bg-yellow-50 p-4 rounded-lg mb-4">
-                    <p className="text-sm text-yellow-800">
-                      🔑 <strong>Ready to log in</strong> - Click the button below to access your account.
-                    </p>
-                  </div>
-                </>
-              )}
+              <p className="text-gray-600 mb-4">
+                Your account has been created! Click below to sign in with Google and access your dashboard.
+              </p>
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <p className="text-sm text-blue-800">
+                  🚀 <strong>One-click sign in</strong> - Use the same Google account you used for payment.
+                </p>
+              </div>
+              
+              <button
+                onClick={async () => {
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: `${window.location.origin}/auth/callback`
+                    }
+                  });
+                  if (error) {
+                    console.error('OAuth error:', error);
+                  }
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium mb-3"
+              >
+                Sign In with Google
+              </button>
               
               <button
                 onClick={() => router.push('/login?from=signup')}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium"
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium text-sm"
               >
-                Log In to Your Account
+                Use Email/Password Instead
               </button>
             </>
           )}
