@@ -22,6 +22,10 @@ async function buffer(readable: any) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('🔔 Stripe webhook called at:', new Date().toISOString());
+  console.log('Method:', req.method);
+  console.log('Headers:', req.headers['stripe-signature'] ? 'Signature present' : 'No signature');
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -32,13 +36,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      buf.toString(),
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
+    // In production, Vercel env vars are used, not .env.local
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    
+    if (!webhookSecret) {
+      console.error('❌ STRIPE_WEBHOOK_SECRET is not set in environment variables!');
+      // Try to handle the event anyway in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ Development mode: Processing without signature verification');
+        event = JSON.parse(buf.toString()) as Stripe.Event;
+      } else {
+        return res.status(500).send('Webhook secret not configured');
+      }
+    } else {
+      event = stripe.webhooks.constructEvent(
+        buf.toString(),
+        sig,
+        webhookSecret
+      );
+      console.log('✅ Webhook signature verified successfully');
+    }
+    
+    console.log('Event type:', event.type);
+    console.log('Event ID:', event.id);
   } catch (err: any) {
-    console.error('Webhook error:', err.message);
+    console.error('❌ Webhook signature verification failed:', err.message);
+    console.error('Signature header:', sig ? 'Present' : 'Missing');
+    console.error('Using webhook secret:', process.env.STRIPE_WEBHOOK_SECRET ? `Set (${process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15)}...)` : 'NOT SET!');
+    console.error('Raw body length:', buf.length);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -87,9 +112,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           
           // Notify Rewardful about the conversion
           try {
+            // For subscriptions, get the amount from the line items
+            let conversionAmount = session.amount_total || 0;
+            
+            // If amount_total is null (which can happen with subscriptions), calculate from metadata
+            if (!conversionAmount && metadata.billingPlan) {
+              conversionAmount = metadata.billingPlan === 'annual' ? 12000 : 1200; // $120/year or $12/month in cents
+            }
+            
             const rewardfulConversionData = {
               referral: rewardfulReferralId,
-              amount: session.amount_total || 0, // Amount in cents (Rewardful expects cents)
+              amount: conversionAmount, // Amount in cents (Rewardful expects cents)
               currency: (session.currency || 'usd').toUpperCase(),
               external_id: session.id, // Unique identifier for this conversion
               email: email || session.customer_details?.email || 'unknown'
@@ -141,13 +174,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log('User already exists, using existing account:', userExists.id);
           authData = { user: userExists, session: null };
           
-          // Update existing user profile with subscription status
+          // Update existing user profile with phone if provided
+          const updateData: any = { 
+            updated_at: new Date().toISOString()
+          };
+          
+          if (formData.phone) {
+            updateData.phone = formData.phone;
+          }
+          
           const { error: updateError } = await supabaseAdmin
             .from('users')
-            .update({ 
-              subscription_status: 'active',
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', userExists.id);
             
           if (updateError) {
@@ -181,7 +219,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .single();
             
           if (!existingProfile) {
-            // Create user record in new database structure with all form data
+            // Create user record with only the fields that exist in the users table
             console.log('Creating user profile for user:', authData.user.id);
             
             const { error: userError } = await supabaseAdmin
@@ -189,30 +227,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .insert([{
                 id: authData.user.id,
                 email: email,
-                phone: formData.phone,
-                first_name: formData.name?.split(' ')[0] || null,
-                last_name: formData.name?.split(' ').slice(1).join(' ') || null,
-                // Vehicle information
-                license_plate: formData.licensePlate,
-                vin: formData.vin || null,
-                zip_code: formData.zipCode,
-                vehicle_type: formData.vehicleType || 'passenger',
-                vehicle_year: formData.vehicleYear || new Date().getFullYear(),
-                // Renewal dates
-                city_sticker_expiry: formData.cityStickerExpiry || null,
-                license_plate_expiry: formData.licensePlateExpiry || null,
-                emissions_date: formData.emissionsDate || null,
-                // Address information
-                street_address: formData.streetAddress || null,
-                mailing_address: formData.mailingAddress || null,
-                mailing_city: formData.mailingCity || null,
-                mailing_state: formData.mailingState || 'IL',
-                mailing_zip: formData.mailingZip || null,
-                // Concierge service options
-                concierge_service: formData.conciergeService || false,
-                city_stickers_only: formData.cityStickersOnly !== false, // Default to true
-                spending_limit: formData.spendingLimit || 500,
-                // Notification preferences
+                phone: formData.phone || null,
                 notification_preferences: {
                   email: formData.emailNotifications !== false, // Default to true
                   sms: formData.smsNotifications || false,
@@ -220,8 +235,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   reminder_days: formData.reminderDays || [30, 7, 1]
                 },
                 email_verified: true, // Auto-verify for paid users
-                phone_verified: false,
-                subscription_status: 'active'
+                phone_verified: false
               }]);
 
             if (userError) {
@@ -229,36 +243,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } else {
               console.log('Successfully created user profile');
             }
+            
+            // Note: user_profiles table doesn't exist, skipping extended profile creation
           } else {
             console.log('User profile already exists, skipping creation');
           }
 
           // Create vehicle record
           console.log('Creating vehicle for user:', authData.user.id);
-          console.log('Form data:', formData);
+          console.log('Form data for vehicle creation:', JSON.stringify({
+            licensePlate: formData.licensePlate,
+            vin: formData.vin,
+            zipCode: formData.zipCode,
+            vehicleYear: formData.vehicleYear
+          }, null, 2));
+          
+          const vehicleInsertData = {
+            user_id: authData.user.id,
+            license_plate: formData.licensePlate,
+            vin: formData.vin || null,
+            year: formData.vehicleYear || null,
+            zip_code: formData.zipCode,
+            mailing_address: formData.mailingAddress || formData.streetAddress,
+            mailing_city: formData.mailingCity || 'Chicago',
+            mailing_state: formData.mailingState || 'IL',
+            mailing_zip: formData.mailingZip || formData.zipCode,
+            subscription_id: session.subscription?.toString(),
+            subscription_status: 'active'
+          };
+          
+          console.log('Vehicle insert data:', JSON.stringify(vehicleInsertData, null, 2));
           
           const { data: vehicleData, error: vehicleError } = await supabaseAdmin
             .from('vehicles')
-            .insert([{
-              user_id: authData.user.id,
-              license_plate: formData.licensePlate,
-              vin: formData.vin || null,
-              year: formData.vehicleYear || null,
-              zip_code: formData.zipCode,
-              mailing_address: formData.mailingAddress,
-              mailing_city: formData.mailingCity,
-              mailing_state: 'IL',
-              mailing_zip: formData.mailingZip,
-              subscription_id: session.subscription?.toString(),
-              subscription_status: 'active'
-            }])
+            .insert([vehicleInsertData])
             .select()
             .single();
 
           if (vehicleError) {
-            console.error('Error creating vehicle:', vehicleError);
+            console.error('❌ Error creating vehicle:', JSON.stringify(vehicleError, null, 2));
+            console.error('Vehicle error details:', vehicleError.message, vehicleError.code, vehicleError.details);
           } else {
-            console.log('Successfully created vehicle:', vehicleData.id);
+            console.log('✅ Successfully created vehicle:', vehicleData?.id);
 
             // Create obligations for this vehicle
             const obligations = [];
