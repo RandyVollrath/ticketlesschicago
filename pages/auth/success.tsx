@@ -23,7 +23,7 @@ export default function AuthSuccess() {
           email: email as string,
           options: {
             shouldCreateUser: false, // Don't create, account should already exist
-            emailRedirectTo: `${window.location.origin}/dashboard`
+            emailRedirectTo: `${window.location.origin}/auth/callback` // Changed to auth/callback which redirects to settings
           }
         })
 
@@ -88,7 +88,7 @@ export default function AuthSuccess() {
                 onClick={() => router.push('/login?from=signup')}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium"
               >
-                Access Your Account
+                Log In to Your Account
               </button>
             </>
           )}

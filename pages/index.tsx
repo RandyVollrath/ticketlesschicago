@@ -94,8 +94,10 @@ export default function Home() {
       console.log('Auth state changed:', event, session?.user?.email)
       if (event === 'SIGNED_IN' && session) {
         setUser(session.user)
-        // If we just signed in via OAuth (tokens in URL), redirect to callback
-        if (window.location.hash.includes('access_token')) {
+        // Only redirect to callback if we're currently processing OAuth tokens
+        // and not already on the callback page
+        if (window.location.hash.includes('access_token') && 
+            !window.location.pathname.includes('/auth/callback')) {
           console.log('OAuth sign in detected, redirecting to callback')
           window.history.replaceState(null, '', window.location.pathname)
           router.push('/auth/callback')
@@ -103,6 +105,10 @@ export default function Home() {
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
+      } else if (event === 'INITIAL_SESSION' && session) {
+        setUser(session.user)
+        // For initial sessions (page load with existing auth), don't redirect
+        console.log('Initial session detected, not redirecting')
       } else if (session) {
         setUser(session.user)
       }

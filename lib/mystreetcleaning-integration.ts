@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase';
+import * as crypto from 'crypto';
 
 interface MyStreetCleaningAccount {
   email: string;
@@ -72,8 +73,7 @@ export async function createMyStreetCleaningAccount(
         .upsert({
           user_id: existingUser.user_id,
           full_address: accountData.streetAddress,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          created_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,full_address'
         });
@@ -89,20 +89,24 @@ export async function createMyStreetCleaningAccount(
       };
     }
 
-    // Create new user profile
-    const newUserId = generateUserId();
+    // Create new user profile with correct schema
+    const newUserId = crypto.randomUUID ? crypto.randomUUID() : generateUserId();
     
     const { error: createError } = await myStreetCleaningSupabase
       .from('user_profiles')
       .insert({
         user_id: newUserId,
         email: accountData.email,
-        sms_enabled: false, // Start with SMS disabled, they can enable it later
-        email_enabled: true, // Enable email notifications by default
-        created_at: new Date().toISOString(),
+        home_address_full: accountData.streetAddress,
+        notify_email: true, // Enable email notifications by default
+        notify_sms: false, // Start with SMS disabled
+        notify_days_before: 1, // Default to 1 day before
+        notify_days_array: [1], // Array format for days
+        is_paid: false,
         updated_at: new Date().toISOString(),
-        source: 'ticketlessamerica',
-        is_paid: false
+        // Fields specific to Ticketless America users
+        role: 'ticketless_user',
+        affiliate_signup_date: new Date().toISOString()
       });
 
     if (createError) {
@@ -113,14 +117,15 @@ export async function createMyStreetCleaningAccount(
       };
     }
 
-    // Add the street address
+    // Also add to user_addresses table for multiple address support
     const { error: addressError } = await myStreetCleaningSupabase
       .from('user_addresses')
       .insert({
         user_id: newUserId,
         full_address: accountData.streetAddress,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        label: 'Home',
+        notify_days_array: [1],
+        created_at: new Date().toISOString()
       });
 
     if (addressError) {

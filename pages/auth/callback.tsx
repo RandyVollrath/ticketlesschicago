@@ -8,6 +8,10 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        console.log('Auth callback started')
+        console.log('Current URL:', window.location.href)
+        console.log('URL hash:', window.location.hash)
+        
         // First, check if there's an ongoing auth flow by checking URL fragments
         if (window.location.hash) {
           console.log('URL hash detected, waiting for auth to complete...')
@@ -16,6 +20,7 @@ export default function AuthCallback() {
         }
         
         const { data, error } = await supabase.auth.getSession()
+        console.log('Session check result:', { session: !!data.session, error })
         
         if (error) {
           console.error('Error during auth callback:', error)
@@ -24,44 +29,18 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
-          // User is authenticated, now check if they have a paid subscription
+          // User is authenticated - for now, just redirect all authenticated users to settings
           const user = data.session.user
+          console.log('User authenticated:', user.email, 'about to redirect to settings')
           
-          // Check if user exists in our database with subscription
-          const { data: userProfile, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', user.email)
-            .single()
-
-          if (userProfile) {
-            // Option 2: Existing user - check subscription status
-            console.log('Found existing user:', userProfile.email, 'subscription_status:', userProfile.subscription_status, 'stripe_customer_id:', userProfile.stripe_customer_id)
-            
-            // Check if they have an active subscription (you may need to adjust this logic based on your subscription field)
-            const hasActiveSubscription = userProfile.subscription_status === 'active' || 
-                                        userProfile.subscription_status === 'trialing' ||
-                                        userProfile.subscription_status === 'paid' ||
-                                        userProfile.stripe_customer_id // If they have a stripe customer ID, they've paid
-            
-            console.log('hasActiveSubscription:', hasActiveSubscription)
-            
-            if (hasActiveSubscription) {
-              // Existing paid user - redirect to settings
-              console.log('User has active subscription, redirecting to settings')
-              router.push('/settings')
-            } else {
-              // Existing user but no subscription - redirect to signup flow
-              console.log('User exists but no subscription, redirecting to signup')
-              router.push(`/?email=${encodeURIComponent(user.email)}&step=signup`)
-            }
-          } else {
-            // Option 1: New user - redirect to signup flow with pre-filled email
-            console.log('New user, redirecting to signup flow')
-            router.push(`/?email=${encodeURIComponent(user.email)}&step=signup`)
-          }
+          // Always redirect authenticated users to settings page
+          // (The settings page will handle creating profile if needed)
+          console.log('Executing router.push("/settings")')
+          router.push('/settings')
+          console.log('router.push executed')
         } else {
           // No session, redirect to home
+          console.log('No session found, redirecting to home')
           router.push('/')
         }
       } catch (error) {

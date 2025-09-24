@@ -80,12 +80,23 @@ export default function Dashboard() {
       setUser(user)
       
       try {
-        // Load user profile
-        const { data: userProfile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', user.email)
-          .single()
+        // First try to get profile from users table, then enhance with vehicle data
+        const response = await fetch(`/api/user-profile?userId=${user.id}`)
+        let userProfile = null
+        let profileError = null
+        
+        if (response.ok) {
+          userProfile = await response.json()
+        } else {
+          // Fallback to direct query if API fails
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', user.email)
+            .single()
+          userProfile = data
+          profileError = error
+        }
 
         if (profileError) {
           console.error('Error fetching user profile:', profileError)
@@ -179,16 +190,9 @@ export default function Dashboard() {
           setProfile(userProfile)
           setEditedProfile(userProfile)
           
-          // Check subscription status - redirect to signup if not active
-          const hasActiveSubscription = userProfile.subscription_status === 'active' || 
-                                      userProfile.subscription_status === 'trialing' ||
-                                      userProfile.subscription_status === 'paid'
-          
-          if (!hasActiveSubscription) {
-            console.log('User does not have active subscription, redirecting to signup')
-            router.push(`/?email=${encodeURIComponent(user.email)}&step=signup`)
-            return
-          }
+          // For now, allow all authenticated users to access settings
+          // TODO: Add proper subscription checking when the subscription_status column exists
+          console.log('User profile loaded for:', userProfile.email)
         }
 
         // Load user vehicles
