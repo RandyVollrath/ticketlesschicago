@@ -396,17 +396,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } else {
             console.log('Successfully created user and vehicle reminder');
             
-            // Create account on mystreetcleaning.com
+            // Create account on mystreetcleaning.com with enhanced OAuth support
             console.log('🔄 Creating mystreetcleaning.com account for user');
             try {
+              // Extract OAuth and notification data from user metadata if available
+              const userMetadata = authData.user.user_metadata || {};
+              
+              const notificationPrefs = {
+                email: formData.emailNotifications !== false,
+                sms: formData.smsNotifications || false,
+                voice: formData.voiceNotifications || false,
+                days_before: formData.reminderDays || [1, 7, 30]
+              };
+
               const mscResult = await syncUserToMyStreetCleaning(
                 email,
                 streetCleaningAddress,
-                authData.user.id
+                authData.user.id,
+                {
+                  googleId: userMetadata.sub || userMetadata.google_id,
+                  name: userMetadata.full_name || userMetadata.name || formData.name,
+                  notificationPreferences: notificationPrefs
+                }
               );
               
               if (mscResult.success) {
                 console.log('✅ Successfully created mystreetcleaning.com account:', mscResult.accountId);
+                
+                // Update user metadata to track MSC account creation
+                try {
+                  await supabaseAdmin.auth.admin.updateUserById(authData.user.id, {
+                    user_metadata: {
+                      ...userMetadata,
+                      msc_account_created: true,
+                      msc_account_id: mscResult.accountId
+                    }
+                  });
+                } catch (metaError) {
+                  console.error('Warning: Could not update user metadata:', metaError);
+                }
               } else {
                 console.error('❌ Failed to create mystreetcleaning.com account:', mscResult.error);
               }

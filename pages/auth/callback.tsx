@@ -29,12 +29,44 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
-          // User is authenticated - for now, just redirect all authenticated users to settings
+          // User is authenticated
           const user = data.session.user
-          console.log('User authenticated:', user.email, 'about to redirect to settings')
+          console.log('User authenticated:', user.email, 'about to process profile data')
+          
+          // Check if there's form data to save from localStorage (from home page signup)
+          const pendingFormData = localStorage.getItem('pendingSignupData');
+          
+          if (pendingFormData) {
+            console.log('Found pending signup data, saving profile...')
+            try {
+              const formData = JSON.parse(pendingFormData);
+              
+              // Save the profile data
+              const response = await fetch('/api/save-user-profile', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  userId: user.id,
+                  formData: formData
+                })
+              });
+              
+              const result = await response.json();
+              
+              if (result.success) {
+                console.log('✅ Profile data saved successfully');
+                localStorage.removeItem('pendingSignupData'); // Clean up
+              } else {
+                console.error('❌ Failed to save profile data:', result.error);
+              }
+            } catch (error) {
+              console.error('❌ Error processing signup data:', error);
+            }
+          }
           
           // Always redirect authenticated users to settings page
-          // (The settings page will handle creating profile if needed)
           console.log('Executing router.push("/settings")')
           router.push('/settings')
           console.log('router.push executed')
