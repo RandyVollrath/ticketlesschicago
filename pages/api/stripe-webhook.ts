@@ -89,10 +89,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           try {
             const rewardfulConversionData = {
               referral: rewardfulReferralId,
-              customer_id: session.customer || authData?.user?.id,
-              amount: session.amount_total ? (session.amount_total / 100) : 0, // Convert cents to dollars
-              currency: session.currency || 'usd',
-              email: email
+              amount: session.amount_total || 0, // Amount in cents (Rewardful expects cents)
+              currency: (session.currency || 'usd').toUpperCase(),
+              external_id: session.id, // Unique identifier for this conversion
+              email: email || session.customer_details?.email || 'unknown'
             };
             
             console.log('Sending conversion to Rewardful:', rewardfulConversionData);
