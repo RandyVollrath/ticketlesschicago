@@ -35,11 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log('Body length:', buf.length);
   console.log('First 200 chars of body:', buf.toString().substring(0, 200));
   
-  // Test with both possible secrets
+  // Test with environment secret only
   const secrets = [
-    process.env.STRIPE_WEBHOOK_SECRET,
-    'whsec_z12MR723PkYaWR5hxxXg8ceSHN1sofmB' // Hardcoded as fallback
-  ];
+    process.env.STRIPE_WEBHOOK_SECRET
+  ].filter(Boolean);
   
   let event: Stripe.Event | null = null;
   let workingSecret: string | null = null;
