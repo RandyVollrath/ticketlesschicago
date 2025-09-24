@@ -33,36 +33,45 @@ export default function AuthCallback() {
           const user = data.session.user
           console.log('User authenticated:', user.email, 'about to process profile data')
           
-          // Check if there's form data to save from localStorage (from home page signup)
+          // Check if there's form data to save from localStorage (from paid signup flow)
           const pendingFormData = localStorage.getItem('pendingSignupData');
           
           if (pendingFormData) {
-            console.log('Found pending signup data, saving profile...')
+            console.log('Found pending signup data from payment flow, saving profile...')
             try {
               const formData = JSON.parse(pendingFormData);
               
-              // Save the profile data
-              const response = await fetch('/api/save-user-profile', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  userId: user.id,
-                  formData: formData
-                })
-              });
-              
-              const result = await response.json();
-              
-              if (result.success) {
-                console.log('✅ Profile data saved successfully');
-                localStorage.removeItem('pendingSignupData'); // Clean up
+              // Only save if this was a paid signup (has billing plan)
+              if (formData.billingPlan) {
+                console.log('Paid signup detected, saving profile data');
+                
+                // Save the profile data
+                const response = await fetch('/api/save-user-profile', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    userId: user.id,
+                    formData: formData
+                  })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                  console.log('✅ Profile data saved successfully');
+                  localStorage.removeItem('pendingSignupData'); // Clean up
+                } else {
+                  console.error('❌ Failed to save profile data:', result.error);
+                }
               } else {
-                console.error('❌ Failed to save profile data:', result.error);
+                console.log('No billing plan detected, skipping profile creation');
+                localStorage.removeItem('pendingSignupData'); // Clean up
               }
             } catch (error) {
               console.error('❌ Error processing signup data:', error);
+              localStorage.removeItem('pendingSignupData'); // Clean up on error
             }
           }
           
