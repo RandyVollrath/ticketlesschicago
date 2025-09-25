@@ -95,6 +95,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const contactInfo = JSON.parse(metadata.contactInfo || '{}');
         const preferences = JSON.parse(metadata.preferences || '{}');
         
+        // DEBUG: Log parsed values to find missing data
+        console.log('📊 PARSED WEBHOOK DATA:', {
+          vehicleYear: vehicleInfo.vehicleYear,
+          cityStickerExpiry: renewalDates.cityStickerExpiry,
+          licensePlateExpiry: renewalDates.licensePlateExpiry,
+          emissionsDate: renewalDates.emissionsDate,
+          reminderDays: preferences.reminderDays,
+          phone: contactInfo.phone,
+          smsNotifications: preferences.smsNotifications,
+          voiceNotifications: preferences.voiceNotifications
+        });
+        
         // Reconstruct form data
         const formData = {
           ...vehicleInfo,
