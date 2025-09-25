@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { notificationScheduler } from '../../../lib/notifications';
+// Use fixed notification system that queries users table
+import { notificationScheduler } from '../../../lib/notifications-fixed';
 
 interface ProcessResult {
   success: boolean;
