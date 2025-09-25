@@ -1,9 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '../../../lib/supabase/client';
-
-const supabase = createClient();
-import { sendSMS } from '../../../lib/sms-service';
-import { sendEmail } from '../../../lib/email-service';
+import { supabase } from '../../../lib/supabase';
+import { notificationService } from '../../../lib/notifications';
 
 interface ProcessResult {
   success: boolean;
@@ -88,13 +85,29 @@ async function processStreetCleaningReminders(type: string) {
   const errors: string[] = [];
 
   try {
-    // Get all users with street cleaning addresses from user_profiles table
-    const { data: users, error: userError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .not('home_address_ward', 'is', null)
-      .not('home_address_section', 'is', null)
-      .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]); // Skip currently snoozed users
+    // Get users ready for notifications using appropriate report view
+    let query;
+    switch (type) {
+      case 'morning_reminder':
+        query = supabase.from('report_zero_day').select('*');
+        break;
+      case 'evening_reminder':
+        query = supabase.from('report_one_day').select('*'); // Could also check 2-day, 3-day based on preferences
+        break;
+      case 'follow_up':
+        query = supabase.from('report_follow_up').select('*');
+        break;
+      default:
+        // Fallback to manual query
+        query = supabase
+          .from('user_profiles')
+          .select('*')
+          .not('home_address_ward', 'is', null)
+          .not('home_address_section', 'is', null)
+          .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
+    }
+    
+    const { data: users, error: userError } = await query;
 
     if (userError) {
       errors.push(`Failed to fetch users: ${userError.message}`);
@@ -222,7 +235,7 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
   try {
     // Send email if enabled
     if (user.email && user.notification_preferences?.email !== false) {
-      await sendEmail({
+      await notificationService.sendEmail({
         to: user.email,
         subject: subject,
         html: `
@@ -237,13 +250,14 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
               Manage your preferences at <a href="https://ticketlessamerica.com/settings">ticketlessamerica.com/settings</a>
             </p>
           </div>
-        `
+        `,
+        text: `${subject}\n\n${message}\n\nYour Address:\n${user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://ticketlessamerica.com/settings`
       });
     }
     
     // Send SMS if user is Pro and has SMS enabled
     if (user.sms_pro && user.phone && user.notification_preferences?.sms !== false) {
-      await sendSMS({
+      await notificationService.sendSMS({
         to: user.phone,
         message: message
       });
@@ -252,7 +266,10 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     // Send voice call if enabled (Pro feature)
     if (user.sms_pro && user.phone_call_enabled && user.phone && type === 'morning_reminder') {
       // Voice calls only for morning reminders
-      await sendVoiceCall(user.phone, message, user.voice_preference);
+      await notificationService.sendVoiceCall({
+        to: user.phone,
+        message: message
+      });
     }
     
     return true;
@@ -262,11 +279,6 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
   }
 }
 
-async function sendVoiceCall(phone: string, message: string, voice: string = 'female') {
-  // Implementation for ClickSend Voice API
-  // This would integrate with your existing voice call service
-  console.log(`Would send voice call to ${phone} with message: ${message}`);
-}
 
 async function logNotification(userId: string, type: string, cleaningDate: Date, ward: string, section: string) {
   try {
