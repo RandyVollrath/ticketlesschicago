@@ -110,44 +110,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (rewardfulReferralId) {
           console.log('Rewardful referral ID found in webhook:', rewardfulReferralId);
           
-          // Notify Rewardful about the conversion
-          try {
-            // For subscriptions, get the amount from the line items
-            let conversionAmount = session.amount_total || 0;
-            
-            // If amount_total is null (which can happen with subscriptions), calculate from metadata
-            if (!conversionAmount && metadata.billingPlan) {
-              conversionAmount = metadata.billingPlan === 'annual' ? 12000 : 1200; // $120/year or $12/month in cents
-            }
-            
-            const rewardfulConversionData = {
-              referral: rewardfulReferralId,
-              amount: conversionAmount, // Amount in cents (Rewardful expects cents)
-              currency: (session.currency || 'usd').toUpperCase(),
-              external_id: session.id, // Unique identifier for this conversion
-              email: email || session.customer_details?.email || 'unknown'
-            };
-            
-            console.log('Sending conversion to Rewardful:', rewardfulConversionData);
-            
-            const rewardfulResponse = await fetch('https://api.rewardful.com/conversions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.REWARDFUL_API_SECRET}`
-              },
-              body: JSON.stringify(rewardfulConversionData)
-            });
-            
-            if (rewardfulResponse.ok) {
-              console.log('Successfully reported conversion to Rewardful');
-            } else {
-              const errorText = await rewardfulResponse.text();
-              console.error('Failed to report conversion to Rewardful:', rewardfulResponse.status, errorText);
-            }
-          } catch (rewardfulError) {
-            console.error('Error reporting to Rewardful:', rewardfulError);
-          }
+          // Rewardful conversion is tracked automatically via Stripe integration
+          // When client_reference_id is set in the Stripe session, Rewardful automatically:
+          // 1. Creates a lead when the session is created
+          // 2. Converts the lead when payment succeeds
+          console.log('Rewardful conversion will be tracked automatically via Stripe integration');
+          console.log('Referral ID in session:', rewardfulReferralId);
+          console.log('Customer email:', email || session.customer_details?.email);
+          
+          // The conversion tracking is handled by Rewardful's Stripe webhook integration
+          // No manual API calls needed - this is the recommended approach
         } else {
           console.log('No Rewardful referral ID found in session');
         }
@@ -228,12 +200,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: authData.user.id,
                 email: email,
                 phone: formData.phone || null,
+                first_name: formData.name ? formData.name.split(' ')[0] : null,
+                last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
                 notification_preferences: {
                   email: formData.emailNotifications !== false, // Default to true
                   sms: formData.smsNotifications || false,
                   voice: formData.voiceNotifications || false,
                   reminder_days: formData.reminderDays || [30, 7, 1]
                 },
+                // Form data fields that settings page expects
+                license_plate: formData.licensePlate,
+                vin: formData.vin,
+                zip_code: formData.zipCode,
+                vehicle_type: formData.vehicleType,
+                vehicle_year: formData.vehicleYear,
+                city_sticker_expiry: formData.cityStickerExpiry,
+                license_plate_expiry: formData.licensePlateExpiry,
+                emissions_date: formData.emissionsDate,
+                street_address: formData.streetAddress,
+                mailing_address: formData.mailingAddress,
+                mailing_city: formData.mailingCity,
+                mailing_state: formData.mailingState,
+                mailing_zip: formData.mailingZip,
+                concierge_service: formData.conciergeService || false,
+                city_stickers_only: formData.cityStickersOnly || false,
+                spending_limit: formData.spendingLimit || 500,
                 email_verified: true, // Auto-verify for paid users
                 phone_verified: false
               }]);

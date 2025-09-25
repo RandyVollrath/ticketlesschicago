@@ -40,7 +40,7 @@ async function testWebhookForUser(email) {
   
   try {
     // Get user ID
-    const response = await fetch('http://localhost:3000/api/save-user-profile', {
+    const response = await fetch('http://localhost:3001/api/save-user-profile', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ async function main() {
   console.log('🚀 Starting dev server check...');
   
   try {
-    const response = await fetch('http://localhost:3000/api/save-user-profile', {
+    const response = await fetch('http://localhost:3001/api/save-user-profile', {
       method: 'GET'
     });
     
