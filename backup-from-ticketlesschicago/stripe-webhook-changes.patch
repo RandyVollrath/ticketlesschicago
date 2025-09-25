@@ -1,0 +1,18 @@
+diff --git a/pages/api/stripe-webhook.ts b/pages/api/stripe-webhook.ts
+index 2a09d6c..a41665a 100644
+--- a/pages/api/stripe-webhook.ts
++++ b/pages/api/stripe-webhook.ts
+@@ -135,7 +135,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
+               mailing_zip: formData.mailingZip,
+               completed: false,
+               subscription_id: session.subscription?.toString(),
+-              subscription_status: 'active'
++              subscription_status: 'active',
++              // TicketLess users get BOTH services
++              service_access: {
++                ticketless: true,
++                mystreetcleaning: true
++              }
+             }]);
+ 
+           if (reminderError) {

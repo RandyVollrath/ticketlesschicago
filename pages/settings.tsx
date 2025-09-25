@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import StreetCleaningSettings from '../components/StreetCleaningSettings'
 
 interface UserProfile {
   id: string
@@ -1112,6 +1113,9 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* Street Cleaning Settings */}
+          <StreetCleaningSettings />
 
           {/* Save Button */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>

@@ -1,0 +1,58 @@
+diff --git a/pages/api/auth/[...nextauth].ts b/pages/api/auth/[...nextauth].ts
+index 0733dd8..8a9e7b0 100644
+--- a/pages/api/auth/[...nextauth].ts
++++ b/pages/api/auth/[...nextauth].ts
+@@ -10,6 +10,27 @@ export const authOptions: NextAuthOptions = {
+     }),
+   ],
+   callbacks: {
++    async jwt({ token, user, account }) {
++      // Add service access to token when user signs in
++      if (user?.email) {
++        const { data: userData } = await supabaseAdmin
++          .from('vehicle_reminders')
++          .select('*')
++          .eq('email', user.email)
++          .single();
++        
++        if (userData) {
++          token.userId = userData.user_id;
++          token.subscription_status = userData.subscription_status;
++          token.service_plan = userData.service_plan;
++          token.service_access = userData.service_access || {
++            ticketless: false,
++            mystreetcleaning: false
++          };
++        }
++      }
++      return token;
++    },
+     async signIn({ user, account, profile }) {
+       if (account?.provider === 'google') {
+         try {
+@@ -64,7 +85,7 @@ export const authOptions: NextAuthOptions = {
+       return true;
+     },
+     async session({ session, token }) {
+-      // Add user ID to session
++      // Add user ID and service access to session
+       if (session.user?.email) {
+         const { data: userData } = await supabaseAdmin
+           .from('vehicle_reminders')
+@@ -76,6 +97,16 @@ export const authOptions: NextAuthOptions = {
+           session.user.id = userData.user_id;
+           session.user.subscription_status = userData.subscription_status;
+           session.user.service_plan = userData.service_plan;
++          
++          // Add service access information
++          session.user.service_access = userData.service_access || {
++            ticketless: false,
++            mystreetcleaning: false
++          };
++          
++          // Check if this is a TicketLess user (for this app)
++          session.user.hasTicketLessAccess = userData.service_access?.ticketless || false;
++          session.user.hasMSCAccess = userData.service_access?.mystreetcleaning || false;
+         }
+       }
+       return session;
