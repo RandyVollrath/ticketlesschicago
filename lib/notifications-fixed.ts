@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase';
-import { sendClickSendSMS } from './sms-service';
+import { sendClickSendSMS, sendClickSendVoiceCall } from './sms-service';
 
 export class NotificationScheduler {
   // Process reminders using the USERS table where data actually is
@@ -76,7 +76,18 @@ export class NotificationScheduler {
               
               // Send voice call if enabled
               if (prefs.voice && user.phone) {
-                console.log(`📞 Voice calls not yet implemented for ${user.phone}`);
+                const voiceMessage = `Hello from Ticketless America. This is a reminder that your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Please renew promptly to avoid penalties.`;
+                
+                console.log(`📞 Sending voice call to ${user.phone}: ${voiceMessage.substring(0, 50)}...`);
+                const voiceResult = await sendClickSendVoiceCall(user.phone, voiceMessage);
+                
+                if (voiceResult.success) {
+                  console.log('✅ Voice call sent successfully');
+                  results.successful++;
+                } else {
+                  console.error('❌ Voice call failed:', voiceResult.error);
+                  results.failed++;
+                }
               }
               
               // Email is always sent

@@ -15,12 +15,42 @@ const supabase = createClient(
 async function testNotifications() {
   console.log('🔔 MANUAL NOTIFICATION TEST\n');
   
-  // Get the test user
-  const { data: users, error } = await supabase
+  // Get the test user - try different phone formats
+  let { data: users, error } = await supabase
     .from('users')
     .select('*')
     .eq('phone', '+12243217290')
     .single();
+    
+  if (!users) {
+    // Try without + sign
+    ({ data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('phone', '12243217290')
+      .single());
+  }
+  
+  if (!users) {
+    // Try without country code
+    ({ data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('phone', '2243217290')
+      .single());
+  }
+  
+  if (!users) {
+    // Get ANY user with renewal dates to test
+    console.log('⚠️  Could not find user with phone 2243217290, getting most recent user...');
+    ({ data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .not('city_sticker_expiry', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single());
+  }
     
   if (error || !users) {
     console.error('❌ Could not find test user with phone +12243217290');
