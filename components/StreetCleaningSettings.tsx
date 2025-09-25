@@ -8,8 +8,6 @@ interface StreetCleaningProfile {
   home_address_section?: string;
   notify_days_array?: number[];
   notify_evening_before?: boolean;
-  notify_snow?: boolean;
-  notify_winter_parking?: boolean;
   phone_call_enabled?: boolean;
   voice_preference?: string;
   phone_call_time_preference?: string;
@@ -38,8 +36,6 @@ export default function StreetCleaningSettings() {
   const [notify2Days, setNotify2Days] = useState(false);
   const [notify3Days, setNotify3Days] = useState(false);
   const [notifyEveningBefore, setNotifyEveningBefore] = useState(false);
-  const [notifySnow, setNotifySnow] = useState(false);
-  const [notifyWinterParking, setNotifyWinterParking] = useState(false);
   
   // Voice call preferences
   const [phoneCallEnabled, setPhoneCallEnabled] = useState(false);
@@ -48,7 +44,6 @@ export default function StreetCleaningSettings() {
   
   // SMS preferences
   const [followUpSMS, setFollowUpSMS] = useState(true);
-  const [smsPro, setSmsPro] = useState(false);
   
   // Trip mode
   const [tripMode, setTripMode] = useState(false);
@@ -86,15 +81,12 @@ export default function StreetCleaningSettings() {
         setNotify3Days(daysArray.includes(3));
         
         setNotifyEveningBefore(profile.notify_evening_before || false);
-        setNotifySnow(profile.notify_snow || false);
-        setNotifyWinterParking(profile.notify_winter_parking || false);
         
         setPhoneCallEnabled(profile.phone_call_enabled || false);
         setVoicePreference(profile.voice_preference || 'female');
         setCallTimePreference(profile.phone_call_time_preference || '7am');
         
         setFollowUpSMS(profile.follow_up_sms !== false);
-        setSmsPro(profile.sms_pro || false);
         
         // Trip mode
         if (profile.snooze_until_date) {
@@ -153,8 +145,6 @@ export default function StreetCleaningSettings() {
         home_address_section: section,
         notify_days_array: notifyDays,
         notify_evening_before: notifyEveningBefore,
-        notify_snow: notifySnow,
-        notify_winter_parking: notifyWinterParking,
         phone_call_enabled: phoneCallEnabled,
         voice_preference: voicePreference,
         phone_call_time_preference: callTimePreference,
@@ -294,66 +284,47 @@ export default function StreetCleaningSettings() {
           <label>
             <input
               type="checkbox"
-              checked={notifySnow}
-              onChange={(e) => setNotifySnow(e.target.checked)}
-            />
-            Snow emergency alerts
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={notifyWinterParking}
-              onChange={(e) => setNotifyWinterParking(e.target.checked)}
-            />
-            Winter overnight parking ban alerts
-          </label>
-          <label>
-            <input
-              type="checkbox"
               checked={followUpSMS}
               onChange={(e) => setFollowUpSMS(e.target.checked)}
-              disabled={!smsPro}
             />
-            Follow-up SMS after cleaning (Pro only)
+            Follow-up SMS after cleaning
           </label>
         </div>
       </div>
 
-      {smsPro && (
-        <div className={styles.formGroup}>
-          <label>Voice Call Preferences</label>
-          <div className={styles.checkboxGroup}>
-            <label>
-              <input
-                type="checkbox"
-                checked={phoneCallEnabled}
-                onChange={(e) => setPhoneCallEnabled(e.target.checked)}
-              />
-              Enable voice call reminders
-            </label>
-          </div>
-          {phoneCallEnabled && (
-            <>
-              <select 
-                value={voicePreference}
-                onChange={(e) => setVoicePreference(e.target.value)}
-              >
-                <option value="female">Female voice</option>
-                <option value="male">Male voice</option>
-              </select>
-              <select
-                value={callTimePreference}
-                onChange={(e) => setCallTimePreference(e.target.value)}
-              >
-                <option value="7am">7 AM</option>
-                <option value="8am">8 AM</option>
-                <option value="6pm">6 PM</option>
-                <option value="7pm">7 PM</option>
-              </select>
-            </>
-          )}
+      <div className={styles.formGroup}>
+        <label>Voice Call Preferences</label>
+        <div className={styles.checkboxGroup}>
+          <label>
+            <input
+              type="checkbox"
+              checked={phoneCallEnabled}
+              onChange={(e) => setPhoneCallEnabled(e.target.checked)}
+            />
+            Enable voice call reminders
+          </label>
         </div>
-      )}
+        {phoneCallEnabled && (
+          <>
+            <select 
+              value={voicePreference}
+              onChange={(e) => setVoicePreference(e.target.value)}
+            >
+              <option value="female">Female voice</option>
+              <option value="male">Male voice</option>
+            </select>
+            <select
+              value={callTimePreference}
+              onChange={(e) => setCallTimePreference(e.target.value)}
+            >
+              <option value="7am">7 AM</option>
+              <option value="8am">8 AM</option>
+              <option value="6pm">6 PM</option>
+              <option value="7pm">7 PM</option>
+            </select>
+          </>
+        )}
+      </div>
 
       <div className={styles.formGroup}>
         <label>Trip Mode / Snooze Notifications</label>
@@ -396,14 +367,6 @@ export default function StreetCleaningSettings() {
         {saving ? 'Saving...' : 'Save Street Cleaning Preferences'}
       </button>
 
-      {!smsPro && (
-        <div className={styles.upgradePrompt}>
-          <p>🚀 Upgrade to Pro for SMS & voice call reminders</p>
-          <button className={styles.upgradeButton}>
-            Upgrade to Pro - $4.99/month
-          </button>
-        </div>
-      )}
     </div>
   );
 }
