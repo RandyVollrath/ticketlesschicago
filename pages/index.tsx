@@ -332,6 +332,18 @@ export default function Home() {
     setMessage('');
 
     try {
+      // DEBUG: Log exact form data being sent
+      console.log('📊 COMPLETE FORM DATA BEFORE CHECKOUT:', formData);
+      console.log('Key fields to verify:', {
+        vehicleYear: formData.vehicleYear,
+        cityStickerExpiry: formData.cityStickerExpiry,
+        licensePlateExpiry: formData.licensePlateExpiry,
+        emissionsDate: formData.emissionsDate,
+        reminderDays: formData.reminderDays,
+        phone: formData.phone,
+        smsNotifications: formData.smsNotifications,
+        voiceNotifications: formData.voiceNotifications
+      });
       console.log('Creating checkout with referral ID:', referralId);
       
       // Create Stripe checkout session
