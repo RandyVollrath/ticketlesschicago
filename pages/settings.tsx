@@ -797,35 +797,6 @@ export default function Dashboard() {
               Address Information
             </h2>
             
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
-                Street Address (for cleaning alerts)
-              </h3>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>
-                  Street Address
-                </label>
-                <input
-                  type="text"
-                  value={editedProfile.street_address || profile.street_address || ''}
-                  onChange={(e) => handleInputChange('street_address', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                  placeholder="123 Main Street"
-                />
-              </div>
-            </div>
 
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>

@@ -62,10 +62,42 @@ export default function StreetCleaningSettings() {
       const { data: profile, error } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // If profile doesn't exist, create one
+        if (error.code === 'PGRST116') {
+          console.log('Creating new user profile...');
+          const { data: newProfile, error: createError } = await supabase
+            .from('user_profiles')
+            .insert({
+              user_id: user.id,
+              email: user.email,
+              notify_days_array: [1],
+              follow_up_sms: true
+            })
+            .select()
+            .single();
+            
+          if (createError) {
+            console.error('Error creating profile:', createError);
+            setError('Failed to create user profile');
+            return;
+          }
+          
+          // Use the new profile
+          if (newProfile) {
+            setHomeAddress(newProfile.home_address_full || '');
+            setWard(newProfile.home_address_ward || '');
+            setSection(newProfile.home_address_section || '');
+            setLicensePlate(newProfile.license_plate_street_cleaning || '');
+          }
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       if (profile) {
         setHomeAddress(profile.home_address_full || '');
@@ -158,7 +190,7 @@ export default function StreetCleaningSettings() {
       const { error } = await supabase
         .from('user_profiles')
         .update(updates)
-        .eq('id', user.id);
+        .eq('user_id', user.id);
 
       if (error) throw error;
 

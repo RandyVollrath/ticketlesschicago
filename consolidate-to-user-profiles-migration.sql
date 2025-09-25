@@ -88,36 +88,52 @@ WHERE user_profiles.user_id = users.id;
 -- Drop the old user_id column (dependencies already cleared)
 ALTER TABLE public.user_profiles DROP COLUMN user_id;
 
--- Update all foreign key references
--- user_addresses
-ALTER TABLE public.user_addresses DROP CONSTRAINT IF EXISTS user_addresses_user_id_fkey;
-ALTER TABLE public.user_addresses ADD CONSTRAINT user_addresses_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE CASCADE;
+-- Update all foreign key references (only for tables that exist)
+DO $$
+BEGIN
+    -- user_addresses
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_addresses' AND table_schema = 'public') THEN
+        ALTER TABLE public.user_addresses DROP CONSTRAINT IF EXISTS user_addresses_user_id_fkey;
+        ALTER TABLE public.user_addresses ADD CONSTRAINT user_addresses_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE CASCADE;
+    END IF;
 
--- sms_logs  
-ALTER TABLE public.sms_logs DROP CONSTRAINT IF EXISTS sms_logs_user_id_fkey;
-ALTER TABLE public.sms_logs ADD CONSTRAINT sms_logs_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+    -- sms_logs  
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'sms_logs' AND table_schema = 'public') THEN
+        ALTER TABLE public.sms_logs DROP CONSTRAINT IF EXISTS sms_logs_user_id_fkey;
+        ALTER TABLE public.sms_logs ADD CONSTRAINT sms_logs_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+    END IF;
 
--- email_logs
-ALTER TABLE public.email_logs DROP CONSTRAINT IF EXISTS email_logs_user_id_fkey;
-ALTER TABLE public.email_logs ADD CONSTRAINT email_logs_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+    -- email_logs
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_logs' AND table_schema = 'public') THEN
+        ALTER TABLE public.email_logs DROP CONSTRAINT IF EXISTS email_logs_user_id_fkey;
+        ALTER TABLE public.email_logs ADD CONSTRAINT email_logs_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+    END IF;
 
--- user_notifications
-ALTER TABLE public.user_notifications DROP CONSTRAINT IF EXISTS user_notifications_user_id_fkey;
-ALTER TABLE public.user_notifications ADD CONSTRAINT user_notifications_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE CASCADE;
+    -- user_notifications
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_notifications' AND table_schema = 'public') THEN
+        ALTER TABLE public.user_notifications DROP CONSTRAINT IF EXISTS user_notifications_user_id_fkey;
+        ALTER TABLE public.user_notifications ADD CONSTRAINT user_notifications_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE CASCADE;
+    END IF;
 
--- support_tickets  
-ALTER TABLE public.support_tickets DROP CONSTRAINT IF EXISTS support_tickets_user_id_fkey;
-ALTER TABLE public.support_tickets ADD CONSTRAINT support_tickets_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+    -- support_tickets  
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'support_tickets' AND table_schema = 'public') THEN
+        ALTER TABLE public.support_tickets DROP CONSTRAINT IF EXISTS support_tickets_user_id_fkey;
+        ALTER TABLE public.support_tickets ADD CONSTRAINT support_tickets_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE SET NULL;
+    END IF;
 
--- license_plate_changes
-ALTER TABLE public.license_plate_changes DROP CONSTRAINT IF EXISTS license_plate_changes_user_id_fkey;
-ALTER TABLE public.license_plate_changes ADD CONSTRAINT license_plate_changes_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE CASCADE;
+    -- license_plate_changes
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'license_plate_changes' AND table_schema = 'public') THEN
+        ALTER TABLE public.license_plate_changes DROP CONSTRAINT IF EXISTS license_plate_changes_user_id_fkey;
+        ALTER TABLE public.license_plate_changes ADD CONSTRAINT license_plate_changes_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES public.user_profiles(id) ON DELETE CASCADE;
+    END IF;
+END
+$$;
 
 -- =====================================================
 -- 4. CREATE MISSING MYSTREETCLEANING TABLES
@@ -408,9 +424,23 @@ CREATE TRIGGER update_user_profiles_updated_at
 
 -- Enable RLS on all tables
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.phone_call_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.follow_up_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.inbound_responses ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    -- Enable RLS only on tables that exist
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'phone_call_logs' AND table_schema = 'public') THEN
+        ALTER TABLE public.phone_call_logs ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'follow_up_log' AND table_schema = 'public') THEN
+        ALTER TABLE public.follow_up_log ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'inbound_responses' AND table_schema = 'public') THEN
+        ALTER TABLE public.inbound_responses ENABLE ROW LEVEL SECURITY;
+    END IF;
+END
+$$;
 
 -- User profiles - users can manage their own
 DROP POLICY IF EXISTS "Users can view own profile" ON public.user_profiles;
