@@ -16,11 +16,11 @@ export default async function handler(
   }
 
   try {
-    // Validate the update data
+    // Validate the update data - now all fields go to user_profiles
     const allowedFields = [
       'first_name',
       'last_name', 
-      'phone',
+      'phone_number', // Note: phone -> phone_number in user_profiles
       'notification_preferences',
       'email_verified',
       'phone_verified',
@@ -39,13 +39,31 @@ export default async function handler(
       'mailing_zip',
       'concierge_service',
       'city_stickers_only',
-      'spending_limit'
+      'spending_limit',
+      // Street cleaning fields
+      'home_address_full',
+      'home_address_ward',
+      'home_address_section',
+      'notify_days_array',
+      'notify_evening_before',
+      'phone_call_enabled',
+      'voice_preference',
+      'phone_call_time_preference',
+      'snooze_until_date',
+      'snooze_reason',
+      'follow_up_sms',
+      'license_plate_street_cleaning'
     ];
 
     const filteredData = Object.keys(updateData)
       .filter(key => allowedFields.includes(key))
       .reduce((obj, key) => {
-        obj[key] = updateData[key];
+        // Map phone to phone_number for user_profiles compatibility
+        if (key === 'phone') {
+          obj['phone_number'] = updateData[key];
+        } else {
+          obj[key] = updateData[key];
+        }
         return obj;
       }, {} as any);
 
@@ -53,82 +71,23 @@ export default async function handler(
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    // Separate data for users table vs user_profiles table
-    const usersTableFields = ['phone', 'notification_preferences', 'email_verified', 'phone_verified'];
-    const profileTableFields = [
-      'first_name', 'last_name', 'license_plate', 'vin', 'zip_code',
-      'vehicle_type', 'vehicle_year', 'city_sticker_expiry', 'license_plate_expiry',
-      'emissions_date', 'street_address', 'mailing_address', 'mailing_city',
-      'mailing_state', 'mailing_zip', 'concierge_service', 'city_stickers_only', 'spending_limit'
-    ];
-    
-    const usersData = Object.keys(filteredData)
-      .filter(key => usersTableFields.includes(key))
-      .reduce((obj, key) => {
-        obj[key] = filteredData[key];
-        return obj;
-      }, {} as any);
+    // Update user_profiles
+    const { error: updateError } = await supabaseAdmin
+      .from('user_profiles')
+      .update(filteredData)
+      .eq('id', userId);
       
-    const profileData = Object.keys(filteredData)
-      .filter(key => profileTableFields.includes(key))
-      .reduce((obj, key) => {
-        obj[key] = filteredData[key];
-        return obj;
-      }, {} as any);
-
-    // Update users table if there's data for it
-    if (Object.keys(usersData).length > 0) {
-      usersData.updated_at = new Date().toISOString();
-      const { error } = await supabaseAdmin
-        .from('users')
-        .update(usersData)
-        .eq('id', userId);
-        
-      if (error) {
-        console.error('Error updating users table:', error);
-        return res.status(500).json({ 
-          error: 'Failed to update profile',
-          details: error.message 
-        });
-      }
-    }
-    
-    // Update or insert into user_profiles table if there's data for it
-    if (Object.keys(profileData).length > 0) {
-      profileData.updated_at = new Date().toISOString();
-      
-      // Try to update first
-      const { error: updateError } = await supabaseAdmin
-        .from('user_profiles')
-        .update(profileData)
-        .eq('user_id', userId);
-        
-      // If update fails (no existing record), insert instead
-      if (updateError && updateError.code === 'PGRST116') {
-        profileData.user_id = userId;
-        const { error: insertError } = await supabaseAdmin
-          .from('user_profiles')
-          .insert([profileData]);
-          
-        if (insertError) {
-          console.error('Error inserting into user_profiles:', insertError);
-          return res.status(500).json({ 
-            error: 'Failed to update profile',
-            details: insertError.message 
-          });
-        }
-      } else if (updateError) {
-        console.error('Error updating user_profiles:', updateError);
-        return res.status(500).json({ 
-          error: 'Failed to update profile',
-          details: updateError.message 
-        });
-      }
+    if (updateError) {
+      console.error('Error updating user_profiles:', updateError);
+      return res.status(500).json({ 
+        error: 'Failed to update profile',
+        details: updateError.message 
+      });
     }
     
     // Get the updated data to return
     const { data } = await supabaseAdmin
-      .from('users')
+      .from('user_profiles')
       .select('*')
       .eq('id', userId)
       .single();

@@ -61,7 +61,7 @@ export default function StreetCleaningSettings() {
       if (!user) return;
 
       const { data: profile, error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('*')
         .eq('id', user.id)
         .single();
@@ -157,7 +157,7 @@ export default function StreetCleaningSettings() {
       };
 
       const { error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .update(updates)
         .eq('id', user.id);
 
