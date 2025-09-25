@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { createClient } from '../lib/supabase/client';
 import styles from '../styles/Settings.module.css';
 
 interface StreetCleaningProfile {
@@ -19,6 +19,7 @@ interface StreetCleaningProfile {
 }
 
 export default function StreetCleaningSettings() {
+  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
