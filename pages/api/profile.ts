@@ -71,11 +71,11 @@ export default async function handler(
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    // Update user_profiles
+    // Update user_profiles using user_id
     const { error: updateError } = await supabaseAdmin
       .from('user_profiles')
       .update(filteredData)
-      .eq('id', userId);
+      .eq('user_id', userId);
       
     if (updateError) {
       console.error('Error updating user_profiles:', updateError);
@@ -89,7 +89,7 @@ export default async function handler(
     const { data } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .single();
 
     res.status(200).json({

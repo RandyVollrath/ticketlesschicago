@@ -157,7 +157,7 @@ async function processStreetCleaningReminders(type: string) {
           successful++;
           
           // Log the notification
-          await logNotification(user.id, type, cleaningDate, user.home_address_ward, user.home_address_section);
+          await logNotification(user.user_id, type, cleaningDate, user.home_address_ward, user.home_address_section);
         } else {
           failed++;
         }
@@ -289,12 +289,11 @@ async function logNotification(userId: string, type: string, cleaningDate: Date,
         notification_type: 'street_cleaning',
         scheduled_for: new Date().toISOString(),
         sent_at: new Date().toISOString(),
-        channels: ['email', 'sms'],
         status: 'sent',
         ward: ward,
         section: section,
         cleaning_date: cleaningDate.toISOString(),
-        metadata: { type }
+        metadata: { type, channels: ['email', 'sms'] }
       });
   } catch (error) {
     console.error('Failed to log notification:', error);

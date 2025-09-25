@@ -9,6 +9,15 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS postgis;
 
+-- Verify PostGIS is installed
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'geometry') THEN
+        RAISE EXCEPTION 'PostGIS extension failed to install. Please enable PostGIS in Supabase dashboard first.';
+    END IF;
+END
+$$;
+
 -- =====================================================
 -- 1. USER PROFILES EXTENSION
 -- =====================================================
