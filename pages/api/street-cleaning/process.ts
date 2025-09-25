@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../../../lib/supabase';
+import { createClient } from '../../../lib/supabase/client';
+
+const supabase = createClient();
 import { sendSMS } from '../../../lib/sms-service';
 import { sendEmail } from '../../../lib/email-service';
 
@@ -86,13 +88,13 @@ async function processStreetCleaningReminders(type: string) {
   const errors: string[] = [];
 
   try {
-    // Get all users with street cleaning addresses
+    // Get all users with street cleaning addresses from user_profiles table
     const { data: users, error: userError } = await supabase
-      .from('users')
+      .from('user_profiles')
       .select('*')
       .not('home_address_ward', 'is', null)
       .not('home_address_section', 'is', null)
-      .is('snooze_until_date', null); // Skip snoozed users
+      .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]); // Skip currently snoozed users
 
     if (userError) {
       errors.push(`Failed to fetch users: ${userError.message}`);

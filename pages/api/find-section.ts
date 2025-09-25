@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '../../lib/supabase/client';
+
+const supabase = createClient();
 
 interface LookupResponse {
   ward?: string;
