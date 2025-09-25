@@ -156,10 +156,17 @@ export default function Home() {
       if ((window as any).rewardful) {
         (window as any).rewardful('ready', function() {
           console.log('Rewardful is ready!');
-          const referral = (window as any).rewardful('referral');
-          console.log('Rewardful referral from ready callback:', referral);
-          if (referral) {
-            setReferralId(referral);
+          // Access Rewardful.referral (capital R) - this is the correct way per docs
+          const Rewardful = (window as any).Rewardful;
+          if (Rewardful && Rewardful.referral) {
+            console.log('Rewardful referral ID found:', Rewardful.referral);
+            setReferralId(Rewardful.referral);
+            // Log affiliate info if available
+            if (Rewardful.affiliate) {
+              console.log('Referred by:', Rewardful.affiliate.name, '(' + Rewardful.affiliate.token + ')');
+            }
+          } else {
+            console.log('No Rewardful referral present');
           }
         });
       }
@@ -171,28 +178,29 @@ export default function Home() {
       const checkRewardful = () => {
         console.log('Polling for Rewardful...', retryCount);
         
-        if ((window as any).rewardful) {
+        // Check if Rewardful object is available (capital R)
+        if ((window as any).Rewardful) {
           try {
-            const rewardfulReferral = (window as any).rewardful('referral');
-            console.log('Rewardful referral ID from polling:', rewardfulReferral);
-            
-            if (rewardfulReferral && !referralId) {
-              setReferralId(rewardfulReferral);
-              console.log('Referral ID set from polling:', rewardfulReferral);
+            const Rewardful = (window as any).Rewardful;
+            if (Rewardful.referral && !referralId) {
+              console.log('Rewardful referral ID found via polling:', Rewardful.referral);
+              setReferralId(Rewardful.referral);
+              if (Rewardful.affiliate) {
+                console.log('Affiliate info:', Rewardful.affiliate);
+              }
               return;
             }
           } catch (error) {
-            console.error('Error calling rewardful:', error);
+            console.error('Error accessing Rewardful:', error);
           }
         }
         
-        // Method 3: Check URL parameters for rwid (manual fallback)
+        // Check URL parameters for via (affiliate token) 
         const urlParams = new URLSearchParams(window.location.search);
-        const rwid = urlParams.get('rwid');
-        if (rwid && !referralId) {
-          console.log('Found rwid in URL:', rwid);
-          setReferralId(rwid);
-          return;
+        const via = urlParams.get('via');
+        if (via && !referralId) {
+          console.log('Found "via" parameter in URL:', via);
+          // Rewardful will handle this automatically and set the referral
         }
         
         retryCount++;
@@ -272,6 +280,32 @@ export default function Home() {
     try {
       // Store the commitment (could save to database here)
       console.log('Commitment data:', { name: formData.name, email: formData.email });
+      
+      // Register lead with Rewardful if we have a referral ID
+      if (referralId) {
+        console.log('Registering lead with Rewardful for referral:', referralId);
+        try {
+          const leadResponse = await fetch('/api/rewardful-lead', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              referralId: referralId,
+              email: formData.email
+            })
+          });
+          
+          if (leadResponse.ok) {
+            console.log('Successfully registered lead with Rewardful');
+          } else {
+            console.error('Failed to register lead with Rewardful');
+          }
+        } catch (leadError) {
+          console.error('Error registering lead:', leadError);
+          // Don't block the user flow for Rewardful errors
+        }
+      }
       
       // Move to Step 2 - the detailed form
       setCommitted(true);

@@ -25,19 +25,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const email = user.user.email!;
 
-    // Update user profile in users table with phone if provided
-    if (formData.phone) {
-      const { error: updateError } = await supabaseAdmin
-        .from('users')
-        .update({ 
-          phone: formData.phone,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
+    // Update user profile in users table with all form data
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({ 
+        phone: formData.phone || null,
+        first_name: formData.name ? formData.name.split(' ')[0] : null,
+        last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
+        license_plate: formData.licensePlate,
+        vin: formData.vin,
+        zip_code: formData.zipCode,
+        vehicle_type: formData.vehicleType,
+        vehicle_year: formData.vehicleYear,
+        city_sticker_expiry: formData.cityStickerExpiry,
+        license_plate_expiry: formData.licensePlateExpiry,
+        emissions_date: formData.emissionsDate,
+        street_address: formData.streetAddress,
+        mailing_address: formData.mailingAddress,
+        mailing_city: formData.mailingCity,
+        mailing_state: formData.mailingState,
+        mailing_zip: formData.mailingZip,
+        concierge_service: formData.conciergeService || false,
+        city_stickers_only: formData.cityStickersOnly || false,
+        spending_limit: formData.spendingLimit || 500,
+        notification_preferences: {
+          email: formData.emailNotifications !== false,
+          sms: formData.smsNotifications || false,
+          voice: formData.voiceNotifications || false,
+          reminder_days: formData.reminderDays || [30, 7, 1]
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
 
-      if (updateError) {
-        console.error('Error updating user phone:', updateError);
-      }
+    if (updateError) {
+      console.error('Error updating user profile:', updateError);
     }
 
     // Create vehicle record
