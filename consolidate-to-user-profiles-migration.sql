@@ -54,6 +54,12 @@ ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS city_stickers_only boo
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS spending_limit integer DEFAULT 500;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS subscription_status text DEFAULT 'active';
 
+-- Drop existing RLS policies that depend on user_id
+DROP POLICY IF EXISTS "Users manage own profiles" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.user_profiles;
+
 -- Make user_profiles.id the primary key and drop user_id constraint
 ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_pkey;
 ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_user_id_fkey;
@@ -79,8 +85,8 @@ WHERE user_profiles.user_id = users.id;
 -- 3. UPDATE ALL EXISTING TABLES TO REFERENCE USER_PROFILES.ID
 -- =====================================================
 
--- Drop the old user_id column and rename id to replace it
-ALTER TABLE public.user_profiles DROP COLUMN IF EXISTS user_id;
+-- Drop the old user_id column (dependencies already cleared)
+ALTER TABLE public.user_profiles DROP COLUMN user_id;
 
 -- Update all foreign key references
 -- user_addresses
