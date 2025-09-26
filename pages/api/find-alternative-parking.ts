@@ -2,8 +2,12 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 // Use MyStreetCleaning database for street cleaning schedule data
-const MSC_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
-const MSC_KEY = '***REMOVED_MSC_SERVICE_ROLE_KEY***';
+const MSC_URL = process.env.MSC_SUPABASE_URL;
+const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
+
+if (!MSC_URL || !MSC_KEY) {
+  throw new Error('MyStreetCleaning database credentials not configured');
+}
 
 const mscSupabase = createClient(MSC_URL, MSC_KEY);
 
