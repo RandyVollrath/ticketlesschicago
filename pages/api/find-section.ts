@@ -119,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (addressStr.length < 3 || !/\d/.test(addressStr)) {
       return res.status(400).json({ 
         error: 'Invalid address format',
-        message: 'Please enter a valid Chicago street address with a street number and name.'
+        message: 'Please enter a complete Chicago street address (e.g., "123 Main St" or "456 N Michigan Ave").'
       });
     }
   }

@@ -23,100 +23,140 @@ export default function SimpleMap({ alternatives, userWard, userSection }: Simpl
       borderRadius: '0 0 12px 12px', 
       display: 'flex', 
       flexDirection: 'column',
-      alignItems: 'center', 
-      justifyContent: 'center',
-      border: '1px solid #e2e8f0',
-      padding: '40px'
+      padding: '24px',
+      overflow: 'auto'
     }}>
-      <div style={{ textAlign: 'center', maxWidth: '400px' }}>
-        <div style={{ 
-          fontSize: '48px', 
-          marginBottom: '16px',
-          background: 'linear-gradient(135deg, #3b82f6, #10b981)',
-          borderRadius: '50%',
-          width: '80px',
-          height: '80px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 16px auto'
-        }}>
-          <span style={{ fontSize: '32px' }}>🗺️</span>
-        </div>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
         <h3 style={{ 
           fontSize: '18px', 
           fontWeight: '600',
           color: '#1f2937',
-          marginBottom: '8px'
+          marginBottom: '8px',
+          margin: 0
         }}>
-          Interactive Map
+          Alternative Parking Map
         </h3>
         <p style={{ 
           color: '#6b7280', 
           fontSize: '14px', 
-          margin: '0 0 16px 0',
-          lineHeight: '1.5'
+          margin: '4px 0 0 0'
         }}>
-          View {alternatives.length} alternative parking zones
-          {userWard && userSection && (
-            <span> near Ward {userWard}, Section {userSection}</span>
-          )}
+          {alternatives.length} zones found near Ward {userWard}, Section {userSection}
         </p>
-        
-        {alternatives.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '8px',
-            marginTop: '16px',
-            fontSize: '12px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              justifyContent: 'center'
-            }}>
-              <div style={{
-                width: '12px',
-                height: '12px',
-                backgroundColor: '#10b981',
-                borderRadius: '50%',
-                border: '2px solid white',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-              }}></div>
-              <span style={{ color: '#059669' }}>Same Ward</span>
-            </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              justifyContent: 'center'
-            }}>
-              <div style={{
-                width: '12px',
-                height: '12px',
-                backgroundColor: '#f59e0b',
-                borderRadius: '50%',
-                border: '2px solid white',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-              }}></div>
-              <span style={{ color: '#d97706' }}>Adjacent Ward</span>
-            </div>
-          </div>
-        )}
-        
-        <div style={{
-          marginTop: '20px',
-          padding: '12px',
-          backgroundColor: '#eff6ff',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: '#1e40af'
-        }}>
-          Full interactive map coming soon with detailed zone boundaries and real-time availability
-        </div>
       </div>
+
+      {/* Zone Grid */}
+      {alternatives.length > 0 ? (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '12px',
+          flex: 1
+        }}>
+          {alternatives.map((zone, index) => (
+            <div
+              key={`${zone.ward}-${zone.section}`}
+              style={{
+                backgroundColor: 'white',
+                border: `2px solid ${zone.distance_type === 'same_ward' ? '#10b981' : '#f59e0b'}`,
+                borderRadius: '8px',
+                padding: '12px',
+                fontSize: '12px',
+                height: 'fit-content'
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '8px',
+                gap: '8px'
+              }}>
+                <div style={{
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: zone.distance_type === 'same_ward' ? '#10b981' : '#f59e0b',
+                  borderRadius: '50%'
+                }}></div>
+                <strong style={{ color: '#1f2937' }}>
+                  Ward {zone.ward}, Section {zone.section}
+                </strong>
+              </div>
+              
+              <div style={{
+                fontSize: '11px',
+                color: zone.distance_type === 'same_ward' ? '#059669' : '#d97706',
+                marginBottom: '6px',
+                fontWeight: '500'
+              }}>
+                {zone.distance_type === 'same_ward' ? '✓ Same Ward' : '→ Adjacent Ward'}
+              </div>
+
+              {zone.next_cleaning_date && (
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#666', 
+                  marginBottom: '6px' 
+                }}>
+                  Next: {new Date(zone.next_cleaning_date).toLocaleDateString()}
+                </div>
+              )}
+
+              {zone.street_boundaries && zone.street_boundaries.length > 0 && (
+                <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                  <div style={{ fontWeight: '500', marginBottom: '2px' }}>Boundaries:</div>
+                  {zone.street_boundaries.slice(0, 2).map((boundary, i) => (
+                    <div key={i} style={{ marginLeft: '4px' }}>• {boundary}</div>
+                  ))}
+                  {zone.street_boundaries.length > 2 && (
+                    <div style={{ marginLeft: '4px', fontStyle: 'italic' }}>
+                      +{zone.street_boundaries.length - 2} more...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ 
+          textAlign: 'center', 
+          color: '#6b7280', 
+          fontSize: '14px',
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          No alternative parking zones found
+        </div>
+      )}
+
+      {/* Legend */}
+      {alternatives.length > 0 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '16px',
+          marginTop: '16px',
+          fontSize: '11px',
+          paddingTop: '12px',
+          borderTop: '1px solid #e2e8f0'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{
+              width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%'
+            }}></div>
+            <span style={{ color: '#059669' }}>Same Ward (Preferred)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{
+              width: '8px', height: '8px', backgroundColor: '#f59e0b', borderRadius: '50%'
+            }}></div>
+            <span style={{ color: '#d97706' }}>Adjacent Ward</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

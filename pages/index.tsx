@@ -737,7 +737,7 @@ export default function Home() {
                   justifyContent: 'center',
                   margin: '0 auto 16px auto'
                 }}>
-                  <span style={{ fontSize: '28px', color: 'white' }}>🏠</span>
+                  <span style={{ fontSize: '18px', color: 'white', fontWeight: 'bold' }}>1</span>
                 </div>
                 <h3 style={{
                   fontSize: '20px',
@@ -786,7 +786,7 @@ export default function Home() {
                   justifyContent: 'center',
                   margin: '0 auto 16px auto'
                 }}>
-                  <span style={{ fontSize: '28px', color: 'white' }}>🏢</span>
+                  <span style={{ fontSize: '18px', color: 'white', fontWeight: 'bold' }}>2</span>
                 </div>
                 <h3 style={{
                   fontSize: '20px',
@@ -835,7 +835,7 @@ export default function Home() {
                   justifyContent: 'center',
                   margin: '0 auto 16px auto'
                 }}>
-                  <span style={{ fontSize: '28px', color: 'white' }}>🗺️</span>
+                  <span style={{ fontSize: '18px', color: 'white', fontWeight: 'bold' }}>3</span>
                 </div>
                 <h3 style={{
                   fontSize: '20px',

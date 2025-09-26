@@ -4,19 +4,22 @@ import Head from 'next/head'
 import dynamic from 'next/dynamic'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import 'leaflet/dist/leaflet.css'
 
 // Dynamic import to avoid SSR issues with Leaflet
-const SimpleMap = dynamic(() => import('../components/SimpleMap'), {
+const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-gray-600 text-sm">Loading map...</p>
+        <p className="text-gray-600 text-sm">Loading interactive map...</p>
       </div>
     </div>
   )
 })
+
+import type { ScheduleData } from '../components/StreetCleaningMap'
 
 interface AlternativeSection {
   ward: string;
@@ -41,9 +44,11 @@ export default function ParkingMapPage() {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
   const [alternatives, setAlternatives] = useState<AlternativeSection[]>([])
+  const [mapData, setMapData] = useState<ScheduleData[]>([])
+  const [mapLoading, setMapLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { ward, section } = router.query
+  const { ward, section, highlight } = router.query
 
   useEffect(() => {
     const checkUser = async () => {
@@ -111,8 +116,62 @@ export default function ParkingMapPage() {
     }
   }, [userProfile, ward, section, loading])
 
+  // Load street cleaning data for the map
+  useEffect(() => {
+    const loadMapData = async () => {
+      setMapLoading(true)
+      try {
+        // Use the find-alternative-parking API which already has access to MyStreetCleaning data
+        const response = await fetch('/api/get-street-cleaning-data')
+        const data = await response.json()
+        
+        if (response.ok) {
+          // Transform data to ScheduleData format
+          const transformedData: ScheduleData[] = data
+            .filter((item: any) => item.geom_simplified && item.ward && item.section)
+            .map((item: any, index: number) => ({
+              type: 'Feature',
+              geometry: item.geom_simplified,
+              properties: {
+                id: `${item.ward}-${item.section}-${index}`,
+                ward: item.ward,
+                section: item.section,
+                cleaningStatus: getCleaningStatus(item.cleaning_date),
+                nextCleaningDateISO: item.cleaning_date
+              }
+            }))
+
+          setMapData(transformedData)
+        } else {
+          console.error('Error loading map data:', data)
+        }
+      } catch (err) {
+        console.error('Network error loading map data:', err)
+      } finally {
+        setMapLoading(false)
+      }
+    }
+
+    loadMapData()
+  }, [])
+
+  // Helper function to determine cleaning status
+  const getCleaningStatus = (cleaningDate: string): 'today' | 'soon' | 'later' | 'none' => {
+    if (!cleaningDate) return 'none'
+    
+    const today = new Date()
+    const cleaning = new Date(cleaningDate)
+    const diffTime = cleaning.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) return 'today'
+    if (diffDays >= 1 && diffDays <= 3) return 'soon'
+    return 'later'
+  }
+
   const targetWard = ward as string || userProfile?.home_address_ward
   const targetSection = section as string || userProfile?.home_address_section
+  const triggerPopup = highlight && targetWard && targetSection ? { ward: targetWard, section: targetSection } : null
 
   if (loading) {
     return (
@@ -289,18 +348,26 @@ export default function ParkingMapPage() {
             {/* Map Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-fit xl:h-[600px]">
               <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white">
-                <h2 className="text-lg font-semibold">Map View</h2>
+                <h2 className="text-lg font-semibold">Chicago Street Cleaning Map</h2>
                 <p className="text-green-100 text-sm mt-1">
-                  Interactive map of alternative parking zones
+                  Live street cleaning schedule with color-coded zones
                 </p>
               </div>
               
-              <div className="p-0">
-                <SimpleMap 
-                  alternatives={alternatives}
-                  userWard={targetWard}
-                  userSection={targetSection}
-                />
+              <div className="relative">
+                {mapLoading ? (
+                  <div className="h-96 bg-gray-50 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-2"></div>
+                      <p className="text-gray-600 text-sm">Loading street cleaning data...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <StreetCleaningMap
+                    data={mapData}
+                    triggerPopup={triggerPopup}
+                  />
+                )}
               </div>
             </div>
           </div>
