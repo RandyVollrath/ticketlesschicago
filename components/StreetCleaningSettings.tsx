@@ -28,8 +28,6 @@ export default function StreetCleaningSettings() {
   const [homeAddress, setHomeAddress] = useState('');
   const [ward, setWard] = useState('');
   const [section, setSection] = useState('');
-  const [licensePlate, setLicensePlate] = useState('');
-  
   // Notification preferences
   const [notify0Day, setNotify0Day] = useState(false);
   const [notify1Day, setNotify1Day] = useState(true);
@@ -91,7 +89,7 @@ export default function StreetCleaningSettings() {
             setHomeAddress(newProfile.home_address_full || '');
             setWard(newProfile.home_address_ward || '');
             setSection(newProfile.home_address_section || '');
-            setLicensePlate(newProfile.license_plate_street_cleaning || '');
+            // License plate managed in main vehicle settings
           }
         } else {
           throw error;
@@ -103,7 +101,7 @@ export default function StreetCleaningSettings() {
         setHomeAddress(profile.home_address_full || '');
         setWard(profile.home_address_ward || '');
         setSection(profile.home_address_section || '');
-        setLicensePlate(profile.license_plate_street_cleaning || '');
+        // License plate managed in main vehicle settings
         
         // Load notification days
         const daysArray = profile.notify_days_array || [1];
@@ -195,7 +193,7 @@ export default function StreetCleaningSettings() {
         phone_call_enabled: phoneCallEnabled,
         voice_preference: voicePreference,
         phone_call_time_preference: callTimePreference,
-        license_plate_street_cleaning: licensePlate,
+        // license_plate_street_cleaning removed - using main vehicle license_plate
         follow_up_sms: followUpSMS,
         snooze_until_date: tripMode ? tripEndDate : null,
         snooze_reason: tripMode ? 'trip' : null,
@@ -250,15 +248,6 @@ export default function StreetCleaningSettings() {
         )}
       </div>
 
-      <div className={styles.formGroup}>
-        <label>License Plate</label>
-        <input
-          type="text"
-          value={licensePlate}
-          onChange={(e) => setLicensePlate(e.target.value)}
-          placeholder="ABC123"
-        />
-      </div>
 
       <div className={styles.formGroup}>
         <label>When to Send Reminders</label>
