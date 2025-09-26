@@ -23,6 +23,9 @@ export default async function handler(
       'phone', // Frontend sends 'phone', we map to 'phone_number'
       'phone_number', // Direct phone_number updates
       'license_plate',
+      // Name fields - try to add, but handle gracefully if they don't exist
+      'first_name',
+      'last_name',
       // Street cleaning fields (core functionality)
       'home_address_full',
       'home_address_ward', 

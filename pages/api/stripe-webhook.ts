@@ -247,9 +247,72 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.log('Successfully created user profile');
             }
             
-            // Note: user_profiles table doesn't exist, skipping extended profile creation
+            // CRITICAL: Also create user_profiles record for settings page
+            console.log('Creating user_profiles record for settings page compatibility...');
+            
+            const userProfileData = {
+              user_id: authData.user.id,
+              email: email,
+              phone_number: formData.phone || null,
+              license_plate: formData.licensePlate || null,
+              // Extract name from form data
+              first_name: formData.name ? formData.name.split(' ')[0] : null,
+              last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
+              // Map form notification preferences to Ticketless fields
+              notify_email: formData.emailNotifications !== false, // Default to true
+              notify_sms: formData.smsNotifications || false,
+              notify_snow: false,
+              notify_winter_parking: false,
+              phone_call_enabled: formData.voiceNotifications || false,
+              notify_days_array: formData.reminderDays || [1], // Default to day-before
+              notify_evening_before: true,
+              voice_preference: 'female',
+              phone_call_time_preference: '7am',
+              follow_up_sms: true,
+              // All Ticketless users are paid
+              sms_pro: true,
+              is_paid: true,
+              is_canary: false,
+              role: 'user'
+            };
+            
+            const { error: profileError } = await supabaseAdmin
+              .from('user_profiles')
+              .insert([userProfileData]);
+              
+            if (profileError) {
+              console.error('Error creating user_profiles record:', profileError);
+            } else {
+              console.log('Successfully created user_profiles record');
+            }
           } else {
-            console.log('User profile already exists, skipping creation');
+            console.log('User profile already exists, updating with form data...');
+            
+            // Update user_profiles with form data for existing user
+            const userProfileUpdateData = {
+              phone_number: formData.phone || null,
+              license_plate: formData.licensePlate || null,
+              // Extract name from form data
+              first_name: formData.name ? formData.name.split(' ')[0] : null,
+              last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
+              notify_email: formData.emailNotifications !== false,
+              notify_sms: formData.smsNotifications || false,
+              phone_call_enabled: formData.voiceNotifications || false,
+              notify_days_array: formData.reminderDays || [1],
+              sms_pro: true,
+              is_paid: true,
+              updated_at: new Date().toISOString()
+            };
+            
+            const { error: profileUpdateError } = await supabaseAdmin
+              .from('user_profiles')
+              .upsert([{ user_id: authData.user.id, email: email, ...userProfileUpdateData }]);
+              
+            if (profileUpdateError) {
+              console.error('Error updating user_profiles record:', profileUpdateError);
+            } else {
+              console.log('Successfully updated user_profiles record');
+            }
           }
 
           // Create vehicle record
