@@ -83,6 +83,9 @@ interface UserProfile {
   email: string
   phone: string | null // Frontend field for typing
   phone_number: string | null // Database field
+  // Name fields
+  first_name: string | null
+  last_name: string | null
   // Core Ticketless America fields
   license_plate: string | null
   home_address_full: string | null
