@@ -212,8 +212,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: authData.user.id,
                 email: email,
                 phone: formData.phone || null,
-                first_name: formData.name ? formData.name.split(' ')[0] : null,
-                last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
+                first_name: formData.firstName || null,
+                last_name: formData.lastName || null,
                 notification_preferences: {
                   email: formData.emailNotifications !== false, // Default to true
                   sms: formData.smsNotifications || false,
@@ -255,9 +255,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               email: email,
               phone_number: formData.phone || null,
               license_plate: formData.licensePlate || null,
-              // Extract name from form data
-              first_name: formData.name ? formData.name.split(' ')[0] : null,
-              last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
+              // Use new firstName/lastName fields from form
+              first_name: formData.firstName || null,
+              last_name: formData.lastName || null,
               // Map form notification preferences to Ticketless fields
               notify_email: formData.emailNotifications !== false, // Default to true
               notify_sms: formData.smsNotifications || false,
@@ -276,9 +276,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               role: 'user'
             };
             
-            const { error: profileError } = await supabaseAdmin
+            let { error: profileError } = await supabaseAdmin
               .from('user_profiles')
               .insert([userProfileData]);
+              
+            // If insert failed due to name fields not existing, retry without them
+            if (profileError && (profileError.message?.includes('first_name') || profileError.message?.includes('last_name'))) {
+              console.log('Name fields not supported in database, retrying without them...');
+              const dataWithoutNames = { ...userProfileData };
+              delete dataWithoutNames.first_name;
+              delete dataWithoutNames.last_name;
+              
+              const retryResult = await supabaseAdmin
+                .from('user_profiles')
+                .insert([dataWithoutNames]);
+              profileError = retryResult.error;
+            }
               
             if (profileError) {
               console.error('Error creating user_profiles record:', profileError);
@@ -292,9 +305,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const userProfileUpdateData = {
               phone_number: formData.phone || null,
               license_plate: formData.licensePlate || null,
-              // Extract name from form data
-              first_name: formData.name ? formData.name.split(' ')[0] : null,
-              last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
+              // Use new firstName/lastName fields from form
+              first_name: formData.firstName || null,
+              last_name: formData.lastName || null,
               notify_email: formData.emailNotifications !== false,
               notify_sms: formData.smsNotifications || false,
               phone_call_enabled: formData.voiceNotifications || false,
@@ -304,9 +317,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               updated_at: new Date().toISOString()
             };
             
-            const { error: profileUpdateError } = await supabaseAdmin
+            let { error: profileUpdateError } = await supabaseAdmin
               .from('user_profiles')
               .upsert([{ user_id: authData.user.id, email: email, ...userProfileUpdateData }]);
+              
+            // If update failed due to name fields not existing, retry without them
+            if (profileUpdateError && (profileUpdateError.message?.includes('first_name') || profileUpdateError.message?.includes('last_name'))) {
+              console.log('Name fields not supported in database, retrying without them...');
+              const dataWithoutNames = { ...userProfileUpdateData };
+              delete dataWithoutNames.first_name;
+              delete dataWithoutNames.last_name;
+              
+              const retryResult = await supabaseAdmin
+                .from('user_profiles')
+                .upsert([{ user_id: authData.user.id, email: email, ...dataWithoutNames }]);
+              profileUpdateError = retryResult.error;
+            }
               
             if (profileUpdateError) {
               console.error('Error updating user_profiles record:', profileUpdateError);

@@ -10,7 +10,8 @@ export default function Home() {
   const [formStep, setFormStep] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     licensePlate: '',
     vin: '',
     zipCode: '',
@@ -269,7 +270,7 @@ export default function Home() {
   const handleCommitment = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email) {
+    if (!formData.firstName || !formData.lastName || !formData.email) {
       setMessage('Please fill in all fields');
       return;
     }
@@ -279,7 +280,7 @@ export default function Home() {
 
     try {
       // Store the commitment (could save to database here)
-      console.log('Commitment data:', { name: formData.name, email: formData.email });
+      console.log('Commitment data:', { firstName: formData.firstName, lastName: formData.lastName, email: formData.email });
       
       // Register lead with Rewardful if we have a referral ID
       if (referralId) {
@@ -625,11 +626,11 @@ export default function Home() {
       {/* Hero Section */}
       <div id="home" style={{ 
         paddingTop: '120px', 
-        paddingBottom: '120px',
+        paddingBottom: '80px',
         textAlign: 'center',
         maxWidth: '1200px',
         margin: '0 auto',
-        padding: '120px 40px'
+        padding: '120px 40px 80px 40px'
       }}>
         <h1 style={{ 
           fontSize: '64px', 
@@ -666,6 +667,196 @@ export default function Home() {
           Protect Me From Tickets
         </button>
       </div>
+
+      {/* Alternative Parking Section */}
+      {user && (
+        <div style={{ 
+          backgroundColor: '#f8fafc',
+          borderTop: '1px solid #e2e8f0',
+          borderBottom: '1px solid #e2e8f0',
+          padding: '80px 0'
+        }}>
+          <div style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '0 40px',
+            textAlign: 'center'
+          }}>
+            <h2 style={{
+              fontSize: '36px',
+              fontWeight: 'bold',
+              color: '#1a1a1a',
+              marginBottom: '16px'
+            }}>
+              Find Alternative Parking
+            </h2>
+            <p style={{
+              fontSize: '18px',
+              color: '#666',
+              marginBottom: '48px',
+              maxWidth: '600px',
+              margin: '0 auto 48px auto'
+            }}>
+              Street cleaning in your area? Find safe alternative parking zones where you can park during cleaning times.
+            </p>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '32px',
+              maxWidth: '900px',
+              margin: '0 auto'
+            }}>
+              <div 
+                onClick={() => router.push('/parking-map?ward=1&section=1')}
+                style={{
+                  backgroundColor: 'white',
+                  padding: '32px',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  border: '1px solid #e2e8f0'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#3b82f6',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px auto'
+                }}>
+                  <span style={{ fontSize: '28px', color: 'white' }}>🏠</span>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1a1a1a',
+                  marginBottom: '8px'
+                }}>
+                  Your Neighborhood
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#666',
+                  lineHeight: '1.4'
+                }}>
+                  Find alternative parking near your home address
+                </p>
+              </div>
+
+              <div 
+                onClick={() => router.push('/parking-map?ward=42&section=7')}
+                style={{
+                  backgroundColor: 'white',
+                  padding: '32px',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  border: '1px solid #e2e8f0'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#10b981',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px auto'
+                }}>
+                  <span style={{ fontSize: '28px', color: 'white' }}>🏢</span>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1a1a1a',
+                  marginBottom: '8px'
+                }}>
+                  Downtown Area
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#666',
+                  lineHeight: '1.4'
+                }}>
+                  Popular downtown parking alternatives
+                </p>
+              </div>
+
+              <div 
+                onClick={() => router.push('/parking-map')}
+                style={{
+                  backgroundColor: 'white',
+                  padding: '32px',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  border: '1px solid #e2e8f0'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#8b5cf6',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px auto'
+                }}>
+                  <span style={{ fontSize: '28px', color: 'white' }}>🗺️</span>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1a1a1a',
+                  marginBottom: '8px'
+                }}>
+                  Custom Search
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#666',
+                  lineHeight: '1.4'
+                }}>
+                  Search any area with the interactive map
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Three Feature Boxes */}
       <div id="how-it-works" style={{ 
@@ -800,20 +991,38 @@ export default function Home() {
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
           }}>
             <form onSubmit={handleCommitment} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <input
-                type="text"
-                name="name"
-                value={formData.name || ''}
-                onChange={handleInputChange}
-                placeholder="Your Name"
-                style={{
-                  padding: '16px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '16px'
-                }}
-                required
-              />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName || ''}
+                  onChange={handleInputChange}
+                  placeholder="First Name"
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    flex: 1
+                  }}
+                  required
+                />
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName || ''}
+                  onChange={handleInputChange}
+                  placeholder="Last Name"
+                  style={{
+                    padding: '16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    flex: 1
+                  }}
+                  required
+                />
+              </div>
               
               <input
                 type="email"

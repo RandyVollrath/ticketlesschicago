@@ -115,6 +115,20 @@ select:focus {
   }
 }
 
+/* Leaflet Map Styles */
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
 /* TARGETED FIX: Dropdown styling in spending authorization section only */
 /* This targets the specific yellow container with spending limit dropdown */
 div[style*="background-color: rgb(255, 243, 205)"] select[name="spendingLimit"] {

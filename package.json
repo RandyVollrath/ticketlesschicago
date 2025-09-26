@@ -19,7 +19,6 @@
     "clicksend": "^5.0.79",
     "date-fns": "^2.30.0",
     "dotenv": "^17.2.2",
-    "leaflet": "^1.9.4",
     "next": "15.2.4",
     "next-auth": "^4.24.0",
     "react": "^18.3.1",
@@ -29,7 +28,6 @@
     "tailwindcss": "^4"
   },
   "devDependencies": {
-    "@types/leaflet": "^1.9.12",
     "@types/node": "^20.17.28",
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.3.6",

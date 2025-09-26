@@ -18,12 +18,12 @@ export default async function handler(
   try {
     console.log('Profile update request:', { userId, updateData });
     
-    // Validate the update data - only fields that exist in Ticketless America schema
+    // Validate the update data - include name fields but handle gracefully if they don't exist
     const allowedFields = [
       'phone', // Frontend sends 'phone', we map to 'phone_number'
       'phone_number', // Direct phone_number updates
       'license_plate',
-      // Name fields - try to add, but handle gracefully if they don't exist
+      // Name fields - may not exist in database, will be filtered out if they cause errors
       'first_name',
       'last_name',
       // Street cleaning fields (core functionality)
@@ -83,18 +83,31 @@ export default async function handler(
     
     let updateError;
     
-    if (existingProfile) {
-      // Update existing profile
-      const result = await supabaseAdmin
-        .from('user_profiles')
-        .update(filteredData)
-        .eq('user_id', userId);
-      updateError = result.error;
-    } else {
-      // Create new profile with filteredData
-      const result = await supabaseAdmin
-        .from('user_profiles')
-        .insert({ user_id: userId, ...filteredData });
+    const attemptUpdate = async (dataToUpdate: any) => {
+      if (existingProfile) {
+        return await supabaseAdmin
+          .from('user_profiles')
+          .update(dataToUpdate)
+          .eq('user_id', userId);
+      } else {
+        return await supabaseAdmin
+          .from('user_profiles')
+          .insert({ user_id: userId, ...dataToUpdate });
+      }
+    };
+    
+    // Try with all data first
+    let result = await attemptUpdate(filteredData);
+    updateError = result.error;
+    
+    // If update failed due to name fields not existing, retry without them
+    if (updateError && (updateError.message?.includes('first_name') || updateError.message?.includes('last_name'))) {
+      console.log('Name fields not supported in database, retrying without them...');
+      const dataWithoutNames = { ...filteredData };
+      delete dataWithoutNames.first_name;
+      delete dataWithoutNames.last_name;
+      
+      result = await attemptUpdate(dataWithoutNames);
       updateError = result.error;
     }
       
