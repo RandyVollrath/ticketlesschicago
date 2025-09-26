@@ -134,7 +134,31 @@ export default function ParkingMapPage() {
       <Head>
         <title>Alternative Parking Map - Ticketless America</title>
         <meta name="description" content="Find alternative parking zones near your street cleaning area" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <link 
+          rel="stylesheet" 
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossOrigin=""
+        />
+        <style>{`
+          .leaflet-container {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+          }
+          .leaflet-popup-content {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          }
+          .custom-div-icon {
+            background: transparent !important;
+            border: none !important;
+          }
+        `}</style>
       </Head>
       
       <div className="min-h-screen bg-gray-50">

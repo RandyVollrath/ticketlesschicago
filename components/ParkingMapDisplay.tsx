@@ -95,8 +95,18 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
 
     const initMap = async () => {
       try {
+        console.log('Initializing map...')
+        
+        // Ensure map container exists and is visible
+        if (!mapRef.current) {
+          console.error('Map container not found')
+          setError('Map container not available')
+          return
+        }
+
         // Dynamic import of Leaflet to avoid SSR issues
         const L = await import('leaflet')
+        console.log('Leaflet loaded successfully')
         
         // Fix Leaflet default markers issue
         delete (L as any).Icon.Default.prototype._getIconUrl
@@ -108,9 +118,15 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
 
         // Clear any existing map
         if (mapInstanceRef.current) {
+          console.log('Removing existing map instance')
           mapInstanceRef.current.remove()
+          mapInstanceRef.current = null
         }
 
+        // Wait a moment for DOM to be ready
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        console.log('Creating map instance...')
         // Initialize map centered on Chicago
         const map = L.map(mapRef.current, {
           center: [41.8781, -87.6298],
@@ -120,12 +136,15 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
         })
 
         mapInstanceRef.current = map
+        console.log('Map instance created successfully')
 
         // Add tile layer
+        console.log('Adding tile layer...')
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           maxZoom: 18,
         }).addTo(map)
+        console.log('Tile layer added successfully')
 
         // Add zones to map
         const bounds = L.latLngBounds([])
@@ -173,20 +192,21 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
                   // Add popup
                   const alternative = alternatives.find(alt => alt.ward === ward && alt.section === section)
                   let popupContent = `
-                    <div class="p-2">
-                      <h3 class="font-bold text-sm mb-2 ${isUserZone ? 'text-blue-800' : 'text-gray-800'}">
-                        ${isUserZone ? '📍 Your Location' : '🅿️ Alternative Zone'}
+                    <div style="padding: 8px; font-family: system-ui, sans-serif;">
+                      <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${isUserZone ? '#1e40af' : '#374151'};">
+                        <span style="font-size: 12px; margin-right: 4px;">${isUserZone ? '📍' : '🅿️'}</span>
+                        ${isUserZone ? 'Your Location' : 'Alternative Zone'}
                       </h3>
-                      <p class="text-sm"><strong>Ward:</strong> ${ward}</p>
-                      <p class="text-sm"><strong>Section:</strong> ${section}</p>
+                      <p style="font-size: 13px; margin: 4px 0;"><strong>Ward:</strong> ${ward}</p>
+                      <p style="font-size: 13px; margin: 4px 0;"><strong>Section:</strong> ${section}</p>
                       ${alternative?.next_cleaning_date ? 
-                        `<p class="text-sm mt-2"><strong>Next cleaning:</strong> ${new Date(alternative.next_cleaning_date).toLocaleDateString()}</p>` 
+                        `<p style="font-size: 13px; margin: 8px 0 4px 0;"><strong>Next cleaning:</strong> ${new Date(alternative.next_cleaning_date).toLocaleDateString()}</p>` 
                         : ''
                       }
                       ${alternative?.street_boundaries ? 
-                        `<div class="mt-2">
-                          <p class="text-xs font-medium">Boundaries:</p>
-                          ${alternative.street_boundaries.slice(0, 2).map(b => `<p class="text-xs text-gray-600">• ${b}</p>`).join('')}
+                        `<div style="margin-top: 8px;">
+                          <p style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Boundaries:</p>
+                          ${alternative.street_boundaries.slice(0, 2).map(b => `<p style="font-size: 12px; color: #6b7280; margin: 2px 0; padding-left: 8px;">• ${b}</p>`).join('')}
                         </div>` 
                         : ''
                       }
@@ -229,11 +249,14 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
             }).addTo(map)
 
             marker.bindPopup(`
-              <div class="p-2">
-                <h3 class="font-bold text-sm mb-2">${isUserZone ? '📍 Your Location' : '🅿️ Alternative Zone'}</h3>
-                <p class="text-sm"><strong>Ward:</strong> ${ward}</p>
-                <p class="text-sm"><strong>Section:</strong> ${section}</p>
-                <p class="text-xs text-gray-500 mt-2">Approximate location</p>
+              <div style="padding: 8px; font-family: system-ui, sans-serif;">
+                <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${isUserZone ? '#1e40af' : '#374151'};">
+                  <span style="font-size: 12px; margin-right: 4px;">${isUserZone ? '📍' : '🅿️'}</span>
+                  ${isUserZone ? 'Your Location' : 'Alternative Zone'}
+                </h3>
+                <p style="font-size: 13px; margin: 4px 0;"><strong>Ward:</strong> ${ward}</p>
+                <p style="font-size: 13px; margin: 4px 0;"><strong>Section:</strong> ${section}</p>
+                <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">Approximate location</p>
               </div>
             `)
 
@@ -243,11 +266,16 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
         })
 
         // Fit map to show all zones
+        console.log(`Processing ${mapData.length} zones, hasValidBounds: ${hasValidBounds}`)
         if (hasValidBounds) {
+          console.log('Fitting map bounds to show all zones')
           map.fitBounds(bounds, { padding: [20, 20] })
+        } else {
+          console.log('No valid bounds found, using default Chicago view')
         }
 
         // Add legend
+        console.log('Adding map legend...')
         const legend = L.control({ position: 'topright' })
         legend.onAdd = function (map) {
           const div = L.DomUtil.create('div', 'info legend')
@@ -262,6 +290,7 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
           return div
         }
         legend.addTo(map)
+        console.log('Map initialization completed successfully!')
 
       } catch (error) {
         console.error('Error initializing map:', error)
