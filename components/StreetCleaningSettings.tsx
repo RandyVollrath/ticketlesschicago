@@ -170,7 +170,10 @@ export default function StreetCleaningSettings() {
     return () => clearTimeout(timeoutId);
   }, [homeAddress]);
 
-  const handleSave = async () => {
+  // Auto-save function using the profile API endpoint
+  const autoSaveProfile = async (updates: any) => {
+    if (!updates || Object.keys(updates).length === 0) return;
+    
     setSaving(true);
     setMessage('');
     setError('');
@@ -179,6 +182,35 @@ export default function StreetCleaningSettings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          ...updates
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save preferences');
+      }
+
+      console.log('Auto-saved street cleaning preferences');
+    } catch (error) {
+      console.error('Error auto-saving:', error);
+      setError('Auto-save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Debounced auto-save with 2-second delay
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
       // Build notify days array
       const notifyDays = [];
       if (notify0Day) notifyDays.push(0);
@@ -195,28 +227,19 @@ export default function StreetCleaningSettings() {
         phone_call_enabled: phoneCallEnabled,
         voice_preference: voicePreference,
         phone_call_time_preference: callTimePreference,
-        // license_plate_street_cleaning removed - using main vehicle license_plate
         follow_up_sms: followUpSMS,
         snooze_until_date: tripMode ? tripEndDate : null,
         snooze_reason: tripMode ? 'trip' : null,
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('user_profiles')
-        .update(updates)
-        .eq('user_id', user.id);
+      autoSaveProfile(updates);
+    }, 2000);
 
-      if (error) throw error;
-
-      setMessage('Street cleaning preferences saved successfully!');
-    } catch (error) {
-      console.error('Error saving:', error);
-      setError('Failed to save preferences');
-    } finally {
-      setSaving(false);
-    }
-  };
+    return () => clearTimeout(timeoutId);
+  }, [homeAddress, ward, section, notify0Day, notify1Day, notify2Days, notify3Days, 
+      notifyEveningBefore, phoneCallEnabled, voicePreference, callTimePreference, 
+      followUpSMS, tripMode, tripEndDate]);
 
   const handleQuickSnooze = async () => {
     const oneWeekFromNow = new Date();
@@ -399,13 +422,20 @@ export default function StreetCleaningSettings() {
         </button>
       </div>
 
-      <button 
-        onClick={handleSave}
-        disabled={saving}
-        className={styles.primaryButton}
-      >
-        {saving ? 'Saving...' : 'Save Street Cleaning Preferences'}
-      </button>
+      {/* Auto-save status indicator */}
+      {saving && (
+        <div style={{
+          padding: '8px 12px',
+          backgroundColor: '#eff6ff',
+          border: '1px solid #dbeafe',
+          borderRadius: '6px',
+          fontSize: '14px',
+          color: '#1d4ed8',
+          textAlign: 'center'
+        }}>
+          Auto-saving...
+        </div>
+      )}
 
     </div>
   );
