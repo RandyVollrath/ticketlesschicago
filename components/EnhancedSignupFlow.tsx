@@ -1,6 +1,56 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
+// Phone number formatting utilities
+const formatPhoneNumber = (value: string): string => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '')
+  
+  // Handle different input formats
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  
+  // Handle 11 digits (with country code)
+  if (digits.length === 11 && digits[0] === '1') {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  
+  // For 10 digits, format normally
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  
+  // Keep original if too long or complex
+  return value
+}
+
+const normalizePhoneForStorage = (value: string): string => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '')
+  
+  if (digits.length === 0) return ''
+  
+  // Handle 10-digit US numbers - add +1
+  if (digits.length === 10) {
+    return `+1${digits}`
+  }
+  
+  // Handle 11-digit numbers starting with 1
+  if (digits.length === 11 && digits[0] === '1') {
+    return `+${digits}`
+  }
+  
+  // If it's already in E.164 format or international, keep as is
+  if (value.startsWith('+')) {
+    return value
+  }
+  
+  // Default: assume US number and add +1
+  return digits.length >= 10 ? `+1${digits.slice(-10)}` : `+1${digits}`
+}
+
 interface SignupData {
   address: string;
   notificationMethod: string;
@@ -25,6 +75,12 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
 
   const handleInputChange = (field: keyof SignupData, value: any) => {
     setSignupData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhoneChange = (value: string) => {
+    // Format for display as user types
+    const formattedForDisplay = formatPhoneNumber(value)
+    setSignupData(prev => ({ ...prev, phone: formattedForDisplay }))
   };
 
   const validateChicagoAddress = (address: string): boolean => {
@@ -54,8 +110,14 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
     setLoading(true);
 
     try {
+      // Normalize phone number for storage before saving
+      const normalizedSignupData = {
+        ...signupData,
+        phone: signupData.phone ? normalizePhoneForStorage(signupData.phone) : signupData.phone
+      };
+      
       // Store signup data in localStorage for OAuth callback
-      localStorage.setItem('pendingSignupData', JSON.stringify(signupData));
+      localStorage.setItem('pendingSignupData', JSON.stringify(normalizedSignupData));
 
       // Start OAuth flow with custom redirect
       const redirectUrl = `${window.location.origin}/api/auth/oauth-callback`;
@@ -65,7 +127,7 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
         options: {
           redirectTo: redirectUrl,
           queryParams: {
-            signupData: JSON.stringify(signupData)
+            signupData: JSON.stringify(normalizedSignupData)
           }
         }
       });
@@ -154,7 +216,7 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
               <input
                 type="tel"
                 value={signupData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
+                onChange={(e) => handlePhoneChange(e.target.value)}
                 placeholder="(312) 555-0123"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
