@@ -251,7 +251,7 @@ export default function StreetCleaningSettings() {
       </div>
 
       <div className={styles.formGroup}>
-        <label>License Plate (for $60 ticket guarantee)</label>
+        <label>License Plate</label>
         <input
           type="text"
           value={licensePlate}
@@ -363,7 +363,7 @@ export default function StreetCleaningSettings() {
               checked={tripMode}
               onChange={(e) => setTripMode(e.target.checked)}
             />
-            Pause notifications (voids $60 guarantee)
+            Pause notifications while away
           </label>
         </div>
         {tripMode && (

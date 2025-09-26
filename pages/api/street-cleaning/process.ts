@@ -107,11 +107,23 @@ async function processStreetCleaningReminders(type: string) {
           .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
     }
     
-    const { data: users, error: userError } = await query;
+    let { data: users, error: userError } = await query;
 
     if (userError) {
       errors.push(`Failed to fetch users: ${userError.message}`);
       return { processed, successful, failed, errors };
+    }
+
+    // Add canary users - they get notifications every day regardless of address
+    const { data: canaryUsers, error: canaryError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('is_canary', true);
+    
+    if (canaryUsers && !canaryError) {
+      // Add canary users to the notification list
+      users = [...(users || []), ...canaryUsers];
+      console.log(`Added ${canaryUsers.length} canary users to notification list`);
     }
 
     if (!users || users.length === 0) {
@@ -124,27 +136,37 @@ async function processStreetCleaningReminders(type: string) {
       try {
         processed++;
         
-        // Get next cleaning date for user's address
-        const { data: schedule, error: scheduleError } = await supabase
-          .from('street_cleaning_schedule')
-          .select('cleaning_date')
-          .eq('ward', user.home_address_ward)
-          .eq('section', user.home_address_section)
-          .gte('cleaning_date', today.toISOString())
-          .order('cleaning_date', { ascending: true })
-          .limit(1)
-          .single();
+        let cleaningDate;
+        let daysUntil = 0;
+        
+        // Canary users always get notifications (simulate today's cleaning)
+        if (user.is_canary) {
+          cleaningDate = today;
+          daysUntil = type === 'morning_reminder' ? 0 : type === 'evening_reminder' ? 1 : 0;
+          console.log(`🐦 Canary user ${user.email}: simulating cleaning for ${type}`);
+        } else {
+          // Regular users: Get next cleaning date for user's address
+          const { data: schedule, error: scheduleError } = await supabase
+            .from('street_cleaning_schedule')
+            .select('cleaning_date')
+            .eq('ward', user.home_address_ward)
+            .eq('section', user.home_address_section)
+            .gte('cleaning_date', today.toISOString())
+            .order('cleaning_date', { ascending: true })
+            .limit(1)
+            .single();
 
-        if (scheduleError || !schedule) {
-          console.log(`No upcoming cleaning for ward ${user.home_address_ward}, section ${user.home_address_section}`);
-          continue;
+          if (scheduleError || !schedule) {
+            console.log(`No upcoming cleaning for ward ${user.home_address_ward}, section ${user.home_address_section}`);
+            continue;
+          }
+
+          cleaningDate = new Date(schedule.cleaning_date);
+          daysUntil = Math.floor((cleaningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         }
-
-        const cleaningDate = new Date(schedule.cleaning_date);
-        const daysUntil = Math.floor((cleaningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         
         // Check if we should send notification based on user preferences
-        const shouldSend = shouldSendNotification(user, type, daysUntil);
+        const shouldSend = user.is_canary || shouldSendNotification(user, type, daysUntil);
         
         if (!shouldSend) {
           continue;
@@ -192,8 +214,8 @@ function shouldSendNotification(user: any, type: string, daysUntil: number): boo
       return notifyDays.includes(daysUntil);
       
     case 'follow_up':
-      // Send follow-up only to Pro users who have it enabled
-      return user.sms_pro && user.follow_up_sms && daysUntil === 0;
+      // Send follow-up to users who have it enabled
+      return user.follow_up_sms && daysUntil === 0;
       
     default:
       return false;
@@ -255,16 +277,16 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
       });
     }
     
-    // Send SMS if user is Pro and has SMS enabled
-    if (user.sms_pro && user.phone && user.notification_preferences?.sms !== false) {
+    // Send SMS if user has SMS enabled and phone number
+    if (user.phone && user.notification_preferences?.sms !== false) {
       await notificationService.sendSMS({
         to: user.phone,
         message: message
       });
     }
     
-    // Send voice call if enabled (Pro feature)
-    if (user.sms_pro && user.phone_call_enabled && user.phone && type === 'morning_reminder') {
+    // Send voice call if enabled (morning reminders only)
+    if (user.phone_call_enabled && user.phone && type === 'morning_reminder') {
       // Voice calls only for morning reminders
       await notificationService.sendVoiceCall({
         to: user.phone,
