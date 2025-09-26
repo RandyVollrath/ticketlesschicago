@@ -1,151 +1,381 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 
-interface LookupResponse {
-  ward?: string;
-  section?: string;
-  nextCleaningDate?: string;
-  message?: string;
-  error?: string;
-}
+// MyStreetCleaning database for PostGIS queries (has the geospatial data)
+const MSC_SUPABASE_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
+const MSC_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxbGp4a3FkZ2ZpYmZ6ZGpmamlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5NjUwMjQsImV4cCI6MjA1ODU0MTAyNH0.AwJc5gnerC8Dymk9uHVfHs_-orb297zxnVzY7lhWIS0';
 
-// Geocode address using a free service
-async function geocodeAddress(address: string): Promise<{ lat: number; lon: number } | null> {
+const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY);
+
+// Enhanced geocoding function with retry logic and better error handling
+async function geocodeAddress(address: string, retryCount = 0): Promise<{ status: string; coordinates: { lat: number; lng: number }; retries?: number }> {
+  const googleApiKey = process.env.GOOGLE_API_KEY;
+  
+  if (!googleApiKey) {
+    console.error('❌ Google API key not configured');
+    throw new Error('Google API key not configured');
+  }
+  
+  console.log('🔑 Google API key configured:', googleApiKey ? 'YES' : 'NO');
+  console.log('🔑 API key preview:', googleApiKey ? `${googleApiKey.slice(0, 8)}...` : 'NONE');
+
+  // Normalize the address for better geocoding success
+  const normalizedAddress = `${address}, Chicago, IL, USA`;
+  const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalizedAddress)}&key=${googleApiKey}`;
+  
+  console.log(`🔍 Geocoding address (attempt ${retryCount + 1}):`, normalizedAddress);
+  console.log('🌐 Geocoding URL:', geocodeUrl.replace(googleApiKey, '[API_KEY_HIDDEN]'));
+  
   try {
-    // Using Nominatim (OpenStreetMap) for geocoding - free and no API key required
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?` +
-      `format=json&q=${encodeURIComponent(address + ', Chicago, IL')}&limit=1`,
-      {
-        headers: {
-          'User-Agent': 'TicketlessAmerica/1.0'
-        }
-      }
+    const geocodeResponse = await fetch(geocodeUrl);
+    
+    if (!geocodeResponse.ok) {
+      throw new Error(`Geocoding API returned ${geocodeResponse.status}`);
+    }
+    
+    const geocodeData = await geocodeResponse.json();
+    console.log('🔍 Geocoding response status:', geocodeData.status);
+    
+    if (geocodeData.error_message) {
+      console.error('❌ Google API Error:', geocodeData.error_message);
+    }
+
+    // Handle rate limiting
+    if (geocodeData.status === 'OVER_QUERY_LIMIT' && retryCount < 2) {
+      console.log('⏰ Rate limited, retrying in 1 second...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return geocodeAddress(address, retryCount + 1);
+    }
+
+    // Handle temporary failures
+    if (geocodeData.status === 'UNKNOWN_ERROR' && retryCount < 1) {
+      console.log('❓ Unknown error, retrying...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return geocodeAddress(address, retryCount + 1);
+    }
+
+    if (geocodeData.status !== 'OK' || !geocodeData.results.length) {
+      return { 
+        status: geocodeData.status, 
+        coordinates: { lat: 0, lng: 0 },
+        retries: retryCount
+      };
+    }
+
+    const result = geocodeData.results[0];
+    
+    // Validate that the result is actually in Chicago
+    const isInChicago = result.address_components.some((component: any) => 
+      component.types.includes('locality') && 
+      component.long_name.toLowerCase().includes('chicago')
     );
     
-    const data = await response.json();
-    
-    if (data && data.length > 0) {
+    if (!isInChicago) {
+      console.log('⚠️ Geocoded address is not in Chicago');
       return {
-        lat: parseFloat(data[0].lat),
-        lon: parseFloat(data[0].lon)
+        status: 'ZERO_RESULTS',
+        coordinates: { lat: 0, lng: 0 },
+        retries: retryCount
       };
     }
     
-    return null;
-  } catch (error) {
-    console.error('Geocoding error:', error);
-    return null;
-  }
-}
-
-// Simple ward/section lookup using text matching for Chicago addresses
-function extractWardFromAddress(address: string): { ward?: string; section?: string } {
-  // Expanded Chicago address patterns based on major streets and neighborhoods
-  const patterns = [
-    // Loop/Downtown area
-    { pattern: /state\s+st/i, ward: '42', section: '1' },
-    { pattern: /michigan\s+ave/i, ward: '42', section: '2' },
-    { pattern: /wabash\s+ave/i, ward: '42', section: '3' },
-    { pattern: /clark\s+st.*loop|clark.*downtown/i, ward: '42', section: '4' },
+    return {
+      status: geocodeData.status,
+      coordinates: { lat: result.geometry.location.lat, lng: result.geometry.location.lng },
+      retries: retryCount
+    };
     
-    // Near North Side
-    { pattern: /rush\s+st|division.*clark/i, ward: '2', section: '1' },
-    { pattern: /oak\s+st|gold\s+coast/i, ward: '2', section: '2' },
-    { pattern: /orleans\s+st|river\s+north/i, ward: '2', section: '10' },
+  } catch (error: any) {
+    console.error('🚨 Geocoding fetch error:', error.message);
     
-    // North Side
-    { pattern: /lake\s+shore\s+dr.*north/i, ward: '43', section: '1' },
-    { pattern: /clark\s+st.*lincoln\s+park/i, ward: '43', section: '3' },
-    { pattern: /lincoln\s+ave/i, ward: '43', section: '4' },
-    { pattern: /fullerton|depaul/i, ward: '43', section: '5' },
-    
-    // Lakeview
-    { pattern: /broadway.*lakeview/i, ward: '44', section: '1' },
-    { pattern: /halsted\s+st.*lakeview/i, ward: '44', section: '2' },
-    { pattern: /belmont|addison/i, ward: '44', section: '3' },
-    
-    // Wicker Park/Bucktown
-    { pattern: /milwaukee\s+ave.*wicker/i, ward: '1', section: '1' },
-    { pattern: /north\s+ave.*bucktown/i, ward: '1', section: '2' },
-    
-    // Logan Square
-    { pattern: /milwaukee\s+ave.*logan/i, ward: '1', section: '5' },
-    { pattern: /diversey.*logan/i, ward: '1', section: '6' },
-    
-    // West Town
-    { pattern: /chicago\s+ave.*west\s+town/i, ward: '1', section: '10' },
-    { pattern: /grand\s+ave.*west/i, ward: '1', section: '11' },
-    
-    // Default fallbacks for major streets
-    { pattern: /ashland\s+ave/i, ward: '1', section: '8' },
-    { pattern: /western\s+ave/i, ward: '1', section: '15' },
-    { pattern: /kedzie\s+ave/i, ward: '1', section: '20' },
-    { pattern: /pulaski/i, ward: '1', section: '25' },
-  ];
-
-  const normalizedAddress = address.toLowerCase();
-  
-  for (const { pattern, ward, section } of patterns) {
-    if (pattern.test(normalizedAddress)) {
-      return { ward, section };
+    // Retry on network errors
+    if (retryCount < 2) {
+      console.log(`🔄 Retrying geocoding due to network error (attempt ${retryCount + 2})...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return geocodeAddress(address, retryCount + 1);
     }
+    
+    throw error;
   }
-  
-  return {};
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<LookupResponse>
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { address } = req.query;
+  const { address, lat, lng, mode, startDate, endDate, includeGeom } = req.query;
 
-  if (!address || typeof address !== 'string') {
-    return res.status(400).json({ 
-      error: 'Address parameter is required' 
-    });
+  if (!address && (!lat || !lng)) {
+    return res.status(400).json({ error: 'Address or coordinates required' });
+  }
+
+  // Basic validation for minimum address requirements
+  if (address && typeof address === 'string') {
+    const addressStr = address.trim();
+    
+    // Only reject addresses that clearly don't meet minimum requirements
+    if (addressStr.length < 3 || !/\d/.test(addressStr)) {
+      return res.status(400).json({ 
+        error: 'Invalid address format',
+        message: 'Please enter a valid Chicago street address with a street number and name.'
+      });
+    }
+  }
+
+  let coordinates;
+  let searchType = 'address';
+  let searchValue = address as string;
+
+  if (lat && lng) {
+    coordinates = {
+      lat: parseFloat(lat as string),
+      lng: parseFloat(lng as string)
+    };
+    searchType = 'coordinates';
+    searchValue = `${coordinates.lat},${coordinates.lng}`;
+  } else {
+    try {
+      const geocodeResult = await geocodeAddress(address as string);
+      if (geocodeResult.status !== 'OK') {
+        console.error('❌ Geocoding failed:', geocodeResult.status);
+
+        return res.status(404).json({ 
+          error: 'Address not found',
+          details: {
+            geocoding_status: geocodeResult.status,
+            address: address
+          }
+        });
+      }
+
+      coordinates = geocodeResult.coordinates;
+      console.log('✅ Geocoding successful:', {
+        address: address,
+        coordinates: coordinates,
+        status: geocodeResult.status
+      });
+    } catch (error: any) {
+      console.error('❌ Geocoding error:', error);
+
+      return res.status(500).json({ 
+        error: 'Geocoding failed',
+        details: {
+          error_message: error.message,
+          address: address
+        }
+      });
+    }
   }
 
   try {
-    // Try simple text-based ward/section detection first
-    const { ward, section } = extractWardFromAddress(address);
+    console.log('Starting location search:', searchType, searchValue);
+
+    console.log('🔍 Searching for coordinates:', coordinates);
+
+    // Try the PostGIS function for efficient lookup with retry logic
+    console.log('🎯 Trying PostGIS function for coordinate lookup...');
+    let postgisResult = null;
+    let postgisError = null;
     
-    if (!ward || !section) {
-      return res.status(404).json({
-        message: 'Address not found in Chicago street cleaning zones. Please enter ward and section manually, or try a major street address.'
+    // Retry database operations up to 3 times
+    for (let dbRetry = 0; dbRetry < 3; dbRetry++) {
+      try {
+        const result = await mscSupabase.rpc('find_section_for_point', {
+          lon: coordinates.lng,
+          lat: coordinates.lat
+        });
+        
+        postgisResult = result.data;
+        postgisError = result.error;
+        
+        if (!postgisError) {
+          console.log(`✅ Database query successful on attempt ${dbRetry + 1}`);
+          break;
+        }
+        
+        if (dbRetry < 2) {
+          console.log(`⚠️ Database error on attempt ${dbRetry + 1}, retrying:`, postgisError.message);
+          await new Promise(resolve => setTimeout(resolve, 500 * (dbRetry + 1)));
+        }
+      } catch (dbError: any) {
+        console.error(`🚨 Database exception on attempt ${dbRetry + 1}:`, dbError.message);
+        postgisError = dbError;
+        
+        if (dbRetry < 2) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (dbRetry + 1)));
+        }
+      }
+    }
+
+    let foundWard = null;
+    let foundSection = null;
+    let foundGeometry = null;
+    let matchType = 'exact';
+
+    if (postgisError) {
+      console.warn('⚠️ PostGIS function error:', postgisError);
+    } else if (postgisResult && postgisResult.length > 0) {
+      console.log('✅ PostGIS function found result:', postgisResult[0]);
+      foundWard = postgisResult[0].ward;
+      foundSection = postgisResult[0].section;
+      
+      // Get the geometry for the found section with retry
+      let geometryData = null;
+      let geometryError = null;
+      
+      for (let geoRetry = 0; geoRetry < 2; geoRetry++) {
+        const result = await mscSupabase
+          .from('street_cleaning_schedule')
+          .select('geom_simplified')
+          .eq('ward', foundWard)
+          .eq('section', foundSection)
+          .not('geom_simplified', 'is', null)
+          .limit(1);
+          
+        geometryData = result.data;
+        geometryError = result.error;
+        
+        if (!geometryError) break;
+        
+        if (geoRetry < 1) {
+          console.log('Retrying geometry lookup...');
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      if (!geometryError && geometryData && geometryData.length > 0) {
+        foundGeometry = geometryData[0].geom_simplified;
+      }
+    }
+
+    // If PostGIS function didn't find a match, the address is in a gap or boundary area
+    if (!foundWard || !foundSection) {
+      console.log('❌ No exact match found - address appears to be in a gap or boundary area');
+      
+      // We have complete coverage of all 50 Chicago wards
+      const wardCoverage = 'all 50 Chicago wards';
+      
+      console.log('No match found:', searchValue, coordinates);
+      
+      return res.status(404).json({ 
+        error: 'Street cleaning information not available for this location',
+        message: `No street cleaning schedule found for this location. This could mean the address is in an area where street cleaning doesn't apply (such as private property, parks, or certain downtown areas), is located in a boundary area between sections, or is outside our coverage area. Our database covers ${wardCoverage} with detailed section boundaries.`,
+        debug: {
+          coordinates: coordinates,
+          postgis_attempted: true,
+          postgis_error: postgisError?.message || null,
+          match_type: 'none',
+          geocoding_successful: true,
+          likely_reason: 'address_in_boundary_gap',
+          ward_coverage: wardCoverage
+        }
       });
     }
 
-    // Get next cleaning date for this ward/section from our schedule
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    console.log(`✅ Successfully found Ward ${foundWard}, Section ${foundSection} (${matchType} match)`);
+
+    // Get cleaning dates (single or range based on parameters)
+    const todayStr = new Date().toISOString().split('T')[0];
+    let scheduleEntries = null;
+    let scheduleError = null;
+    let datesInRange = null;
     
-    const { data: nextCleaning } = await supabase
-      .from('street_cleaning_schedule')
-      .select('cleaning_date')
-      .eq('ward', ward)
-      .eq('section', section)
-      .gte('cleaning_date', today.toISOString().split('T')[0])
-      .order('cleaning_date', { ascending: true })
-      .limit(1)
-      .single();
+    // Determine if this is a date range request
+    const isDateRangeRequest = startDate && endDate;
+    
+    for (let schedRetry = 0; schedRetry < 2; schedRetry++) {
+      if (isDateRangeRequest) {
+        // Date range query for trip feature
+        const result = await mscSupabase
+          .from('street_cleaning_schedule')
+          .select('cleaning_date')
+          .eq('ward', foundWard)
+          .eq('section', foundSection)
+          .gte('cleaning_date', startDate as string)
+          .lte('cleaning_date', endDate as string)
+          .order('cleaning_date', { ascending: true });
+          
+        scheduleEntries = result.data;
+        scheduleError = result.error;
+        datesInRange = scheduleEntries?.map(entry => entry.cleaning_date) || [];
+      } else {
+        // Single next cleaning date query (default behavior)
+        const result = await mscSupabase
+          .from('street_cleaning_schedule')
+          .select('cleaning_date')
+          .eq('ward', foundWard)
+          .eq('section', foundSection)
+          .gte('cleaning_date', todayStr)
+          .order('cleaning_date', { ascending: true })
+          .limit(1);
+          
+        scheduleEntries = result.data;
+        scheduleError = result.error;
+      }
+      
+      if (!scheduleError) {
+        console.log(`✅ Schedule lookup successful on attempt ${schedRetry + 1}`);
+        break;
+      }
+      
+      if (schedRetry < 1) {
+        console.log('Retrying schedule lookup...');
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
 
-    return res.status(200).json({
-      ward,
-      section,
-      nextCleaningDate: nextCleaning?.cleaning_date || null,
-      message: `Found: Ward ${ward}, Section ${section}`
-    });
+    if (scheduleError) {
+      console.error('❌ Schedule lookup error:', scheduleError);
+      
+      return res.status(500).json({ 
+        error: 'Failed to get cleaning schedule',
+        details: {
+          database_error: scheduleError.message,
+          ward: foundWard,
+          section: foundSection
+        }
+      });
+    }
 
-  } catch (error) {
-    console.error('Error in find-section:', error);
-    return res.status(500).json({
-      error: 'Failed to process address lookup'
+    const nextCleaningDate = scheduleEntries && scheduleEntries.length > 0 
+      ? scheduleEntries[0].cleaning_date 
+      : null;
+
+    console.log('Location search successful:', foundWard, foundSection, nextCleaningDate);
+
+    // Build response object
+    const responseData: any = {
+      ward: foundWard,
+      section: foundSection,
+      nextCleaningDate: nextCleaningDate,
+      coordinates: coordinates,
+      geometry: foundGeometry,
+      matchType: matchType,
+    };
+    
+    // Add date range specific fields if requested
+    if (isDateRangeRequest) {
+      responseData.datesInRange = datesInRange || [];
+      
+      // For trip feature, also find safe parking sections (sections with no cleaning during the period)
+      // This is a simplified version - in a full implementation, you'd find nearby sections
+      responseData.safeParkingSections = [];
+      
+      console.log(`📅 Date range query: Found ${datesInRange?.length || 0} cleaning dates between ${startDate} and ${endDate}`);
+    }
+    
+    return res.status(200).json(responseData);
+
+  } catch (error: any) {
+    console.error('❌ API Error:', error);
+
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: {
+        error_message: error.message
+      }
     });
   }
 }
