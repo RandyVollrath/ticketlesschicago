@@ -18,34 +18,14 @@ export default async function handler(
   try {
     console.log('Profile update request:', { userId, updateData });
     
-    // Validate the update data - now all fields go to user_profiles
+    // Validate the update data - only fields that exist in Ticketless America schema
     const allowedFields = [
-      'first_name',
-      'last_name', 
       'phone', // Frontend sends 'phone', we map to 'phone_number'
-      'phone_number', // Also accept direct phone_number
-      'notification_preferences',
-      'email_verified',
-      'phone_verified',
+      'phone_number', // Direct phone_number updates
       'license_plate',
-      'vin',
-      'zip_code',
-      'vehicle_type',
-      'vehicle_year',
-      'city_sticker_expiry',
-      'license_plate_expiry',
-      'emissions_date',
-      'street_address',
-      'mailing_address',
-      'mailing_city',
-      'mailing_state',
-      'mailing_zip',
-      'concierge_service',
-      'city_stickers_only',
-      'spending_limit',
-      // Street cleaning fields
+      // Street cleaning fields (core functionality)
       'home_address_full',
-      'home_address_ward',
+      'home_address_ward', 
       'home_address_section',
       'notify_days_array',
       'notify_evening_before',
@@ -55,7 +35,22 @@ export default async function handler(
       'snooze_until_date',
       'snooze_reason',
       'follow_up_sms',
-      'license_plate_street_cleaning'
+      // Notification preferences
+      'notify_email',
+      'notify_sms',
+      'notify_snow',
+      'notify_winter_parking',
+      'phone_call_days_before',
+      'voice_call_days_before',
+      'voice_call_time',
+      'voice_calls_enabled',
+      // SMS settings
+      'sms_pro',
+      'sms_gateway',
+      // Other Ticketless-specific fields
+      'guarantee_opt_in_year',
+      'is_paid',
+      'role'
     ];
 
     const filteredData = Object.keys(updateData)

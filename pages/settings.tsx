@@ -79,37 +79,40 @@ const formatPhoneForDisplay = (value: string | null): string => {
 }
 
 interface UserProfile {
-  id: string
+  user_id: string
   email: string
   phone: string | null // Frontend field for typing
   phone_number: string | null // Database field
-  first_name: string | null
-  last_name: string | null
-  notification_preferences: {
-    sms: boolean
-    email: boolean
-    voice: boolean
-    reminder_days: number[]
-  }
-  email_verified: boolean
-  phone_verified: boolean
-  // Additional fields from signup
+  // Core Ticketless America fields
   license_plate: string | null
-  vin: string | null
-  zip_code: string | null
-  vehicle_type: string | null
-  vehicle_year: number | null
-  city_sticker_expiry: string | null
-  license_plate_expiry: string | null
-  emissions_date: string | null
-  street_address: string | null
-  mailing_address: string | null
-  mailing_city: string | null
-  mailing_state: string | null
-  mailing_zip: string | null
-  concierge_service: boolean
-  city_stickers_only: boolean
-  spending_limit: number | null
+  home_address_full: string | null
+  home_address_ward: string | null
+  home_address_section: string | null
+  notify_days_array: number[] | null
+  notify_evening_before: boolean
+  phone_call_enabled: boolean
+  voice_preference: string | null
+  phone_call_time_preference: string | null
+  snooze_until_date: string | null
+  snooze_reason: string | null
+  follow_up_sms: boolean
+  // Notification preferences
+  notify_email: boolean
+  notify_sms: boolean
+  notify_snow: boolean
+  notify_winter_parking: boolean
+  phone_call_days_before: number[] | null
+  voice_call_days_before: number[] | null
+  voice_call_time: string | null
+  voice_calls_enabled: boolean
+  // SMS settings
+  sms_pro: boolean
+  sms_gateway: string | null
+  // Status fields
+  is_paid: boolean
+  is_canary: boolean
+  role: string | null
+  guarantee_opt_in_year: number | null
 }
 
 interface Vehicle {
@@ -168,42 +171,45 @@ export default function Dashboard() {
           if (profileError.code === 'PGRST116') {
             try {
               const defaultProfile = {
-                id: user.id,
+                user_id: user.id,
                 email: user.email,
                 phone: null,
-                first_name: null,
-                last_name: null,
-                notification_preferences: {
-                  sms: false,
-                  email: true,
-                  voice: false,
-                  reminder_days: [30, 7, 1]
-                },
-                email_verified: true,
-                phone_verified: false,
+                phone_number: null,
+                // Core Ticketless America fields
                 license_plate: null,
-                vin: null,
-                zip_code: null,
-                vehicle_type: 'passenger',
-                vehicle_year: new Date().getFullYear(),
-                city_sticker_expiry: null,
-                license_plate_expiry: null,
-                emissions_date: null,
-                street_address: null,
-                mailing_address: null,
-                mailing_city: null,
-                mailing_state: 'IL',
-                mailing_zip: null,
-                concierge_service: false,
-                city_stickers_only: true,
-                spending_limit: 500,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                home_address_full: null,
+                home_address_ward: null,
+                home_address_section: null,
+                notify_days_array: [1], // Default to day-before notifications
+                notify_evening_before: true,
+                phone_call_enabled: false,
+                voice_preference: 'female',
+                phone_call_time_preference: '7am',
+                snooze_until_date: null,
+                snooze_reason: null,
+                follow_up_sms: true,
+                // Notification preferences
+                notify_email: true,
+                notify_sms: true,
+                notify_snow: false,
+                notify_winter_parking: false,
+                phone_call_days_before: [1],
+                voice_call_days_before: [1],
+                voice_call_time: '7:00 AM',
+                voice_calls_enabled: false,
+                // SMS settings
+                sms_pro: true, // All Ticketless users are paid
+                sms_gateway: null,
+                // Status fields
+                is_paid: true,
+                is_canary: false,
+                role: 'user',
+                guarantee_opt_in_year: null
               }
 
               const { data: newProfile, error: createError } = await supabase
                 .from('user_profiles')
-                .insert({...defaultProfile, user_id: user.id})
+                .insert(defaultProfile)
                 .select()
                 .single()
 
@@ -215,37 +221,42 @@ export default function Dashboard() {
               }
             } catch (error) {
               console.error('Error creating profile:', error)
-              // Fallback to default profile
+              // Fallback to Ticketless default profile
               const defaultProfile = {
-                id: user.id,
+                user_id: user.id,
                 email: user.email,
                 phone: null,
-                first_name: null,
-                last_name: null,
-                notification_preferences: {
-                  sms: false,
-                  email: true,
-                  voice: false,
-                  reminder_days: [30, 7, 1]
-                },
-                email_verified: true,
-                phone_verified: false,
+                phone_number: null,
+                // Core Ticketless America fields
                 license_plate: null,
-                vin: null,
-                zip_code: null,
-                vehicle_type: 'passenger',
-                vehicle_year: new Date().getFullYear(),
-                city_sticker_expiry: null,
-                license_plate_expiry: null,
-                emissions_date: null,
-                street_address: null,
-                mailing_address: null,
-                mailing_city: null,
-                mailing_state: 'IL',
-                mailing_zip: null,
-                concierge_service: false,
-                city_stickers_only: true,
-                spending_limit: 500
+                home_address_full: null,
+                home_address_ward: null,
+                home_address_section: null,
+                notify_days_array: [1], // Default to day-before notifications
+                notify_evening_before: true,
+                phone_call_enabled: false,
+                voice_preference: 'female',
+                phone_call_time_preference: '7am',
+                snooze_until_date: null,
+                snooze_reason: null,
+                follow_up_sms: true,
+                // Notification preferences
+                notify_email: true,
+                notify_sms: true,
+                notify_snow: false,
+                notify_winter_parking: false,
+                phone_call_days_before: [1],
+                voice_call_days_before: [1],
+                voice_call_time: '7:00 AM',
+                voice_calls_enabled: false,
+                // SMS settings
+                sms_pro: true, // All Ticketless users are paid
+                sms_gateway: null,
+                // Status fields
+                is_paid: true,
+                is_canary: false,
+                role: 'user',
+                guarantee_opt_in_year: null
               }
               setProfile(defaultProfile)
             }
@@ -333,7 +344,7 @@ export default function Dashboard() {
       }
       
       const requestBody = {
-        userId: profile.id,
+        userId: profile.user_id || user?.id, // Use user_id from profile or fallback to auth user id
         ...mappedProfile
       }
       
