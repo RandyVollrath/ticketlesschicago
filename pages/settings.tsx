@@ -81,23 +81,12 @@ export default function Dashboard() {
       setUser(user)
       
       try {
-        // First try to get profile from users table, then enhance with vehicle data
-        const response = await fetch(`/api/user-profile?userId=${user.id}`)
-        let userProfile = null
-        let profileError = null
-        
-        if (response.ok) {
-          userProfile = await response.json()
-        } else {
-          // Fallback to direct query if API fails
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', user.email)
-            .single()
-          userProfile = data
-          profileError = error
-        }
+        // Get profile from user_profiles table (the correct table for settings)
+        const { data: userProfile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
 
         if (profileError) {
           console.error('Error fetching user profile:', profileError)
@@ -139,8 +128,8 @@ export default function Dashboard() {
               }
 
               const { data: newProfile, error: createError } = await supabase
-                .from('users')
-                .insert(defaultProfile)
+                .from('user_profiles')
+                .insert({...defaultProfile, user_id: user.id})
                 .select()
                 .single()
 
@@ -250,9 +239,16 @@ export default function Dashboard() {
     setMessage(null)
 
     try {
+      // Map phone to phone_number for user_profiles compatibility
+      const mappedProfile = { ...editedProfile };
+      if (mappedProfile.phone) {
+        mappedProfile.phone_number = mappedProfile.phone;
+        delete mappedProfile.phone;
+      }
+      
       const requestBody = {
         userId: profile.id,
-        ...editedProfile
+        ...mappedProfile
       }
       
       console.log('Sending request to /api/profile:', requestBody)
