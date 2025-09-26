@@ -134,26 +134,41 @@ export default function StreetCleaningSettings() {
     }
   };
 
-  const lookupAddress = async () => {
-    if (!homeAddress) return;
-    
-    setMessage('Looking up address...');
-    try {
-      const response = await fetch(`/api/find-section?address=${encodeURIComponent(homeAddress)}`);
-      const data = await response.json();
-      
-      if (data.ward && data.section) {
-        setWard(data.ward);
-        setSection(data.section);
-        setMessage(`Found: Ward ${data.ward}, Section ${data.section}`);
-      } else {
-        setError('Address not found in Chicago street cleaning zones');
+  // Auto-lookup address whenever homeAddress changes
+  useEffect(() => {
+    const lookupAddress = async () => {
+      if (!homeAddress || homeAddress.length < 10) {
+        setWard('');
+        setSection('');
+        return;
       }
-    } catch (error) {
-      console.error('Error looking up address:', error);
-      setError('Failed to lookup address');
-    }
-  };
+      
+      try {
+        const response = await fetch(`/api/find-section?address=${encodeURIComponent(homeAddress)}`);
+        const data = await response.json();
+        
+        if (data.ward && data.section) {
+          setWard(data.ward);
+          setSection(data.section);
+          setMessage(`Address verified: Ward ${data.ward}, Section ${data.section}`);
+          setError('');
+        } else {
+          setWard('');
+          setSection('');
+          setError('Address not found in Chicago street cleaning zone. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error looking up address:', error);
+        setWard('');
+        setSection('');
+        setError('Unable to verify address. Please try again.');
+      }
+    };
+
+    // Debounce the lookup
+    const timeoutId = setTimeout(lookupAddress, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [homeAddress]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -228,30 +243,11 @@ export default function StreetCleaningSettings() {
           onChange={(e) => setHomeAddress(e.target.value)}
           placeholder="123 N State St, Chicago, IL"
         />
-        <button onClick={lookupAddress} className={styles.secondaryButton}>
-          Look Up Ward/Section
-        </button>
-      </div>
-
-      <div className={styles.formRow}>
-        <div className={styles.formGroup}>
-          <label>Ward</label>
-          <input
-            type="text"
-            value={ward}
-            onChange={(e) => setWard(e.target.value)}
-            placeholder="e.g., 42"
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label>Section</label>
-          <input
-            type="text"
-            value={section}
-            onChange={(e) => setSection(e.target.value)}
-            placeholder="e.g., 15"
-          />
-        </div>
+        {ward && section && (
+          <div className={styles.addressInfo}>
+            ✓ Ward {ward}, Section {section}
+          </div>
+        )}
       </div>
 
       <div className={styles.formGroup}>
