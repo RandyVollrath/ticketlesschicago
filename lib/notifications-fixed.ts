@@ -45,6 +45,13 @@ export class NotificationScheduler {
           if (!renewal.date) continue;
           
           const dueDate = new Date(renewal.date);
+          
+          // Validate date to prevent "Invalid Date" in messages
+          if (!dueDate || isNaN(dueDate.getTime())) {
+            console.error(`Invalid renewal date for ${user.email}: ${renewal.date}`);
+            continue;
+          }
+          
           const daysUntil = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           // Check if this matches a reminder day for the user

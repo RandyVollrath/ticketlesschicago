@@ -223,6 +223,12 @@ function shouldSendNotification(user: any, type: string, daysUntil: number): boo
 }
 
 async function sendNotification(user: any, type: string, cleaningDate: Date, daysUntil: number): Promise<boolean> {
+  // Validate date to prevent "Invalid Date" in messages
+  if (!cleaningDate || isNaN(cleaningDate.getTime())) {
+    console.error('Invalid cleaning date provided:', cleaningDate);
+    return false;
+  }
+  
   const formattedDate = cleaningDate.toLocaleDateString('en-US', { 
     weekday: 'long', 
     month: 'short', 
