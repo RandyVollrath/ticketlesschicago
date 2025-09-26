@@ -18,14 +18,11 @@ export default async function handler(
   try {
     console.log('Profile update request:', { userId, updateData });
     
-    // Validate the update data - include name fields but handle gracefully if they don't exist
+    // Only include fields that actually exist in Ticketless America user_profiles table
     const allowedFields = [
       'phone', // Frontend sends 'phone', we map to 'phone_number'
       'phone_number', // Direct phone_number updates
       'license_plate',
-      // Name fields - may not exist in database, will be filtered out if they cause errors
-      'first_name',
-      'last_name',
       // Street cleaning fields (core functionality)
       'home_address_full',
       'home_address_ward', 
@@ -38,7 +35,7 @@ export default async function handler(
       'snooze_until_date',
       'snooze_reason',
       'follow_up_sms',
-      // Notification preferences
+      // Notification preferences (confirmed to exist)
       'notify_email',
       'notify_sms',
       'notify_snow',
@@ -96,20 +93,9 @@ export default async function handler(
       }
     };
     
-    // Try with all data first
+    // Attempt the update with filtered data
     let result = await attemptUpdate(filteredData);
     updateError = result.error;
-    
-    // If update failed due to name fields not existing, retry without them
-    if (updateError && (updateError.message?.includes('first_name') || updateError.message?.includes('last_name'))) {
-      console.log('Name fields not supported in database, retrying without them...');
-      const dataWithoutNames = { ...filteredData };
-      delete dataWithoutNames.first_name;
-      delete dataWithoutNames.last_name;
-      
-      result = await attemptUpdate(dataWithoutNames);
-      updateError = result.error;
-    }
       
     if (updateError) {
       console.error('Error updating user_profiles:', updateError);

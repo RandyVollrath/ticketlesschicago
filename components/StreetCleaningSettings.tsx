@@ -19,6 +19,14 @@ interface StreetCleaningProfile {
   follow_up_sms?: boolean;
 }
 
+interface AlternativeSection {
+  ward: string;
+  section: string;
+  distance_type: 'same_ward' | 'adjacent_ward';
+  street_boundaries?: string[];
+  next_cleaning_date?: string | null;
+}
+
 export default function StreetCleaningSettings() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -49,10 +57,23 @@ export default function StreetCleaningSettings() {
   const [tripMode, setTripMode] = useState(false);
   const [tripStartDate, setTripStartDate] = useState('');
   const [tripEndDate, setTripEndDate] = useState('');
+  
+  // Alternative parking zones
+  const [alternativeSections, setAlternativeSections] = useState<AlternativeSection[]>([]);
+  const [loadingAlternatives, setLoadingAlternatives] = useState(false);
+  const [parkHereError, setParkHereError] = useState('');
+  const [parkHereRetryCount, setParkHereRetryCount] = useState(0);
 
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Load alternative parking zones when ward/section changes
+  useEffect(() => {
+    if (ward && section) {
+      loadAlternativeParkingZones();
+    }
+  }, [ward, section, parkHereRetryCount]);
 
   const loadProfile = async () => {
     try {
@@ -134,6 +155,30 @@ export default function StreetCleaningSettings() {
     }
   };
 
+  // Load alternative parking zones
+  const loadAlternativeParkingZones = async () => {
+    if (!ward || !section) return;
+    
+    setLoadingAlternatives(true);
+    setParkHereError('');
+    
+    try {
+      const response = await fetch(`/api/find-alternative-parking?ward=${ward}&section=${section}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load parking alternatives');
+      }
+      
+      setAlternativeSections(data.alternatives || []);
+    } catch (error: any) {
+      console.error('Error loading alternative parking zones:', error);
+      setParkHereError(error.message || 'Unable to load alternative parking zones. Please try again.');
+    } finally {
+      setLoadingAlternatives(false);
+    }
+  };
+
   // Auto-lookup address whenever homeAddress changes
   useEffect(() => {
     const lookupAddress = async () => {
@@ -147,7 +192,7 @@ export default function StreetCleaningSettings() {
         const response = await fetch(`/api/find-section?address=${encodeURIComponent(homeAddress)}`);
         const data = await response.json();
         
-        if (data.ward && data.section) {
+        if (response.ok && data.ward && data.section) {
           setWard(data.ward);
           setSection(data.section);
           setMessage(`Address verified: Ward ${data.ward}, Section ${data.section}`);
@@ -155,7 +200,17 @@ export default function StreetCleaningSettings() {
         } else {
           setWard('');
           setSection('');
-          setError('Address not found in Chicago street cleaning zone. Please try again.');
+          
+          // Handle specific API error messages
+          if (data.error === 'Invalid address format') {
+            setError(data.message || 'Please enter a valid Chicago street address with a street number and name.');
+          } else if (data.error === 'Address not found') {
+            setError('Address not found. Please check the address and try again.');
+          } else if (data.error === 'Street cleaning information not available for this location') {
+            setError('Street cleaning information not available for this address. This may be private property, a park, or an area where street cleaning doesn\'t apply.');
+          } else {
+            setError(data.message || 'Address not found in Chicago street cleaning zone. Please try again.');
+          }
         }
       } catch (error) {
         console.error('Error looking up address:', error);
@@ -273,24 +328,101 @@ export default function StreetCleaningSettings() {
         )}
       </div>
 
-      {/* Alternative Parking Feature */}
+      {/* Park Here Instead Feature - MSC Style */}
       {ward && section && (
         <div className={styles.formGroup}>
-          <label>Alternative Parking Zones</label>
-          <div className={styles.parkHereSection}>
-            <p className={styles.helpText}>
-              Find nearby zones where you can safely park during street cleaning in your area.
+          <label>🅿️ Park Here Instead</label>
+          <div className={styles.parkHereInfo}>
+            <p className={styles.parkHereDescription}>
+              Alternative parking zones where you can safely park during cleaning in your area:
             </p>
-            <button 
-              type="button"
-              onClick={() => router.push('/parking-map')}
-              className={styles.linkButton}
-            >
-              View Alternative Parking Map
-            </button>
-            <p className={styles.smallText}>
-              Interactive map showing Ward {ward}, Section {section} and nearby parking alternatives
-            </p>
+            
+            {loadingAlternatives ? (
+              <div className={styles.parkHereLoading}>
+                <span>🔍 Finding nearby parking zones...</span>
+              </div>
+            ) : parkHereError ? (
+              <div className={styles.parkHereError}>
+                <div className={styles.errorContent}>
+                  <span className={styles.errorIcon}>⚠️</span>
+                  <div>
+                    <p className={styles.errorMessage}>{parkHereError}</p>
+                    {parkHereRetryCount < 3 && (
+                      <button 
+                        className={styles.retryButton}
+                        onClick={() => {
+                          setParkHereRetryCount(prev => prev + 1);
+                        }}
+                      >
+                        🔄 Try Again
+                      </button>
+                    )}
+                    {parkHereRetryCount >= 3 && (
+                      <p className={styles.maxRetriesText}>
+                        Please try refreshing the page or contact support if the problem persists.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : alternativeSections.length > 0 ? (
+              <div className={styles.parkHereZones}>
+                {alternativeSections.map((zone, index) => (
+                  <div key={`${zone.ward}-${zone.section}`} className={styles.zoneCard}>
+                    <div className={styles.zoneHeader}>
+                      <h4 className={styles.zoneTitle}>
+                        Ward {zone.ward}, Section {zone.section}
+                        {zone.distance_type === 'same_ward' && (
+                          <span className={styles.sameWardBadge}>Same Ward</span>
+                        )}
+                      </h4>
+                      <span className={styles.zoneDistance}>
+                        {zone.distance_type === 'same_ward' ? 'Same ward' : 'Adjacent ward'}
+                      </span>
+                    </div>
+                    
+                    {zone.street_boundaries && zone.street_boundaries.length > 0 && (
+                      <div className={styles.streetBoundaries}>
+                        <strong>Area boundaries:</strong>
+                        <ul>
+                          {zone.street_boundaries.map((boundary: string, i: number) => (
+                            <li key={i}>{boundary}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {zone.next_cleaning_date && (
+                      <div className={styles.nextCleaning}>
+                        <strong>Next cleaning:</strong> {new Date(zone.next_cleaning_date).toLocaleDateString()}
+                      </div>
+                    )}
+                    
+                    <button 
+                      className={styles.viewOnMapButton}
+                      onClick={() => {
+                        // Open parking map with the specific section highlighted
+                        const mapUrl = `/parking-map?ward=${zone.ward}&section=${zone.section}&highlight=true`;
+                        window.open(mapUrl, '_blank');
+                      }}
+                    >
+                      🗺️ View on Map
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.noAlternatives}>
+                <p>No alternative parking zones found nearby. Try the main parking map:</p>
+                <button 
+                  type="button"
+                  onClick={() => router.push('/parking-map')}
+                  className={styles.linkButton}
+                >
+                  View Full Parking Map
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

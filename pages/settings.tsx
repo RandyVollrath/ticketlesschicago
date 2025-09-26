@@ -336,7 +336,7 @@ export default function Dashboard() {
     setSaving(true)
 
     try {
-      // Only save the specific changed data
+      // Only save the specific changed data, and filter out fields that don't exist in Ticketless database
       const mappedData = { ...updatedData };
       
       // Handle phone number mapping if phone was changed
@@ -349,9 +349,31 @@ export default function Dashboard() {
         delete mappedData.phone; // Remove frontend field
       }
       
+      // Filter out fields that don't exist in Ticketless America database
+      const unsupportedFields = [
+        'first_name', 'last_name', 'vin', 'vehicle_type', 'vehicle_year', 
+        'zip_code', 'mailing_address', 'mailing_city', 'mailing_state', 'mailing_zip',
+        'city_sticker_expiry', 'license_plate_expiry', 'emissions_date',
+        'concierge_service', 'spending_limit', 'street_address'
+      ];
+      
+      const supportedData = Object.keys(mappedData)
+        .filter(key => !unsupportedFields.includes(key))
+        .reduce((obj, key) => {
+          obj[key] = mappedData[key];
+          return obj;
+        }, {} as any);
+      
+      // Skip auto-save if no supported fields were changed
+      if (Object.keys(supportedData).length === 0) {
+        console.log('No supported fields to auto-save, skipping');
+        setSaving(false);
+        return;
+      }
+      
       const requestBody = {
         userId: profile.user_id || user.id,
-        ...mappedData
+        ...supportedData
       }
       
       console.log('Auto-saving to /api/profile:', requestBody)
@@ -371,8 +393,8 @@ export default function Dashboard() {
         throw new Error(result.error || `HTTP ${response.status}: Failed to auto-save`)
       }
 
-      // Update the profile state with the saved data
-      setProfile({ ...profile, ...updatedData })
+      // Update the profile state with the saved data (only supported fields)
+      setProfile({ ...profile, ...supportedData })
       console.log('✅ Auto-saved successfully')
     } catch (error: any) {
       console.error('Error auto-saving profile:', error)
@@ -655,15 +677,21 @@ export default function Dashboard() {
                   type="text"
                   value={editedProfile.first_name || profile.first_name || ''}
                   onChange={(e) => handleInputChange('first_name', e.target.value)}
+                  disabled
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280'
                   }}
-                  placeholder="Enter first name"
+                  placeholder="Coming soon"
                 />
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  Name fields coming soon
+                </p>
               </div>
 
               <div>
@@ -680,15 +708,21 @@ export default function Dashboard() {
                   type="text"
                   value={editedProfile.last_name || profile.last_name || ''}
                   onChange={(e) => handleInputChange('last_name', e.target.value)}
+                  disabled
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280'
                   }}
-                  placeholder="Enter last name"
+                  placeholder="Coming soon"
                 />
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  Name fields coming soon
+                </p>
               </div>
 
             </div>
@@ -744,8 +778,8 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.vin || profile.vin || ''}
-                  onChange={(e) => handleInputChange('vin', e.target.value.toUpperCase())}
+                  value=""
+                  disabled
                   maxLength={17}
                   style={{
                     width: '100%',
@@ -753,10 +787,14 @@ export default function Dashboard() {
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
                     fontSize: '14px',
-                    textTransform: 'uppercase'
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280'
                   }}
-                  placeholder="Required for trucks/large SUVs"
+                  placeholder="Coming soon"
                 />
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  VIN field coming soon
+                </p>
               </div>
 
               <div>
@@ -770,22 +808,22 @@ export default function Dashboard() {
                   Vehicle Type
                 </label>
                 <select
-                  value={editedProfile.vehicle_type || profile.vehicle_type || 'passenger'}
-                  onChange={(e) => handleInputChange('vehicle_type', e.target.value)}
+                  disabled
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
                     fontSize: '14px',
-                    backgroundColor: 'white'
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280'
                   }}
                 >
-                  <option value="passenger">Passenger Vehicle</option>
-                  <option value="large-passenger">Large Passenger (SUV/Van)</option>
-                  <option value="truck">Truck</option>
-                  <option value="motorcycle">Motorcycle</option>
+                  <option>Coming soon</option>
                 </select>
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  Vehicle details coming soon
+                </p>
               </div>
 
               <div>
@@ -799,19 +837,22 @@ export default function Dashboard() {
                   Vehicle Year
                 </label>
                 <input
-                  type="number"
-                  value={editedProfile.vehicle_year || profile.vehicle_year || new Date().getFullYear()}
-                  onChange={(e) => handleInputChange('vehicle_year', parseInt(e.target.value))}
-                  min="1990"
-                  max={new Date().getFullYear() + 1}
+                  type="text"
+                  disabled
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280'
                   }}
+                  placeholder="Coming soon"
                 />
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  Vehicle details coming soon
+                </p>
               </div>
 
               <div>
@@ -826,18 +867,21 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.zip_code || profile.zip_code || ''}
-                  onChange={(e) => handleInputChange('zip_code', e.target.value)}
-                  maxLength={5}
+                  disabled
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280'
                   }}
-                  placeholder="60614"
+                  placeholder="Coming soon"
                 />
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic', margin: '4px 0 0 0' }}>
+                  ZIP code field coming soon
+                </p>
               </div>
             </div>
           </div>
@@ -853,87 +897,20 @@ export default function Dashboard() {
               Renewal Dates
             </h2>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>
-                  City Sticker Expiry
-                </label>
-                <input
-                  type="date"
-                  value={editedProfile.city_sticker_expiry || profile.city_sticker_expiry || ''}
-                  onChange={(e) => handleInputChange('city_sticker_expiry', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                />
-                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                  Usually expires July 31st
-                </p>
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>
-                  License Plate Renewal
-                </label>
-                <input
-                  type="date"
-                  value={editedProfile.license_plate_expiry || profile.license_plate_expiry || ''}
-                  onChange={(e) => handleInputChange('license_plate_expiry', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                />
-                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                  Check your registration sticker
-                </p>
-              </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>
-                  Emissions Test Due
-                </label>
-                <input
-                  type="date"
-                  value={editedProfile.emissions_date || profile.emissions_date || ''}
-                  onChange={(e) => handleInputChange('emissions_date', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                />
-                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                  Required every 2 years
-                </p>
-              </div>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px 20px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              border: '2px dashed #d1d5db'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                Renewal Tracking Coming Soon
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                We're working on adding vehicle renewal date tracking and automatic reminders.
+              </p>
             </div>
           </div>
 
@@ -948,113 +925,20 @@ export default function Dashboard() {
               Address Information
             </h2>
             
-
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
-                Mailing Address (for stickers)
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px 20px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              border: '2px dashed #d1d5db'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📮</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                Mailing Address Coming Soon
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                <div>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '14px', 
-                    fontWeight: '500', 
-                    color: '#374151', 
-                    marginBottom: '8px' 
-                  }}>
-                    Street Address
-                  </label>
-                  <input
-                    type="text"
-                    value={editedProfile.mailing_address || profile.mailing_address || ''}
-                    onChange={(e) => handleInputChange('mailing_address', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                    placeholder="456 Oak Avenue"
-                  />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ 
-                      display: 'block', 
-                      fontSize: '14px', 
-                      fontWeight: '500', 
-                      color: '#374151', 
-                      marginBottom: '8px' 
-                    }}>
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      value={editedProfile.mailing_city || profile.mailing_city || ''}
-                      onChange={(e) => handleInputChange('mailing_city', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                      placeholder="Chicago"
-                    />
-                  </div>
-                  <div>
-                    <label style={{ 
-                      display: 'block', 
-                      fontSize: '14px', 
-                      fontWeight: '500', 
-                      color: '#374151', 
-                      marginBottom: '8px' 
-                    }}>
-                      State
-                    </label>
-                    <select
-                      value={editedProfile.mailing_state || profile.mailing_state || 'IL'}
-                      onChange={(e) => handleInputChange('mailing_state', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        backgroundColor: 'white'
-                      }}
-                    >
-                      <option value="IL">IL</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ 
-                      display: 'block', 
-                      fontSize: '14px', 
-                      fontWeight: '500', 
-                      color: '#374151', 
-                      marginBottom: '8px' 
-                    }}>
-                      ZIP Code
-                    </label>
-                    <input
-                      type="text"
-                      value={editedProfile.mailing_zip || profile.mailing_zip || ''}
-                      onChange={(e) => handleInputChange('mailing_zip', e.target.value)}
-                      maxLength={5}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                      placeholder="60614"
-                    />
-                  </div>
-                </div>
-              </div>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                We're working on adding mailing address management for city sticker delivery.
+              </p>
             </div>
           </div>
 

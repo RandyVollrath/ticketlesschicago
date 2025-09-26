@@ -197,5 +197,180 @@
   color: #94a3b8;
   font-size: 12px;
   margin-top: 8px;
+}
+
+/* MSC-Style Park Here Instead Styling */
+.parkHereInfo {
+  padding: 16px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.parkHereDescription {
+  color: #4a5568;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.parkHereLoading {
+  text-align: center;
+  padding: 20px;
+  color: #718096;
   font-style: italic;
+}
+
+.parkHereError {
+  background-color: #fed7d7;
+  border: 1px solid #feb2b2;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.errorContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.errorIcon {
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.errorMessage {
+  margin: 0 0 8px 0;
+  color: #c53030;
+  font-weight: 500;
+}
+
+.retryButton {
+  background-color: #3182ce;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.retryButton:hover {
+  background-color: #2c5aa0;
+}
+
+.maxRetriesText {
+  margin: 8px 0 0 0;
+  color: #718096;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.parkHereZones {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.zoneCard {
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.zoneHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.zoneTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sameWardBadge {
+  background-color: #c6f6d5;
+  color: #22543d;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.zoneDistance {
+  font-size: 12px;
+  color: #718096;
+  font-weight: 500;
+}
+
+.streetBoundaries {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #4a5568;
+}
+
+.streetBoundaries strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.streetBoundaries ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.streetBoundaries li {
+  margin-bottom: 2px;
+}
+
+.nextCleaning {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #4a5568;
+}
+
+.nextCleaning strong {
+  font-weight: 600;
+}
+
+.viewOnMapButton {
+  background-color: #3182ce;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s;
+}
+
+.viewOnMapButton:hover {
+  background-color: #2c5aa0;
+}
+
+.noAlternatives {
+  text-align: center;
+  padding: 20px;
+  color: #718096;
+}
+
+.noAlternatives p {
+  margin-bottom: 12px;
 }
