@@ -147,6 +147,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({})
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -309,6 +310,15 @@ export default function Dashboard() {
     loadUserData()
   }, [router])
 
+  // Cleanup timeout when component unmounts
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+      }
+    }
+  }, [autoSaveTimeout])
+
   const signOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
@@ -376,10 +386,17 @@ export default function Dashboard() {
     const updatedData = { [field]: value };
     setEditedProfile(prev => ({ ...prev, [field]: value }))
     
+    // Clear previous timeout to debounce rapid changes
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+    }
+    
     // Auto-save after a brief delay to batch rapid changes
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       autoSaveProfile(updatedData);
-    }, 1000);
+    }, 1500);
+    
+    setAutoSaveTimeout(timeoutId);
   }
 
   const handlePhoneChange = (value: string) => {
@@ -387,21 +404,42 @@ export default function Dashboard() {
     const formattedForDisplay = formatPhoneNumber(value)
     setEditedProfile(prev => ({ ...prev, phone: formattedForDisplay }))
     
-    // Auto-save phone changes
-    setTimeout(() => {
+    // Clear previous timeout to debounce rapid changes
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+    }
+    
+    // Auto-save phone changes after debounce
+    const timeoutId = setTimeout(() => {
       autoSaveProfile({ phone: formattedForDisplay });
-    }, 1000);
+    }, 1500);
+    
+    setAutoSaveTimeout(timeoutId);
   }
 
   const handleNotificationPreferenceChange = (field: string, value: any) => {
+    const newNotificationPrefs = {
+      ...profile?.notification_preferences,
+      ...editedProfile.notification_preferences,
+      [field]: value
+    };
+    
     setEditedProfile(prev => ({
       ...prev,
-      notification_preferences: {
-        ...profile?.notification_preferences,
-        ...prev.notification_preferences,
-        [field]: value
-      }
-    }))
+      notification_preferences: newNotificationPrefs
+    }));
+    
+    // Clear previous timeout to debounce rapid changes
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+    }
+    
+    // Auto-save notification preference changes after debounce
+    const timeoutId = setTimeout(() => {
+      autoSaveProfile({ notification_preferences: newNotificationPrefs });
+    }, 1500);
+    
+    setAutoSaveTimeout(timeoutId);
   }
 
   const handleReminderDayToggle = (day: number) => {
@@ -410,6 +448,7 @@ export default function Dashboard() {
       ? currentDays.filter(d => d !== day)
       : [...currentDays, day].sort((a, b) => b - a)
     
+    // Use the same auto-save approach as other notification preferences
     handleNotificationPreferenceChange('reminder_days', updatedDays)
   }
 
