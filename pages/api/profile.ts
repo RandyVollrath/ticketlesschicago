@@ -18,8 +18,8 @@ export default async function handler(
   try {
     console.log('Profile update request:', { userId, updateData });
     
-    // Only include fields that actually exist in Ticketless America user_profiles table
-    const allowedFields = [
+    // Split fields based on which table they belong to
+    const userProfilesFields = [
       'phone', // Frontend sends 'phone', we map to 'phone_number'
       'phone_number', // Direct phone_number updates
       'license_plate',
@@ -53,8 +53,30 @@ export default async function handler(
       'role'
     ];
 
-    const filteredData = Object.keys(updateData)
-      .filter(key => allowedFields.includes(key))
+    // Fields that exist in the users table
+    const usersTableFields = [
+      'first_name',
+      'last_name',
+      'vin',
+      'vehicle_type',
+      'vehicle_year',
+      'zip_code',
+      'city_sticker_expiry',
+      'license_plate_expiry',
+      'emissions_date',
+      'mailing_address',
+      'mailing_city',
+      'mailing_state',
+      'mailing_zip',
+      'phone', // Also save to users table for consistency
+      'license_plate' // Also save to users table for consistency
+    ];
+
+    const allAllowedFields = [...new Set([...userProfilesFields, ...usersTableFields])];
+
+    // Filter and separate data for each table
+    const userProfilesData = Object.keys(updateData)
+      .filter(key => userProfilesFields.includes(key))
       .reduce((obj, key) => {
         // Map phone to phone_number for user_profiles compatibility
         if (key === 'phone') {
@@ -65,56 +87,105 @@ export default async function handler(
         return obj;
       }, {} as any);
 
-    console.log('Filtered data for update:', filteredData);
+    const usersTableData = Object.keys(updateData)
+      .filter(key => usersTableFields.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = updateData[key];
+        return obj;
+      }, {} as any);
+
+    console.log('User profiles data:', userProfilesData);
+    console.log('Users table data:', usersTableData);
     
-    if (Object.keys(filteredData).length === 0) {
+    if (Object.keys(userProfilesData).length === 0 && Object.keys(usersTableData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    // First check if user profile exists
+    // Check if user profile exists
     const { data: existingProfile } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id')
       .eq('user_id', userId)
       .single();
+
+    // Check if user exists in users table
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single();
     
-    let updateError;
+    let updateErrors = [];
     
-    const attemptUpdate = async (dataToUpdate: any) => {
+    // Update user_profiles table if there's data for it
+    if (Object.keys(userProfilesData).length > 0) {
+      let result;
       if (existingProfile) {
-        return await supabaseAdmin
+        result = await supabaseAdmin
           .from('user_profiles')
-          .update(dataToUpdate)
+          .update(userProfilesData)
           .eq('user_id', userId);
       } else {
-        return await supabaseAdmin
+        result = await supabaseAdmin
           .from('user_profiles')
-          .insert({ user_id: userId, ...dataToUpdate });
+          .insert({ user_id: userId, ...userProfilesData });
       }
-    };
-    
-    // Attempt the update with filtered data
-    let result = await attemptUpdate(filteredData);
-    updateError = result.error;
       
-    if (updateError) {
-      console.error('Error updating user_profiles:', updateError);
+      if (result.error) {
+        console.error('Error updating user_profiles:', result.error);
+        updateErrors.push(`user_profiles: ${result.error.message}`);
+      } else {
+        console.log('✅ user_profiles updated successfully');
+      }
+    }
+
+    // Update users table if there's data for it
+    if (Object.keys(usersTableData).length > 0) {
+      const result = await supabaseAdmin
+        .from('users')
+        .update(usersTableData)
+        .eq('id', userId);
+      
+      if (result.error) {
+        console.error('Error updating users table:', result.error);
+        updateErrors.push(`users: ${result.error.message}`);
+      } else {
+        console.log('✅ users table updated successfully');
+      }
+    }
+      
+    if (updateErrors.length > 0) {
+      console.error('Update errors:', updateErrors);
       return res.status(500).json({ 
-        error: 'Failed to update profile',
-        details: updateError.message 
+        error: 'Failed to update some profile data',
+        details: updateErrors.join('; ')
       });
     }
     
-    // Get the updated data to return
-    const { data } = await supabaseAdmin
+    // Get the updated data to return (combine from both tables)
+    const { data: profileData } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
       .single();
 
+    const { data: userData } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    // Combine data from both tables, prioritizing user_profiles for overlapping fields
+    const combinedData = {
+      ...userData,
+      ...profileData,
+      // Map phone_number back to phone for frontend compatibility
+      phone: profileData?.phone_number || userData?.phone || profileData?.phone
+    };
+
     res.status(200).json({
       success: true,
-      data: data
+      data: combinedData
     });
 
   } catch (error) {
