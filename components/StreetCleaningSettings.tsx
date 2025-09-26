@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import styles from '../styles/Settings.module.css';
 
@@ -19,6 +20,7 @@ interface StreetCleaningProfile {
 }
 
 export default function StreetCleaningSettings() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -248,6 +250,27 @@ export default function StreetCleaningSettings() {
         )}
       </div>
 
+      {/* Park Here Instead Feature */}
+      {ward && section && (
+        <div className={styles.formGroup}>
+          <label>🅿️ Alternative Parking Zones</label>
+          <div className={styles.parkHereSection}>
+            <p className={styles.helpText}>
+              Find nearby zones where you can safely park during street cleaning in your area.
+            </p>
+            <button 
+              type="button"
+              onClick={() => router.push('/parking-map')}
+              className={styles.linkButton}
+            >
+              📍 View Alternative Parking Map
+            </button>
+            <p className={styles.smallText}>
+              Interactive map showing Ward {ward}, Section {section} and nearby parking alternatives
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className={styles.formGroup}>
         <label>When to Send Reminders</label>

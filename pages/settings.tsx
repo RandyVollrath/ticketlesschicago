@@ -5,6 +5,79 @@ import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import StreetCleaningSettings from '../components/StreetCleaningSettings'
 
+// Phone number formatting utilities
+const formatPhoneNumber = (value: string): string => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '')
+  
+  // Handle different input formats
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  
+  // Handle 11 digits (with country code)
+  if (digits.length === 11 && digits[0] === '1') {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  
+  // For 10 digits, format normally
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  
+  // Keep original if too long or complex
+  return value
+}
+
+const normalizePhoneForStorage = (value: string): string => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '')
+  
+  if (digits.length === 0) return ''
+  
+  // Handle 10-digit US numbers - add +1
+  if (digits.length === 10) {
+    return `+1${digits}`
+  }
+  
+  // Handle 11-digit numbers starting with 1
+  if (digits.length === 11 && digits[0] === '1') {
+    return `+${digits}`
+  }
+  
+  // If it's already in E.164 format or international, keep as is
+  if (value.startsWith('+')) {
+    return value
+  }
+  
+  // Default: assume US number and add +1
+  return digits.length >= 10 ? `+1${digits.slice(-10)}` : `+1${digits}`
+}
+
+const formatPhoneForDisplay = (value: string | null): string => {
+  if (!value) return ''
+  
+  // If it's E.164 format (+1xxxxxxxxxx), format for display
+  if (value.startsWith('+1') && value.length === 12) {
+    const digits = value.slice(2) // Remove +1
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  
+  // If it's other international format, show as is
+  if (value.startsWith('+')) {
+    return value
+  }
+  
+  // Try to format as US number
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  
+  return value
+}
+
 interface UserProfile {
   id: string
   email: string
@@ -239,10 +312,10 @@ export default function Dashboard() {
     setMessage(null)
 
     try {
-      // Map phone to phone_number for user_profiles compatibility
+      // Map phone to phone_number for user_profiles compatibility and normalize format
       const mappedProfile = { ...editedProfile };
       if (mappedProfile.phone) {
-        mappedProfile.phone_number = mappedProfile.phone;
+        mappedProfile.phone_number = normalizePhoneForStorage(mappedProfile.phone);
         delete mappedProfile.phone;
       }
       
@@ -284,6 +357,12 @@ export default function Dashboard() {
 
   const handleInputChange = (field: keyof UserProfile, value: any) => {
     setEditedProfile(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handlePhoneChange = (value: string) => {
+    // Format for display as user types
+    const formattedForDisplay = formatPhoneNumber(value)
+    setEditedProfile(prev => ({ ...prev, phone: formattedForDisplay }))
   }
 
   const handleNotificationPreferenceChange = (field: string, value: any) => {
@@ -474,8 +553,9 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="tel"
-                  value={editedProfile.phone || profile.phone || ''}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  value={editedProfile.phone || formatPhoneForDisplay(profile.phone) || ''}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  placeholder="(555) 123-4567"
                   style={{
                     width: '100%',
                     padding: '12px 16px',
