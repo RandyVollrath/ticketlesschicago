@@ -16,11 +16,14 @@ export default async function handler(
   }
 
   try {
+    console.log('Profile update request:', { userId, updateData });
+    
     // Validate the update data - now all fields go to user_profiles
     const allowedFields = [
       'first_name',
       'last_name', 
-      'phone_number', // Note: phone -> phone_number in user_profiles
+      'phone', // Frontend sends 'phone', we map to 'phone_number'
+      'phone_number', // Also accept direct phone_number
       'notification_preferences',
       'email_verified',
       'phone_verified',
@@ -67,15 +70,35 @@ export default async function handler(
         return obj;
       }, {} as any);
 
+    console.log('Filtered data for update:', filteredData);
+    
     if (Object.keys(filteredData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    // Update user_profiles using user_id
-    const { error: updateError } = await supabaseAdmin
+    // First check if user profile exists
+    const { data: existingProfile } = await supabaseAdmin
       .from('user_profiles')
-      .update(filteredData)
-      .eq('user_id', userId);
+      .select('user_id')
+      .eq('user_id', userId)
+      .single();
+    
+    let updateError;
+    
+    if (existingProfile) {
+      // Update existing profile
+      const result = await supabaseAdmin
+        .from('user_profiles')
+        .update(filteredData)
+        .eq('user_id', userId);
+      updateError = result.error;
+    } else {
+      // Create new profile with filteredData
+      const result = await supabaseAdmin
+        .from('user_profiles')
+        .insert({ user_id: userId, ...filteredData });
+      updateError = result.error;
+    }
       
     if (updateError) {
       console.error('Error updating user_profiles:', updateError);

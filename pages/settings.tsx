@@ -81,7 +81,8 @@ const formatPhoneForDisplay = (value: string | null): string => {
 interface UserProfile {
   id: string
   email: string
-  phone: string | null
+  phone: string | null // Frontend field for typing
+  phone_number: string | null // Database field
   first_name: string | null
   last_name: string | null
   notification_preferences: {
@@ -251,7 +252,8 @@ export default function Dashboard() {
           }
         } else if (userProfile) {
           setProfile(userProfile)
-          setEditedProfile(userProfile)
+          // Only set editedProfile if it's empty to avoid overwriting user changes
+          setEditedProfile(prev => Object.keys(prev).length === 0 ? userProfile : prev)
           
           // For now, allow all authenticated users to access settings
           // TODO: Add proper subscription checking when the subscription_status column exists
@@ -314,9 +316,20 @@ export default function Dashboard() {
     try {
       // Map phone to phone_number for user_profiles compatibility and normalize format
       const mappedProfile = { ...editedProfile };
-      if (mappedProfile.phone) {
-        mappedProfile.phone_number = normalizePhoneForStorage(mappedProfile.phone);
-        delete mappedProfile.phone;
+      
+      // Handle phone number mapping carefully
+      if (mappedProfile.phone !== undefined) {
+        if (mappedProfile.phone) {
+          mappedProfile.phone_number = normalizePhoneForStorage(mappedProfile.phone);
+        } else {
+          mappedProfile.phone_number = null; // Explicitly set to null if phone is empty
+        }
+        delete mappedProfile.phone; // Remove frontend field
+      }
+      
+      // Also preserve existing phone_number if no phone field changes were made
+      if (!mappedProfile.hasOwnProperty('phone_number') && profile?.phone_number) {
+        mappedProfile.phone_number = profile.phone_number;
       }
       
       const requestBody = {
@@ -553,7 +566,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="tel"
-                  value={editedProfile.phone || formatPhoneForDisplay(profile.phone) || ''}
+                  value={editedProfile.phone || formatPhoneForDisplay(profile?.phone_number) || ''}
                   onChange={(e) => handlePhoneChange(e.target.value)}
                   placeholder="(555) 123-4567"
                   style={{
