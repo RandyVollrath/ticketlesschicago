@@ -83,10 +83,24 @@ interface UserProfile {
   email: string
   phone: string | null // Frontend field for typing
   phone_number: string | null // Database field
-  // Name fields - may not exist in database, handle gracefully
+  // Personal information (from users table)
   first_name?: string | null
   last_name?: string | null  
-  // Core Ticketless America fields
+  // Vehicle information (from users table)
+  vin?: string | null
+  vehicle_type?: string | null
+  vehicle_year?: number | null
+  zip_code?: string | null
+  // Renewal dates (from users table)
+  city_sticker_expiry?: string | null
+  license_plate_expiry?: string | null
+  emissions_date?: string | null
+  // Mailing address (from users table)
+  mailing_address?: string | null
+  mailing_city?: string | null
+  mailing_state?: string | null
+  mailing_zip?: string | null
+  // Core Ticketless America fields (from user_profiles table)
   license_plate: string | null
   home_address_full: string | null
   home_address_ward: string | null
@@ -162,124 +176,206 @@ export default function Dashboard() {
       setUser(user)
       
       try {
-        // Get profile from user_profiles table (the correct table for settings)
+        // Get profile from user_profiles table
         const { data: userProfile, error: profileError } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('user_id', user.id)
           .single()
 
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError)
-          // If profile doesn't exist, create one in the database
-          if (profileError.code === 'PGRST116') {
-            try {
-              const defaultProfile = {
-                user_id: user.id,
-                email: user.email,
-                phone: null,
-                phone_number: null,
-                // Core Ticketless America fields
-                license_plate: null,
-                home_address_full: null,
-                home_address_ward: null,
-                home_address_section: null,
-                notify_days_array: [1], // Default to day-before notifications
-                notify_evening_before: true,
-                phone_call_enabled: false,
-                voice_preference: 'female',
-                phone_call_time_preference: '7am',
-                snooze_until_date: null,
-                snooze_reason: null,
-                follow_up_sms: true,
-                // Notification preferences
-                notify_email: true,
-                notify_sms: true,
-                notify_snow: false,
-                notify_winter_parking: false,
-                phone_call_days_before: [1],
-                voice_call_days_before: [1],
-                voice_call_time: '7:00 AM',
-                voice_calls_enabled: false,
-                // SMS settings
-                sms_pro: true, // All Ticketless users are paid
-                sms_gateway: null,
-                // Status fields
-                is_paid: true,
-                is_canary: false,
-                role: 'user',
-                guarantee_opt_in_year: null
-              }
+        // Also get data from users table (contains personal info, vehicle details, renewal dates)
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single()
 
-              const { data: newProfile, error: createError } = await supabase
-                .from('user_profiles')
-                .insert(defaultProfile)
-                .select()
-                .single()
+        if (userError) {
+          console.log('Note: users table query failed:', userError.message)
+        }
 
-              if (createError) {
-                console.error('Error creating user profile:', createError)
-                setProfile(defaultProfile) // Use default if DB insert fails
-              } else {
-                setProfile(newProfile)
-              }
-            } catch (error) {
-              console.error('Error creating profile:', error)
-              // Fallback to Ticketless default profile
-              const defaultProfile = {
-                user_id: user.id,
-                email: user.email,
-                phone: null,
-                phone_number: null,
-                // Core Ticketless America fields
-                license_plate: null,
-                home_address_full: null,
-                home_address_ward: null,
-                home_address_section: null,
-                notify_days_array: [1], // Default to day-before notifications
-                notify_evening_before: true,
-                phone_call_enabled: false,
-                voice_preference: 'female',
-                phone_call_time_preference: '7am',
-                snooze_until_date: null,
-                snooze_reason: null,
-                follow_up_sms: true,
-                // Notification preferences
-                notify_email: true,
-                notify_sms: true,
-                notify_snow: false,
-                notify_winter_parking: false,
-                phone_call_days_before: [1],
-                voice_call_days_before: [1],
-                voice_call_time: '7:00 AM',
-                voice_calls_enabled: false,
-                // SMS settings
-                sms_pro: true, // All Ticketless users are paid
-                sms_gateway: null,
-                // Status fields
-                is_paid: true,
-                is_canary: false,
-                role: 'user',
-                guarantee_opt_in_year: null
-              }
-              setProfile(defaultProfile)
+        // Combine data from both tables
+        let combinedProfile = null
+
+        if (userProfile) {
+          // Start with user_profiles data as the base
+          combinedProfile = { ...userProfile }
+          
+          // Add data from users table if available (personal info, vehicle details, renewal dates)
+          if (userData) {
+            combinedProfile = {
+              ...combinedProfile,
+              // Personal information from users table
+              first_name: userData.first_name || combinedProfile.first_name,
+              last_name: userData.last_name || combinedProfile.last_name,
+              // Vehicle information from users table
+              vin: userData.vin || combinedProfile.vin,
+              vehicle_type: userData.vehicle_type || combinedProfile.vehicle_type,
+              vehicle_year: userData.vehicle_year || combinedProfile.vehicle_year,
+              zip_code: userData.zip_code || combinedProfile.zip_code,
+              // Renewal dates from users table
+              city_sticker_expiry: userData.city_sticker_expiry || combinedProfile.city_sticker_expiry,
+              license_plate_expiry: userData.license_plate_expiry || combinedProfile.license_plate_expiry,
+              emissions_date: userData.emissions_date || combinedProfile.emissions_date,
+              // Mailing address from users table
+              mailing_address: userData.mailing_address || combinedProfile.mailing_address,
+              mailing_city: userData.mailing_city || combinedProfile.mailing_city,
+              mailing_state: userData.mailing_state || combinedProfile.mailing_state,
+              mailing_zip: userData.mailing_zip || combinedProfile.mailing_zip,
+              // Phone number consistency (prioritize user_profiles)
+              phone: combinedProfile.phone_number || userData.phone || combinedProfile.phone,
+              // License plate consistency
+              license_plate: combinedProfile.license_plate || userData.license_plate
             }
           }
-        } else if (userProfile) {
-          setProfile(userProfile)
+        } else if (profileError?.code === 'PGRST116') {
+          // If profile doesn't exist, create one in the database
+          console.log('Creating new user profile...')
+          try {
+            const defaultProfile = {
+              user_id: user.id,
+              email: user.email,
+              phone: null,
+              phone_number: null,
+              // Core Ticketless America fields
+              license_plate: null,
+              home_address_full: null,
+              home_address_ward: null,
+              home_address_section: null,
+              notify_days_array: [1], // Default to day-before notifications
+              notify_evening_before: true,
+              phone_call_enabled: false,
+              voice_preference: 'female',
+              phone_call_time_preference: '7am',
+              snooze_until_date: null,
+              snooze_reason: null,
+              follow_up_sms: true,
+              // Notification preferences
+              notify_email: true,
+              notify_sms: true,
+              notify_snow: false,
+              notify_winter_parking: false,
+              phone_call_days_before: [1],
+              voice_call_days_before: [1],
+              voice_call_time: '7:00 AM',
+              voice_calls_enabled: false,
+              // SMS settings
+              sms_pro: true, // All Ticketless users are paid
+              sms_gateway: null,
+              // Status fields
+              is_paid: true,
+              is_canary: false,
+              role: 'user',
+              guarantee_opt_in_year: null
+            }
+
+            const { data: newProfile, error: createError } = await supabase
+              .from('user_profiles')
+              .insert(defaultProfile)
+              .select()
+              .single()
+
+            if (createError) {
+              console.error('Error creating user profile:', createError)
+              combinedProfile = defaultProfile // Use default if DB insert fails
+            } else {
+              combinedProfile = newProfile
+            }
+
+            // If we have users table data, merge it with the new profile
+            if (userData) {
+              combinedProfile = {
+                ...combinedProfile,
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                vin: userData.vin,
+                vehicle_type: userData.vehicle_type,
+                vehicle_year: userData.vehicle_year,
+                zip_code: userData.zip_code,
+                city_sticker_expiry: userData.city_sticker_expiry,
+                license_plate_expiry: userData.license_plate_expiry,
+                emissions_date: userData.emissions_date,
+                mailing_address: userData.mailing_address,
+                mailing_city: userData.mailing_city,
+                mailing_state: userData.mailing_state,
+                mailing_zip: userData.mailing_zip,
+                phone: userData.phone || combinedProfile.phone,
+                license_plate: userData.license_plate || combinedProfile.license_plate
+              }
+            }
+          } catch (error) {
+            console.error('Error creating profile:', error)
+            // Fallback to Ticketless default profile with users table data if available
+            combinedProfile = {
+              user_id: user.id,
+              email: user.email,
+              phone: userData?.phone || null,
+              phone_number: null,
+              // Include users table data in fallback
+              first_name: userData?.first_name || null,
+              last_name: userData?.last_name || null,
+              vin: userData?.vin || null,
+              vehicle_type: userData?.vehicle_type || null,
+              vehicle_year: userData?.vehicle_year || null,
+              zip_code: userData?.zip_code || null,
+              city_sticker_expiry: userData?.city_sticker_expiry || null,
+              license_plate_expiry: userData?.license_plate_expiry || null,
+              emissions_date: userData?.emissions_date || null,
+              mailing_address: userData?.mailing_address || null,
+              mailing_city: userData?.mailing_city || null,
+              mailing_state: userData?.mailing_state || null,
+              mailing_zip: userData?.mailing_zip || null,
+              // Core Ticketless America fields
+              license_plate: userData?.license_plate || null,
+              home_address_full: null,
+              home_address_ward: null,
+              home_address_section: null,
+              notify_days_array: [1], // Default to day-before notifications
+              notify_evening_before: true,
+              phone_call_enabled: false,
+              voice_preference: 'female',
+              phone_call_time_preference: '7am',
+              snooze_until_date: null,
+              snooze_reason: null,
+              follow_up_sms: true,
+              // Notification preferences
+              notify_email: true,
+              notify_sms: true,
+              notify_snow: false,
+              notify_winter_parking: false,
+              phone_call_days_before: [1],
+              voice_call_days_before: [1],
+              voice_call_time: '7:00 AM',
+              voice_calls_enabled: false,
+              // SMS settings
+              sms_pro: true, // All Ticketless users are paid
+              sms_gateway: null,
+              // Status fields
+              is_paid: true,
+              is_canary: false,
+              role: 'user',
+              guarantee_opt_in_year: null
+            }
+          }
+        } else {
+          console.error('Error fetching user profile:', profileError)
+        }
+
+        if (combinedProfile) {
+          setProfile(combinedProfile)
           // Only set editedProfile if it's empty to avoid overwriting user changes
-          setEditedProfile(prev => Object.keys(prev).length === 0 ? userProfile : prev)
+          setEditedProfile(prev => Object.keys(prev).length === 0 ? combinedProfile : prev)
           
           // For now, allow all authenticated users to access settings
           // TODO: Add proper subscription checking when the subscription_status column exists
-          console.log('User profile loaded for:', userProfile.email)
+          console.log('User profile loaded for:', combinedProfile.email)
         }
 
         // Load user vehicles
         const { data: userVehicles, error: vehiclesError } = await supabase
           .from('vehicles')
           .select('*')
-          .eq('user_id', userProfile?.id || user.id)
+          .eq('user_id', combinedProfile?.user_id || user.id)
 
         if (vehiclesError) {
           console.error('Error fetching vehicles:', vehiclesError)
@@ -291,7 +387,7 @@ export default function Dashboard() {
         const { data: userObligations, error: obligationsError } = await supabase
           .from('upcoming_obligations')
           .select('*')
-          .eq('user_id', userProfile?.id || user.id)
+          .eq('user_id', combinedProfile?.user_id || user.id)
           .limit(5)
 
         if (obligationsError) {
