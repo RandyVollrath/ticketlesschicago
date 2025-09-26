@@ -44,7 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         billingPlan,
         // Split form data into chunks to stay under 500 char limit per field
         vehicleInfo: JSON.stringify({
-          name: formData.name,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
           licensePlate: formData.licensePlate,
           vin: formData.vin,
           zipCode: formData.zipCode,

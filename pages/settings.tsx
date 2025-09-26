@@ -83,9 +83,9 @@ interface UserProfile {
   email: string
   phone: string | null // Frontend field for typing
   phone_number: string | null // Database field
-  // Name fields
-  first_name: string | null
-  last_name: string | null
+  // Name fields - may not exist in database, handle gracefully
+  first_name?: string | null
+  last_name?: string | null  
   // Core Ticketless America fields
   license_plate: string | null
   home_address_full: string | null
@@ -314,44 +314,37 @@ export default function Dashboard() {
     router.push('/')
   }
 
-  const updateProfile = async () => {
-    if (!profile) {
-      console.error('No profile found, cannot update')
-      setMessage({ type: 'error', text: 'Profile not loaded. Please refresh the page.' })
+  // Auto-save function that runs on every change
+  const autoSaveProfile = async (updatedData: Partial<UserProfile>) => {
+    if (!profile || !user) {
+      console.error('No profile found, cannot auto-save')
       return
     }
 
-    console.log('Updating profile with data:', editedProfile)
-    console.log('Profile ID:', profile.id)
+    console.log('Auto-saving profile with data:', updatedData)
 
     setSaving(true)
-    setMessage(null)
 
     try {
-      // Map phone to phone_number for user_profiles compatibility and normalize format
-      const mappedProfile = { ...editedProfile };
+      // Only save the specific changed data
+      const mappedData = { ...updatedData };
       
-      // Handle phone number mapping carefully
-      if (mappedProfile.phone !== undefined) {
-        if (mappedProfile.phone) {
-          mappedProfile.phone_number = normalizePhoneForStorage(mappedProfile.phone);
+      // Handle phone number mapping if phone was changed
+      if (mappedData.phone !== undefined) {
+        if (mappedData.phone) {
+          mappedData.phone_number = normalizePhoneForStorage(mappedData.phone);
         } else {
-          mappedProfile.phone_number = null; // Explicitly set to null if phone is empty
+          mappedData.phone_number = null;
         }
-        delete mappedProfile.phone; // Remove frontend field
-      }
-      
-      // Also preserve existing phone_number if no phone field changes were made
-      if (!mappedProfile.hasOwnProperty('phone_number') && profile?.phone_number) {
-        mappedProfile.phone_number = profile.phone_number;
+        delete mappedData.phone; // Remove frontend field
       }
       
       const requestBody = {
-        userId: profile.user_id || user?.id, // Use user_id from profile or fallback to auth user id
-        ...mappedProfile
+        userId: profile.user_id || user.id,
+        ...mappedData
       }
       
-      console.log('Sending request to /api/profile:', requestBody)
+      console.log('Auto-saving to /api/profile:', requestBody)
 
       const response = await fetch('/api/profile', {
         method: 'PUT',
@@ -362,34 +355,42 @@ export default function Dashboard() {
       })
 
       const result = await response.json()
-      console.log('API response:', { status: response.status, result })
 
       if (!response.ok) {
-        console.error('API error:', result)
-        throw new Error(result.error || `HTTP ${response.status}: Failed to update profile`)
+        console.error('Auto-save API error:', result)
+        throw new Error(result.error || `HTTP ${response.status}: Failed to auto-save`)
       }
 
-      setProfile({ ...profile, ...editedProfile })
-      setMessage({ type: 'success', text: 'Settings updated successfully!' })
+      // Update the profile state with the saved data
+      setProfile({ ...profile, ...updatedData })
+      console.log('✅ Auto-saved successfully')
     } catch (error: any) {
-      console.error('Error updating profile:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Failed to update settings. Please try again.' 
-      })
+      console.error('Error auto-saving profile:', error)
+      console.log('❌ Auto-save failed, but continuing silently')
     }
 
     setSaving(false)
   }
 
   const handleInputChange = (field: keyof UserProfile, value: any) => {
+    const updatedData = { [field]: value };
     setEditedProfile(prev => ({ ...prev, [field]: value }))
+    
+    // Auto-save after a brief delay to batch rapid changes
+    setTimeout(() => {
+      autoSaveProfile(updatedData);
+    }, 1000);
   }
 
   const handlePhoneChange = (value: string) => {
     // Format for display as user types
     const formattedForDisplay = formatPhoneNumber(value)
     setEditedProfile(prev => ({ ...prev, phone: formattedForDisplay }))
+    
+    // Auto-save phone changes
+    setTimeout(() => {
+      autoSaveProfile({ phone: formattedForDisplay });
+    }, 1000);
   }
 
   const handleNotificationPreferenceChange = (field: string, value: any) => {
@@ -451,6 +452,12 @@ export default function Dashboard() {
     <div style={{ minHeight: '100vh', backgroundColor: 'white' }}>
       <Head>
         <title>Account Settings - Ticketless America</title>
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </Head>
 
       {/* Header with navigation */}
@@ -594,6 +601,7 @@ export default function Dashboard() {
                 />
               </div>
 
+              {/* Name fields */}
               <div>
                 <label style={{ 
                   display: 'block', 
@@ -643,6 +651,7 @@ export default function Dashboard() {
                   placeholder="Enter last name"
                 />
               </div>
+
             </div>
           </div>
 
@@ -1191,44 +1200,30 @@ export default function Dashboard() {
           {/* Street Cleaning Settings */}
           <StreetCleaningSettings />
 
-          {/* Save Button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
-            <button
-              onClick={() => {
-                setEditedProfile({})
-                setMessage(null)
-              }}
-              style={{
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontWeight: '500',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              Cancel Changes
-            </button>
-            <button
-              onClick={updateProfile}
-              disabled={saving}
-              style={{
-                backgroundColor: '#0052cc',
-                color: 'white',
-                padding: '12px 32px',
-                borderRadius: '8px',
-                fontWeight: '500',
-                border: 'none',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                opacity: saving ? 0.7 : 1
-              }}
-            >
-              {saving ? 'Saving...' : 'Save All Changes'}
-            </button>
-          </div>
+          {/* Auto-save Status */}
+          {saving && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: '8px',
+              padding: '12px',
+              backgroundColor: '#f0f9ff',
+              borderRadius: '8px',
+              color: '#0369a1',
+              fontSize: '14px'
+            }}>
+              <div style={{ 
+                width: '16px', 
+                height: '16px', 
+                border: '2px solid #0369a1', 
+                borderTopColor: 'transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Auto-saving changes...
+            </div>
+          )}
         </div>
       </main>
     </div>
