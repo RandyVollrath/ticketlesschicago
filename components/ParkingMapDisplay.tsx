@@ -123,8 +123,13 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
           mapInstanceRef.current = null
         }
 
+        // Clear the map container HTML to ensure clean state
+        if (mapRef.current) {
+          mapRef.current.innerHTML = ''
+        }
+
         // Wait a moment for DOM to be ready
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 200))
 
         console.log('Creating map instance...')
         // Initialize map centered on Chicago
@@ -179,6 +184,12 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
 
           if (feature.geometry && feature.geometry.coordinates) {
             try {
+              // Validate GeoJSON structure before adding
+              if (!feature.geometry.type || !Array.isArray(feature.geometry.coordinates)) {
+                console.warn(`Invalid geometry for zone ${ward}-${section}:`, feature.geometry)
+                throw new Error('Invalid geometry structure')
+              }
+              
               // Add GeoJSON layer
               const geoLayer = L.geoJSON(feature, {
                 style: {
@@ -194,7 +205,6 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
                   let popupContent = `
                     <div style="padding: 8px; font-family: system-ui, sans-serif;">
                       <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${isUserZone ? '#1e40af' : '#374151'};">
-                        <span style="font-size: 12px; margin-right: 4px;">${isUserZone ? '📍' : '🅿️'}</span>
                         ${isUserZone ? 'Your Location' : 'Alternative Zone'}
                       </h3>
                       <p style="font-size: 13px; margin: 4px 0;"><strong>Ward:</strong> ${ward}</p>
@@ -251,7 +261,6 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
             marker.bindPopup(`
               <div style="padding: 8px; font-family: system-ui, sans-serif;">
                 <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${isUserZone ? '#1e40af' : '#374151'};">
-                  <span style="font-size: 12px; margin-right: 4px;">${isUserZone ? '📍' : '🅿️'}</span>
                   ${isUserZone ? 'Your Location' : 'Alternative Zone'}
                 </h3>
                 <p style="font-size: 13px; margin: 4px 0;"><strong>Ward:</strong> ${ward}</p>
@@ -307,7 +316,7 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
         mapInstanceRef.current = null
       }
     }
-  }, [mapData, userWard, userSection, alternatives, highlightZone])
+  }, [mapData, userWard, userSection, highlightZone])
 
   if (loading) {
     return (

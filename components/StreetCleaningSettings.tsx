@@ -250,10 +250,10 @@ export default function StreetCleaningSettings() {
         )}
       </div>
 
-      {/* Park Here Instead Feature */}
+      {/* Alternative Parking Feature */}
       {ward && section && (
         <div className={styles.formGroup}>
-          <label>🅿️ Alternative Parking Zones</label>
+          <label>Alternative Parking Zones</label>
           <div className={styles.parkHereSection}>
             <p className={styles.helpText}>
               Find nearby zones where you can safely park during street cleaning in your area.
@@ -263,7 +263,7 @@ export default function StreetCleaningSettings() {
               onClick={() => router.push('/parking-map')}
               className={styles.linkButton}
             >
-              📍 View Alternative Parking Map
+              View Alternative Parking Map
             </button>
             <p className={styles.smallText}>
               Interactive map showing Ward {ward}, Section {section} and nearby parking alternatives
