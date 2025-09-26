@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../../lib/supabase';
+import { supabaseAdmin } from '../../lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     try {
       // Get user profile (now the primary source of truth)
-      const { data: user, error: userError } = await supabase
+      const { data: user, error: userError } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       // Get user's vehicle info as fallback
-      const { data: vehicles } = await supabase
+      const { data: vehicles } = await supabaseAdmin
         .from('vehicles')
         .select('*')
         .eq('user_id', userId)
