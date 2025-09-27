@@ -187,6 +187,13 @@ export default function Dashboard() {
         let combinedProfile = null
 
         if (userProfile) {
+          console.log('📥 Loaded profile from database:', userProfile);
+          if (userProfile.notification_preferences) {
+            console.log('🔔 Loaded notification_preferences:', JSON.stringify(userProfile.notification_preferences, null, 2));
+          } else {
+            console.log('⚠️ No notification_preferences found in loaded profile');
+          }
+          
           combinedProfile = {
             ...userProfile,
             // Ensure phone field is available for frontend compatibility
