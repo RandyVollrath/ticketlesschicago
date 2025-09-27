@@ -178,26 +178,33 @@ export default function StreetCleaningSettings() {
     setLoadingCleaningInfo(true);
     
     try {
-      const response = await fetch(`/api/get-street-cleaning-data?ward=${ward}&section=${section}`);
-      const data = await response.json();
+      const response = await fetch(`/api/get-street-cleaning-data`);
+      const result = await response.json();
       
-      if (response.ok && data.nextCleaningDate) {
-        setNextCleaningDate(data.nextCleaningDate);
+      if (response.ok && result.success && result.data) {
+        // Find the zone matching our ward/section
+        const zone = result.data.find((z: any) => z.ward === ward && z.section === section);
         
-        // Calculate cleaning status
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const cleaningDate = new Date(data.nextCleaningDate);
-        cleaningDate.setHours(0, 0, 0, 0);
-        
-        const daysUntil = Math.floor((cleaningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (daysUntil === 0) {
-          setCleaningStatus('today');
-        } else if (daysUntil > 0 && daysUntil <= 3) {
-          setCleaningStatus('next-3-days');
+        if (zone && zone.nextCleaningDateISO) {
+          setNextCleaningDate(zone.nextCleaningDateISO);
+          
+          // Use the pre-calculated status from the API
+          switch (zone.cleaningStatus) {
+            case 'today':
+              setCleaningStatus('today');
+              break;
+            case 'soon':
+              setCleaningStatus('next-3-days');
+              break;
+            case 'later':
+              setCleaningStatus('later');
+              break;
+            default:
+              setCleaningStatus('unknown');
+          }
         } else {
-          setCleaningStatus('later');
+          setNextCleaningDate(null);
+          setCleaningStatus('unknown');
         }
       } else {
         setNextCleaningDate(null);
