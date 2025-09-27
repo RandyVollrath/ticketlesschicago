@@ -55,68 +55,181 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const alternatives: AlternativeSection[] = [];
     const errors: string[] = [];
 
-    // 1. Find other sections in the same ward
-    console.log('🏘️ Finding other sections in same ward...');
-    const { data: sameWardSections, error: sameWardError } = await mscSupabase
+    // Get the user's next cleaning date to find conflicts
+    const todayStr = new Date().toISOString().split('T')[0];
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    const threeDaysStr = threeDaysFromNow.toISOString().split('T')[0];
+
+    console.log('📅 Finding user\'s cleaning schedule...');
+    const { data: userCleaningSchedule } = await mscSupabase
       .from('street_cleaning_schedule')
-      .select('ward, section')
+      .select('cleaning_date')
       .eq('ward', userWard)
-      .neq('section', userSection)
-      .not('section', 'is', null)
-      .not('ward', 'is', null);
+      .eq('section', userSection)
+      .gte('cleaning_date', todayStr)
+      .lte('cleaning_date', threeDaysStr)
+      .order('cleaning_date', { ascending: true });
 
-    if (sameWardError) {
-      console.error('❌ Error finding same ward sections:', sameWardError);
-    } else if (sameWardSections) {
-      // Get unique sections from same ward
-      const uniqueSameWard = sameWardSections
-        .filter((row, index, self) => 
-          index === self.findIndex(r => r.section === row.section)
-        )
-        .slice(0, 3); // Limit to 3 alternatives from same ward
+    const userCleaningDates = new Set(userCleaningSchedule?.map(s => s.cleaning_date) || []);
+    console.log(`🚗 User has cleaning on: ${Array.from(userCleaningDates).join(', ')}`);
 
-      for (const altSection of uniqueSameWard) {
-        alternatives.push({
-          ward: altSection.ward,
-          section: altSection.section,
-          distance_type: 'same_ward'
-        });
+    // Get user's zone geometry for geographic distance calculation
+    console.log('📍 Getting user zone geometry...');
+    const { data: userGeometry } = await mscSupabase
+      .from('street_cleaning_schedule')
+      .select('geom_simplified')
+      .eq('ward', userWard)
+      .eq('section', userSection)
+      .not('geom_simplified', 'is', null)
+      .limit(1);
+
+    let userCenterLat = 41.8781; // Default Chicago center
+    let userCenterLng = -87.6298;
+
+    if (userGeometry && userGeometry[0]?.geom_simplified) {
+      // Calculate center point of user's zone
+      const geom = userGeometry[0].geom_simplified;
+      if (geom.type === 'Polygon' && geom.coordinates[0]) {
+        const coords = geom.coordinates[0];
+        userCenterLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+        userCenterLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+      } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
+        const coords = geom.coordinates[0][0];
+        userCenterLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+        userCenterLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
       }
     }
 
-    // 2. Find sections in adjacent wards (simple adjacent ward logic)
-    console.log('🗺️ Finding sections in adjacent wards...');
-    const userWardNum = parseInt(userWard);
-    const adjacentWards = [
-      userWardNum - 1,
-      userWardNum + 1
-    ].filter(w => w >= 1 && w <= 50); // Chicago has wards 1-50
+    console.log(`📍 User zone center: ${userCenterLat}, ${userCenterLng}`);
 
-    for (const adjWard of adjacentWards.slice(0, 2)) { // Limit to 2 adjacent wards
-      const { data: adjWardSections, error: adjWardError } = await mscSupabase
-        .from('street_cleaning_schedule')
-        .select('ward, section')
-        .eq('ward', String(adjWard))
-        .not('section', 'is', null)
-        .not('ward', 'is', null)
-        .limit(2); // Get 2 sections from each adjacent ward
+    // Get ALL zones with geometry for geographic proximity calculation
+    console.log('🗺️ Finding all zones with geographic proximity...');
+    const { data: allZonesWithGeometry, error: nearbyError } = await mscSupabase
+      .from('street_cleaning_schedule')
+      .select('ward, section, cleaning_date, geom_simplified')
+      .not('geom_simplified', 'is', null)
+      .not('section', 'is', null)
+      .not('ward', 'is', null);
 
-      if (!adjWardError && adjWardSections && adjWardSections.length > 0) {
-        // Get unique sections from adjacent ward
-        const uniqueAdjacent = adjWardSections
-          .filter((row, index, self) => 
-            index === self.findIndex(r => r.section === row.section)
-          )
-          .slice(0, 2); // Max 2 from each adjacent ward
+    if (nearbyError) {
+      console.error('❌ Error finding nearby zones:', nearbyError);
+    } else if (allZonesWithGeometry) {
+      // Helper function to calculate geographic distance
+      const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 3959; // Earth's radius in miles
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // Distance in miles
+      };
 
-        for (const altSection of uniqueAdjacent) {
-          alternatives.push({
-            ward: altSection.ward,
-            section: altSection.section,
-            distance_type: 'adjacent_ward'
+      // Helper function to get zone center from geometry
+      const getZoneCenter = (geom: any): { lat: number, lng: number } | null => {
+        if (!geom) return null;
+        
+        try {
+          if (geom.type === 'Polygon' && geom.coordinates[0]) {
+            const coords = geom.coordinates[0];
+            const lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+            const lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            return { lat, lng };
+          } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
+            const coords = geom.coordinates[0][0];
+            const lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+            const lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            return { lat, lng };
+          }
+        } catch (e) {
+          console.error('Error calculating zone center:', e);
+        }
+        return null;
+      };
+
+      // Group by ward-section and analyze cleaning conflicts + geographic distance
+      const zoneMap = new Map<string, {
+        ward: string;
+        section: string;
+        cleaningDates: string[];
+        hasConflict: boolean;
+        distance: number;
+        geometry: any;
+      }>();
+
+      allZonesWithGeometry.forEach(zone => {
+        const key = `${zone.ward}-${zone.section}`;
+        
+        // Skip user's own zone
+        if (zone.ward === userWard && zone.section === userSection) {
+          return;
+        }
+
+        if (!zoneMap.has(key)) {
+          // Calculate actual geographic distance
+          const zoneCenter = getZoneCenter(zone.geom_simplified);
+          const distance = zoneCenter 
+            ? calculateDistance(userCenterLat, userCenterLng, zoneCenter.lat, zoneCenter.lng)
+            : 999; // Large distance if we can't calculate
+
+          zoneMap.set(key, {
+            ward: zone.ward,
+            section: zone.section,
+            cleaningDates: [],
+            hasConflict: false,
+            distance,
+            geometry: zone.geom_simplified
           });
         }
-      }
+
+        const zoneData = zoneMap.get(key)!;
+        
+        // Check if this cleaning date conflicts with user's cleaning
+        if (zone.cleaning_date && 
+            zone.cleaning_date >= todayStr && 
+            zone.cleaning_date <= threeDaysStr) {
+          zoneData.cleaningDates.push(zone.cleaning_date);
+          
+          // Mark as conflict if cleaning is on same day as user
+          if (userCleaningDates.has(zone.cleaning_date)) {
+            zoneData.hasConflict = true;
+          }
+        }
+      });
+
+      // Sort zones by safety (no conflicts) first, then by actual geographic distance
+      const sortedZones = Array.from(zoneMap.values())
+        .filter(zone => zone.distance < 5) // Only consider zones within 5 miles
+        .sort((a, b) => {
+          // Prioritize zones without conflicts
+          if (a.hasConflict !== b.hasConflict) {
+            return a.hasConflict ? 1 : -1;
+          }
+          
+          // Then by actual geographic distance
+          return a.distance - b.distance;
+        })
+        .slice(0, 3); // Get top 3 closest safe alternatives
+
+      console.log('🎯 Top alternatives by distance:');
+      sortedZones.forEach((zone, i) => {
+        console.log(`${i+1}. Ward ${zone.ward}, Section ${zone.section} - ${zone.distance.toFixed(2)} miles, conflict: ${zone.hasConflict}`);
+      });
+
+      // Convert to alternatives format
+      sortedZones.forEach(zone => {
+        const distanceType = zone.ward === userWard ? 'same_ward' : 'adjacent_ward';
+        
+        alternatives.push({
+          ward: zone.ward,
+          section: zone.section,
+          distance_type: distanceType
+        });
+      });
+
+      console.log(`✅ Found ${alternatives.length} geographically closest safe parking zones`);
     }
 
     console.log(`✅ Found ${alternatives.length} alternative sections`);
@@ -188,7 +301,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const userWardNum = parseInt(userWard);
         return Math.abs(aWardNum - userWardNum) - Math.abs(bWardNum - userWardNum);
       })
-      .slice(0, 6); // Limit to top 6 alternatives
+      .slice(0, 3); // Limit to top 3 alternatives
 
     console.log(`📍 Returning ${validAlternatives.length} valid alternative parking zones`);
 
@@ -205,7 +318,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       debug: {
         same_ward_alternatives: validAlternatives.filter(a => a.distance_type === 'same_ward').length,
         adjacent_ward_alternatives: validAlternatives.filter(a => a.distance_type === 'adjacent_ward').length,
-        searched_wards: [userWard, ...adjacentWards.map(String)],
+        searched_wards: [userWard],
         errors: errors.length > 0 ? errors : undefined,
         cache_used: false
       }

@@ -105,11 +105,6 @@ export default async function handler(
 
     console.log('Consolidated profile data:', cleanData);
     
-    // Debug: specifically check notification_preferences
-    if (cleanData.notification_preferences) {
-      console.log('🔔 API received notification_preferences:', JSON.stringify(cleanData.notification_preferences, null, 2));
-    }
-    
     if (Object.keys(cleanData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
