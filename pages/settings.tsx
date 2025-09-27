@@ -176,56 +176,77 @@ export default function Dashboard() {
       setUser(user)
       
       try {
-        // Get profile from user_profiles table
+        // CONSOLIDATED: Get all profile data from user_profiles table only
         const { data: userProfile, error: profileError } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('user_id', user.id)
           .single()
 
-        // Also get data from users table (contains personal info, vehicle details, renewal dates)
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-
-        if (userError) {
-          console.log('Note: users table query failed:', userError.message)
-        }
-
-        // Combine data from both tables
+        // Set the profile data directly from user_profiles table
         let combinedProfile = null
 
         if (userProfile) {
-          // Start with user_profiles data as the base
-          combinedProfile = { ...userProfile }
+          combinedProfile = {
+            ...userProfile,
+            // Ensure phone field is available for frontend compatibility
+            phone: userProfile.phone_number || userProfile.phone
+          }
           
-          // Add data from users table if available (personal info, vehicle details, renewal dates)
-          if (userData) {
-            combinedProfile = {
-              ...combinedProfile,
-              // Personal information from users table
-              first_name: userData.first_name || combinedProfile.first_name,
-              last_name: userData.last_name || combinedProfile.last_name,
-              // Vehicle information from users table
-              vin: userData.vin || combinedProfile.vin,
-              vehicle_type: userData.vehicle_type || combinedProfile.vehicle_type,
-              vehicle_year: userData.vehicle_year || combinedProfile.vehicle_year,
-              zip_code: userData.zip_code || combinedProfile.zip_code,
-              // Renewal dates from users table
-              city_sticker_expiry: userData.city_sticker_expiry || combinedProfile.city_sticker_expiry,
-              license_plate_expiry: userData.license_plate_expiry || combinedProfile.license_plate_expiry,
-              emissions_date: userData.emissions_date || combinedProfile.emissions_date,
-              // Mailing address from users table
-              mailing_address: userData.mailing_address || combinedProfile.mailing_address,
-              mailing_city: userData.mailing_city || combinedProfile.mailing_city,
-              mailing_state: userData.mailing_state || combinedProfile.mailing_state,
-              mailing_zip: userData.mailing_zip || combinedProfile.mailing_zip,
-              // Phone number consistency (prioritize user_profiles)
-              phone: combinedProfile.phone_number || userData.phone || combinedProfile.phone,
-              // License plate consistency
-              license_plate: combinedProfile.license_plate || userData.license_plate
+          // ONE-TIME DATA MIGRATION: Check if we need to migrate data from users table
+          if (!userProfile.first_name || !userProfile.last_name || !userProfile.license_plate) {
+            console.log('🔄 Missing profile data detected, running one-time migration...');
+            try {
+              const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+              
+              if (userData && !userError) {
+                console.log('📊 Found data in users table, migrating...');
+                
+                const migrationData = {
+                  // Only update fields that are missing or empty
+                  first_name: userProfile.first_name || userData.first_name,
+                  last_name: userProfile.last_name || userData.last_name,
+                  phone: userProfile.phone || userData.phone,
+                  phone_number: userProfile.phone_number || userData.phone,
+                  license_plate: userProfile.license_plate || userData.license_plate,
+                  vin: userProfile.vin || userData.vin,
+                  vehicle_type: userProfile.vehicle_type || userData.vehicle_type,
+                  vehicle_year: userProfile.vehicle_year || userData.vehicle_year,
+                  zip_code: userProfile.zip_code || userData.zip_code,
+                  city_sticker_expiry: userProfile.city_sticker_expiry || userData.city_sticker_expiry,
+                  license_plate_expiry: userProfile.license_plate_expiry || userData.license_plate_expiry,
+                  emissions_date: userProfile.emissions_date || userData.emissions_date,
+                  mailing_address: userProfile.mailing_address || userData.mailing_address,
+                  mailing_city: userProfile.mailing_city || userData.mailing_city,
+                  mailing_state: userProfile.mailing_state || userData.mailing_state,
+                  mailing_zip: userProfile.mailing_zip || userData.mailing_zip,
+                  updated_at: new Date().toISOString()
+                };
+                
+                // Update the profile with migrated data
+                const { error: updateError } = await supabase
+                  .from('user_profiles')
+                  .update(migrationData)
+                  .eq('user_id', user.id);
+                
+                if (!updateError) {
+                  console.log('✅ Data migration completed successfully');
+                  // Update the displayed profile with migrated data
+                  combinedProfile = {
+                    ...combinedProfile,
+                    ...migrationData,
+                    phone: migrationData.phone_number || migrationData.phone
+                  };
+                } else {
+                  console.error('❌ Migration error:', updateError);
+                }
+              }
+            } catch (error) {
+              console.error('❌ Migration failed:', error);
             }
           }
         } else if (profileError?.code === 'PGRST116') {
@@ -461,6 +482,11 @@ export default function Dashboard() {
       }
       
       console.log('Auto-saving to /api/profile:', requestBody)
+      
+      // Debug: specifically check if notification_preferences is included
+      if (requestBody.notification_preferences) {
+        console.log('🔔 Notification preferences being sent to API:', JSON.stringify(requestBody.notification_preferences, null, 2));
+      }
 
       const response = await fetch('/api/profile', {
         method: 'PUT',
@@ -524,11 +550,15 @@ export default function Dashboard() {
   }
 
   const handleNotificationPreferenceChange = (field: string, value: any) => {
+    console.log('🔔 Notification preference change:', field, '=', value);
+    
     const newNotificationPrefs = {
       ...profile?.notification_preferences,
       ...editedProfile.notification_preferences,
       [field]: value
     };
+    
+    console.log('🔔 New notification preferences object:', newNotificationPrefs);
     
     setEditedProfile(prev => ({
       ...prev,
@@ -542,6 +572,7 @@ export default function Dashboard() {
     
     // Auto-save notification preference changes after debounce
     const timeoutId = setTimeout(() => {
+      console.log('🔔 Auto-saving notification preferences:', newNotificationPrefs);
       autoSaveProfile({ notification_preferences: newNotificationPrefs });
     }, 1500);
     
