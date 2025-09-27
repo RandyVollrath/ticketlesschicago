@@ -32,7 +32,7 @@ const AlternativeParkingZones: React.FC<AlternativeParkingZonesProps> = ({ alter
         fontSize: '16px',
         fontWeight: '600'
       }}>
-        🅿️ Park here instead - Safe parking zones nearby:
+        Park here instead - Safe parking zones nearby:
       </h4>
       
       <ul style={{
@@ -106,7 +106,7 @@ const AlternativeParkingZones: React.FC<AlternativeParkingZonesProps> = ({ alter
         color: '#004085',
         fontStyle: 'italic'
       }}>
-        💡 These zones have different cleaning schedules. Always verify before parking.
+        These zones have different cleaning schedules. Always verify before parking.
       </p>
     </div>
   )

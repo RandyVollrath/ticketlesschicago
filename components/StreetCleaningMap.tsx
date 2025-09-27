@@ -67,11 +67,15 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopu
           </div>
           <div style="display: flex; align-items: center; margin-bottom: 2px;">
             <div style="width: 12px; height: 12px; background: #ffc107; margin-right: 5px; border: 1px solid #333;"></div>
-            <span>Soon</span>
+            <span>Soon (1-3 days)</span>
           </div>
-          <div style="display: flex; align-items: center;">
+          <div style="display: flex; align-items: center; margin-bottom: 2px;">
             <div style="width: 12px; height: 12px; background: #28a745; margin-right: 5px; border: 1px solid #333;"></div>
             <span>Later</span>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <div style="width: 12px; height: 12px; background: #6c757d; margin-right: 5px; border: 1px solid #333;"></div>
+            <span>No schedule</span>
           </div>
         `;
         return div;
@@ -85,24 +89,60 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopu
         const status = feature.properties?.cleaningStatus;
         let fillColor = '#28a745'; // Green default
         let color = '#28a745';
+        let weight = 1;
+        let fillOpacity = 0.5;
         
-        switch (status) {
-          case 'today': fillColor = '#dc3545'; color = '#b02a37'; break;
-          case 'soon': fillColor = '#ffc107'; color = '#c79100'; break;
+        // Check if this is the highlighted section
+        const isHighlighted = triggerPopup && 
+          feature.properties?.ward === triggerPopup.ward && 
+          feature.properties?.section === triggerPopup.section;
+        
+        if (isHighlighted) {
+          // Make highlighted section more prominent
+          weight = 3;
+          fillOpacity = 0.8;
+          color = '#007bff'; // Blue border for highlighted
+          fillColor = '#007bff'; // Blue fill for highlighted
+        } else {
+          switch (status) {
+            case 'today': fillColor = '#dc3545'; color = '#b02a37'; break;
+            case 'soon': fillColor = '#ffc107'; color = '#c79100'; break;
+            case 'later': fillColor = '#28a745'; color = '#1e7e34'; break;
+            case 'none': fillColor = '#6c757d'; color = '#5a6268'; break;
+            default: fillColor = '#6c757d'; color = '#5a6268'; break;
+          }
         }
 
         const geojsonLayer = L.geoJSON(feature.geometry, {
           style: {
             color: color,
-            weight: 1,
+            weight: weight,
             fillColor: fillColor,
-            fillOpacity: 0.5
+            fillOpacity: fillOpacity
           }
         });
 
-        // Add popup
+        // Add popup with modern styling
         const props = feature.properties;
-        let popupContent = `<b>Ward:</b> ${props?.ward || 'N/A'}<br/><b>Section:</b> ${props?.section || 'N/A'}`;
+        
+        // Create styled popup content
+        let popupContent = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+            <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
+                ${props?.ward || 'N/A'}
+              </div>
+              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
+                ${props?.section || 'N/A'}
+              </div>
+            </div>
+        `;
+        
+        if (isHighlighted) {
+          popupContent += '<div style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,123,255,0.3);">Park Here Instead</div>';
+        }
         
         if (props?.nextCleaningDateISO) {
           try {
@@ -110,46 +150,110 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopu
             const formattedDate = dateObj.toLocaleDateString('en-US', { 
               weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' 
             });
-            popupContent += `<br/><b>Next Cleaning:</b> ${formattedDate}`;
+            popupContent += `
+              <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 12px; color: #065f46; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
+                <div style="color: #047857; font-weight: 600;">${formattedDate}</div>
+              </div>
+            `;
           } catch (e) { 
-            popupContent += `<br/><b>Next Cleaning:</b> Error formatting date`; 
+            popupContent += `
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px;">
+                <div style="color: #dc2626; font-weight: 500;">Error formatting date</div>
+              </div>
+            `;
           }
         } else { 
-          popupContent += `<br/><b>Next Cleaning:</b> <span style="color: #666;">No future cleaning dates</span>`;
+          popupContent += `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px;">
+              <div style="font-size: 12px; color: #6b7280; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
+              <div style="color: #6b7280;">No future cleaning dates</div>
+            </div>
+          `;
         }
+        
+        popupContent += '</div>';
 
         geojsonLayer.bindPopup(popupContent);
         geojsonLayer.addTo(mapInstanceRef.current);
       });
 
-      // Handle trigger popup
-      if (triggerPopup) {
-        const targetFeature = data.find(feature => 
-          feature.properties?.ward === triggerPopup.ward && 
-          feature.properties?.section === triggerPopup.section
-        );
+      // Handle trigger popup with delay to ensure map is ready
+      if (triggerPopup && data.length > 0) {
+        console.log('Trigger popup requested for ward:', triggerPopup.ward, 'section:', triggerPopup.section);
+        console.log('Available features:', data.map(f => ({ ward: f.properties?.ward, section: f.properties?.section })));
+        console.log('Map instance ready:', !!mapInstanceRef.current);
+        
+        // Add longer delay to ensure map and all layers are fully rendered
+        setTimeout(() => {
+          const targetFeature = data.find(feature => 
+            String(feature.properties?.ward) === String(triggerPopup.ward) && 
+            String(feature.properties?.section) === String(triggerPopup.section)
+          );
 
-        if (targetFeature && targetFeature.geometry) {
-          // Calculate center point and open popup
-          let centerLat = 0, centerLng = 0;
-          if (targetFeature.geometry.type === 'Polygon' && targetFeature.geometry.coordinates[0]) {
-            const coords = targetFeature.geometry.coordinates[0];
-            centerLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-            centerLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-          }
-
-          if (centerLat && centerLng) {
-            const props = targetFeature.properties;
-            let popupContent = `<b>Ward:</b> ${props?.ward || 'N/A'}<br/><b>Section:</b> ${props?.section || 'N/A'}`;
+          if (targetFeature && targetFeature.geometry) {
+            console.log('Found target feature:', targetFeature.properties);
             
-            const popup = L.popup()
-              .setLatLng([centerLat, centerLng])
-              .setContent(popupContent)
-              .openOn(mapInstanceRef.current);
+            // Calculate center point and open popup
+            let centerLat = 0, centerLng = 0;
+            if (targetFeature.geometry.type === 'Polygon' && targetFeature.geometry.coordinates[0]) {
+              const coords = targetFeature.geometry.coordinates[0];
+              centerLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+              centerLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            } else if (targetFeature.geometry.type === 'MultiPolygon' && targetFeature.geometry.coordinates[0]) {
+              // Handle MultiPolygon geometries
+              const coords = targetFeature.geometry.coordinates[0][0];
+              centerLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+              centerLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            }
 
-            mapInstanceRef.current.setView([centerLat, centerLng], 14);
+            if (centerLat && centerLng) {
+              console.log('About to center map on:', centerLat, centerLng, 'zoom level: 16');
+              console.log('Current map view:', mapInstanceRef.current.getCenter(), 'zoom:', mapInstanceRef.current.getZoom());
+              
+              const props = targetFeature.properties;
+              
+              // Create modern styled popup content for zoom popup
+              let popupContent = `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+                  <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                      <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
+                      ${props?.ward || 'N/A'}
+                    </div>
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                      <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
+                      ${props?.section || 'N/A'}
+                    </div>
+                  </div>
+              `;
+              
+              if (String(triggerPopup.ward) === String(props?.ward) && String(triggerPopup.section) === String(props?.section)) {
+                popupContent += '<div style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,123,255,0.3);">Park Here Instead</div>';
+              }
+              
+              popupContent += '</div>';
+              
+              // Set view first, then add popup
+              mapInstanceRef.current.setView([centerLat, centerLng], 16);
+              
+              // Add popup after view change
+              setTimeout(() => {
+                const popup = L.popup()
+                  .setLatLng([centerLat, centerLng])
+                  .setContent(popupContent)
+                  .openOn(mapInstanceRef.current);
+                
+                console.log('Map view after zoom:', mapInstanceRef.current.getCenter(), 'zoom:', mapInstanceRef.current.getZoom());
+              }, 100);
+            } else {
+              console.log('Could not calculate center coordinates');
+            }
+          } else {
+            console.log('Target feature not found in data');
+            console.log('Available wards/sections:', data.map(f => `${f.properties?.ward}-${f.properties?.section}`).slice(0, 10));
           }
-        }
+        }, 1000); // 1000ms delay for more reliable zoom
       }
     };
 
@@ -167,7 +271,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopu
     <div 
       ref={mapRef} 
       style={{ 
-        height: '500px', 
+        height: '600px', 
         width: '100%',
         position: 'relative'
       }} 

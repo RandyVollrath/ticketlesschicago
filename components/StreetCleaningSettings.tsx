@@ -331,7 +331,7 @@ export default function StreetCleaningSettings() {
       {/* Park Here Instead Feature - MSC Style */}
       {ward && section && (
         <div className={styles.formGroup}>
-          <label>🅿️ Park Here Instead</label>
+          <label>Park Here Instead</label>
           <div className={styles.parkHereInfo}>
             <p className={styles.parkHereDescription}>
               Alternative parking zones where you can safely park during cleaning in your area:
@@ -339,12 +339,12 @@ export default function StreetCleaningSettings() {
             
             {loadingAlternatives ? (
               <div className={styles.parkHereLoading}>
-                <span>🔍 Finding nearby parking zones...</span>
+                <span>Finding nearby parking zones...</span>
               </div>
             ) : parkHereError ? (
               <div className={styles.parkHereError}>
                 <div className={styles.errorContent}>
-                  <span className={styles.errorIcon}>⚠️</span>
+                  <span className={styles.errorIcon}>!</span>
                   <div>
                     <p className={styles.errorMessage}>{parkHereError}</p>
                     {parkHereRetryCount < 3 && (
@@ -354,7 +354,7 @@ export default function StreetCleaningSettings() {
                           setParkHereRetryCount(prev => prev + 1);
                         }}
                       >
-                        🔄 Try Again
+                        Try Again
                       </button>
                     )}
                     {parkHereRetryCount >= 3 && (
@@ -406,7 +406,7 @@ export default function StreetCleaningSettings() {
                         window.open(mapUrl, '_blank');
                       }}
                     >
-                      🗺️ View on Map
+                      View on Map
                     </button>
                   </div>
                 ))}

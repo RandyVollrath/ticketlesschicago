@@ -19,25 +19,91 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     console.log('🗺️ Loading street cleaning data for map...');
     
-    // Get street cleaning schedule data with geometry
-    const { data: scheduleData, error } = await mscSupabase
+    // Get today's date for status calculation
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // Get ALL street cleaning zones with geometry (not just future dates)
+    const { data: allZones, error: allZonesError } = await mscSupabase
       .from('street_cleaning_schedule')
-      .select('ward, section, cleaning_date, geom_simplified')
+      .select('ward, section, geom_simplified')
       .not('geom_simplified', 'is', null)
       .not('ward', 'is', null)
       .not('section', 'is', null);
+
+    if (allZonesError) {
+      console.error('❌ Error loading all zones:', allZonesError);
+      return res.status(500).json({ error: 'Failed to load street cleaning zones' });
+    }
+
+    // Get future cleaning schedules for status calculation
+    const { data: scheduleData, error } = await mscSupabase
+      .from('street_cleaning_schedule')
+      .select('ward, section, cleaning_date')
+      .not('ward', 'is', null)
+      .not('section', 'is', null)
+      .gte('cleaning_date', todayStr)
+      .order('cleaning_date', { ascending: true });
 
     if (error) {
       console.error('❌ Error loading schedule data:', error);
       return res.status(500).json({ error: 'Failed to load street cleaning data' });
     }
 
-    console.log(`✅ Loaded ${scheduleData?.length || 0} street cleaning zones`);
+    console.log(`✅ Loaded ${allZones?.length || 0} total zones and ${scheduleData?.length || 0} scheduled cleanings`);
+
+    // Create schedule lookup map
+    const scheduleMap = new Map();
+    scheduleData?.forEach(item => {
+      const zoneKey = `${item.ward}-${item.section}`;
+      if (!scheduleMap.has(zoneKey)) {
+        scheduleMap.set(zoneKey, item.cleaning_date);
+      }
+    });
+
+    // Process all zones and assign status
+    const zoneMap = new Map();
+    allZones?.forEach(zone => {
+      const zoneKey = `${zone.ward}-${zone.section}`;
+      if (!zoneMap.has(zoneKey)) {
+        let cleaningStatus = 'none';
+        let nextCleaningDateISO = null;
+        
+        // Check if this zone has upcoming cleaning
+        if (scheduleMap.has(zoneKey)) {
+          const cleaningDate = new Date(scheduleMap.get(zoneKey));
+          const diffTime = cleaningDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 0) cleaningStatus = 'today';
+          else if (diffDays >= 1 && diffDays <= 3) cleaningStatus = 'soon';
+          else cleaningStatus = 'later';
+          
+          nextCleaningDateISO = scheduleMap.get(zoneKey);
+        }
+        
+        zoneMap.set(zoneKey, {
+          ward: zone.ward,
+          section: zone.section,
+          geom_simplified: zone.geom_simplified,
+          cleaningStatus,
+          nextCleaningDateISO
+        });
+      }
+    });
+
+    const processedData = Array.from(zoneMap.values());
+    console.log(`✅ Processed ${processedData.length} unique zones with status distribution:`,
+      processedData.reduce((acc, zone) => {
+        acc[zone.cleaningStatus] = (acc[zone.cleaningStatus] || 0) + 1;
+        return acc;
+      }, {}));
 
     return res.status(200).json({
       success: true,
-      data: scheduleData || [],
-      count: scheduleData?.length || 0
+      data: processedData,
+      count: processedData.length
     });
 
   } catch (error: any) {

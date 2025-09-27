@@ -12,5 +12,8 @@
       "path": "/api/notifications/process",
       "schedule": "0 14 * * *"
     }
-  ]
+  ],
+  "github": {
+    "deploymentProtection": false
+  }
 }

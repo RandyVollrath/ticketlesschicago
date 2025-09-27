@@ -187,13 +187,6 @@ export default function Dashboard() {
         let combinedProfile = null
 
         if (userProfile) {
-          console.log('📥 Loaded profile from database:', userProfile);
-          if (userProfile.notification_preferences) {
-            console.log('🔔 Loaded notification_preferences:', JSON.stringify(userProfile.notification_preferences, null, 2));
-          } else {
-            console.log('⚠️ No notification_preferences found in loaded profile');
-          }
-          
           combinedProfile = {
             ...userProfile,
             // Ensure phone field is available for frontend compatibility
@@ -489,11 +482,6 @@ export default function Dashboard() {
       }
       
       console.log('Auto-saving to /api/profile:', requestBody)
-      
-      // Debug: specifically check if notification_preferences is included
-      if (requestBody.notification_preferences) {
-        console.log('🔔 Notification preferences being sent to API:', JSON.stringify(requestBody.notification_preferences, null, 2));
-      }
 
       const response = await fetch('/api/profile', {
         method: 'PUT',
@@ -557,15 +545,11 @@ export default function Dashboard() {
   }
 
   const handleNotificationPreferenceChange = (field: string, value: any) => {
-    console.log('🔔 Notification preference change:', field, '=', value);
-    
     const newNotificationPrefs = {
       ...profile?.notification_preferences,
       ...editedProfile.notification_preferences,
       [field]: value
     };
-    
-    console.log('🔔 New notification preferences object:', newNotificationPrefs);
     
     setEditedProfile(prev => ({
       ...prev,
@@ -579,7 +563,6 @@ export default function Dashboard() {
     
     // Auto-save notification preference changes after debounce
     const timeoutId = setTimeout(() => {
-      console.log('🔔 Auto-saving notification preferences:', newNotificationPrefs);
       autoSaveProfile({ notification_preferences: newNotificationPrefs });
     }, 1500);
     
