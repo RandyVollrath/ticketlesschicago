@@ -18,15 +18,43 @@ export default async function handler(
   try {
     console.log('Profile update request:', { userId, updateData });
     
-    // Split fields based on which table they belong to
-    const userProfilesFields = [
+    // CONSOLIDATED: All fields now go to user_profiles table only
+    const allowedFields = [
+      // Personal information
+      'first_name',
+      'last_name',
       'phone', // Frontend sends 'phone', we map to 'phone_number'
       'phone_number', // Direct phone_number updates
+      'email_verified',
+      'phone_verified',
+      
+      // Vehicle information
       'license_plate',
-      // Street cleaning fields (core functionality)
+      'vin',
+      'vehicle_type',
+      'vehicle_year',
+      'license_plate_street_cleaning',
+      
+      // Address information
       'home_address_full',
       'home_address_ward', 
       'home_address_section',
+      'street_address',
+      'street_side',
+      'zip_code',
+      
+      // Mailing address
+      'mailing_address',
+      'mailing_city',
+      'mailing_state',
+      'mailing_zip',
+      
+      // Renewal dates
+      'city_sticker_expiry',
+      'license_plate_expiry',
+      'emissions_date',
+      
+      // Street cleaning notification preferences
       'notify_days_array',
       'notify_evening_before',
       'phone_call_enabled',
@@ -35,7 +63,8 @@ export default async function handler(
       'snooze_until_date',
       'snooze_reason',
       'follow_up_sms',
-      // Notification preferences (confirmed to exist)
+      
+      // General notification preferences
       'notify_email',
       'notify_sms',
       'notify_snow',
@@ -44,62 +73,49 @@ export default async function handler(
       'voice_call_days_before',
       'voice_call_time',
       'voice_calls_enabled',
-      // SMS settings
+      'notification_preferences',
+      
+      // SMS and subscription settings
       'sms_pro',
       'sms_gateway',
-      // Other Ticketless-specific fields
+      'subscription_status',
+      'spending_limit',
+      'city_stickers_only',
+      'concierge_service',
+      
+      // Ticketless-specific fields
       'guarantee_opt_in_year',
       'is_paid',
       'role'
     ];
 
-    // Fields that exist in the users table
-    const usersTableFields = [
-      'first_name',
-      'last_name',
-      'vin',
-      'vehicle_type',
-      'vehicle_year',
-      'zip_code',
-      'city_sticker_expiry',
-      'license_plate_expiry',
-      'emissions_date',
-      'mailing_address',
-      'mailing_city',
-      'mailing_state',
-      'mailing_zip',
-      'phone', // Also save to users table for consistency
-      'license_plate' // Also save to users table for consistency
-    ];
-
-    const allAllowedFields = [...new Set([...userProfilesFields, ...usersTableFields])];
-
-    // Filter and separate data for each table
-    const userProfilesData = Object.keys(updateData)
-      .filter(key => userProfilesFields.includes(key))
+    // Filter data to only allowed fields
+    const cleanData = Object.keys(updateData)
+      .filter(key => allowedFields.includes(key))
       .reduce((obj, key) => {
-        // Map phone to phone_number for user_profiles compatibility
+        // Map phone to phone_number for consistency
         if (key === 'phone') {
           obj['phone_number'] = updateData[key];
+          obj['phone'] = updateData[key]; // Keep both for compatibility
         } else {
           obj[key] = updateData[key];
         }
         return obj;
       }, {} as any);
 
-    const usersTableData = Object.keys(updateData)
-      .filter(key => usersTableFields.includes(key))
-      .reduce((obj, key) => {
-        obj[key] = updateData[key];
-        return obj;
-      }, {} as any);
-
-    console.log('User profiles data:', userProfilesData);
-    console.log('Users table data:', usersTableData);
+    console.log('Consolidated profile data:', cleanData);
     
-    if (Object.keys(userProfilesData).length === 0 && Object.keys(usersTableData).length === 0) {
+    // Debug: specifically check notification_preferences
+    if (cleanData.notification_preferences) {
+      console.log('🔔 API received notification_preferences:', JSON.stringify(cleanData.notification_preferences, null, 2));
+    }
+    
+    if (Object.keys(cleanData).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
+
+    // Add timestamp
+    cleanData.updated_at = new Date().toISOString();
 
     // Check if user profile exists
     const { data: existingProfile } = await supabaseAdmin
@@ -108,84 +124,39 @@ export default async function handler(
       .eq('user_id', userId)
       .single();
 
-    // Check if user exists in users table
-    const { data: existingUser } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('id', userId)
-      .single();
-    
-    let updateErrors = [];
-    
-    // Update user_profiles table if there's data for it
-    if (Object.keys(userProfilesData).length > 0) {
-      let result;
-      if (existingProfile) {
-        result = await supabaseAdmin
-          .from('user_profiles')
-          .update(userProfilesData)
-          .eq('user_id', userId);
-      } else {
-        result = await supabaseAdmin
-          .from('user_profiles')
-          .insert({ user_id: userId, ...userProfilesData });
-      }
-      
-      if (result.error) {
-        console.error('Error updating user_profiles:', result.error);
-        updateErrors.push(`user_profiles: ${result.error.message}`);
-      } else {
-        console.log('✅ user_profiles updated successfully');
-      }
+    // Update or create user profile
+    let result;
+    if (existingProfile) {
+      result = await supabaseAdmin
+        .from('user_profiles')
+        .update(cleanData)
+        .eq('user_id', userId);
+    } else {
+      result = await supabaseAdmin
+        .from('user_profiles')
+        .insert({ user_id: userId, ...cleanData });
     }
-
-    // Update users table if there's data for it
-    if (Object.keys(usersTableData).length > 0) {
-      const result = await supabaseAdmin
-        .from('users')
-        .update(usersTableData)
-        .eq('id', userId);
-      
-      if (result.error) {
-        console.error('Error updating users table:', result.error);
-        updateErrors.push(`users: ${result.error.message}`);
-      } else {
-        console.log('✅ users table updated successfully');
-      }
-    }
-      
-    if (updateErrors.length > 0) {
-      console.error('Update errors:', updateErrors);
+    
+    if (result.error) {
+      console.error('Error updating user_profiles:', result.error);
       return res.status(500).json({ 
-        error: 'Failed to update some profile data',
-        details: updateErrors.join('; ')
+        error: 'Failed to update profile data',
+        details: result.error.message
       });
     }
     
-    // Get the updated data to return (combine from both tables)
+    console.log('✅ user_profiles updated successfully (consolidated approach)');
+    
+    // Get the updated data to return
     const { data: profileData } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
       .single();
 
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    // Combine data from both tables, prioritizing user_profiles for overlapping fields
-    const combinedData = {
-      ...userData,
-      ...profileData,
-      // Map phone_number back to phone for frontend compatibility
-      phone: profileData?.phone_number || userData?.phone || profileData?.phone
-    };
-
     res.status(200).json({
       success: true,
-      data: combinedData
+      data: profileData
     });
 
   } catch (error) {
