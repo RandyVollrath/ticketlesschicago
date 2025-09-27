@@ -63,6 +63,14 @@ export default function StreetCleaningSettings() {
   const [loadingAlternatives, setLoadingAlternatives] = useState(false);
   const [parkHereError, setParkHereError] = useState('');
   const [parkHereRetryCount, setParkHereRetryCount] = useState(0);
+  
+  // Street cleaning status
+  const [nextCleaningDate, setNextCleaningDate] = useState<string | null>(null);
+  const [cleaningStatus, setCleaningStatus] = useState<'today' | 'next-3-days' | 'later' | 'unknown'>('unknown');
+  const [loadingCleaningInfo, setLoadingCleaningInfo] = useState(false);
+  
+  // Mailing address for auto-fill
+  const [mailingAddress, setMailingAddress] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -72,6 +80,7 @@ export default function StreetCleaningSettings() {
   useEffect(() => {
     if (ward && section) {
       loadAlternativeParkingZones();
+      loadNextCleaningInfo();
     }
   }, [ward, section, parkHereRetryCount]);
 
@@ -121,7 +130,14 @@ export default function StreetCleaningSettings() {
       }
 
       if (profile) {
-        setHomeAddress(profile.home_address_full || '');
+        // Auto-fill from mailing address if street cleaning address is empty
+        const mailingAddr = profile.mailing_address ? 
+          `${profile.mailing_address}${profile.mailing_city ? ', ' + profile.mailing_city : ''}${profile.mailing_state ? ', ' + profile.mailing_state : ''}${profile.mailing_zip ? ' ' + profile.mailing_zip : ''}` : '';
+        setMailingAddress(mailingAddr);
+        
+        // Use existing home address or auto-fill from mailing address
+        const addressToUse = profile.home_address_full || mailingAddr;
+        setHomeAddress(addressToUse);
         setWard(profile.home_address_ward || '');
         setSection(profile.home_address_section || '');
         // License plate managed in main vehicle settings
@@ -152,6 +168,47 @@ export default function StreetCleaningSettings() {
       setError('Failed to load profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load next cleaning information
+  const loadNextCleaningInfo = async () => {
+    if (!ward || !section) return;
+    
+    setLoadingCleaningInfo(true);
+    
+    try {
+      const response = await fetch(`/api/get-street-cleaning-data?ward=${ward}&section=${section}`);
+      const data = await response.json();
+      
+      if (response.ok && data.nextCleaningDate) {
+        setNextCleaningDate(data.nextCleaningDate);
+        
+        // Calculate cleaning status
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const cleaningDate = new Date(data.nextCleaningDate);
+        cleaningDate.setHours(0, 0, 0, 0);
+        
+        const daysUntil = Math.floor((cleaningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysUntil === 0) {
+          setCleaningStatus('today');
+        } else if (daysUntil > 0 && daysUntil <= 3) {
+          setCleaningStatus('next-3-days');
+        } else {
+          setCleaningStatus('later');
+        }
+      } else {
+        setNextCleaningDate(null);
+        setCleaningStatus('unknown');
+      }
+    } catch (error) {
+      console.error('Error loading cleaning info:', error);
+      setNextCleaningDate(null);
+      setCleaningStatus('unknown');
+    } finally {
+      setLoadingCleaningInfo(false);
     }
   };
 
@@ -304,6 +361,69 @@ export default function StreetCleaningSettings() {
     setMessage('Notifications snoozed for 1 week');
   };
 
+  const handleUseMailingAddress = () => {
+    if (mailingAddress) {
+      setHomeAddress(mailingAddress);
+      setMessage('Address updated from mailing address');
+    }
+  };
+
+  const renderCleaningStatus = () => {
+    if (loadingCleaningInfo) {
+      return (
+        <div className={styles.cleaningStatus}>
+          <span>🔍 Checking street cleaning schedule...</span>
+        </div>
+      );
+    }
+
+    if (!ward || !section) {
+      return null;
+    }
+
+    let statusIcon = '📅';
+    let statusText = '';
+    let statusClass = '';
+
+    switch (cleaningStatus) {
+      case 'today':
+        statusIcon = '🚨';
+        statusText = 'Street cleaning is TODAY!';
+        statusClass = 'today';
+        break;
+      case 'next-3-days':
+        statusIcon = '⚠️';
+        statusText = 'Street cleaning in the next 3 days';
+        statusClass = 'soon';
+        break;
+      case 'later':
+        statusIcon = '📅';
+        statusText = 'No street cleaning in the next 3 days';
+        statusClass = 'later';
+        break;
+      default:
+        statusIcon = '❓';
+        statusText = 'Street cleaning schedule unknown';
+        statusClass = 'unknown';
+    }
+
+    return (
+      <div className={`${styles.cleaningStatus} ${styles[statusClass]}`}>
+        <span>{statusIcon} {statusText}</span>
+        {nextCleaningDate && (
+          <div className={styles.nextCleaningDate}>
+            Next cleaning: {new Date(nextCleaningDate).toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) return <div>Loading street cleaning settings...</div>;
 
   return (
@@ -321,11 +441,21 @@ export default function StreetCleaningSettings() {
           onChange={(e) => setHomeAddress(e.target.value)}
           placeholder="123 N State St, Chicago, IL"
         />
+        {mailingAddress && homeAddress !== mailingAddress && (
+          <button
+            type="button"
+            onClick={handleUseMailingAddress}
+            className={styles.useMailingButton}
+          >
+            Use Mailing Address ({mailingAddress})
+          </button>
+        )}
         {ward && section && (
           <div className={styles.addressInfo}>
             ✓ Ward {ward}, Section {section}
           </div>
         )}
+        {renderCleaningStatus()}
       </div>
 
       {/* Park Here Instead Feature - MSC Style */}
