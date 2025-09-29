@@ -244,27 +244,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to authenticate user' })
     }
 
-    // Create a session token directly for the user
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.createSession({
-      userId: authUser.id
+    // Generate a magic link and immediately verify it to create a session
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: authUser.email!
     })
 
-    if (sessionError || !sessionData?.session) {
-      console.error('Failed to create session:', sessionError)
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error('Failed to generate magic link:', linkError)
+      return res.status(500).json({ error: 'Failed to create session' })
+    }
+
+    console.log('Generated magic link, now verifying OTP to create session')
+
+    // Verify the OTP to create a session
+    const { data: otpData, error: otpError } = await supabaseAdmin.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: 'magiclink'
+    })
+
+    if (otpError || !otpData?.session) {
+      console.error('Failed to verify OTP:', otpError)
       return res.status(500).json({ error: 'Failed to create session' })
     }
 
     console.log('Created session for passkey auth')
 
-    // Set the session cookies in the response
-    const sessionCookie = `sb-access-token=${sessionData.session.access_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`
-    const refreshCookie = `sb-refresh-token=${sessionData.session.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`
-    
-    res.setHeader('Set-Cookie', [sessionCookie, refreshCookie])
-
     res.json({ 
       verified: true, 
-      session: sessionData.session,
+      session: otpData.session,
       user: {
         id: authUser.id,
         email: authUser.email
