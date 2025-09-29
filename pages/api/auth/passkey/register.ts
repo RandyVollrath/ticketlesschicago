@@ -148,29 +148,24 @@ async function handleRegistrationStart(req: NextApiRequest, res: NextApiResponse
 
 async function handleRegistrationVerify(req: NextApiRequest, res: NextApiResponse, body: any) {
   try {
-    const { id, rawId, response, type, challenge, userId } = body
+    const { registration, challenge, userId } = body
     const { rpID, origin } = getRpConfig(req)
 
     console.log('Passkey registration verify:', {
       userId,
       hasChallenge: !!challenge,
+      hasRegistration: !!registration,
       rpID,
-      origin,
-      responseType: type,
-      hasId: !!id,
-      hasRawId: !!rawId,
-      hasResponse: !!response
+      origin
     })
 
     // Validate required fields
-    if (!id || !rawId || !response || !challenge || !userId) {
+    if (!registration || !challenge || !userId) {
       return res.status(400).json({ 
         error: 'Missing required fields',
         details: 'Registration data incomplete',
         missing: {
-          id: !id,
-          rawId: !rawId,
-          response: !response,
+          registration: !registration,
           challenge: !challenge,
           userId: !userId
         }
@@ -179,12 +174,7 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
 
     // Verify the registration response
     const verification = await verifyRegistrationResponse({
-      response: {
-        id,
-        rawId,
-        response,
-        type: type || 'public-key'
-      },
+      response: registration,
       expectedChallenge: challenge,
       expectedOrigin: origin,
       expectedRPID: rpID
