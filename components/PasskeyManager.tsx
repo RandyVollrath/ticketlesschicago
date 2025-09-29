@@ -95,7 +95,7 @@ export default function PasskeyManager() {
         throw new Error('Invalid registration options received from server')
       }
       
-      const registration = await startRegistration(options)
+      const registration = await startRegistration({ optionsJSON: options })
 
       // Verify registration
       const verifyResponse = await fetch('/api/auth/passkey/register', {
@@ -103,7 +103,7 @@ export default function PasskeyManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'verify',
-          ...registration,
+          registration,
           challenge: options.challenge,
           userId: user.id
         })
