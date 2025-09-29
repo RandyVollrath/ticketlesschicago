@@ -210,9 +210,17 @@ export default function Login() {
 
       const result = await verifyResponse.json()
       if (result.verified && result.session) {
-        // Redirect to the magic link URL to complete authentication
-        console.log('Passkey verified, redirecting to magic link')
-        window.location.href = result.session
+        // Session has been set via cookies, now initialize Supabase client with the session
+        console.log('Passkey verified, setting session')
+        
+        // Set the session in Supabase client
+        await supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token
+        })
+        
+        console.log('Session set, redirecting to settings')
+        router.push('/settings')
       }
     } catch (error: any) {
       console.error('Passkey auth error:', error)
