@@ -201,10 +201,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         expectedChallenge: challenge,
         expectedOrigin: origin,
         expectedRPID: rpID,
-        authenticator: {
-          credentialID: credentialIDBytes,
-          credentialPublicKey: new Uint8Array(Buffer.from(passkeyRecord.public_key, 'base64')),
-          counter: passkeyRecord.counter || 0
+        credential: {
+          id: credentialIDBytes,
+          publicKey: new Uint8Array(Buffer.from(passkeyRecord.public_key, 'base64')),
+          counter: passkeyRecord.counter || 0,
+          transports: undefined
         }
       })
     } catch (verifyError: any) {
