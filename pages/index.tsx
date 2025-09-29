@@ -1003,7 +1003,9 @@ export default function Home() {
                     border: '1px solid #ddd',
                     borderRadius: '8px',
                     fontSize: '16px',
-                    flex: 1
+                    flex: 1,
+                    boxSizing: 'border-box',
+                    minWidth: 0
                   }}
                   required
                 />
@@ -1018,7 +1020,9 @@ export default function Home() {
                     border: '1px solid #ddd',
                     borderRadius: '8px',
                     fontSize: '16px',
-                    flex: 1
+                    flex: 1,
+                    boxSizing: 'border-box',
+                    minWidth: 0
                   }}
                   required
                 />
@@ -1034,7 +1038,9 @@ export default function Home() {
                   padding: '16px',
                   border: '1px solid #ddd',
                   borderRadius: '8px',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  width: '100%'
                 }}
                 required
               />
