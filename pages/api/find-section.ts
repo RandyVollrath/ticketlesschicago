@@ -309,10 +309,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('section', foundSection)
           .gte('cleaning_date', todayStr)
           .order('cleaning_date', { ascending: true })
-          .limit(1);
+          .limit(10); // Get more to allow filtering
           
-        scheduleEntries = result.data;
+        const rawScheduleEntries = result.data;
         scheduleError = result.error;
+        
+        console.log(`🔍 DEBUG: Raw schedule entries for Ward ${foundWard}, Section ${foundSection}:`, rawScheduleEntries?.map(e => e.cleaning_date).slice(0, 5));
+        
+        // Filter out invalid Sunday dates and take the first valid one
+        if (!scheduleError && rawScheduleEntries) {
+          console.log(`🧪 DEBUG: Starting filtering process for ${rawScheduleEntries.length} entries`);
+          
+          scheduleEntries = rawScheduleEntries.filter(entry => {
+            // Parse date in UTC to avoid timezone conversion issues
+            const date = new Date(entry.cleaning_date + 'T12:00:00Z');
+            const dayOfWeek = date.getDay(); // 0 = Sunday
+            console.log(`🔍 DEBUG: Checking date ${entry.cleaning_date}, dayOfWeek=${dayOfWeek} (0=Sunday), UTC parsed`);
+            
+            if (dayOfWeek === 0) {
+              console.warn(`Filtering out invalid Sunday cleaning date: ${entry.cleaning_date} for Ward ${foundWard}, Section ${foundSection}`);
+              return false;
+            }
+            return true;
+          }).slice(0, 1); // Take only the first valid date
+          
+          console.log(`✅ DEBUG: After filtering, scheduleEntries:`, scheduleEntries?.map(e => e.cleaning_date));
+        }
       }
       
       if (!scheduleError) {

@@ -375,6 +375,34 @@
   margin-bottom: 12px;
 }
 
+/* Safety Messaging for Alternative Parking */
+.safetyNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: #ecfdf5;
+  border: 1px solid #d1fae5;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #065f46;
+}
+
+.safetyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: #059669;
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
 /* Use Mailing Address Button */
 .useMailingButton {
   background-color: #f3f4f6;

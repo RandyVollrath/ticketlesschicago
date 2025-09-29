@@ -4,6 +4,8 @@ import Head from 'next/head'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import StreetCleaningSettings from '../components/StreetCleaningSettings'
+import PasskeyManager from '../components/PasskeyManager'
+import { RenewalPaymentModal } from '../components/RenewalPaymentModal'
 
 // Phone number formatting utilities
 const formatPhoneNumber = (value: string): string => {
@@ -162,6 +164,17 @@ export default function Dashboard() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({})
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
+  
+  // Renewal payment modal state
+  const [paymentModal, setPaymentModal] = useState<{
+    isOpen: boolean;
+    renewalType: 'city_sticker' | 'license_plate' | 'emissions' | null;
+    dueDate: string;
+  }>({
+    isOpen: false,
+    renewalType: null,
+    dueDate: ''
+  })
   const router = useRouter()
 
   useEffect(() => {
@@ -252,14 +265,30 @@ export default function Dashboard() {
         } else if (profileError?.code === 'PGRST116') {
           // If profile doesn't exist, create one in the database
           console.log('Creating new user profile...')
+          
+          // First, try to get data from users table for migration
+          let userData = null;
+          try {
+            const { data: usersData, error: usersError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+            if (!usersError && usersData) {
+              userData = usersData;
+            }
+          } catch (err) {
+            console.log('No data found in users table for migration');
+          }
+          
           try {
             const defaultProfile = {
               user_id: user.id,
               email: user.email,
-              phone: null,
-              phone_number: null,
+              phone: userData?.phone || null,
+              phone_number: userData?.phone || null,
               // Core Ticketless America fields
-              license_plate: null,
+              license_plate: userData?.license_plate || null,
               home_address_full: null,
               home_address_ward: null,
               home_address_section: null,
@@ -287,7 +316,21 @@ export default function Dashboard() {
               is_paid: true,
               is_canary: false,
               role: 'user',
-              guarantee_opt_in_year: null
+              guarantee_opt_in_year: null,
+              // Include users table data in initial profile
+              first_name: userData?.first_name || null,
+              last_name: userData?.last_name || null,
+              vin: userData?.vin || null,
+              vehicle_type: userData?.vehicle_type || null,
+              vehicle_year: userData?.vehicle_year || null,
+              zip_code: userData?.zip_code || null,
+              city_sticker_expiry: userData?.city_sticker_expiry || null,
+              license_plate_expiry: userData?.license_plate_expiry || null,
+              emissions_date: userData?.emissions_date || null,
+              mailing_address: userData?.mailing_address || null,
+              mailing_city: userData?.mailing_city || null,
+              mailing_state: userData?.mailing_state || null,
+              mailing_zip: userData?.mailing_zip || null
             }
 
             const { data: newProfile, error: createError } = await supabase
@@ -302,52 +345,16 @@ export default function Dashboard() {
             } else {
               combinedProfile = newProfile
             }
-
-            // If we have users table data, merge it with the new profile
-            if (userData) {
-              combinedProfile = {
-                ...combinedProfile,
-                first_name: userData.first_name,
-                last_name: userData.last_name,
-                vin: userData.vin,
-                vehicle_type: userData.vehicle_type,
-                vehicle_year: userData.vehicle_year,
-                zip_code: userData.zip_code,
-                city_sticker_expiry: userData.city_sticker_expiry,
-                license_plate_expiry: userData.license_plate_expiry,
-                emissions_date: userData.emissions_date,
-                mailing_address: userData.mailing_address,
-                mailing_city: userData.mailing_city,
-                mailing_state: userData.mailing_state,
-                mailing_zip: userData.mailing_zip,
-                phone: userData.phone || combinedProfile.phone,
-                license_plate: userData.license_plate || combinedProfile.license_plate
-              }
-            }
           } catch (error) {
             console.error('Error creating profile:', error)
-            // Fallback to Ticketless default profile with users table data if available
+            // Fallback to minimal profile that allows app to function
             combinedProfile = {
               user_id: user.id,
               email: user.email,
-              phone: userData?.phone || null,
+              phone: null,
               phone_number: null,
-              // Include users table data in fallback
-              first_name: userData?.first_name || null,
-              last_name: userData?.last_name || null,
-              vin: userData?.vin || null,
-              vehicle_type: userData?.vehicle_type || null,
-              vehicle_year: userData?.vehicle_year || null,
-              zip_code: userData?.zip_code || null,
-              city_sticker_expiry: userData?.city_sticker_expiry || null,
-              license_plate_expiry: userData?.license_plate_expiry || null,
-              emissions_date: userData?.emissions_date || null,
-              mailing_address: userData?.mailing_address || null,
-              mailing_city: userData?.mailing_city || null,
-              mailing_state: userData?.mailing_state || null,
-              mailing_zip: userData?.mailing_zip || null,
               // Core Ticketless America fields
-              license_plate: userData?.license_plate || null,
+              license_plate: null,
               home_address_full: null,
               home_address_ward: null,
               home_address_section: null,
@@ -592,6 +599,28 @@ export default function Dashboard() {
     const dueDate = new Date(dateString)
     const diffTime = dueDate.getTime() - today.getTime()
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  const handlePaymentClick = (renewalType: 'city_sticker' | 'license_plate' | 'emissions', dueDate: string) => {
+    setPaymentModal({
+      isOpen: true,
+      renewalType,
+      dueDate
+    })
+  }
+
+  const handlePaymentClose = () => {
+    setPaymentModal({
+      isOpen: false,
+      renewalType: null,
+      dueDate: ''
+    })
+  }
+
+  const handlePaymentSuccess = () => {
+    // Refresh profile data to reflect any changes
+    // Could also show a success toast here
+    console.log('Payment successful!')
   }
 
   if (loading) {
@@ -1004,9 +1033,28 @@ export default function Dashboard() {
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    marginBottom: '12px'
                   }}
                 />
+                {(editedProfile.city_sticker_expiry || profile.city_sticker_expiry) && (
+                  <button
+                    onClick={() => handlePaymentClick('city_sticker', editedProfile.city_sticker_expiry || profile.city_sticker_expiry || '')}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Pay for Renewal ($100)
+                  </button>
+                )}
               </div>
 
               <div>
@@ -1028,9 +1076,28 @@ export default function Dashboard() {
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    marginBottom: '12px'
                   }}
                 />
+                {(editedProfile.license_plate_expiry || profile.license_plate_expiry) && (
+                  <button
+                    onClick={() => handlePaymentClick('license_plate', editedProfile.license_plate_expiry || profile.license_plate_expiry || '')}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Pay for Renewal ($155)
+                  </button>
+                )}
               </div>
 
               <div>
@@ -1052,9 +1119,28 @@ export default function Dashboard() {
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    marginBottom: '12px'
                   }}
                 />
+                {(editedProfile.emissions_date || profile.emissions_date) && (
+                  <button
+                    onClick={() => handlePaymentClick('emissions', editedProfile.emissions_date || profile.emissions_date || '')}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Pay for Renewal ($25)
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1363,6 +1449,9 @@ export default function Dashboard() {
           {/* Street Cleaning Settings */}
           <StreetCleaningSettings />
 
+          {/* Passkey Management */}
+          <PasskeyManager />
+
           {/* Auto-save Status */}
           {saving && (
             <div style={{ 
@@ -1386,6 +1475,19 @@ export default function Dashboard() {
               }} />
               Auto-saving changes...
             </div>
+          )}
+
+          {/* Renewal Payment Modal */}
+          {paymentModal.isOpen && (
+            <RenewalPaymentModal
+              isOpen={paymentModal.isOpen}
+              onClose={handlePaymentClose}
+              userId={profile?.user_id || ''}
+              renewalType={paymentModal.renewalType!}
+              licensePlate={profile?.license_plate || 'N/A'}
+              dueDate={paymentModal.dueDate}
+              onSuccess={handlePaymentSuccess}
+            />
           )}
         </div>
       </main>

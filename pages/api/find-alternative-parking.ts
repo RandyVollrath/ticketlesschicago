@@ -199,27 +199,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
 
-      // Sort zones by safety (no conflicts) first, then by actual geographic distance
-      const sortedZones = Array.from(zoneMap.values())
+      // Filter out zones with conflicts and sort by actual geographic distance
+      const safeZones = Array.from(zoneMap.values())
         .filter(zone => zone.distance < 5) // Only consider zones within 5 miles
-        .sort((a, b) => {
-          // Prioritize zones without conflicts
-          if (a.hasConflict !== b.hasConflict) {
-            return a.hasConflict ? 1 : -1;
-          }
-          
-          // Then by actual geographic distance
-          return a.distance - b.distance;
-        })
-        .slice(0, 3); // Get top 3 closest safe alternatives
+        .filter(zone => !zone.hasConflict) // ONLY show zones without cleaning conflicts
+        .sort((a, b) => a.distance - b.distance) // Sort by actual geographic distance
+        .slice(0, 5); // Get top 5 closest safe alternatives (increased from 3)
 
-      console.log('🎯 Top alternatives by distance:');
-      sortedZones.forEach((zone, i) => {
+      console.log('🎯 Safe alternatives by distance (no cleaning conflicts):');
+      safeZones.forEach((zone, i) => {
         console.log(`${i+1}. Ward ${zone.ward}, Section ${zone.section} - ${zone.distance.toFixed(2)} miles, conflict: ${zone.hasConflict}`);
       });
 
       // Convert to alternatives format
-      sortedZones.forEach(zone => {
+      safeZones.forEach(zone => {
         const distanceType = zone.ward === userWard ? 'same_ward' : 'adjacent_ward';
         
         alternatives.push({
@@ -229,10 +222,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       });
 
-      console.log(`✅ Found ${alternatives.length} geographically closest safe parking zones`);
+      console.log(`✅ Found ${alternatives.length} safe parking zones without cleaning conflicts`);
     }
 
-    console.log(`✅ Found ${alternatives.length} alternative sections`);
+    console.log(`✅ Found ${alternatives.length} safe alternative sections (no cleaning conflicts)`);
 
     // 3. Get detailed information for each alternative section
     const detailedAlternatives = await Promise.all(
@@ -303,7 +296,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .slice(0, 3); // Limit to top 3 alternatives
 
-    console.log(`📍 Returning ${validAlternatives.length} valid alternative parking zones`);
+    console.log(`📍 Returning ${validAlternatives.length} safe alternative parking zones`);
 
     const responseData = {
       user_location: {
@@ -313,8 +306,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       alternatives: validAlternatives,
       total_found: validAlternatives.length,
       message: validAlternatives.length > 0 
-        ? `Found ${validAlternatives.length} alternative parking zones near Ward ${userWard}, Section ${userSection}`
-        : 'No alternative parking zones found nearby',
+        ? `Found ${validAlternatives.length} safe parking alternatives near Ward ${userWard}, Section ${userSection} (no cleaning conflicts)`
+        : 'No safe parking alternatives found nearby - all nearby zones have cleaning conflicts',
       debug: {
         same_ward_alternatives: validAlternatives.filter(a => a.distance_type === 'same_ward').length,
         adjacent_ward_alternatives: validAlternatives.filter(a => a.distance_type === 'adjacent_ward').length,
