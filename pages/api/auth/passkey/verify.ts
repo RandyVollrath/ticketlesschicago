@@ -166,23 +166,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       counter: passkeyRecord.counter
     })
 
-    // The credential_id in the database is double-encoded (base64 of the original string)
-    // We need to decode it once to get the original credential ID bytes
-    let credentialIDBytes: Buffer
+    // Handle both double-encoded (old) and properly encoded (new) credential IDs
+    let credentialIDBytes: Uint8Array
     try {
-      // First decode from base64 to get the original string
-      const originalString = Buffer.from(passkeyRecord.credential_id, 'base64').toString('utf-8')
-      console.log('Decoded credential ID string:', originalString)
-      // Then convert that string to bytes (it was the original base64url string)
-      credentialIDBytes = Buffer.from(originalString, 'base64url')
-      console.log('Credential ID bytes length:', credentialIDBytes.length)
+      // Check if this is a double-encoded credential (old format)
+      const decodedOnce = Buffer.from(passkeyRecord.credential_id, 'base64')
+      const asString = decodedOnce.toString('utf-8')
+      
+      // If it looks like a base64url string (only contains valid base64url chars), it's double-encoded
+      if (/^[A-Za-z0-9_-]+={0,2}$/.test(asString)) {
+        console.log('Double-encoded credential detected, decoding twice')
+        credentialIDBytes = new Uint8Array(Buffer.from(asString, 'base64url'))
+      } else {
+        console.log('Properly encoded credential detected')
+        credentialIDBytes = new Uint8Array(decodedOnce)
+      }
     } catch (e) {
-      console.log('Failed to decode double-encoded credential, trying single decode:', e)
-      // Fallback to single decode if not double-encoded
-      credentialIDBytes = Buffer.from(passkeyRecord.credential_id, 'base64')
+      console.log('Error decoding credential, using as-is:', e)
+      credentialIDBytes = new Uint8Array(Buffer.from(passkeyRecord.credential_id, 'base64'))
     }
     
-    console.log('Using credential ID bytes:', credentialIDBytes.toString('base64').substring(0, 20) + '...')
+    console.log('Using credential ID bytes (length):', credentialIDBytes.length)
 
     // Verify the authentication response
     let verification: any
@@ -199,7 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         expectedRPID: rpID,
         authenticator: {
           credentialID: credentialIDBytes,
-          credentialPublicKey: Buffer.from(passkeyRecord.public_key, 'base64'),
+          credentialPublicKey: new Uint8Array(Buffer.from(passkeyRecord.public_key, 'base64')),
           counter: passkeyRecord.counter || 0
         }
       })
