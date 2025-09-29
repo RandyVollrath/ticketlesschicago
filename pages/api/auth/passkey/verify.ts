@@ -243,22 +243,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to authenticate user' })
     }
 
-    // Generate a session token
-    const { data: session, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+    // Generate a magic link for authentication
+    const { data: linkData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: authUser.email!,
       options: {
-        redirectTo: `${origin}/auth/callback`
+        redirectTo: `${origin}/settings`
       }
     })
 
-    if (sessionError) {
+    if (sessionError || !linkData?.properties?.action_link) {
+      console.error('Failed to generate magic link:', sessionError)
       return res.status(500).json({ error: 'Failed to create session' })
     }
 
+    console.log('Generated magic link for passkey auth')
+
     res.json({ 
       verified: true, 
-      session: session.properties.action_link,
+      session: linkData.properties.action_link,
       user: {
         id: authUser.id,
         email: authUser.email
