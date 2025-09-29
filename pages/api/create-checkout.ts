@@ -75,6 +75,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           conciergeService: formData.conciergeService,
           cityStickersOnly: formData.cityStickersOnly,
           spendingLimit: formData.spendingLimit
+        }),
+        streetCleaning: JSON.stringify({
+          homeAddress: formData.homeAddress,
+          homeAddressWard: formData.homeAddressWard,
+          homeAddressSection: formData.homeAddressSection,
+          morningReminder: formData.morningReminder,
+          daysBefore: formData.streetCleaningDaysBefore,
+          eveningBefore: formData.eveningBefore,
+          followUpSms: formData.followUpSms,
+          voiceCallEnabled: formData.streetCleaningVoiceCall
         })
       }
     };
