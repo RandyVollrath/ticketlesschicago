@@ -1,11 +1,59 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
-import { supabaseAdmin } from '../../../../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
-// This would be stored in your database in a real application
-const rpID = process.env.PASSKEY_RP_ID || 'localhost'
+// Create admin client directly in API route to ensure proper environment variables
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
+
 const rpName = 'Ticketless America'
-const origin = process.env.PASSKEY_ORIGIN || 'http://localhost:3000'
+
+// Dynamically determine RP ID and origin based on the request
+function getRpConfig(req: NextApiRequest) {
+  const host = req.headers.host
+  
+  if (!host) {
+    throw new Error('Host header is missing')
+  }
+  
+  // For localhost development
+  if (host.includes('localhost')) {
+    return {
+      rpID: 'localhost',
+      origin: `http://${host}`
+    }
+  }
+  
+  // For production domain
+  if (host === 'ticketlessamerica.com' || host === 'www.ticketlessamerica.com') {
+    return {
+      rpID: 'ticketlessamerica.com',
+      origin: `https://${host}`  // Use the actual host (www or non-www)
+    }
+  }
+  
+  // For Vercel preview deployments
+  if (host.includes('vercel.app')) {
+    return {
+      rpID: host,
+      origin: `https://${host}`
+    }
+  }
+  
+  // Fallback - use the host as-is
+  return {
+    rpID: host,
+    origin: `https://${host}`
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -13,24 +61,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { email } = req.body
+    const { action } = req.body
+    const { rpID, origin } = getRpConfig(req)
+    
+    if (action === 'start') {
+      // Get all registered passkeys from the database
+      const { data: passkeys } = await supabaseAdmin
+        .from('user_passkeys')
+        .select('credential_id')
+      
+      const allowCredentials = passkeys?.map(pk => ({
+        id: Buffer.from(pk.credential_id, 'base64'),
+        type: 'public-key' as const
+      })) || []
+      
+      const options = await generateAuthenticationOptions({
+        rpID,
+        allowCredentials,
+        userVerification: 'preferred',
+      })
 
-    // In a real app, you'd look up the user's registered authenticators
-    // For now, we'll generate options that work with any registered passkey
-    const options = await generateAuthenticationOptions({
-      rpID,
-      // If you have specific user authenticators, you'd include them here
-      allowCredentials: [],
-      userVerification: 'preferred',
-    })
-
-    // Store the challenge temporarily (in production, use Redis or database)
-    // For now, we'll pass it back and forth
-    res.json({
-      ...options,
-      rpID,
-      origin
-    })
+      // Store the challenge temporarily (in production, use Redis or database)
+      // For now, we'll pass it back and forth
+      res.json(options)
+    } else {
+      res.status(400).json({ error: 'Invalid action' })
+    }
   } catch (error) {
     console.error('Passkey authentication error:', error)
     res.status(500).json({ error: 'Failed to generate authentication options' })

@@ -195,7 +195,7 @@ export default function Login() {
       if (!response.ok) throw new Error('Failed to start passkey authentication')
 
       const options = await response.json()
-      const assertion = await startAuthentication(options)
+      const assertion = await startAuthentication({ optionsJSON: options })
 
       const verifyResponse = await fetch('/api/auth/passkey/verify', {
         method: 'POST',
