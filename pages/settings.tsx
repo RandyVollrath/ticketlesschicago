@@ -873,7 +873,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.license_plate || profile.license_plate || ''}
+                  value={editedProfile.license_plate !== undefined ? editedProfile.license_plate : (profile?.license_plate || '')}
                   onChange={(e) => handleInputChange('license_plate', e.target.value.toUpperCase())}
                   style={{
                     width: '100%',
@@ -899,7 +899,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.vin || profile.vin || ''}
+                  value={editedProfile.vin !== undefined ? editedProfile.vin : (profile?.vin || '')}
                   onChange={(e) => handleInputChange('vin', e.target.value.toUpperCase())}
                   maxLength={17}
                   style={{
@@ -925,7 +925,7 @@ export default function Dashboard() {
                   Vehicle Type
                 </label>
                 <select
-                  value={editedProfile.vehicle_type || profile.vehicle_type || ''}
+                  value={editedProfile.vehicle_type !== undefined ? editedProfile.vehicle_type : (profile?.vehicle_type || '')}
                   onChange={(e) => handleInputChange('vehicle_type', e.target.value)}
                   style={{
                     width: '100%',
@@ -958,7 +958,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="number"
-                  value={editedProfile.vehicle_year || profile.vehicle_year || ''}
+                  value={editedProfile.vehicle_year !== undefined ? editedProfile.vehicle_year : (profile?.vehicle_year || '')}
                   onChange={(e) => handleInputChange('vehicle_year', parseInt(e.target.value) || null)}
                   min="1900"
                   max={new Date().getFullYear() + 1}
@@ -985,7 +985,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.zip_code || profile.zip_code || ''}
+                  value={editedProfile.zip_code !== undefined ? editedProfile.zip_code : (profile?.zip_code || '')}
                   onChange={(e) => handleInputChange('zip_code', e.target.value)}
                   maxLength={10}
                   style={{
@@ -1025,7 +1025,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="date"
-                  value={editedProfile.city_sticker_expiry || profile.city_sticker_expiry || ''}
+                  value={editedProfile.city_sticker_expiry !== undefined ? editedProfile.city_sticker_expiry : (profile?.city_sticker_expiry || '')}
                   onChange={(e) => handleInputChange('city_sticker_expiry', e.target.value)}
                   style={{
                     width: '100%',
@@ -1068,7 +1068,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="date"
-                  value={editedProfile.license_plate_expiry || profile.license_plate_expiry || ''}
+                  value={editedProfile.license_plate_expiry !== undefined ? editedProfile.license_plate_expiry : (profile?.license_plate_expiry || '')}
                   onChange={(e) => handleInputChange('license_plate_expiry', e.target.value)}
                   style={{
                     width: '100%',
@@ -1111,7 +1111,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="date"
-                  value={editedProfile.emissions_date || profile.emissions_date || ''}
+                  value={editedProfile.emissions_date !== undefined ? editedProfile.emissions_date : (profile?.emissions_date || '')}
                   onChange={(e) => handleInputChange('emissions_date', e.target.value)}
                   style={{
                     width: '100%',
@@ -1168,7 +1168,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.mailing_address || profile.mailing_address || ''}
+                  value={editedProfile.mailing_address !== undefined ? editedProfile.mailing_address : (profile?.mailing_address || '')}
                   onChange={(e) => handleInputChange('mailing_address', e.target.value)}
                   style={{
                     width: '100%',
@@ -1194,7 +1194,7 @@ export default function Dashboard() {
                   </label>
                   <input
                     type="text"
-                    value={editedProfile.mailing_city || profile.mailing_city || ''}
+                    value={editedProfile.mailing_city !== undefined ? editedProfile.mailing_city : (profile?.mailing_city || '')}
                     onChange={(e) => handleInputChange('mailing_city', e.target.value)}
                     style={{
                       width: '100%',
@@ -1218,7 +1218,7 @@ export default function Dashboard() {
                     State
                   </label>
                   <select
-                    value={editedProfile.mailing_state || profile.mailing_state || ''}
+                    value={editedProfile.mailing_state !== undefined ? editedProfile.mailing_state : (profile?.mailing_state || '')}
                     onChange={(e) => handleInputChange('mailing_state', e.target.value)}
                     style={{
                       width: '100%',
@@ -1250,7 +1250,7 @@ export default function Dashboard() {
                   </label>
                   <input
                     type="text"
-                    value={editedProfile.mailing_zip || profile.mailing_zip || ''}
+                    value={editedProfile.mailing_zip !== undefined ? editedProfile.mailing_zip : (profile?.mailing_zip || '')}
                     onChange={(e) => handleInputChange('mailing_zip', e.target.value)}
                     maxLength={10}
                     style={{
@@ -1426,7 +1426,7 @@ export default function Dashboard() {
                     Annual spending limit
                   </label>
                   <select
-                    value={editedProfile.spending_limit || profile.spending_limit || 500}
+                    value={editedProfile.spending_limit !== undefined ? editedProfile.spending_limit : (profile?.spending_limit || 500)}
                     onChange={(e) => handleInputChange('spending_limit', parseInt(e.target.value))}
                     style={{
                       padding: '8px 12px',
