@@ -505,8 +505,8 @@ export default function Dashboard() {
         throw new Error(result.error || `HTTP ${response.status}: Failed to auto-save`)
       }
 
-      // Update the profile state with the saved data (only supported fields)
-      setProfile({ ...profile, ...supportedData })
+      // DON'T update the main profile state - this causes field repopulation
+      // The editedProfile state already has the user's changes
       console.log('✅ Auto-saved successfully')
     } catch (error: any) {
       console.error('Error auto-saving profile:', error)
@@ -517,7 +517,6 @@ export default function Dashboard() {
   }
 
   const handleInputChange = (field: keyof UserProfile, value: any) => {
-    const updatedData = { [field]: value };
     setEditedProfile(prev => ({ ...prev, [field]: value }))
     
     // Clear previous timeout to debounce rapid changes
@@ -525,10 +524,10 @@ export default function Dashboard() {
       clearTimeout(autoSaveTimeout);
     }
     
-    // Auto-save after a brief delay to batch rapid changes
+    // Auto-save after a longer delay (5 seconds) to avoid interfering with typing
     const timeoutId = setTimeout(() => {
-      autoSaveProfile(updatedData);
-    }, 1500);
+      autoSaveProfile({ [field]: value });
+    }, 5000);
     
     setAutoSaveTimeout(timeoutId);
   }
@@ -543,10 +542,10 @@ export default function Dashboard() {
       clearTimeout(autoSaveTimeout);
     }
     
-    // Auto-save phone changes after debounce
+    // Auto-save phone changes after longer delay
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ phone: formattedForDisplay });
-    }, 1500);
+    }, 5000);
     
     setAutoSaveTimeout(timeoutId);
   }
@@ -568,10 +567,10 @@ export default function Dashboard() {
       clearTimeout(autoSaveTimeout);
     }
     
-    // Auto-save notification preference changes after debounce
+    // Auto-save notification preference changes after longer delay
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ notification_preferences: newNotificationPrefs });
-    }, 1500);
+    }, 5000);
     
     setAutoSaveTimeout(timeoutId);
   }
@@ -809,7 +808,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.first_name || profile.first_name || ''}
+                  value={editedProfile.first_name !== undefined ? editedProfile.first_name : (profile?.first_name || '')}
                   onChange={(e) => handleInputChange('first_name', e.target.value)}
                   style={{
                     width: '100%',
@@ -834,7 +833,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  value={editedProfile.last_name || profile.last_name || ''}
+                  value={editedProfile.last_name !== undefined ? editedProfile.last_name : (profile?.last_name || '')}
                   onChange={(e) => handleInputChange('last_name', e.target.value)}
                   style={{
                     width: '100%',
