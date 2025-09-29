@@ -155,9 +155,13 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
       userId,
       hasChallenge: !!challenge,
       hasRegistration: !!registration,
+      registrationKeys: registration ? Object.keys(registration) : [],
       rpID,
       origin
     })
+    
+    // Log the full registration object to see its structure
+    console.log('Full registration object:', JSON.stringify(registration, null, 2))
 
     // Validate required fields
     if (!registration || !challenge || !userId) {
@@ -182,7 +186,8 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
 
     console.log('Verification result:', {
       verified: verification.verified,
-      hasRegistrationInfo: !!verification.registrationInfo
+      hasRegistrationInfo: !!verification.registrationInfo,
+      registrationInfoKeys: verification.registrationInfo ? Object.keys(verification.registrationInfo) : []
     })
 
     if (!verification.verified || !verification.registrationInfo) {
@@ -193,7 +198,14 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
       })
     }
 
-    const { credentialPublicKey, credentialID, counter } = verification.registrationInfo
+    // Log the structure to understand what's available
+    console.log('Registration info structure:', JSON.stringify(verification.registrationInfo, null, 2))
+
+    // Check if the structure has changed in v13
+    const registrationInfo = verification.registrationInfo
+    const credentialPublicKey = registrationInfo.credentialPublicKey || registrationInfo.credential?.publicKey
+    const credentialID = registrationInfo.credentialID || registrationInfo.credential?.id
+    const counter = registrationInfo.counter || registrationInfo.credential?.counter || 0
 
     // Additional null checks before accessing length
     if (!credentialID || !credentialPublicKey) {
