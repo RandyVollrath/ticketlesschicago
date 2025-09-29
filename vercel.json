@@ -5,12 +5,27 @@
     },
     "pages/api/send-renewal-reminders.background.js": {
       "maxDuration": 60
+    },
+    "pages/api/street-cleaning/process.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/api/notifications/process",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/street-cleaning/process",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/street-cleaning/process",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/street-cleaning/process", 
+      "schedule": "0 0 * * *"
     }
   ],
   "github": {

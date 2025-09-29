@@ -219,9 +219,15 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
       })
     }
 
+    // Log the actual credential ID format
+    const credentialIdBase64 = Buffer.from(credentialID).toString('base64')
+    const credentialIdBase64Url = Buffer.from(credentialID).toString('base64url')
+    
     console.log('Saving passkey to database:', {
       userId,
       credentialIdLength: credentialID.length,
+      credentialIdBase64: credentialIdBase64.substring(0, 20) + '...',
+      credentialIdBase64Url: credentialIdBase64Url.substring(0, 20) + '...',
       publicKeyLength: credentialPublicKey.length,
       counter
     })
@@ -231,7 +237,7 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
       .from('user_passkeys')
       .insert({
         user_id: userId,
-        credential_id: Buffer.from(credentialID).toString('base64'),
+        credential_id: credentialIdBase64,
         public_key: Buffer.from(credentialPublicKey).toString('base64'),
         counter,
         created_at: new Date().toISOString()

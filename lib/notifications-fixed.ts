@@ -18,6 +18,7 @@ export class NotificationScheduler {
 
     try {
       const today = new Date();
+      today.setUTCHours(0, 0, 0, 0); // Set to UTC midnight for accurate day comparison
       console.log(`🔔 Checking for reminders on ${today.toISOString()}`);
       
       // Get ALL users with renewal dates from user_profiles table
@@ -45,6 +46,7 @@ export class NotificationScheduler {
           if (!renewal.date) continue;
           
           const dueDate = new Date(renewal.date);
+          dueDate.setUTCHours(0, 0, 0, 0); // Normalize to UTC midnight for consistent comparison
           
           // Validate date to prevent "Invalid Date" in messages
           if (!dueDate || isNaN(dueDate.getTime())) {
