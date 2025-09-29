@@ -155,33 +155,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Found passkey for user:', passkeyRecord.user_id)
 
+    // Log what we're about to verify
+    console.log('About to verify with:', {
+      responseId: id,
+      hasResponse: !!response,
+      challenge: challenge.substring(0, 20) + '...',
+      origin,
+      rpID,
+      credentialIdFromDB: passkeyRecord.credential_id.substring(0, 20) + '...',
+      counter: passkeyRecord.counter
+    })
+
     // Verify the authentication response
-    const verification = await verifyAuthenticationResponse({
-      response: {
-        id,
-        rawId,
-        response,
-        type: type || 'public-key'
-      },
-      expectedChallenge: challenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
-      authenticator: {
-        credentialID: Buffer.from(passkeyRecord.credential_id, 'base64'),
-        credentialPublicKey: Buffer.from(passkeyRecord.public_key, 'base64'),
-        counter: passkeyRecord.counter
-      }
+    let verification: any
+    try {
+      verification = await verifyAuthenticationResponse({
+        response: {
+          id,
+          rawId,
+          response,
+          type: type || 'public-key'
+        },
+        expectedChallenge: challenge,
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+        authenticator: {
+          credentialID: Buffer.from(passkeyRecord.credential_id, 'base64'),
+          credentialPublicKey: Buffer.from(passkeyRecord.public_key, 'base64'),
+          counter: passkeyRecord.counter || 0
+        }
+      })
+    } catch (verifyError: any) {
+      console.error('Verification error:', verifyError)
+      return res.status(401).json({ 
+        error: 'Passkey verification failed',
+        details: verifyError.message 
+      })
+    }
+
+    console.log('Verification result:', {
+      verified: verification.verified,
+      hasAuthenticationInfo: !!verification.authenticationInfo,
+      authenticationInfo: verification.authenticationInfo
     })
 
     if (!verification.verified) {
       return res.status(401).json({ error: 'Passkey verification failed' })
     }
 
-    // Update counter in database
-    await supabaseAdmin
-      .from('user_passkeys')
-      .update({ counter: verification.authenticationInfo.newCounter })
-      .eq('credential_id', passkeyRecord.credential_id)
+    // Update counter in database if available
+    if (verification.authenticationInfo?.newCounter !== undefined) {
+      await supabaseAdmin
+        .from('user_passkeys')
+        .update({ counter: verification.authenticationInfo.newCounter })
+        .eq('credential_id', passkeyRecord.credential_id)
+    } else {
+      console.warn('No newCounter in authenticationInfo, skipping counter update')
+    }
 
     // Create Supabase session for the user
     const { data: { user: authUser }, error: signInError } = await supabaseAdmin.auth.admin.getUserById(passkeyRecord.user_id)
