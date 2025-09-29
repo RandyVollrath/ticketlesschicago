@@ -87,13 +87,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           vehicleInfo: metadata.vehicleInfo,
           renewalDates: metadata.renewalDates,
           contactInfo: metadata.contactInfo,
-          preferences: metadata.preferences
+          preferences: metadata.preferences,
+          streetCleaning: metadata.streetCleaning
         });
 
         const vehicleInfo = JSON.parse(metadata.vehicleInfo || '{}');
         const renewalDates = JSON.parse(metadata.renewalDates || '{}');
         const contactInfo = JSON.parse(metadata.contactInfo || '{}');
         const preferences = JSON.parse(metadata.preferences || '{}');
+        const streetCleaning = JSON.parse(metadata.streetCleaning || '{}');
         
         // DEBUG: Log parsed values to find missing data
         console.log('📊 PARSED WEBHOOK DATA:', {
@@ -112,7 +114,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ...vehicleInfo,
           ...renewalDates,
           ...contactInfo,
-          ...preferences
+          ...preferences,
+          ...streetCleaning
         };
 
         console.log('Parsed form data for webhook:', formData);
