@@ -236,32 +236,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn('No newCounter in authenticationInfo, skipping counter update')
     }
 
-    // Create Supabase session for the user
-    const { data: { user: authUser }, error: signInError } = await supabaseAdmin.auth.admin.getUserById(passkeyRecord.user_id)
+    // Get the user
+    const { data: { user: authUser }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(passkeyRecord.user_id)
     
-    if (signInError || !authUser) {
+    if (getUserError || !authUser) {
+      console.error('Failed to get user:', getUserError)
       return res.status(500).json({ error: 'Failed to authenticate user' })
     }
 
-    // Generate a magic link for authentication
-    const { data: linkData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: authUser.email!,
-      options: {
-        redirectTo: `${origin}/auth/callback?next=/settings`
-      }
+    // Create a session token directly for the user
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.createSession({
+      userId: authUser.id
     })
 
-    if (sessionError || !linkData?.properties?.action_link) {
-      console.error('Failed to generate magic link:', sessionError)
+    if (sessionError || !sessionData?.session) {
+      console.error('Failed to create session:', sessionError)
       return res.status(500).json({ error: 'Failed to create session' })
     }
 
-    console.log('Generated magic link for passkey auth')
+    console.log('Created session for passkey auth')
+
+    // Set the session cookies in the response
+    const sessionCookie = `sb-access-token=${sessionData.session.access_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`
+    const refreshCookie = `sb-refresh-token=${sessionData.session.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`
+    
+    res.setHeader('Set-Cookie', [sessionCookie, refreshCookie])
 
     res.json({ 
       verified: true, 
-      session: linkData.properties.action_link,
+      session: sessionData.session,
       user: {
         id: authUser.id,
         email: authUser.email
