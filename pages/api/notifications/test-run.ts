@@ -74,6 +74,7 @@ export default async function handler(
       }
       
       const dueDate = new Date(renewal.date);
+      dueDate.setHours(0, 0, 0, 0); // Normalize to midnight
       if (isNaN(dueDate.getTime())) {
         log(`  ${renewal.type}: Invalid date (${renewal.date})`);
         continue;
@@ -180,6 +181,7 @@ export default async function handler(
         for (const renewal of renewals) {
           if (!renewal.date) continue;
           const dueDate = new Date(renewal.date);
+          dueDate.setHours(0, 0, 0, 0); // Normalize to midnight
           if (isNaN(dueDate.getTime())) continue;
           
           const daysUntil = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
