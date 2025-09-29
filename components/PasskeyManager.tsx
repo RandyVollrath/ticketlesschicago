@@ -96,17 +96,21 @@ export default function PasskeyManager() {
       }
       
       const registration = await startRegistration({ optionsJSON: options })
+      console.log('Registration response from browser:', registration)
 
       // Verify registration
+      const verifyPayload = {
+        action: 'verify',
+        registration,
+        challenge: options.challenge,
+        userId: user.id
+      }
+      console.log('Sending verification payload:', verifyPayload)
+      
       const verifyResponse = await fetch('/api/auth/passkey/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'verify',
-          registration,
-          challenge: options.challenge,
-          userId: user.id
-        })
+        body: JSON.stringify(verifyPayload)
       })
 
       if (!verifyResponse.ok) {
