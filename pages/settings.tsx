@@ -163,7 +163,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({})
-  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [autoSaveTimeouts, setAutoSaveTimeouts] = useState<Record<string, NodeJS.Timeout>>({})
   
   // Renewal payment modal state
   const [paymentModal, setPaymentModal] = useState<{
@@ -437,11 +437,10 @@ export default function Dashboard() {
   // Cleanup timeout when component unmounts
   useEffect(() => {
     return () => {
-      if (autoSaveTimeout) {
-        clearTimeout(autoSaveTimeout);
-      }
+      // Clear all auto-save timeouts when component unmounts
+      Object.values(autoSaveTimeouts).forEach(timeout => clearTimeout(timeout));
     }
-  }, [autoSaveTimeout])
+  }, [autoSaveTimeouts])
 
   const signOut = async () => {
     await supabase.auth.signOut()
@@ -519,17 +518,17 @@ export default function Dashboard() {
   const handleInputChange = (field: keyof UserProfile, value: any) => {
     setEditedProfile(prev => ({ ...prev, [field]: value }))
     
-    // Clear previous timeout to debounce rapid changes
-    if (autoSaveTimeout) {
-      clearTimeout(autoSaveTimeout);
+    // Clear previous timeout for this specific field
+    if (autoSaveTimeouts[field]) {
+      clearTimeout(autoSaveTimeouts[field]);
     }
     
-    // Auto-save after a longer delay (5 seconds) to avoid interfering with typing
+    // Auto-save after 2 seconds to balance responsiveness and user experience
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ [field]: value });
-    }, 5000);
+    }, 2000);
     
-    setAutoSaveTimeout(timeoutId);
+    setAutoSaveTimeouts(prev => ({ ...prev, [field]: timeoutId }));
   }
 
   const handlePhoneChange = (value: string) => {
@@ -537,17 +536,17 @@ export default function Dashboard() {
     const formattedForDisplay = formatPhoneNumber(value)
     setEditedProfile(prev => ({ ...prev, phone: formattedForDisplay }))
     
-    // Clear previous timeout to debounce rapid changes
-    if (autoSaveTimeout) {
-      clearTimeout(autoSaveTimeout);
+    // Clear previous timeout for phone field
+    if (autoSaveTimeouts['phone']) {
+      clearTimeout(autoSaveTimeouts['phone']);
     }
     
-    // Auto-save phone changes after longer delay
+    // Auto-save phone changes after 2 seconds
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ phone: formattedForDisplay });
-    }, 5000);
+    }, 2000);
     
-    setAutoSaveTimeout(timeoutId);
+    setAutoSaveTimeouts(prev => ({ ...prev, phone: timeoutId }));
   }
 
   const handleNotificationPreferenceChange = (field: string, value: any) => {
@@ -562,17 +561,17 @@ export default function Dashboard() {
       notification_preferences: newNotificationPrefs
     }));
     
-    // Clear previous timeout to debounce rapid changes
-    if (autoSaveTimeout) {
-      clearTimeout(autoSaveTimeout);
+    // Clear previous timeout for notification preferences
+    if (autoSaveTimeouts['notification_preferences']) {
+      clearTimeout(autoSaveTimeouts['notification_preferences']);
     }
     
-    // Auto-save notification preference changes after longer delay
+    // Auto-save notification preference changes after 2 seconds
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ notification_preferences: newNotificationPrefs });
-    }, 5000);
+    }, 2000);
     
-    setAutoSaveTimeout(timeoutId);
+    setAutoSaveTimeouts(prev => ({ ...prev, notification_preferences: timeoutId }));
   }
 
   const handleReminderDayToggle = (day: number) => {
