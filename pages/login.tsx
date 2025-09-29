@@ -211,6 +211,7 @@ export default function Login() {
       const result = await verifyResponse.json()
       if (result.verified && result.session) {
         // Redirect to the magic link URL to complete authentication
+        console.log('Passkey verified, redirecting to magic link')
         window.location.href = result.session
       }
     } catch (error: any) {

@@ -248,7 +248,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       type: 'magiclink',
       email: authUser.email!,
       options: {
-        redirectTo: `${origin}/settings`
+        redirectTo: `${origin}/auth/callback?next=/settings`
       }
     })
 

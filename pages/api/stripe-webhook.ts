@@ -254,26 +254,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               user_id: authData.user.id,
               email: email,
               phone_number: formData.phone || null,
+              phone: formData.phone || null, // Some fields use 'phone' instead of 'phone_number'
               license_plate: formData.licensePlate || null,
               // Use new firstName/lastName fields from form
               first_name: formData.firstName || null,
               last_name: formData.lastName || null,
+              // Vehicle information
+              vin: formData.vin || null,
+              vehicle_type: formData.vehicleType || null,
+              vehicle_year: formData.vehicleYear || null,
+              zip_code: formData.zipCode || null,
+              // Renewal dates - CRITICAL for notifications
+              city_sticker_expiry: formData.cityStickerExpiry || null,
+              license_plate_expiry: formData.licensePlateExpiry || null,
+              emissions_date: formData.emissionsDate || null,
+              // Mailing address
+              mailing_address: formData.mailingAddress || formData.streetAddress || null,
+              mailing_city: formData.mailingCity || 'Chicago',
+              mailing_state: formData.mailingState || 'IL',
+              mailing_zip: formData.mailingZip || formData.zipCode || null,
+              street_address: formData.streetAddress || null,
+              // Street cleaning settings - CRITICAL for street cleaning notifications
+              home_address_full: formData.homeAddress || formData.streetAddress || null,
+              home_address_ward: formData.homeAddressWard || null,
+              home_address_section: formData.homeAddressSection || null,
               // Map form notification preferences to Ticketless fields
               notify_email: formData.emailNotifications !== false, // Default to true
               notify_sms: formData.smsNotifications || false,
               notify_snow: false,
               notify_winter_parking: false,
               phone_call_enabled: formData.voiceNotifications || false,
-              notify_days_array: formData.reminderDays || [1], // Default to day-before
-              notify_evening_before: true,
+              voice_calls_enabled: formData.voiceNotifications || false, // Duplicate field some places use
+              notify_days_array: formData.reminderDays || [1, 7, 30], // Default reminder days
+              notify_days_before: formData.reminderDays?.[0] || 1, // Primary reminder day
+              notify_evening_before: formData.eveningBefore !== false,
               voice_preference: 'female',
               phone_call_time_preference: '7am',
-              follow_up_sms: true,
+              voice_call_time: '07:00',
+              follow_up_sms: formData.followUpSms !== false,
+              // Notification preferences object for new system
+              notification_preferences: {
+                email: formData.emailNotifications !== false,
+                sms: formData.smsNotifications || false,
+                voice: formData.voiceNotifications || false,
+                reminder_days: formData.reminderDays || [1, 7, 30]
+              },
               // All Ticketless users are paid
               sms_pro: true,
               is_paid: true,
               is_canary: false,
-              role: 'user'
+              role: 'user',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             };
             
             let { error: profileError } = await supabaseAdmin
