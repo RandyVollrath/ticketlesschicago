@@ -72,19 +72,70 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     // Try to find a user with this credential ID
-    // The credential ID from the browser is base64url encoded
-    const credentialIdBase64 = Buffer.from(rawId, 'base64url').toString('base64')
+    // The rawId from the browser needs to be converted to base64 for comparison
+    let credentialIdBase64: string
     
-    console.log('Looking for credential:', credentialIdBase64)
+    try {
+      // rawId might be base64url or base64 encoded already
+      if (typeof rawId === 'string') {
+        // If it's a string, try to decode it as base64url first
+        credentialIdBase64 = Buffer.from(rawId, 'base64url').toString('base64')
+      } else {
+        // If it's already a buffer or array, convert directly
+        credentialIdBase64 = Buffer.from(rawId).toString('base64')
+      }
+    } catch (e) {
+      // If base64url fails, it might already be base64
+      credentialIdBase64 = rawId
+    }
+    
+    console.log('Looking for credential:', {
+      rawId,
+      credentialIdBase64,
+      idValue: id
+    })
 
-    const { data: passkeyRecord, error } = await supabaseAdmin
+    // Try to find the passkey by credential ID
+    let { data: passkeyRecord, error } = await supabaseAdmin
       .from('user_passkeys')
       .select('user_id, credential_id, public_key, counter')
       .eq('credential_id', credentialIdBase64)
       .single()
 
+    // If not found, try with the id field (which might be base64url)
+    if (error || !passkeyRecord) {
+      console.log('First lookup failed, trying with id field:', id)
+      
+      // Try converting id to base64 as well
+      let idBase64: string
+      try {
+        idBase64 = Buffer.from(id, 'base64url').toString('base64')
+      } catch {
+        idBase64 = id
+      }
+      
+      const result = await supabaseAdmin
+        .from('user_passkeys')
+        .select('user_id, credential_id, public_key, counter')
+        .eq('credential_id', idBase64)
+        .single()
+      
+      passkeyRecord = result.data
+      error = result.error
+    }
+
     if (error || !passkeyRecord) {
       console.error('Passkey lookup error:', error)
+      console.error('Tried credential IDs:', { credentialIdBase64, id })
+      
+      // List all passkeys to debug
+      const { data: allPasskeys } = await supabaseAdmin
+        .from('user_passkeys')
+        .select('credential_id')
+        .limit(5)
+      
+      console.log('Sample passkeys in DB:', allPasskeys?.map(p => p.credential_id.substring(0, 20) + '...'))
+      
       return res.status(401).json({ 
         error: 'No passkey found. Please sign in with email first to register a passkey.' 
       })

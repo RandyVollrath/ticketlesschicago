@@ -65,19 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { rpID, origin } = getRpConfig(req)
     
     if (action === 'start') {
-      // Get all registered passkeys from the database
-      const { data: passkeys } = await supabaseAdmin
-        .from('user_passkeys')
-        .select('credential_id')
-      
-      const allowCredentials = passkeys?.map(pk => ({
-        id: Buffer.from(pk.credential_id, 'base64'),
-        type: 'public-key' as const
-      })) || []
-      
+      // For discoverable credentials (resident keys), we leave allowCredentials empty
+      // This allows the browser to show all available passkeys for the user to select
       const options = await generateAuthenticationOptions({
         rpID,
-        allowCredentials,
+        allowCredentials: [], // Empty to allow browser to show available passkeys
         userVerification: 'preferred',
       })
 
