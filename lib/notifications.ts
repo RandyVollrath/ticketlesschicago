@@ -241,7 +241,9 @@ export class NotificationScheduler {
   // Calculate days until due date
   getDaysUntilDue(dueDate: string): number {
     const today = new Date();
+    today.setUTCHours(0, 0, 0, 0); // Normalize to UTC midnight
     const due = new Date(dueDate);
+    due.setUTCHours(0, 0, 0, 0); // Normalize to UTC midnight
     const diffTime = due.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }

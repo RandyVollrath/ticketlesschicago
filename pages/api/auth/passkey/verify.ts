@@ -95,6 +95,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       credentialVariants.add(Buffer.from(id, 'base64url').toString('base64'))
     } catch {}
     
+    // IMPORTANT: Check for double-encoding issue
+    // The browser sends base64url strings, but we might have stored them double-encoded
+    try {
+      // If the ID was treated as a string and encoded again
+      credentialVariants.add(Buffer.from(id).toString('base64'))
+      credentialVariants.add(Buffer.from(rawId).toString('base64'))
+    } catch {}
+    
     // Also try direct base64url versions (in case DB stores them this way)
     try {
       credentialVariants.add(Buffer.from(rawId, 'base64').toString('base64url'))
