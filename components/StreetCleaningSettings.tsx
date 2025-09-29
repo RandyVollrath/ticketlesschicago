@@ -188,23 +188,34 @@ export default function StreetCleaningSettings() {
         if (zone && zone.nextCleaningDateISO) {
           setNextCleaningDate(zone.nextCleaningDateISO);
           
-          // Use the pre-calculated status from the API
-          switch (zone.cleaningStatus) {
-            case 'today':
-              setCleaningStatus('today');
-              break;
-            case 'soon':
-              setCleaningStatus('next-3-days');
-              break;
-            case 'later':
-              setCleaningStatus('later');
-              break;
-            default:
-              setCleaningStatus('unknown');
+          // Calculate days until cleaning for more precise status
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const cleaningDate = new Date(zone.nextCleaningDateISO + 'T12:00:00');
+          cleaningDate.setHours(0, 0, 0, 0);
+          const diffTime = cleaningDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          // Set more precise status based on actual days
+          if (diffDays === 0) {
+            setCleaningStatus('today');
+          } else if (diffDays === 1) {
+            setCleaningStatus('tomorrow');
+          } else if (diffDays >= 2 && diffDays <= 3) {
+            setCleaningStatus('next-3-days');
+          } else if (zone.cleaningStatus === 'later') {
+            setCleaningStatus('later');
+          } else {
+            setCleaningStatus('unknown');
           }
         } else {
+          // Ward/section combination not found in API data
+          console.warn(`Ward ${ward}, Section ${section} not found in street cleaning data`);
           setNextCleaningDate(null);
-          setCleaningStatus('unknown');
+          setCleaningStatus('invalid_zone');
+          
+          // Set error message to help user fix the issue
+          setError(`Ward ${ward}, Section ${section} is not a valid street cleaning zone. Please update your address.`);
         }
       } else {
         setNextCleaningDate(null);
@@ -398,6 +409,11 @@ export default function StreetCleaningSettings() {
         statusText = 'Street cleaning is TODAY!';
         statusClass = 'today';
         break;
+      case 'tomorrow':
+        statusIcon = '⚠️';
+        statusText = 'Street cleaning is TOMORROW';
+        statusClass = 'soon';
+        break;
       case 'next-3-days':
         statusIcon = '⚠️';
         statusText = 'Street cleaning in the next 3 days';
@@ -408,10 +424,33 @@ export default function StreetCleaningSettings() {
         statusText = 'No street cleaning in the next 3 days';
         statusClass = 'later';
         break;
+      case 'invalid_zone':
+        statusIcon = '❌';
+        statusText = 'Invalid ward/section combination';
+        statusClass = 'error';
+        break;
       default:
         statusIcon = '❓';
         statusText = 'Street cleaning schedule unknown';
         statusClass = 'unknown';
+    }
+
+    // Format the date display based on the status
+    let dateDisplay = '';
+    if (nextCleaningDate) {
+      if (cleaningStatus === 'today') {
+        dateDisplay = 'Today';
+      } else if (cleaningStatus === 'tomorrow') {
+        dateDisplay = 'Tomorrow';
+      } else {
+        const cleaningDate = new Date(nextCleaningDate + 'T12:00:00');
+        dateDisplay = cleaningDate.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      }
     }
 
     return (
@@ -419,12 +458,7 @@ export default function StreetCleaningSettings() {
         <span>{statusIcon} {statusText}</span>
         {nextCleaningDate && (
           <div className={styles.nextCleaningDate}>
-            Next cleaning: {new Date(nextCleaningDate).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })}
+            Next cleaning: {dateDisplay}
           </div>
         )}
       </div>
@@ -471,12 +505,16 @@ export default function StreetCleaningSettings() {
           <label>Park Here Instead</label>
           <div className={styles.parkHereInfo}>
             <p className={styles.parkHereDescription}>
-              Alternative parking zones where you can safely park during cleaning in your area:
+              Safe parking zones nearby that <strong>do not have cleaning conflicts</strong> when your area does:
             </p>
+            <div className={styles.safetyNote}>
+              <span className={styles.safetyIcon}>✓</span>
+              <span>These zones are specifically filtered to avoid parking conflicts with your cleaning schedule</span>
+            </div>
             
             {loadingAlternatives ? (
               <div className={styles.parkHereLoading}>
-                <span>Finding nearby parking zones...</span>
+                <span>Finding safe parking alternatives without cleaning conflicts...</span>
               </div>
             ) : parkHereError ? (
               <div className={styles.parkHereError}>
@@ -550,7 +588,7 @@ export default function StreetCleaningSettings() {
               </div>
             ) : (
               <div className={styles.noAlternatives}>
-                <p>No alternative parking zones found nearby. Try the main parking map:</p>
+                <p>No safe parking alternatives found nearby without cleaning conflicts. Try the main parking map to explore all zones:</p>
                 <button 
                   type="button"
                   onClick={() => router.push('/parking-map')}

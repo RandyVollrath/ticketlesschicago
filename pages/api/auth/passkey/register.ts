@@ -156,8 +156,26 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
       hasChallenge: !!challenge,
       rpID,
       origin,
-      responseType: type
+      responseType: type,
+      hasId: !!id,
+      hasRawId: !!rawId,
+      hasResponse: !!response
     })
+
+    // Validate required fields
+    if (!id || !rawId || !response || !challenge || !userId) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        details: 'Registration data incomplete',
+        missing: {
+          id: !id,
+          rawId: !rawId,
+          response: !response,
+          challenge: !challenge,
+          userId: !userId
+        }
+      })
+    }
 
     // Verify the registration response
     const verification = await verifyRegistrationResponse({
@@ -165,7 +183,7 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
         id,
         rawId,
         response,
-        type
+        type: type || 'public-key'
       },
       expectedChallenge: challenge,
       expectedOrigin: origin,
@@ -186,6 +204,18 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
     }
 
     const { credentialPublicKey, credentialID, counter } = verification.registrationInfo
+
+    // Additional null checks before accessing length
+    if (!credentialID || !credentialPublicKey) {
+      console.error('Missing credential data:', { 
+        hasCredentialID: !!credentialID, 
+        hasCredentialPublicKey: !!credentialPublicKey 
+      })
+      return res.status(500).json({ 
+        error: 'Invalid credential data',
+        details: 'Credential information missing from verification'
+      })
+    }
 
     console.log('Saving passkey to database:', {
       userId,

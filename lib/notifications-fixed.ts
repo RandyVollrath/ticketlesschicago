@@ -20,9 +20,9 @@ export class NotificationScheduler {
       const today = new Date();
       console.log(`🔔 Checking for reminders on ${today.toISOString()}`);
       
-      // Get ALL users with renewal dates
+      // Get ALL users with renewal dates from user_profiles table
       const { data: users, error } = await supabaseAdmin
-        .from('users')
+        .from('user_profiles')
         .select('*')
         .not('city_sticker_expiry', 'is', null);
         
@@ -66,11 +66,11 @@ export class NotificationScheduler {
               const prefs = user.notification_preferences || {};
               
               // Send SMS if enabled
-              if (prefs.sms && user.phone) {
+              if (prefs.sms && user.phone_number) {
                 const message = `TicketlessAmerica: Your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Reply STOP to opt out.`;
                 
-                console.log(`📱 Sending SMS to ${user.phone}: ${message}`);
-                const smsResult = await sendClickSendSMS(user.phone, message);
+                console.log(`📱 Sending SMS to ${user.phone_number}: ${message}`);
+                const smsResult = await sendClickSendSMS(user.phone_number, message);
                 
                 if (smsResult.success) {
                   console.log('✅ SMS sent successfully');
@@ -82,11 +82,11 @@ export class NotificationScheduler {
               }
               
               // Send voice call if enabled
-              if (prefs.voice && user.phone) {
+              if (prefs.voice && user.phone_number) {
                 const voiceMessage = `Hello from Ticketless America. This is a reminder that your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Please renew promptly to avoid penalties.`;
                 
-                console.log(`📞 Sending voice call to ${user.phone}: ${voiceMessage.substring(0, 50)}...`);
-                const voiceResult = await sendClickSendVoiceCall(user.phone, voiceMessage);
+                console.log(`📞 Sending voice call to ${user.phone_number}: ${voiceMessage.substring(0, 50)}...`);
+                const voiceResult = await sendClickSendVoiceCall(user.phone_number, voiceMessage);
                 
                 if (voiceResult.success) {
                   console.log('✅ Voice call sent successfully');
