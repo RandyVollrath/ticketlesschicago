@@ -72,61 +72,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     // Try to find a user with this credential ID
-    // The rawId from the browser needs to be converted to base64 for comparison
-    let credentialIdBase64: string
+    // We need to handle various encoding scenarios
+    const credentialVariants = new Set<string>()
+    
+    // Add the raw values
+    credentialVariants.add(id)
+    credentialVariants.add(rawId)
+    
+    // Try different encoding conversions
+    try {
+      // If rawId is base64url, convert to base64
+      credentialVariants.add(Buffer.from(rawId, 'base64url').toString('base64'))
+    } catch {}
     
     try {
-      // rawId might be base64url or base64 encoded already
-      if (typeof rawId === 'string') {
-        // If it's a string, try to decode it as base64url first
-        credentialIdBase64 = Buffer.from(rawId, 'base64url').toString('base64')
-      } else {
-        // If it's already a buffer or array, convert directly
-        credentialIdBase64 = Buffer.from(rawId).toString('base64')
-      }
-    } catch (e) {
-      // If base64url fails, it might already be base64
-      credentialIdBase64 = rawId
-    }
+      // If rawId is base64, keep it
+      credentialVariants.add(Buffer.from(rawId, 'base64').toString('base64'))
+    } catch {}
     
-    console.log('Looking for credential:', {
-      rawId,
-      credentialIdBase64,
-      idValue: id
-    })
+    try {
+      // If id is base64url, convert to base64
+      credentialVariants.add(Buffer.from(id, 'base64url').toString('base64'))
+    } catch {}
+    
+    // Also try direct base64url versions (in case DB stores them this way)
+    try {
+      credentialVariants.add(Buffer.from(rawId, 'base64').toString('base64url'))
+    } catch {}
+    
+    try {
+      credentialVariants.add(Buffer.from(id, 'base64').toString('base64url'))
+    } catch {}
+    
+    console.log('Credential variants to try:', Array.from(credentialVariants))
 
-    // Try to find the passkey by credential ID
-    let { data: passkeyRecord, error } = await supabaseAdmin
-      .from('user_passkeys')
-      .select('user_id, credential_id, public_key, counter')
-      .eq('credential_id', credentialIdBase64)
-      .single()
-
-    // If not found, try with the id field (which might be base64url)
-    if (error || !passkeyRecord) {
-      console.log('First lookup failed, trying with id field:', id)
-      
-      // Try converting id to base64 as well
-      let idBase64: string
-      try {
-        idBase64 = Buffer.from(id, 'base64url').toString('base64')
-      } catch {
-        idBase64 = id
-      }
+    // Try to find the passkey using any of the credential variants
+    let passkeyRecord: any = null
+    let error: any = null
+    
+    for (const credentialId of credentialVariants) {
+      console.log('Trying credential ID:', credentialId.substring(0, 20) + '...')
       
       const result = await supabaseAdmin
         .from('user_passkeys')
         .select('user_id, credential_id, public_key, counter')
-        .eq('credential_id', idBase64)
+        .eq('credential_id', credentialId)
         .single()
       
-      passkeyRecord = result.data
+      if (result.data) {
+        passkeyRecord = result.data
+        error = null
+        console.log('Found passkey with credential ID variant:', credentialId.substring(0, 20) + '...')
+        break
+      }
       error = result.error
     }
 
     if (error || !passkeyRecord) {
       console.error('Passkey lookup error:', error)
-      console.error('Tried credential IDs:', { credentialIdBase64, id })
+      console.error('Tried credential variants:', Array.from(credentialVariants))
       
       // List all passkeys to debug
       const { data: allPasskeys } = await supabaseAdmin
@@ -169,7 +173,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await supabaseAdmin
       .from('user_passkeys')
       .update({ counter: verification.authenticationInfo.newCounter })
-      .eq('credential_id', credentialIdBase64)
+      .eq('credential_id', passkeyRecord.credential_id)
 
     // Create Supabase session for the user
     const { data: { user: authUser }, error: signInError } = await supabaseAdmin.auth.admin.getUserById(passkeyRecord.user_id)
