@@ -121,11 +121,14 @@ export default async function handler(
                 </p>
               </div>
 
-              <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="margin: 0 0 10px 0;">How You'll Earn:</h3>
-                <ul style="margin: 0; padding-left: 20px;">
-                  <li><strong>$2 per month</strong> for every monthly subscriber (up to 12 months)</li>
-                  <li><strong>$20 one-time</strong> for every annual subscriber</li>
+              <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0; color: #92400e;">📋 Program Terms:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #78350f; line-height: 1.6;">
+                  <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
+                  <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
+                  <li>Rewards are applied as Stripe account credits to reduce your subscription cost</li>
+                  <li>If a referred customer cancels, monthly payments will stop</li>
+                  <li>Program terms may be modified with notice to participants</li>
                 </ul>
               </div>
 
