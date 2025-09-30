@@ -13,9 +13,10 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
       annual: number;
       currency: string;
     };
+    requested: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,25 +44,25 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
     }
   };
 
-  const createReferralLink = async () => {
+  const requestAffiliateAccess = async () => {
     try {
-      setCreating(true);
+      setRequesting(true);
       setError(null);
       const response = await fetch(`/api/user/referral-link?userId=${userId}`, {
         method: 'POST'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create referral link');
+        throw new Error('Failed to request affiliate access');
       }
 
       const data = await response.json();
       setReferralData(data);
     } catch (err: any) {
-      console.error('Error creating referral link:', err);
+      console.error('Error requesting affiliate access:', err);
       setError(err.message);
     } finally {
-      setCreating(false);
+      setRequesting(false);
     }
   };
 
@@ -153,27 +154,40 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
               </div>
             </div>
             <p style={{ fontSize: '14px', color: '#1e40af', margin: 0 }}>
-              Earn rewards for every friend who subscribes through your link!
+              Earn rewards for every friend who subscribes through your referral link!
+            </p>
+          </div>
+
+          <div style={{
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fde68a',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: '1.5' }}>
+              <strong>How it works:</strong> Click below to get your unique referral link.
+              We'll email you when it's ready, and you can start earning right away!
             </p>
           </div>
 
           <button
-            onClick={createReferralLink}
-            disabled={creating}
+            onClick={requestAffiliateAccess}
+            disabled={requesting}
             style={{
               width: '100%',
               padding: '14px 20px',
-              backgroundColor: creating ? '#9ca3af' : '#3b82f6',
+              backgroundColor: requesting ? '#9ca3af' : '#3b82f6',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: creating ? 'not-allowed' : 'pointer',
+              cursor: requesting ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s'
             }}
           >
-            {creating ? 'Generating Your Link...' : 'Get My Referral Link'}
+            {requesting ? 'Setting Up Your Link...' : 'Request Affiliate Link'}
           </button>
         </div>
       ) : (

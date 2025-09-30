@@ -1,6 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { getRewardfulAffiliate, createRewardfulAffiliate } from '../../../lib/rewardful-helper';
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(
   req: NextApiRequest,
@@ -76,9 +79,71 @@ export default async function handler(
         })
         .eq('user_id', userId);
 
+      // Send notification emails
+      const referralLink = affiliateData.links[0]?.url || `https://ticketlessamerica.com?via=${affiliateData.token}`;
+
+      try {
+        // Email to admin
+        await resend.emails.send({
+          from: process.env.RESEND_FROM || 'noreply@ticketlessamerica.com',
+          to: 'ticketlessamerica@gmail.com',
+          subject: '🎉 New Affiliate Link Request',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>New Affiliate Link Request</h2>
+              <p>A user has requested affiliate access:</p>
+              <ul>
+                <li><strong>Email:</strong> ${profile.email}</li>
+                <li><strong>Name:</strong> ${profile.first_name || ''} ${profile.last_name || ''}</li>
+                <li><strong>User ID:</strong> ${userId}</li>
+                <li><strong>Affiliate ID:</strong> ${affiliateData.id}</li>
+                <li><strong>Referral Link:</strong> <a href="${referralLink}">${referralLink}</a></li>
+              </ul>
+              <p>They can now share their referral link and earn rewards!</p>
+            </div>
+          `
+        });
+
+        // Email to user
+        await resend.emails.send({
+          from: process.env.RESEND_FROM || 'noreply@ticketlessamerica.com',
+          to: profile.email,
+          subject: '🎉 Your Ticketless America Referral Link is Ready!',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Your Referral Link is Ready!</h2>
+              <p>Thanks for your interest in our referral program! Your unique referral link has been created.</p>
+
+              <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0;"><strong>Your Referral Link:</strong></p>
+                <p style="margin: 0; font-size: 16px;">
+                  <a href="${referralLink}" style="color: #3b82f6; word-break: break-all;">${referralLink}</a>
+                </p>
+              </div>
+
+              <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0;">How You'll Earn:</h3>
+                <ul style="margin: 0; padding-left: 20px;">
+                  <li><strong>$2 per month</strong> for every monthly subscriber (up to 12 months)</li>
+                  <li><strong>$20 one-time</strong> for every annual subscriber</li>
+                </ul>
+              </div>
+
+              <p>You can also find your referral link anytime in your account settings at <a href="https://ticketlessamerica.com/settings">ticketlessamerica.com/settings</a></p>
+
+              <p>Thanks for spreading the word!</p>
+              <p>- The Ticketless America Team</p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error('Failed to send notification emails:', emailError);
+        // Don't fail the request if email fails
+      }
+
       return res.status(200).json({
         success: true,
-        referral_link: affiliateData.links[0]?.url || `https://ticketlessamerica.com?via=${affiliateData.token}`,
+        referral_link: referralLink,
         token: affiliateData.token,
         affiliate_id: affiliateData.id,
         earnings: {
