@@ -330,21 +330,14 @@ export default function HowItWorks() {
 
           {/* CTA Section */}
           <section style={{ textAlign: 'center', padding: '32px 0' }}>
-            <h3 style={{ 
-              fontSize: '24px', 
-              fontWeight: '600', 
-              color: '#374151', 
-              marginBottom: '16px'
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '24px'
             }}>
               Ready to Get Protected?
             </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              marginBottom: '24px',
-              fontSize: '18px'
-            }}>
-              Join thousands of Chicago drivers who never worry about compliance tickets again.
-            </p>
             <button
               onClick={() => router.push('/auth/login')}
               style={{

@@ -202,51 +202,6 @@ export default function Support() {
             textAlign: 'center'
           }}>
             <div style={{
-              background: '#dcfce7',
-              borderRadius: '50%',
-              padding: '16px',
-              width: '64px',
-              height: '64px',
-              margin: '0 auto 16px auto',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <span style={{ fontSize: '32px' }}>💬</span>
-            </div>
-            <h3 style={{ 
-              fontSize: '18px', 
-              fontWeight: '600', 
-              color: '#374151', 
-              marginBottom: '8px' 
-            }}>
-              Live Chat
-            </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              marginBottom: '16px' 
-            }}>
-              Chat with us during business hours
-            </p>
-            <button style={{ 
-              color: '#16a34a', 
-              background: 'none',
-              border: 'none',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}>
-              Start Chat (Mon-Fri 9-5 CST)
-            </button>
-          </div>
-
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            padding: '24px',
-            textAlign: 'center'
-          }}>
-            <div style={{
               background: '#e9d5ff',
               borderRadius: '50%',
               padding: '16px',
