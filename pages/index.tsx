@@ -580,8 +580,8 @@ export default function Home() {
                 a: 'Our premium tier ($12/mo or $120/yr) where we handle your city sticker & license plate renewals and cover any street cleaning or snow removal tickets.'
               },
               {
-                q: 'When is Ticket Protection available?',
-                a: "We're rolling it out to early users now. Join the waitlist on the Protection page to get notified when it's ready."
+                q: 'Is Ticket Protection available now?',
+                a: "Yes! Ticket Protection is available now. Sign up on the Protection page to get complete coverage with done-for-you renewals and ticket reimbursement."
               },
               {
                 q: 'What areas do you cover?',
@@ -590,6 +590,10 @@ export default function Home() {
               {
                 q: 'How accurate are the alerts?',
                 a: 'We use official City of Chicago data and verify all alerts before sending. Our data is updated continuously.'
+              },
+              {
+                q: 'What happens if my city sticker expires?',
+                a: 'Vehicles can be ticketed $200 per ticket starting 15 days after expiration. Tickets can be issued daily until you display a new sticker. Our alerts help you avoid this!'
               }
             ].map((faq, i) => (
               <div key={i} style={{
