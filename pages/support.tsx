@@ -61,7 +61,7 @@ export default function Support() {
         },
         {
           q: 'When do I receive alerts?',
-          a: 'Alerts are sent 24-48 hours before street cleaning or snow removal, and well in advance of registration deadlines.'
+          a: 'You choose! Options include: 7am day of, 7pm night before, 24 hours, 48 hours, or 72 hours before street cleaning or snow removal. For renewal deadlines, we alert you well in advance.'
         },
         {
           q: 'Can I customize my alert preferences?',
@@ -374,32 +374,6 @@ export default function Support() {
             }}>
               Last updated: Just now
             </p>
-          </div>
-
-          <div style={{
-            background: '#eff6ff',
-            borderRadius: '12px',
-            padding: '24px'
-          }}>
-            <h3 style={{ 
-              fontSize: '18px', 
-              fontWeight: '600', 
-              color: '#374151', 
-              marginBottom: '16px' 
-            }}>
-              Recent Updates
-            </h3>
-            <ul style={{ 
-              margin: 0,
-              paddingLeft: '0',
-              listStyle: 'none',
-              fontSize: '14px',
-              color: '#6b7280'
-            }}>
-              <li style={{ marginBottom: '8px' }}>• Improved alert timing accuracy</li>
-              <li style={{ marginBottom: '8px' }}>• Added support for multiple license plates</li>
-              <li>• Enhanced mobile app performance</li>
-            </ul>
           </div>
         </div>
 
