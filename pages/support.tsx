@@ -57,19 +57,19 @@ export default function Support() {
       questions: [
         {
           q: 'How do alerts work?',
-          a: 'We send text and email alerts based on your tracked addresses for street cleaning, snow removal, and registration renewals.'
+          a: 'We send text and email alerts based on your home address for street cleaning, snow removal, and registration renewals.'
         },
         {
           q: 'When do I receive alerts?',
-          a: 'You choose! Options include: 7am day of, 7pm night before, 24 hours, 48 hours, or 72 hours before street cleaning or snow removal. For renewal deadlines, we alert you well in advance.'
+          a: 'You choose! For street cleaning and snow removal: 7am day of, 7pm night before, 24 hours, 48 hours, or 72 hours before. For registration renewals (city sticker, license plate, emissions): customizable advance notice timing in your settings.'
         },
         {
           q: 'Can I customize my alert preferences?',
-          a: 'Yes, you can manage your notification preferences in your account settings, including which addresses to track and how to receive alerts.'
+          a: 'Yes, you can manage your notification preferences in your account settings, including timing for alerts and how to receive them (email, SMS, phone).'
         },
         {
           q: 'What should I do when I get an alert?',
-          a: 'Move your car before the posted time and respond to the alert text (e.g., "Moved") to maintain your coverage eligibility.'
+          a: 'Move your car before the posted time. If you have Ticket Protection, respond to the alert text (e.g., "Moved") to maintain your street cleaning and snow removal ticket coverage eligibility.'
         }
       ]
     },
@@ -79,10 +79,6 @@ export default function Support() {
         {
           q: 'How do I add my license plate?',
           a: 'Go to your account settings and add your license plate number in the vehicle information section.'
-        },
-        {
-          q: 'Can I track multiple addresses?',
-          a: 'Yes, you can track multiple addresses where you regularly park. This is included in all our plans.'
         },
         {
           q: 'How do I submit a ticket for reimbursement?',
@@ -228,16 +224,65 @@ export default function Support() {
             }}>
               Call us for urgent issues
             </p>
-            <a 
-              href="tel:+1-224-321-7290" 
-              style={{ 
-                color: '#7c3aed', 
-                textDecoration: 'none', 
-                fontWeight: '500' 
+            <a
+              href="tel:+1-224-321-7290"
+              style={{
+                color: '#7c3aed',
+                textDecoration: 'none',
+                fontWeight: '500'
               }}
             >
               (224) 321-7290
             </a>
+          </div>
+
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            padding: '24px',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              background: '#fef3c7',
+              borderRadius: '50%',
+              padding: '16px',
+              width: '64px',
+              height: '64px',
+              margin: '0 auto 16px auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <span style={{ fontSize: '32px' }}>⚙️</span>
+            </div>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Customize Alerts
+            </h3>
+            <p style={{
+              color: '#6b7280',
+              marginBottom: '16px'
+            }}>
+              Manage your notification preferences
+            </p>
+            <button
+              onClick={() => window.location.href = '/settings'}
+              style={{
+                color: '#d97706',
+                background: 'none',
+                border: 'none',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textDecoration: 'none'
+              }}
+            >
+              Go to Settings
+            </button>
           </div>
         </div>
 
