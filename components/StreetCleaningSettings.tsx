@@ -30,6 +30,7 @@ interface AlternativeSection {
 export default function StreetCleaningSettings() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -168,6 +169,8 @@ export default function StreetCleaningSettings() {
       setError('Failed to load profile');
     } finally {
       setLoading(false);
+      // Mark initial load as complete after a short delay to prevent immediate auto-save
+      setTimeout(() => setInitialLoadComplete(true), 500);
     }
   };
 
@@ -340,6 +343,9 @@ export default function StreetCleaningSettings() {
 
   // Debounced auto-save with 2-second delay
   useEffect(() => {
+    // Skip auto-save during initial load
+    if (!initialLoadComplete) return;
+
     const timeoutId = setTimeout(() => {
       // Build notify days array
       const notifyDays = [];
@@ -367,8 +373,8 @@ export default function StreetCleaningSettings() {
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [homeAddress, ward, section, notify0Day, notify1Day, notify2Days, notify3Days, 
-      notifyEveningBefore, phoneCallEnabled, voicePreference, callTimePreference, 
+  }, [initialLoadComplete, homeAddress, ward, section, notify0Day, notify1Day, notify2Days, notify3Days,
+      notifyEveningBefore, phoneCallEnabled, voicePreference, callTimePreference,
       followUpSMS, tripMode, tripEndDate]);
 
   const handleQuickSnooze = async () => {
