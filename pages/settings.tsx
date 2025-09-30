@@ -1126,28 +1126,18 @@ export default function Dashboard() {
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px',
-                    marginBottom: '12px'
+                    fontSize: '14px'
                   }}
                 />
-                {profile.has_protection && (editedProfile.emissions_date || profile.emissions_date) && (
-                  <button
-                    onClick={() => handlePaymentClick('emissions', editedProfile.emissions_date || profile.emissions_date || '')}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Pay for Renewal ($25)
-                  </button>
-                )}
+                <p style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  marginTop: '6px',
+                  fontStyle: 'italic',
+                  margin: '6px 0 0 0'
+                }}>
+                  Note: Emissions testing isn't covered by Ticket Protection since we can't take your vehicle to the testing facility. However, we're happy to send you free reminder notifications as a courtesy service.
+                </p>
               </div>
             </div>
           </div>
