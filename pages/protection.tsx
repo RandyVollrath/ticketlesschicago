@@ -11,6 +11,12 @@ export default function Protection() {
   const [billingPlan, setBillingPlan] = useState<'monthly' | 'annual'>('monthly');
   const [user, setUser] = useState<any>(null);
 
+  // Renewal information
+  const [needsCitySticker, setNeedsCitySticker] = useState(true);
+  const [needsLicensePlate, setNeedsLicensePlate] = useState(true);
+  const [cityStickerDate, setCityStickerDate] = useState('');
+  const [licensePlateDate, setLicensePlateDate] = useState('');
+
   // Check feature flags
   const isWaitlistMode = process.env.NEXT_PUBLIC_PROTECTION_WAITLIST === 'true';
 
@@ -56,10 +62,24 @@ export default function Protection() {
   };
 
   const handleCheckoutClick = async () => {
+    // Validate renewal dates
+    if (needsCitySticker && !cityStickerDate) {
+      setMessage('Please enter your city sticker expiration date');
+      return;
+    }
+    if (needsLicensePlate && !licensePlateDate) {
+      setMessage('Please enter your license plate expiration date');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
-    console.log('protection_checkout_started', { billingPlan });
+    console.log('protection_checkout_started', {
+      billingPlan,
+      needsCitySticker,
+      needsLicensePlate
+    });
 
     try {
       const response = await fetch('/api/protection/checkout', {
@@ -68,7 +88,11 @@ export default function Protection() {
         body: JSON.stringify({
           billingPlan,
           email: user?.email || email,
-          userId: user?.id
+          userId: user?.id,
+          renewals: {
+            citySticker: needsCitySticker ? { date: cityStickerDate } : null,
+            licensePlate: needsLicensePlate ? { date: licensePlateDate } : null
+          }
         })
       });
 
@@ -87,6 +111,14 @@ export default function Protection() {
       setMessage(`Error: ${error.message}`);
       setLoading(false);
     }
+  };
+
+  // Calculate total price
+  const calculateTotal = () => {
+    const subscriptionPrice = billingPlan === 'monthly' ? 12 : 120;
+    const cityStickerPrice = needsCitySticker ? 100 : 0;
+    const licensePlatePrice = needsLicensePlate ? 155 : 0;
+    return subscriptionPrice + cityStickerPrice + licensePlatePrice;
   };
 
   return (
@@ -436,25 +468,221 @@ export default function Protection() {
                 </div>
               </div>
 
-              {/* Pricing Display */}
+              {/* Renewal Information */}
               <div style={{
-                textAlign: 'center',
-                marginBottom: '32px'
+                backgroundColor: '#f9fafb',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '24px'
               }}>
-                <div style={{
-                  fontSize: '48px',
+                <h3 style={{
+                  fontSize: '16px',
                   fontWeight: 'bold',
                   color: '#1a1a1a',
-                  marginBottom: '8px'
+                  marginBottom: '16px',
+                  margin: '0 0 16px 0'
                 }}>
-                  ${billingPlan === 'monthly' ? '12' : '120'}
-                </div>
+                  Your Renewals
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#666',
+                  marginBottom: '20px',
+                  margin: '0 0 20px 0',
+                  lineHeight: '1.5'
+                }}>
+                  We'll file these renewals on your behalf before they expire. Required for full Protection coverage.
+                </p>
+
+                {/* City Sticker */}
                 <div style={{
-                  fontSize: '18px',
-                  color: '#666'
+                  marginBottom: '20px',
+                  padding: '16px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
                 }}>
-                  per {billingPlan === 'monthly' ? 'month' : 'year'}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '12px'
+                  }}>
+                    <label style={{
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={needsCitySticker}
+                        onChange={(e) => setNeedsCitySticker(e.target.checked)}
+                        style={{ width: '18px', height: '18px', accentColor: '#0052cc' }}
+                      />
+                      City Sticker Renewal
+                    </label>
+                    <span style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>
+                      $100
+                    </span>
+                  </div>
+                  {needsCitySticker && (
+                    <div style={{ paddingLeft: '26px' }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginBottom: '6px'
+                      }}>
+                        Current expiration date
+                      </label>
+                      <input
+                        type="date"
+                        value={cityStickerDate}
+                        onChange={(e) => setCityStickerDate(e.target.value)}
+                        required={needsCitySticker}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
+
+                {/* License Plate */}
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '12px'
+                  }}>
+                    <label style={{
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={needsLicensePlate}
+                        onChange={(e) => setNeedsLicensePlate(e.target.checked)}
+                        style={{ width: '18px', height: '18px', accentColor: '#0052cc' }}
+                      />
+                      License Plate Renewal
+                    </label>
+                    <span style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>
+                      $155
+                    </span>
+                  </div>
+                  {needsLicensePlate && (
+                    <div style={{ paddingLeft: '26px' }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginBottom: '6px'
+                      }}>
+                        Current expiration date
+                      </label>
+                      <input
+                        type="date"
+                        value={licensePlateDate}
+                        onChange={(e) => setLicensePlateDate(e.target.value)}
+                        required={needsLicensePlate}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Price Breakdown */}
+              <div style={{
+                backgroundColor: '#f0f8ff',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '12px',
+                  fontSize: '15px',
+                  color: '#374151'
+                }}>
+                  <span>Protection subscription ({billingPlan})</span>
+                  <span>${billingPlan === 'monthly' ? '12' : '120'}</span>
+                </div>
+                {needsCitySticker && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '12px',
+                    fontSize: '15px',
+                    color: '#374151'
+                  }}>
+                    <span>City sticker renewal (one-time)</span>
+                    <span>$100</span>
+                  </div>
+                )}
+                {needsLicensePlate && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '12px',
+                    fontSize: '15px',
+                    color: '#374151'
+                  }}>
+                    <span>License plate renewal (one-time)</span>
+                    <span>$155</span>
+                  </div>
+                )}
+                <div style={{
+                  borderTop: '2px solid #dbeafe',
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  color: '#1a1a1a'
+                }}>
+                  <span>Total due today</span>
+                  <span>${calculateTotal()}</span>
+                </div>
+                <p style={{
+                  fontSize: '13px',
+                  color: '#6b7280',
+                  marginTop: '12px',
+                  margin: '12px 0 0 0',
+                  fontStyle: 'italic'
+                }}>
+                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. We'll charge your card before renewal dates.
+                </p>
               </div>
 
               {message && (
@@ -488,7 +716,7 @@ export default function Protection() {
                   transition: 'all 0.2s'
                 }}
               >
-                {loading ? 'Processing...' : `Get Protected - $${billingPlan === 'monthly' ? '12/mo' : '120/yr'}`}
+                {loading ? 'Processing...' : `Get Complete Protection - $${calculateTotal()}`}
               </button>
 
               <p style={{

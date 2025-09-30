@@ -83,6 +83,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
 
+        // Handle Ticket Protection purchases separately
+        if (metadata.product === 'ticket_protection') {
+          console.log('🛡️ Processing Ticket Protection purchase');
+          console.log('User ID:', metadata.userId);
+          console.log('Plan:', metadata.plan);
+          console.log('City Sticker Date:', metadata.citySticker);
+          console.log('License Plate Date:', metadata.licensePlate);
+
+          if (!metadata.userId) {
+            console.error('No userId found in Protection metadata');
+            break;
+          }
+
+          if (!supabaseAdmin) {
+            console.error('Supabase admin client not available');
+            break;
+          }
+
+          // Update user profile with has_protection=true and renewal dates
+          const updateData: any = {
+            has_protection: true,
+            updated_at: new Date().toISOString()
+          };
+
+          if (metadata.citySticker) {
+            updateData.city_sticker_expiry = metadata.citySticker;
+          }
+          if (metadata.licensePlate) {
+            updateData.license_plate_expiry = metadata.licensePlate;
+          }
+
+          const { error: updateError } = await supabaseAdmin
+            .from('user_profiles')
+            .update(updateData)
+            .eq('user_id', metadata.userId);
+
+          if (updateError) {
+            console.error('Error updating user profile with Protection:', updateError);
+          } else {
+            console.log('✅ User profile updated with Protection status and renewal dates');
+          }
+
+          // Exit early for Protection purchases
+          break;
+        }
+
+        // Regular signup flow continues below
         // Parse form data from split metadata fields
         console.log('Webhook metadata received:', {
           vehicleInfo: metadata.vehicleInfo,
