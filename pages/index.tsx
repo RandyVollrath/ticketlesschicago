@@ -639,20 +639,12 @@ export default function Home() {
           <h2 style={{
             fontSize: '48px',
             fontWeight: '800',
-            marginBottom: '24px',
-            margin: '0 0 24px 0',
+            marginBottom: '40px',
+            margin: '0 0 40px 0',
             letterSpacing: '-1px'
           }}>
             Ready to protect yourself?
           </h2>
-          <p style={{
-            fontSize: '20px',
-            marginBottom: '40px',
-            opacity: 0.9,
-            margin: '0 0 40px 0'
-          }}>
-            Join thousands of Chicago drivers who never worry about tickets anymore.
-          </p>
           <button
             onClick={() => router.push('/alerts/signup')}
             style={{
