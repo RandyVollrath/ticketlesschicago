@@ -164,7 +164,7 @@ export default function Home() {
             flexWrap: 'wrap'
           }}>
             <button
-              onClick={() => router.push('/alerts/signup')}
+              onClick={() => router.push('/protection')}
               style={{
                 backgroundColor: '#0052cc',
                 color: 'white',
@@ -186,10 +186,10 @@ export default function Home() {
                 e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,82,204,0.25)';
               }}
             >
-              Get Free Alerts
+              Learn About Protection
             </button>
             <button
-              onClick={() => router.push('/protection')}
+              onClick={() => router.push('/alerts/signup')}
               style={{
                 backgroundColor: 'white',
                 color: '#000',
@@ -210,7 +210,7 @@ export default function Home() {
                 e.currentTarget.style.backgroundColor = 'white';
               }}
             >
-              Learn About Protection
+              Get Free Alerts
             </button>
           </div>
         </div>
@@ -284,7 +284,7 @@ export default function Home() {
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                Optional Ticket Protection
+                Ticket Protection
               </h3>
               <p style={{
                 fontSize: '16px',
