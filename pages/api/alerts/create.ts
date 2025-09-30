@@ -14,13 +14,40 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { firstName, lastName, email, phone, licensePlate, address, zip } = req.body;
+  const {
+    firstName,
+    lastName,
+    email,
+    phone,
+    licensePlate,
+    address,
+    zip,
+    vin,
+    make,
+    model,
+    citySticker,
+    token
+  } = req.body;
 
   if (!email || !phone || !licensePlate || !address || !zip) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
+    // Mark token as used if provided
+    if (token) {
+      const { error: tokenError } = await supabase
+        .from('signup_tokens')
+        .update({
+          used: true,
+          used_at: new Date().toISOString()
+        })
+        .eq('token', token);
+
+      if (tokenError) {
+        console.error('Error marking token as used:', tokenError);
+      }
+    }
     // Create or get user via Supabase Auth (passwordless magic link)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
@@ -32,22 +59,29 @@ export default async function handler(
       }
     });
 
+    let userId: string | null = null;
+
     if (authError) {
       // If user already exists, try to get them
+      console.log('Auth error, trying to find existing user:', authError.message);
       const { data: existingUser, error: existingError } = await supabase.auth.admin.listUsers();
+
+      if (existingError) {
+        throw new Error(`Failed to list users: ${existingError.message}`);
+      }
+
       const user = existingUser?.users.find(u => u.email === email);
 
       if (!user) {
         throw new Error(`Failed to create or find user: ${authError.message}`);
       }
 
-      // User already exists, continue with existing user
-      console.log('User already exists:', email);
+      userId = user.id;
+      console.log('Found existing user:', email, userId);
+    } else {
+      userId = authData?.user?.id || null;
+      console.log('Created new user:', email, userId);
     }
-
-    const userId = authData?.user?.id || authError?.message.includes('already registered')
-      ? (await supabase.auth.admin.listUsers()).data?.users.find(u => u.email === email)?.id
-      : null;
 
     if (!userId) {
       throw new Error('Failed to get user ID');
@@ -96,14 +130,22 @@ export default async function handler(
     }
 
     // Create vehicle record
+    const vehicleData: any = {
+      user_id: userId,
+      license_plate: licensePlate.toUpperCase(),
+      zip_code: zip,
+      subscription_status: 'active'
+    };
+
+    // Add optional fields if provided
+    if (vin) vehicleData.vin = vin;
+    if (make) vehicleData.make = make;
+    if (model) vehicleData.model = model;
+    if (citySticker) vehicleData.city_sticker_expiry = citySticker;
+
     const { error: vehicleError } = await supabase
       .from('vehicles')
-      .insert({
-        user_id: userId,
-        license_plate: licensePlate.toUpperCase(),
-        zip_code: zip,
-        subscription_status: 'active'
-      });
+      .insert(vehicleData);
 
     if (vehicleError) {
       console.error('Vehicle creation error:', vehicleError);
