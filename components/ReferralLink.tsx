@@ -159,16 +159,22 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
           </div>
 
           <div style={{
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fde68a',
+            backgroundColor: '#fff7ed',
+            border: '1px solid #fed7aa',
             borderRadius: '8px',
             padding: '16px',
             marginBottom: '20px'
           }}>
-            <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: '1.5' }}>
-              <strong>How it works:</strong> Click below to get your unique referral link.
-              We'll email you when it's ready, and you can start earning right away!
+            <p style={{ fontSize: '13px', color: '#92400e', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+              <strong>📋 Program Terms:</strong>
             </p>
+            <ul style={{ fontSize: '13px', color: '#78350f', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
+              <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
+              <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
+              <li>Rewards are applied as Stripe account credits to your subscription</li>
+              <li>If a referred customer cancels, monthly payments will stop</li>
+              <li>Program terms may be modified with notice to participants</li>
+            </ul>
           </div>
 
           <button
@@ -187,19 +193,30 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
               transition: 'background-color 0.2s'
             }}
           >
-            {requesting ? 'Setting Up Your Link...' : 'Request Affiliate Link'}
+            {requesting ? 'Generating Your Link...' : 'Get My Referral Link'}
           </button>
         </div>
       ) : (
         <div>
           <div style={{
             backgroundColor: '#f0fdf4',
-            border: '1px solid #86efac',
+            border: '2px solid #86efac',
             borderRadius: '8px',
             padding: '20px',
             marginBottom: '20px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <svg style={{ width: '24px', height: '24px', color: '#16a34a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#166534' }}>
+                Your Referral Link is Ready!
+              </div>
+            </div>
+            <p style={{ fontSize: '14px', color: '#15803d', margin: '0 0 12px 0' }}>
+              We've also sent this link to your email for safekeeping.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#166534' }}>
                   ${referralData.earnings.monthly}/mo
@@ -265,20 +282,23 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
           </div>
 
           <div style={{
-            backgroundColor: '#f0f9ff',
+            backgroundColor: '#fff7ed',
+            border: '1px solid #fed7aa',
             borderRadius: '8px',
             padding: '16px',
             fontSize: '13px',
-            color: '#0369a1',
+            color: '#78350f',
             lineHeight: '1.5'
           }}>
-            <strong>How it works:</strong>
-            <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-              <li>Share your unique link with friends and family</li>
-              <li>They sign up and subscribe through your link</li>
-              <li>You earn ${referralData.earnings.monthly}/month or ${referralData.earnings.annual} for annual subscriptions</li>
-              <li>Your rewards are applied as Stripe account credits</li>
-            </ol>
+            <strong>📋 Program Terms:</strong>
+            <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+              <li>Share your link with friends who might benefit from Ticketless</li>
+              <li>You earn <strong>${referralData.earnings.monthly}/month</strong> for each monthly subscriber, as long as they remain subscribed</li>
+              <li>You earn <strong>${referralData.earnings.annual} one-time</strong> for annual subscribers</li>
+              <li>Rewards are applied as Stripe account credits to reduce your subscription cost</li>
+              <li>If a referred customer cancels, monthly payments will stop</li>
+              <li>Program terms may be modified with notice to participants</li>
+            </ul>
           </div>
         </div>
       )}
