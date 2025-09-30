@@ -319,18 +319,19 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     }
     
     // Send SMS if user has SMS enabled and phone number
-    if (user.phone && user.notification_preferences?.sms !== false) {
+    const phoneNumber = user.phone_number || user.phone;
+    if (phoneNumber && user.notification_preferences?.sms !== false) {
       await notificationService.sendSMS({
-        to: user.phone,
+        to: phoneNumber,
         message: message
       });
     }
-    
+
     // Send voice call if enabled (morning reminders only)
-    if (user.phone_call_enabled && user.phone && type === 'morning_reminder') {
+    if (user.phone_call_enabled && phoneNumber && type === 'morning_reminder') {
       // Voice calls only for morning reminders
       await notificationService.sendVoiceCall({
-        to: user.phone,
+        to: phoneNumber,
         message: message
       });
     }
