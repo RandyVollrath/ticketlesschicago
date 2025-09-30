@@ -102,7 +102,7 @@ export default function UpgradeCard() {
                 marginRight: '8px',
                 fontSize: '16px'
               }}>✓</span>
-              Unlimited vehicles
+              Priority customer support
             </li>
           </ul>
 
