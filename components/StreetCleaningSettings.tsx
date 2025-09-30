@@ -608,18 +608,10 @@ export default function StreetCleaningSettings() {
           <label>
             <input
               type="checkbox"
-              checked={notify0Day}
-              onChange={(e) => setNotify0Day(e.target.checked)}
+              checked={notify3Days}
+              onChange={(e) => setNotify3Days(e.target.checked)}
             />
-            Morning of cleaning (7 AM)
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={notify1Day}
-              onChange={(e) => setNotify1Day(e.target.checked)}
-            />
-            1 day before
+            3 days before
           </label>
           <label>
             <input
@@ -632,10 +624,10 @@ export default function StreetCleaningSettings() {
           <label>
             <input
               type="checkbox"
-              checked={notify3Days}
-              onChange={(e) => setNotify3Days(e.target.checked)}
+              checked={notify1Day}
+              onChange={(e) => setNotify1Day(e.target.checked)}
             />
-            3 days before
+            1 day before
           </label>
           <label>
             <input
@@ -644,6 +636,14 @@ export default function StreetCleaningSettings() {
               onChange={(e) => setNotifyEveningBefore(e.target.checked)}
             />
             Evening before (7 PM)
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={notify0Day}
+              onChange={(e) => setNotify0Day(e.target.checked)}
+            />
+            Morning of cleaning (7 AM)
           </label>
         </div>
       </div>
