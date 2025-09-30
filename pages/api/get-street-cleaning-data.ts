@@ -23,31 +23,74 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const todayStr = today.toISOString().split('T')[0];
     
     // Get ALL street cleaning zones with geometry - using same logic as MSC notification system
-    // Note: Must use .limit() to override Supabase's default 1000 row limit
-    const { data: allZones, error: allZonesError } = await mscSupabase
+    // Note: Supabase has a hard 1000 row limit, so we need to paginate
+    // Get first batch to check total count
+    const { data: firstBatch, error: allZonesError, count } = await mscSupabase
       .from('street_cleaning_schedule')
-      .select('ward, section, geom_simplified')
+      .select('ward, section, geom_simplified', { count: 'exact' })
       .not('geom_simplified', 'is', null)
       .not('ward', 'is', null)
       .not('section', 'is', null)
-      .limit(10000);
+      .range(0, 999);
 
     if (allZonesError) {
       return res.status(500).json({ error: 'Failed to load street cleaning zones' });
     }
 
+    // Fetch remaining batches if needed
+    let allZones = firstBatch || [];
+    if (count && count > 1000) {
+      const numBatches = Math.ceil((count - 1000) / 1000);
+      for (let i = 0; i < numBatches; i++) {
+        const start = 1000 + (i * 1000);
+        const end = start + 999;
+        const { data: batch } = await mscSupabase
+          .from('street_cleaning_schedule')
+          .select('ward, section, geom_simplified')
+          .not('geom_simplified', 'is', null)
+          .not('ward', 'is', null)
+          .not('section', 'is', null)
+          .range(start, end);
+        if (batch) {
+          allZones = allZones.concat(batch);
+        }
+      }
+    }
+
     // Get future cleaning schedules for status calculation
-    const { data: rawScheduleData, error: scheduleError } = await mscSupabase
+    // Also needs pagination since there could be >1000 future cleaning dates
+    const { data: firstScheduleBatch, error: scheduleError, count: scheduleCount } = await mscSupabase
       .from('street_cleaning_schedule')
-      .select('ward, section, cleaning_date')
+      .select('ward, section, cleaning_date', { count: 'exact' })
       .not('ward', 'is', null)
       .not('section', 'is', null)
       .gte('cleaning_date', todayStr)
       .order('cleaning_date', { ascending: true })
-      .limit(10000);
+      .range(0, 999);
 
     if (scheduleError) {
       return res.status(500).json({ error: 'Failed to load street cleaning schedules' });
+    }
+
+    // Fetch remaining schedule batches if needed
+    let rawScheduleData = firstScheduleBatch || [];
+    if (scheduleCount && scheduleCount > 1000) {
+      const numBatches = Math.ceil((scheduleCount - 1000) / 1000);
+      for (let i = 0; i < numBatches; i++) {
+        const start = 1000 + (i * 1000);
+        const end = start + 999;
+        const { data: batch } = await mscSupabase
+          .from('street_cleaning_schedule')
+          .select('ward, section, cleaning_date')
+          .not('ward', 'is', null)
+          .not('section', 'is', null)
+          .gte('cleaning_date', todayStr)
+          .order('cleaning_date', { ascending: true })
+          .range(start, end);
+        if (batch) {
+          rawScheduleData = rawScheduleData.concat(batch);
+        }
+      }
     }
 
     // Filter out invalid Sunday dates (street cleaning never happens on Sunday)
