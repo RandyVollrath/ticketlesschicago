@@ -1044,7 +1044,7 @@ export default function Dashboard() {
                     marginBottom: '12px'
                   }}
                 />
-                {(editedProfile.city_sticker_expiry || profile.city_sticker_expiry) && (
+                {profile.has_protection && (editedProfile.city_sticker_expiry || profile.city_sticker_expiry) && (
                   <button
                     onClick={() => handlePaymentClick('city_sticker', editedProfile.city_sticker_expiry || profile.city_sticker_expiry || '')}
                     style={{
@@ -1065,12 +1065,12 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
                 }}>
                   License Plate Expiry
                 </label>
@@ -1087,7 +1087,7 @@ export default function Dashboard() {
                     marginBottom: '12px'
                   }}
                 />
-                {(editedProfile.license_plate_expiry || profile.license_plate_expiry) && (
+                {profile.has_protection && (editedProfile.license_plate_expiry || profile.license_plate_expiry) && (
                   <button
                     onClick={() => handlePaymentClick('license_plate', editedProfile.license_plate_expiry || profile.license_plate_expiry || '')}
                     style={{
@@ -1108,12 +1108,12 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
                 }}>
                   Emissions Test Due
                 </label>
@@ -1130,7 +1130,7 @@ export default function Dashboard() {
                     marginBottom: '12px'
                   }}
                 />
-                {(editedProfile.emissions_date || profile.emissions_date) && (
+                {profile.has_protection && (editedProfile.emissions_date || profile.emissions_date) && (
                   <button
                     onClick={() => handlePaymentClick('emissions', editedProfile.emissions_date || profile.emissions_date || '')}
                     style={{
