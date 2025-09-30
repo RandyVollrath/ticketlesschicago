@@ -491,7 +491,7 @@ export default function Protection() {
                   margin: '0 0 20px 0',
                   lineHeight: '1.5'
                 }}>
-                  We'll file these renewals on your behalf before they expire. Required for full Protection coverage.
+                  Pay upfront for your city sticker and license plate renewals. We'll file these on your behalf before they expire. Required for full Protection coverage.
                 </p>
 
                 {/* City Sticker */}
@@ -622,11 +622,26 @@ export default function Protection() {
 
               {/* Price Breakdown */}
               <div style={{
-                backgroundColor: '#f0f8ff',
+                backgroundColor: billingPlan === 'annual' ? '#f0fdf4' : '#f0f8ff',
                 borderRadius: '12px',
                 padding: '20px',
-                marginBottom: '24px'
+                marginBottom: '24px',
+                border: billingPlan === 'annual' ? '2px solid #16a34a' : 'none'
               }}>
+                {billingPlan === 'annual' && (
+                  <div style={{
+                    backgroundColor: '#dcfce7',
+                    color: '#166534',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    marginBottom: '16px',
+                    textAlign: 'center'
+                  }}>
+                    💰 Save $24/year with annual billing
+                  </div>
+                )}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -645,7 +660,7 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>City sticker renewal (one-time)</span>
+                    <span>City sticker renewal (paid upfront)</span>
                     <span>$100</span>
                   </div>
                 )}
@@ -657,12 +672,12 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>License plate renewal (one-time)</span>
+                    <span>License plate renewal (paid upfront)</span>
                     <span>$155</span>
                   </div>
                 )}
                 <div style={{
-                  borderTop: '2px solid #dbeafe',
+                  borderTop: '2px solid ' + (billingPlan === 'annual' ? '#bbf7d0' : '#dbeafe'),
                   marginTop: '12px',
                   paddingTop: '12px',
                   display: 'flex',
@@ -679,9 +694,10 @@ export default function Protection() {
                   color: '#6b7280',
                   marginTop: '12px',
                   margin: '12px 0 0 0',
-                  fontStyle: 'italic'
+                  fontStyle: 'italic',
+                  lineHeight: '1.5'
                 }}>
-                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. We'll charge your card before renewal dates.
+                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. Renewal fees are paid upfront so we have funds to file your registrations with the city on your behalf.
                 </p>
               </div>
 
@@ -801,6 +817,31 @@ export default function Protection() {
                 margin: 0
               }}>
                 We monitor your renewal dates and file your city sticker and license plate renewals before they expire. You'll get email confirmations for each transaction.
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: 'white',
+              padding: '24px',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#1a1a1a',
+                marginBottom: '8px',
+                margin: '0 0 8px 0'
+              }}>
+                What happens if my city sticker expires?
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Vehicles can be ticketed $200 per ticket starting 15 days after your city sticker expires. Tickets can be issued daily until a new unexpired sticker is displayed. With Ticket Protection, we handle your renewal before it expires so you never have to worry about these costly tickets.
               </p>
             </div>
 
