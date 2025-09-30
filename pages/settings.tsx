@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import PasskeyManager from '../components/PasskeyManager'
 import { RenewalPaymentModal } from '../components/RenewalPaymentModal'
+import UpgradeCard from '../components/UpgradeCard'
 
 // Phone number formatting utilities
 const formatPhoneNumber = (value: string): string => {
@@ -130,6 +131,7 @@ interface UserProfile {
   // Status fields
   is_paid: boolean
   is_canary: boolean
+  has_protection: boolean
   role: string | null
   guarantee_opt_in_year: number | null
 }
@@ -697,12 +699,12 @@ export default function Dashboard() {
 
       <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px 24px' }}>
         {/* Pro Member Banner */}
-        <div style={{ 
-          marginBottom: '32px', 
-          background: 'linear-gradient(to right, #0052cc, #003d99)', 
-          borderRadius: '16px', 
-          padding: '24px', 
-          color: 'white' 
+        <div style={{
+          marginBottom: '32px',
+          background: 'linear-gradient(to right, #0052cc, #003d99)',
+          borderRadius: '16px',
+          padding: '24px',
+          color: 'white'
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div>
@@ -711,6 +713,13 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Upgrade Card for Free Users */}
+        {!profile.has_protection && (
+          <div style={{ marginBottom: '32px' }}>
+            <UpgradeCard />
+          </div>
+        )}
 
         {message && (
           <div style={{
