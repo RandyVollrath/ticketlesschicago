@@ -1449,6 +1449,57 @@ export default function Dashboard() {
           {/* Passkey Management */}
           <PasskeyManager />
 
+          {/* Helpful Resources */}
+          <div style={{
+            backgroundColor: '#fef3c7',
+            borderRadius: '16px',
+            border: '1px solid #fde68a',
+            padding: '24px'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#92400e',
+              marginBottom: '12px',
+              margin: '0 0 12px 0'
+            }}>
+              Already have ticket debt?
+            </h3>
+            <p style={{
+              fontSize: '15px',
+              color: '#78350f',
+              lineHeight: '1.6',
+              marginBottom: '16px',
+              margin: '0 0 16px 0'
+            }}>
+              Chicago offers the <strong>Clear Path Relief Program</strong>, which can forgive old debt and reduce ticket penalties if you qualify. This program is separate from Ticketless, but we wanted to make sure you know about it.
+            </p>
+            <a
+              href="https://www.chicago.gov/city/en/depts/fin/supp_info/revenue/clear_path_reliefprogram.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#0052cc',
+                fontSize: '15px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                padding: '10px 18px',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                border: '1px solid #fde68a',
+                transition: 'all 0.2s'
+              }}
+            >
+              Learn more and apply here
+              <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+
           {/* Auto-save Status */}
           {saving && (
             <div style={{ 

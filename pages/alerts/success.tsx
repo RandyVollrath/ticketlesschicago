@@ -98,6 +98,50 @@ export default function AlertsSuccess() {
           </ul>
         </div>
 
+        {/* Clear Path Relief Program */}
+        <div style={{
+          backgroundColor: '#fef3c7',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '32px',
+          textAlign: 'left',
+          border: '1px solid #fde68a'
+        }}>
+          <h3 style={{
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#92400e',
+            marginBottom: '8px',
+            margin: '0 0 8px 0'
+          }}>
+            Already have ticket debt?
+          </h3>
+          <p style={{
+            fontSize: '14px',
+            color: '#78350f',
+            lineHeight: '1.5',
+            margin: '0 0 12px 0'
+          }}>
+            Chicago offers the <strong>Clear Path Relief Program</strong>, which can forgive old debt and reduce ticket penalties if you qualify.
+          </p>
+          <a
+            href="https://www.chicago.gov/city/en/depts/fin/supp_info/revenue/clear_path_reliefprogram.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#0052cc',
+              fontSize: '14px',
+              fontWeight: '600',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            Learn more and apply here →
+          </a>
+        </div>
+
         {/* Action Buttons */}
         <div style={{
           display: 'flex',
