@@ -577,7 +577,7 @@ export default function Home() {
               },
               {
                 q: "What's Ticket Protection?",
-                a: 'Our premium tier ($12/mo or $120/yr) where we handle your city sticker & license plate renewals and cover any street cleaning or snow removal tickets.'
+                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) where we handle your city sticker & license plate renewals and cover any street cleaning or snow removal tickets.'
               },
               {
                 q: 'Is Ticket Protection available now?',
