@@ -17,15 +17,15 @@
     },
     {
       "path": "/api/street-cleaning/process",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/street-cleaning/process",
       "schedule": "0 12 * * *"
     },
     {
       "path": "/api/street-cleaning/process",
       "schedule": "0 20 * * *"
-    },
-    {
-      "path": "/api/street-cleaning/process", 
-      "schedule": "0 0 * * *"
     }
   ],
   "github": {
