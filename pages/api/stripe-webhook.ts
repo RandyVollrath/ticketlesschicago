@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '../../lib/supabase';
 import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integration';
+import { createRewardfulAffiliate } from '../../lib/rewardful-helper';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -332,6 +333,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.error('Error creating user_profiles record:', profileError);
             } else {
               console.log('Successfully created user_profiles record');
+
+              // Auto-create Rewardful affiliate for customer referral program
+              console.log('Creating Rewardful affiliate for customer referral program...');
+              const affiliateData = await createRewardfulAffiliate({
+                email: email,
+                first_name: formData.firstName || email.split('@')[0],
+                last_name: formData.lastName || '',
+                campaign_id: process.env.REWARDFUL_CUSTOMER_CAMPAIGN_ID,
+                stripe_customer_id: session.customer as string
+              });
+
+              if (affiliateData) {
+                // Save affiliate ID to user profile
+                await supabaseAdmin
+                  .from('user_profiles')
+                  .update({
+                    affiliate_id: affiliateData.id,
+                    affiliate_signup_date: new Date().toISOString()
+                  })
+                  .eq('user_id', authData.user.id);
+
+                console.log('✅ Customer affiliate created:', {
+                  id: affiliateData.id,
+                  referral_link: affiliateData.links?.[0]?.url || `https://ticketlessamerica.com?via=${affiliateData.token}`
+                });
+              } else {
+                console.log('⚠️ Could not create affiliate (non-blocking)');
+              }
             }
           } else {
             console.log('User profile already exists, updating with form data...');
