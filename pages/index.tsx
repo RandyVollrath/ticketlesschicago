@@ -8,8 +8,6 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
 
-  const freeAlertsEnabled = process.env.NEXT_PUBLIC_FREE_ALERTS === 'true';
-
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -40,10 +38,10 @@ export default function Home() {
   }, []);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#fff' }}>
       <Head>
-        <title>Ticketless Chicago - Never Get Blindsided by a Ticket Again</title>
-        <meta name="description" content="Free alerts for street cleaning, snow removal, city stickers, and license plates. Find legal parking during street cleaning with our interactive map." />
+        <title>Ticketless Chicago - Free Alerts for Street Cleaning & Renewals</title>
+        <meta name="description" content="Never get blindsided by a ticket again. Free alerts for street cleaning, snow removal, city stickers, and license plates." />
       </Head>
 
       {/* Navigation */}
@@ -52,78 +50,40 @@ export default function Home() {
         top: 0,
         left: 0,
         right: 0,
-        height: '60px',
-        backgroundColor: 'white',
-        borderBottom: '1px solid #e5e5e5',
+        height: '70px',
+        backgroundColor: 'rgba(255,255,255,0.98)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(0,0,0,0.05)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 40px'
+        padding: '0 48px'
       }}>
         <div
           onClick={() => window.location.reload()}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
+            fontSize: '22px',
+            fontWeight: '700',
+            color: '#000',
             cursor: 'pointer',
-            userSelect: 'none'
+            letterSpacing: '-0.5px'
           }}
         >
-          <div style={{
-            width: '32px',
-            height: '40px',
-            background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 50%, #d0d0d0 100%)',
-            borderRadius: '4px 4px 16px 16px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <div style={{
-              width: '24px',
-              height: '30px',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
-              borderRadius: '2px 2px 12px 12px',
-              border: '1px solid rgba(0,0,0,0.1)'
-            }} />
-          </div>
-          <div>
-            <div style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              letterSpacing: '-0.5px'
-            }}>
-              Ticketless
-            </div>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '500',
-              letterSpacing: '2px',
-              color: '#666',
-              marginTop: '-4px'
-            }}>
-              CHICAGO
-            </div>
-          </div>
+          Ticketless
         </div>
-        <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
-          {freeAlertsEnabled && (
-            <>
-              <a href="/alerts/signup" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>
-                Free Alerts
-              </a>
-              <a href="/protection" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>
-                Protection
-              </a>
-            </>
-          )}
-          <a href="#faq" style={{ color: '#666', textDecoration: 'none', fontSize: '15px' }}>
+        <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
+          <a href="/alerts/signup" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
+            Free Alerts
+          </a>
+          <a href="/protection" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
+            Protection
+          </a>
+          <a href="#faq" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
             FAQ
           </a>
           {checkingAuth ? (
-            <div style={{ padding: '8px 20px' }}>...</div>
+            <div style={{ width: '80px' }} />
           ) : user ? (
             <button
               onClick={() => router.push('/settings')}
@@ -131,26 +91,26 @@ export default function Home() {
                 backgroundColor: '#0052cc',
                 color: 'white',
                 border: 'none',
-                borderRadius: '20px',
-                padding: '8px 20px',
+                borderRadius: '8px',
+                padding: '10px 20px',
                 fontSize: '14px',
-                fontWeight: '500',
+                fontWeight: '600',
                 cursor: 'pointer'
               }}
             >
-              My Account
+              Account
             </button>
           ) : (
             <button
               onClick={() => router.push('/login')}
               style={{
-                backgroundColor: 'transparent',
-                color: '#666',
-                border: '1px solid #ddd',
-                borderRadius: '20px',
-                padding: '8px 20px',
+                backgroundColor: '#000',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 20px',
                 fontSize: '14px',
-                fontWeight: '500',
+                fontWeight: '600',
                 cursor: 'pointer'
               }}
             >
@@ -160,289 +120,447 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section with Map */}
+      {/* Hero Section */}
       <div style={{
-        paddingTop: '100px',
-        paddingBottom: '60px',
+        paddingTop: '140px',
+        paddingBottom: '100px',
+        textAlign: 'center',
+        background: 'linear-gradient(180deg, #fff 0%, #f8f9fa 100%)'
+      }}>
+        <div style={{
+          maxWidth: '900px',
+          margin: '0 auto',
+          padding: '0 40px'
+        }}>
+          <h1 style={{
+            fontSize: '72px',
+            fontWeight: '800',
+            color: '#000',
+            marginBottom: '24px',
+            margin: '0 0 24px 0',
+            lineHeight: '1.1',
+            letterSpacing: '-2px'
+          }}>
+            Never Get Blindsided
+            <br />
+            by a Ticket Again
+          </h1>
+          <p style={{
+            fontSize: '24px',
+            color: '#666',
+            marginBottom: '48px',
+            lineHeight: '1.5',
+            fontWeight: '400',
+            margin: '0 0 48px 0'
+          }}>
+            Free alerts for street cleaning, snow removal, city stickers, and license plates.
+            <br />
+            Peace of mind for every driver in Chicago.
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => router.push('/alerts/signup')}
+              style={{
+                backgroundColor: '#0052cc',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '18px 36px',
+                fontSize: '18px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(0,82,204,0.25)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,82,204,0.35)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,82,204,0.25)';
+              }}
+            >
+              Get Free Alerts
+            </button>
+            <button
+              onClick={() => router.push('/protection')}
+              style={{
+                backgroundColor: 'white',
+                color: '#000',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
+                padding: '16px 36px',
+                fontSize: '18px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              Learn About Protection
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Grid */}
+      <div style={{
+        padding: '80px 40px',
         backgroundColor: 'white'
       }}>
         <div style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          padding: '0 60px'
+          maxWidth: '1200px',
+          margin: '0 auto'
         }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h1 style={{
-              fontSize: '56px',
-              fontWeight: 'bold',
-              color: '#000',
-              marginBottom: '16px',
-              margin: '0 0 16px 0',
-              lineHeight: '1.1'
-            }}>
-              Find open, legal parking
-              <br />
-              during street cleaning.
-            </h1>
-            <p style={{
-              fontSize: '24px',
-              color: '#999',
-              fontWeight: '300',
-              margin: 0
-            }}>
-              Use our interactive map to
-              <br />
-              discover safe zones nearby.
-            </p>
-          </div>
-
-          {/* Map Placeholder */}
-          <div
-            onClick={() => router.push('/parking-map')}
-            style={{
-              width: '100%',
-              height: '500px',
-              backgroundColor: '#f5f5f5',
-              borderRadius: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              border: '1px solid #e5e5e5',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#ebebeb';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#f5f5f5';
-            }}
-          >
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '48px'
+          }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{
-                fontSize: '64px',
-                marginBottom: '16px',
-                opacity: 0.3
+                width: '64px',
+                height: '64px',
+                backgroundColor: '#eff6ff',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px auto',
+                fontSize: '32px'
               }}>
-                🗺️
+                📧
               </div>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Free Email & SMS Alerts
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Never miss a deadline with timely notifications delivered your way
+              </p>
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
               <div style={{
-                fontSize: '18px',
-                color: '#999',
-                fontWeight: '500'
+                width: '64px',
+                height: '64px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px auto',
+                fontSize: '32px'
               }}>
-                Click to explore the interactive map
+                🛡️
               </div>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Optional Ticket Protection
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Upgrade to get done-for-you renewals and ticket coverage
+              </p>
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                backgroundColor: '#fef3c7',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px auto',
+                fontSize: '32px'
+              }}>
+                🏙️
+              </div>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Built for Chicago
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Official city data you can trust, updated continuously
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Two Column Features Section */}
+      {/* How It Works */}
       <div style={{
-        backgroundColor: '#fafafa',
-        padding: '120px 60px'
+        padding: '100px 40px',
+        backgroundColor: '#f8f9fa'
       }}>
         <div style={{
-          maxWidth: '1400px',
+          maxWidth: '1000px',
           margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '80px',
-          alignItems: 'center'
+          textAlign: 'center'
         }}>
-          {/* Left - No more tickets */}
-          <div>
-            <h2 style={{
-              fontSize: '48px',
-              fontWeight: 'bold',
-              color: '#000',
-              marginBottom: '24px',
-              margin: '0 0 24px 0',
-              lineHeight: '1.1'
-            }}>
-              No more tickets.
-            </h2>
-            <p style={{
-              fontSize: '20px',
-              color: '#999',
-              lineHeight: '1.6',
-              fontWeight: '300',
-              margin: 0
-            }}>
-              Get notified and see exactly where you can park, stress-free and legally, every time your street is cleaned.
-            </p>
-          </div>
-
-          {/* Right - Image placeholder */}
-          <div style={{
-            width: '100%',
-            height: '400px',
-            backgroundColor: '#f0f0f0',
-            borderRadius: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+          <h2 style={{
+            fontSize: '48px',
+            fontWeight: '800',
+            color: '#000',
+            marginBottom: '16px',
+            margin: '0 0 16px 0',
+            letterSpacing: '-1px'
           }}>
-            <div style={{
-              fontSize: '18px',
-              color: '#ccc',
-              fontWeight: '500'
-            }}>
-              Alert Preview
+            How It Works
+          </h2>
+          <p style={{
+            fontSize: '20px',
+            color: '#666',
+            marginBottom: '64px',
+            margin: '0 0 64px 0'
+          }}>
+            Get started in three simple steps
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '48px',
+            textAlign: 'left'
+          }}>
+            <div>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#0052cc',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '20px',
+                color: 'white',
+                fontSize: '24px',
+                fontWeight: '700'
+              }}>
+                1
+              </div>
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Create your account
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Sign up with your email and phone in under 60 seconds. No credit card required.
+              </p>
+            </div>
+
+            <div>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#0052cc',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '20px',
+                color: 'white',
+                fontSize: '24px',
+                fontWeight: '700'
+              }}>
+                2
+              </div>
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Add your vehicle
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Enter your license plate and parking address. We'll handle the rest.
+              </p>
+            </div>
+
+            <div>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#0052cc',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '20px',
+                color: 'white',
+                fontSize: '24px',
+                fontWeight: '700'
+              }}>
+                3
+              </div>
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Get alerts
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Receive timely notifications before any deadline. Never get surprised again.
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Live Maps Section */}
+      {/* Social Proof / Stats (optional) */}
       <div style={{
+        padding: '60px 40px',
         backgroundColor: 'white',
-        padding: '120px 60px'
+        borderTop: '1px solid #e5e7eb',
+        borderBottom: '1px solid #e5e7eb'
       }}>
         <div style={{
-          maxWidth: '1400px',
+          maxWidth: '1000px',
           margin: '0 auto',
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '80px',
-          alignItems: 'center'
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '48px',
+          textAlign: 'center'
         }}>
-          {/* Left - Map placeholder */}
-          <div
-            onClick={() => router.push('/parking-map')}
-            style={{
-              width: '100%',
-              height: '400px',
-              backgroundColor: '#f0f0f0',
-              borderRadius: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e5e5';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#f0f0f0';
-            }}
-          >
+          <div>
             <div style={{
-              fontSize: '18px',
-              color: '#ccc',
+              fontSize: '48px',
+              fontWeight: '800',
+              color: '#0052cc',
+              marginBottom: '8px'
+            }}>
+              100%
+            </div>
+            <div style={{
+              fontSize: '16px',
+              color: '#666',
               fontWeight: '500'
             }}>
-              Interactive Map
+              Free for one vehicle
             </div>
           </div>
-
-          {/* Right - Live maps copy */}
           <div>
-            <h2 style={{
+            <div style={{
               fontSize: '48px',
-              fontWeight: 'bold',
-              color: '#000',
-              marginBottom: '24px',
-              margin: '0 0 24px 0',
-              lineHeight: '1.1'
+              fontWeight: '800',
+              color: '#0052cc',
+              marginBottom: '8px'
             }}>
-              Live maps.
-            </h2>
-            <p style={{
-              fontSize: '20px',
-              color: '#999',
-              lineHeight: '1.6',
-              fontWeight: '300',
-              margin: 0
+              4
+            </div>
+            <div style={{
+              fontSize: '16px',
+              color: '#666',
+              fontWeight: '500'
             }}>
-              Access a clear interactive map showing all available parking options near you, updated in real time.
-            </p>
+              Types of alerts covered
+            </div>
+          </div>
+          <div>
+            <div style={{
+              fontSize: '48px',
+              fontWeight: '800',
+              color: '#0052cc',
+              marginBottom: '8px'
+            }}>
+              24/7
+            </div>
+            <div style={{
+              fontSize: '16px',
+              color: '#666',
+              fontWeight: '500'
+            }}>
+              Always monitoring for you
+            </div>
           </div>
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div style={{
-        backgroundColor: '#0052cc',
-        color: 'white',
-        padding: '80px 60px',
-        textAlign: 'center'
-      }}>
-        <h2 style={{
-          fontSize: '48px',
-          fontWeight: 'bold',
-          marginBottom: '24px',
-          margin: '0 0 24px 0'
-        }}>
-          Never Get Blindsided by a Ticket Again
-        </h2>
-        <p style={{
-          fontSize: '24px',
-          marginBottom: '40px',
-          opacity: 0.9,
-          fontWeight: '300',
-          margin: '0 0 40px 0'
-        }}>
-          Free alerts for street cleaning, snow removal, city stickers, and license plates.
-        </p>
-        <div style={{
-          display: 'flex',
-          gap: '16px',
-          justifyContent: 'center',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            onClick={() => router.push('/alerts/signup')}
-            style={{
-              backgroundColor: 'white',
-              color: '#0052cc',
-              border: 'none',
-              borderRadius: '25px',
-              padding: '16px 40px',
-              fontSize: '18px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-            }}
-          >
-            Get Free Alerts
-          </button>
-          <button
-            onClick={() => router.push('/protection')}
-            style={{
-              backgroundColor: 'transparent',
-              color: 'white',
-              border: '2px solid white',
-              borderRadius: '25px',
-              padding: '14px 40px',
-              fontSize: '18px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Learn About Protection
-          </button>
-        </div>
-      </div>
-
-      {/* FAQ Section */}
+      {/* FAQ */}
       <div id="faq" style={{
-        padding: '80px 60px',
-        backgroundColor: 'white'
+        padding: '100px 40px',
+        backgroundColor: '#f8f9fa'
       }}>
         <div style={{
           maxWidth: '800px',
           margin: '0 auto'
         }}>
           <h2 style={{
-            fontSize: '40px',
-            fontWeight: 'bold',
-            color: '#1a1a1a',
+            fontSize: '48px',
+            fontWeight: '800',
+            color: '#000',
             marginBottom: '48px',
             textAlign: 'center',
-            margin: '0 0 48px 0'
+            margin: '0 0 48px 0',
+            letterSpacing: '-1px'
           }}>
             Frequently Asked Questions
           </h2>
@@ -452,147 +570,134 @@ export default function Home() {
             flexDirection: 'column',
             gap: '32px'
           }}>
-            <div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
+            {[
+              {
+                q: 'Are alerts really free?',
+                a: 'Yes. Alerts are 100% free for one vehicle, including email, SMS, and phone notifications.'
+              },
+              {
+                q: "What's Ticket Protection?",
+                a: 'Our premium tier ($12/mo or $120/yr) where we handle your city sticker & license plate renewals and cover any street cleaning or snow removal tickets.'
+              },
+              {
+                q: 'When is Ticket Protection available?',
+                a: "We're rolling it out to early users now. Join the waitlist on the Protection page to get notified when it's ready."
+              },
+              {
+                q: 'What areas do you cover?',
+                a: 'All of Chicago for street cleaning, snow removal, city sticker renewals, and license plate renewals.'
+              },
+              {
+                q: 'How accurate are the alerts?',
+                a: 'We use official City of Chicago data and verify all alerts before sending. Our data is updated continuously.'
+              }
+            ].map((faq, i) => (
+              <div key={i} style={{
+                backgroundColor: 'white',
+                padding: '32px',
+                borderRadius: '16px',
+                border: '1px solid #e5e7eb'
               }}>
-                Are alerts free?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Yes. Alerts are free for one vehicle (email/SMS/phone).
-              </p>
-            </div>
-
-            <div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                What's Ticket Protection?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Premium plan: we file your city sticker & plate renewals and cover listed tickets that slip through.
-              </p>
-            </div>
-
-            <div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                When is Ticket Protection available?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Rolling out to early users now. Join the waitlist to get notified.
-              </p>
-            </div>
-
-            <div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                What areas do you cover?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                We cover all of Chicago with street cleaning, snow removal, city stickers, and license plate renewals.
-              </p>
-            </div>
-
-            <div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                How accurate are the alerts?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                We use official City of Chicago data and verify all alerts before sending. Our data is updated continuously.
-              </p>
-            </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: '#000',
+                  marginBottom: '12px',
+                  margin: '0 0 12px 0'
+                }}>
+                  {faq.q}
+                </h3>
+                <p style={{
+                  fontSize: '16px',
+                  color: '#666',
+                  lineHeight: '1.6',
+                  margin: 0
+                }}>
+                  {faq.a}
+                </p>
+              </div>
+            ))}
           </div>
+        </div>
+      </div>
+
+      {/* Final CTA */}
+      <div style={{
+        padding: '100px 40px',
+        backgroundColor: '#0052cc',
+        color: 'white',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto'
+        }}>
+          <h2 style={{
+            fontSize: '48px',
+            fontWeight: '800',
+            marginBottom: '24px',
+            margin: '0 0 24px 0',
+            letterSpacing: '-1px'
+          }}>
+            Ready to protect yourself?
+          </h2>
+          <p style={{
+            fontSize: '20px',
+            marginBottom: '40px',
+            opacity: 0.9,
+            margin: '0 0 40px 0'
+          }}>
+            Join thousands of Chicago drivers who never worry about tickets anymore.
+          </p>
+          <button
+            onClick={() => router.push('/alerts/signup')}
+            style={{
+              backgroundColor: 'white',
+              color: '#0052cc',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '18px 48px',
+              fontSize: '18px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.2)'
+            }}
+          >
+            Get Started Free
+          </button>
         </div>
       </div>
 
       {/* Footer */}
       <div style={{
-        textAlign: 'center',
         padding: '60px 40px',
-        backgroundColor: '#fafafa',
+        backgroundColor: '#f8f9fa',
         borderTop: '1px solid #e5e7eb'
       }}>
-        <p style={{
-          fontSize: '14px',
-          color: '#888',
-          marginBottom: '40px',
-          margin: '0 0 40px 0'
-        }}>
-          Questions? Email us at support@ticketlesschicago.com
-        </p>
-
         <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '80px',
-          fontSize: '14px',
-          color: '#666'
+          maxWidth: '1200px',
+          margin: '0 auto',
+          textAlign: 'center'
         }}>
-          <div>
-            <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#333', margin: '0 0 12px 0' }}>Info</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <a href="#" style={{ color: '#666', textDecoration: 'none' }}>About</a>
-              <a href="#faq" style={{ color: '#666', textDecoration: 'none' }}>FAQ</a>
-              <a href="/support" style={{ color: '#666', textDecoration: 'none' }}>Contact</a>
-            </div>
-          </div>
-          <div>
-            <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#333', margin: '0 0 12px 0' }}>Data Sources</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div>Chicago Data Portal</div>
-              <div>Streets & Sanitation</div>
-              <div>Illinois DMV</div>
-            </div>
+          <p style={{
+            fontSize: '14px',
+            color: '#999',
+            marginBottom: '32px',
+            margin: '0 0 32px 0'
+          }}>
+            Questions? Email us at <a href="mailto:support@ticketlesschicago.com" style={{ color: '#0052cc', textDecoration: 'none' }}>support@ticketlesschicago.com</a>
+          </p>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '32px',
+            fontSize: '14px',
+            color: '#666'
+          }}>
+            <a href="#" style={{ color: '#666', textDecoration: 'none' }}>About</a>
+            <a href="#faq" style={{ color: '#666', textDecoration: 'none' }}>FAQ</a>
+            <a href="/support" style={{ color: '#666', textDecoration: 'none' }}>Contact</a>
+            <a href="/parking-map" style={{ color: '#666', textDecoration: 'none' }}>Parking Map</a>
           </div>
         </div>
       </div>
