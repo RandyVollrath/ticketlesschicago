@@ -23,12 +23,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const todayStr = today.toISOString().split('T')[0];
     
     // Get ALL street cleaning zones with geometry - using same logic as MSC notification system
+    // Note: Must use .limit() to override Supabase's default 1000 row limit
     const { data: allZones, error: allZonesError } = await mscSupabase
       .from('street_cleaning_schedule')
       .select('ward, section, geom_simplified')
       .not('geom_simplified', 'is', null)
       .not('ward', 'is', null)
-      .not('section', 'is', null);
+      .not('section', 'is', null)
+      .limit(10000);
 
     if (allZonesError) {
       return res.status(500).json({ error: 'Failed to load street cleaning zones' });
@@ -41,7 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .not('ward', 'is', null)
       .not('section', 'is', null)
       .gte('cleaning_date', todayStr)
-      .order('cleaning_date', { ascending: true });
+      .order('cleaning_date', { ascending: true })
+      .limit(10000);
 
     if (scheduleError) {
       return res.status(500).json({ error: 'Failed to load street cleaning schedules' });
