@@ -791,7 +791,7 @@ export default function Protection() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We cover street cleaning and snow removal tickets. If you get one of these tickets despite following our alerts and our guarantee conditions*, we'll reimburse you.
+                We cover street cleaning and snow removal tickets. If you get one of these tickets despite following our alerts and our <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a>, we'll reimburse you.
               </p>
             </div>
 
@@ -868,6 +868,46 @@ export default function Protection() {
               }}>
                 Yes, you can cancel your Ticket Protection subscription at any time. You'll continue to have access until the end of your current billing period.
               </p>
+            </div>
+
+            <div id="guarantee-conditions" style={{
+              backgroundColor: '#fef3c7',
+              padding: '24px',
+              borderRadius: '12px',
+              border: '2px solid #fde68a',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#92400e',
+                marginBottom: '8px',
+                margin: '0 0 8px 0'
+              }}>
+                *Guarantee Conditions for Ticket Coverage
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#78350f',
+                lineHeight: '1.6',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                To be eligible for ticket reimbursement, you must:
+              </p>
+              <ul style={{
+                fontSize: '15px',
+                color: '#78350f',
+                lineHeight: '1.6',
+                paddingLeft: '24px',
+                margin: 0
+              }}>
+                <li style={{ marginBottom: '8px' }}>Respond to our alerts confirming you moved your vehicle (e.g., reply "Moved" to the SMS)</li>
+                <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
+                <li style={{ marginBottom: '8px' }}>Have an active Ticket Protection subscription at the time the ticket was issued</li>
+                <li style={{ marginBottom: '8px' }}>Only street cleaning and snow removal tickets are covered (not towing fees or moving violations)</li>
+                <li>Maximum reimbursement: 80% of eligible tickets up to $200 per year total coverage</li>
+              </ul>
             </div>
           </div>
         </div>
