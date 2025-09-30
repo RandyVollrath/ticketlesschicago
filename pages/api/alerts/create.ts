@@ -87,6 +87,29 @@ export default async function handler(
       throw new Error('Failed to get user ID');
     }
 
+    // Create users table record first (required for foreign key)
+    const { error: usersError } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        email,
+        phone: phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`,
+        first_name: firstName,
+        last_name: lastName,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
+
+    if (usersError) {
+      console.error('Users table error:', usersError);
+      // Don't fail on duplicate, just log it
+      if (!usersError.message.includes('duplicate')) {
+        throw new Error(`Failed to create users record: ${usersError.message}`);
+      }
+    }
+
     // Check vehicle limit for free users (max 1 vehicle)
     const { data: existingVehicles, error: countError } = await supabase
       .from('vehicles')
