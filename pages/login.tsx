@@ -130,30 +130,22 @@ export default function Login() {
     setAuthMethod('password')
 
     try {
-      // First try to sign in
+      // Try to sign in with provided credentials
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
       })
 
-      if (signInError?.message === 'Invalid login credentials') {
-        // User doesn't exist, try to sign up
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: email,
-          password: password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`
-          }
-        })
-
-        if (signUpError) throw signUpError
-
-        setMessage({
-          type: 'success',
-          text: 'Account created! Please check your email to verify your account.'
-        })
-      } else if (signInError) {
-        throw signInError
+      if (signInError) {
+        // Show user-friendly error message
+        if (signInError.message === 'Invalid login credentials') {
+          setMessage({
+            type: 'error',
+            text: 'Invalid email or password. Please try again or use the magic link option to sign in.'
+          })
+        } else {
+          throw signInError
+        }
       } else {
         // Successful sign in
         router.push('/settings')
