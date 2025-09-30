@@ -130,22 +130,46 @@ export default function Login() {
     setAuthMethod('password')
 
     try {
-      // Try to sign in with provided credentials
+      // First try to sign in
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
       })
 
-      if (signInError) {
-        // Show user-friendly error message
-        if (signInError.message === 'Invalid login credentials') {
+      if (signInError?.message === 'Invalid login credentials') {
+        // Could be new user or wrong password - try to create account
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              source: 'ticketless-america-login'
+            }
+          }
+        })
+
+        if (signUpError) {
+          // Signup failed - likely means wrong password for existing user
           setMessage({
             type: 'error',
-            text: 'Invalid email or password. Please try again or use the magic link option to sign in.'
+            text: 'Invalid email or password. Please try again or use the magic link option below.'
+          })
+        } else if (signUpData?.user?.identities?.length === 0) {
+          // User already exists (Supabase returns user with empty identities)
+          setMessage({
+            type: 'error',
+            text: 'Account exists but password is incorrect. Please try again or use the magic link option below.'
           })
         } else {
-          throw signInError
+          // New account created successfully
+          setMessage({
+            type: 'success',
+            text: 'Account created! Please check your email to verify your account before signing in.'
+          })
         }
+      } else if (signInError) {
+        throw signInError
       } else {
         // Successful sign in
         router.push('/settings')
@@ -487,15 +511,63 @@ export default function Login() {
                   {loading && authMethod === 'password' ? 'Signing in...' : 'Sign In'}
                 </button>
                 
-                <p style={{ 
-                  fontSize: '12px', 
-                  color: '#6b7280', 
+                <p style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
                   textAlign: 'center',
                   lineHeight: '1.4'
                 }}>
-                  Don't have an account? One will be created for you.
+                  New users: Enter your email and create a password (min 6 characters).<br/>
+                  You'll receive a verification email before you can sign in.
                 </p>
               </form>
+
+              {/* Magic Link Alternative */}
+              <div style={{
+                marginTop: '20px',
+                paddingTop: '20px',
+                borderTop: '1px solid #e5e7eb'
+              }}>
+                <p style={{
+                  fontSize: '13px',
+                  color: '#374151',
+                  marginBottom: '12px',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}>
+                  Prefer passwordless sign-in?
+                </p>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleMagicLink(e);
+                  }}
+                  disabled={loading || !email}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: loading && authMethod === 'magic-link' ? '#f3f4f6' : 'white',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: loading || !email ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    opacity: !email ? 0.5 : 1,
+                    marginBottom: '6px'
+                  }}
+                >
+                  {loading && authMethod === 'magic-link' ? 'Sending link...' : '📧 Email me a magic link'}
+                </button>
+                <p style={{
+                  fontSize: '11px',
+                  color: '#6b7280',
+                  textAlign: 'center',
+                  lineHeight: '1.4'
+                }}>
+                  We'll email you a link to sign in instantly - no password needed
+                </p>
+              </div>
 
               {/* Advanced Options */}
               {passkeysSupported && (
