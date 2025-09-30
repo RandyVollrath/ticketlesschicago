@@ -13,7 +13,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { billingPlan, email, userId } = req.body;
+  const { billingPlan, email, userId, renewals } = req.body;
 
   if (!email || !billingPlan) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -25,7 +25,6 @@ export default async function handler(
 
   try {
     // Create Stripe price IDs based on plan
-    // You'll need to create these products in Stripe Dashboard
     const priceId = billingPlan === 'monthly'
       ? process.env.STRIPE_PROTECTION_MONTHLY_PRICE_ID
       : process.env.STRIPE_PROTECTION_ANNUAL_PRICE_ID;
@@ -34,23 +33,57 @@ export default async function handler(
       throw new Error('Stripe price ID not configured');
     }
 
-    // Create Stripe Checkout session
+    // Build line items array starting with subscription
+    const lineItems: any[] = [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ];
+
+    // Add renewal fees as one-time charges
+    if (renewals?.citySticker) {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'City Sticker Renewal',
+            description: `Expires: ${renewals.citySticker.date}`,
+          },
+          unit_amount: 10000, // $100 in cents
+        },
+        quantity: 1,
+      });
+    }
+
+    if (renewals?.licensePlate) {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'License Plate Renewal',
+            description: `Expires: ${renewals.licensePlate.date}`,
+          },
+          unit_amount: 15500, // $155 in cents
+        },
+        quantity: 1,
+      });
+    }
+
+    // Create Stripe Checkout session with mixed line items
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
       client_reference_id: userId || undefined,
       mode: 'subscription',
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/alerts/success?protection=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/protection`,
       metadata: {
         userId: userId || '',
         plan: billingPlan,
-        product: 'ticket_protection'
+        product: 'ticket_protection',
+        citySticker: renewals?.citySticker ? renewals.citySticker.date : '',
+        licensePlate: renewals?.licensePlate ? renewals.licensePlate.date : ''
       }
     });
 
