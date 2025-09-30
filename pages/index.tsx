@@ -251,7 +251,7 @@ export default function Home() {
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                Free Email & SMS Alerts
+                Free Email, SMS & Phone Alerts
               </h3>
               <p style={{
                 fontSize: '16px',
@@ -259,7 +259,7 @@ export default function Home() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                Never miss a deadline with timely notifications delivered your way
+                Never miss a deadline with notifications via email, text, or voice call
               </p>
             </div>
 
