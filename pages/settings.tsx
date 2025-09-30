@@ -7,6 +7,7 @@ import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import PasskeyManager from '../components/PasskeyManager'
 import { RenewalPaymentModal } from '../components/RenewalPaymentModal'
 import UpgradeCard from '../components/UpgradeCard'
+import ReferralLink from '../components/ReferralLink'
 
 // Phone number formatting utilities
 const formatPhoneNumber = (value: string): string => {
@@ -1448,6 +1449,9 @@ export default function Dashboard() {
 
           {/* Passkey Management */}
           <PasskeyManager />
+
+          {/* Referral Program */}
+          <ReferralLink userId={profile.user_id} />
 
           {/* Helpful Resources */}
           <div style={{
