@@ -164,6 +164,30 @@ export default function Home() {
             flexWrap: 'wrap'
           }}>
             <button
+              onClick={() => router.push('/alerts/signup')}
+              style={{
+                backgroundColor: 'white',
+                color: '#000',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
+                padding: '16px 36px',
+                fontSize: '18px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              Get Free Alerts
+            </button>
+            <button
               onClick={() => router.push('/protection')}
               style={{
                 backgroundColor: '#0052cc',
@@ -187,30 +211,6 @@ export default function Home() {
               }}
             >
               Learn About Protection
-            </button>
-            <button
-              onClick={() => router.push('/alerts/signup')}
-              style={{
-                backgroundColor: 'white',
-                color: '#000',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                padding: '16px 36px',
-                fontSize: '18px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
-                e.currentTarget.style.backgroundColor = 'white';
-              }}
-            >
-              Get Free Alerts
             </button>
           </div>
         </div>
