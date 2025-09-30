@@ -60,7 +60,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount,
       currency: 'usd',
-      customer_email: user.email,
       metadata: {
         userId,
         renewalType,
