@@ -83,10 +83,6 @@ export default function Support() {
         {
           q: 'How do I submit a ticket for reimbursement?',
           a: 'Take a clear photo of the front and back of your ticket and upload it through your account dashboard within 7 days.'
-        },
-        {
-          q: 'How do I update my payment information?',
-          a: 'You can update your payment method in your account settings under the billing section.'
         }
       ]
     }
