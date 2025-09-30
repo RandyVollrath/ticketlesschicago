@@ -231,12 +231,12 @@ export default function Pricing() {
                 <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
                 <span style={{ color: '#374151' }}>Text & email notifications</span>
               </li>
-              <li style={{ 
-                display: 'flex', 
+              <li style={{
+                display: 'flex',
                 alignItems: 'flex-start'
               }}>
                 <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                <span style={{ color: '#374151' }}>Multiple address tracking</span>
+                <span style={{ color: '#374151' }}>Home address tracking</span>
               </li>
             </ul>
 
