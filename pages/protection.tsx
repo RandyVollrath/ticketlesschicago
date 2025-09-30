@@ -447,7 +447,7 @@ export default function Protection() {
                       boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
-                    Monthly
+                    Monthly <span style={{ color: '#9ca3af', fontSize: '14px' }}>($144/yr)</span>
                   </button>
                   <button
                     onClick={() => setBillingPlan('annual')}
@@ -791,7 +791,7 @@ export default function Protection() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We cover street cleaning and snow removal tickets. If you get one of these tickets despite following our alerts, we'll reimburse you.
+                We cover street cleaning and snow removal tickets. If you get one of these tickets despite following our alerts and our guarantee conditions*, we'll reimburse you.
               </p>
             </div>
 
