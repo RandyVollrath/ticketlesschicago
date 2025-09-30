@@ -414,6 +414,7 @@ export default function AlertsSignup() {
             <li style={{ color: '#374151' }}>Snow removal notifications</li>
             <li style={{ color: '#374151' }}>City sticker renewal reminders</li>
             <li style={{ color: '#374151' }}>License plate renewal reminders</li>
+            <li style={{ color: '#374151' }}>Emissions test reminders (notification-only service)</li>
           </ul>
         </div>
       </main>
