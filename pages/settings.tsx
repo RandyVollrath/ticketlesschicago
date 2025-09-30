@@ -523,10 +523,10 @@ export default function Dashboard() {
       clearTimeout(autoSaveTimeouts[field]);
     }
     
-    // Auto-save after 2 seconds to balance responsiveness and user experience
+    // Auto-save after 500ms for quick responsive saves
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ [field]: value });
-    }, 2000);
+    }, 500);
     
     setAutoSaveTimeouts(prev => ({ ...prev, [field]: timeoutId }));
   }
@@ -541,10 +541,10 @@ export default function Dashboard() {
       clearTimeout(autoSaveTimeouts['phone']);
     }
     
-    // Auto-save phone changes after 2 seconds
+    // Auto-save phone changes after 500ms
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ phone: formattedForDisplay });
-    }, 2000);
+    }, 500);
     
     setAutoSaveTimeouts(prev => ({ ...prev, phone: timeoutId }));
   }
@@ -566,10 +566,10 @@ export default function Dashboard() {
       clearTimeout(autoSaveTimeouts['notification_preferences']);
     }
     
-    // Auto-save notification preference changes after 2 seconds
+    // Auto-save notification preference changes after 500ms
     const timeoutId = setTimeout(() => {
       autoSaveProfile({ notification_preferences: newNotificationPrefs });
-    }, 2000);
+    }, 500);
     
     setAutoSaveTimeouts(prev => ({ ...prev, notification_preferences: timeoutId }));
   }
