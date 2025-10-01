@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 
@@ -6,15 +6,61 @@ export default function AlertsSignup() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [prefilledData, setPrefilledData] = useState<any>(null);
+  const [loadingToken, setLoadingToken] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     licensePlate: '',
+    vin: '',
+    make: '',
+    model: '',
+    citySticker: '',
     address: '',
     zip: ''
   });
+
+  // Load pre-filled data from token
+  useEffect(() => {
+    const token = router.query.token as string;
+    if (token && !prefilledData) {
+      setLoadingToken(true);
+      fetch(`/api/email/get-token?token=${token}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.data) {
+            setPrefilledData(data.data);
+
+            // Parse name from "FIRST LAST" format
+            const nameParts = (data.data.name || '').split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
+            setFormData(prev => ({
+              ...prev,
+              firstName,
+              lastName,
+              email: data.data.email || '',
+              licensePlate: data.data.plate || '',
+              vin: data.data.vin || '',
+              make: data.data.make || '',
+              model: data.data.model || '',
+              citySticker: data.data.renewalDate || ''
+            }));
+            setMessage('✅ We pre-filled your vehicle info from your email!');
+          }
+        })
+        .catch(err => {
+          console.error('Error loading token:', err);
+          setMessage('Error loading pre-filled data');
+        })
+        .finally(() => {
+          setLoadingToken(false);
+        });
+    }
+  }, [router.query.token, prefilledData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -32,10 +78,14 @@ export default function AlertsSignup() {
     console.log('free_signup_submitted', formData);
 
     try {
+      const token = router.query.token as string;
       const response = await fetch('/api/alerts/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          token: token || undefined
+        })
       });
 
       const result = await response.json();
@@ -140,6 +190,58 @@ export default function AlertsSignup() {
           }}>
             Never miss a street cleaning, snow removal, or renewal deadline again. 100% free for one vehicle.
           </p>
+
+          {prefilledData && (
+            <div style={{
+              background: '#f0f9ff',
+              border: '2px solid #2563eb',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'start',
+                gap: '12px'
+              }}>
+                <div style={{ fontSize: '24px' }}>✅</div>
+                <div>
+                  <h3 style={{
+                    margin: '0 0 8px 0',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#1e40af'
+                  }}>
+                    Vehicle Info Pre-Filled!
+                  </h3>
+                  <p style={{
+                    margin: '0 0 12px 0',
+                    fontSize: '14px',
+                    color: '#1e40af',
+                    lineHeight: '1.5'
+                  }}>
+                    We extracted your info from your city sticker email:
+                  </p>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#1e40af',
+                    lineHeight: '1.8'
+                  }}>
+                    <strong>{prefilledData.make} {prefilledData.model}</strong> • Plate: {prefilledData.plate}
+                    <br />
+                    City Sticker Renewal: {new Date(prefilledData.renewalDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </div>
+                  <p style={{
+                    margin: '12px 0 0 0',
+                    fontSize: '13px',
+                    color: '#3b82f6'
+                  }}>
+                    Just add your address below to get street cleaning alerts!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} style={{
             display: 'flex',
