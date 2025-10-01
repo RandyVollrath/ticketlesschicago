@@ -31,7 +31,9 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
       const response = await fetch(`/api/user/referral-link?userId=${userId}`);
 
       if (!response.ok) {
-        throw new Error('Failed to load referral link');
+        const errorData = await response.json();
+        console.error('Load referral link error:', errorData);
+        throw new Error(errorData.error || `Failed to load referral link (${response.status})`);
       }
 
       const data = await response.json();
@@ -53,7 +55,9 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to request affiliate access');
+        const errorData = await response.json();
+        console.error('Affiliate access error:', errorData);
+        throw new Error(errorData.error || `Failed to request affiliate access (${response.status})`);
       }
 
       const data = await response.json();
@@ -84,7 +88,11 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
         backgroundColor: 'white',
         borderRadius: '16px',
         border: '1px solid #e5e7eb',
-        padding: '32px'
+        padding: '32px',
+        minHeight: '300px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
