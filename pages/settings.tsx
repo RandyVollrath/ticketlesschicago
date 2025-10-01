@@ -209,11 +209,19 @@ export default function Dashboard() {
           hasProfile: !!userProfile,
           profileCount: userProfiles?.length || 0,
           errorCode: profileError?.code,
-          errorMessage: profileError?.message
+          errorMessage: profileError?.message,
+          hasError: !!profileError
         });
 
         // Set the profile data directly from user_profiles table
         let combinedProfile = null
+
+        console.log('Decision tree:', {
+          userProfileExists: !!userProfile,
+          profileErrorExists: !!profileError,
+          profileErrorCode: profileError?.code,
+          willCreateProfile: !userProfile && !profileError
+        });
 
         if (userProfile) {
           combinedProfile = {
