@@ -1,11 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { supabase } from '../../lib/supabase';
 
 export default function AlertsSuccess() {
   const router = useRouter();
   const isProtection = router.query.protection === 'true';
   const isExistingUser = router.query.existing === 'true';
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [magicLinkError, setMagicLinkError] = useState('');
+
+  // Auto-send magic link for new Protection purchases
+  useEffect(() => {
+    if (isProtection && !isExistingUser && router.query.email) {
+      sendMagicLink(router.query.email as string);
+    }
+  }, [isProtection, isExistingUser, router.query.email]);
+
+  const sendMagicLink = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/settings`
+        }
+      });
+
+      if (error) throw error;
+      setMagicLinkSent(true);
+    } catch (error: any) {
+      console.error('Error sending magic link:', error);
+      setMagicLinkError('Unable to send login link automatically');
+    }
+  };
 
   return (
     <div style={{
@@ -150,7 +177,19 @@ export default function AlertsSuccess() {
             lineHeight: '1.5'
           }}>
             <li>You'll receive alerts via email and SMS before any deadlines</li>
-            {!isExistingUser && <li>Check your email for account verification (arrives within 5 minutes)</li>}
+            {!isExistingUser && magicLinkSent && (
+              <li style={{ backgroundColor: '#dcfce7', padding: '8px', borderRadius: '6px', color: '#166534' }}>
+                <strong>✓ Login link sent to your email!</strong> Click the link to access your account and complete your profile.
+              </li>
+            )}
+            {!isExistingUser && !magicLinkSent && !magicLinkError && (
+              <li>Check your email for login instructions (arrives within 5 minutes)</li>
+            )}
+            {magicLinkError && (
+              <li style={{ backgroundColor: '#fee2e2', padding: '8px', borderRadius: '6px', color: '#991b1b' }}>
+                {magicLinkError}. Please use the login button below to access your account.
+              </li>
+            )}
             {isProtection && <li><strong>Verify your profile is 100% complete and accurate</strong> to ensure your guarantee is valid</li>}
             <li>Manage your preferences anytime in your account settings</li>
             {!isProtection && <li>Add more vehicles or upgrade to Ticket Protection whenever you're ready</li>}

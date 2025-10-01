@@ -107,17 +107,70 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log('City Sticker Date:', metadata.citySticker);
           console.log('License Plate Date:', metadata.licensePlate);
 
-          if (!metadata.userId) {
-            console.error('No userId found in Protection metadata');
-            break;
-          }
-
           if (!supabaseAdmin) {
             console.error('Supabase admin client not available');
             break;
           }
 
-          // Update user profile with has_protection=true and renewal dates
+          const email = metadata.email || session.customer_details?.email;
+          if (!email) {
+            console.error('No email found in Protection purchase');
+            break;
+          }
+
+          let userId = metadata.userId;
+
+          // If no userId, create a new user account
+          if (!userId) {
+            console.log('No userId provided - creating new user account for:', email);
+
+            // Check if user already exists
+            const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+            const existingUser = existingUsers?.users?.find(u => u.email === email);
+
+            if (existingUser) {
+              console.log('User already exists:', existingUser.id);
+              userId = existingUser.id;
+            } else {
+              // Create new user
+              console.log('Creating new user account');
+              const { data: newAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+                email: email,
+                email_confirm: true // Auto-confirm email for paid users
+              });
+
+              if (authError) {
+                console.error('Error creating user account:', authError);
+                break;
+              }
+
+              userId = newAuthData.user.id;
+              console.log('✅ Created new user account:', userId);
+
+              // Create user profile
+              const { error: profileError } = await supabaseAdmin
+                .from('user_profiles')
+                .insert({
+                  user_id: userId,
+                  email: email,
+                  has_protection: true,
+                  city_sticker_expiry: metadata.citySticker || null,
+                  license_plate_expiry: metadata.licensePlate || null,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+
+              if (profileError) {
+                console.error('Error creating user profile:', profileError);
+              } else {
+                console.log('✅ Created user profile with Protection');
+              }
+
+              break; // Exit after creating new user
+            }
+          }
+
+          // Update existing user profile with has_protection=true and renewal dates
           const updateData: any = {
             has_protection: true,
             updated_at: new Date().toISOString()
@@ -133,7 +186,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const { error: updateError } = await supabaseAdmin
             .from('user_profiles')
             .update(updateData)
-            .eq('user_id', metadata.userId);
+            .eq('user_id', userId);
 
           if (updateError) {
             console.error('Error updating user profile with Protection:', updateError);
