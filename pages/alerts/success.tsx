@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 
 export default function AlertsSuccess() {
   const router = useRouter();
+  const isProtection = router.query.protection === 'true';
+  const isExistingUser = router.query.existing === 'true';
 
   return (
     <div style={{
@@ -61,8 +63,64 @@ export default function AlertsSuccess() {
           lineHeight: '1.6',
           margin: '0 0 32px 0'
         }}>
-          We'll text/email you before tickets happen. Your alerts are now active for street cleaning, snow removal, city stickers, and license plates.
+          {isProtection
+            ? "Your Ticket Protection is now active! We'll handle your renewals and you're covered up to $200/year in tickets."
+            : "We'll text/email you before tickets happen. Your alerts are now active for street cleaning, snow removal, city stickers, and license plates."
+          }
         </p>
+
+        {/* Profile Completion Warning for Protection */}
+        {isProtection && (
+          <div style={{
+            backgroundColor: '#fff7ed',
+            border: '2px solid #fb923c',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '32px',
+            textAlign: 'left'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: 'bold',
+              color: '#9a3412',
+              marginBottom: '12px',
+              margin: '0 0 12px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              ⚠️ Important: Complete Your Profile
+            </h3>
+            <p style={{
+              fontSize: '15px',
+              color: '#7c2d12',
+              lineHeight: '1.6',
+              margin: '0 0 16px 0'
+            }}>
+              <strong>Your $200/year ticket guarantee requires a complete and accurate profile.</strong> Please ensure all information in your account settings is correct:
+            </p>
+            <ul style={{
+              margin: '0 0 16px 0',
+              paddingLeft: '24px',
+              fontSize: '14px',
+              color: '#7c2d12',
+              lineHeight: '1.6'
+            }}>
+              <li>Vehicle information (license plate, VIN, make, model)</li>
+              <li>Renewal dates (city sticker, license plate, emissions)</li>
+              <li>Contact information (phone, email, mailing address)</li>
+              <li>Street cleaning address (ward and section)</li>
+            </ul>
+            <p style={{
+              fontSize: '13px',
+              color: '#78350f',
+              margin: 0,
+              fontStyle: 'italic'
+            }}>
+              The guarantee is void if your profile is incomplete or inaccurate. Take 2 minutes now to verify everything is correct.
+            </p>
+          </div>
+        )}
 
         {/* What's Next Section */}
         <div style={{
@@ -92,9 +150,10 @@ export default function AlertsSuccess() {
             lineHeight: '1.5'
           }}>
             <li>You'll receive alerts via email and SMS before any deadlines</li>
-            <li>Check your email for account verification (arrives within 5 minutes)</li>
+            {!isExistingUser && <li>Check your email for account verification (arrives within 5 minutes)</li>}
+            {isProtection && <li><strong>Verify your profile is 100% complete and accurate</strong> to ensure your guarantee is valid</li>}
             <li>Manage your preferences anytime in your account settings</li>
-            <li>Add more vehicles or upgrade to Ticket Protection whenever you're ready</li>
+            {!isProtection && <li>Add more vehicles or upgrade to Ticket Protection whenever you're ready</li>}
           </ul>
         </div>
 
@@ -168,31 +227,33 @@ export default function AlertsSuccess() {
               e.currentTarget.style.backgroundColor = '#0052cc';
             }}
           >
-            Go to My Account
+            {isProtection ? 'Complete My Profile' : 'Go to My Account'}
           </button>
 
-          <button
-            onClick={() => router.push('/protection')}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#0052cc',
-              border: '2px solid #0052cc',
-              borderRadius: '12px',
-              padding: '14px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#f0f8ff';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            Learn About Ticket Protection
-          </button>
+          {!isProtection && (
+            <button
+              onClick={() => router.push('/protection')}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#0052cc',
+                border: '2px solid #0052cc',
+                borderRadius: '12px',
+                padding: '14px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#f0f8ff';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Learn About Ticket Protection
+            </button>
+          )}
 
           <button
             onClick={() => router.push('/')}
