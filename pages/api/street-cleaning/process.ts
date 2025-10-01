@@ -112,10 +112,18 @@ async function processStreetCleaningReminders(type: string) {
     let query;
     switch (type) {
       case 'morning_reminder':
-        query = supabase.from('report_zero_day').select('*');
+        // For morning reminders at 7am, query all users with street cleaning enabled
+        // We'll check their notify_days_array to see if they want 0, 1, 2, 3 day advance alerts
+        query = supabase
+          .from('user_profiles')
+          .select('*')
+          .not('home_address_ward', 'is', null)
+          .not('home_address_section', 'is', null)
+          .eq('notify_sms', true)
+          .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
         break;
       case 'evening_reminder':
-        query = supabase.from('report_one_day').select('*'); // Could also check 2-day, 3-day based on preferences
+        query = supabase.from('report_one_day').select('*');
         break;
       case 'follow_up':
         query = supabase.from('report_follow_up').select('*');
@@ -129,7 +137,7 @@ async function processStreetCleaningReminders(type: string) {
           .not('home_address_section', 'is', null)
           .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
     }
-    
+
     let { data: users, error: userError } = await query;
 
     if (userError) {
@@ -268,23 +276,22 @@ async function processStreetCleaningReminders(type: string) {
 }
 
 function shouldSendNotification(user: any, type: string, daysUntil: number): boolean {
-  const notifyDays = user.notify_days_array || [1];
-  
+  const notifyDays = user.notify_days_array || [0]; // Default to day-of only
+
   switch (type) {
     case 'morning_reminder':
-      // Send on morning of cleaning if 0 is in notify_days_array
-      return daysUntil === 0 && notifyDays.includes(0);
-      
+      // Send morning alerts for 0, 1, 2, 3 days ahead based on notify_days_array
+      return notifyDays.includes(daysUntil);
+
     case 'evening_reminder':
       // Send evening before if enabled and tomorrow is cleaning day
       if (user.notify_evening_before && daysUntil === 1) return true;
-      // Or send for multi-day reminders
-      return notifyDays.includes(daysUntil);
-      
+      return false;
+
     case 'follow_up':
       // Send follow-up to users who have it enabled
       return user.follow_up_sms && daysUntil === 0;
-      
+
     default:
       return false;
   }
@@ -308,10 +315,18 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
   
   switch (type) {
     case 'morning_reminder':
-      message = `🚗 Street cleaning TODAY in your area (Ward ${user.home_address_ward}, Section ${user.home_address_section})! Move your car by 7 AM to avoid a ticket.`;
-      subject = '🚗 Street Cleaning TODAY - Move Your Car!';
+      if (daysUntil === 0) {
+        message = `🚗 Street cleaning TODAY in your area (Ward ${user.home_address_ward}, Section ${user.home_address_section})! Move your car by 7 AM to avoid a ticket.`;
+        subject = '🚗 Street Cleaning TODAY - Move Your Car!';
+      } else if (daysUntil === 1) {
+        message = `🗓️ Street cleaning TOMORROW (${formattedDate}) in your area (Ward ${user.home_address_ward}, Section ${user.home_address_section}). Don't forget to move your car by 7 AM!`;
+        subject = '🗓️ Street Cleaning Tomorrow';
+      } else {
+        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) in Ward ${user.home_address_ward}, Section ${user.home_address_section}. Remember to move your car by 7 AM!`;
+        subject = `📅 Street Cleaning in ${daysUntil} Days`;
+      }
       break;
-      
+
     case 'evening_reminder':
       if (daysUntil === 1) {
         message = `🌙 Street cleaning TOMORROW morning in your area (Ward ${user.home_address_ward}, Section ${user.home_address_section}). Don't forget to move your car!`;
@@ -321,7 +336,7 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         subject = `📅 Street Cleaning in ${daysUntil} Days`;
       }
       break;
-      
+
     case 'follow_up':
       message = `✅ Street cleaning completed in your area today. You can park normally now. Did you move your car and avoid a ticket? Reply and let us know! - Ticketless America`;
       subject = '✅ Street Cleaning Complete';
