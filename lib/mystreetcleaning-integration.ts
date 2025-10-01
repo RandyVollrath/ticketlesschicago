@@ -118,23 +118,7 @@ export async function createMyStreetCleaningAccount(
         console.error('❌ [MSC Integration] Error updating user profile:', updateError);
       }
 
-      // Also update/add address to user_addresses table
-      if (accountData.streetAddress) {
-        const { error: addressError } = await myStreetCleaningSupabase
-          .from('user_addresses')
-          .upsert({
-            user_id: existingUser.user_id,
-            full_address: accountData.streetAddress,
-            label: 'Home',
-            created_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id,full_address'
-          });
-
-        if (addressError) {
-          console.error('❌ [MSC Integration] Error updating address:', addressError);
-        }
-      }
+      // Note: user_addresses sync removed - street cleaning notifications now handled by Ticketless America directly
 
       return {
         success: true,
