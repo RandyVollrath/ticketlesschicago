@@ -290,7 +290,7 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
       break;
       
     case 'follow_up':
-      message = `✅ Street cleaning completed in your area today. You can park normally now. Thank you for using Ticketless America!`;
+      message = `✅ Street cleaning completed in your area today. You can park normally now. Did you move your car and avoid a ticket? Reply and let us know! - Ticketless America`;
       subject = '✅ Street Cleaning Complete';
       break;
   }

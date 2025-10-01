@@ -346,6 +346,13 @@ export default function StreetCleaningSettings() {
     // Skip auto-save during initial load
     if (!initialLoadComplete) return;
 
+    // Skip auto-save if no valid address data (ward and section are required for valid street cleaning setup)
+    // This prevents "Auto-save failed" errors when the user hasn't entered an address yet
+    if (!ward || !section) {
+      console.log('Skipping auto-save: No valid address data yet');
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       // Build notify days array
       const notifyDays = [];
