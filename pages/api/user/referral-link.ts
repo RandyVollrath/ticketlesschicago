@@ -75,7 +75,7 @@ export default async function handler(
       const affiliateParams: any = {
         email: profile.email,
         first_name: profile.first_name || profile.email.split('@')[0],
-        last_name: profile.last_name || '',
+        last_name: profile.last_name || 'Member', // Rewardful requires non-empty last_name
       };
 
       // Only add campaign_id if it's configured

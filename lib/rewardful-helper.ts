@@ -33,7 +33,7 @@ export async function createRewardfulAffiliate(
     const body: any = {
       email: params.email,
       first_name: params.first_name || params.email.split('@')[0],
-      last_name: params.last_name || '',
+      last_name: params.last_name || 'Member', // Rewardful requires non-empty last_name
       state: 'active',
       receive_new_commission_notifications: true,
     };
