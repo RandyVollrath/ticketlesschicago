@@ -182,13 +182,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadUserData = async () => {
+      console.log('🔄 Starting loadUserData...');
       const { data: { user } } = await supabase.auth.getUser()
-      
+
+      console.log('User from auth:', user?.id, user?.email);
+
       if (!user) {
+        console.log('❌ No user found, redirecting to login');
         router.push('/login')
         return
       }
-      
+
       setUser(user)
       
       try {
@@ -429,9 +433,14 @@ export default function Dashboard() {
           }
         } else {
           console.error('Error fetching user profile:', profileError)
+          console.error('Profile error code:', profileError?.code);
+          console.error('Profile error message:', profileError?.message);
         }
 
+        console.log('Final combinedProfile:', combinedProfile ? 'EXISTS' : 'NULL');
+
         if (combinedProfile) {
+          console.log('✅ Setting profile with data:', { user_id: combinedProfile.user_id, email: combinedProfile.email });
           setProfile(combinedProfile)
           // Only set editedProfile if it's empty to avoid overwriting user changes
           setEditedProfile(prev => Object.keys(prev).length === 0 ? combinedProfile : prev)
@@ -467,9 +476,11 @@ export default function Dashboard() {
         }
         
       } catch (error) {
-        console.error('Error loading user data:', error)
+        console.error('❌ Error loading user data:', error)
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       }
-      
+
+      console.log('🏁 loadUserData complete, setting loading=false');
       setLoading(false)
     }
 
@@ -671,13 +682,55 @@ export default function Dashboard() {
     )
   }
 
-  if (!profile) {
+  if (!profile && loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-black mb-2">Setting up your account...</h2>
           <p className="text-gray-600 mb-6">We're preparing your profile settings.</p>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!profile && !loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Profile Setup Failed</h2>
+          <p className="text-gray-600 mb-6">
+            We couldn't create your profile. Please check the console for errors.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              backgroundColor: '#2563eb',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600'
+            }}
+          >
+            Try Again
+          </button>
+          <br />
+          <button
+            onClick={() => router.push('/')}
+            style={{
+              marginTop: '16px',
+              color: '#6b7280',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            Go to Home
+          </button>
         </div>
       </div>
     )
