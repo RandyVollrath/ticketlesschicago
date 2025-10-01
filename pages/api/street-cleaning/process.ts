@@ -33,26 +33,47 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const now = new Date();
   const { hour, chicagoTime } = getChicagoTime();
-  console.log(`🧹 Street cleaning notifications called at ${chicagoTime} (Hour: ${hour})`);
+
+  // Enhanced logging to debug cron execution
+  console.log('========================================');
+  console.log('🧹 STREET CLEANING CRON EXECUTION');
+  console.log('========================================');
+  console.log('UTC Time:', now.toISOString());
+  console.log('Chicago Time:', chicagoTime);
+  console.log('Chicago Hour:', hour);
+  console.log('Request Method:', req.method);
+  console.log('User-Agent:', req.headers['user-agent']);
+  console.log('Is Vercel Cron?:', req.headers['user-agent']?.includes('vercel-cron') || req.headers['user-agent']?.includes('Vercel'));
+  console.log('========================================');
 
   // Determine notification type based on Chicago time
   let notificationType = 'unknown';
   if (hour === 7) {
     notificationType = 'morning_reminder';
+    console.log('✅ Matched: morning_reminder (7am)');
   } else if (hour === 15) {
     notificationType = 'follow_up';
+    console.log('✅ Matched: follow_up (3pm)');
   } else if (hour === 19) {
     notificationType = 'evening_reminder';
+    console.log('✅ Matched: evening_reminder (7pm)');
   } else {
+    console.log(`⏭️  Skipped: Current hour ${hour} doesn't match any notification schedule (7am, 3pm, 7pm)`);
     return res.status(200).json({
       success: true,
       processed: 0,
       successful: 0,
       failed: 0,
       errors: [],
-      timestamp: new Date().toISOString(),
-      type: 'skipped - wrong hour'
+      timestamp: now.toISOString(),
+      type: 'skipped - wrong hour',
+      debug: {
+        chicagoHour: hour,
+        chicagoTime,
+        utcTime: now.toISOString()
+      }
     });
   }
 
@@ -129,15 +150,18 @@ async function processStreetCleaningReminders(type: string) {
     }
 
     if (!users || users.length === 0) {
-      console.log('No users with street cleaning addresses found');
+      console.log('⚠️  No users found in view for notification type:', type);
       return { processed, successful, failed, errors };
     }
+
+    console.log(`📋 Found ${users.length} user(s) to process for ${type}`);
 
     // Process each user
     for (const user of users) {
       try {
         processed++;
-        
+        console.log(`\n👤 Processing user ${processed}/${users.length}: ${user.email}`);
+
         let cleaningDate;
         let daysUntil = 0;
         
