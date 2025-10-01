@@ -193,11 +193,20 @@ export default function Dashboard() {
       
       try {
         // CONSOLIDATED: Get all profile data from user_profiles table only
-        const { data: userProfile, error: profileError } = await supabase
+        // Note: Using array query instead of .single() to avoid 406 errors
+        const { data: userProfiles, error: profileError } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('user_id', user.id)
-          .single()
+
+        const userProfile = userProfiles && userProfiles.length > 0 ? userProfiles[0] : null;
+
+        console.log('Profile fetch result:', {
+          hasProfile: !!userProfile,
+          profileCount: userProfiles?.length || 0,
+          errorCode: profileError?.code,
+          errorMessage: profileError?.message
+        });
 
         // Set the profile data directly from user_profiles table
         let combinedProfile = null
@@ -206,7 +215,9 @@ export default function Dashboard() {
           combinedProfile = {
             ...userProfile,
             // Ensure phone field is available for frontend compatibility
-            phone: userProfile.phone_number || userProfile.phone
+            phone: userProfile.phone_number || userProfile.phone,
+            // Add has_protection if missing (field not in database yet)
+            has_protection: userProfile.has_protection || false
           }
           
           // ONE-TIME DATA MIGRATION: Check if we need to migrate data from users table
@@ -285,10 +296,11 @@ export default function Dashboard() {
           }
           
           try {
+            // user_profiles.user_id now references auth.users (Supabase auth table)
+            // No need to create a record in public.users table
             const defaultProfile = {
               user_id: user.id,
               email: user.email,
-              phone: userData?.phone || null,
               phone_number: userData?.phone || null,
               // Core Ticketless America fields
               license_plate: userData?.license_plate || null,
@@ -303,7 +315,7 @@ export default function Dashboard() {
               snooze_until_date: null,
               snooze_reason: null,
               follow_up_sms: true,
-              // Notification preferences
+              // Notification preferences (stored in notify_email/notify_sms directly, not in notification_preferences)
               notify_email: true,
               notify_sms: true,
               notify_snow: false,
@@ -336,17 +348,43 @@ export default function Dashboard() {
               mailing_zip: userData?.mailing_zip || null
             }
 
-            const { data: newProfile, error: createError } = await supabase
+            const { data: newProfiles, error: createError } = await supabase
               .from('user_profiles')
               .insert(defaultProfile)
               .select()
-              .single()
+
+            const newProfile = newProfiles && newProfiles.length > 0 ? newProfiles[0] : null;
 
             if (createError) {
               console.error('Error creating user profile:', createError)
-              combinedProfile = defaultProfile // Use default if DB insert fails
+              console.error('Create error code:', createError.code)
+              console.error('Create error message:', createError.message)
+              console.error('Create error details:', createError.details)
+
+              // If profile already exists (409 conflict), try to fetch it
+              if (createError.code === '23505' || createError.message?.includes('duplicate') || createError.message?.includes('already exists')) {
+                console.log('Profile already exists, fetching existing profile...');
+                const { data: existingProfiles, error: fetchError } = await supabase
+                  .from('user_profiles')
+                  .select('*')
+                  .eq('user_id', user.id);
+
+                const existingProfile = existingProfiles && existingProfiles.length > 0 ? existingProfiles[0] : null;
+
+                if (existingProfile && !fetchError) {
+                  console.log('✅ Found existing profile');
+                  combinedProfile = { ...existingProfile, phone: existingProfile.phone_number, has_protection: existingProfile.has_protection || false };
+                } else {
+                  console.error('Failed to fetch existing profile:', fetchError);
+                  combinedProfile = { ...defaultProfile, phone: defaultProfile.phone_number, has_protection: false };
+                }
+              } else {
+                // Add has_protection to default profile for UI
+                combinedProfile = { ...defaultProfile, phone: defaultProfile.phone_number, has_protection: false };
+              }
             } else {
-              combinedProfile = newProfile
+              // Add has_protection field for UI (not in database yet)
+              combinedProfile = { ...newProfile, phone: newProfile.phone_number, has_protection: false }
             }
           } catch (error) {
             console.error('Error creating profile:', error)
@@ -385,7 +423,8 @@ export default function Dashboard() {
               is_paid: true,
               is_canary: false,
               role: 'user',
-              guarantee_opt_in_year: null
+              guarantee_opt_in_year: null,
+              has_protection: false
             }
           }
         } else {
