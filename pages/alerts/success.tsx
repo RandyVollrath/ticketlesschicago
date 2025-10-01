@@ -10,12 +10,12 @@ export default function AlertsSuccess() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkError, setMagicLinkError] = useState('');
 
-  // Auto-send magic link for new Protection purchases
-  useEffect(() => {
-    if (isProtection && !isExistingUser && router.query.email) {
-      sendMagicLink(router.query.email as string);
-    }
-  }, [isProtection, isExistingUser, router.query.email]);
+  // Magic link is now sent from webhook - this effect is no longer needed
+  // useEffect(() => {
+  //   if (isProtection && !isExistingUser && router.query.email) {
+  //     sendMagicLink(router.query.email as string);
+  //   }
+  // }, [isProtection, isExistingUser, router.query.email]);
 
   const sendMagicLink = async (email: string) => {
     try {
@@ -177,18 +177,13 @@ export default function AlertsSuccess() {
             lineHeight: '1.5'
           }}>
             <li>You'll receive alerts via email and SMS before any deadlines</li>
-            {!isExistingUser && magicLinkSent && (
+            {isProtection && !isExistingUser && (
               <li style={{ backgroundColor: '#dcfce7', padding: '8px', borderRadius: '6px', color: '#166534' }}>
                 <strong>✓ Login link sent to your email!</strong> Click the link to access your account and complete your profile.
               </li>
             )}
-            {!isExistingUser && !magicLinkSent && !magicLinkError && (
+            {!isProtection && !isExistingUser && (
               <li>Check your email for login instructions (arrives within 5 minutes)</li>
-            )}
-            {magicLinkError && (
-              <li style={{ backgroundColor: '#fee2e2', padding: '8px', borderRadius: '6px', color: '#991b1b' }}>
-                {magicLinkError}. Please use the login button below to access your account.
-              </li>
             )}
             {isProtection && <li><strong>Verify your profile is 100% complete and accurate</strong> to ensure your guarantee is valid</li>}
             <li>Manage your preferences anytime in your account settings</li>
