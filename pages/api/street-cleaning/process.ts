@@ -115,7 +115,16 @@ async function processStreetCleaningReminders(type: string) {
         query = supabase.from('report_zero_day').select('*');
         break;
       case 'evening_reminder':
-        query = supabase.from('report_one_day').select('*'); // Could also check 2-day, 3-day based on preferences
+        // For evening reminders, query all users with street cleaning enabled
+        // We'll check their notify_days_array and upcoming cleaning dates dynamically
+        // This allows for 1-day, 2-day, 3-day+ advance notifications
+        query = supabase
+          .from('user_profiles')
+          .select('*')
+          .not('home_address_ward', 'is', null)
+          .not('home_address_section', 'is', null)
+          .eq('notify_sms', true) // Only users with SMS enabled
+          .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
         break;
       case 'follow_up':
         query = supabase.from('report_follow_up').select('*');
@@ -129,7 +138,7 @@ async function processStreetCleaningReminders(type: string) {
           .not('home_address_section', 'is', null)
           .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
     }
-    
+
     let { data: users, error: userError } = await query;
 
     if (userError) {
@@ -235,8 +244,11 @@ async function processStreetCleaningReminders(type: string) {
 
         // Check if we should send notification based on user preferences
         const shouldSend = user.is_canary || shouldSendNotification(user, type, daysUntil);
-        
+
+        console.log(`  Cleaning in ${daysUntil} days. notify_days_array: ${JSON.stringify(user.notify_days_array)}. Should send: ${shouldSend}`);
+
         if (!shouldSend) {
+          console.log(`  ⏭️  Skipping ${user.email} - notification not needed for ${daysUntil} days until cleaning`);
           continue;
         }
 
