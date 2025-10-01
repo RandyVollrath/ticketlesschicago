@@ -280,9 +280,10 @@ export default function Dashboard() {
               console.error('❌ Migration failed:', error);
             }
           }
-        } else if (profileError?.code === 'PGRST116') {
-          // If profile doesn't exist, create one in the database
+        } else if (profileError?.code === 'PGRST116' || (!userProfile && !profileError)) {
+          // If profile doesn't exist (either error PGRST116 or empty result), create one in the database
           console.log('Creating new user profile...')
+          console.log('Reason:', profileError?.code === 'PGRST116' ? 'PGRST116 error' : 'Empty result set')
           
           // First, try to get data from users table for migration
           let userData = null;
