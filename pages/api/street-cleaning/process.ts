@@ -198,8 +198,14 @@ async function processStreetCleaningReminders(type: string) {
 
           cleaningDate = new Date(schedule.cleaning_date);
           daysUntil = Math.floor((cleaningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+          // Skip if cleaning date has already passed (negative days)
+          if (daysUntil < 0) {
+            console.log(`Skipping user ${user.email}: cleaning date ${cleaningDate.toISOString()} has already passed (${daysUntil} days ago)`);
+            continue;
+          }
         }
-        
+
         // Check if we should send notification based on user preferences
         const shouldSend = user.is_canary || shouldSendNotification(user, type, daysUntil);
         
