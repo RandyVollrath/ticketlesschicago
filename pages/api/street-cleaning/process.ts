@@ -150,14 +150,20 @@ async function processStreetCleaningReminders(type: string) {
           // First try local database, then MSC database
           let schedule = null;
           let scheduleError = null;
-          
+
+          // For evening reminders (7pm), we want tomorrow or later, not today
+          // For morning reminders (7am), we want today or later
+          const minDate = type === 'evening_reminder'
+            ? new Date(today.getTime() + 24 * 60 * 60 * 1000) // Tomorrow
+            : today; // Today
+
           // Try local database first
           const localResult = await supabase
             .from('street_cleaning_schedule')
             .select('cleaning_date')
             .eq('ward', user.home_address_ward)
             .eq('section', user.home_address_section)
-            .gte('cleaning_date', today.toISOString())
+            .gte('cleaning_date', minDate.toISOString())
             .order('cleaning_date', { ascending: true })
             .limit(1)
             .single();
@@ -176,7 +182,7 @@ async function processStreetCleaningReminders(type: string) {
               .select('cleaning_date')
               .eq('ward', user.home_address_ward)
               .eq('section', user.home_address_section)
-              .gte('cleaning_date', today.toISOString())
+              .gte('cleaning_date', minDate.toISOString())
               .order('cleaning_date', { ascending: true })
               .limit(1)
               .single();
@@ -198,12 +204,6 @@ async function processStreetCleaningReminders(type: string) {
 
           cleaningDate = new Date(schedule.cleaning_date);
           daysUntil = Math.floor((cleaningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-          // Skip if cleaning date has already passed (negative days)
-          if (daysUntil < 0) {
-            console.log(`Skipping user ${user.email}: cleaning date ${cleaningDate.toISOString()} has already passed (${daysUntil} days ago)`);
-            continue;
-          }
         }
 
         // Check if we should send notification based on user preferences
