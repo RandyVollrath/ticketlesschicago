@@ -13,12 +13,13 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { billingPlan, email, userId, renewals } = req.body;
+  const { billingPlan, email, userId, rewardfulReferral, renewals } = req.body;
 
   console.log('Protection checkout request:', {
     billingPlan,
     email,
     userId,
+    rewardfulReferral,
     hasRenewals: !!renewals
   });
 
@@ -87,7 +88,8 @@ export default async function handler(
     // Create Stripe Checkout session with mixed line items
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
-      client_reference_id: userId || undefined,
+      // Use Rewardful referral ID as client_reference_id for tracking conversions
+      client_reference_id: rewardfulReferral || userId || undefined,
       mode: 'subscription',
       line_items: lineItems,
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/alerts/success?protection=true&existing=${userId ? 'true' : 'false'}`,
@@ -97,7 +99,8 @@ export default async function handler(
         plan: billingPlan,
         product: 'ticket_protection',
         citySticker: renewals?.citySticker ? renewals.citySticker.date : '',
-        licensePlate: renewals?.licensePlate ? renewals.licensePlate.date : ''
+        licensePlate: renewals?.licensePlate ? renewals.licensePlate.date : '',
+        rewardful_referral_id: rewardfulReferral || ''
       }
     });
 

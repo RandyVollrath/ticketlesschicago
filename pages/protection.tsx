@@ -88,10 +88,14 @@ export default function Protection() {
     setLoading(true);
     setMessage('');
 
+    // Get Rewardful referral ID if available
+    const rewardfulReferral = typeof window !== 'undefined' && (window as any).Rewardful?.referral || null;
+
     const checkoutData = {
       billingPlan,
       email: userEmail,
       userId: user?.id || undefined,
+      rewardfulReferral: rewardfulReferral,
       renewals: {
         citySticker: needsCitySticker ? { date: cityStickerDate } : null,
         licensePlate: needsLicensePlate ? { date: licensePlateDate } : null
