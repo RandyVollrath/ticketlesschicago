@@ -1,8 +1,9 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
 const ticketlessSupabase = createClient(
-  'https://dzhqolbhuqdcpngdayuq.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6aHFvbGJodXFkY3BuZ2RheXVxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODkyMzM5OSwiZXhwIjoyMDc0NDk5Mzk5fQ.FgwEeRwuwr6EJCKfGD4P7eFu5TP4-UuC6baBpxWqK7U'
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 (async () => {
