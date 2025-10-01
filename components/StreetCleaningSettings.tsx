@@ -73,6 +73,10 @@ export default function StreetCleaningSettings() {
   // Mailing address for auto-fill
   const [mailingAddress, setMailingAddress] = useState('');
 
+  // Calendar download
+  const [calendarDownloading, setCalendarDownloading] = useState(false);
+  const [calendarMessage, setCalendarMessage] = useState('');
+
   useEffect(() => {
     loadProfile();
   }, []);
@@ -399,6 +403,50 @@ export default function StreetCleaningSettings() {
     }
   };
 
+  const handleCalendarDownload = async () => {
+    if (!ward || !section) {
+      setError('Please set your home address first to download the calendar');
+      return;
+    }
+
+    setCalendarDownloading(true);
+    setCalendarMessage('');
+    setError('');
+
+    try {
+      const apiUrl = `/api/generate-calendar?ward=${ward}&section=${section}`;
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        let errorMsg = 'Failed to generate calendar';
+        try {
+          const err = await response.json();
+          errorMsg = err.message || errorMsg;
+        } catch (e) {}
+        throw new Error(errorMsg);
+      }
+
+      const icsText = await response.text();
+      const blob = new Blob([icsText], { type: 'text/calendar;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `street_cleaning_w${ward}_s${section}.ics`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setCalendarMessage('✓ Calendar downloaded! Import it into your calendar app.');
+      setTimeout(() => setCalendarMessage(''), 5000);
+    } catch (error: any) {
+      setError(error.message || 'Failed to download calendar');
+    } finally {
+      setCalendarDownloading(false);
+    }
+  };
+
   const renderCleaningStatus = () => {
     if (loadingCleaningInfo) {
       return (
@@ -510,6 +558,43 @@ export default function StreetCleaningSettings() {
           </div>
         )}
         {renderCleaningStatus()}
+        {ward && section && (
+          <div style={{ marginTop: '12px' }}>
+            <button
+              type="button"
+              onClick={handleCalendarDownload}
+              disabled={calendarDownloading}
+              className={styles.calendarButton}
+              style={{
+                padding: '10px 16px',
+                backgroundColor: calendarDownloading ? '#9ca3af' : '#0052cc',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: calendarDownloading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              📅 {calendarDownloading ? 'Generating Calendar...' : 'Download Calendar (.ics)'}
+            </button>
+            {calendarMessage && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px 12px',
+                backgroundColor: '#dcfce7',
+                color: '#166534',
+                borderRadius: '6px',
+                fontSize: '13px'
+              }}>
+                {calendarMessage}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Park Here Instead Feature - MSC Style */}
