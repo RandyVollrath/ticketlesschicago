@@ -142,11 +142,13 @@ async function processStreetCleaningReminders(type: string) {
       .from('user_profiles')
       .select('*')
       .eq('is_canary', true);
-    
+
     if (canaryUsers && !canaryError) {
-      // Add canary users to the notification list
-      users = [...(users || []), ...canaryUsers];
-      console.log(`Added ${canaryUsers.length} canary users to notification list`);
+      // Add canary users to the notification list, but avoid duplicates
+      const existingUserIds = new Set((users || []).map(u => u.user_id));
+      const newCanaryUsers = canaryUsers.filter(canary => !existingUserIds.has(canary.user_id));
+      users = [...(users || []), ...newCanaryUsers];
+      console.log(`Added ${newCanaryUsers.length} new canary users to notification list (${canaryUsers.length - newCanaryUsers.length} already in list)`);
     }
 
     if (!users || users.length === 0) {
@@ -370,7 +372,9 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     if (user.phone_call_enabled && phoneNumber && type === 'morning_reminder') {
       console.log(`📞 Sending voice call to ${phoneNumber} for ${type}`);
       try {
-        const voiceResult = await sendClickSendVoiceCall(phoneNumber, message);
+        // Strip emojis for voice calls - they cause 500 errors in ClickSend
+        const voiceMessage = message.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
+        const voiceResult = await sendClickSendVoiceCall(phoneNumber, voiceMessage);
         if (voiceResult.success) {
           console.log(`✅ Voice call sent successfully to ${phoneNumber}`);
         } else {
