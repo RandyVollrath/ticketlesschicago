@@ -621,26 +621,10 @@ export default function StreetCleaningSettings() {
           <label>
             <input
               type="checkbox"
-              checked={notify3Days}
-              onChange={(e) => setNotify3Days(e.target.checked)}
+              checked={notify0Day}
+              onChange={(e) => setNotify0Day(e.target.checked)}
             />
-            3 days before
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={notify2Days}
-              onChange={(e) => setNotify2Days(e.target.checked)}
-            />
-            2 days before
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={notify1Day}
-              onChange={(e) => setNotify1Day(e.target.checked)}
-            />
-            1 day before
+            Morning of cleaning (7 AM)
           </label>
           <label>
             <input
@@ -653,10 +637,26 @@ export default function StreetCleaningSettings() {
           <label>
             <input
               type="checkbox"
-              checked={notify0Day}
-              onChange={(e) => setNotify0Day(e.target.checked)}
+              checked={notify1Day}
+              onChange={(e) => setNotify1Day(e.target.checked)}
             />
-            Morning of cleaning (7 AM)
+            1 day before
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={notify2Days}
+              onChange={(e) => setNotify2Days(e.target.checked)}
+            />
+            2 days before
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={notify3Days}
+              onChange={(e) => setNotify3Days(e.target.checked)}
+            />
+            3 days before
           </label>
         </div>
       </div>
