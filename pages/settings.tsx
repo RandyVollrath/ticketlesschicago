@@ -400,7 +400,7 @@ export default function Dashboard() {
     }
 
     loadUserData()
-  }, [router])
+  }, []) // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Cleanup timeout when component unmounts
   useEffect(() => {
