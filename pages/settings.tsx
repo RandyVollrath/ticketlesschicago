@@ -636,15 +636,20 @@ export default function Dashboard() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
-              onClick={() => router.push('/')}
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                color: '#0052cc', 
+              onClick={(e) => {
+                e.preventDefault();
+                console.log('Back to Home clicked, navigating to /');
+                router.push('/').catch(err => console.error('Navigation error:', err));
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                color: '#0052cc',
                 fontWeight: '500',
                 backgroundColor: 'transparent',
                 border: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                padding: '8px 12px'
               }}
             >
               <svg style={{ width: '20px', height: '20px', marginRight: '8px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
