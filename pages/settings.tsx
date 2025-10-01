@@ -224,99 +224,22 @@ export default function Dashboard() {
         });
 
         if (userProfile) {
+          // Profile exists - just use it
           combinedProfile = {
             ...userProfile,
-            // Ensure phone field is available for frontend compatibility
             phone: userProfile.phone_number || userProfile.phone,
-            // Add has_protection if missing (field not in database yet)
             has_protection: userProfile.has_protection || false
           }
-          
-          // ONE-TIME DATA MIGRATION: Check if we need to migrate data from users table
-          if (!userProfile.first_name || !userProfile.last_name || !userProfile.license_plate) {
-            console.log('🔄 Missing profile data detected, running one-time migration...');
-            try {
-              const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', user.id)
-                .single();
-              
-              if (userData && !userError) {
-                console.log('📊 Found data in users table, migrating...');
-                
-                const migrationData = {
-                  // Only update fields that are missing or empty
-                  first_name: userProfile.first_name || userData.first_name,
-                  last_name: userProfile.last_name || userData.last_name,
-                  phone: userProfile.phone || userData.phone,
-                  phone_number: userProfile.phone_number || userData.phone,
-                  license_plate: userProfile.license_plate || userData.license_plate,
-                  vin: userProfile.vin || userData.vin,
-                  vehicle_type: userProfile.vehicle_type || userData.vehicle_type,
-                  vehicle_year: userProfile.vehicle_year || userData.vehicle_year,
-                  zip_code: userProfile.zip_code || userData.zip_code,
-                  city_sticker_expiry: userProfile.city_sticker_expiry || userData.city_sticker_expiry,
-                  license_plate_expiry: userProfile.license_plate_expiry || userData.license_plate_expiry,
-                  emissions_date: userProfile.emissions_date || userData.emissions_date,
-                  mailing_address: userProfile.mailing_address || userData.mailing_address,
-                  mailing_city: userProfile.mailing_city || userData.mailing_city,
-                  mailing_state: userProfile.mailing_state || userData.mailing_state,
-                  mailing_zip: userProfile.mailing_zip || userData.mailing_zip,
-                  updated_at: new Date().toISOString()
-                };
-                
-                // Update the profile with migrated data
-                const { error: updateError } = await supabase
-                  .from('user_profiles')
-                  .update(migrationData)
-                  .eq('user_id', user.id);
-                
-                if (!updateError) {
-                  console.log('✅ Data migration completed successfully');
-                  // Update the displayed profile with migrated data
-                  combinedProfile = {
-                    ...combinedProfile,
-                    ...migrationData,
-                    phone: migrationData.phone_number || migrationData.phone
-                  };
-                } else {
-                  console.error('❌ Migration error:', updateError);
-                }
-              }
-            } catch (error) {
-              console.error('❌ Migration failed:', error);
-            }
-          }
-        } else if (profileError?.code === 'PGRST116' || (!userProfile && !profileError)) {
-          // If profile doesn't exist (either error PGRST116 or empty result), create one in the database
-          console.log('Creating new user profile...')
-          console.log('Reason:', profileError?.code === 'PGRST116' ? 'PGRST116 error' : 'Empty result set')
-          
-          // First, try to get data from users table for migration
-          let userData = null;
+        } else if (!userProfile) {
+          // No profile exists - create a new one
+          console.log('Creating new user profile for:', user.email)
+
           try {
-            const { data: usersData, error: usersError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', user.id)
-              .single();
-            if (!usersError && usersData) {
-              userData = usersData;
-            }
-          } catch (err) {
-            console.log('No data found in users table for migration');
-          }
-          
-          try {
-            // user_profiles.user_id now references auth.users (Supabase auth table)
-            // No need to create a record in public.users table
             const defaultProfile = {
               user_id: user.id,
               email: user.email,
-              phone_number: userData?.phone || null,
-              // Core Ticketless America fields
-              license_plate: userData?.license_plate || null,
+              phone_number: null,
+              license_plate: null,
               home_address_full: null,
               home_address_ward: null,
               home_address_section: null,
@@ -345,20 +268,8 @@ export default function Dashboard() {
               is_canary: false,
               role: 'user',
               guarantee_opt_in_year: null,
-              // Include users table data in initial profile
-              first_name: userData?.first_name || null,
-              last_name: userData?.last_name || null,
-              vin: userData?.vin || null,
-              vehicle_type: userData?.vehicle_type || null,
-              vehicle_year: userData?.vehicle_year || null,
-              zip_code: userData?.zip_code || null,
-              city_sticker_expiry: userData?.city_sticker_expiry || null,
-              license_plate_expiry: userData?.license_plate_expiry || null,
-              emissions_date: userData?.emissions_date || null,
-              mailing_address: userData?.mailing_address || null,
-              mailing_city: userData?.mailing_city || null,
-              mailing_state: userData?.mailing_state || null,
-              mailing_zip: userData?.mailing_zip || null
+              first_name: null,
+              last_name: null
             }
 
             const { data: newProfiles, error: createError } = await supabase
@@ -374,25 +285,20 @@ export default function Dashboard() {
               console.error('Create error message:', createError.message)
               console.error('Create error details:', createError.details)
 
-              // If profile already exists (409 conflict), try to fetch it
-              if (createError.code === '23505' || createError.message?.includes('duplicate') || createError.message?.includes('already exists')) {
-                console.log('Profile already exists, fetching existing profile...');
-                const { data: existingProfiles, error: fetchError } = await supabase
+              // If duplicate, just use the default profile for UI
+              if (createError.code === '23505') {
+                console.log('Profile already exists (duplicate key), trying to fetch...');
+                const { data: existingProfiles } = await supabase
                   .from('user_profiles')
                   .select('*')
                   .eq('user_id', user.id);
 
                 const existingProfile = existingProfiles && existingProfiles.length > 0 ? existingProfiles[0] : null;
-
-                if (existingProfile && !fetchError) {
-                  console.log('✅ Found existing profile');
-                  combinedProfile = { ...existingProfile, phone: existingProfile.phone_number, has_protection: existingProfile.has_protection || false };
-                } else {
-                  console.error('Failed to fetch existing profile:', fetchError);
-                  combinedProfile = { ...defaultProfile, phone: defaultProfile.phone_number, has_protection: false };
-                }
+                combinedProfile = existingProfile
+                  ? { ...existingProfile, phone: existingProfile.phone_number, has_protection: existingProfile.has_protection || false }
+                  : { ...defaultProfile, phone: defaultProfile.phone_number, has_protection: false };
               } else {
-                // Add has_protection to default profile for UI
+                // Other error - use default for UI
                 combinedProfile = { ...defaultProfile, phone: defaultProfile.phone_number, has_protection: false };
               }
             } else {
