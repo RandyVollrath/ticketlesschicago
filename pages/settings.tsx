@@ -1355,7 +1355,7 @@ export default function Dashboard() {
               Chicago offers the <strong>Clear Path Relief Program</strong>, which can forgive old debt and reduce ticket penalties if you qualify. This program is separate from Ticketless, but we wanted to make sure you know about it.
             </p>
             <a
-              href="https://www.chicago.gov/city/en/depts/fin/supp_info/revenue/clear_path_reliefprogram.html"
+              href="https://www.chicago.gov/city/en/sites/clear-path-relief-pilot-program/home.html"
               target="_blank"
               rel="noopener noreferrer"
               style={{
