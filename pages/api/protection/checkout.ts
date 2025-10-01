@@ -15,12 +15,26 @@ export default async function handler(
 
   const { billingPlan, email, userId, renewals } = req.body;
 
-  if (!email || !billingPlan) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  console.log('Protection checkout request:', {
+    billingPlan,
+    email,
+    userId,
+    hasRenewals: !!renewals
+  });
+
+  if (!email || typeof email !== 'string' || email.trim() === '') {
+    console.error('Missing or invalid email:', email);
+    return res.status(400).json({ error: 'Missing required field: email' });
+  }
+
+  if (!billingPlan) {
+    console.error('Missing billingPlan');
+    return res.status(400).json({ error: 'Missing required field: billingPlan' });
   }
 
   if (billingPlan !== 'monthly' && billingPlan !== 'annual') {
-    return res.status(400).json({ error: 'Invalid billing plan' });
+    console.error('Invalid billing plan:', billingPlan);
+    return res.status(400).json({ error: 'Invalid billing plan. Must be "monthly" or "annual"' });
   }
 
   try {

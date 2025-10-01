@@ -62,6 +62,19 @@ export default function Protection() {
   };
 
   const handleCheckoutClick = async () => {
+    // Validate email
+    const userEmail = user?.email || email;
+    if (!userEmail || userEmail.trim() === '') {
+      setMessage('Please enter your email address');
+      return;
+    }
+
+    // Validate billing plan
+    if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
+      setMessage('Please select a billing plan (monthly or annual)');
+      return;
+    }
+
     // Validate renewal dates
     if (needsCitySticker && !cityStickerDate) {
       setMessage('Please enter your city sticker expiration date');
@@ -75,25 +88,23 @@ export default function Protection() {
     setLoading(true);
     setMessage('');
 
-    console.log('protection_checkout_started', {
+    const checkoutData = {
       billingPlan,
-      needsCitySticker,
-      needsLicensePlate
-    });
+      email: userEmail,
+      userId: user?.id || undefined,
+      renewals: {
+        citySticker: needsCitySticker ? { date: cityStickerDate } : null,
+        licensePlate: needsLicensePlate ? { date: licensePlateDate } : null
+      }
+    };
+
+    console.log('protection_checkout_started', checkoutData);
 
     try {
       const response = await fetch('/api/protection/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          billingPlan,
-          email: user?.email || email,
-          userId: user?.id,
-          renewals: {
-            citySticker: needsCitySticker ? { date: cityStickerDate } : null,
-            licensePlate: needsLicensePlate ? { date: licensePlateDate } : null
-          }
-        })
+        body: JSON.stringify(checkoutData)
       });
 
       const result = await response.json();
@@ -279,7 +290,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              If you get a street cleaning or snow removal ticket despite our alerts, we cover it.
+              If you get a street cleaning, snow removal, city sticker, or license plate renewal ticket despite our alerts, we cover it.
             </p>
           </div>
 
@@ -467,6 +478,38 @@ export default function Protection() {
                   </button>
                 </div>
               </div>
+
+              {/* Email Input for non-logged-in users */}
+              {!user && (
+                <div style={{
+                  marginBottom: '24px'
+                }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Renewal Information */}
               <div style={{
@@ -791,7 +834,7 @@ export default function Protection() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We cover street cleaning and snow removal tickets. If you get one of these tickets despite following our alerts and our <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a>, we'll reimburse you.
+                We cover street cleaning, snow removal, city sticker, and license plate renewal tickets. If you get any of these tickets despite following our alerts and our <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a>, we'll reimburse you.
               </p>
             </div>
 
@@ -881,19 +924,60 @@ export default function Protection() {
                 fontSize: '18px',
                 fontWeight: 'bold',
                 color: '#92400e',
+                marginBottom: '16px',
+                margin: '0 0 16px 0'
+              }}>
+                *Protection Coverage & Guarantee Conditions
+              </h3>
+
+              <h4 style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#92400e',
                 marginBottom: '8px',
                 margin: '0 0 8px 0'
               }}>
-                *Guarantee Conditions for Ticket Coverage
-              </h3>
+                Renewal Filing Service
+              </h4>
               <p style={{
-                fontSize: '16px',
+                fontSize: '15px',
                 color: '#78350f',
                 lineHeight: '1.6',
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                To be eligible for ticket reimbursement, you must:
+                Your upfront renewal payment ($100 city sticker + $155 license plate) covers:
+              </p>
+              <ul style={{
+                fontSize: '15px',
+                color: '#78350f',
+                lineHeight: '1.6',
+                paddingLeft: '24px',
+                marginBottom: '20px',
+                margin: '0 0 20px 0'
+              }}>
+                <li style={{ marginBottom: '8px' }}>We file your city sticker and license plate renewals with the city on your behalf before they expire</li>
+                <li style={{ marginBottom: '8px' }}>You'll receive advance notifications about upcoming renewal deadlines</li>
+                <li>If we fail to file on time and you receive a late renewal ticket, we cover 100% of that ticket (not counted toward your $200 annual limit)</li>
+              </ul>
+
+              <h4 style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#92400e',
+                marginBottom: '8px',
+                margin: '0 0 8px 0'
+              }}>
+                Ticket Reimbursement Eligibility
+              </h4>
+              <p style={{
+                fontSize: '15px',
+                color: '#78350f',
+                lineHeight: '1.6',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                To be eligible for street cleaning/snow removal ticket reimbursement, you must:
               </p>
               <ul style={{
                 fontSize: '15px',
@@ -905,7 +989,7 @@ export default function Protection() {
                 <li style={{ marginBottom: '8px' }}>Respond to our alerts confirming you moved your vehicle (e.g., reply "Moved" to the SMS)</li>
                 <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
                 <li style={{ marginBottom: '8px' }}>Have an active Ticket Protection subscription at the time the ticket was issued</li>
-                <li style={{ marginBottom: '8px' }}>Only street cleaning and snow removal tickets are covered (not towing fees or moving violations)</li>
+                <li style={{ marginBottom: '8px' }}>Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered (not towing fees or moving violations)</li>
                 <li>Maximum reimbursement: 80% of eligible tickets up to $200 per year total coverage</li>
               </ul>
             </div>
