@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import PasskeyManager from '../components/PasskeyManager'
-import { RenewalPaymentModal } from '../components/RenewalPaymentModal'
 import UpgradeCard from '../components/UpgradeCard'
 import ReferralLink from '../components/ReferralLink'
 
@@ -168,16 +167,6 @@ export default function Dashboard() {
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({})
   const [autoSaveTimeouts, setAutoSaveTimeouts] = useState<Record<string, NodeJS.Timeout>>({})
   
-  // Renewal payment modal state
-  const [paymentModal, setPaymentModal] = useState<{
-    isOpen: boolean;
-    renewalType: 'city_sticker' | 'license_plate' | 'emissions' | null;
-    dueDate: string;
-  }>({
-    isOpen: false,
-    renewalType: null,
-    dueDate: ''
-  })
   const router = useRouter()
 
   useEffect(() => {
@@ -567,27 +556,6 @@ export default function Dashboard() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
-  const handlePaymentClick = (renewalType: 'city_sticker' | 'license_plate' | 'emissions', dueDate: string) => {
-    setPaymentModal({
-      isOpen: true,
-      renewalType,
-      dueDate
-    })
-  }
-
-  const handlePaymentClose = () => {
-    setPaymentModal({
-      isOpen: false,
-      renewalType: null,
-      dueDate: ''
-    })
-  }
-
-  const handlePaymentSuccess = () => {
-    // Refresh profile data to reflect any changes
-    // Could also show a success toast here
-    console.log('Payment successful!')
-  }
 
   if (loading) {
     return (
@@ -1016,24 +984,31 @@ export default function Dashboard() {
           </div>
 
           {/* Renewal Dates */}
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '16px', 
-            border: '1px solid #e5e7eb', 
-            padding: '32px' 
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            padding: '32px'
           }}>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
               Renewal Dates
             </h2>
-            
+
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
+              Enter your renewal dates to receive reminder notifications.
+              {!profile.has_protection && (
+                <span> To purchase renewals on your behalf, <a href="/protection" style={{ color: '#0052cc', textDecoration: 'underline' }}>subscribe to Ticket Protection</a>.</span>
+              )}
+            </p>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
               <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
                 }}>
                   City Sticker Expiry
                 </label>
@@ -1046,28 +1021,9 @@ export default function Dashboard() {
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px',
-                    marginBottom: '12px'
+                    fontSize: '14px'
                   }}
                 />
-                {profile.has_protection && (editedProfile.city_sticker_expiry || profile.city_sticker_expiry) && (
-                  <button
-                    onClick={() => handlePaymentClick('city_sticker', editedProfile.city_sticker_expiry || profile.city_sticker_expiry || '')}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Pay for Renewal ($100)
-                  </button>
-                )}
               </div>
 
               <div>
@@ -1089,28 +1045,9 @@ export default function Dashboard() {
                     padding: '12px 16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    fontSize: '14px',
-                    marginBottom: '12px'
+                    fontSize: '14px'
                   }}
                 />
-                {profile.has_protection && (editedProfile.license_plate_expiry || profile.license_plate_expiry) && (
-                  <button
-                    onClick={() => handlePaymentClick('license_plate', editedProfile.license_plate_expiry || profile.license_plate_expiry || '')}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Pay for Renewal ($155)
-                  </button>
-                )}
               </div>
 
               <div>
@@ -1382,72 +1319,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Concierge Service */}
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '16px', 
-            border: '1px solid #e5e7eb', 
-            padding: '32px' 
-          }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
-              Concierge Service Options
-            </h2>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div style={{ 
-                border: '2px solid #0052cc', 
-                borderRadius: '8px', 
-                padding: '16px',
-                backgroundColor: '#f0f8ff'
-              }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={editedProfile.concierge_service ?? profile.concierge_service ?? false}
-                    onChange={(e) => handleInputChange('concierge_service', e.target.checked)}
-                    style={{ marginRight: '12px', marginTop: '2px', accentColor: '#0052cc' }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                      Handle my city sticker renewals automatically
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
-                      We'll use your saved payment method to purchase city stickers before they expire and mail them to you.
-                    </div>
-                  </div>
-                </label>
-              </div>
-
-              {(editedProfile.concierge_service ?? profile.concierge_service) && (
-                <div style={{ marginLeft: '32px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '14px', 
-                    fontWeight: '500', 
-                    color: '#374151', 
-                    marginBottom: '8px' 
-                  }}>
-                    Annual spending limit
-                  </label>
-                  <select
-                    value={editedProfile.spending_limit !== undefined ? editedProfile.spending_limit : (profile?.spending_limit || 500)}
-                    onChange={(e) => handleInputChange('spending_limit', parseInt(e.target.value))}
-                    style={{
-                      padding: '8px 12px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      backgroundColor: 'white'
-                    }}
-                  >
-                    <option value={200}>$200/year (covers most city stickers)</option>
-                    <option value={500}>$500/year (recommended for multiple vehicles)</option>
-                    <option value={1000}>$1000/year (fleet coverage)</option>
-                  </select>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Street Cleaning Settings */}
           <StreetCleaningSettings />
@@ -1532,19 +1403,6 @@ export default function Dashboard() {
               }} />
               Auto-saving changes...
             </div>
-          )}
-
-          {/* Renewal Payment Modal */}
-          {paymentModal.isOpen && (
-            <RenewalPaymentModal
-              isOpen={paymentModal.isOpen}
-              onClose={handlePaymentClose}
-              userId={profile?.user_id || ''}
-              renewalType={paymentModal.renewalType!}
-              licensePlate={profile?.license_plate || 'N/A'}
-              dueDate={paymentModal.dueDate}
-              onSuccess={handlePaymentSuccess}
-            />
           )}
         </div>
       </main>
