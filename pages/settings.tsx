@@ -715,12 +715,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Upgrade Card for Free Users */}
-        {!profile.has_protection && (
-          <div style={{ marginBottom: '32px' }}>
-            <UpgradeCard />
-          </div>
-        )}
+        {/* Protection Status Card */}
+        <div style={{ marginBottom: '32px' }}>
+          <UpgradeCard hasProtection={profile.has_protection || false} />
+        </div>
 
         {message && (
           <div style={{

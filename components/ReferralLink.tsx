@@ -171,7 +171,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             <ul style={{ fontSize: '13px', color: '#78350f', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
               <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
               <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
-              <li>Rewards are applied as Stripe account credits to your subscription</li>
+              <li>Rewards are paid out monthly via PayPal or bank transfer</li>
               <li>If a referred customer cancels, monthly payments will stop</li>
               <li>Program terms may be modified with notice to participants</li>
             </ul>
@@ -295,7 +295,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
               <li>Share your link with friends who might benefit from Ticketless</li>
               <li>You earn <strong>${referralData.earnings.monthly}/month</strong> for each monthly subscriber, as long as they remain subscribed</li>
               <li>You earn <strong>${referralData.earnings.annual} one-time</strong> for annual subscribers</li>
-              <li>Rewards are applied as Stripe account credits to reduce your subscription cost</li>
+              <li>Rewards are paid out monthly via PayPal or bank transfer</li>
               <li>If a referred customer cancels, monthly payments will stop</li>
               <li>Program terms may be modified with notice to participants</li>
             </ul>

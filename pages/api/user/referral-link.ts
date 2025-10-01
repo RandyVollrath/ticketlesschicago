@@ -126,7 +126,7 @@ export default async function handler(
                 <ul style="margin: 0; padding-left: 20px; color: #78350f; line-height: 1.6;">
                   <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
                   <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
-                  <li>Rewards are applied as Stripe account credits to reduce your subscription cost</li>
+                  <li>Rewards are paid out monthly via PayPal or bank transfer</li>
                   <li>If a referred customer cancels, monthly payments will stop</li>
                   <li>Program terms may be modified with notice to participants</li>
                 </ul>
@@ -166,6 +166,12 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Error handling referral link:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request details:', {
+      method: req.method,
+      userId,
+      hasRewardfulKey: !!process.env.REWARDFUL_API_SECRET
+    });
     return res.status(500).json({
       error: 'Failed to process referral link',
       details: error.message
