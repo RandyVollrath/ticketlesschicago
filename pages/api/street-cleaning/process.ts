@@ -303,7 +303,8 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
   
   try {
     // Send email if enabled
-    if (user.email && user.notification_preferences?.email !== false) {
+    if (user.email && user.notify_email !== false) {
+      console.log(`📧 Sending email to ${user.email} for ${type}`);
       await notificationService.sendEmail({
         to: user.email,
         subject: subject,
@@ -322,29 +323,44 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         `,
         text: `${subject}\n\n${message}\n\nYour Address:\n${user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://ticketlessamerica.com/settings`
       });
+      console.log(`✅ Email sent successfully to ${user.email}`);
+    } else {
+      console.log(`⏭️  Skipping email for ${user.email} (notify_email: ${user.notify_email})`);
     }
-    
+
     // Send SMS if user has SMS enabled and phone number
     const phoneNumber = user.phone_number || user.phone;
-    if (phoneNumber && user.notification_preferences?.sms !== false) {
+    if (phoneNumber && user.notify_sms !== false) {
+      console.log(`📱 Sending SMS to ${phoneNumber} for ${type}`);
       await notificationService.sendSMS({
         to: phoneNumber,
         message: message
       });
+      console.log(`✅ SMS sent successfully to ${phoneNumber}`);
+    } else {
+      console.log(`⏭️  Skipping SMS for ${user.email} (notify_sms: ${user.notify_sms}, phone: ${phoneNumber})`);
     }
 
     // Send voice call if enabled (morning reminders only)
     if (user.phone_call_enabled && phoneNumber && type === 'morning_reminder') {
-      // Voice calls only for morning reminders
-      await notificationService.sendVoiceCall({
-        to: phoneNumber,
-        message: message
-      });
+      console.log(`📞 Sending voice call to ${phoneNumber} for ${type}`);
+      try {
+        await notificationService.sendVoiceCall({
+          to: phoneNumber,
+          message: message
+        });
+        console.log(`✅ Voice call sent successfully to ${phoneNumber}`);
+      } catch (voiceError) {
+        console.error(`❌ Voice call failed for ${phoneNumber}:`, voiceError);
+        // Don't fail the whole notification if just voice call fails
+      }
+    } else {
+      console.log(`⏭️  Skipping voice call for ${user.email} (phone_call_enabled: ${user.phone_call_enabled}, phone: ${phoneNumber}, type: ${type})`);
     }
-    
+
     return true;
   } catch (error) {
-    console.error(`Failed to send notification to ${user.email}:`, error);
+    console.error(`❌ Failed to send notification to ${user.email}:`, error);
     return false;
   }
 }
