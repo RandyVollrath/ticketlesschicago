@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
+import { sendClickSendVoiceCall } from '../../../lib/sms-service';
 import { createClient } from '@supabase/supabase-js';
 
 interface ProcessResult {
@@ -345,13 +346,14 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     if (user.phone_call_enabled && phoneNumber && type === 'morning_reminder') {
       console.log(`📞 Sending voice call to ${phoneNumber} for ${type}`);
       try {
-        await notificationService.sendVoiceCall({
-          to: phoneNumber,
-          message: message
-        });
-        console.log(`✅ Voice call sent successfully to ${phoneNumber}`);
+        const voiceResult = await sendClickSendVoiceCall(phoneNumber, message);
+        if (voiceResult.success) {
+          console.log(`✅ Voice call sent successfully to ${phoneNumber}`);
+        } else {
+          console.error(`❌ Voice call failed for ${phoneNumber}:`, voiceResult.error);
+        }
       } catch (voiceError) {
-        console.error(`❌ Voice call failed for ${phoneNumber}:`, voiceError);
+        console.error(`❌ Voice call error for ${phoneNumber}:`, voiceError);
         // Don't fail the whole notification if just voice call fails
       }
     } else {
