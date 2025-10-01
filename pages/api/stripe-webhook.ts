@@ -26,20 +26,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log('🔔 Stripe webhook called at:', new Date().toISOString());
   console.log('Method:', req.method);
   console.log('Headers:', req.headers['stripe-signature'] ? 'Signature present' : 'No signature');
-  
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const buf = await buffer(req);
-  const sig = req.headers['stripe-signature']!;
+  const sig = req.headers['stripe-signature'];
+
+  // If no signature header, log useful debugging info and reject
+  if (!sig) {
+    console.warn('⚠️ Webhook called without Stripe signature header');
+    console.warn('User-Agent:', req.headers['user-agent'] || 'Not provided');
+    console.warn('Origin:', req.headers['origin'] || 'Not provided');
+    console.warn('Referer:', req.headers['referer'] || 'Not provided');
+    console.warn('X-Forwarded-For:', req.headers['x-forwarded-for'] || 'Not provided');
+    console.warn('Body preview:', buf.toString().substring(0, 100));
+
+    // This is likely a health check, bot, or invalid request - not a real Stripe webhook
+    return res.status(400).json({
+      error: 'Missing stripe-signature header',
+      note: 'This endpoint only accepts webhooks from Stripe'
+    });
+  }
 
   let event: Stripe.Event;
 
   try {
     // In production, Vercel env vars are used, not .env.local
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    
+
     if (!webhookSecret) {
       console.error('❌ STRIPE_WEBHOOK_SECRET is not set in environment variables!');
       // Try to handle the event anyway in development
@@ -57,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
       console.log('✅ Webhook signature verified successfully');
     }
-    
+
     console.log('Event type:', event.type);
     console.log('Event ID:', event.id);
   } catch (err: any) {
