@@ -92,10 +92,11 @@ export default async function handler(
       client_reference_id: rewardfulReferral || userId || undefined,
       mode: 'subscription',
       line_items: lineItems,
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/alerts/success?protection=true&existing=${userId ? 'true' : 'false'}`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/alerts/success?protection=true&existing=${userId ? 'true' : 'false'}&email=${encodeURIComponent(email)}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/protection`,
       metadata: {
         userId: userId || '',
+        email: email,
         plan: billingPlan,
         product: 'ticket_protection',
         citySticker: renewals?.citySticker ? renewals.citySticker.date : '',
