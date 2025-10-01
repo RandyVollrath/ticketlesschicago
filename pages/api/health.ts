@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Check Supabase connection
     if (supabaseAdmin) {
-      const { error } = await supabaseAdmin.from('user_profiles').select('id').limit(1);
+      const { error } = await supabaseAdmin.from('user_profiles').select('user_id').limit(1);
       checks.checks.supabase = error ? { status: 'unhealthy', error: error.message } : { status: 'healthy' };
     } else {
       checks.checks.supabase = { status: 'unhealthy', error: 'Supabase admin client not configured' };
