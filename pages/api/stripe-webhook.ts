@@ -166,6 +166,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.log('✅ Created user profile with Protection');
               }
 
+              // Send magic link for new users
+              console.log('📧 Sending magic link to new user:', email);
+              const { error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+                type: 'magiclink',
+                email: email,
+                options: {
+                  redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings`
+                }
+              });
+
+              if (magicLinkError) {
+                console.error('Error generating magic link:', magicLinkError);
+              } else {
+                console.log('✅ Magic link sent to:', email);
+              }
+
               break; // Exit after creating new user
             }
           }
