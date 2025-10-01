@@ -28,7 +28,15 @@ export default async function handler(
       .single();
 
     if (profileError || !profile) {
-      return res.status(404).json({ error: 'User not found' });
+      console.error('User profile not found:', {
+        userId,
+        errorCode: profileError?.code,
+        errorMessage: profileError?.message
+      });
+      return res.status(404).json({
+        error: 'User profile not found. Please complete your profile setup first.',
+        details: profileError?.message
+      });
     }
 
     // Check if user already has an affiliate ID
@@ -54,30 +62,53 @@ export default async function handler(
     // Create new affiliate in Rewardful
     if (req.method === 'POST') {
       if (!profile.email) {
+        console.error('Missing email for user:', userId);
         return res.status(400).json({ error: 'User email is required' });
       }
 
-      const affiliateData = await createRewardfulAffiliate({
+      console.log('Creating affiliate for:', {
+        email: profile.email,
+        first_name: profile.first_name,
+        has_campaign_id: !!process.env.REWARDFUL_CUSTOMER_CAMPAIGN_ID
+      });
+
+      const affiliateParams: any = {
         email: profile.email,
         first_name: profile.first_name || profile.email.split('@')[0],
         last_name: profile.last_name || '',
-        campaign_id: process.env.REWARDFUL_CUSTOMER_CAMPAIGN_ID,
-      });
+      };
+
+      // Only add campaign_id if it's configured
+      if (process.env.REWARDFUL_CUSTOMER_CAMPAIGN_ID) {
+        affiliateParams.campaign_id = process.env.REWARDFUL_CUSTOMER_CAMPAIGN_ID;
+      }
+
+      const affiliateData = await createRewardfulAffiliate(affiliateParams);
 
       if (!affiliateData) {
+        console.error('createRewardfulAffiliate returned null for user:', userId);
         return res.status(500).json({
-          error: 'Failed to create affiliate account'
+          error: 'Failed to create affiliate account. Please check server logs for details.'
         });
       }
 
+      console.log('Affiliate created successfully:', affiliateData.id);
+
       // Save affiliate ID to user profile
-      await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from('user_profiles')
         .update({
           affiliate_id: affiliateData.id,
           affiliate_signup_date: new Date().toISOString()
         })
         .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('Failed to save affiliate_id to database:', updateError);
+        // Continue anyway - affiliate was created in Rewardful
+      } else {
+        console.log('Saved affiliate_id to user profile');
+      }
 
       // Send notification emails
       const referralLink = affiliateData.links[0]?.url || `https://ticketlessamerica.com?via=${affiliateData.token}`;
