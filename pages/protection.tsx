@@ -986,6 +986,7 @@ export default function Protection() {
                 paddingLeft: '24px',
                 margin: 0
               }}>
+                <li style={{ marginBottom: '8px' }}><strong>Maintain a complete and accurate profile</strong> with all vehicle information, renewal dates, contact information, and street cleaning address - the guarantee is void if your profile is incomplete or inaccurate</li>
                 <li style={{ marginBottom: '8px' }}>Respond to our alerts confirming you moved your vehicle (e.g., reply "Moved" to the SMS)</li>
                 <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
                 <li style={{ marginBottom: '8px' }}>Have an active Ticket Protection subscription at the time the ticket was issued</li>
