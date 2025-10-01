@@ -219,15 +219,31 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
       })
     }
 
-    // Log the actual credential ID format
-    const credentialIdBase64 = Buffer.from(credentialID).toString('base64')
-    const credentialIdBase64Url = Buffer.from(credentialID).toString('base64url')
-    
+    // Handle both Uint8Array and base64url string formats
+    // In @simplewebauthn/server v13+, credentialID might be base64url encoded already
+    let credentialIdToStore: string
+
+    if (typeof credentialID === 'string') {
+      // Already a string (likely base64url) - convert to base64 for storage
+      console.log('credentialID is string, converting from base64url to base64')
+      credentialIdToStore = Buffer.from(credentialID, 'base64url').toString('base64')
+    } else if (credentialID instanceof Uint8Array) {
+      // Binary data - convert directly to base64
+      console.log('credentialID is Uint8Array, converting to base64')
+      credentialIdToStore = Buffer.from(credentialID).toString('base64')
+    } else {
+      console.error('Unexpected credentialID type:', typeof credentialID)
+      return res.status(500).json({
+        error: 'Invalid credential ID format',
+        details: 'Credential ID must be Uint8Array or string'
+      })
+    }
+
     console.log('Saving passkey to database:', {
       userId,
+      credentialIdType: typeof credentialID,
       credentialIdLength: credentialID.length,
-      credentialIdBase64: credentialIdBase64.substring(0, 20) + '...',
-      credentialIdBase64Url: credentialIdBase64Url.substring(0, 20) + '...',
+      credentialIdToStore: credentialIdToStore.substring(0, 20) + '...',
       publicKeyLength: credentialPublicKey.length,
       counter
     })
@@ -237,7 +253,7 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
       .from('user_passkeys')
       .insert({
         user_id: userId,
-        credential_id: credentialIdBase64,
+        credential_id: credentialIdToStore,
         public_key: Buffer.from(credentialPublicKey).toString('base64'),
         counter,
         created_at: new Date().toISOString()
