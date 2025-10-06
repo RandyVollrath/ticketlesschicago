@@ -14,7 +14,10 @@ const BRAND = {
   emailFrom: process.env.RESEND_FROM || 'TicketLess America <noreply@ticketlessamerica.com>',
 };
 
-const VALID_OFFSETS = [60, 30, 14, 7, 3, 2, 1];
+// Notification schedule designed to get profile updates BEFORE we process renewals at 14 days
+// We stop at 14 days because that's when we purchase the stickers
+// No point in reminding after we've already processed it!
+const VALID_OFFSETS = [60, 45, 30, 21, 14];
 const PAGE_SIZE = 500;
 const CONCURRENCY = 15;
 

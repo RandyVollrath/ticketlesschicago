@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 import Head from 'next/head';
 
@@ -21,7 +22,12 @@ interface IncomingSMS {
   };
 }
 
+const ADMIN_EMAILS = ['randyvollrath@gmail.com'];
+
 export default function ProfileUpdates() {
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [messages, setMessages] = useState<IncomingSMS[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'unprocessed' | 'all'>('unprocessed');
@@ -35,8 +41,46 @@ export default function ProfileUpdates() {
   });
 
   useEffect(() => {
-    fetchMessages();
-  }, [filter]);
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (user && ADMIN_EMAILS.includes(user.email)) {
+      fetchMessages();
+    }
+  }, [filter, user]);
+
+  async function checkAuth() {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      if (!currentUser) {
+        // Not logged in - redirect to login
+        router.push('/login?redirect=/admin/profile-updates');
+        return;
+      }
+
+      // Check if user is admin
+      if (!ADMIN_EMAILS.includes(currentUser.email || '')) {
+        // Not an admin - show error
+        setUser(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      setUser(currentUser);
+      setAuthLoading(false);
+    } catch (error) {
+      console.error('Auth error:', error);
+      setAuthLoading(false);
+      router.push('/login');
+    }
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push('/login');
+  }
 
   async function fetchMessages() {
     setLoading(true);
@@ -136,6 +180,44 @@ export default function ProfileUpdates() {
     }
   }
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: '#6b7280', fontSize: '18px' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if not admin
+  if (!user || !ADMIN_EMAILS.includes(user.email || '')) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
+        <div style={{ textAlign: 'center', maxWidth: '500px', padding: '48px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: '0 0 8px 0' }}>Access Denied</h1>
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>You do not have permission to access this page.</p>
+          <button
+            onClick={() => router.push('/login')}
+            style={{
+              padding: '12px 24px',
+              background: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
@@ -143,13 +225,35 @@ export default function ProfileUpdates() {
       </Head>
 
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', margin: '0 0 8px 0' }}>
-            📱 Profile Update Requests
-          </h1>
-          <p style={{ color: '#6b7280', margin: 0 }}>
-            SMS replies from users with profile update information
-          </p>
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', margin: '0 0 8px 0' }}>
+              📱 Profile Update Requests
+            </h1>
+            <p style={{ color: '#6b7280', margin: 0 }}>
+              SMS replies from users with profile update information
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ color: '#6b7280', fontSize: '14px' }}>
+              Logged in as: <strong>{user.email}</strong>
+            </span>
+            <button
+              onClick={handleSignOut}
+              style={{
+                padding: '8px 16px',
+                background: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
 
         {/* Filter Tabs */}
