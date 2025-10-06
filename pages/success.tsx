@@ -45,8 +45,55 @@ export default function Success() {
             Your vehicle compliance reminders are now active. We'll notify you before each renewal deadline.
           </p>
 
+          {/* Important Action Required */}
+          <div style={{
+            backgroundColor: '#fee2e2',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '24px',
+            textAlign: 'left',
+            border: '2px solid #fca5a5'
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#991b1b' }}>
+              ⚠️ Action Required: Add Your Renewal Dates
+            </h3>
+            <p style={{
+              margin: '0 0 12px 0',
+              fontSize: '14px',
+              color: '#991b1b',
+              lineHeight: '1.6'
+            }}>
+              To ensure we file your renewals on time, please add your city sticker and license plate expiration dates in your account settings.
+            </p>
+            <p style={{
+              margin: '0 0 12px 0',
+              fontSize: '14px',
+              color: '#991b1b',
+              lineHeight: '1.6',
+              fontStyle: 'italic'
+            }}>
+              💡 <strong>Tip:</strong> Search your email for "city sticker" or "license plate renewal" to find your expiration dates.
+            </p>
+            <a
+              href="/settings"
+              style={{
+                display: 'inline-block',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                fontWeight: '600',
+                fontSize: '14px',
+                marginTop: '8px'
+              }}
+            >
+              Add Dates Now →
+            </a>
+          </div>
+
           {/* Next Steps */}
-          <div style={{ 
+          <div style={{
             backgroundColor: '#fff3cd',
             padding: '20px',
             borderRadius: '8px',
@@ -56,7 +103,7 @@ export default function Success() {
             <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#856404' }}>
               📋 What happens next:
             </h3>
-            <ul style={{ 
+            <ul style={{
               margin: 0,
               paddingLeft: '20px',
               fontSize: '14px',

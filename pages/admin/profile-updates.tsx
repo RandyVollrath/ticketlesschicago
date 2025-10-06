@@ -22,6 +22,17 @@ interface IncomingSMS {
   };
 }
 
+interface UpcomingRenewal {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  license_plate: string;
+  city_sticker_expiry: string | null;
+  license_plate_expiry: string | null;
+  has_protection: boolean;
+}
+
 const ADMIN_EMAILS = ['randyvollrath@gmail.com'];
 
 export default function ProfileUpdates() {
@@ -39,6 +50,8 @@ export default function ProfileUpdates() {
     city_sticker_expiry: '',
     license_plate_expiry: ''
   });
+  const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[]>([]);
+  const [renewalsLoading, setRenewalsLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
@@ -47,6 +60,7 @@ export default function ProfileUpdates() {
   useEffect(() => {
     if (user && ADMIN_EMAILS.includes(user.email)) {
       fetchMessages();
+      fetchUpcomingRenewals();
     }
   }, [filter, user]);
 
@@ -120,6 +134,34 @@ export default function ProfileUpdates() {
       console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchUpcomingRenewals() {
+    setRenewalsLoading(true);
+    try {
+      // Fetch users with upcoming renewals (within next 90 days)
+      const today = new Date();
+      const ninetyDaysFromNow = new Date();
+      ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
+      const ninetyDaysStr = ninetyDaysFromNow.toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, has_protection')
+        .or(`city_sticker_expiry.lte.${ninetyDaysStr},license_plate_expiry.lte.${ninetyDaysStr}`)
+        .order('city_sticker_expiry', { ascending: true, nullsLast: true });
+
+      if (error) throw error;
+
+      // Filter to only include users with at least one expiry date set
+      const filtered = (data || []).filter(u => u.city_sticker_expiry || u.license_plate_expiry);
+
+      setUpcomingRenewals(filtered);
+    } catch (error) {
+      console.error('Error fetching upcoming renewals:', error);
+    } finally {
+      setRenewalsLoading(false);
     }
   }
 
@@ -254,6 +296,84 @@ export default function ProfileUpdates() {
               Sign Out
             </button>
           </div>
+        </div>
+
+        {/* Upcoming Renewals Section */}
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '32px', border: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: '0 0 16px 0' }}>
+            📅 Upcoming Renewals (Next 90 Days)
+          </h2>
+          {renewalsLoading ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
+              Loading renewals...
+            </div>
+          ) : upcomingRenewals.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
+              No upcoming renewals in the next 90 days
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Name</th>
+                    <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Email</th>
+                    <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>License Plate</th>
+                    <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>City Sticker Expiry</th>
+                    <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>License Plate Expiry</th>
+                    <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Protection</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {upcomingRenewals.map((renewal) => {
+                    const cityDaysUntil = renewal.city_sticker_expiry ? Math.floor((new Date(renewal.city_sticker_expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+                    const plateDaysUntil = renewal.license_plate_expiry ? Math.floor((new Date(renewal.license_plate_expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+                    return (
+                      <tr key={renewal.user_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '12px', color: '#111827' }}>
+                          {renewal.first_name} {renewal.last_name}
+                        </td>
+                        <td style={{ padding: '12px', color: '#6b7280', fontSize: '14px' }}>{renewal.email}</td>
+                        <td style={{ padding: '12px', color: '#111827', fontWeight: '600' }}>{renewal.license_plate || '-'}</td>
+                        <td style={{ padding: '12px' }}>
+                          {renewal.city_sticker_expiry ? (
+                            <div>
+                              <div style={{ color: '#111827' }}>{new Date(renewal.city_sticker_expiry).toLocaleDateString()}</div>
+                              <div style={{ fontSize: '12px', color: cityDaysUntil && cityDaysUntil < 30 ? '#dc2626' : '#6b7280' }}>
+                                {cityDaysUntil !== null && `${cityDaysUntil} days`}
+                              </div>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {renewal.license_plate_expiry ? (
+                            <div>
+                              <div style={{ color: '#111827' }}>{new Date(renewal.license_plate_expiry).toLocaleDateString()}</div>
+                              <div style={{ fontSize: '12px', color: plateDaysUntil && plateDaysUntil < 30 ? '#dc2626' : '#6b7280' }}>
+                                {plateDaysUntil !== null && `${plateDaysUntil} days`}
+                              </div>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {renewal.has_protection ? (
+                            <span style={{ background: '#10b981', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
+                              ✓ Active
+                            </span>
+                          ) : (
+                            <span style={{ background: '#6b7280', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
+                              Free
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Filter Tabs */}

@@ -57,13 +57,19 @@ export default async function handler(
     ];
 
     // Add renewal fees as one-time charges
+    // Note: We'll mark these to exclude from Rewardful commissions via invoice_item_price_data metadata
     if (renewals?.citySticker) {
       lineItems.push({
         price_data: {
           currency: 'usd',
           product_data: {
             name: 'City Sticker Renewal',
-            description: `Expires: ${renewals.citySticker.date}`,
+            description: renewals.citySticker.date
+              ? `Expires: ${renewals.citySticker.date}`
+              : 'Expiration date to be added in account settings',
+            metadata: {
+              rewardful: 'false', // Exclude from Rewardful commissions
+            },
           },
           unit_amount: 10000, // $100 in cents
         },
@@ -77,7 +83,12 @@ export default async function handler(
           currency: 'usd',
           product_data: {
             name: 'License Plate Renewal',
-            description: `Expires: ${renewals.licensePlate.date}`,
+            description: renewals.licensePlate.date
+              ? `Expires: ${renewals.licensePlate.date}`
+              : 'Expiration date to be added in account settings',
+            metadata: {
+              rewardful: 'false', // Exclude from Rewardful commissions
+            },
           },
           unit_amount: 15500, // $155 in cents
         },
