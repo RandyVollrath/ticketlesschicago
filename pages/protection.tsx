@@ -135,7 +135,7 @@ export default function Protection() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <Head>
-        <title>Ticket Protection - Ticketless Chicago</title>
+        <title>Ticket Protection - Ticketless America</title>
         <meta name="description" content="Premium done-for-you renewals and ticket coverage" />
       </Head>
 
@@ -177,7 +177,7 @@ export default function Protection() {
             fontWeight: 'bold',
             color: '#1a1a1a'
           }}>
-            Ticketless Chicago
+            Ticketless America
           </div>
         </div>
       </header>
