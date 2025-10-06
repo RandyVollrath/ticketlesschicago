@@ -88,7 +88,8 @@ export default async function handler(
       if (!affiliateData) {
         console.error('createRewardfulAffiliate returned null for user:', userId);
         return res.status(500).json({
-          error: 'Failed to create affiliate account. Please check server logs for details.'
+          error: 'Unable to create referral link at this time. Please try again later or contact support@ticketlessamerica.com for assistance.',
+          details: 'Affiliate account creation failed - this may be a temporary issue with our referral system.'
         });
       }
 
