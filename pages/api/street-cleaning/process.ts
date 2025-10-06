@@ -313,26 +313,29 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
   let message = '';
   let subject = '';
   
+  // Get user's full address for messaging
+  const addressText = user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`;
+
   switch (type) {
     case 'morning_reminder':
       if (daysUntil === 0) {
-        message = `🚗 Street cleaning TODAY in your area (Ward ${user.home_address_ward}, Section ${user.home_address_section})! Move your car by 7 AM to avoid a ticket.`;
+        message = `🚗 Street cleaning TODAY at 9am at ${addressText}. Move your car NOW to avoid a ticket! - Ticketless America`;
         subject = '🚗 Street Cleaning TODAY - Move Your Car!';
       } else if (daysUntil === 1) {
-        message = `🗓️ Street cleaning TOMORROW (${formattedDate}) in your area (Ward ${user.home_address_ward}, Section ${user.home_address_section}). Don't forget to move your car by 7 AM!`;
+        message = `🗓️ Street cleaning TOMORROW (${formattedDate}) at 9am at ${addressText}. Don't forget to move your car! - Ticketless America`;
         subject = '🗓️ Street Cleaning Tomorrow';
       } else {
-        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) in Ward ${user.home_address_ward}, Section ${user.home_address_section}. Remember to move your car by 7 AM!`;
+        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. Remember to move your car! - Ticketless America`;
         subject = `📅 Street Cleaning in ${daysUntil} Days`;
       }
       break;
 
     case 'evening_reminder':
       if (daysUntil === 1) {
-        message = `🌙 Street cleaning TOMORROW morning in your area (Ward ${user.home_address_ward}, Section ${user.home_address_section}). Don't forget to move your car!`;
+        message = `🌙 Street cleaning TOMORROW at 9am at ${addressText}. Don't forget to move your car! - Ticketless America`;
         subject = '🌙 Street Cleaning Tomorrow Morning';
       } else {
-        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) in Ward ${user.home_address_ward}, Section ${user.home_address_section}.`;
+        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. - Ticketless America`;
         subject = `📅 Street Cleaning in ${daysUntil} Days`;
       }
       break;
