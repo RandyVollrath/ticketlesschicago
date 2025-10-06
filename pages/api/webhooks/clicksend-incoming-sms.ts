@@ -38,13 +38,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Form data format: from=...&body=...&message_id=...
 
     const data = req.body;
-    const fromNumber = data.from || data.source;
-    const messageBody = data.body || data.message;
-    const messageId = data.message_id || data.messageId;
+    let fromNumber = data.from || data.source;
+    let messageBody = data.body || data.message;
+    let messageId = data.message_id || data.messageId;
 
     if (!fromNumber || !messageBody) {
       console.error('Missing required fields:', { fromNumber, messageBody });
       return res.status(400).json({ error: 'Missing from or body' });
+    }
+
+    // SECURITY: Sanitize inputs to prevent any malicious content
+    // We only store these as TEXT - Supabase uses parameterized queries so SQL injection is not possible
+    // But we'll validate and truncate to be safe
+    fromNumber = String(fromNumber).substring(0, 20); // Phone numbers are max 15 digits
+    messageBody = String(messageBody).substring(0, 1000); // Reasonable SMS length limit
+    messageId = messageId ? String(messageId).substring(0, 100) : null;
+
+    // Validate phone number format (basic check)
+    if (!/^[\+\d\s\-\(\)]+$/.test(fromNumber)) {
+      console.error('Invalid phone number format:', fromNumber);
+      return res.status(400).json({ error: 'Invalid phone number format' });
     }
 
     console.log(`📨 SMS from ${fromNumber}: "${messageBody}"`);
