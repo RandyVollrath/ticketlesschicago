@@ -16,6 +16,13 @@ import { supabaseAdmin } from '../../../lib/supabase';
  * 6. Enable "Send raw data" if available
  */
 
+// Disable body parsing so we can handle both JSON and form data
+export const config = {
+  api: {
+    bodyParser: true, // Next.js will parse both JSON and form data automatically
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
