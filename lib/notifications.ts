@@ -411,8 +411,8 @@ Questions? Reply to support@ticketlessamerica.com
       : daysUntilDue <= 21
       ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 7 days. Please reply by then if you have: New VIN (new car), new plate number, or new address. - Ticketless America`
       : daysUntilDue <= 30
-      ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 14 days. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Ticketless America`
-      : `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 14 days, so you have time. If anything changed (new VIN, new plate, or address), just reply anytime in the next month. - Ticketless America`;
+      ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Ticketless America`
+      : `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left, so you have time. If anything changed (new VIN, new plate, or address), just reply anytime in the next month. - Ticketless America`;
 
     // Voice content (friendly and informative)
     const plateSpoken = obligation.license_plate.split('').join(' '); // Spell out clearly: "A B C 1 2 3"
