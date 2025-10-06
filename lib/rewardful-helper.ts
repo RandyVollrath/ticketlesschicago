@@ -30,10 +30,25 @@ export async function createRewardfulAffiliate(
   }
 
   try {
+    // Sanitize names to only contain letters, spaces, hyphens, and apostrophes
+    // Rewardful has strict validation on these fields
+    const sanitizeName = (name: string | null | undefined): string => {
+      if (!name || typeof name !== 'string') {
+        return 'User';
+      }
+      // Remove any non-letter characters except spaces, hyphens, apostrophes
+      const cleaned = name.replace(/[^a-zA-Z\s\-']/g, '').trim();
+      // If nothing left, use default
+      return cleaned.length > 0 ? cleaned : 'User';
+    };
+
+    const firstName = sanitizeName(params.first_name || params.email.split('@')[0]);
+    const lastName = sanitizeName(params.last_name);
+
     const body: any = {
       email: params.email,
-      first_name: params.first_name || params.email.split('@')[0],
-      last_name: params.last_name || 'Member', // Rewardful requires non-empty last_name
+      first_name: firstName,
+      last_name: lastName || 'Member', // Rewardful requires non-empty last_name
       state: 'active',
       receive_new_commission_notifications: true,
     };

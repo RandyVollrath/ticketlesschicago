@@ -75,9 +75,19 @@ export default function AuthCallback() {
             }
           }
           
-          // Always redirect authenticated users to settings page
-          console.log('Executing router.push("/settings")')
-          router.push('/settings')
+          // Check for redirect parameter first, then admin users, then default to settings
+          const redirectTo = new URLSearchParams(window.location.search).get('redirect');
+
+          if (redirectTo) {
+            console.log('Redirecting to:', redirectTo);
+            router.push(redirectTo);
+          } else if (user.email === 'randyvollrath@gmail.com') {
+            console.log('Admin user detected, redirecting to admin panel');
+            router.push('/admin/profile-updates');
+          } else {
+            console.log('Executing router.push("/settings")');
+            router.push('/settings');
+          }
           console.log('router.push executed')
         } else {
           // No session, redirect to home
