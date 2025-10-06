@@ -6,6 +6,36 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Normalize phone number to E.164 format (+1XXXXXXXXXX)
+function normalizePhoneNumber(phone: string): string {
+  // Remove all non-digit characters
+  const digitsOnly = phone.replace(/\D/g, '');
+
+  // If it already starts with '1' and has 11 digits, it's correct
+  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+    return `+${digitsOnly}`;
+  }
+
+  // If it has 10 digits, add +1
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  }
+
+  // If it has 11 digits but doesn't start with 1, remove first digit and add +1
+  // (user might have typed 1 twice)
+  if (digitsOnly.length === 11) {
+    return `+1${digitsOnly.slice(1)}`;
+  }
+
+  // If already has +, just return as-is
+  if (phone.startsWith('+')) {
+    return phone;
+  }
+
+  // Default: assume 10 digits, add +1
+  return `+1${digitsOnly}`;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -87,13 +117,16 @@ export default async function handler(
       throw new Error('Failed to get user ID');
     }
 
+    // Normalize phone number
+    const normalizedPhone = normalizePhoneNumber(phone);
+
     // Create users table record first (required for foreign key)
     const { error: usersError } = await supabase
       .from('users')
       .upsert({
         id: userId,
         email,
-        phone: phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`,
+        phone: normalizedPhone,
         first_name: firstName,
         last_name: lastName,
         created_at: new Date().toISOString(),
@@ -116,7 +149,7 @@ export default async function handler(
       .upsert({
         user_id: userId,
         email,
-        phone_number: phone.startsWith('+') ? phone : `+1${phone.replace(/\D/g, '')}`,
+        phone_number: normalizedPhone,
         first_name: firstName,
         last_name: lastName,
         zip_code: zip,
