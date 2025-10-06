@@ -8,6 +8,38 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
 });
 
+// Normalize phone number to E.164 format (+1XXXXXXXXXX)
+function normalizePhoneNumber(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+
+  // Remove all non-digit characters
+  const digitsOnly = phone.replace(/\D/g, '');
+
+  // If it already starts with '1' and has 11 digits, it's correct
+  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+    return `+${digitsOnly}`;
+  }
+
+  // If it has 10 digits, add +1
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  }
+
+  // If it has 11 digits but doesn't start with 1, remove first digit and add +1
+  // (user might have typed 1 twice)
+  if (digitsOnly.length === 11) {
+    return `+1${digitsOnly.slice(1)}`;
+  }
+
+  // If already has +, just return as-is
+  if (phone.startsWith('+')) {
+    return phone;
+  }
+
+  // Default: assume 10 digits, add +1
+  return `+1${digitsOnly}`;
+}
+
 export const config = {
   api: {
     bodyParser: false
@@ -411,7 +443,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .insert([{
                 id: authData.user.id,
                 email: email,
-                phone: formData.phone || null,
+                phone: normalizePhoneNumber(formData.phone),
                 first_name: formData.firstName || null,
                 last_name: formData.lastName || null,
                 notification_preferences: {
@@ -453,8 +485,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const userProfileData = {
               user_id: authData.user.id,
               email: email,
-              phone_number: formData.phone || null,
-              phone: formData.phone || null, // Some fields use 'phone' instead of 'phone_number'
+              phone_number: normalizePhoneNumber(formData.phone),
+              phone: normalizePhoneNumber(formData.phone), // Some fields use 'phone' instead of 'phone_number'
               license_plate: formData.licensePlate || null,
               // Use new firstName/lastName fields from form
               first_name: formData.firstName || null,
@@ -563,7 +595,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             
             // Update user_profiles with form data for existing user
             const userProfileUpdateData = {
-              phone_number: formData.phone || null,
+              phone_number: normalizePhoneNumber(formData.phone),
               license_plate: formData.licensePlate || null,
               // Use new firstName/lastName fields from form
               first_name: formData.firstName || null,
@@ -724,7 +756,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               license_plate_expiry: formData.licensePlateExpiry,
               emissions_due_date: formData.emissionsDate || null,
               email: email,
-              phone: formData.phone,
+              phone: normalizePhoneNumber(formData.phone) || undefined,
               notification_preferences: {
                 email: formData.emailNotifications,
                 sms: formData.smsNotifications,
