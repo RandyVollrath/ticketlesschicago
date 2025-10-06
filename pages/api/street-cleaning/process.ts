@@ -174,12 +174,37 @@ async function processStreetCleaningReminders(type: string) {
 
         let cleaningDate;
         let daysUntil = 0;
-        
-        // Canary users always get notifications (simulate today's cleaning)
+
+        // Canary users always get notifications (simulate next weekday cleaning)
         if (user.is_canary) {
-          cleaningDate = today;
-          daysUntil = type === 'morning_reminder' ? 0 : type === 'evening_reminder' ? 1 : 0;
-          console.log(`🐦 Canary user ${user.email}: simulating cleaning for ${type}`);
+          // Find next Monday-Friday from today
+          const dayOfWeek = today.getDay(); // 0=Sunday, 6=Saturday
+          let daysToAdd = 0;
+
+          if (dayOfWeek === 0) { // Sunday
+            daysToAdd = 1; // Next Monday
+          } else if (dayOfWeek === 6) { // Saturday
+            daysToAdd = 2; // Next Monday
+          } else {
+            // Monday-Friday: use today for morning, tomorrow for evening
+            daysToAdd = 0;
+          }
+
+          cleaningDate = new Date(today);
+          cleaningDate.setDate(today.getDate() + daysToAdd);
+
+          // Calculate daysUntil based on notification type
+          if (type === 'morning_reminder') {
+            daysUntil = daysToAdd; // 0 for weekday, 1-2 for weekend
+          } else if (type === 'evening_reminder') {
+            // Evening reminder is for next day, so add 1
+            cleaningDate.setDate(cleaningDate.getDate() + 1);
+            daysUntil = daysToAdd + 1;
+          } else {
+            daysUntil = daysToAdd;
+          }
+
+          console.log(`🐦 Canary user ${user.email}: simulating cleaning on ${cleaningDate.toDateString()} (${daysUntil} days) for ${type}`);
         } else {
           // Regular users: Get next cleaning date for user's address
           // First try local database, then MSC database
