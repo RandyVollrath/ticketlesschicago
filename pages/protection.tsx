@@ -75,15 +75,7 @@ export default function Protection() {
       return;
     }
 
-    // Validate renewal dates
-    if (needsCitySticker && !cityStickerDate) {
-      setMessage('Please enter your city sticker expiration date');
-      return;
-    }
-    if (needsLicensePlate && !licensePlateDate) {
-      setMessage('Please enter your license plate expiration date');
-      return;
-    }
+    // Renewal dates are now optional - we'll remind users to add them after signup
 
     setLoading(true);
     setMessage('');
@@ -584,13 +576,13 @@ export default function Protection() {
                         color: '#374151',
                         marginBottom: '6px'
                       }}>
-                        Current expiration date
+                        Current expiration date (optional - can add later)
                       </label>
                       <input
                         type="date"
                         value={cityStickerDate}
                         onChange={(e) => setCityStickerDate(e.target.value)}
-                        required={needsCitySticker}
+                        placeholder="Add later in settings"
                         style={{
                           width: '100%',
                           padding: '8px 12px',
@@ -646,13 +638,13 @@ export default function Protection() {
                         color: '#374151',
                         marginBottom: '6px'
                       }}>
-                        Current expiration date
+                        Current expiration date (optional - can add later)
                       </label>
                       <input
                         type="date"
                         value={licensePlateDate}
                         onChange={(e) => setLicensePlateDate(e.target.value)}
-                        required={needsLicensePlate}
+                        placeholder="Add later in settings"
                         style={{
                           width: '100%',
                           padding: '8px 12px',
