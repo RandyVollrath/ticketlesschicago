@@ -403,13 +403,15 @@ Ticketless America Team
 Questions? Reply to support@ticketlessamerica.com
     `;
 
-    // SMS content (helpful, under 160 chars)
+    // SMS content - focused on profile verification for renewal service
     const shortUrl = 'ticketlessamerica.com';
     const smsMessage = daysUntilDue === 0
-      ? `Ticketless: ${renewalName} due today for ${obligation.license_plate}. Renew: ${shortUrl}`
+      ? `Ticketless: ${renewalName} expires TODAY! We'll handle renewal. Reply if license plate, VIN, or address changed. - Ticketless America`
       : daysUntilDue === 1
-      ? `Ticketless: ${renewalName} due tomorrow for ${obligation.license_plate}. Renew: ${shortUrl}`
-      : `Ticketless reminder: ${renewalName} due in ${daysUntilDue} days for ${obligation.license_plate}. Details: ${shortUrl}`;
+      ? `Ticketless: ${renewalName} expires TOMORROW for ${obligation.license_plate}. We'll handle renewal. Reply if anything changed (new plate/VIN/address). - Ticketless America`
+      : daysUntilDue <= 7
+      ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for ${obligation.license_plate}. We'll purchase it for you. Reply if new license plate, VIN, or address. - Ticketless America`
+      : `Ticketless: ${renewalName} coming up in ${daysUntilDue} days for ${obligation.license_plate}. Has anything changed? (license plate, VIN, address). Reply to update. - Ticketless America`;
 
     // Voice content (friendly and informative)
     const plateSpoken = obligation.license_plate.split('').join(' '); // Spell out clearly: "A B C 1 2 3"
