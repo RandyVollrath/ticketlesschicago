@@ -112,7 +112,7 @@ export default function AlertsSignup() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <Head>
-        <title>Get Free Alerts - Ticketless Chicago</title>
+        <title>Get Free Alerts - Ticketless America</title>
         <meta name="description" content="Sign up for free alerts for street cleaning, snow removal, city stickers, and license plates" />
       </Head>
 
@@ -154,7 +154,7 @@ export default function AlertsSignup() {
             fontWeight: 'bold',
             color: '#1a1a1a'
           }}>
-            Ticketless Chicago
+            Ticketless America
           </div>
         </div>
       </header>

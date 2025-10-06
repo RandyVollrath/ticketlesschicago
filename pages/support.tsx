@@ -10,8 +10,8 @@ export default function Support() {
       title: 'General Questions',
       questions: [
         {
-          q: 'What is Ticketless Chicago?',
-          a: 'Ticketless Chicago is a protection plan that helps Chicago drivers avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) through alerts and provides reimbursement if tickets are still received.'
+          q: 'What is Ticketless America?',
+          a: 'Ticketless America is a protection plan that helps Chicago drivers avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) through alerts and provides reimbursement if tickets are still received.'
         },
         {
           q: 'Is this insurance?',
@@ -129,7 +129,7 @@ export default function Support() {
             fontSize: '20px', 
             color: '#6b7280' 
           }}>
-            Get help with your Ticketless Chicago protection plan
+            Get help with your Ticketless America protection plan
           </p>
         </div>
 

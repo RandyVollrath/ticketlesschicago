@@ -44,7 +44,7 @@ export default function Home() {
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#fff' }}>
       <Head>
-        <title>Ticketless Chicago - Free Alerts for Street Cleaning & Renewals</title>
+        <title>Ticketless America - Free Alerts for Street Cleaning & Renewals</title>
         <meta name="description" content="Never get blindsided by a ticket again. Free alerts for street cleaning, snow removal, city stickers, and license plates." />
       </Head>
 

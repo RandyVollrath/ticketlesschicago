@@ -150,7 +150,7 @@ export default function ManualAlerts() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       <Head>
-        <title>Manual Alerts - Admin - Ticketless Chicago</title>
+        <title>Manual Alerts - Admin - Ticketless America</title>
       </Head>
 
       {/* Header */}

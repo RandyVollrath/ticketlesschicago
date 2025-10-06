@@ -61,7 +61,7 @@ export default function HowItWorks() {
               marginBottom: '24px',
               lineHeight: '1.6'
             }}>
-              Ticketless Chicago offers comprehensive protection against compliance tickets and handles your vehicle registration renewals. 
+              Ticketless America offers comprehensive protection against compliance tickets and handles your vehicle registration renewals. 
               We reimburse 80% of eligible tickets up to $200/year and send you alerts to help avoid tickets in the first place.
             </p>
             <div style={{
@@ -232,7 +232,7 @@ export default function HowItWorks() {
                   marginBottom: '8px'
                 }}>
                   <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Opt-in to Ticketless Chicago fulfillment service</span>
+                  <span style={{ color: '#6b7280' }}>Opt-in to Ticketless America fulfillment service</span>
                 </li>
                 <li style={{ 
                   display: 'flex', 

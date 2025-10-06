@@ -45,7 +45,7 @@ export default function AlertsSuccess() {
       padding: '24px'
     }}>
       <Head>
-        <title>You're All Set! - Ticketless Chicago</title>
+        <title>You're All Set! - Ticketless America</title>
         <meta name="description" content="Your free alerts are now active" />
       </Head>
 
