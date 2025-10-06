@@ -407,12 +407,12 @@ Questions? Reply to support@ticketlessamerica.com
     // After 14 days we stop sending because we've already purchased the sticker
     const shortUrl = 'ticketlessamerica.com';
     const smsMessage = daysUntilDue === 14
-      ? `Ticketless: ${renewalName} expires in 2 weeks for ${obligation.license_plate}. We'll purchase it soon. Reply ASAP if license plate, VIN, or address changed! - Ticketless America`
+      ? `Ticketless: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We'll purchase it soon. Reply ASAP if you got a new car (VIN), new license plate, or moved (address)! - Ticketless America`
       : daysUntilDue <= 21
-      ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for ${obligation.license_plate}. We'll purchase it for you. Reply if license plate, VIN, or address changed. - Ticketless America`
+      ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it for you. Reply if you got a new car (VIN), new plate, or moved. - Ticketless America`
       : daysUntilDue <= 30
-      ? `Ticketless: ${renewalName} coming up in ${daysUntilDue} days for ${obligation.license_plate}. We'll handle renewal. Reply if anything changed (plate, VIN, address). - Ticketless America`
-      : `Ticketless: ${renewalName} renews in ${daysUntilDue} days for ${obligation.license_plate}. Has your info changed? (license plate, VIN, address). Reply to update. - Ticketless America`;
+      ? `Ticketless: ${renewalName} coming up in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll handle renewal. Reply if you got a new car (VIN), new plate, or moved (address). - Ticketless America`
+      : `Ticketless: ${renewalName} renews in ${daysUntilDue} days for plate ${obligation.license_plate}. Did you get a new car (VIN), new license plate, or move to a new address? Reply to update. - Ticketless America`;
 
     // Voice content (friendly and informative)
     const plateSpoken = obligation.license_plate.split('').join(' '); // Spell out clearly: "A B C 1 2 3"
@@ -454,7 +454,8 @@ Questions? Reply to support@ticketlessamerica.com
 
     try {
       // Check all standard reminder intervals
-      const reminderDays = [60, 30, 14, 7, 3, 1, 0];
+      // Updated schedule: Stop at 14 days (when we process renewals)
+      const reminderDays = [60, 45, 30, 21, 14];
       
       for (const days of reminderDays) {
         console.log(`Checking for reminders ${days} days ahead...`);
@@ -483,7 +484,7 @@ Questions? Reply to support@ticketlessamerica.com
           
           try {
             const preferences = obligation.notification_preferences || {};
-            const reminderDaysAllowed = preferences.reminder_days || [60, 30, 14, 7, 3, 1, 0];
+            const reminderDaysAllowed = preferences.reminder_days || [60, 45, 30, 21, 14];
             
             // Check if this user wants reminders at this interval
             if (!reminderDaysAllowed.includes(days)) {
