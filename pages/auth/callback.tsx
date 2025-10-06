@@ -77,11 +77,12 @@ export default function AuthCallback() {
           
           // Check for redirect parameter first, then admin users, then default to settings
           const redirectTo = new URLSearchParams(window.location.search).get('redirect');
+          const adminEmails = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
 
           if (redirectTo) {
             console.log('Redirecting to:', redirectTo);
             router.push(redirectTo);
-          } else if (user.email === 'randyvollrath@gmail.com') {
+          } else if (adminEmails.includes(user.email || '')) {
             console.log('Admin user detected, redirecting to admin panel');
             router.push('/admin/profile-updates');
           } else {
