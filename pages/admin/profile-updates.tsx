@@ -33,7 +33,7 @@ interface UpcomingRenewal {
   has_protection: boolean;
 }
 
-const ADMIN_EMAILS = ['randyvollrath@gmail.com'];
+const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
 
 export default function ProfileUpdates() {
   const router = useRouter();
