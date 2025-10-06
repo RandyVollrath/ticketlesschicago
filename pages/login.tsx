@@ -69,42 +69,38 @@ export default function Login() {
     setAuthMethod('magic-link')
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          shouldCreateUser: true,
-          data: {
-            source: 'ticketless-america-login'
-          }
-        }
+      // Use our custom API endpoint that sends via Resend for faster delivery
+      const response = await fetch('/api/auth/send-magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
       })
 
-      if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send magic link')
+      }
 
       setMessage({
         type: 'success',
-        text: 'Check your email for the magic link! It may take a few minutes to arrive.'
+        text: data.message || 'Check your email for the magic link! It should arrive within a few seconds.'
       })
     } catch (error: any) {
       console.error('Magic link error details:', {
         message: error.message,
-        status: error.status,
-        code: error.code,
         fullError: error
       })
-      
+
       let errorMessage = error.message || 'An error occurred sending the magic link'
-      
-      // Handle common Supabase email errors
-      if (error.message?.includes('Error sending confirmation email')) {
-        errorMessage = `Email service issue detected. Try the password option below instead.`
-      } else if (error.message?.includes('rate limit')) {
+
+      // Handle common errors
+      if (error.message?.includes('rate limit')) {
         errorMessage = 'Too many attempts. Please wait a few minutes and try again.'
-      } else if (error.message?.includes('Email link is invalid')) {
-        errorMessage = 'Email configuration issue. Try password sign-in below.'
       }
-      
+
       setMessage({
         type: 'error',
         text: errorMessage
@@ -421,9 +417,9 @@ export default function Login() {
               </button>
 
               {/* OR Divider */}
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
                 margin: '20px 0',
                 gap: '12px'
               }}>
@@ -432,142 +428,66 @@ export default function Login() {
                 <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
               </div>
 
-              {/* Standard Email/Password Form */}
-              <form onSubmit={handlePasswordAuth}>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '14px', 
-                    fontWeight: '500', 
-                    color: '#374151',
-                    marginBottom: '6px'
-                  }}>
-                    Email address
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    disabled={loading}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      backgroundColor: loading ? '#f9fafb' : 'white',
-                      cursor: loading ? 'not-allowed' : 'text'
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '14px', 
-                    fontWeight: '500', 
-                    color: '#374151',
-                    marginBottom: '6px'
-                  }}>
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password (min 6 characters)"
-                    disabled={loading}
-                    minLength={6}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      backgroundColor: loading ? '#f9fafb' : 'white',
-                      cursor: loading ? 'not-allowed' : 'text'
-                    }}
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  disabled={loading || !email || !password || password.length < 6}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: loading && authMethod === 'password' ? '#9ca3af' : '#3b82f6',
-                    color: 'white',
-                    fontWeight: '500',
-                    cursor: loading || !email || !password || password.length < 6 ? 'not-allowed' : 'pointer',
-                    fontSize: '16px',
-                    opacity: !email || !password || password.length < 6 ? 0.5 : 1,
-                    marginBottom: '12px'
-                  }}
-                >
-                  {loading && authMethod === 'password' ? 'Signing in...' : 'Sign In'}
-                </button>
-                
-                <p style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  textAlign: 'center',
-                  lineHeight: '1.4'
-                }}>
-                  New users: Enter your email and create a password (min 6 characters).<br/>
-                  You'll receive a verification email before you can sign in.
-                </p>
-              </form>
-
-              {/* Magic Link Alternative */}
-              <div style={{
-                marginTop: '20px',
-                paddingTop: '20px',
-                borderTop: '1px solid #e5e7eb'
-              }}>
-                <p style={{
-                  fontSize: '13px',
+              {/* Email-only form for Magic Link */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
                   color: '#374151',
-                  marginBottom: '12px',
-                  textAlign: 'center',
-                  fontWeight: '500'
+                  marginBottom: '6px'
                 }}>
-                  Prefer passwordless sign-in?
-                </p>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleMagicLink(e);
-                  }}
-                  disabled={loading || !email}
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  disabled={loading}
                   style={{
                     width: '100%',
-                    padding: '10px 16px',
+                    padding: '10px 12px',
                     border: '1px solid #d1d5db',
                     borderRadius: '8px',
-                    backgroundColor: loading && authMethod === 'magic-link' ? '#f3f4f6' : 'white',
-                    fontWeight: '500',
-                    color: '#374151',
-                    cursor: loading || !email ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    opacity: !email ? 0.5 : 1,
-                    marginBottom: '6px'
+                    fontSize: '16px',
+                    backgroundColor: loading ? '#f9fafb' : 'white',
+                    cursor: loading ? 'not-allowed' : 'text'
                   }}
-                >
-                  {loading && authMethod === 'magic-link' ? 'Sending link...' : '📧 Email me a magic link'}
-                </button>
-                <p style={{
-                  fontSize: '11px',
-                  color: '#6b7280',
-                  textAlign: 'center',
-                  lineHeight: '1.4'
-                }}>
-                  We'll email you a link to sign in instantly - no password needed
-                </p>
+                />
               </div>
+
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleMagicLink(e);
+                }}
+                disabled={loading || !email}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: loading && authMethod === 'magic-link' ? '#9ca3af' : '#3b82f6',
+                  color: 'white',
+                  fontWeight: '500',
+                  cursor: loading || !email ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  opacity: !email ? 0.5 : 1,
+                  marginBottom: '8px'
+                }}
+              >
+                {loading && authMethod === 'magic-link' ? 'Sending link...' : 'Send Magic Link'}
+              </button>
+
+              <p style={{
+                fontSize: '12px',
+                color: '#6b7280',
+                textAlign: 'center',
+                lineHeight: '1.4'
+              }}>
+                We'll email you a secure link to sign in - no password needed
+              </p>
 
               {/* Advanced Options */}
               {passkeysSupported && (
