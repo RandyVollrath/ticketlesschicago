@@ -120,7 +120,7 @@ export default function AlertsSignup() {
       <header style={{
         backgroundColor: 'white',
         borderBottom: '1px solid #e5e7eb',
-        padding: '16px 24px'
+        padding: '16px'
       }}>
         <div style={{
           maxWidth: '1200px',
@@ -163,7 +163,7 @@ export default function AlertsSignup() {
       <main style={{
         maxWidth: '600px',
         margin: '0 auto',
-        padding: '60px 24px'
+        padding: '60px 16px'
       }}>
         <div style={{
           backgroundColor: 'white',

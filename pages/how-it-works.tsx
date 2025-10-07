@@ -10,10 +10,10 @@ export default function HowItWorks() {
       background: 'linear-gradient(to bottom, #f9fafb, white)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      <div style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: '48px 40px' 
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '48px 16px'
       }}>
         <button
           onClick={() => router.push('/')}
