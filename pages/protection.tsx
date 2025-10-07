@@ -141,44 +141,56 @@ export default function Protection() {
 
       {/* Header */}
       <header style={{
-        backgroundColor: 'white',
-        borderBottom: '1px solid #e5e7eb',
-        padding: '16px 24px'
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '70px',
+        backgroundColor: 'rgba(255,255,255,0.98)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(0,0,0,0.05)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 16px'
       }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <button
-            onClick={() => router.push('/')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#0052cc',
-              fontWeight: '500',
-              cursor: 'pointer',
-              fontSize: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <svg style={{ width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Home
-          </button>
-
-          <div style={{
+        <div
+          onClick={() => router.push('/')}
+          style={{
             fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#1a1a1a'
-          }}>
-            Ticketless America
-          </div>
+            fontWeight: '700',
+            color: '#000',
+            cursor: 'pointer',
+            letterSpacing: '-0.5px',
+            flexShrink: 0,
+            marginRight: '8px'
+          }}
+        >
+          Ticketless
+        </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
+          <a
+            href="/alerts/signup"
+            onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
+            Free Alerts
+          </a>
+          <a
+            href="/how-it-works"
+            onClick={(e) => { e.preventDefault(); router.push('/how-it-works'); }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
+            How it Works
+          </a>
+          <a
+            href="/protection"
+            onClick={(e) => { e.preventDefault(); router.push('/protection'); }}
+            style={{ color: '#0052cc', textDecoration: 'none', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
+            Protection
+          </a>
         </div>
       </header>
 
@@ -186,7 +198,7 @@ export default function Protection() {
       <main style={{
         maxWidth: '1000px',
         margin: '0 auto',
-        padding: '60px 24px'
+        padding: '100px 16px 60px 16px'
       }}>
         {/* Hero Section */}
         <div style={{

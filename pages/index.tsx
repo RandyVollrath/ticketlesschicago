@@ -79,10 +79,18 @@ export default function Home() {
           Ticketless
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
-          <a href="/alerts/signup" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+          <a
+            href="/alerts/signup"
+            onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
             Free Alerts
           </a>
-          <a href="/protection" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+          <a
+            href="/protection"
+            onClick={(e) => { e.preventDefault(); router.push('/protection'); }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
             Protection
           </a>
           <a href="#faq" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
@@ -140,7 +148,7 @@ export default function Home() {
         <div style={{
           maxWidth: '900px',
           margin: '0 auto',
-          padding: '0 40px'
+          padding: '0 16px'
         }}>
           <h1 style={{
             fontSize: '72px',
@@ -228,7 +236,7 @@ export default function Home() {
 
       {/* Features Grid */}
       <div style={{
-        padding: '80px 40px',
+        padding: '80px 16px',
         backgroundColor: 'white'
       }}>
         <div style={{
@@ -344,7 +352,7 @@ export default function Home() {
 
       {/* How It Works */}
       <div style={{
-        padding: '100px 40px',
+        padding: '100px 16px',
         backgroundColor: '#f8f9fa'
       }}>
         <div style={{
@@ -487,7 +495,7 @@ export default function Home() {
 
       {/* Social Proof / Stats (optional) */}
       <div style={{
-        padding: '60px 40px',
+        padding: '60px 16px',
         backgroundColor: 'white',
         borderTop: '1px solid #e5e7eb',
         borderBottom: '1px solid #e5e7eb'
@@ -556,7 +564,7 @@ export default function Home() {
 
       {/* FAQ */}
       <div id="faq" style={{
-        padding: '100px 40px',
+        padding: '100px 16px',
         backgroundColor: '#f8f9fa'
       }}>
         <div style={{
@@ -637,7 +645,7 @@ export default function Home() {
 
       {/* Final CTA */}
       <div style={{
-        padding: '100px 40px',
+        padding: '100px 16px',
         backgroundColor: '#0052cc',
         color: 'white',
         textAlign: 'center'
@@ -662,7 +670,7 @@ export default function Home() {
               color: '#0052cc',
               border: 'none',
               borderRadius: '12px',
-              padding: '18px 48px',
+              padding: '18px 32px',
               fontSize: '18px',
               fontWeight: '700',
               cursor: 'pointer',
@@ -676,7 +684,7 @@ export default function Home() {
 
       {/* Footer */}
       <div style={{
-        padding: '60px 40px',
+        padding: '60px 16px',
         backgroundColor: '#f8f9fa',
         borderTop: '1px solid #e5e7eb'
       }}>
