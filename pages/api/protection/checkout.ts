@@ -56,42 +56,17 @@ export default async function handler(
       },
     ];
 
-    // Add renewal fees as one-time charges
-    // Note: We'll mark these to exclude from Rewardful commissions via invoice_item_price_data metadata
-    if (renewals?.citySticker) {
+    // Add renewal fees using permanent Stripe products (excluded from Rewardful via product metadata)
+    if (renewals?.citySticker && process.env.STRIPE_CITY_STICKER_PRICE_ID) {
       lineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'City Sticker Renewal',
-            description: renewals.citySticker.date
-              ? `Expires: ${renewals.citySticker.date}`
-              : 'Expiration date to be added in account settings',
-            metadata: {
-              rewardful: 'false', // Exclude from Rewardful commissions
-            },
-          },
-          unit_amount: 10000, // $100 in cents
-        },
+        price: process.env.STRIPE_CITY_STICKER_PRICE_ID,
         quantity: 1,
       });
     }
 
-    if (renewals?.licensePlate) {
+    if (renewals?.licensePlate && process.env.STRIPE_LICENSE_PLATE_PRICE_ID) {
       lineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'License Plate Renewal',
-            description: renewals.licensePlate.date
-              ? `Expires: ${renewals.licensePlate.date}`
-              : 'Expiration date to be added in account settings',
-            metadata: {
-              rewardful: 'false', // Exclude from Rewardful commissions
-            },
-          },
-          unit_amount: 15500, // $155 in cents
-        },
+        price: process.env.STRIPE_LICENSE_PLATE_PRICE_ID,
         quantity: 1,
       });
     }
