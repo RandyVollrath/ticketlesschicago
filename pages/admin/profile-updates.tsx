@@ -38,11 +38,15 @@ interface UpcomingRenewal {
 
 interface AffiliateSale {
   id: string;
+  stripe_session_id: string;
   customer_email: string;
   plan: string;
   total_amount: number;
   expected_commission: number;
   referral_id: string;
+  commission_adjusted: boolean;
+  adjusted_by: string | null;
+  adjusted_at: string | null;
   created_at: string;
 }
 
@@ -229,6 +233,33 @@ export default function ProfileUpdates() {
       setAffiliateSales([]);
     } finally {
       setCommissionsLoading(false);
+    }
+  }
+
+  async function toggleCommissionAdjusted(id: string, currentStatus: boolean) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const response = await fetch('/api/admin/affiliate-sales', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id,
+          commission_adjusted: !currentStatus
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update commission status');
+
+      // Refresh the list
+      fetchAffiliateSales();
+    } catch (error) {
+      console.error('Error updating commission status:', error);
+      alert('Failed to update commission status');
     }
   }
 
@@ -624,25 +655,29 @@ export default function ProfileUpdates() {
             </div>
           ) : (
             <>
-              <div style={{
-                backgroundColor: '#fef3c7',
-                border: '1px solid #fbbf24',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '16px'
-              }}>
-                <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400e' }}>
-                  ⚠️ Manual Commission Adjustment Required
-                </p>
-                <p style={{ margin: 0, fontSize: '14px', color: '#78350f' }}>
-                  Rewardful calculates commission on total charge (including renewal fees). You must manually adjust each commission to only include the subscription amount.
-                </p>
-              </div>
+              {/* Count of unadjusted commissions */}
+              {affiliateSales.filter(s => !s.commission_adjusted).length > 0 && (
+                <div style={{
+                  backgroundColor: '#fee2e2',
+                  border: '2px solid #dc2626',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '16px'
+                }}>
+                  <p style={{ margin: '0 0 8px 0', fontWeight: '700', color: '#991b1b', fontSize: '16px' }}>
+                    🚨 {affiliateSales.filter(s => !s.commission_adjusted).length} Commission{affiliateSales.filter(s => !s.commission_adjusted).length !== 1 ? 's' : ''} Need{affiliateSales.filter(s => !s.commission_adjusted).length === 1 ? 's' : ''} Manual Adjustment
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#7f1d1d' }}>
+                    Rewardful calculates commission on total charge (including renewal fees). You MUST manually adjust each commission in Rewardful to only include the subscription amount, then check the box here.
+                  </p>
+                </div>
+              )}
 
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px', width: '50px' }}>Adjusted?</th>
                       <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Date</th>
                       <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Customer</th>
                       <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Plan</th>
@@ -653,7 +688,30 @@ export default function ProfileUpdates() {
                   </thead>
                   <tbody>
                     {affiliateSales.map((sale) => (
-                      <tr key={sale.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <tr
+                        key={sale.id}
+                        style={{
+                          borderBottom: '1px solid #f3f4f6',
+                          backgroundColor: sale.commission_adjusted ? '#f0fdf4' : '#fef2f2'
+                        }}
+                      >
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={sale.commission_adjusted}
+                            onChange={() => toggleCommissionAdjusted(sale.id, sale.commission_adjusted)}
+                            style={{
+                              cursor: 'pointer',
+                              width: '20px',
+                              height: '20px',
+                              accentColor: sale.commission_adjusted ? '#10b981' : '#dc2626'
+                            }}
+                            title={sale.commission_adjusted
+                              ? `Adjusted by ${sale.adjusted_by} on ${new Date(sale.adjusted_at!).toLocaleDateString()}`
+                              : 'Click to mark as adjusted'
+                            }
+                          />
+                        </td>
                         <td style={{ padding: '12px', color: '#6b7280', fontSize: '14px' }}>
                           {new Date(sale.created_at).toLocaleDateString()}
                         </td>
@@ -662,8 +720,18 @@ export default function ProfileUpdates() {
                         <td style={{ padding: '12px', color: '#111827', fontWeight: '600' }}>
                           ${sale.total_amount.toFixed(2)}
                         </td>
-                        <td style={{ padding: '12px', color: '#059669', fontWeight: '600' }}>
-                          ${sale.expected_commission.toFixed(2)}/mo
+                        <td style={{ padding: '12px', fontWeight: '600' }}>
+                          <span style={{
+                            color: sale.commission_adjusted ? '#059669' : '#dc2626',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            ${sale.expected_commission.toFixed(2)}/mo
+                            {!sale.commission_adjusted && (
+                              <span style={{ fontSize: '12px', color: '#dc2626' }}>⚠️</span>
+                            )}
+                          </span>
                         </td>
                         <td style={{ padding: '12px', color: '#6b7280', fontSize: '12px', fontFamily: 'monospace' }}>
                           {sale.referral_id}

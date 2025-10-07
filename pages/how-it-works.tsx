@@ -205,7 +205,7 @@ export default function HowItWorks() {
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              We handle your city sticker and license plate renewal registrations for you. Get reminders before deadlines and if you still receive a ticket, we'll cover it.
+              We handle your city sticker and license plate renewal registrations for you. Get reminders before deadlines and if you still receive a ticket, we'll reimburse 80% of it.
             </p>
             
             <div style={{
