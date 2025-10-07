@@ -497,7 +497,8 @@ export default function Home() {
             color: '#666',
             marginBottom: '80px',
             margin: '0 auto 80px auto',
-            maxWidth: '600px'
+            maxWidth: '600px',
+            textAlign: 'center'
           }}>
             Get started in three simple steps
           </p>
