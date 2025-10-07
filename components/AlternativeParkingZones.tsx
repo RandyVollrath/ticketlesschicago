@@ -94,7 +94,7 @@ const AlternativeParkingZones: React.FC<AlternativeParkingZonesProps> = ({ alter
                 }}>
                   {isToday(zone.next_cleaning_date)
                     ? '🚨 Street cleaning TODAY (9am-2pm) - Don\'t park here!'
-                    : `Next cleaning: ${new Date(zone.next_cleaning_date).toLocaleDateString()}`
+                    : `Next cleaning: ${new Date(zone.next_cleaning_date + 'T12:00:00').toLocaleDateString()}`
                   }
                 </span>
               )}

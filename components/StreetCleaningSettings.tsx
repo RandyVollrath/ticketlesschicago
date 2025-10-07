@@ -681,7 +681,7 @@ export default function StreetCleaningSettings() {
                         {isToday(zone.next_cleaning_date) ? (
                           <><strong>🚨 Street cleaning TODAY</strong> (9am-2pm) - Don't park here!</>
                         ) : (
-                          <><strong>Next cleaning:</strong> {new Date(zone.next_cleaning_date).toLocaleDateString()}</>
+                          <><strong>Next cleaning:</strong> {new Date(zone.next_cleaning_date + 'T12:00:00').toLocaleDateString()}</>
                         )}
                       </div>
                     )}
