@@ -36,6 +36,16 @@ interface UpcomingRenewal {
   license_plate_notified?: boolean;
 }
 
+interface AffiliateSale {
+  id: string;
+  customer_email: string;
+  plan: string;
+  total_amount: number;
+  expected_commission: number;
+  referral_id: string;
+  created_at: string;
+}
+
 const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
 
 export default function ProfileUpdates() {
@@ -59,6 +69,8 @@ export default function ProfileUpdates() {
   const [stickerModalOpen, setStickerModalOpen] = useState(false);
   const [stickerTypes, setStickerTypes] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
+  const [affiliateSales, setAffiliateSales] = useState<AffiliateSale[]>([]);
+  const [commissionsLoading, setCommissionsLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
@@ -68,6 +80,7 @@ export default function ProfileUpdates() {
     if (user && ADMIN_EMAILS.includes(user.email)) {
       fetchMessages();
       fetchUpcomingRenewals();
+      fetchAffiliateSales();
     }
   }, [filter, user]);
 
@@ -192,6 +205,30 @@ export default function ProfileUpdates() {
       console.error('Error fetching upcoming renewals:', error);
     } finally {
       setRenewalsLoading(false);
+    }
+  }
+
+  async function fetchAffiliateSales() {
+    setCommissionsLoading(true);
+    try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      // Fetch recent affiliate sales from an API endpoint
+      const response = await fetch('/api/admin/affiliate-sales', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch affiliate sales');
+      const data = await response.json();
+      setAffiliateSales(data.sales || []);
+    } catch (error) {
+      console.error('Error fetching affiliate sales:', error);
+      setAffiliateSales([]);
+    } finally {
+      setCommissionsLoading(false);
     }
   }
 
@@ -538,6 +575,105 @@ export default function ProfileUpdates() {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+
+        {/* Affiliate Commission Tracker */}
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '32px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              💰 Affiliate Commission Tracker
+            </h2>
+            <a
+              href="https://app.getrewardful.com/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: '10px 20px',
+                background: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '14px',
+                textDecoration: 'none',
+                display: 'inline-block'
+              }}
+            >
+              Open Rewardful Dashboard
+            </a>
+          </div>
+
+          {commissionsLoading ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
+              Loading affiliate sales...
+            </div>
+          ) : affiliateSales.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '32px',
+              color: '#6b7280',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px'
+            }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '16px' }}>No recent affiliate sales</p>
+              <p style={{ margin: 0, fontSize: '14px' }}>
+                You'll receive an email notification when an affiliate sale occurs
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{
+                backgroundColor: '#fef3c7',
+                border: '1px solid #fbbf24',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400e' }}>
+                  ⚠️ Manual Commission Adjustment Required
+                </p>
+                <p style={{ margin: 0, fontSize: '14px', color: '#78350f' }}>
+                  Rewardful calculates commission on total charge (including renewal fees). You must manually adjust each commission to only include the subscription amount.
+                </p>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Date</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Customer</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Plan</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Total Charge</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Expected Commission</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Referral ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {affiliateSales.map((sale) => (
+                      <tr key={sale.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '12px', color: '#6b7280', fontSize: '14px' }}>
+                          {new Date(sale.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '12px', color: '#111827' }}>{sale.customer_email}</td>
+                        <td style={{ padding: '12px', color: '#111827', textTransform: 'capitalize' }}>{sale.plan}</td>
+                        <td style={{ padding: '12px', color: '#111827', fontWeight: '600' }}>
+                          ${sale.total_amount.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '12px', color: '#059669', fontWeight: '600' }}>
+                          ${sale.expected_commission.toFixed(2)}/mo
+                        </td>
+                        <td style={{ padding: '12px', color: '#6b7280', fontSize: '12px', fontFamily: 'monospace' }}>
+                          {sale.referral_id}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
