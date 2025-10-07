@@ -7,7 +7,6 @@ import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import PasskeyManager from '../components/PasskeyManager'
 import UpgradeCard from '../components/UpgradeCard'
 import ReferralLink from '../components/ReferralLink'
-import ReimbursementRequest from '../components/ReimbursementRequest'
 
 // Phone number formatting utilities
 const formatPhoneNumber = (value: string): string => {
@@ -701,9 +700,42 @@ export default function Dashboard() {
           <UpgradeCard hasProtection={profile.has_protection || false} />
         </div>
 
-        {/* Reimbursement Request - Only for Protection users */}
-        {profile.has_protection && user?.id && (
-          <ReimbursementRequest userId={user.id} />
+        {/* Reimbursement Link - Only for Protection users */}
+        {profile.has_protection && (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            border: '1px solid #e5e7eb',
+            marginBottom: '32px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '0 0 4px 0' }}>
+                  🎫 Ticket Reimbursement
+                </h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Submit tickets for reimbursement (80% up to $200/year)
+                </p>
+              </div>
+              <button
+                onClick={() => router.push('/submit-ticket')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Submit Ticket
+              </button>
+            </div>
+          </div>
         )}
 
         {message && (
