@@ -66,6 +66,12 @@ export default function Home() {
             fontWeight: 800;
             letterSpacing: -1px;
           }
+          .how-it-works-container {
+            maxWidth: 1200px;
+            margin: 0 auto;
+            padding: 0 40px;
+            textAlign: center;
+          }
           @media (max-width: 768px) {
             .responsive-grid {
               grid-template-columns: 1fr;
@@ -77,6 +83,9 @@ export default function Home() {
             }
             .section-title {
               font-size: 32px !important;
+            }
+            .how-it-works-container {
+              padding: 0 !important;
             }
             .free-alerts-link {
               font-size: 11px !important;
@@ -434,15 +443,13 @@ export default function Home() {
         padding: '100px 16px',
         backgroundColor: '#f8f9fa'
       }}>
-        <div style={{
-          textAlign: 'center'
-        }}>
+        <div className="how-it-works-container">
           <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
             color: '#000',
-            marginBottom: '16px',
-            margin: '0 0 16px 0',
+            marginBottom: '24px',
+            margin: '0 0 24px 0',
             letterSpacing: '-1px'
           }}>
             How It Works
@@ -450,8 +457,8 @@ export default function Home() {
           <p style={{
             fontSize: '20px',
             color: '#666',
-            marginBottom: '64px',
-            margin: '0 0 64px 0'
+            marginBottom: '80px',
+            margin: '0 0 80px 0'
           }}>
             Get started in three simple steps
           </p>
