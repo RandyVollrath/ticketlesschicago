@@ -50,6 +50,33 @@ interface AffiliateSale {
   created_at: string;
 }
 
+interface ReimbursementRequest {
+  id: string;
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  license_plate: string;
+  ticket_number: string | null;
+  ticket_date: string;
+  ticket_amount: number;
+  ticket_type: string;
+  ticket_description: string | null;
+  ticket_address: string | null;
+  front_photo_url: string;
+  back_photo_url: string;
+  status: string;
+  reimbursement_amount: number | null;
+  admin_notes: string | null;
+  processed_by: string | null;
+  processed_at: string | null;
+  payment_method: string;
+  payment_details: string;
+  created_at: string;
+  total_reimbursed_this_year: number;
+  remaining_coverage: number;
+}
+
 const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
 
 export default function ProfileUpdates() {
@@ -75,6 +102,9 @@ export default function ProfileUpdates() {
   const [sending, setSending] = useState(false);
   const [affiliateSales, setAffiliateSales] = useState<AffiliateSale[]>([]);
   const [commissionsLoading, setCommissionsLoading] = useState(true);
+  const [reimbursements, setReimbursements] = useState<ReimbursementRequest[]>([]);
+  const [reimbursementsLoading, setReimbursementsLoading] = useState(true);
+  const [processingReimbursement, setProcessingReimbursement] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -85,6 +115,7 @@ export default function ProfileUpdates() {
       fetchMessages();
       fetchUpcomingRenewals();
       fetchAffiliateSales();
+      fetchReimbursements();
     }
   }, [filter, user]);
 
@@ -260,6 +291,65 @@ export default function ProfileUpdates() {
     } catch (error) {
       console.error('Error updating commission status:', error);
       alert('Failed to update commission status');
+    }
+  }
+
+  async function fetchReimbursements() {
+    setReimbursementsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const response = await fetch('/api/admin/reimbursements', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch reimbursements');
+      const data = await response.json();
+      setReimbursements(data.requests || []);
+    } catch (error) {
+      console.error('Error fetching reimbursements:', error);
+      setReimbursements([]);
+    } finally {
+      setReimbursementsLoading(false);
+    }
+  }
+
+  async function processReimbursement(
+    id: string,
+    status: string,
+    reimbursementAmount?: number,
+    adminNotes?: string
+  ) {
+    setProcessingReimbursement(id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const response = await fetch('/api/admin/reimbursements', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id,
+          status,
+          reimbursement_amount: reimbursementAmount,
+          admin_notes: adminNotes
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to process reimbursement');
+
+      // Refresh the list
+      fetchReimbursements();
+    } catch (error) {
+      console.error('Error processing reimbursement:', error);
+      alert('Failed to process reimbursement');
+    } finally {
+      setProcessingReimbursement(null);
     }
   }
 
@@ -740,6 +830,249 @@ export default function ProfileUpdates() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Reimbursement Requests Tracker */}
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '32px', border: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: '0 0 16px 0' }}>
+            🎫 Ticket Reimbursement Requests
+          </h2>
+
+          {reimbursementsLoading ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
+              Loading reimbursement requests...
+            </div>
+          ) : reimbursements.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              No reimbursement requests yet
+            </div>
+          ) : (
+            <>
+              {reimbursements.filter(r => r.status === 'pending').length > 0 && (
+                <div style={{
+                  backgroundColor: '#fef3c7',
+                  border: '2px solid #fbbf24',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '16px'
+                }}>
+                  <p style={{ margin: 0, fontWeight: '600', color: '#92400e' }}>
+                    ⏳ {reimbursements.filter(r => r.status === 'pending').length} pending request{reimbursements.filter(r => r.status === 'pending').length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {reimbursements.map((request) => (
+                  <div
+                    key={request.id}
+                    style={{
+                      backgroundColor: request.status === 'pending' ? '#fef2f2' : request.status === 'approved' ? '#f0fdf4' : request.status === 'paid' ? '#dcfce7' : '#f9fafb',
+                      borderRadius: '8px',
+                      padding: '20px',
+                      border: '1px solid',
+                      borderColor: request.status === 'pending' ? '#fecaca' : request.status === 'approved' || request.status === 'paid' ? '#bbf7d0' : '#e5e7eb'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '0 0 4px 0' }}>
+                          {request.first_name} {request.last_name}
+                        </h3>
+                        <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                          {request.email} • {request.license_plate}
+                        </p>
+                      </div>
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        backgroundColor: request.status === 'pending' ? '#fef3c7' : request.status === 'approved' ? '#dcfce7' : request.status === 'paid' ? '#bbf7d0' : '#f3f4f6',
+                        color: request.status === 'pending' ? '#92400e' : request.status === 'approved' || request.status === 'paid' ? '#166534' : '#6b7280',
+                        textTransform: 'uppercase'
+                      }}>
+                        {request.status}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Ticket Type</p>
+                        <p style={{ fontSize: '14px', color: '#111827', margin: 0, textTransform: 'capitalize' }}>
+                          {request.ticket_type.replace('_', ' ')}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Date Issued</p>
+                        <p style={{ fontSize: '14px', color: '#111827', margin: 0 }}>
+                          {new Date(request.ticket_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Ticket Amount</p>
+                        <p style={{ fontSize: '14px', color: '#111827', margin: 0, fontWeight: '600' }}>
+                          ${request.ticket_amount.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Expected Reimb. (80%)</p>
+                        <p style={{ fontSize: '14px', color: '#059669', margin: 0, fontWeight: '600' }}>
+                          ${(request.ticket_amount * 0.8).toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Payment Method</p>
+                        <p style={{ fontSize: '14px', color: '#111827', margin: 0, textTransform: 'capitalize' }}>
+                          {request.payment_method}: {request.payment_details}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Coverage Remaining</p>
+                        <p style={{ fontSize: '14px', color: request.remaining_coverage > 0 ? '#059669' : '#dc2626', margin: 0, fontWeight: '600' }}>
+                          ${request.remaining_coverage.toFixed(2)} / $200
+                        </p>
+                      </div>
+                    </div>
+
+                    {request.ticket_address && (
+                      <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 12px 0' }}>
+                        <strong>Address:</strong> {request.ticket_address}
+                      </p>
+                    )}
+
+                    {request.ticket_description && (
+                      <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 12px 0' }}>
+                        <strong>Notes:</strong> {request.ticket_description}
+                      </p>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <a
+                        href={request.front_photo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#2563eb',
+                          color: 'white',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        View Front Photo
+                      </a>
+                      <a
+                        href={request.back_photo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#2563eb',
+                          color: 'white',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        View Back Photo
+                      </a>
+                    </div>
+
+                    {request.status === 'pending' && (
+                      <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                        <button
+                          onClick={() => {
+                            const amount = prompt(`Enter reimbursement amount (max ${request.remaining_coverage.toFixed(2)}, suggested ${(request.ticket_amount * 0.8).toFixed(2)}):`, (request.ticket_amount * 0.8).toFixed(2));
+                            if (amount) {
+                              const notes = prompt('Admin notes (optional):');
+                              processReimbursement(request.id, 'approved', parseFloat(amount), notes || undefined);
+                            }
+                          }}
+                          disabled={processingReimbursement === request.id}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: processingReimbursement === request.id ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => {
+                            const notes = prompt('Reason for denial:');
+                            if (notes) {
+                              processReimbursement(request.id, 'denied', undefined, notes);
+                            }
+                          }}
+                          disabled={processingReimbursement === request.id}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#dc2626',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: processingReimbursement === request.id ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Deny
+                        </button>
+                      </div>
+                    )}
+
+                    {request.status === 'approved' && (
+                      <div style={{ paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                        <p style={{ fontSize: '14px', color: '#059669', fontWeight: '600', margin: '0 0 8px 0' }}>
+                          Approved: ${request.reimbursement_amount?.toFixed(2)} via {request.payment_method} to {request.payment_details}
+                        </p>
+                        <button
+                          onClick={() => processReimbursement(request.id, 'paid')}
+                          disabled={processingReimbursement === request.id}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: processingReimbursement === request.id ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Mark as Paid
+                        </button>
+                      </div>
+                    )}
+
+                    {request.status === 'paid' && (
+                      <div style={{ paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                        <p style={{ fontSize: '14px', color: '#059669', fontWeight: '600', margin: 0 }}>
+                          ✅ Paid ${request.reimbursement_amount?.toFixed(2)} on {new Date(request.processed_at!).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+
+                    {request.admin_notes && (
+                      <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Admin Notes</p>
+                        <p style={{ fontSize: '14px', color: '#111827', margin: 0 }}>{request.admin_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </>
           )}

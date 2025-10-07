@@ -7,6 +7,7 @@ import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import PasskeyManager from '../components/PasskeyManager'
 import UpgradeCard from '../components/UpgradeCard'
 import ReferralLink from '../components/ReferralLink'
+import ReimbursementRequest from '../components/ReimbursementRequest'
 
 // Phone number formatting utilities
 const formatPhoneNumber = (value: string): string => {
@@ -699,6 +700,11 @@ export default function Dashboard() {
         <div style={{ marginBottom: '32px' }}>
           <UpgradeCard hasProtection={profile.has_protection || false} />
         </div>
+
+        {/* Reimbursement Request - Only for Protection users */}
+        {profile.has_protection && user?.id && (
+          <ReimbursementRequest userId={user.id} />
+        )}
 
         {message && (
           <div style={{
