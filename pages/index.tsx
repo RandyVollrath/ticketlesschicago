@@ -146,8 +146,6 @@ export default function Home() {
         background: 'linear-gradient(180deg, #fff 0%, #f8f9fa 100%)'
       }}>
         <div style={{
-          maxWidth: '900px',
-          margin: '0 auto',
           padding: '0 16px'
         }}>
           <h1 style={{
@@ -163,16 +161,36 @@ export default function Home() {
             <br />
             by a Ticket Again
           </h1>
+          <div style={{
+            fontSize: '22px',
+            color: '#666',
+            marginBottom: '16px',
+            fontWeight: '500',
+            margin: '0 0 16px 0'
+          }}>
+            Free alerts for:
+          </div>
+          <ul style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: '0 0 20px 0',
+            fontSize: '20px',
+            color: '#666',
+            lineHeight: '2'
+          }}>
+            <li>• Street cleaning</li>
+            <li>• Snow removal</li>
+            <li>• City stickers</li>
+            <li>• License plate renewals</li>
+            <li>• Emission testing</li>
+          </ul>
           <p style={{
-            fontSize: '24px',
+            fontSize: '22px',
             color: '#666',
             marginBottom: '48px',
-            lineHeight: '1.5',
-            fontWeight: '400',
+            fontWeight: '500',
             margin: '0 0 48px 0'
           }}>
-            Free alerts for street cleaning, snow removal, city stickers, and license plates.
-            <br />
             Peace of mind for every driver in Chicago.
           </p>
           <div style={{
@@ -356,8 +374,6 @@ export default function Home() {
         backgroundColor: '#f8f9fa'
       }}>
         <div style={{
-          maxWidth: '1000px',
-          margin: '0 auto',
           textAlign: 'center'
         }}>
           <h2 style={{
@@ -567,10 +583,7 @@ export default function Home() {
         padding: '100px 16px',
         backgroundColor: '#f8f9fa'
       }}>
-        <div style={{
-          maxWidth: '800px',
-          margin: '0 auto'
-        }}>
+        <div>
           <h2 style={{
             fontSize: '48px',
             fontWeight: '800',
@@ -650,10 +663,7 @@ export default function Home() {
         color: 'white',
         textAlign: 'center'
       }}>
-        <div style={{
-          maxWidth: '800px',
-          margin: '0 auto'
-        }}>
+        <div>
           <h2 style={{
             fontSize: '48px',
             fontWeight: '800',
@@ -689,8 +699,6 @@ export default function Home() {
         borderTop: '1px solid #e5e7eb'
       }}>
         <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
           textAlign: 'center'
         }}>
           <p style={{
