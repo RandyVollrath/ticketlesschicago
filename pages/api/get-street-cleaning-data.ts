@@ -124,19 +124,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         // Check if this zone has upcoming cleaning
         if (scheduleMap.has(zoneKey)) {
-          const cleaningDate = new Date(scheduleMap.get(zoneKey) + 'T12:00:00Z');
-          const diffTime = cleaningDate.getTime() - today.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
-          if (diffDays === 0) {
+          const cleaningDateStr = scheduleMap.get(zoneKey);
+          nextCleaningDateISO = cleaningDateStr;
+
+          // Compare dates as strings to avoid timezone issues
+          if (cleaningDateStr === todayStr) {
             cleaningStatus = 'today';
-          } else if (diffDays >= 1 && diffDays <= 3) {
-            cleaningStatus = 'soon';
           } else {
-            cleaningStatus = 'later';
+            // Calculate days difference for future dates
+            const cleaningDate = new Date(cleaningDateStr + 'T12:00:00Z');
+            const diffTime = cleaningDate.getTime() - today.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 1 && diffDays <= 3) {
+              cleaningStatus = 'soon';
+            } else if (diffDays > 3) {
+              cleaningStatus = 'later';
+            }
           }
-          
-          nextCleaningDateISO = scheduleMap.get(zoneKey);
         }
         
         zoneMap.set(zoneKey, {
