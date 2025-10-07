@@ -235,11 +235,15 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
           <div style={{ position: 'relative' }}>
             <span style={{ position: 'absolute', left: '12px', top: '10px', color: '#6b7280' }}>$</span>
             <input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               value={formData.ticketAmount}
-              onChange={(e) => setFormData({ ...formData, ticketAmount: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9.]/g, '');
+                if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                  setFormData({ ...formData, ticketAmount: value });
+                }
+              }}
               required
               placeholder="50.00"
               style={{
