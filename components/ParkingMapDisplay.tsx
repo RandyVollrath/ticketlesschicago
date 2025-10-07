@@ -308,7 +308,7 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
           div.innerHTML = `
             <div style="background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 12px;">
               <h4 style="margin: 0 0 8px 0; font-weight: bold;">Legend</h4>
-              <div style="margin: 4px 0;"><span style="color: #dc2626;">●</span> Cleaning TODAY - Don't Park</div>
+              <div style="margin: 4px 0;"><span style="color: #dc2626;">●</span> Cleaning TODAY (9am-2pm)</div>
               <div style="margin: 4px 0;"><span style="color: #0066cc;">●</span> Your Location</div>
               <div style="margin: 4px 0;"><span style="color: #28a745;">●</span> Same Ward</div>
               <div style="margin: 4px 0;"><span style="color: #fd7e14;">●</span> Adjacent Ward</div>
