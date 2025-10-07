@@ -32,6 +32,8 @@ interface UpcomingRenewal {
   license_plate_expiry: string | null;
   has_protection: boolean;
   phone: string;
+  city_sticker_notified?: boolean;
+  license_plate_notified?: boolean;
 }
 
 const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
@@ -162,7 +164,30 @@ export default function ProfileUpdates() {
       // Filter to only include users with at least one expiry date set
       const filtered = (data || []).filter(u => u.city_sticker_expiry || u.license_plate_expiry);
 
-      setUpcomingRenewals(filtered);
+      // Fetch notification status for each user
+      const userIds = filtered.map(u => u.user_id);
+      const { data: notifications } = await supabase
+        .from('sticker_notifications')
+        .select('user_id, sticker_type')
+        .in('user_id', userIds);
+
+      // Build a map of user notifications
+      const notificationMap = new Map<string, Set<string>>();
+      (notifications || []).forEach(n => {
+        if (!notificationMap.has(n.user_id)) {
+          notificationMap.set(n.user_id, new Set());
+        }
+        notificationMap.get(n.user_id)!.add(n.sticker_type);
+      });
+
+      // Add notification status to renewals
+      const renewalsWithStatus = filtered.map(renewal => ({
+        ...renewal,
+        city_sticker_notified: notificationMap.get(renewal.user_id)?.has('city_sticker') || false,
+        license_plate_notified: notificationMap.get(renewal.user_id)?.has('license_plate') || false
+      }));
+
+      setUpcomingRenewals(renewalsWithStatus);
     } catch (error) {
       console.error('Error fetching upcoming renewals:', error);
     } finally {
@@ -294,6 +319,8 @@ export default function ProfileUpdates() {
         setSelectedUsers(new Set());
         setStickerTypes(new Set());
         setStickerModalOpen(false);
+        // Refresh the renewals list to show updated notification status
+        await fetchUpcomingRenewals();
       } else {
         alert(`Error: ${result.error || 'Failed to send notifications'}`);
       }
@@ -463,7 +490,14 @@ export default function ProfileUpdates() {
                         <td style={{ padding: '12px' }}>
                           {renewal.city_sticker_expiry ? (
                             <div>
-                              <div style={{ color: '#111827' }}>{new Date(renewal.city_sticker_expiry).toLocaleDateString()}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ color: '#111827' }}>{new Date(renewal.city_sticker_expiry).toLocaleDateString()}</div>
+                                {renewal.city_sticker_notified && (
+                                  <span style={{ background: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
+                                    ✓ Notified
+                                  </span>
+                                )}
+                              </div>
                               <div style={{ fontSize: '12px', color: cityDaysUntil && cityDaysUntil < 30 ? '#dc2626' : '#6b7280' }}>
                                 {cityDaysUntil !== null && `${cityDaysUntil} days`}
                               </div>
@@ -473,7 +507,14 @@ export default function ProfileUpdates() {
                         <td style={{ padding: '12px' }}>
                           {renewal.license_plate_expiry ? (
                             <div>
-                              <div style={{ color: '#111827' }}>{new Date(renewal.license_plate_expiry).toLocaleDateString()}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ color: '#111827' }}>{new Date(renewal.license_plate_expiry).toLocaleDateString()}</div>
+                                {renewal.license_plate_notified && (
+                                  <span style={{ background: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
+                                    ✓ Notified
+                                  </span>
+                                )}
+                              </div>
                               <div style={{ fontSize: '12px', color: plateDaysUntil && plateDaysUntil < 30 ? '#dc2626' : '#6b7280' }}>
                                 {plateDaysUntil !== null && `${plateDaysUntil} days`}
                               </div>
