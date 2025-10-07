@@ -636,11 +636,7 @@ export default function Dashboard() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                console.log('Back to Home clicked, navigating to /');
-                router.push('/').catch(err => console.error('Navigation error:', err));
-              }}
+              onClick={() => router.push('/')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
