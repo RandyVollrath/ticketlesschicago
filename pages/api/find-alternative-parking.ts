@@ -11,9 +11,9 @@ if (!MSC_URL || !MSC_KEY) {
 
 const mscSupabase = createClient(MSC_URL, MSC_KEY);
 
-// Cache for alternative parking results (5 minutes)
+// Cache for alternative parking results (1 minute to ensure fresh "today" checks)
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 1 * 60 * 1000; // 1 minute (short cache for today filtering)
 
 interface AlternativeSection {
   ward: string;
@@ -283,6 +283,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 4. Filter out any sections that couldn't be processed and sort by relevance
     const validAlternatives = detailedAlternatives
       .filter(alt => alt.ward && alt.section)
+      .filter(alt => {
+        // CRITICAL: Exclude zones with cleaning TODAY
+        if (alt.next_cleaning_date) {
+          const cleaningDate = new Date(alt.next_cleaning_date).toISOString().split('T')[0];
+          if (cleaningDate === todayStr) {
+            console.log(`❌ Excluding Ward ${alt.ward} Section ${alt.section} - has cleaning TODAY`);
+            return false;
+          }
+        }
+        return true;
+      })
       .sort((a, b) => {
         // Prioritize same ward sections first
         if (a.distance_type !== b.distance_type) {
