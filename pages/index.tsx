@@ -66,6 +66,14 @@ export default function Home() {
             fontWeight: 800;
             letterSpacing: -1px;
           }
+          .free-alerts-link {
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+          }
           @media (max-width: 768px) {
             .responsive-grid {
               grid-template-columns: 1fr;
@@ -77,6 +85,13 @@ export default function Home() {
             }
             .section-title {
               font-size: 32px !important;
+            }
+            .free-alerts-link {
+              font-size: 11px !important;
+              line-height: 1.2 !important;
+              white-space: normal !important;
+              text-align: center !important;
+              max-width: 45px !important;
             }
           }
         `}</style>
@@ -116,7 +131,7 @@ export default function Home() {
           <a
             href="/alerts/signup"
             onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
-            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            className="free-alerts-link"
           >
             Free Alerts
           </a>
@@ -567,14 +582,14 @@ export default function Home() {
               color: '#0052cc',
               marginBottom: '8px'
             }}>
-              4
+              5
             </div>
             <div style={{
               fontSize: '16px',
               color: '#666',
               fontWeight: '500'
             }}>
-              Types of alerts covered
+              Types of free alerts
             </div>
           </div>
           <div>
