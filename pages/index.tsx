@@ -67,15 +67,38 @@ export default function Home() {
             letterSpacing: -1px;
           }
           .how-it-works-container {
-            maxWidth: 1200px;
+            maxWidth: 900px;
             margin: 0 auto;
-            padding: 0 40px;
+            padding: 0 80px;
             textAlign: center;
+          }
+          .how-it-works-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 48px;
+            maxWidth: 700px;
+            margin: 0 auto;
+          }
+          .how-it-works-step {
+            display: flex;
+            gap: 24px;
+            textAlign: left;
+            alignItems: flex-start;
           }
           .logo-mobile {
             display: none;
           }
           @media (max-width: 768px) {
+            nav {
+              height: 70px !important;
+              padding: 0 16px !important;
+            }
+            .nav-link {
+              font-size: 14px !important;
+            }
+            nav > div:last-child {
+              gap: 12px !important;
+            }
             .logo-desktop {
               display: none !important;
             }
@@ -94,7 +117,14 @@ export default function Home() {
               font-size: 32px !important;
             }
             .how-it-works-container {
-              padding: 0 !important;
+              padding: 0 16px !important;
+            }
+            .how-it-works-steps {
+              maxWidth: 100%;
+            }
+            .how-it-works-step {
+              flexDirection: column;
+              gap: 16px;
             }
             .free-alerts-link {
               font-size: 11px !important;
@@ -119,7 +149,7 @@ export default function Home() {
         top: 0,
         left: 0,
         right: 0,
-        height: '70px',
+        height: '90px',
         backgroundColor: 'rgba(255,255,255,0.98)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
@@ -127,39 +157,39 @@ export default function Home() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px'
+        padding: '0 48px'
       }}>
         <div
           onClick={() => window.location.reload()}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
+            gap: '16px',
             cursor: 'pointer',
             flexShrink: 0,
-            marginRight: '8px'
+            marginRight: '24px'
           }}
         >
           {/* Logo - desktop version with icon */}
-          <div className="logo-desktop" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="logo-desktop" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
+              width: '52px',
+              height: '52px',
+              borderRadius: '10px',
               background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '24px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              fontSize: '28px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
             }}>
               🛡️
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-              <span style={{ fontSize: '24px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+              <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
                 Ticketless
               </span>
-              <span style={{ fontSize: '11px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
                 AMERICA
               </span>
             </div>
@@ -171,23 +201,24 @@ export default function Home() {
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', gap: '32px', alignItems: 'center', flexWrap: 'nowrap' }}>
           <a
             href="/alerts/signup"
             onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
-            className="free-alerts-link"
-            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            className="free-alerts-link nav-link"
+            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
           >
             Free Alerts
           </a>
           <a
             href="/protection"
             onClick={(e) => { e.preventDefault(); router.push('/protection'); }}
-            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            className="nav-link"
+            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
           >
             Protection
           </a>
-          <a href="#faq" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+          <a href="#faq" className="nav-link" style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap' }}>
             FAQ
           </a>
           {checkingAuth ? (
@@ -234,7 +265,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <div style={{
-        paddingTop: '140px',
+        paddingTop: '160px',
         paddingBottom: '100px',
         textAlign: 'center',
         background: 'linear-gradient(180deg, #fff 0%, #f8f9fa 100%)'
@@ -503,112 +534,116 @@ export default function Home() {
             Get started in three simple steps
           </p>
 
-          <div className="responsive-grid" style={{
-            textAlign: 'left'
-          }}>
-            <div>
+          <div className="how-it-works-steps">
+            <div className="how-it-works-step">
               <div style={{
-                width: '48px',
-                height: '48px',
+                width: '56px',
+                height: '56px',
                 backgroundColor: '#0052cc',
-                borderRadius: '12px',
+                borderRadius: '14px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '20px',
                 color: 'white',
-                fontSize: '24px',
-                fontWeight: '700'
+                fontSize: '28px',
+                fontWeight: '700',
+                flexShrink: 0
               }}>
                 1
               </div>
-              <h3 style={{
-                fontSize: '22px',
-                fontWeight: '700',
-                color: '#000',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                Create your account
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Sign up with your email and phone in under 60 seconds. No credit card required.
-              </p>
+              <div>
+                <h3 style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#000',
+                  marginBottom: '12px',
+                  margin: '0 0 12px 0'
+                }}>
+                  Create your account
+                </h3>
+                <p style={{
+                  fontSize: '18px',
+                  color: '#666',
+                  lineHeight: '1.7',
+                  margin: 0
+                }}>
+                  Sign up with your email and phone in under 60 seconds. No credit card required.
+                </p>
+              </div>
             </div>
 
-            <div>
+            <div className="how-it-works-step">
               <div style={{
-                width: '48px',
-                height: '48px',
+                width: '56px',
+                height: '56px',
                 backgroundColor: '#0052cc',
-                borderRadius: '12px',
+                borderRadius: '14px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '20px',
                 color: 'white',
-                fontSize: '24px',
-                fontWeight: '700'
+                fontSize: '28px',
+                fontWeight: '700',
+                flexShrink: 0
               }}>
                 2
               </div>
-              <h3 style={{
-                fontSize: '22px',
-                fontWeight: '700',
-                color: '#000',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                Add your vehicle
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Enter your license plate and parking address. We'll handle the rest.
-              </p>
+              <div>
+                <h3 style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#000',
+                  marginBottom: '12px',
+                  margin: '0 0 12px 0'
+                }}>
+                  Add your vehicle
+                </h3>
+                <p style={{
+                  fontSize: '18px',
+                  color: '#666',
+                  lineHeight: '1.7',
+                  margin: 0
+                }}>
+                  Enter your license plate and parking address. We'll handle the rest.
+                </p>
+              </div>
             </div>
 
-            <div>
+            <div className="how-it-works-step">
               <div style={{
-                width: '48px',
-                height: '48px',
+                width: '56px',
+                height: '56px',
                 backgroundColor: '#0052cc',
-                borderRadius: '12px',
+                borderRadius: '14px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '20px',
                 color: 'white',
-                fontSize: '24px',
-                fontWeight: '700'
+                fontSize: '28px',
+                fontWeight: '700',
+                flexShrink: 0
               }}>
                 3
               </div>
-              <h3 style={{
-                fontSize: '22px',
-                fontWeight: '700',
-                color: '#000',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                Get alerts
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Receive timely notifications before any deadline. Never get surprised again.
-              </p>
+              <div>
+                <h3 style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#000',
+                  marginBottom: '12px',
+                  margin: '0 0 12px 0'
+                }}>
+                  Get alerts
+                </h3>
+                <p style={{
+                  fontSize: '18px',
+                  color: '#666',
+                  lineHeight: '1.7',
+                  margin: 0
+                }}>
+                  Receive timely notifications before any deadline. Never get surprised again.
+                </p>
+              </div>
             </div>
           </div>
         </div>
