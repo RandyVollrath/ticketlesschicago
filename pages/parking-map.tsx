@@ -245,7 +245,7 @@ export default function ParkingMapPage() {
             fontSize: '14px',
             margin: '0'
           }}>
-            © 2024 Ticketless America
+            © 2025 Ticketless America
           </p>
         </footer>
       </main>
