@@ -3,10 +3,13 @@ import Stripe from 'stripe';
 import { supabaseAdmin } from '../../lib/supabase';
 import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integration';
 import { createRewardfulAffiliate } from '../../lib/rewardful-helper';
+import { Resend } from 'resend';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
 });
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Normalize phone number to E.164 format (+1XXXXXXXXXX)
 function normalizePhoneNumber(phone: string | null | undefined): string | null {
@@ -353,7 +356,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         if (rewardfulReferralId) {
           console.log('Rewardful referral ID found in webhook:', rewardfulReferralId);
-          
+
           // Rewardful conversion is tracked automatically via Stripe integration
           // When client_reference_id is set in the Stripe session, Rewardful automatically:
           // 1. Creates a lead when the session is created
@@ -361,9 +364,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log('Rewardful conversion will be tracked automatically via Stripe integration');
           console.log('Referral ID in session:', rewardfulReferralId);
           console.log('Customer email:', email || session.customer_details?.email);
-          
+
           // The conversion tracking is handled by Rewardful's Stripe webhook integration
           // No manual API calls needed - this is the recommended approach
+
+          // Send email notification about affiliate sale
+          const plan = metadata.plan || 'unknown';
+          const totalAmount = session.amount_total ? (session.amount_total / 100).toFixed(2) : '0.00';
+          const expectedCommission = plan === 'monthly' ? '2.40' : plan === 'annual' ? '24.00' : 'unknown';
+          const actualCommission = plan === 'monthly' ? '53.40' : plan === 'annual' ? '534.00' : 'unknown';
+
+          try {
+            await resend.emails.send({
+              from: 'Ticketless Alerts <noreply@ticketlessamerica.com>',
+              to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
+              subject: '🎉 Affiliate Sale - Manual Commission Adjustment Needed',
+              html: `
+                <h2>Affiliate Sale Completed</h2>
+                <p>A Protection plan was just purchased through an affiliate referral.</p>
+
+                <h3>Sale Details:</h3>
+                <ul>
+                  <li><strong>Customer:</strong> ${email || session.customer_details?.email || 'Unknown'}</li>
+                  <li><strong>Plan:</strong> ${plan}</li>
+                  <li><strong>Total Charge:</strong> $${totalAmount}</li>
+                  <li><strong>Referral ID:</strong> ${rewardfulReferralId}</li>
+                </ul>
+
+                <h3>⚠️ Commission Adjustment Required:</h3>
+                <p>Rewardful will calculate commission on the full charge amount (including renewal fees).</p>
+                <ul>
+                  <li><strong>Expected Commission:</strong> $${expectedCommission}/month (20% of subscription only)</li>
+                  <li><strong>Actual Commission:</strong> ~$${actualCommission} (20% of total including renewal fees)</li>
+                </ul>
+
+                <p><strong>Action needed:</strong> Manually adjust the commission in the Rewardful dashboard to $${expectedCommission}/month.</p>
+
+                <p><a href="https://app.getrewardful.com/dashboard" style="display: inline-block; padding: 10px 20px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Open Rewardful Dashboard</a></p>
+              `
+            });
+            console.log('✅ Affiliate sale notification email sent');
+          } catch (emailError) {
+            console.error('❌ Failed to send affiliate sale notification:', emailError);
+          }
         } else {
           console.log('No Rewardful referral ID found in session');
         }
