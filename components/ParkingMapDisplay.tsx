@@ -38,6 +38,16 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Helper to check if a date is today
+  const isToday = (dateStr: string | null | undefined): boolean => {
+    if (!dateStr) return false
+    const date = new Date(dateStr)
+    const today = new Date()
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear()
+  }
+
   // Load map data for all relevant zones
   useEffect(() => {
     const loadMapData = async () => {
@@ -159,12 +169,20 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
           const { ward, section } = feature.properties
           const isUserZone = ward === userWard && section === userSection
           const isHighlighted = highlightZone && ward === highlightZone.ward && section === highlightZone.section
-          
+
+          // Check if this zone has cleaning today
+          const alternative = alternatives.find(alt => alt.ward === ward && alt.section === section)
+          const hasCleaningToday = alternative && isToday(alternative.next_cleaning_date)
+
           // Determine colors
           let fillColor = '#28a745' // Green default
           let color = '#28a745'
-          
-          if (isUserZone) {
+
+          if (hasCleaningToday) {
+            // RED for street cleaning today - highest priority
+            fillColor = '#dc2626'
+            color = '#b91c1c'
+          } else if (isUserZone) {
             fillColor = '#0066cc' // Blue for user location
             color = '#0052aa'
           } else if (isHighlighted) {
@@ -172,7 +190,6 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
             color = '#e55a2b'
           } else {
             // Check if it's same ward (green) or adjacent (orange)
-            const alternative = alternatives.find(alt => alt.ward === ward && alt.section === section)
             if (alternative?.distance_type === 'same_ward') {
               fillColor = '#28a745' // Green for same ward
               color = '#1e7e34'
@@ -291,6 +308,7 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
           div.innerHTML = `
             <div style="background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 12px;">
               <h4 style="margin: 0 0 8px 0; font-weight: bold;">Legend</h4>
+              <div style="margin: 4px 0;"><span style="color: #dc2626;">●</span> Cleaning TODAY - Don't Park</div>
               <div style="margin: 4px 0;"><span style="color: #0066cc;">●</span> Your Location</div>
               <div style="margin: 4px 0;"><span style="color: #28a745;">●</span> Same Ward</div>
               <div style="margin: 4px 0;"><span style="color: #fd7e14;">●</span> Adjacent Ward</div>
