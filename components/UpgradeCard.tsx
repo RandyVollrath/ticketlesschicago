@@ -60,7 +60,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               lineHeight: '1.5',
               margin: '0 0 20px 0'
             }}>
-              Your Ticket Protection is active. We're handling your renewals and covering any eligible tickets.
+              Your Ticket Protection is active. We're handling your renewals and reimbursing 80% of eligible tickets (up to $200/year).
             </p>
 
             <ul style={{
@@ -95,7 +95,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                   marginRight: '8px',
                   fontSize: '16px'
                 }}>✓</span>
-                Ticket coverage up to $200/year
+                80% ticket reimbursement (up to $200/year)
               </li>
               <li style={{
                 display: 'flex',
@@ -195,7 +195,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             lineHeight: '1.5',
             margin: '0 0 20px 0'
           }}>
-            We handle all your city sticker and license plate renewals, plus cover any tickets that slip through.
+            We handle all your city sticker and license plate renewals, plus reimburse 80% of eligible tickets that slip through (up to $200/year).
           </p>
 
           <ul style={{
@@ -230,7 +230,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                 marginRight: '8px',
                 fontSize: '16px'
               }}>✓</span>
-              Ticket coverage for street cleaning, snow, city sticker & license plate renewal tickets
+              80% reimbursement for street cleaning, snow, city sticker & license plate renewal tickets
             </li>
             <li style={{
               display: 'flex',

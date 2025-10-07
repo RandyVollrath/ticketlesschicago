@@ -370,10 +370,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // Send email notification about affiliate sale
           const plan = metadata.plan || 'unknown';
-          const totalAmount = session.amount_total ? (session.amount_total / 100).toFixed(2) : '0.00';
-          const expectedCommission = plan === 'monthly' ? '2.40' : plan === 'annual' ? '24.00' : 'unknown';
-          const actualCommission = plan === 'monthly' ? '53.40' : plan === 'annual' ? '534.00' : 'unknown';
+          const totalAmount = session.amount_total ? (session.amount_total / 100) : 0;
+          const expectedCommission = plan === 'monthly' ? 2.40 : plan === 'annual' ? 24.00 : 0;
+          const actualCommission = plan === 'monthly' ? 53.40 : plan === 'annual' ? 534.00 : 0;
 
+          // Save to database for tracking
+          try {
+            const { error: dbError } = await supabaseAdmin
+              .from('affiliate_commission_tracker')
+              .insert({
+                stripe_session_id: session.id,
+                customer_email: email || session.customer_details?.email || 'Unknown',
+                plan,
+                total_amount: totalAmount,
+                expected_commission: expectedCommission,
+                referral_id: rewardfulReferralId,
+                commission_adjusted: false
+              });
+
+            if (dbError) {
+              console.error('❌ Failed to save affiliate commission to database:', dbError);
+            } else {
+              console.log('✅ Affiliate commission saved to database');
+            }
+          } catch (dbSaveError) {
+            console.error('❌ Error saving affiliate commission:', dbSaveError);
+          }
+
+          // Send email notification
           try {
             await resend.emails.send({
               from: 'Ticketless Alerts <noreply@ticketlessamerica.com>',
@@ -387,18 +411,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 <ul>
                   <li><strong>Customer:</strong> ${email || session.customer_details?.email || 'Unknown'}</li>
                   <li><strong>Plan:</strong> ${plan}</li>
-                  <li><strong>Total Charge:</strong> $${totalAmount}</li>
+                  <li><strong>Total Charge:</strong> $${totalAmount.toFixed(2)}</li>
                   <li><strong>Referral ID:</strong> ${rewardfulReferralId}</li>
                 </ul>
 
                 <h3>⚠️ Commission Adjustment Required:</h3>
                 <p>Rewardful will calculate commission on the full charge amount (including renewal fees).</p>
                 <ul>
-                  <li><strong>Expected Commission:</strong> $${expectedCommission}/month (20% of subscription only)</li>
-                  <li><strong>Actual Commission:</strong> ~$${actualCommission} (20% of total including renewal fees)</li>
+                  <li><strong>Expected Commission:</strong> $${expectedCommission.toFixed(2)}/month (20% of subscription only)</li>
+                  <li><strong>Actual Commission:</strong> ~$${actualCommission.toFixed(2)} (20% of total including renewal fees)</li>
                 </ul>
 
-                <p><strong>Action needed:</strong> Manually adjust the commission in the Rewardful dashboard to $${expectedCommission}/month.</p>
+                <p><strong>Action needed:</strong> Manually adjust the commission in the Rewardful dashboard to $${expectedCommission.toFixed(2)}/month.</p>
 
                 <p><a href="https://app.getrewardful.com/dashboard" style="display: inline-block; padding: 10px 20px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Open Rewardful Dashboard</a></p>
               `

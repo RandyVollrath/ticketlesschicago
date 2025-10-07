@@ -227,7 +227,7 @@ export default function Protection() {
             margin: '0 auto 40px auto',
             lineHeight: '1.4'
           }}>
-            We handle your city sticker & license plate renewals and cover any listed tickets that slip through.
+            We handle your city sticker & license plate renewals and reimburse 80% of eligible tickets up to $200/year.
           </p>
         </div>
 
@@ -286,7 +286,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              If you get a street cleaning, snow removal, city sticker, or license plate renewal ticket despite our alerts, we cover it.
+              If you get a street cleaning, snow removal, city sticker, or license plate renewal ticket despite our alerts, we reimburse 80% of it (up to $200/year total coverage).
             </p>
           </div>
 
@@ -830,7 +830,7 @@ export default function Protection() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We cover street cleaning, snow removal, city sticker, and license plate renewal tickets. If you get any of these tickets despite following our alerts and our <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a>, we'll reimburse you.
+                We reimburse 80% of street cleaning, snow removal, city sticker, and license plate renewal tickets. If you get any of these tickets despite following our alerts and our <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a>, we'll reimburse 80% up to $200/year total coverage.
               </p>
             </div>
 

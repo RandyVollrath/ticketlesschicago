@@ -188,7 +188,7 @@ export default function Hero({ onPrimaryCTA, onSecondaryCTA }: HeroProps) {
               lineHeight: '1.5',
               margin: 0
             }}>
-              We handle renewals and cover listed tickets that slip through
+              We handle renewals and reimburse 80% of eligible tickets (up to $200/year)
             </p>
           </div>
         </div>
