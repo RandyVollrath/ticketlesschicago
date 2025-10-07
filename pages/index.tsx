@@ -46,6 +46,40 @@ export default function Home() {
       <Head>
         <title>Ticketless America - Free Alerts for Street Cleaning & Renewals</title>
         <meta name="description" content="Never get blindsided by a ticket again. Free alerts for street cleaning, snow removal, city stickers, and license plates." />
+        <style>{`
+          .responsive-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 48px;
+          }
+          .hero-title {
+            fontSize: 72px;
+            fontWeight: 800;
+            color: #000;
+            marginBottom: 24px;
+            margin: 0 0 24px 0;
+            lineHeight: 1.1;
+            letterSpacing: -2px;
+          }
+          .section-title {
+            fontSize: 48px;
+            fontWeight: 800;
+            letterSpacing: -1px;
+          }
+          @media (max-width: 768px) {
+            .responsive-grid {
+              grid-template-columns: 1fr;
+              gap: 32px;
+            }
+            .hero-title {
+              font-size: 42px !important;
+              letter-spacing: -1px !important;
+            }
+            .section-title {
+              font-size: 32px !important;
+            }
+          }
+        `}</style>
       </Head>
 
       {/* Navigation */}
@@ -148,7 +182,7 @@ export default function Home() {
         <div style={{
           padding: '0 16px'
         }}>
-          <h1 style={{
+          <h1 className="hero-title" style={{
             fontSize: '72px',
             fontWeight: '800',
             color: '#000',
@@ -257,15 +291,8 @@ export default function Home() {
         padding: '80px 16px',
         backgroundColor: 'white'
       }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '48px'
-          }}>
+        <div>
+          <div className="responsive-grid">
             <div style={{ textAlign: 'center' }}>
               <div style={{
                 width: '64px',
@@ -376,7 +403,7 @@ export default function Home() {
         <div style={{
           textAlign: 'center'
         }}>
-          <h2 style={{
+          <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
             color: '#000',
@@ -395,10 +422,7 @@ export default function Home() {
             Get started in three simple steps
           </p>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '48px',
+          <div className="responsive-grid" style={{
             textAlign: 'left'
           }}>
             <div>
@@ -516,12 +540,7 @@ export default function Home() {
         borderTop: '1px solid #e5e7eb',
         borderBottom: '1px solid #e5e7eb'
       }}>
-        <div style={{
-          maxWidth: '1000px',
-          margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '48px',
+        <div className="responsive-grid" style={{
           textAlign: 'center'
         }}>
           <div>
@@ -584,7 +603,7 @@ export default function Home() {
         backgroundColor: '#f8f9fa'
       }}>
         <div>
-          <h2 style={{
+          <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
             color: '#000',
@@ -664,7 +683,7 @@ export default function Home() {
         textAlign: 'center'
       }}>
         <div>
-          <h2 style={{
+          <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
             marginBottom: '40px',
