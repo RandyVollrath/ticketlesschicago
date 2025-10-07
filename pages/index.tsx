@@ -67,26 +67,26 @@ export default function Home() {
             letterSpacing: -1px;
           }
           .how-it-works-container {
-            maxWidth: 900px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 0 80px;
-            textAlign: center;
+            text-align: center;
           }
           .how-it-works-steps {
             display: flex;
             flex-direction: column;
             gap: 48px;
-            maxWidth: 700px;
+            max-width: 700px;
             margin: 0 auto;
-            alignItems: center;
+            align-items: center;
           }
           .how-it-works-step {
             display: flex;
             gap: 24px;
-            textAlign: left;
-            alignItems: flex-start;
+            text-align: left;
+            align-items: flex-start;
             width: 100%;
-            maxWidth: 600px;
+            max-width: 600px;
           }
           .logo-mobile {
             display: none;
@@ -123,10 +123,10 @@ export default function Home() {
               padding: 0 16px !important;
             }
             .how-it-works-steps {
-              maxWidth: 100%;
+              max-width: 100%;
             }
             .how-it-works-step {
-              flexDirection: column;
+              flex-direction: column;
               gap: 16px;
             }
             .free-alerts-link {

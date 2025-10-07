@@ -145,7 +145,7 @@ export default function Protection() {
         top: 0,
         left: 0,
         right: 0,
-        height: '70px',
+        height: '90px',
         backgroundColor: 'rgba(255,255,255,0.98)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
@@ -153,37 +153,37 @@ export default function Protection() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px'
+        padding: '0 48px'
       }}>
         <div
           onClick={() => router.push('/')}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
+            gap: '16px',
             cursor: 'pointer',
             flexShrink: 0,
-            marginRight: '8px'
+            marginRight: '24px'
           }}
         >
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '8px',
+            width: '52px',
+            height: '52px',
+            borderRadius: '10px',
             background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            fontSize: '28px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
           }}>
             🛡️
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-            <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+            <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
               Ticketless
             </span>
-            <span style={{ fontSize: '10px', fontWeight: '600', color: '#666', letterSpacing: '1.5px' }}>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
               AMERICA
             </span>
           </div>
@@ -217,7 +217,7 @@ export default function Protection() {
       <main style={{
         maxWidth: '1000px',
         margin: '0 auto',
-        padding: '100px 16px 60px 16px'
+        padding: '120px 16px 60px 16px'
       }}>
         {/* Hero Section */}
         <div style={{
