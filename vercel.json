@@ -16,6 +16,10 @@
       "schedule": "0 14 * * *"
     },
     {
+      "path": "/api/admin/notify-renewals",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/street-cleaning/process",
       "schedule": "0 0 * * *"
     },
