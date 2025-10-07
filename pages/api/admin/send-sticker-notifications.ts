@@ -200,21 +200,19 @@ Ticketless America Team
           }
         }
 
-        // Log the notification in the database
+        // Log individual sticker notifications
         try {
-          await supabaseAdmin.from('notification_log').insert({
-            user_id: user.user_id,
-            type: 'sticker_purchase',
-            method: 'email_and_sms',
-            sent_at: new Date().toISOString(),
-            metadata: {
-              sticker_types: stickerTypes,
+          for (const stickerType of stickerTypes) {
+            await supabaseAdmin.from('sticker_notifications').insert({
+              user_id: user.user_id,
+              sticker_type: stickerType,
               license_plate: user.license_plate,
-              sent_by: user.email
-            }
-          });
+              sent_by: user.email,
+              sent_at: new Date().toISOString()
+            });
+          }
         } catch (logError) {
-          console.error('Error logging notification:', logError);
+          console.error('Error logging sticker notification:', logError);
           // Don't fail the whole operation if logging fails
         }
 
