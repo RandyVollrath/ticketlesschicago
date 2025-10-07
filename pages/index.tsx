@@ -487,7 +487,8 @@ export default function Home() {
             color: '#000',
             marginBottom: '24px',
             margin: '0 0 24px 0',
-            letterSpacing: '-1px'
+            letterSpacing: '-1px',
+            textAlign: 'center'
           }}>
             How It Works
           </h2>
@@ -681,7 +682,10 @@ export default function Home() {
         padding: '100px 16px',
         backgroundColor: '#f8f9fa'
       }}>
-        <div>
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto'
+        }}>
           <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
