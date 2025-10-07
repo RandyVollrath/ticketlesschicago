@@ -72,7 +72,16 @@ export default function Home() {
             padding: 0 40px;
             textAlign: center;
           }
+          .logo-mobile {
+            display: none;
+          }
           @media (max-width: 768px) {
+            .logo-desktop {
+              display: none !important;
+            }
+            .logo-mobile {
+              display: block !important;
+            }
             .responsive-grid {
               grid-template-columns: 1fr;
               gap: 32px;
@@ -123,16 +132,44 @@ export default function Home() {
         <div
           onClick={() => window.location.reload()}
           style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            color: '#000',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
             cursor: 'pointer',
-            letterSpacing: '-0.5px',
             flexShrink: 0,
             marginRight: '8px'
           }}
         >
-          Ticketless
+          {/* Logo - desktop version with icon */}
+          <div className="logo-desktop" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              🛡️
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+              <span style={{ fontSize: '24px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+                Ticketless
+              </span>
+              <span style={{ fontSize: '11px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
+                AMERICA
+              </span>
+            </div>
+          </div>
+          {/* Logo - mobile version (text only) */}
+          <div className="logo-mobile" style={{ display: 'none' }}>
+            <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+              Ticketless
+            </span>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
           <a
