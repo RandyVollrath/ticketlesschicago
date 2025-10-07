@@ -64,9 +64,19 @@ export default function StreetCleaningSettings() {
   const [loadingAlternatives, setLoadingAlternatives] = useState(false);
   const [parkHereError, setParkHereError] = useState('');
   const [parkHereRetryCount, setParkHereRetryCount] = useState(0);
-  
+
   // Street cleaning status
   const [nextCleaningDate, setNextCleaningDate] = useState<string | null>(null);
+
+  // Helper to check if a date is today
+  const isToday = (dateStr: string | null | undefined): boolean => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
   const [cleaningStatus, setCleaningStatus] = useState<'today' | 'next-3-days' | 'later' | 'unknown'>('unknown');
   const [loadingCleaningInfo, setLoadingCleaningInfo] = useState(false);
   
@@ -666,8 +676,15 @@ export default function StreetCleaningSettings() {
                     )}
                     
                     {zone.next_cleaning_date && (
-                      <div className={styles.nextCleaning}>
-                        <strong>Next cleaning:</strong> {new Date(zone.next_cleaning_date).toLocaleDateString()}
+                      <div className={styles.nextCleaning} style={{
+                        color: isToday(zone.next_cleaning_date) ? '#dc2626' : 'inherit',
+                        fontWeight: isToday(zone.next_cleaning_date) ? '600' : 'normal'
+                      }}>
+                        {isToday(zone.next_cleaning_date) ? (
+                          <><strong>🚨 Street cleaning TODAY</strong> (9am-2pm) - Don't park here!</>
+                        ) : (
+                          <><strong>Next cleaning:</strong> {new Date(zone.next_cleaning_date).toLocaleDateString()}</>
+                        )}
                       </div>
                     )}
                     
