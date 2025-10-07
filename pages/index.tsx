@@ -62,32 +62,34 @@ export default function Home() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 48px'
+        padding: '0 16px'
       }}>
         <div
           onClick={() => window.location.reload()}
           style={{
-            fontSize: '22px',
+            fontSize: '20px',
             fontWeight: '700',
             color: '#000',
             cursor: 'pointer',
-            letterSpacing: '-0.5px'
+            letterSpacing: '-0.5px',
+            flexShrink: 0,
+            marginRight: '8px'
           }}
         >
           Ticketless
         </div>
-        <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          <a href="/alerts/signup" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
+          <a href="/alerts/signup" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
             Free Alerts
           </a>
-          <a href="/protection" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
+          <a href="/protection" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
             Protection
           </a>
-          <a href="#faq" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
+          <a href="#faq" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
             FAQ
           </a>
           {checkingAuth ? (
-            <div style={{ width: '80px' }} />
+            <div style={{ width: '70px', flexShrink: 0 }} />
           ) : user ? (
             <button
               onClick={() => router.push('/settings')}
@@ -96,10 +98,12 @@ export default function Home() {
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                padding: '10px 20px',
-                fontSize: '14px',
+                padding: '8px 16px',
+                fontSize: '13px',
                 fontWeight: '600',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               Account
@@ -112,10 +116,12 @@ export default function Home() {
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                padding: '10px 20px',
-                fontSize: '14px',
+                padding: '8px 16px',
+                fontSize: '13px',
                 fontWeight: '600',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               Sign In
