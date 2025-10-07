@@ -66,14 +66,6 @@ export default function Home() {
             fontWeight: 800;
             letterSpacing: -1px;
           }
-          .free-alerts-link {
-            color: #666;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            white-space: nowrap;
-            cursor: pointer;
-          }
           @media (max-width: 768px) {
             .responsive-grid {
               grid-template-columns: 1fr;
@@ -132,6 +124,7 @@ export default function Home() {
             href="/alerts/signup"
             onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
             className="free-alerts-link"
+            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
           >
             Free Alerts
           </a>
