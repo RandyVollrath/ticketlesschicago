@@ -31,6 +31,7 @@ interface UpcomingRenewal {
   city_sticker_expiry: string | null;
   license_plate_expiry: string | null;
   has_protection: boolean;
+  phone: string;
 }
 
 const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
@@ -52,6 +53,10 @@ export default function ProfileUpdates() {
   });
   const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[]>([]);
   const [renewalsLoading, setRenewalsLoading] = useState(true);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [stickerModalOpen, setStickerModalOpen] = useState(false);
+  const [stickerTypes, setStickerTypes] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -148,7 +153,7 @@ export default function ProfileUpdates() {
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, has_protection')
+        .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, has_protection, phone')
         .or(`city_sticker_expiry.lte.${ninetyDaysStr},license_plate_expiry.lte.${ninetyDaysStr}`)
         .order('city_sticker_expiry', { ascending: true, nullsLast: true });
 
@@ -219,6 +224,84 @@ export default function ProfileUpdates() {
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('Failed to save profile');
+    }
+  }
+
+  function toggleUserSelection(userId: string) {
+    const newSelection = new Set(selectedUsers);
+    if (newSelection.has(userId)) {
+      newSelection.delete(userId);
+    } else {
+      newSelection.add(userId);
+    }
+    setSelectedUsers(newSelection);
+  }
+
+  function toggleStickerType(type: string) {
+    const newTypes = new Set(stickerTypes);
+    if (newTypes.has(type)) {
+      newTypes.delete(type);
+    } else {
+      newTypes.add(type);
+    }
+    setStickerTypes(newTypes);
+  }
+
+  async function sendStickerNotifications() {
+    if (selectedUsers.size === 0) {
+      alert('Please select at least one user');
+      return;
+    }
+    if (stickerTypes.size === 0) {
+      alert('Please select at least one sticker type');
+      return;
+    }
+
+    setSending(true);
+    try {
+      const selectedUserData = upcomingRenewals.filter(u => selectedUsers.has(u.user_id));
+
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expired. Please log in again.');
+        return;
+      }
+
+      const response = await fetch('/api/admin/send-sticker-notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          users: selectedUserData.map(u => ({
+            user_id: u.user_id,
+            email: u.email,
+            phone: u.phone,
+            first_name: u.first_name,
+            last_name: u.last_name,
+            license_plate: u.license_plate
+          })),
+          stickerTypes: Array.from(stickerTypes)
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`Notifications sent successfully!\nEmails: ${result.emailsSent}\nSMS: ${result.smsSent}`);
+        setSelectedUsers(new Set());
+        setStickerTypes(new Set());
+        setStickerModalOpen(false);
+      } else {
+        alert(`Error: ${result.error || 'Failed to send notifications'}`);
+      }
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      alert('Failed to send notifications');
+    } finally {
+      setSending(false);
     }
   }
 
@@ -300,9 +383,28 @@ export default function ProfileUpdates() {
 
         {/* Upcoming Renewals Section */}
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '32px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: '0 0 16px 0' }}>
-            📅 Upcoming Renewals (Next 90 Days)
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              📅 Upcoming Renewals (Next 90 Days)
+            </h2>
+            {selectedUsers.size > 0 && (
+              <button
+                onClick={() => setStickerModalOpen(true)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '14px'
+                }}
+              >
+                Send Sticker Notifications ({selectedUsers.size} selected)
+              </button>
+            )}
+          </div>
           {renewalsLoading ? (
             <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
               Loading renewals...
@@ -316,6 +418,20 @@ export default function ProfileUpdates() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px', width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.size === upcomingRenewals.length && upcomingRenewals.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUsers(new Set(upcomingRenewals.map(r => r.user_id)));
+                          } else {
+                            setSelectedUsers(new Set());
+                          }
+                        }}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                      />
+                    </th>
                     <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Name</th>
                     <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>Email</th>
                     <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '14px' }}>License Plate</th>
@@ -331,6 +447,14 @@ export default function ProfileUpdates() {
 
                     return (
                       <tr key={renewal.user_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '12px' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.has(renewal.user_id)}
+                            onChange={() => toggleUserSelection(renewal.user_id)}
+                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                          />
+                        </td>
                         <td style={{ padding: '12px', color: '#111827' }}>
                           {renewal.first_name} {renewal.last_name}
                         </td>
@@ -582,6 +706,111 @@ export default function ProfileUpdates() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Sticker Notification Modal */}
+        {stickerModalOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '32px',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: '0 0 16px 0' }}>
+                Send Sticker Purchase Notifications
+              </h2>
+              <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+                Notify {selectedUsers.size} selected user{selectedUsers.size > 1 ? 's' : ''} that their stickers have been purchased and are in the mail.
+              </p>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                  Select Sticker Types:
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={stickerTypes.has('city_sticker')}
+                      onChange={() => toggleStickerType('city_sticker')}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '15px', color: '#111827' }}>City Sticker</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={stickerTypes.has('license_plate')}
+                      onChange={() => toggleStickerType('license_plate')}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '15px', color: '#111827' }}>License Plate Sticker</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+                <p style={{ fontSize: '14px', color: '#1e40af', margin: 0 }}>
+                  <strong>Note:</strong> Notifications will be sent via both email and SMS to inform users their stickers are in the mail.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={sendStickerNotifications}
+                  disabled={sending || stickerTypes.size === 0}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    background: stickerTypes.size === 0 ? '#9ca3af' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: stickerTypes.size === 0 || sending ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                    fontSize: '16px'
+                  }}
+                >
+                  {sending ? 'Sending...' : 'Send Notifications'}
+                </button>
+                <button
+                  onClick={() => {
+                    setStickerModalOpen(false);
+                    setStickerTypes(new Set());
+                  }}
+                  disabled={sending}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    background: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: sending ? 'not-allowed' : 'pointer',
+                    fontWeight: '500',
+                    fontSize: '16px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
