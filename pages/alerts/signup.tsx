@@ -120,11 +120,15 @@ export default function AlertsSignup() {
       <header style={{
         backgroundColor: 'white',
         borderBottom: '1px solid #e5e7eb',
-        padding: '16px'
+        height: '90px',
+        display: 'flex',
+        alignItems: 'center'
       }}>
         <div style={{
           maxWidth: '1200px',
           margin: '0 auto',
+          width: '100%',
+          padding: '0 48px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -149,25 +153,28 @@ export default function AlertsSignup() {
             Back to Home
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            onClick={() => router.push('/')}
+            style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}
+          >
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
+              width: '52px',
+              height: '52px',
+              borderRadius: '10px',
               background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              fontSize: '28px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
             }}>
               🛡️
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-              <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+              <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
                 Ticketless
               </span>
-              <span style={{ fontSize: '10px', fontWeight: '600', color: '#666', letterSpacing: '1.5px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
                 AMERICA
               </span>
             </div>
