@@ -94,10 +94,10 @@ export default function Support() {
       background: 'linear-gradient(to bottom, #f9fafb, white)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      <div style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: '48px 40px' 
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '48px 16px'
       }}>
         <button
           onClick={() => router.push('/')}
@@ -302,29 +302,30 @@ export default function Support() {
             </h2>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'row' }}>
-            {/* Category Sidebar */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Category Buttons - Horizontal on mobile */}
             <div style={{
-              width: '25%',
-              padding: '24px',
-              borderRight: '1px solid #e5e7eb'
+              padding: '16px',
+              borderBottom: '1px solid #e5e7eb',
+              overflowX: 'auto'
             }}>
-              <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <nav style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'wrap' }}>
                 {Object.entries(faqCategories).map(([key, category]) => (
                   <button
                     key={key}
                     onClick={() => setSelectedCategory(key)}
                     style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '16px',
+                      textAlign: 'center',
+                      padding: '12px 16px',
                       borderRadius: '8px',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
-                      background: selectedCategory === key ? '#dbeafe' : 'transparent',
+                      background: selectedCategory === key ? '#dbeafe' : '#f3f4f6',
                       color: selectedCategory === key ? '#1d4ed8' : '#6b7280',
-                      fontWeight: selectedCategory === key ? '500' : 'normal'
+                      fontWeight: selectedCategory === key ? '600' : 'normal',
+                      fontSize: '14px',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     {category.title}
@@ -334,7 +335,7 @@ export default function Support() {
             </div>
 
             {/* FAQ Content */}
-            <div style={{ width: '75%', padding: '24px' }}>
+            <div style={{ padding: '24px 16px' }}>
               <h3 style={{ 
                 fontSize: '20px', 
                 fontWeight: '600', 

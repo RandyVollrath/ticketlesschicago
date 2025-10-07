@@ -537,7 +537,7 @@ export default function ParkingMapPage() {
             {/* Copyright */}
             <div className="mt-8 pt-8 border-t border-slate-300/50 text-center">
               <p className="text-sm text-slate-500">
-                © 2024 Ticketless America. Making parking stress-free, one zone at a time.
+                © 2025 Ticketless America. Making parking stress-free, one zone at a time.
               </p>
             </div>
           </div>
