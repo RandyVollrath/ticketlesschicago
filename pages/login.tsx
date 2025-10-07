@@ -262,16 +262,16 @@ export default function Login() {
 
       {/* Clean header */}
       <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          maxWidth: '1200px', 
-          margin: '0 auto', 
-          padding: '24px 32px' 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '24px 16px'
         }}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>Ticketless</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '32px', fontSize: '14px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginRight: '24px' }}>Ticketless</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', fontSize: '14px' }}>
             <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>How It Works</a>
             <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Pricing</a>
             <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Support</a>
