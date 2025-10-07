@@ -18,14 +18,12 @@ const AlternativeParkingZones: React.FC<AlternativeParkingZonesProps> = ({ alter
     return null
   }
 
-  // Helper to check if a date is today
+  // Helper to check if a date is today (timezone-safe string comparison)
   const isToday = (dateStr: string | null | undefined): boolean => {
     if (!dateStr) return false
-    const date = new Date(dateStr)
     const today = new Date()
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear()
+    const todayStr = today.toISOString().split('T')[0]
+    return dateStr === todayStr
   }
 
   return (
