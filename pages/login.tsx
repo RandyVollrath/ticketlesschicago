@@ -304,82 +304,81 @@ export default function Login() {
                 Never Miss Street Cleaning Again
               </h1>
               
-              <div style={{ textAlign: 'left', marginBottom: '32px' }}>
-                <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500', marginBottom: '12px' }}>
-                  Alerts for Street Cleaning and Snow Removal on your block:
+              {/* Free Features */}
+              <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+                <p style={{ fontSize: '14px', color: '#059669', fontWeight: '600', marginBottom: '12px' }}>
+                  ✓ FREE Alerts (Always Free):
                 </p>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      backgroundColor: '#3b82f6', 
-                      borderRadius: '50%', 
-                      marginTop: '8px',
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      backgroundColor: '#10b981',
+                      borderRadius: '50%',
+                      marginTop: '6px',
                       flexShrink: 0
                     }}></div>
                     <span style={{ fontSize: '14px', color: '#374151' }}>
                       Street cleaning alerts for your block
                     </span>
                   </div>
-                  
+
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      backgroundColor: '#10b981', 
-                      borderRadius: '50%', 
-                      marginTop: '8px',
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      backgroundColor: '#10b981',
+                      borderRadius: '50%',
+                      marginTop: '6px',
                       flexShrink: 0
                     }}></div>
                     <span style={{ fontSize: '14px', color: '#374151' }}>
-                      Snow removal notifications for your area
-                    </span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      backgroundColor: '#8b5cf6', 
-                      borderRadius: '50%', 
-                      marginTop: '8px',
-                      flexShrink: 0
-                    }}></div>
-                    <span style={{ fontSize: '14px', color: '#374151' }}>
-                      We pay 80% of tickets you receive, up to $200/year
+                      Snow removal notifications
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      backgroundColor: '#f59e0b', 
-                      borderRadius: '50%', 
-                      marginTop: '8px',
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      backgroundColor: '#10b981',
+                      borderRadius: '50%',
+                      marginTop: '6px',
                       flexShrink: 0
                     }}></div>
                     <span style={{ fontSize: '14px', color: '#374151' }}>
-                      Email and SMS alerts to keep you informed
+                      Email, SMS, and phone alerts
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div style={{ 
-                backgroundColor: '#eff6ff', 
-                border: '1px solid #bfdbfe', 
-                borderRadius: '12px', 
-                padding: '16px', 
-                marginBottom: '32px' 
+              {/* Paid Features */}
+              <div style={{
+                backgroundColor: '#eff6ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '32px'
               }}>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', marginBottom: '4px' }}>
-                  Plus: City Sticker & License Renewal Service
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', marginBottom: '8px' }}>
+                  🛡️ Ticket Protection ($12/mo or $120/year):
                 </div>
-                <div style={{ fontSize: '14px', color: '#1e40af' }}>
-                  We handle renewals for you + up to $200/year ticket coverage
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#3b82f6', fontSize: '14px', flexShrink: 0 }}>•</span>
+                    <span style={{ fontSize: '13px', color: '#1e40af' }}>
+                      Done-for-you city sticker & license plate renewals
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#3b82f6', fontSize: '14px', flexShrink: 0 }}>•</span>
+                    <span style={{ fontSize: '13px', color: '#1e40af' }}>
+                      80% ticket reimbursement (up to $200/year)
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
