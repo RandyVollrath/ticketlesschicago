@@ -483,7 +483,7 @@ export default function AlertsSignup() {
               textAlign: 'center',
               margin: 0
             }}>
-              By signing up, you'll receive email and SMS alerts for street cleaning, snow removal, city stickers, and license plate renewals.
+              By signing up, you'll receive email, SMS, and phone call alerts for street cleaning, snow removal, city stickers, and license plate renewals.
             </p>
           </form>
         </div>
