@@ -85,6 +85,12 @@ export default function Home() {
               text-align: center !important;
               max-width: 45px !important;
             }
+            .hero-subtitle-desktop {
+              display: none !important;
+            }
+            .hero-subtitle-mobile {
+              display: block !important;
+            }
           }
         `}</style>
       </Head>
@@ -188,6 +194,8 @@ export default function Home() {
         background: 'linear-gradient(180deg, #fff 0%, #f8f9fa 100%)'
       }}>
         <div style={{
+          maxWidth: '900px',
+          margin: '0 auto',
           padding: '0 16px'
         }}>
           <h1 className="hero-title" style={{
@@ -203,38 +211,56 @@ export default function Home() {
             <br />
             by a Ticket Again
           </h1>
-          <div style={{
-            fontSize: '22px',
-            color: '#666',
-            marginBottom: '16px',
-            fontWeight: '500',
-            margin: '0 0 16px 0'
-          }}>
-            Free alerts for:
-          </div>
-          <ul style={{
-            listStyle: 'none',
-            padding: 0,
-            margin: '0 0 20px 0',
-            fontSize: '20px',
-            color: '#666',
-            lineHeight: '2'
-          }}>
-            <li>• Street cleaning</li>
-            <li>• Snow removal</li>
-            <li>• City stickers</li>
-            <li>• License plate renewals</li>
-            <li>• Emission testing</li>
-          </ul>
-          <p style={{
-            fontSize: '22px',
+
+          {/* Desktop version - clean paragraph */}
+          <p className="hero-subtitle-desktop" style={{
+            fontSize: '24px',
             color: '#666',
             marginBottom: '48px',
-            fontWeight: '500',
+            lineHeight: '1.5',
+            fontWeight: '400',
             margin: '0 0 48px 0'
           }}>
+            Free alerts for street cleaning, snow removal, city stickers, license plates, and emissions testing.
+            <br />
             Peace of mind for every driver in Chicago.
           </p>
+
+          {/* Mobile version - bullet list */}
+          <div className="hero-subtitle-mobile" style={{ display: 'none' }}>
+            <div style={{
+              fontSize: '22px',
+              color: '#666',
+              marginBottom: '16px',
+              fontWeight: '500',
+              margin: '0 0 16px 0'
+            }}>
+              Free alerts for:
+            </div>
+            <ul style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: '0 0 20px 0',
+              fontSize: '20px',
+              color: '#666',
+              lineHeight: '2'
+            }}>
+              <li>• Street cleaning</li>
+              <li>• Snow removal</li>
+              <li>• City stickers</li>
+              <li>• License plate renewals</li>
+              <li>• Emission testing</li>
+            </ul>
+            <p style={{
+              fontSize: '22px',
+              color: '#666',
+              marginBottom: '48px',
+              fontWeight: '500',
+              margin: '0 0 48px 0'
+            }}>
+              Peace of mind for every driver in Chicago.
+            </p>
+          </div>
           <div style={{
             display: 'flex',
             gap: '16px',
