@@ -68,14 +68,12 @@ export default function StreetCleaningSettings() {
   // Street cleaning status
   const [nextCleaningDate, setNextCleaningDate] = useState<string | null>(null);
 
-  // Helper to check if a date is today
+  // Helper to check if a date is today (timezone-safe string comparison)
   const isToday = (dateStr: string | null | undefined): boolean => {
     if (!dateStr) return false;
-    const date = new Date(dateStr);
     const today = new Date();
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
+    const todayStr = today.toISOString().split('T')[0];
+    return dateStr === todayStr;
   };
   const [cleaningStatus, setCleaningStatus] = useState<'today' | 'next-3-days' | 'later' | 'unknown'>('unknown');
   const [loadingCleaningInfo, setLoadingCleaningInfo] = useState(false);
