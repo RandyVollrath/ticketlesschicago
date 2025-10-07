@@ -169,57 +169,35 @@ export default async function handler(
       throw new Error(`Failed to create profile: ${profileError.message}`);
     }
 
-    // Check if user already has this vehicle or if they've hit the free plan limit
-    const { data: existingVehicles, error: countError } = await supabase
+    // For free alerts signup, we upsert the vehicle (update if exists, create if not)
+    // This is a signup/update flow, not an "add vehicle" flow
+    const vehicleData: any = {
+      user_id: userId,
+      license_plate: licensePlate.toUpperCase(),
+      zip_code: zip,
+      subscription_status: 'active'
+    };
+
+    // Add optional fields if provided
+    if (vin) vehicleData.vin = vin;
+    if (make) vehicleData.make = make;
+    if (model) vehicleData.model = model;
+    if (citySticker) vehicleData.city_sticker_expiry = citySticker;
+
+    // Use upsert to update if vehicle exists, create if not
+    // Free users are limited to 1 vehicle, so we update their existing vehicle
+    const { error: vehicleError } = await supabase
       .from('vehicles')
-      .select('id, license_plate')
-      .eq('user_id', userId);
+      .upsert(vehicleData, {
+        onConflict: 'user_id,license_plate'
+      });
 
-    if (countError) {
-      console.error('Error checking vehicle count:', countError);
+    if (vehicleError) {
+      console.error('Vehicle upsert error:', vehicleError);
+      throw new Error(`Failed to save vehicle: ${vehicleError.message}`);
     }
 
-    // Check if this specific vehicle already exists
-    const vehicleExists = existingVehicles?.some(
-      v => v.license_plate.toUpperCase() === licensePlate.toUpperCase()
-    );
-
-    if (!vehicleExists) {
-      // Only check limit if adding a NEW vehicle
-      if (existingVehicles && existingVehicles.length >= 1) {
-        return res.status(400).json({
-          error: 'Free plan allows 1 vehicle. Upgrade to Ticket Protection for unlimited vehicles.'
-        });
-      }
-
-      // Create vehicle record
-      const vehicleData: any = {
-        user_id: userId,
-        license_plate: licensePlate.toUpperCase(),
-        zip_code: zip,
-        subscription_status: 'active'
-      };
-
-      // Add optional fields if provided
-      if (vin) vehicleData.vin = vin;
-      if (make) vehicleData.make = make;
-      if (model) vehicleData.model = model;
-      if (citySticker) vehicleData.city_sticker_expiry = citySticker;
-
-      const { error: vehicleError } = await supabase
-        .from('vehicles')
-        .insert(vehicleData);
-
-      if (vehicleError) {
-        console.error('Vehicle creation error:', vehicleError);
-        // Don't fail if vehicle already exists
-        if (!vehicleError.message.includes('duplicate')) {
-          throw new Error(`Failed to create vehicle: ${vehicleError.message}`);
-        }
-      }
-    } else {
-      console.log('Vehicle already exists, updating profile only');
-    }
+    console.log('Vehicle saved successfully');
 
     console.log('✅ Free signup successful:', email);
 
