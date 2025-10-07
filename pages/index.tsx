@@ -78,12 +78,15 @@ export default function Home() {
             gap: 48px;
             maxWidth: 700px;
             margin: 0 auto;
+            alignItems: center;
           }
           .how-it-works-step {
             display: flex;
             gap: 24px;
             textAlign: left;
             alignItems: flex-start;
+            width: 100%;
+            maxWidth: 600px;
           }
           .logo-mobile {
             display: none;
