@@ -21,7 +21,7 @@ export default function AuthCallback() {
         
         const { data, error } = await supabase.auth.getSession()
         console.log('Session check result:', { session: !!data.session, error })
-        
+
         if (error) {
           console.error('Error during auth callback:', error)
           router.push('/?error=auth_failed')
@@ -29,6 +29,9 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
+          // Wait a bit to ensure session is fully established
+          console.log('Session found, waiting for it to be fully established...')
+          await new Promise(resolve => setTimeout(resolve, 500))
           // User is authenticated
           const user = data.session.user
           console.log('User authenticated:', user.email, 'about to process profile data')
@@ -79,17 +82,22 @@ export default function AuthCallback() {
           const redirectTo = new URLSearchParams(window.location.search).get('redirect');
           const adminEmails = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
 
+          console.log('=== REDIRECT LOGIC ===')
+          console.log('redirect param:', redirectTo)
+          console.log('user email:', user.email)
+          console.log('is admin:', adminEmails.includes(user.email || ''))
+
           if (redirectTo) {
             console.log('Redirecting to:', redirectTo);
-            router.push(redirectTo);
+            await router.push(redirectTo);
           } else if (adminEmails.includes(user.email || '')) {
             console.log('Admin user detected, redirecting to admin panel');
-            router.push('/admin/profile-updates');
+            await router.push('/admin/profile-updates');
           } else {
             console.log('Executing router.push("/settings")');
-            router.push('/settings');
+            await router.push('/settings');
           }
-          console.log('router.push executed')
+          console.log('router.push completed, current path:', window.location.pathname)
         } else {
           // No session, redirect to home
           console.log('No session found, redirecting to home')
