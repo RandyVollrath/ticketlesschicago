@@ -92,7 +92,7 @@ export default function AlertsSuccess() {
         }}>
           {isProtection
             ? "Your Ticket Protection is now active! We'll handle your renewals and you're covered up to $200/year in tickets."
-            : "We'll text/email you before tickets happen. Your alerts are now active for street cleaning, snow removal, city stickers, and license plates."
+            : "We'll text, email, and call you before tickets happen. Your alerts are now active for street cleaning, snow removal, city stickers, and license plates."
           }
         </p>
 
@@ -176,7 +176,7 @@ export default function AlertsSuccess() {
             color: '#374151',
             lineHeight: '1.5'
           }}>
-            <li>You'll receive alerts via email and SMS before any deadlines</li>
+            <li>You'll receive alerts via email, SMS, and phone call before any deadlines</li>
             {isProtection && !isExistingUser && (
               <li style={{ backgroundColor: '#dcfce7', padding: '8px', borderRadius: '6px', color: '#166534' }}>
                 <strong>✓ Login link sent to your email!</strong> Click the link to access your account and complete your profile.

@@ -57,7 +57,7 @@ export default function Support() {
       questions: [
         {
           q: 'How do alerts work?',
-          a: 'We send text and email alerts based on your home address for street cleaning, snow removal, and registration renewals.'
+          a: 'We send text, email, and phone call alerts based on your home address for street cleaning, snow removal, and registration renewals.'
         },
         {
           q: 'When do I receive alerts?',
