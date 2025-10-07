@@ -75,11 +75,6 @@ export default function Home() {
           .logo-mobile {
             display: none;
           }
-          .section-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 40px;
-          }
           @media (max-width: 768px) {
             .logo-desktop {
               display: none !important;
@@ -98,8 +93,7 @@ export default function Home() {
             .section-title {
               font-size: 32px !important;
             }
-            .how-it-works-container,
-            .section-container {
+            .how-it-works-container {
               padding: 0 !important;
             }
             .free-alerts-link {
@@ -374,14 +368,10 @@ export default function Home() {
 
       {/* Features Grid */}
       <div style={{
-        padding: '120px 16px',
+        padding: '80px 16px',
         backgroundColor: 'white'
       }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '0 40px'
-        }}>
+        <div>
           <div className="responsive-grid">
             <div style={{ textAlign: 'center' }}>
               <div style={{
@@ -622,20 +612,16 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Social Proof / Stats */}
+      {/* Social Proof / Stats (optional) */}
       <div style={{
-        padding: '100px 16px',
+        padding: '60px 16px',
         backgroundColor: 'white',
         borderTop: '1px solid #e5e7eb',
         borderBottom: '1px solid #e5e7eb'
       }}>
-        <div style={{
-          maxWidth: '1000px',
-          margin: '0 auto'
+        <div className="responsive-grid" style={{
+          textAlign: 'center'
         }}>
-          <div className="responsive-grid" style={{
-            textAlign: 'center'
-          }}>
           <div>
             <div style={{
               fontSize: '48px',
@@ -692,20 +678,17 @@ export default function Home() {
 
       {/* FAQ */}
       <div id="faq" style={{
-        padding: '120px 16px',
+        padding: '100px 16px',
         backgroundColor: '#f8f9fa'
       }}>
-        <div style={{
-          maxWidth: '900px',
-          margin: '0 auto'
-        }}>
+        <div>
           <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
             color: '#000',
-            marginBottom: '64px',
+            marginBottom: '48px',
             textAlign: 'center',
-            margin: '0 0 64px 0',
+            margin: '0 0 48px 0',
             letterSpacing: '-1px'
           }}>
             Frequently Asked Questions
@@ -773,20 +756,17 @@ export default function Home() {
 
       {/* Final CTA */}
       <div style={{
-        padding: '120px 16px',
+        padding: '100px 16px',
         backgroundColor: '#0052cc',
         color: 'white',
         textAlign: 'center'
       }}>
-        <div style={{
-          maxWidth: '800px',
-          margin: '0 auto'
-        }}>
+        <div>
           <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
-            marginBottom: '48px',
-            margin: '0 0 48px 0',
+            marginBottom: '40px',
+            margin: '0 0 40px 0',
             letterSpacing: '-1px'
           }}>
             Ready to protect yourself?
@@ -812,13 +792,11 @@ export default function Home() {
 
       {/* Footer */}
       <div style={{
-        padding: '80px 16px',
+        padding: '60px 16px',
         backgroundColor: '#f8f9fa',
         borderTop: '1px solid #e5e7eb'
       }}>
         <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
           textAlign: 'center'
         }}>
           <p style={{
