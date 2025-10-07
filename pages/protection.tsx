@@ -158,16 +158,35 @@ export default function Protection() {
         <div
           onClick={() => router.push('/')}
           style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            color: '#000',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
             cursor: 'pointer',
-            letterSpacing: '-0.5px',
             flexShrink: 0,
             marginRight: '8px'
           }}
         >
-          Ticketless
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            🛡️
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+            <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+              Ticketless
+            </span>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: '#666', letterSpacing: '1.5px' }}>
+              AMERICA
+            </span>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
           <a

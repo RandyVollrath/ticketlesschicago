@@ -270,7 +270,29 @@ export default function Login() {
           margin: '0 auto',
           padding: '24px 16px'
         }}>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginRight: '24px' }}>Ticketless</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginRight: '24px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              🛡️
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+                Ticketless
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: '600', color: '#666', letterSpacing: '1.5px' }}>
+                AMERICA
+              </span>
+            </div>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', fontSize: '14px' }}>
             <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>How It Works</a>
             <a href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Pricing</a>
