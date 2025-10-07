@@ -18,6 +18,16 @@ const AlternativeParkingZones: React.FC<AlternativeParkingZonesProps> = ({ alter
     return null
   }
 
+  // Helper to check if a date is today
+  const isToday = (dateStr: string | null | undefined): boolean => {
+    if (!dateStr) return false
+    const date = new Date(dateStr)
+    const today = new Date()
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear()
+  }
+
   return (
     <div style={{
       background: '#e7f3ff',
@@ -80,10 +90,14 @@ const AlternativeParkingZones: React.FC<AlternativeParkingZonesProps> = ({ alter
                 <span style={{
                   display: 'block',
                   fontSize: '12px',
-                  color: '#666',
-                  marginTop: '4px'
+                  color: isToday(zone.next_cleaning_date) ? '#dc2626' : '#666',
+                  marginTop: '4px',
+                  fontWeight: isToday(zone.next_cleaning_date) ? '600' : '400'
                 }}>
-                  Next cleaning: {new Date(zone.next_cleaning_date).toLocaleDateString()}
+                  {isToday(zone.next_cleaning_date)
+                    ? '🚨 Street cleaning TODAY'
+                    : `Next cleaning: ${new Date(zone.next_cleaning_date).toLocaleDateString()}`
+                  }
                 </span>
               )}
             </div>
