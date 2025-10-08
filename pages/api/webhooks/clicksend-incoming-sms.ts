@@ -174,14 +174,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify({
           from: 'Ticketless America <noreply@ticketlessamerica.com>',
-          to: 'mystreetcleaning@gmail.com',
+          to: 'ticketlessamerica@gmail.com',
           subject: emailSubject,
           html: emailHtml
         })
       });
 
       if (resendResponse.ok) {
-        console.log('✅ Email notification sent to mystreetcleaning@gmail.com');
+        console.log('✅ Email notification sent to ticketlessamerica@gmail.com');
 
         // Mark email as sent
         await supabaseAdmin
