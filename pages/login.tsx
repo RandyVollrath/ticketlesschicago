@@ -258,6 +258,47 @@ export default function Login() {
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
         <title>Sign In - Ticketless America</title>
+        <style>{`
+          @media (max-width: 768px) {
+            header {
+              height: 70px !important;
+            }
+            header > div {
+              padding: 0 12px !important;
+            }
+            header > div > div:first-child {
+              margin-right: 8px !important;
+            }
+            header > div > div:first-child > div:first-child {
+              width: 42px !important;
+              height: 42px !important;
+              font-size: 22px !important;
+            }
+            header > div > div:first-child > div:last-child > span:first-child {
+              font-size: 20px !important;
+            }
+            header > div > div:first-child > div:last-child > span:last-child {
+              font-size: 10px !important;
+            }
+            header > div > div:last-child {
+              gap: 8px !important;
+              font-size: 13px !important;
+              flex: 1;
+              justify-content: flex-end;
+              overflow-x: auto;
+              overflow-y: hidden;
+              -webkit-overflow-scrolling: touch;
+              scrollbar-width: none;
+              -ms-overflow-style: none;
+            }
+            header > div > div:last-child::-webkit-scrollbar {
+              display: none;
+            }
+            header > div > div:last-child a {
+              font-size: 13px !important;
+            }
+          }
+        `}</style>
       </Head>
 
       {/* Clean header */}
@@ -326,14 +367,14 @@ export default function Login() {
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
           }}>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <h1 style={{ 
-                fontSize: '30px', 
-                fontWeight: 'bold', 
-                color: '#111827', 
+              <h1 style={{
+                fontSize: '30px',
+                fontWeight: 'bold',
+                color: '#111827',
                 marginBottom: '16px',
                 margin: '0 0 16px 0'
               }}>
-                Never Miss Street Cleaning Again
+                Never Get a Ticket Again
               </h1>
               
               {/* Free Features */}
@@ -402,13 +443,13 @@ export default function Login() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <span style={{ color: '#3b82f6', fontSize: '14px', flexShrink: 0 }}>•</span>
                     <span style={{ fontSize: '13px', color: '#1e40af' }}>
-                      Done-for-you city sticker & license plate renewals
+                      <strong>Guaranteed no more tickets</strong> for street cleaning, city stickers, or license plate stickers — or we will pay them
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <span style={{ color: '#3b82f6', fontSize: '14px', flexShrink: 0 }}>•</span>
                     <span style={{ fontSize: '13px', color: '#1e40af' }}>
-                      80% ticket reimbursement (up to $200/year)
+                      No more worrying about renewals — we handle registration on your behalf
                     </span>
                   </div>
                 </div>

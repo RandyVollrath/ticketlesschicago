@@ -137,6 +137,44 @@ export default function Protection() {
       <Head>
         <title>Ticket Protection - Ticketless America</title>
         <meta name="description" content="Premium done-for-you renewals and ticket coverage" />
+        <style>{`
+          @media (max-width: 768px) {
+            header {
+              height: 70px !important;
+              padding: 0 12px !important;
+            }
+            header > div:first-child {
+              margin-right: 8px !important;
+            }
+            header > div:first-child > div:first-child {
+              width: 42px !important;
+              height: 42px !important;
+              font-size: 22px !important;
+            }
+            header > div:first-child > div:last-child > span:first-child {
+              font-size: 20px !important;
+            }
+            header > div:first-child > div:last-child > span:last-child {
+              font-size: 10px !important;
+            }
+            header > div:last-child {
+              gap: 8px !important;
+              flex: 1;
+              justify-content: flex-end;
+              overflow-x: auto;
+              overflow-y: hidden;
+              -webkit-overflow-scrolling: touch;
+              scrollbar-width: none;
+              -ms-overflow-style: none;
+            }
+            header > div:last-child::-webkit-scrollbar {
+              display: none;
+            }
+            header > div:last-child a {
+              font-size: 13px !important;
+            }
+          }
+        `}</style>
       </Head>
 
       {/* Header */}
@@ -258,7 +296,7 @@ export default function Protection() {
             margin: '0 auto 40px auto',
             lineHeight: '1.4'
           }}>
-            We handle your city sticker & license plate renewals and reimburse 80% of eligible tickets up to $200/year.
+            <strong>Guaranteed no more tickets for street cleaning, city stickers, or license plate stickers — or we will pay them.</strong> We handle renewals on your behalf so you never have to worry about deadlines again.
           </p>
         </div>
 
@@ -291,7 +329,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              We file your city sticker and license plate renewals before they expire. You never lift a finger.
+              No more worrying about remembering to register for city sticker and license plate stickers — we handle it on your behalf before they expire. You never lift a finger.
             </p>
           </div>
 
@@ -309,7 +347,7 @@ export default function Protection() {
               marginBottom: '12px',
               margin: '0 0 12px 0'
             }}>
-              Ticket Coverage
+              Ticket Coverage Guarantee
             </h3>
             <p style={{
               fontSize: '16px',
@@ -317,7 +355,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              If you get a street cleaning, snow removal, city sticker, or license plate renewal ticket despite our alerts, we reimburse 80% of it (up to $200/year total coverage).
+              Guaranteed no more tickets for street cleaning, city stickers, or license plate stickers — or we will pay them. We reimburse 80% of eligible tickets up to $200/year total coverage.
             </p>
           </div>
 

@@ -114,6 +114,31 @@ export default function AlertsSignup() {
       <Head>
         <title>Get Free Alerts - Ticketless America</title>
         <meta name="description" content="Sign up for free alerts for street cleaning, snow removal, city stickers, and license plates" />
+        <style>{`
+          @media (max-width: 768px) {
+            header {
+              height: 70px !important;
+              padding: 0 12px !important;
+            }
+            header > div {
+              padding: 0 12px !important;
+            }
+            header button {
+              font-size: 14px !important;
+            }
+            header > div > div:last-child > div:first-child {
+              width: 42px !important;
+              height: 42px !important;
+              font-size: 22px !important;
+            }
+            header > div > div:last-child > div:last-child > span:first-child {
+              font-size: 20px !important;
+            }
+            header > div > div:last-child > div:last-child > span:last-child {
+              font-size: 10px !important;
+            }
+          }
+        `}</style>
       </Head>
 
       {/* Simple Header */}
@@ -211,7 +236,7 @@ export default function AlertsSignup() {
             textAlign: 'center',
             margin: '0 0 32px 0'
           }}>
-            Never miss a street cleaning, snow removal, or renewal deadline again. 100% free for one vehicle.
+            Never miss a street cleaning, snow removal, or renewal deadline again. 100% free for one vehicle. Upgrade to Protection for guaranteed no more tickets — we handle renewals and pay eligible tickets.
           </p>
 
           {prefilledData && (

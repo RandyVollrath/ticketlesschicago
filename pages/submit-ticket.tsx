@@ -62,6 +62,34 @@ export default function SubmitTicket() {
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
         <title>Submit Ticket for Reimbursement - Ticketless America</title>
+        <style>{`
+          @media (max-width: 768px) {
+            header {
+              height: 70px !important;
+              padding: 0 12px !important;
+            }
+            header > div:first-child {
+              margin-right: 8px !important;
+            }
+            header > div:first-child > div:first-child {
+              width: 42px !important;
+              height: 42px !important;
+              font-size: 22px !important;
+            }
+            header > div:first-child > div:last-child > span:first-child {
+              font-size: 20px !important;
+            }
+            header > div:first-child > div:last-child > span:last-child {
+              font-size: 10px !important;
+            }
+            header > div:last-child {
+              gap: 8px !important;
+            }
+            header > div:last-child button {
+              font-size: 13px !important;
+            }
+          }
+        `}</style>
       </Head>
 
       {/* Header */}
