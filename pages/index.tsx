@@ -94,13 +94,27 @@ export default function Home() {
           @media (max-width: 768px) {
             nav {
               height: 70px !important;
-              padding: 0 16px !important;
+              padding: 0 12px !important;
             }
             .nav-link {
-              font-size: 14px !important;
+              font-size: 13px !important;
+              padding: 0 !important;
+            }
+            nav > div:first-child {
+              margin-right: 8px !important;
             }
             nav > div:last-child {
-              gap: 12px !important;
+              gap: 8px !important;
+              flex: 1;
+              justify-content: flex-end;
+              overflow-x: auto;
+              overflow-y: hidden;
+              -webkit-overflow-scrolling: touch;
+              scrollbar-width: none;
+              -ms-overflow-style: none;
+            }
+            nav > div:last-child::-webkit-scrollbar {
+              display: none;
             }
             .logo-desktop {
               display: none !important;
@@ -130,11 +144,8 @@ export default function Home() {
               gap: 16px;
             }
             .free-alerts-link {
-              font-size: 11px !important;
-              line-height: 1.2 !important;
-              white-space: normal !important;
-              text-align: center !important;
-              max-width: 45px !important;
+              font-size: 13px !important;
+              white-space: nowrap !important;
             }
             .hero-subtitle-desktop {
               display: none !important;
@@ -198,8 +209,8 @@ export default function Home() {
             </div>
           </div>
           {/* Logo - mobile version (text only) */}
-          <div className="logo-mobile" style={{ display: 'none' }}>
-            <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+          <div className="logo-mobile" style={{ display: 'none', flexShrink: 0 }}>
+            <span style={{ fontSize: '18px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
               Ticketless
             </span>
           </div>
@@ -469,7 +480,7 @@ export default function Home() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                Upgrade to get done-for-you renewals and ticket coverage
+                Guaranteed no more city sticker or license plate tickets — we handle renewals and cover eligible tickets up to $200/year
               </p>
             </div>
 
@@ -749,7 +760,7 @@ export default function Home() {
               },
               {
                 q: "What's Ticket Protection?",
-                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) where we handle your city sticker & license plate renewals and reimburse 80% of eligible tickets up to $200/year (street cleaning, snow removal, city sticker, or license plate renewal tickets).'
+                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) guarantees no more tickets for street cleaning, city stickers, or license plate stickers — or we will pay them. We handle your city sticker & license plate renewals on your behalf and reimburse 80% of eligible tickets up to $200/year.'
               },
               {
                 q: 'Is Ticket Protection available now?',
