@@ -13,25 +13,31 @@ export default function AlertsSuccess() {
 
   // Track activation_complete event and capture UTM parameters
   useEffect(() => {
-    if (typeof window !== 'undefined' && posthog) {
-      // Extract UTM parameters from URL
-      const utmParams: Record<string, string> = {};
-      const searchParams = new URLSearchParams(window.location.search);
+    const trackActivation = () => {
+      if (typeof window !== 'undefined' && posthog) {
+        // Extract UTM parameters from URL
+        const utmParams: Record<string, string> = {};
+        const searchParams = new URLSearchParams(window.location.search);
 
-      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'].forEach(param => {
-        const value = searchParams.get(param);
-        if (value) {
-          utmParams[param] = value;
-        }
-      });
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'].forEach(param => {
+          const value = searchParams.get(param);
+          if (value) {
+            utmParams[param] = value;
+          }
+        });
 
-      // Track activation complete with UTM data
-      posthog.capture('activation_complete', {
-        is_protection: isProtection,
-        is_existing_user: isExistingUser,
-        ...utmParams
-      });
-    }
+        // Track activation complete with UTM data
+        posthog.capture('activation_complete', {
+          is_protection: isProtection,
+          is_existing_user: isExistingUser,
+          ...utmParams
+        });
+      }
+    };
+
+    // Wait a bit for PostHog to initialize
+    const timer = setTimeout(trackActivation, 500);
+    return () => clearTimeout(timer);
   }, [isProtection, isExistingUser]);
 
   // Magic link is now sent from webhook - this effect is no longer needed
