@@ -13,14 +13,16 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { billingPlan, email, userId, rewardfulReferral, renewals } = req.body;
+  const { billingPlan, email, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones } = req.body;
 
   console.log('Protection checkout request:', {
     billingPlan,
     email,
     userId,
     rewardfulReferral,
-    hasRenewals: !!renewals
+    hasRenewals: !!renewals,
+    hasPermitZone,
+    streetAddress
   });
 
   if (!email || typeof email !== 'string' || email.trim() === '') {
@@ -64,9 +66,25 @@ export default async function handler(
       });
     }
 
-    if (renewals?.licensePlate && process.env.STRIPE_LICENSE_PLATE_PRICE_ID) {
+    if (renewals?.licensePlate) {
+      // Check if it's a vanity plate (costs $164 instead of $155)
+      const isVanity = renewals.licensePlate.isVanity === true;
+      const priceId = isVanity
+        ? process.env.STRIPE_LICENSE_PLATE_VANITY_PRICE_ID
+        : process.env.STRIPE_LICENSE_PLATE_PRICE_ID;
+
+      if (priceId) {
+        lineItems.push({
+          price: priceId,
+          quantity: 1,
+        });
+      }
+    }
+
+    // Add permit fee if in a permit zone
+    if (hasPermitZone && process.env.STRIPE_PERMIT_FEE_PRICE_ID) {
       lineItems.push({
-        price: process.env.STRIPE_LICENSE_PLATE_PRICE_ID,
+        price: process.env.STRIPE_PERMIT_FEE_PRICE_ID,
         quantity: 1,
       });
     }
@@ -87,6 +105,10 @@ export default async function handler(
         product: 'ticket_protection',
         citySticker: renewals?.citySticker ? renewals.citySticker.date : '',
         licensePlate: renewals?.licensePlate ? renewals.licensePlate.date : '',
+        isVanityPlate: renewals?.licensePlate?.isVanity ? 'true' : 'false',
+        streetAddress: streetAddress || '',
+        hasPermitZone: hasPermitZone ? 'true' : 'false',
+        permitZones: hasPermitZone && permitZones ? JSON.stringify(permitZones) : '',
         rewardful_referral_id: rewardfulReferral || ''
       }
     });
