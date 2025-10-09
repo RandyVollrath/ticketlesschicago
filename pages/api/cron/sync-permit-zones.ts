@@ -1,8 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { Resend } from 'resend';
 
 const CHICAGO_API_URL = 'https://data.cityofchicago.org/resource/u9xt-hiju.json';
 const BATCH_SIZE = 1000;
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface ChicagoPermitZone {
   row_id: string;
@@ -65,11 +68,23 @@ export default async function handler(
 
   console.log('🚀 Starting parking permit zones sync...\n');
 
+  const startTime = new Date();
+  let oldRecordCount = 0;
+  let newRecordCount = 0;
+
   try {
     // Check database connection
     if (!supabaseAdmin) {
       throw new Error('Supabase admin client not available');
     }
+
+    // Get current record count before clearing
+    const { count: oldCount } = await (supabaseAdmin as any)
+      .from('parking_permit_zones')
+      .select('*', { count: 'exact', head: true });
+
+    oldRecordCount = oldCount || 0;
+    console.log(`Current database has ${oldRecordCount} zones`);
 
     // Fetch data from Chicago API
     const zones = await fetchAllPermitZones();
@@ -77,6 +92,8 @@ export default async function handler(
     if (zones.length === 0) {
       throw new Error('No permit zones fetched from API');
     }
+
+    newRecordCount = zones.length;
 
     console.log('\n🗑️  Clearing existing permit zone data...');
 
@@ -145,9 +162,96 @@ export default async function handler(
 
     console.log('\n🎉 Sync completed successfully!');
 
+    const endTime = new Date();
+    const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+    const dataChanged = oldRecordCount !== newRecordCount;
+    const difference = newRecordCount - oldRecordCount;
+
+    // Send success email
+    try {
+      await resend.emails.send({
+        from: 'Ticketless Alerts <noreply@ticketlessamerica.com>',
+        to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
+        subject: dataChanged
+          ? `✅ Permit Zones Synced - ${difference > 0 ? '+' : ''}${difference} zones changed`
+          : '✅ Permit Zones Synced - No changes',
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #16a34a; margin-bottom: 16px;">🅿️ Permit Zone Sync Completed</h2>
+
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+              <p style="margin: 0; color: #166534; font-size: 16px;">
+                <strong>Status:</strong> Successful ✅
+              </p>
+            </div>
+
+            <h3 style="color: #1a1a1a; margin-bottom: 12px;">Sync Summary</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 8px 0; color: #6b7280;">Old Record Count:</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${oldRecordCount.toLocaleString()}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 8px 0; color: #6b7280;">New Record Count:</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${newRecordCount.toLocaleString()}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 8px 0; color: #6b7280;">Change:</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600; color: ${difference > 0 ? '#16a34a' : difference < 0 ? '#dc2626' : '#6b7280'};">
+                  ${difference > 0 ? '+' : ''}${difference} zones
+                </td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 8px 0; color: #6b7280;">Duration:</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${duration}s</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Synced At:</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${endTime.toLocaleString('en-US', { timeZone: 'America/Chicago' })} CT</td>
+              </tr>
+            </table>
+
+            ${dataChanged ? `
+              <div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #92400e; font-size: 14px;">
+                  <strong>⚠️ Data Changed:</strong> The permit zone database has been updated with ${Math.abs(difference)} ${difference > 0 ? 'new' : 'fewer'} zones.
+                </p>
+              </div>
+            ` : `
+              <div style="background-color: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #1e40af; font-size: 14px;">
+                  <strong>ℹ️ No Changes:</strong> The permit zone database is up to date.
+                </p>
+              </div>
+            `}
+
+            <h3 style="color: #1a1a1a; margin-bottom: 12px;">Next Steps</h3>
+            <ul style="color: #374151; line-height: 1.6; font-size: 14px;">
+              <li>Next sync scheduled for next Sunday at 2 AM CT</li>
+              <li>API endpoint: <code>/api/check-permit-zone</code> is using latest data</li>
+              <li>All ${newRecordCount.toLocaleString()} zones are active and searchable</li>
+            </ul>
+
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+
+            <p style="color: #9ca3af; font-size: 13px; margin: 0;">
+              Ticketless America • Automated Permit Zone Sync
+            </p>
+          </div>
+        `
+      });
+      console.log('✅ Success email sent');
+    } catch (emailError) {
+      console.error('❌ Failed to send success email:', emailError);
+    }
+
     return res.status(200).json({
       success: true,
       totalRecords: zones.length,
+      oldRecordCount,
+      newRecordCount,
+      difference,
+      dataChanged,
       syncedAt: new Date().toISOString()
     });
 
