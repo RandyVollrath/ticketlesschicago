@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
+import { usePermitZoneCheck } from '../hooks/usePermitZoneCheck';
+import { PermitZoneWarning } from '../components/PermitZoneWarning';
 
 export default function Protection() {
   const router = useRouter();
@@ -14,8 +16,13 @@ export default function Protection() {
   // Renewal information
   const [needsCitySticker, setNeedsCitySticker] = useState(true);
   const [needsLicensePlate, setNeedsLicensePlate] = useState(true);
+  const [hasVanityPlate, setHasVanityPlate] = useState(false);
   const [cityStickerDate, setCityStickerDate] = useState('');
   const [licensePlateDate, setLicensePlateDate] = useState('');
+
+  // Permit zone detection
+  const [streetAddress, setStreetAddress] = useState('');
+  const { checkAddress, hasPermitZone, zones, loading: permitLoading } = usePermitZoneCheck();
 
   // Check feature flags
   const isWaitlistMode = process.env.NEXT_PUBLIC_PROTECTION_WAITLIST === 'true';
@@ -30,6 +37,17 @@ export default function Protection() {
     };
     checkUser();
   }, []);
+
+  // Auto-check permit zone when address changes
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (streetAddress && streetAddress.length > 5) {
+        checkAddress(streetAddress);
+      }
+    }, 500); // Debounce for 500ms
+
+    return () => clearTimeout(debounceTimer);
+  }, [streetAddress, checkAddress]);
 
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,9 +106,12 @@ export default function Protection() {
       email: userEmail,
       userId: user?.id || undefined,
       rewardfulReferral: rewardfulReferral,
+      streetAddress: streetAddress || undefined,
+      hasPermitZone: hasPermitZone,
+      permitZones: hasPermitZone ? zones : undefined,
       renewals: {
         citySticker: needsCitySticker ? { date: cityStickerDate } : null,
-        licensePlate: needsLicensePlate ? { date: licensePlateDate } : null
+        licensePlate: needsLicensePlate ? { date: licensePlateDate, isVanity: hasVanityPlate } : null
       }
     };
 
@@ -124,8 +145,9 @@ export default function Protection() {
   const calculateTotal = () => {
     const subscriptionPrice = billingPlan === 'monthly' ? 12 : 120;
     const cityStickerPrice = needsCitySticker ? 100 : 0;
-    const licensePlatePrice = needsLicensePlate ? 155 : 0;
-    return subscriptionPrice + cityStickerPrice + licensePlatePrice;
+    const licensePlatePrice = needsLicensePlate ? (hasVanityPlate ? 164 : 155) : 0;
+    const permitFee = hasPermitZone ? 30 : 0;
+    return subscriptionPrice + cityStickerPrice + licensePlatePrice + permitFee;
   };
 
   return (
@@ -576,6 +598,71 @@ export default function Protection() {
                 </div>
               )}
 
+              {/* Street Address for Permit Zone Check */}
+              <div style={{
+                backgroundColor: '#f9fafb',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '24px'
+              }}>
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  color: '#1a1a1a',
+                  marginBottom: '16px',
+                  margin: '0 0 16px 0'
+                }}>
+                  Your Street Address
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#666',
+                  marginBottom: '16px',
+                  margin: '0 0 16px 0',
+                  lineHeight: '1.5'
+                }}>
+                  We'll check if your address requires a residential parking permit. If it does, we'll add a $30 permit fee to your total.
+                </p>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    Street Address (e.g., "1710 S Clinton St")
+                  </label>
+                  <input
+                    type="text"
+                    value={streetAddress}
+                    onChange={(e) => setStreetAddress(e.target.value)}
+                    placeholder="Enter your street address"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '15px',
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {permitLoading && (
+                    <p style={{
+                      fontSize: '13px',
+                      color: '#666',
+                      marginTop: '8px',
+                      margin: '8px 0 0 0'
+                    }}>
+                      Checking for permit zones...
+                    </p>
+                  )}
+                </div>
+
+                {hasPermitZone && <PermitZoneWarning zones={zones} />}
+              </div>
+
               {/* Renewal Information */}
               <div style={{
                 backgroundColor: '#f9fafb',
@@ -599,7 +686,7 @@ export default function Protection() {
                   margin: '0 0 20px 0',
                   lineHeight: '1.5'
                 }}>
-                  Pay upfront for your city sticker and license plate renewals. We'll file these on your behalf before they expire. Required for full Protection coverage.
+                  Pay upfront for your city sticker and license plate renewals. We'll file these on your behalf before they expire. <strong>Renewals only</strong> — initial registration not included. Required for full Protection coverage.
                 </p>
 
                 {/* City Sticker */}
@@ -695,11 +782,29 @@ export default function Protection() {
                       License Plate Renewal
                     </label>
                     <span style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>
-                      $155
+                      ${hasVanityPlate && needsLicensePlate ? '164' : '155'}
                     </span>
                   </div>
                   {needsLicensePlate && (
                     <div style={{ paddingLeft: '26px' }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginBottom: '12px',
+                        cursor: 'pointer'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={hasVanityPlate}
+                          onChange={(e) => setHasVanityPlate(e.target.checked)}
+                          style={{ width: '16px', height: '16px', accentColor: '#0052cc' }}
+                        />
+                        I have a vanity/personalized plate (+$9)
+                      </label>
                       <label style={{
                         display: 'block',
                         fontSize: '13px',
@@ -780,8 +885,20 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>License plate renewal (paid upfront)</span>
-                    <span>$155</span>
+                    <span>License plate renewal (paid upfront) {hasVanityPlate && '(vanity)'}</span>
+                    <span>${hasVanityPlate ? '164' : '155'}</span>
+                  </div>
+                )}
+                {hasPermitZone && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '12px',
+                    fontSize: '15px',
+                    color: '#374151'
+                  }}>
+                    <span>Residential parking permit fee</span>
+                    <span>$30</span>
                   </div>
                 )}
                 <div style={{

@@ -30,6 +30,18 @@
     {
       "path": "/api/street-cleaning/process",
       "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/send-winter-ban-notifications",
+      "schedule": "0 9 30 11 *"
+    },
+    {
+      "path": "/api/cron/monitor-snow",
+      "schedule": "0 * 1 11,0,1,2,3 *"
+    },
+    {
+      "path": "/api/cron/sync-permit-zones",
+      "schedule": "0 2 * * 0"
     }
   ],
   "github": {

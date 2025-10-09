@@ -1,25 +1,5 @@
-/**
- * Sync parking permit zones from Chicago Open Data Portal
- *
- * Usage:
- *   npx tsx scripts/sync-permit-zones.ts
- *
- * This script:
- * 1. Fetches all parking permit zone data from Chicago's API
- * 2. Clears existing cached data
- * 3. Inserts fresh data into the database
- * 4. Records sync metadata
- *
- * Recommended: Run this weekly via cron job or Vercel cron
- */
-
-import { config } from 'dotenv';
-import { resolve } from 'path';
-
-// Load environment variables from .env.local
-config({ path: resolve(__dirname, '../.env.local') });
-
-import { supabaseAdmin } from '../lib/supabase';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { supabaseAdmin } from '../../../lib/supabase';
 
 const CHICAGO_API_URL = 'https://data.cityofchicago.org/resource/u9xt-hiju.json';
 const BATCH_SIZE = 1000;
@@ -70,13 +50,25 @@ async function fetchAllPermitZones(): Promise<ChicagoPermitZone[]> {
   return allZones;
 }
 
-async function syncPermitZones() {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  // Verify this is a cron request (Vercel cron or manual with secret)
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    console.log('❌ Unauthorized cron request');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   console.log('🚀 Starting parking permit zones sync...\n');
 
   try {
     // Check database connection
     if (!supabaseAdmin) {
-      throw new Error('Supabase admin client not available. Check SUPABASE_SERVICE_ROLE_KEY');
+      throw new Error('Supabase admin client not available');
     }
 
     // Fetch data from Chicago API
@@ -92,7 +84,7 @@ async function syncPermitZones() {
     const { error: deleteError } = await (supabaseAdmin as any)
       .from('parking_permit_zones')
       .delete()
-      .neq('id', 0); // Delete all rows
+      .neq('id', 0);
 
     if (deleteError) {
       throw new Error(`Failed to clear existing data: ${deleteError.message}`);
@@ -119,7 +111,7 @@ async function syncPermitZones() {
       updated_at: new Date().toISOString()
     }));
 
-    // Insert in batches of 1000 to avoid payload limits
+    // Insert in batches
     for (let i = 0; i < transformedZones.length; i += BATCH_SIZE) {
       const batch = transformedZones.slice(i, i + BATCH_SIZE);
       console.log(`   Inserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(transformedZones.length / BATCH_SIZE)}`);
@@ -138,7 +130,7 @@ async function syncPermitZones() {
     // Record sync metadata
     console.log('\n📝 Recording sync metadata...');
 
-    const { error: syncError} = await (supabaseAdmin as any)
+    const { error: syncError } = await (supabaseAdmin as any)
       .from('parking_permit_zones_sync')
       .insert({
         last_synced_at: new Date().toISOString(),
@@ -149,12 +141,15 @@ async function syncPermitZones() {
 
     if (syncError) {
       console.warn(`Warning: Failed to record sync metadata: ${syncError.message}`);
-    } else {
-      console.log('✅ Sync metadata recorded');
     }
 
     console.log('\n🎉 Sync completed successfully!');
-    console.log(`   Total zones synced: ${zones.length}`);
+
+    return res.status(200).json({
+      success: true,
+      totalRecords: zones.length,
+      syncedAt: new Date().toISOString()
+    });
 
   } catch (error: any) {
     console.error('\n❌ Sync failed:', error.message);
@@ -171,9 +166,9 @@ async function syncPermitZones() {
       console.error('Failed to log error to database:', logError);
     }
 
-    process.exit(1);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 }
-
-// Run sync
-syncPermitZones();
