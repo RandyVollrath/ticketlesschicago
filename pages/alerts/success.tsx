@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
+import { posthog } from '../../lib/posthog';
 
 export default function AlertsSuccess() {
   const router = useRouter();
@@ -9,6 +10,29 @@ export default function AlertsSuccess() {
   const isExistingUser = router.query.existing === 'true';
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkError, setMagicLinkError] = useState('');
+
+  // Track activation_complete event and capture UTM parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined' && posthog) {
+      // Extract UTM parameters from URL
+      const utmParams: Record<string, string> = {};
+      const searchParams = new URLSearchParams(window.location.search);
+
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'].forEach(param => {
+        const value = searchParams.get(param);
+        if (value) {
+          utmParams[param] = value;
+        }
+      });
+
+      // Track activation complete with UTM data
+      posthog.capture('activation_complete', {
+        is_protection: isProtection,
+        is_existing_user: isExistingUser,
+        ...utmParams
+      });
+    }
+  }, [isProtection, isExistingUser]);
 
   // Magic link is now sent from webhook - this effect is no longer needed
   // useEffect(() => {
