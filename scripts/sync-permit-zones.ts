@@ -83,7 +83,7 @@ async function syncPermitZones() {
     console.log('\n🗑️  Clearing existing permit zone data...');
 
     // Clear existing data
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await (supabaseAdmin as any)
       .from('parking_permit_zones')
       .delete()
       .neq('id', 0); // Delete all rows
@@ -118,7 +118,7 @@ async function syncPermitZones() {
       const batch = transformedZones.slice(i, i + BATCH_SIZE);
       console.log(`   Inserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(transformedZones.length / BATCH_SIZE)}`);
 
-      const { error: insertError } = await supabaseAdmin
+      const { error: insertError } = await (supabaseAdmin as any)
         .from('parking_permit_zones')
         .insert(batch);
 
@@ -132,7 +132,7 @@ async function syncPermitZones() {
     // Record sync metadata
     console.log('\n📝 Recording sync metadata...');
 
-    const { error: syncError } = await supabaseAdmin
+    const { error: syncError} = await (supabaseAdmin as any)
       .from('parking_permit_zones_sync')
       .insert({
         last_synced_at: new Date().toISOString(),
@@ -155,7 +155,7 @@ async function syncPermitZones() {
 
     // Try to record failure in database
     try {
-      await supabaseAdmin?.from('parking_permit_zones_sync').insert({
+      await (supabaseAdmin as any)?.from('parking_permit_zones_sync').insert({
         last_synced_at: new Date().toISOString(),
         total_records: 0,
         sync_status: 'failed',
