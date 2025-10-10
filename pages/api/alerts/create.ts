@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+// import { notifyNewUserAboutWinterBan } from '../../lib/winter-ban-notifications';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -144,30 +145,42 @@ export default async function handler(
     }
 
     // Create user profile
-    const { error: profileError } = await supabase
+    const profileData = {
+      user_id: userId,
+      email,
+      phone_number: normalizedPhone,
+      first_name: firstName,
+      last_name: lastName,
+      zip_code: zip,
+      license_plate: licensePlate.toUpperCase(),
+      home_address_full: address,
+      // Auto-populate mailing address from home address
+      mailing_address: address,
+      mailing_city: 'Chicago',
+      mailing_state: 'IL',
+      mailing_zip: zip,
+      notify_email: true,
+      notify_sms: true,
+      is_paid: true, // Free users are considered "paid" for alerts
+      has_protection: false,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('[Profile Create] Upserting profile with data:', profileData);
+
+    const { data: profileResult, error: profileError } = await supabase
       .from('user_profiles')
-      .upsert({
-        user_id: userId,
-        email,
-        phone_number: normalizedPhone,
-        first_name: firstName,
-        last_name: lastName,
-        zip_code: zip,
-        license_plate: licensePlate.toUpperCase(),
-        home_address_full: address,
-        notify_email: true,
-        notify_sms: true,
-        is_paid: true, // Free users are considered "paid" for alerts
-        has_protection: false,
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(profileData, {
         onConflict: 'user_id'
-      });
+      })
+      .select();
 
     if (profileError) {
       console.error('Profile creation error:', profileError);
       throw new Error(`Failed to create profile: ${profileError.message}`);
     }
+
+    console.log('[Profile Create] Profile upserted successfully:', profileResult);
 
     // For free alerts signup, we upsert the vehicle (update if exists, create if not)
     // This is a signup/update flow, not an "add vehicle" flow
@@ -186,20 +199,43 @@ export default async function handler(
 
     // Use upsert to update if vehicle exists, create if not
     // Free users are limited to 1 vehicle, so we update their existing vehicle
-    const { error: vehicleError } = await supabase
+    console.log('[Vehicle Create] Upserting vehicle with data:', vehicleData);
+
+    const { data: vehicleResult, error: vehicleError } = await supabase
       .from('vehicles')
       .upsert(vehicleData, {
         onConflict: 'user_id,license_plate'
-      });
+      })
+      .select();
 
     if (vehicleError) {
       console.error('Vehicle upsert error:', vehicleError);
       throw new Error(`Failed to save vehicle: ${vehicleError.message}`);
     }
 
-    console.log('Vehicle saved successfully');
+    console.log('[Vehicle Create] Vehicle upserted successfully:', vehicleResult);
 
     console.log('✅ Free signup successful:', email);
+
+    // Check if user needs winter ban notification (Dec 1 - Apr 1)
+    // TODO: Re-enable when winter-ban-notifications type errors are fixed
+    // try {
+    //   const winterBanResult = await notifyNewUserAboutWinterBan(
+    //     userId,
+    //     address,
+    //     email,
+    //     normalizedPhone,
+    //     firstName
+    //   );
+    //   if (winterBanResult.sent) {
+    //     console.log('❄️ Winter ban notification sent to new user');
+    //   } else if (winterBanResult.reason) {
+    //     console.log(`ℹ️ Winter ban not sent: ${winterBanResult.reason}`);
+    //   }
+    // } catch (winterError) {
+    //   // Don't fail signup if winter ban notification fails
+    //   console.error('Winter ban notification failed (non-critical):', winterError);
+    // }
 
     // Send magic link to new free users so they can login
     console.log('📧 Generating magic link for free user:', email);
@@ -207,7 +243,7 @@ export default async function handler(
       type: 'magiclink',
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings`
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
       }
     });
 
