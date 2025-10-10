@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
+import { logAuditEvent, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -116,6 +117,30 @@ export default async function handler(
 
     console.log('✅ Stripe checkout session created:', session.id);
 
+    // Log audit event
+    await logAuditEvent({
+      userId: userId,
+      actionType: 'subscription_created',
+      entityType: 'subscription',
+      entityId: session.id,
+      actionDetails: {
+        billingPlan,
+        email,
+        phone,
+        hasPermitZone,
+        streetAddress,
+        renewals: {
+          citySticker: renewals?.citySticker ? true : false,
+          licensePlate: renewals?.licensePlate ? true : false,
+          isVanity: renewals?.licensePlate?.isVanity || false,
+        },
+        rewardfulReferral,
+      },
+      status: 'success',
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req),
+    });
+
     return res.status(200).json({
       sessionId: session.id,
       url: session.url
@@ -123,6 +148,24 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Checkout error:', error);
+
+    // Log failed checkout attempt
+    await logAuditEvent({
+      userId: userId,
+      actionType: 'subscription_created',
+      entityType: 'subscription',
+      entityId: undefined,
+      actionDetails: {
+        billingPlan,
+        email,
+        error: error.message,
+      },
+      status: 'failure',
+      errorMessage: error.message,
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req),
+    });
+
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }

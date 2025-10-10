@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../../lib/supabase';
 import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integration';
 import { createRewardfulAffiliate } from '../../lib/rewardful-helper';
 import { Resend } from 'resend';
+import { logAuditEvent } from '../../lib/audit-logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -328,6 +329,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } else {
             console.log('✅ User profile updated with Protection status and renewal dates');
           }
+
+          // Log audit event for payment processing
+          await logAuditEvent({
+            userId: userId,
+            actionType: 'payment_processed',
+            entityType: 'payment',
+            entityId: session.id,
+            actionDetails: {
+              product: 'ticket_protection',
+              plan: metadata.plan,
+              amount: session.amount_total,
+              currency: session.currency,
+              email: email,
+              renewals: {
+                citySticker: metadata.citySticker || null,
+                licensePlate: metadata.licensePlate || null,
+                isVanity: metadata.isVanityPlate === 'true',
+              },
+              hasPermitZone: metadata.hasPermitZone === 'true',
+              streetAddress: metadata.streetAddress,
+              stripeCustomerId: session.customer,
+              rewardfulReferral: metadata.rewardful_referral_id,
+            },
+            status: 'success',
+          });
 
           // Log user consent for legal compliance
           const consentText = 'I authorize Ticketless America to act as my agent to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested.';
