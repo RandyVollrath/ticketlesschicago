@@ -27,6 +27,9 @@ export default function Protection() {
   // Consent checkbox
   const [consentGiven, setConsentGiven] = useState(false);
 
+  // Phone number (REQUIRED for Protection)
+  const [phone, setPhone] = useState('');
+
   // Check feature flags
   const isWaitlistMode = process.env.NEXT_PUBLIC_PROTECTION_WAITLIST === 'true';
 
@@ -96,6 +99,12 @@ export default function Protection() {
       return;
     }
 
+    // Validate phone number (REQUIRED for Protection)
+    if (!phone || phone.trim() === '') {
+      setMessage('Please enter your phone number - we need it to reach you about permit documents');
+      return;
+    }
+
     // Validate billing plan
     if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
       setMessage('Please select a billing plan (monthly or annual)');
@@ -113,6 +122,7 @@ export default function Protection() {
     const checkoutData = {
       billingPlan,
       email: userEmail,
+      phone: phone,
       userId: user?.id || undefined,
       rewardfulReferral: rewardfulReferral,
       streetAddress: streetAddress || undefined,
@@ -606,6 +616,44 @@ export default function Protection() {
                   />
                 </div>
               )}
+
+              {/* Phone Number Input (REQUIRED for all Protection users) */}
+              <div style={{
+                marginBottom: '24px'
+              }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
+                }}>
+                  Phone Number <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  placeholder="(555) 123-4567"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <p style={{
+                  fontSize: '13px',
+                  color: '#6b7280',
+                  marginTop: '6px',
+                  margin: '6px 0 0 0'
+                }}>
+                  Required for permit document reminders and urgent notifications
+                </p>
+              </div>
 
               {/* Street Address for Permit Zone Check */}
               <div style={{

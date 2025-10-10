@@ -13,7 +13,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { billingPlan, email, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones } = req.body;
+  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones } = req.body;
 
   console.log('Protection checkout request:', {
     billingPlan,
@@ -101,6 +101,7 @@ export default async function handler(
       metadata: {
         userId: userId || '',
         email: email,
+        phone: phone || '',
         plan: billingPlan,
         product: 'ticket_protection',
         citySticker: renewals?.citySticker ? renewals.citySticker.date : '',
