@@ -1,0 +1,117 @@
+{
+  "description": "Winter Overnight Parking Ban streets (3am-7am, December 1 - April 1)",
+  "source": "City of Chicago FOIA request",
+  "last_updated": "2025-10-08",
+  "streets": [
+    {
+      "street": "MADISON AVE",
+      "from_location": "CANAL STREET",
+      "to_location": "DES PLAINES AVE."
+    },
+    {
+      "street": "STATE STREET",
+      "from_location": "600 SOUTH",
+      "to_location": "2200 SOUTH"
+    },
+    {
+      "street": "CERMAK ROAD",
+      "from_location": "STATE STREET",
+      "to_location": "Dr M L KING Jr Dr"
+    },
+    {
+      "street": "Dr M L KING Jr Dr",
+      "from_location": "2600 SOUTH",
+      "to_location": "5500 SOUTH"
+    },
+    {
+      "street": "MIDWAY PLAISANCE",
+      "from_location": "COTTAGE GROVE",
+      "to_location": "DORCHESTER"
+    },
+    {
+      "street": "COTTAGE GROVE",
+      "from_location": "MIDWAY PLAISANCE",
+      "to_location": "103RD STREET"
+    },
+    {
+      "street": "TORRENCE AVE.",
+      "from_location": "106TH STREET",
+      "to_location": "103RD STREET"
+    },
+    {
+      "street": "106TH STREET",
+      "from_location": "TORRENCE AVE.",
+      "to_location": "STATE LINE ROAD"
+    },
+    {
+      "street": "ARCHER AVE.",
+      "from_location": "STATE STREET",
+      "to_location": "HARLEM AVE."
+    },
+    {
+      "street": "KEDZIE AVE.",
+      "from_location": "JACKSON BLVD.",
+      "to_location": "8700 SOUTH"
+    },
+    {
+      "street": "79TH STREET",
+      "from_location": "CICERO AVE.",
+      "to_location": "SOUTH SHORE DRIVE"
+    },
+    {
+      "street": "103RD STREET",
+      "from_location": "PULASKI RD.",
+      "to_location": "TORRENCE AVE."
+    },
+    {
+      "street": "MILWAUKEE AVE",
+      "from_location": "CENTRAL AVE.",
+      "to_location": "400 NORTH"
+    },
+    {
+      "street": "DEVON AVE.",
+      "from_location": "BROADWAY",
+      "to_location": "CLARK STREET"
+    },
+    {
+      "street": "CLARK STREET",
+      "from_location": "DEVON AVE.",
+      "to_location": "HOWARD STREET"
+    },
+    {
+      "street": "FOSTER AVE.",
+      "from_location": "ASHLAND AVE.",
+      "to_location": "CLARK STREET"
+    },
+    {
+      "street": "FOSTER AVE.",
+      "from_location": "ASHLAND AVE.",
+      "to_location": "5430 WEST"
+    },
+    {
+      "street": "CENTRAL AVE",
+      "from_location": "BRYN MAWR AVE.",
+      "to_location": "FULLERTON AVE."
+    },
+    {
+      "street": "DIVISION STREET",
+      "from_location": "LA SALLE ST.",
+      "to_location": "KEDZIE AVE"
+    },
+    {
+      "street": "DIVISION STREET",
+      "from_location": "HOMAN AVE.",
+      "to_location": "AUSTIN AVE."
+    },
+    {
+      "street": "MADISON AVE.",
+      "from_location": "AUSTIN AVE.",
+      "to_location": "HALSTED STREET"
+    },
+    {
+      "street": "CENTRAL AVE.",
+      "from_location": "HARRISON ST.",
+      "to_location": "FULLERTON AVE."
+    }
+  ]
+}
