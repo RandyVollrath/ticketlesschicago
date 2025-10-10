@@ -474,7 +474,7 @@ export default function Login() {
                   fontWeight: '500',
                   color: '#111827',
                   cursor: loading ? 'not-allowed' : 'pointer',
-                  marginBottom: '20px',
+                  marginBottom: '16px',
                   fontSize: '16px',
                   opacity: loading && authMethod !== 'google' ? 0.5 : 1
                 }}
@@ -488,29 +488,30 @@ export default function Login() {
                 {loading && authMethod === 'google' ? 'Signing in...' : 'Continue with Google'}
               </button>
 
-              {/* OR Divider */}
+              <p style={{
+                fontSize: '13px',
+                color: '#6b7280',
+                textAlign: 'center',
+                lineHeight: '1.4',
+                marginBottom: '0'
+              }}>
+                New users will be created automatically when you sign in with Google
+              </p>
+
+              {/* Divider */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                margin: '20px 0',
+                margin: '24px 0 20px 0',
                 gap: '12px'
               }}>
                 <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>or</span>
+                <span style={{ fontSize: '12px', color: '#9ca3af' }}>or email me a login link</span>
                 <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
               </div>
 
-              {/* Email-only form for Magic Link */}
+              {/* Email for Magic Link */}
               <div style={{ marginBottom: '12px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Email address
-                </label>
                 <input
                   type="email"
                   value={email}
@@ -519,10 +520,10 @@ export default function Login() {
                   disabled={loading}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    padding: '12px 16px',
                     border: '1px solid #d1d5db',
                     borderRadius: '8px',
-                    fontSize: '16px',
+                    fontSize: '15px',
                     backgroundColor: loading ? '#f9fafb' : 'white',
                     cursor: loading ? 'not-allowed' : 'text'
                   }}
@@ -538,13 +539,13 @@ export default function Login() {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  border: 'none',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
-                  backgroundColor: loading && authMethod === 'magic-link' ? '#9ca3af' : '#3b82f6',
-                  color: 'white',
+                  backgroundColor: loading && authMethod === 'magic-link' ? '#f3f4f6' : 'white',
+                  color: '#374151',
                   fontWeight: '500',
                   cursor: loading || !email ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
+                  fontSize: '14px',
                   opacity: !email ? 0.5 : 1,
                   marginBottom: '8px'
                 }}
@@ -554,11 +555,11 @@ export default function Login() {
 
               <p style={{
                 fontSize: '12px',
-                color: '#6b7280',
+                color: '#9ca3af',
                 textAlign: 'center',
                 lineHeight: '1.4'
               }}>
-                We'll email you a secure link to sign in - no password needed
+                We'll email you a secure link - no password needed
               </p>
 
               {/* Advanced Options */}

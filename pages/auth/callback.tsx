@@ -36,18 +36,56 @@ export default function AuthCallback() {
           const user = data.session.user
           console.log('User authenticated:', user.email, 'about to process profile data')
           
+          // Check for free signup flow from sessionStorage
+          const pendingFreeSignup = sessionStorage.getItem('pendingFreeSignup');
+
+          if (pendingFreeSignup) {
+            console.log('Found pending free signup data, creating account...')
+            try {
+              const formData = JSON.parse(pendingFreeSignup);
+
+              // Create the free account with the form data
+              const response = await fetch('/api/alerts/create', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+              });
+
+              const result = await response.json();
+
+              if (result.success) {
+                console.log('✅ Free account created successfully');
+                sessionStorage.removeItem('pendingFreeSignup'); // Clean up
+                // Redirect to success page
+                router.push('/alerts/success');
+                return;
+              } else {
+                console.error('❌ Failed to create free account:', result.error);
+                router.push('/alerts/signup?error=signup_failed');
+                return;
+              }
+            } catch (error) {
+              console.error('❌ Error processing free signup:', error);
+              sessionStorage.removeItem('pendingFreeSignup'); // Clean up on error
+              router.push('/alerts/signup?error=signup_failed');
+              return;
+            }
+          }
+
           // Check if there's form data to save from localStorage (from paid signup flow)
           const pendingFormData = localStorage.getItem('pendingSignupData');
-          
+
           if (pendingFormData) {
             console.log('Found pending signup data from payment flow, saving profile...')
             try {
               const formData = JSON.parse(pendingFormData);
-              
+
               // Only save if this was a paid signup (has billing plan)
               if (formData.billingPlan) {
                 console.log('Paid signup detected, saving profile data');
-                
+
                 // Save the profile data
                 const response = await fetch('/api/save-user-profile', {
                   method: 'POST',
@@ -59,9 +97,9 @@ export default function AuthCallback() {
                     formData: formData
                   })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                   console.log('✅ Profile data saved successfully');
                   localStorage.removeItem('pendingSignupData'); // Clean up

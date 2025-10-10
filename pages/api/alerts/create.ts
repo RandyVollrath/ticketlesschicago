@@ -201,6 +201,85 @@ export default async function handler(
 
     console.log('✅ Free signup successful:', email);
 
+    // Send magic link to new free users so they can login
+    console.log('📧 Generating magic link for free user:', email);
+    const { data: linkData, error: magicLinkError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings`
+      }
+    });
+
+    if (magicLinkError) {
+      console.error('Error generating magic link:', magicLinkError);
+    } else if (linkData?.properties?.action_link) {
+      console.log('✅ Magic link generated, sending via Resend...');
+
+      try {
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Ticketless America <noreply@ticketlessamerica.com>',
+            to: email,
+            subject: 'Welcome to Ticketless America - Access Your Account',
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Ticketless America!</h2>
+
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                  Your free alerts are now active! Click the button below to access your account and manage your settings:
+                </p>
+
+                <div style="margin: 32px 0; text-align: center;">
+                  <a href="${linkData.properties.action_link}"
+                     style="background-color: #0052cc;
+                            color: white;
+                            padding: 14px 32px;
+                            text-decoration: none;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            font-size: 16px;
+                            display: inline-block;">
+                    Access My Account
+                  </a>
+                </div>
+
+                <p style="color: #666; font-size: 14px; margin-top: 32px;">
+                  You can also sign in anytime using Google by going to <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #0052cc;">ticketlessamerica.com/login</a>
+                </p>
+
+                <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
+
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+
+                <p style="color: #9ca3af; font-size: 13px;">
+                  Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
+                </p>
+
+                <p style="color: #9ca3af; font-size: 12px;">
+                  Ticketless America • Never get another parking ticket
+                </p>
+              </div>
+            `
+          })
+        });
+
+        if (resendResponse.ok) {
+          console.log('✅ Magic link email sent via Resend');
+        } else {
+          const errorText = await resendResponse.text();
+          console.error('Error sending magic link via Resend:', errorText);
+        }
+      } catch (resendError) {
+        console.error('Error sending email via Resend:', resendError);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Account created successfully',

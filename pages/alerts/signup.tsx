@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { supabase } from '../../lib/supabase';
 
 export default function AlertsSignup() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [prefilledData, setPrefilledData] = useState<any>(null);
   const [loadingToken, setLoadingToken] = useState(false);
@@ -68,6 +70,38 @@ export default function AlertsSignup() {
       ...prev,
       [name]: name === 'licensePlate' ? value.toUpperCase() : value
     }));
+  };
+
+  const handleGoogleSignup = async () => {
+    // Validate required fields first
+    if (!formData.email || !formData.phone || !formData.licensePlate || !formData.address || !formData.zip) {
+      setMessage('Please fill out all required fields before continuing with Google');
+      return;
+    }
+
+    setGoogleAuthLoading(true);
+    setMessage('');
+
+    try {
+      // Store form data in sessionStorage so we can retrieve it after Google auth
+      sessionStorage.setItem('pendingFreeSignup', JSON.stringify({
+        ...formData,
+        token: router.query.token || undefined
+      }));
+
+      // Redirect to Google OAuth
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?flow=free-signup`
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+      setGoogleAuthLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -508,7 +542,7 @@ export default function AlertsSignup() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleAuthLoading}
               style={{
                 backgroundColor: loading ? '#9ca3af' : '#0052cc',
                 color: 'white',
@@ -517,19 +551,62 @@ export default function AlertsSignup() {
                 padding: '16px',
                 fontSize: '18px',
                 fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: (loading || googleAuthLoading) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
-                marginTop: '8px'
+                marginTop: '8px',
+                opacity: googleAuthLoading ? 0.5 : 1
               }}
             >
-              {loading ? 'Creating Your Account...' : 'Get Free Alerts'}
+              {loading ? 'Creating Your Account...' : 'Get Free Alerts (Magic Link)'}
+            </button>
+
+            {/* OR Divider */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              margin: '20px 0',
+              gap: '12px'
+            }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>or</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignup}
+              disabled={loading || googleAuthLoading}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '14px 16px',
+                border: '2px solid #d1d5db',
+                borderRadius: '12px',
+                backgroundColor: googleAuthLoading ? '#f3f4f6' : 'white',
+                color: '#111827',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: (loading || googleAuthLoading) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: loading ? 0.5 : 1
+              }}
+            >
+              <svg style={{ width: '20px', height: '20px', marginRight: '12px' }} viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              {googleAuthLoading ? 'Redirecting to Google...' : 'Continue with Google'}
             </button>
 
             <p style={{
               fontSize: '14px',
               color: '#6b7280',
               textAlign: 'center',
-              margin: 0
+              margin: '12px 0 0 0'
             }}>
               By signing up, you'll receive email, SMS, and phone call alerts for street cleaning, snow removal, city stickers, and license plate renewals.
             </p>
