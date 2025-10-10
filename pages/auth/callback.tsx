@@ -27,9 +27,33 @@ export default function AuthCallback() {
 
         // First, check if there's an ongoing auth flow by checking URL fragments
         if (window.location.hash) {
-          console.log('URL hash detected, waiting for auth to complete...')
-          // Wait longer for Supabase to process the auth
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          console.log('URL hash detected:', window.location.hash.substring(0, 100))
+
+          // Extract tokens from hash
+          const hashParams = new URLSearchParams(window.location.hash.substring(1))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+
+          if (accessToken) {
+            console.log('Found access token in hash, setting session...')
+            try {
+              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken || ''
+              })
+
+              if (sessionError) {
+                console.error('Error setting session from hash:', sessionError)
+              } else {
+                console.log('✅ Session set successfully from hash')
+              }
+            } catch (e) {
+              console.error('Exception setting session:', e)
+            }
+          }
+
+          // Wait for Supabase to process the auth
+          await new Promise(resolve => setTimeout(resolve, 1000))
         }
 
         const { data, error } = await supabase.auth.getSession()
@@ -37,8 +61,13 @@ export default function AuthCallback() {
           hasSession: !!data.session,
           userId: data.session?.user?.id,
           email: data.session?.user?.email,
-          error
+          error,
+          fullData: data,
+          fullError: error
         })
+
+        // Log the full URL for debugging
+        console.log('Full callback URL:', window.location.href)
 
         if (error) {
           console.error('Error during auth callback:', error)
