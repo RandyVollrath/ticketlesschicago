@@ -93,55 +93,37 @@ export default function AlertsSignup() {
     setMessage('');
 
     try {
-      // Save form data directly to database using supabase client (bypasses API auth)
-      console.log('Saving signup data to database before Google OAuth:', formData);
+      console.log('Creating account first, then redirecting to Google for login...');
 
-      const { error: saveError } = await supabase
-        .from('pending_signups')
-        .upsert({
-          email: formData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          license_plate: formData.licensePlate,
-          address: formData.address,
-          zip: formData.zip,
-          vin: formData.vin,
-          make: formData.make,
-          model: formData.model,
-          city_sticker: formData.citySticker,
-          token: router.query.token || undefined,
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        }, {
-          onConflict: 'email'
-        });
+      // Create the account immediately (same as email link flow)
+      const response = await fetch('/api/alerts/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          token: router.query.token || undefined
+        })
+      });
 
-      if (saveError) {
-        console.error('Failed to save signup data:', saveError);
-        throw new Error('Failed to save signup data');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create account');
       }
 
-      console.log('✅ Signup data saved to database');
+      console.log('✅ Account created, now redirecting to Google to link account...');
 
-      // Also store in sessionStorage/localStorage as backup
-      const signupData = JSON.stringify({
-        ...formData,
-        token: router.query.token || undefined
-      });
-      sessionStorage.setItem('pendingFreeSignup', signupData);
-      localStorage.setItem('pendingFreeSignup', signupData);
-
-      // Redirect to Google OAuth
+      // Now redirect to Google OAuth to link their Google account
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?flow=free-signup`
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
 
       if (error) throw error;
     } catch (error: any) {
+      console.error('Signup error:', error);
       setMessage(`Error: ${error.message}`);
       setGoogleAuthLoading(false);
     }
