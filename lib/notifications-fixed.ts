@@ -136,7 +136,7 @@ export class NotificationScheduler {
               // Email is always sent
               if (user.email && this.resend) {
                 try {
-                  const fromAddress = process.env.RESEND_FROM || 'noreply@ticketlessamerica.com';
+                  const fromAddress = process.env.RESEND_FROM || 'Ticketless America <alerts@ticketlessamerica.com>';
 
                   const dueDateFormatted = dueDate.toLocaleDateString('en-US', {
                     weekday: 'long',
