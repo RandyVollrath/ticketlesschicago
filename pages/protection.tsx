@@ -1030,7 +1030,7 @@ export default function Protection() {
                     required
                   />
                   <span>
-                    <strong>I authorize Ticketless America to act as my agent</strong> to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested.
+                    <strong>I authorize Ticketless America to act as my agent</strong> to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
                   </span>
                 </label>
               </div>

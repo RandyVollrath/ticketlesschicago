@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
+import { logAuditEvent, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -114,6 +115,24 @@ export default async function handler(
       console.error('Update error:', updateError);
       throw new Error('Failed to update document');
     }
+
+    // Log audit event
+    await logAuditEvent({
+      userId: document.user_id,
+      actionType: 'document_reviewed',
+      entityType: 'permit_document',
+      entityId: documentId,
+      actionDetails: {
+        action: action,
+        customerCode: action === 'approve' ? customerCode : null,
+        rejectionReasons: action === 'reject' ? rejectionReasons : null,
+        customReason: action === 'reject' ? customReason : null,
+        address: document.address,
+      },
+      status: 'success',
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req),
+    });
 
     // Send email to user
     const userEmail = (document as any).users?.email;
