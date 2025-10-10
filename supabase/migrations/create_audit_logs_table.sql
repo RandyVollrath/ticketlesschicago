@@ -21,14 +21,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
   -- Metadata
   ip_address VARCHAR(45), -- IPv4 or IPv6
-  user_agent TEXT,
-
-  -- Index for common queries
-  INDEX idx_audit_logs_user_id (user_id),
-  INDEX idx_audit_logs_action_type (action_type),
-  INDEX idx_audit_logs_entity_type_id (entity_type, entity_id),
-  INDEX idx_audit_logs_created_at (created_at DESC)
+  user_agent TEXT
 );
+
+-- Create indexes for common queries
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_action_type ON audit_logs(action_type);
+CREATE INDEX idx_audit_logs_entity_type_id ON audit_logs(entity_type, entity_id);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at DESC);
 
 -- Enable RLS
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
