@@ -188,6 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .insert({
                   user_id: userId,
                   email: email,
+                  phone_number: metadata.phone || null,
                   has_protection: true,
                   city_sticker_expiry: metadata.citySticker || null,
                   license_plate_expiry: metadata.licensePlate || null,
@@ -295,6 +296,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updated_at: new Date().toISOString()
           };
 
+          if (metadata.phone) {
+            updateData.phone_number = metadata.phone;
+          }
           if (metadata.citySticker) {
             updateData.city_sticker_expiry = metadata.citySticker;
           }
