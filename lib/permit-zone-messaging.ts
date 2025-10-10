@@ -8,19 +8,16 @@ export const PERMIT_ZONE_MESSAGES = {
    * Keep under 160 characters if possible for single SMS
    */
   sms: {
-    // Option 1: Text back method (RECOMMENDED - easiest for users)
-    textBack: `Hi! To purchase your residential parking permit, please text back 2 photos:
+    // RECOMMENDED: Give users both text and email options
+    bothOptions: `Hi! To purchase your residential parking permit, please send 2 photos:
 1. Your driver's license or state ID
 2. Proof of residency (utility bill, lease, or mortgage)
 
-Reply with the photos and we'll handle the rest!`,
+Text them to this number OR email to documents@ticketlessamerica.com
 
-    // Option 2: Upload link method
-    uploadLink: `Hi! To purchase your residential parking permit, upload your ID and proof of residency here: https://ticketlessamerica.com/permit-zone-documents
+Thanks!`,
 
-Need help? Just reply to this text.`,
-
-    // Option 3: Customer code method (for returning users)
+    // If they already have a customer code
     customerCode: `Hi! Do you already have a Customer Code from the City of Chicago for parking permits? If yes, text it back. If no, reply "NO" and we'll guide you through getting one.`,
   },
 
@@ -28,10 +25,10 @@ Need help? Just reply to this text.`,
    * Email templates for requesting documents
    */
   email: {
-    subject: 'Action Required: Upload Documents for Your Parking Permit',
+    subject: 'Action Required: Documents Needed for Your Parking Permit',
 
-    // Option 1: Text back method
-    textBackBody: `
+    // RECOMMENDED: Give users both text and email options
+    bothOptions: `
 Hi there!
 
 To complete your residential parking permit purchase for your Chicago address, we need two documents from you:
@@ -45,12 +42,14 @@ To complete your residential parking permit purchase for your Chicago address, w
    - Cable or satellite TV bill
    - USPS Change of Address confirmation
 
-**How to submit:**
-Simply **reply to this email** with both documents attached as photos or PDFs.
+**How to submit (choose one):**
+- **Reply to this email** with both documents attached as photos or PDFs
+- **Text photos** to (833) 562-3866
+- **Email to** documents@ticketlessamerica.com
 
 **Important:** The name and address on your documents must match the information you provided to us.
 
-Questions? Just reply to this email.
+Questions? Just reply to this email or text us.
 
 Best,
 Ticketless America Team
