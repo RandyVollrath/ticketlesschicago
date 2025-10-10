@@ -77,13 +77,37 @@ export class NotificationScheduler {
             try {
               const prefs = user.notification_preferences || {};
               
+              // Check if user needs to submit permit zone documents
+              // Only request docs when within 60 days of City Sticker renewal
+              let needsPermitDocs = false;
+              if (user.has_permit_zone && renewal.type === 'City Sticker' && daysUntil <= 60) {
+                // Check if they have a customer code already
+                const { data: permitDoc } = await supabaseAdmin
+                  .from('permit_zone_documents')
+                  .select('customer_code, verification_status')
+                  .eq('user_id', user.user_id)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .single();
+
+                // Need docs if no customer code or not approved
+                needsPermitDocs = !permitDoc || !permitDoc.customer_code || permitDoc.verification_status !== 'approved';
+              }
+
               // Send SMS if enabled
               if (prefs.sms && user.phone_number) {
-                const message = `TicketlessAmerica: Your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Reply STOP to opt out.`;
-                
+                let message = `TicketlessAmerica: Your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}.`;
+
+                // Add permit zone docs request to SMS
+                if (needsPermitDocs) {
+                  message += ` IMPORTANT: We need your permit zone documents (ID + proof of residency). Reply with 2 photos or upload at ticketlessamerica.com/permit-zone-documents`;
+                }
+
+                message += ` Reply STOP to opt out.`;
+
                 console.log(`📱 Sending SMS to ${user.phone_number}: ${message}`);
                 const smsResult = await sendClickSendSMS(user.phone_number, message);
-                
+
                 if (smsResult.success) {
                   console.log('✅ SMS sent successfully');
                   results.successful++;
@@ -169,6 +193,27 @@ export class NotificationScheduler {
                             </a>
                           </div>
                         </div>
+
+                        ${needsPermitDocs ? `
+                          <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 24px; margin: 24px 0;">
+                            <h3 style="color: #991b1b; margin: 0 0 16px; font-size: 18px;">📄 Permit Zone Documents Required</h3>
+                            <p style="color: #7f1d1d; margin: 0 0 16px; line-height: 1.6; font-weight: 500;">
+                              <strong>ACTION NEEDED:</strong> Your address is in a residential permit parking zone. We need the following documents to purchase your city sticker:
+                            </p>
+                            <div style="background: white; border-radius: 6px; padding: 16px; margin: 16px 0;">
+                              <ul style="color: #991b1b; margin: 0; padding-left: 20px; line-height: 1.8;">
+                                <li><strong>Valid Photo ID</strong> (driver's license front and back, or passport)</li>
+                                <li><strong>Proof of Residency</strong> (utility bill, lease, mortgage, or property tax bill)</li>
+                              </ul>
+                            </div>
+                            <p style="color: #7f1d1d; margin: 16px 0 0; font-size: 14px; line-height: 1.6;">
+                              <strong>How to submit:</strong><br>
+                              • Reply to this email with photos attached, OR<br>
+                              • Text photos to us at ${process.env.CLICKSEND_PHONE_NUMBER || '(SMS number not configured)'}, OR<br>
+                              • Upload at <a href="https://ticketlessamerica.com/permit-zone-documents" style="color: #2563eb;">ticketlessamerica.com/permit-zone-documents</a>
+                            </p>
+                          </div>
+                        ` : ''}
 
                         <div style="background: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; margin: 24px 0;">
                           <h3 style="color: #374151; margin: 0 0 12px; font-size: 16px;">Why This Matters:</h3>

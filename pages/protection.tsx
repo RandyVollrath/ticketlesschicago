@@ -24,6 +24,9 @@ export default function Protection() {
   const [streetAddress, setStreetAddress] = useState('');
   const { checkAddress, hasPermitZone, zones, loading: permitLoading } = usePermitZoneCheck();
 
+  // Consent checkbox
+  const [consentGiven, setConsentGiven] = useState(false);
+
   // Check feature flags
   const isWaitlistMode = process.env.NEXT_PUBLIC_PROTECTION_WAITLIST === 'true';
 
@@ -80,6 +83,12 @@ export default function Protection() {
   };
 
   const handleCheckoutClick = async () => {
+    // Validate consent
+    if (!consentGiven) {
+      setMessage('Please review and agree to the authorization terms');
+      return;
+    }
+
     // Validate email
     const userEmail = user?.email || email;
     if (!userEmail || userEmail.trim() === '') {
@@ -940,6 +949,43 @@ export default function Protection() {
                   {message}
                 </div>
               )}
+
+              {/* Authorization Consent */}
+              <div style={{
+                backgroundColor: '#f9fafb',
+                border: '2px solid #d1d5db',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: '#374151'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={consentGiven}
+                    onChange={(e) => setConsentGiven(e.target.checked)}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      marginTop: '2px',
+                      accentColor: '#0052cc',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                    required
+                  />
+                  <span>
+                    <strong>I authorize Ticketless America to act as my agent</strong> to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested.
+                  </span>
+                </label>
+              </div>
 
               <button
                 onClick={handleCheckoutClick}

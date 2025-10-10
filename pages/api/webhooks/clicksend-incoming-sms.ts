@@ -39,13 +39,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const data = req.body;
     let fromNumber = data.from || data.source;
-    let messageBody = data.body || data.message;
+    let messageBody = data.body || data.message || '';
     let messageId = data.message_id || data.messageId;
+    // ClickSend MMS attachments come in media_file field (array or single URL)
+    let mediaFiles = data.media_file ? (Array.isArray(data.media_file) ? data.media_file : [data.media_file]) : [];
 
-    if (!fromNumber || !messageBody) {
-      console.error('Missing required fields:', { fromNumber, messageBody });
-      return res.status(400).json({ error: 'Missing from or body' });
+    if (!fromNumber) {
+      console.error('Missing from number:', { fromNumber });
+      return res.status(400).json({ error: 'Missing from number' });
     }
+
+    console.log(`📎 MMS attachments: ${mediaFiles.length}`);
 
     // SECURITY: Sanitize inputs to prevent any malicious content
     // We only store these as TEXT - Supabase uses parameterized queries so SQL injection is not possible
@@ -117,22 +121,140 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('✅ SMS stored in database:', smsRecord.id);
 
-    // Send email notification to mystreetcleaning@gmail.com
+    // Handle permit zone document uploads via MMS
+    const messageLower = messageBody.toLowerCase();
+    const isPermitDocs = (messageLower.includes('permit') || messageLower.includes('document') ||
+                         messageLower.includes('id') || messageLower.includes('license') ||
+                         messageLower.includes('residency') || mediaFiles.length > 0) &&
+                        mediaFiles.length > 0;
+
+    if (isPermitDocs && matchedUser && mediaFiles.length > 0) {
+      console.log(`📄 Processing permit documents from ${fromNumber} (${mediaFiles.length} files)`);
+
+      try {
+        const { put } = await import('@vercel/blob');
+
+        let idDocUrl = '';
+        let idDocFilename = '';
+        let residencyDocUrl = '';
+        let residencyDocFilename = '';
+
+        for (const mediaUrl of mediaFiles) {
+          // Download the MMS image from ClickSend
+          const response = await fetch(mediaUrl);
+          if (!response.ok) {
+            console.error(`Failed to download media: ${mediaUrl}`);
+            continue;
+          }
+
+          const buffer = Buffer.from(await response.arrayBuffer());
+          const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+          // Extract filename from URL or use default
+          const urlParts = mediaUrl.split('/');
+          const filename = urlParts[urlParts.length - 1] || `sms-image-${Date.now()}.jpg`;
+
+          // Upload to Vercel Blob
+          const timestamp = Date.now();
+          const blobPath = `permit-docs/${matchedUserId}/sms-${timestamp}-${filename}`;
+
+          const blob = await put(blobPath, buffer, {
+            access: 'public',
+            contentType: contentType,
+          });
+
+          console.log(`✅ Uploaded ${filename} to blob storage`);
+
+          // Assign to ID or residency doc (first file = ID, second = residency)
+          if (!idDocUrl) {
+            idDocUrl = blob.url;
+            idDocFilename = filename;
+          } else if (!residencyDocUrl) {
+            residencyDocUrl = blob.url;
+            residencyDocFilename = filename;
+          }
+        }
+
+        // Save to permit_zone_documents table
+        if (idDocUrl && residencyDocUrl) {
+          const { data: permitDoc, error: permitError } = await supabaseAdmin
+            .from('permit_zone_documents')
+            .insert({
+              user_id: matchedUserId,
+              id_document_url: idDocUrl,
+              id_document_filename: idDocFilename,
+              proof_of_residency_url: residencyDocUrl,
+              proof_of_residency_filename: residencyDocFilename,
+              address: matchedUser.home_address_full || '',
+              verification_status: 'pending',
+            })
+            .select()
+            .single();
+
+          if (!permitError) {
+            console.log(`✅ Permit documents saved for review: ${permitDoc.id}`);
+
+            // Send confirmation SMS to user
+            const confirmMessage = 'Thanks! We received your permit zone documents and they are being reviewed. You\'ll hear from us within 1-2 business days.';
+
+            try {
+              const { sendClickSendSMS } = await import('../../../lib/sms-service');
+              await sendClickSendSMS(fromNumber, confirmMessage);
+            } catch (smsError) {
+              console.error('Error sending confirmation SMS:', smsError);
+            }
+          } else {
+            console.error('❌ Error saving permit documents:', permitError);
+          }
+        } else if (mediaFiles.length === 1) {
+          // Only one file sent - ask for the other
+          const askMessage = 'Thanks! We received 1 document. Please send one more (we need both your ID and proof of residency).';
+          try {
+            const { sendClickSendSMS } = await import('../../../lib/sms-service');
+            await sendClickSendSMS(fromNumber, askMessage);
+          } catch (smsError) {
+            console.error('Error sending SMS:', smsError);
+          }
+        }
+      } catch (docError) {
+        console.error('❌ Error processing permit documents:', docError);
+      }
+    }
+
+    // Send email notification to ticketlessamerica@gmail.com
     try {
-      const emailSubject = matchedUser
-        ? `Profile Update Request from ${matchedEmail}`
-        : `SMS Reply from Unknown Number: ${fromNumber}`;
+      const emailSubject = isPermitDocs
+        ? `📄 PERMIT DOCUMENTS via SMS from ${matchedEmail || fromNumber}`
+        : matchedUser
+          ? `Profile Update Request from ${matchedEmail}`
+          : `SMS Reply from Unknown Number: ${fromNumber}`;
 
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">📱 Incoming SMS Reply</h2>
+          <h2 style="color: #2563eb;">📱 Incoming SMS ${isPermitDocs ? '- PERMIT DOCUMENTS' : 'Reply'}</h2>
+
+          ${isPermitDocs ? `
+            <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <p style="margin: 0; color: #92400e; font-weight: 600; font-size: 18px;">
+                📄 PERMIT DOCUMENTS RECEIVED (${mediaFiles.length} files)
+              </p>
+              <p style="margin: 12px 0 0 0;">
+                <a href="https://ticketlessamerica.com/admin-permit-documents" style="color: #0052cc; font-weight: 600;">
+                  Review Documents in Admin Panel
+                </a>
+              </p>
+            </div>
+          ` : ''}
 
           <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
             <p style="margin: 0;"><strong>From:</strong> ${fromNumber}</p>
             <p style="margin: 8px 0 0;"><strong>Message:</strong></p>
             <p style="background: white; padding: 12px; border-radius: 4px; margin: 8px 0 0;">
-              ${messageBody}
+              ${messageBody || '(MMS with no text)'}
             </p>
+            ${mediaFiles.length > 0 ? `
+              <p style="margin: 12px 0 0;"><strong>Media Files:</strong> ${mediaFiles.length}</p>
+            ` : ''}
           </div>
 
           ${matchedUser ? `

@@ -191,6 +191,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   has_protection: true,
                   city_sticker_expiry: metadata.citySticker || null,
                   license_plate_expiry: metadata.licensePlate || null,
+                  mailing_address: metadata.streetAddress || null,
+                  street_address: metadata.streetAddress || null,
+                  home_address_full: metadata.streetAddress || null,
+                  has_permit_zone: metadata.hasPermitZone === 'true',
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 });
@@ -298,6 +302,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updateData.license_plate_expiry = metadata.licensePlate;
           }
 
+          // Save street address as both mailing and street cleaning address
+          if (metadata.streetAddress) {
+            updateData.mailing_address = metadata.streetAddress;
+            updateData.street_address = metadata.streetAddress;
+            updateData.home_address_full = metadata.streetAddress;
+          }
+
+          // Save permit zone status
+          if (metadata.hasPermitZone === 'true') {
+            updateData.has_permit_zone = true;
+          }
+
           const { error: updateError } = await supabaseAdmin
             .from('user_profiles')
             .update(updateData)
@@ -307,6 +323,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Error updating user profile with Protection:', updateError);
           } else {
             console.log('✅ User profile updated with Protection status and renewal dates');
+          }
+
+          // Log user consent for legal compliance
+          const consentText = 'I authorize Ticketless America to act as my agent to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested.';
+
+          const { error: consentError } = await supabaseAdmin
+            .from('user_consents')
+            .insert({
+              user_id: userId,
+              consent_type: 'protection_purchase',
+              consent_text: consentText,
+              consent_granted: true,
+              stripe_session_id: session.id,
+              ip_address: session.customer_details?.address?.country || null,
+              metadata: {
+                plan: metadata.plan,
+                city_sticker: metadata.citySticker,
+                license_plate: metadata.licensePlate,
+                has_permit_zone: metadata.hasPermitZone === 'true',
+                street_address: metadata.streetAddress
+              }
+            });
+
+          if (consentError) {
+            console.error('Error logging consent:', consentError);
+          } else {
+            console.log('✅ User consent logged for legal compliance');
           }
 
           // Exit early for Protection purchases
