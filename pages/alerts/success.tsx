@@ -213,7 +213,9 @@ export default function AlertsSuccess() {
               </li>
             )}
             {!isProtection && !isExistingUser && (
-              <li>Check your email for login instructions (arrives within 5 minutes)</li>
+              <li style={{ backgroundColor: '#dcfce7', padding: '8px', borderRadius: '6px', color: '#166534' }}>
+                <strong>✓ Login link sent to your email!</strong> Click the link to access your account settings.
+              </li>
             )}
             {isProtection && <li><strong>Verify your profile is 100% complete and accurate</strong> to ensure your guarantee is valid</li>}
             <li>Manage your preferences anytime in your account settings</li>
@@ -271,52 +273,93 @@ export default function AlertsSuccess() {
           flexDirection: 'column',
           gap: '12px'
         }}>
-          <button
-            onClick={() => router.push('/settings')}
-            style={{
-              backgroundColor: '#0052cc',
-              color: 'white',
-              border: 'none',
+          {/* For new Protection users, only show email check reminder - don't redirect them to login */}
+          {isProtection && !isExistingUser ? (
+            <div style={{
+              backgroundColor: '#eff6ff',
+              border: '2px solid #3b82f6',
               borderRadius: '12px',
-              padding: '16px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#003d99';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#0052cc';
-            }}
-          >
-            {isProtection ? 'Complete My Profile' : 'Go to My Account'}
-          </button>
+              padding: '20px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>📧</div>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#1e40af',
+                margin: '0 0 12px 0'
+              }}>
+                Check Your Email to Login
+              </h3>
+              <p style={{
+                fontSize: '15px',
+                color: '#1e40af',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                We've sent a secure login link to <strong>{router.query.email}</strong>.
+                Click the "Complete My Profile" button in the email to access your account and verify your information.
+              </p>
+              <p style={{
+                fontSize: '13px',
+                color: '#60a5fa',
+                marginTop: '12px',
+                margin: '12px 0 0 0',
+                fontStyle: 'italic'
+              }}>
+                Tip: Check your spam folder if you don't see it within 2 minutes
+              </p>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => router.push('/settings')}
+                style={{
+                  backgroundColor: '#0052cc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#003d99';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0052cc';
+                }}
+              >
+                {isProtection ? 'Complete My Profile' : 'Go to My Account'}
+              </button>
 
-          {!isProtection && (
-            <button
-              onClick={() => router.push('/protection')}
-              style={{
-                backgroundColor: 'transparent',
-                color: '#0052cc',
-                border: '2px solid #0052cc',
-                borderRadius: '12px',
-                padding: '14px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = '#f0f8ff';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              Learn About Ticket Protection
-            </button>
+              {!isProtection && (
+                <button
+                  onClick={() => router.push('/protection')}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: '#0052cc',
+                    border: '2px solid #0052cc',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f0f8ff';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Learn About Ticket Protection
+                </button>
+              )}
+            </>
           )}
 
           <button
