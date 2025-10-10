@@ -9,13 +9,13 @@ export const PERMIT_ZONE_MESSAGES = {
    */
   sms: {
     // RECOMMENDED: Give users both text and email options
-    bothOptions: `Hi! To purchase your residential parking permit, please send 2 photos:
+    bothOptions: `Hi! To get your residential parking permit, we need 2 photos:
 1. Your driver's license or state ID
 2. Proof of residency (utility bill, lease, or mortgage)
 
 Text them to this number OR email to documents@ticketlessamerica.com
 
-Thanks!`,
+We'll handle the rest!`,
 
     // If they already have a customer code
     customerCode: `Hi! Do you already have a Customer Code from the City of Chicago for parking permits? If yes, text it back. If no, reply "NO" and we'll guide you through getting one.`,
@@ -31,7 +31,7 @@ Thanks!`,
     bothOptions: `
 Hi there!
 
-To complete your residential parking permit purchase for your Chicago address, we need two documents from you:
+To get your residential parking permit for your Chicago address, we need two documents from you:
 
 1. **Valid Photo ID** - Driver's license, state ID, CityKey, U.S. Passport, or Military ID
 2. **Proof of Residency** - Any ONE of the following:
@@ -59,7 +59,7 @@ Ticketless America Team
     uploadPortalBody: `
 Hi there!
 
-To complete your residential parking permit purchase for your Chicago address, we need to verify your residency.
+To get your residential parking permit for your Chicago address, we need to verify your residency.
 
 **Documents Required:**
 1. **Valid Photo ID** - Driver's license, state ID, CityKey, U.S. Passport, or Military ID
@@ -81,7 +81,7 @@ Ticketless America Team
     hybridBody: `
 Hi there!
 
-To complete your residential parking permit purchase, we need to verify your Chicago residency.
+To get your residential parking permit, we need to verify your Chicago residency.
 
 **Option 1: Text Us** (Fastest)
 Text photos of your ID and proof of residency to: [YOUR_PHONE_NUMBER]
