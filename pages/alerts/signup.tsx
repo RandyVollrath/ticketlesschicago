@@ -24,6 +24,16 @@ export default function AlertsSignup() {
     zip: ''
   });
 
+  // Check for error from auth callback
+  useEffect(() => {
+    const error = router.query.error as string;
+    if (error === 'data_lost') {
+      setMessage('⚠️ Your session data was lost during sign-in. Please fill out the form again and use the "Get Free Alerts (Email Link)" button instead of Google sign-in.');
+    } else if (error === 'signup_failed') {
+      setMessage('❌ Sign up failed. Please try again.');
+    }
+  }, [router.query.error]);
+
   // Load pre-filled data from token
   useEffect(() => {
     const token = router.query.token as string;
@@ -74,8 +84,8 @@ export default function AlertsSignup() {
 
   const handleGoogleSignup = async () => {
     // Validate required fields first
-    if (!formData.email || !formData.phone || !formData.licensePlate || !formData.address || !formData.zip) {
-      setMessage('Please fill out all required fields before continuing with Google');
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.licensePlate || !formData.address || !formData.zip) {
+      setMessage('⚠️ Please fill out ALL required fields (including first & last name) before continuing with Google');
       return;
     }
 
@@ -83,11 +93,41 @@ export default function AlertsSignup() {
     setMessage('');
 
     try {
-      // Store form data in sessionStorage so we can retrieve it after Google auth
-      sessionStorage.setItem('pendingFreeSignup', JSON.stringify({
+      // Save form data to database first (survives browser redirects)
+      console.log('Saving signup data to database before Google OAuth:', formData);
+
+      const saveResponse = await fetch('/api/pending-signup/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          licensePlate: formData.licensePlate,
+          address: formData.address,
+          zip: formData.zip,
+          vin: formData.vin,
+          make: formData.make,
+          model: formData.model,
+          citySticker: formData.citySticker,
+          token: router.query.token || undefined
+        })
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save signup data');
+      }
+
+      console.log('✅ Signup data saved to database');
+
+      // Also store in sessionStorage/localStorage as backup
+      const signupData = JSON.stringify({
         ...formData,
         token: router.query.token || undefined
-      }));
+      });
+      sessionStorage.setItem('pendingFreeSignup', signupData);
+      localStorage.setItem('pendingFreeSignup', signupData);
 
       // Redirect to Google OAuth
       const { error } = await supabase.auth.signInWithOAuth({
@@ -557,7 +597,7 @@ export default function AlertsSignup() {
                 opacity: googleAuthLoading ? 0.5 : 1
               }}
             >
-              {loading ? 'Creating Your Account...' : 'Get Free Alerts (Magic Link)'}
+              {loading ? 'Creating Your Account...' : '📧 Get Free Alerts (Email Link)'}
             </button>
 
             {/* OR Divider */}
@@ -599,7 +639,7 @@ export default function AlertsSignup() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              {googleAuthLoading ? 'Redirecting to Google...' : 'Continue with Google'}
+              {googleAuthLoading ? 'Redirecting to Google...' : '🔐 Sign Up with Google'}
             </button>
 
             <p style={{
