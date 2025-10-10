@@ -257,9 +257,11 @@ export class NotificationScheduler {
 
   // Generate notification content based on renewal type and urgency
   generateNotificationContent(
-    obligation: any, 
+    obligation: any,
     renewalType: 'city_sticker' | 'license_plate' | 'emissions',
-    daysUntilDue: number
+    daysUntilDue: number,
+    hasProtection: boolean = false,
+    hasPermitZone: boolean = false
   ): { email: EmailNotification; sms: SMSNotification; voice: VoiceNotification } {
     const urgency = this.getUrgencyLevel(daysUntilDue);
     const urgencyEmoji = urgency === 'high' ? '🚨' : urgency === 'medium' ? '⚠️' : '📋';
@@ -306,10 +308,12 @@ export class NotificationScheduler {
                      `${daysUntilDue} days`;
 
     // Email content (helpful and supportive)
-    const emailSubject = daysUntilDue <= 1 
+    const emailSubject = daysUntilDue <= 1
       ? `${renewalName} Renewal Reminder - Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}`
+      : hasProtection
+      ? `${renewalName} coming up - We'll handle the renewal`
       : `${renewalName} coming up in ${daysUntilDue} days`;
-    
+
     const emailHtml = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
         <!-- Header -->
@@ -328,36 +332,98 @@ export class NotificationScheduler {
               <strong>Days Remaining:</strong> ${daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? '1 day' : `${daysUntilDue} days`}
             </div>
           </div>
-          
-          ${daysUntilDue <= 1 ? `
-            <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-              <h3 style="color: #92400e; margin: 0 0 8px; font-size: 18px;">⏰ Renewal Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}</h3>
-              <p style="color: #92400e; margin: 0;">We recommend renewing today to stay compliant and avoid any potential issues.</p>
+
+          ${!hasProtection ? `
+            ${daysUntilDue <= 1 ? `
+              <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                <h3 style="color: #92400e; margin: 0 0 8px; font-size: 18px;">⏰ Renewal Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}</h3>
+                <p style="color: #92400e; margin: 0;">We recommend renewing today to stay compliant and avoid any potential issues.</p>
+              </div>
+            ` : ''}
+
+            <!-- Action Steps for Free Alert Users -->
+            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
+              <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to Renew:</h3>
+              <div style="color: #0369a1; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
+                ${tipText.replace('💡 ', '')}
+              </div>
+
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="${renewalUrl}"
+                   style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
+                  Renew Online
+                </a>
+                <a href="https://ticketlessamerica.com/dashboard"
+                   style="background: #374151; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
+                  View Dashboard
+                </a>
+              </div>
             </div>
-          ` : ''}
-          
-          <!-- Action Steps -->
-          <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
-            <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to Renew:</h3>
-            ${tipText.replace('💡 ', '<div style="color: #0369a1; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">')}
-            
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="${renewalUrl}" 
-                 style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
-                Renew Online
-              </a>
-              <a href="https://ticketlessamerica.com/dashboard" 
-                 style="background: #374151; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
-                View Dashboard
-              </a>
+
+            <!-- Upgrade to Protection -->
+            <div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 24px 0;">
+              <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">💡 Want us to handle this for you?</h3>
+              <p style="color: #065f46; margin: 0 0 16px; line-height: 1.6;">
+                Upgrade to Ticketless Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
+              </p>
+              <div style="text-align: center;">
+                <a href="https://ticketlessamerica.com/protection"
+                   style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
+                  Learn About Protection
+                </a>
+              </div>
             </div>
-          </div>
-          
+          ` : `
+            <!-- Protection Plan: We Handle The Renewal -->
+            <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin-bottom: 24px; border-radius: 4px;">
+              <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">✅ We've Got This Covered</h3>
+              <p style="color: #065f46; margin: 0; line-height: 1.6;">
+                ${daysUntilDue <= 14
+                  ? `We're purchasing your ${renewalName} on your behalf ${daysUntilDue === 14 ? 'today' : `in ${14 - daysUntilDue} days`}. You don't need to do anything!`
+                  : `We'll purchase your ${renewalName} when there are 14 days left until expiration. You don't need to do anything!`
+                }
+              </p>
+            </div>
+
+            ${hasPermitZone ? `
+              <!-- Permit Zone Document Upload Required -->
+              <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 24px 0;">
+                <h3 style="color: #92400e; margin: 0 0 12px; font-size: 18px;">📄 Action Required: Upload Permit Zone Documents</h3>
+                <p style="color: #92400e; margin: 0 0 16px; line-height: 1.6;">
+                  Since you're in a residential permit parking zone, we need the following documents to complete your city sticker renewal:
+                </p>
+                <ul style="color: #92400e; margin: 0 0 16px; padding-left: 20px; line-height: 1.8;">
+                  <li><strong>Driver's License:</strong> Front and back (clear photos)</li>
+                  <li><strong>Proof of Residency:</strong> Utility bill, lease agreement, or mortgage statement showing your address</li>
+                </ul>
+                <div style="text-align: center;">
+                  <a href="https://ticketlessamerica.com/dashboard"
+                     style="background: #f59e0b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
+                    Upload Documents Now
+                  </a>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Confirm Your Information -->
+            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
+              <h3 style="color: #0c4a6e; margin: 0 0 12px; font-size: 18px;">📝 Please Confirm Your Information</h3>
+              <p style="color: #0369a1; margin: 0 0 16px; line-height: 1.6;">
+                Before we purchase your renewal, please reply to this email if any of the following has changed:
+              </p>
+              <ul style="color: #0369a1; margin: 0; padding-left: 20px; line-height: 1.8;">
+                <li>VIN (if you got a new vehicle)</li>
+                <li>License plate number</li>
+                <li>Mailing address</li>
+              </ul>
+            </div>
+          `}
+
           <!-- Why We're Here -->
           <div style="background: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; margin: 24px 0;">
             <h3 style="color: #374151; margin: 0 0 12px; font-size: 16px;">Why This Matters:</h3>
             <p style="color: #6b7280; margin: 0; line-height: 1.6;">
-              Staying on top of your vehicle renewals helps you avoid unnecessary fines and keeps you compliant with Chicago regulations. 
+              Staying on top of your vehicle renewals helps you avoid unnecessary fines and keeps you compliant with Chicago regulations.
               We're here to help make sure nothing slips through the cracks.
             </p>
           </div>
@@ -383,7 +449,7 @@ export class NotificationScheduler {
       </div>
     `;
 
-    const emailText = `
+    const emailText = !hasProtection ? `
 Hello,
 
 This is a friendly reminder from Ticketless America about your upcoming ${renewalName}.
@@ -397,22 +463,95 @@ ${daysUntilDue <= 1 ? 'We recommend renewing today to stay compliant.' : 'You ha
 Renew online: ${renewalUrl}
 View your dashboard: https://ticketlessamerica.com/dashboard
 
+💡 Want us to handle this for you?
+Upgrade to Ticketless Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
+Learn more: https://ticketlessamerica.com/protection
+
+Best regards,
+Ticketless America Team
+
+Questions? Reply to support@ticketlessamerica.com
+    ` : `
+Hello,
+
+This is a friendly reminder from Ticketless America about your upcoming ${renewalName}.
+
+Vehicle: ${obligation.license_plate}
+Due Date: ${dueDateFormatted}
+Days Remaining: ${daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? '1 day' : `${daysUntilDue} days`}
+
+✅ WE'VE GOT THIS COVERED
+${daysUntilDue <= 14
+  ? `We're purchasing your ${renewalName} on your behalf ${daysUntilDue === 14 ? 'today' : `in ${14 - daysUntilDue} days`}. You don't need to do anything!`
+  : `We'll purchase your ${renewalName} when there are 14 days left until expiration. You don't need to do anything!`
+}
+
+${hasPermitZone ? `
+📄 ACTION REQUIRED: Upload Permit Zone Documents
+Since you're in a residential permit parking zone, we need:
+- Driver's License (front and back)
+- Proof of Residency (utility bill, lease, or mortgage statement)
+
+Upload now: https://ticketlessamerica.com/dashboard
+` : ''}
+
+📝 PLEASE CONFIRM YOUR INFORMATION
+Before we purchase your renewal, please reply if any of the following has changed:
+- VIN (if you got a new vehicle)
+- License plate number
+- Mailing address
+
+View your dashboard: https://ticketlessamerica.com/dashboard
+
 Best regards,
 Ticketless America Team
 
 Questions? Reply to support@ticketlessamerica.com
     `;
 
-    // SMS content - focused on getting profile updates BEFORE we process the renewal at 14 days
-    // After 14 days we stop sending because we've already purchased the sticker
+    // SMS content - differentiate between simple reminders and auto-registration alerts
     const shortUrl = 'ticketlessamerica.com';
-    const smsMessage = daysUntilDue === 14
-      ? `Ticketless: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We're purchasing it TODAY. Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder. - Ticketless America`
-      : daysUntilDue <= 21
-      ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 7 days. Please reply by then if you have: New VIN (new car), new plate number, or new address. - Ticketless America`
-      : daysUntilDue <= 30
-      ? `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Ticketless America`
-      : `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left, so you have time. If anything changed (new VIN, new plate, or address), reply anytime in the next month. - Ticketless America`;
+    let smsMessage = '';
+
+    if (!hasProtection) {
+      // Simple reminder for free alert users
+      if (daysUntilDue === 0) {
+        smsMessage = `Ticketless: ${renewalName} expires TODAY for plate ${obligation.license_plate}. Renew now to avoid fines. - Ticketless America`;
+      } else if (daysUntilDue === 1) {
+        smsMessage = `Ticketless: ${renewalName} expires TOMORROW for plate ${obligation.license_plate}. Renew today to stay compliant. - Ticketless America`;
+      } else if (daysUntilDue <= 7) {
+        smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Don't forget to renew! - Ticketless America`;
+      } else if (daysUntilDue <= 14) {
+        smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Time to renew soon. - Ticketless America`;
+      } else {
+        smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Mark your calendar! - Ticketless America`;
+      }
+    } else {
+      // Auto-registration alerts for Protection plan users
+      if (hasPermitZone) {
+        // Permit zone users need to upload documents
+        if (daysUntilDue === 14) {
+          smsMessage = `Ticketless: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We're purchasing it TODAY. Reply NOW if info changed (VIN, plate, or address). ALSO: Upload permit zone docs (front/back of license + proof of residency) at ${shortUrl}/dashboard - Ticketless America`;
+        } else if (daysUntilDue <= 21) {
+          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase in 7 days. Reply if info changed (VIN, plate, or address). IMPORTANT: Upload permit zone docs at ${shortUrl}/dashboard - Ticketless America`;
+        } else if (daysUntilDue <= 30) {
+          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with updates. REQUIRED: Upload permit zone docs at ${shortUrl}/dashboard - Ticketless America`;
+        } else {
+          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with any updates. Don't forget: Upload permit zone docs at ${shortUrl}/dashboard - Ticketless America`;
+        }
+      } else {
+        // Standard protection users (no permit zone)
+        if (daysUntilDue === 14) {
+          smsMessage = `Ticketless: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We're purchasing it TODAY. Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder. - Ticketless America`;
+        } else if (daysUntilDue <= 21) {
+          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 7 days. Please reply by then if you have: New VIN (new car), new plate number, or new address. - Ticketless America`;
+        } else if (daysUntilDue <= 30) {
+          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Ticketless America`;
+        } else {
+          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left, so you have time. If anything changed (new VIN, new plate, or address), reply anytime in the next month. - Ticketless America`;
+        }
+      }
+    }
 
     // Voice content (friendly and informative)
     const plateSpoken = obligation.license_plate.split('').join(' '); // Spell out clearly: "A B C 1 2 3"
@@ -481,19 +620,45 @@ Questions? Reply to support@ticketlessamerica.com
         
         for (const obligation of obligations) {
           results.processed++;
-          
+
           try {
             const preferences = obligation.notification_preferences || {};
             const reminderDaysAllowed = preferences.reminder_days || [60, 45, 30, 21, 14];
-            
+
             // Check if this user wants reminders at this interval
             if (!reminderDaysAllowed.includes(days)) {
               console.log(`User ${obligation.email} doesn't want ${days}-day reminders`);
               continue;
             }
-            
-            // Generate notification content
-            const content = this.generateNotificationContent(obligation, obligation.type, days);
+
+            // Fetch user protection status and permit zone info from user_profiles
+            let hasProtection = false;
+            let hasPermitZone = false;
+
+            try {
+              const { data: userProfile } = await supabaseAdmin
+                .from('user_profiles')
+                .select('has_protection, has_permit_zone')
+                .eq('user_id', obligation.user_id)
+                .single();
+
+              if (userProfile) {
+                hasProtection = userProfile.has_protection || false;
+                hasPermitZone = userProfile.has_permit_zone || false;
+              }
+            } catch (profileError) {
+              console.error(`Error fetching user profile for ${obligation.email}:`, profileError);
+              // Continue with defaults (false, false)
+            }
+
+            // Generate notification content with protection status
+            const content = this.generateNotificationContent(
+              obligation,
+              obligation.type,
+              days,
+              hasProtection,
+              hasPermitZone
+            );
             
             let notificationSent = false;
             
