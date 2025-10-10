@@ -26,6 +26,14 @@ export default function Login() {
     }
     checkUser()
 
+    // Check for error message in query params
+    if (router.query.error) {
+      setMessage({
+        type: 'error',
+        text: router.query.error as string
+      })
+    }
+
     // Check if passkeys are supported
     if (typeof window !== 'undefined' && window.PublicKeyCredential) {
       setPasskeysSupported(true)
