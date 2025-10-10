@@ -51,17 +51,10 @@ export default async function handler(
 
     const status = req.query.status as string;
 
-    // Build query
+    // First, get documents
     let query = supabaseAdmin
       .from('permit_zone_documents')
-      .select(`
-        *,
-        users:user_id (
-          email,
-          phone,
-          full_name
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     // Filter by status if provided
@@ -73,26 +66,58 @@ export default async function handler(
 
     if (dbError) {
       console.error('Database error:', dbError);
-      throw new Error('Failed to query documents');
+      throw new Error(`Failed to query documents: ${dbError.message}`);
+    }
+
+    if (!documents || documents.length === 0) {
+      return res.status(200).json({
+        success: true,
+        documents: []
+      });
+    }
+
+    // Get user IDs to fetch user data
+    const userIds = [...new Set(documents.map(d => d.user_id))];
+
+    // Fetch user data separately
+    const { data: users, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, email, phone, full_name')
+      .in('id', userIds);
+
+    if (userError) {
+      console.error('User query error:', userError);
+      // Continue without user data
+    }
+
+    // Create a map of user data
+    const userMap = new Map();
+    if (users) {
+      users.forEach(user => {
+        userMap.set(user.id, user);
+      });
     }
 
     // Format the response
-    const formattedDocuments = documents.map((doc: any) => ({
-      id: doc.id,
-      user_id: doc.user_id,
-      id_document_url: doc.id_document_url,
-      id_document_filename: doc.id_document_filename,
-      proof_of_residency_url: doc.proof_of_residency_url,
-      proof_of_residency_filename: doc.proof_of_residency_filename,
-      address: doc.address,
-      verification_status: doc.verification_status,
-      rejection_reason: doc.rejection_reason,
-      customer_code: doc.customer_code,
-      created_at: doc.created_at,
-      user_email: doc.users?.email,
-      user_phone: doc.users?.phone,
-      user_name: doc.users?.full_name,
-    }));
+    const formattedDocuments = documents.map((doc: any) => {
+      const user = userMap.get(doc.user_id);
+      return {
+        id: doc.id,
+        user_id: doc.user_id,
+        id_document_url: doc.id_document_url,
+        id_document_filename: doc.id_document_filename,
+        proof_of_residency_url: doc.proof_of_residency_url,
+        proof_of_residency_filename: doc.proof_of_residency_filename,
+        address: doc.address,
+        verification_status: doc.verification_status,
+        rejection_reason: doc.rejection_reason,
+        customer_code: doc.customer_code,
+        created_at: doc.created_at,
+        user_email: user?.email || 'Unknown',
+        user_phone: user?.phone || 'Unknown',
+        user_name: user?.full_name || 'Unknown User',
+      };
+    });
 
     return res.status(200).json({
       success: true,
