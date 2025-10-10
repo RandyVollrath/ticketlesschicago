@@ -93,29 +93,32 @@ export default function AlertsSignup() {
     setMessage('');
 
     try {
-      // Save form data to database first (survives browser redirects)
+      // Save form data directly to database using supabase client (bypasses API auth)
       console.log('Saving signup data to database before Google OAuth:', formData);
 
-      const saveResponse = await fetch('/api/pending-signup/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { error: saveError } = await supabase
+        .from('pending_signups')
+        .upsert({
           email: formData.email,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
           phone: formData.phone,
-          licensePlate: formData.licensePlate,
+          license_plate: formData.licensePlate,
           address: formData.address,
           zip: formData.zip,
           vin: formData.vin,
           make: formData.make,
           model: formData.model,
-          citySticker: formData.citySticker,
-          token: router.query.token || undefined
-        })
-      });
+          city_sticker: formData.citySticker,
+          token: router.query.token || undefined,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        }, {
+          onConflict: 'email'
+        });
 
-      if (!saveResponse.ok) {
+      if (saveError) {
+        console.error('Failed to save signup data:', saveError);
         throw new Error('Failed to save signup data');
       }
 
