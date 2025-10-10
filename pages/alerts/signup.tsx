@@ -113,11 +113,14 @@ export default function AlertsSignup() {
 
       console.log('✅ Account created, now redirecting to Google to link account...');
 
+      // Store the form email to validate after OAuth
+      sessionStorage.setItem('expectedGoogleEmail', formData.email);
+
       // Now redirect to Google OAuth to link their Google account
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback?flow=google-signup`
         }
       });
 

@@ -53,7 +53,26 @@ export default function AuthCallback() {
           // User is authenticated
           const user = data.session.user
           console.log('User authenticated:', user.email, 'about to process profile data')
-          
+
+          // Check if this is a Google signup flow where we need to validate email
+          const isGoogleSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'google-signup';
+
+          if (isGoogleSignupFlow) {
+            const expectedEmail = sessionStorage.getItem('expectedGoogleEmail');
+            console.log('Google signup flow - expected email:', expectedEmail, 'actual email:', user.email);
+
+            if (expectedEmail && user.email !== expectedEmail) {
+              console.error('❌ Email mismatch! Form email:', expectedEmail, 'Google email:', user.email);
+              sessionStorage.removeItem('expectedGoogleEmail');
+              router.push(`/login?error=${encodeURIComponent(`You signed in with ${user.email} but created an account with ${expectedEmail}. Please check your email (${expectedEmail}) for a magic link to access your account.`)}`);
+              return;
+            }
+
+            // Email matches, clean up and proceed
+            sessionStorage.removeItem('expectedGoogleEmail');
+            console.log('✅ Email matches, proceeding...');
+          }
+
           // Check if this is a free signup flow (even if data was lost)
           const isFreeSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'free-signup';
 
