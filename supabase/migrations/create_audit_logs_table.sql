@@ -33,24 +33,13 @@ CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at DESC);
 -- Enable RLS
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Only admins can read audit logs
-CREATE POLICY "Admins can view all audit logs"
+-- Only service role can read/write audit logs
+-- Admins will access via API endpoints that use service role
+CREATE POLICY "Service role can access audit logs"
   ON audit_logs
-  FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE users.id = auth.uid()
-      AND users.is_admin = true
-    )
-  );
-
--- System can insert audit logs (via service role)
-CREATE POLICY "Service role can insert audit logs"
-  ON audit_logs
-  FOR INSERT
+  FOR ALL
   TO service_role
+  USING (true)
   WITH CHECK (true);
 
 COMMENT ON TABLE audit_logs IS 'Audit trail for all critical system actions including document reviews, renewals, payments, and administrative actions';
