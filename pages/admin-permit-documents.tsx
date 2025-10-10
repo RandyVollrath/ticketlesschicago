@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { REJECTION_REASONS } from './api/admin/review-permit-document';
+
+// Common rejection reasons
+const REJECTION_REASONS = {
+  ID_NOT_CLEAR: 'ID document is not clear or readable',
+  ID_EXPIRED: 'ID document has expired',
+  ID_WRONG_TYPE: 'ID document type is not acceptable (must be driver\'s license, state ID, passport, or military ID)',
+  PROOF_NOT_CLEAR: 'Proof of residency is not clear or readable',
+  PROOF_OLD: 'Utility bill is older than 30 days',
+  PROOF_WRONG_TYPE: 'Proof of residency type is not acceptable',
+  ADDRESS_MISMATCH: 'Address on proof of residency does not match the address you provided',
+  NAME_MISMATCH: 'Name on documents does not match between ID and proof of residency',
+  MISSING_INFO: 'Document is missing required information',
+  CELL_PHONE_BILL: 'Cell phone bills are not accepted - please provide a landline phone, utility, or other acceptable document',
+  OTHER: 'Other issue (see details below)',
+};
 
 interface Document {
   id: number;
