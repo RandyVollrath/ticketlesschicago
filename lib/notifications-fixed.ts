@@ -100,7 +100,7 @@ export class NotificationScheduler {
 
                 // Add permit zone docs request to SMS
                 if (needsPermitDocs) {
-                  message += ` IMPORTANT: We need your permit zone documents (ID + proof of residency). Reply with 2 photos or upload at ticketlessamerica.com/permit-zone-documents`;
+                  message += ` IMPORTANT: We need your permit zone documents (ID + proof of residency). Email them to documents@ticketlessamerica.com`;
                 }
 
                 message += ` Reply STOP to opt out.`;
@@ -208,9 +208,8 @@ export class NotificationScheduler {
                             </div>
                             <p style="color: #7f1d1d; margin: 16px 0 0; font-size: 14px; line-height: 1.6;">
                               <strong>How to submit:</strong><br>
-                              • Reply to this email with photos attached, OR<br>
-                              • Text photos to us at ${process.env.CLICKSEND_PHONE_NUMBER || '(SMS number not configured)'}, OR<br>
-                              • Upload at <a href="https://ticketlessamerica.com/permit-zone-documents" style="color: #2563eb;">ticketlessamerica.com/permit-zone-documents</a>
+                              • <strong>Email documents to:</strong> <a href="mailto:documents@ticketlessamerica.com" style="color: #2563eb;">documents@ticketlessamerica.com</a><br>
+                              • OR upload at <a href="https://ticketlessamerica.com/permit-zone-documents" style="color: #2563eb;">ticketlessamerica.com/permit-zone-documents</a>
                             </p>
                           </div>
                         ` : ''}
