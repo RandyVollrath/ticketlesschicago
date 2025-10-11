@@ -25,11 +25,8 @@ interface AlternativeSection {
   distance_type: 'same_ward' | 'adjacent_ward';
   street_boundaries?: string[];
   next_cleaning_date?: string | null;
-  directions?: string;
-  distance?: string;
-  duration?: string;
-  loadingDirections?: boolean;
   distance_miles?: number;
+  compass_direction?: string;
 }
 
 export default function StreetCleaningSettings() {
@@ -267,67 +264,12 @@ export default function StreetCleaningSettings() {
 
       const alternatives = data.alternatives || [];
       setAlternativeSections(alternatives);
-
-      // Load directions for each alternative zone
-      if (homeAddress && alternatives.length > 0) {
-        loadDirectionsForAlternatives(alternatives);
-      }
     } catch (error: any) {
       console.error('Error loading alternative parking zones:', error);
       setParkHereError(error.message || 'Unable to load alternative parking zones. Please try again.');
     } finally {
       setLoadingAlternatives(false);
     }
-  };
-
-  // Load directions for each alternative zone
-  const loadDirectionsForAlternatives = async (alternatives: AlternativeSection[]) => {
-    if (!homeAddress) return;
-
-    // Mark all zones as loading directions
-    setAlternativeSections(prev => prev.map(alt => ({
-      ...alt,
-      loadingDirections: true
-    })));
-
-    // Fetch directions for each zone
-    const directionsPromises = alternatives.map(async (alt, index) => {
-      try {
-        const response = await fetch(
-          `/api/get-directions?fromAddress=${encodeURIComponent(homeAddress)}&toWard=${alt.ward}&toSection=${alt.section}`
-        );
-        const data = await response.json();
-
-        if (response.ok) {
-          return {
-            index,
-            directions: data.directions,
-            distance: data.distance,
-            duration: data.duration
-          };
-        } else {
-          console.error('Failed to get directions for zone:', alt.ward, alt.section);
-          return { index, directions: null, distance: null, duration: null };
-        }
-      } catch (error) {
-        console.error('Error fetching directions:', error);
-        return { index, directions: null, distance: null, duration: null };
-      }
-    });
-
-    const results = await Promise.all(directionsPromises);
-
-    // Update alternatives with directions
-    setAlternativeSections(prev => prev.map((alt, index) => {
-      const result = results.find(r => r.index === index);
-      return {
-        ...alt,
-        directions: result?.directions || undefined,
-        distance: result?.distance || undefined,
-        duration: result?.duration || undefined,
-        loadingDirections: false
-      };
-    }));
   };
 
   // Auto-lookup address whenever homeAddress changes
@@ -747,19 +689,8 @@ export default function StreetCleaningSettings() {
                       </div>
                     )}
 
-                    {/* Directions section */}
-                    {zone.loadingDirections ? (
-                      <div className={styles.directionsLoading} style={{
-                        marginTop: '12px',
-                        padding: '10px',
-                        backgroundColor: '#f3f4f6',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        color: '#6b7280'
-                      }}>
-                        🗺️ Loading directions...
-                      </div>
-                    ) : zone.directions ? (
+                    {/* Distance and direction */}
+                    {zone.distance_miles !== undefined && zone.compass_direction && (
                       <div className={styles.directions} style={{
                         marginTop: '12px',
                         padding: '12px',
@@ -768,30 +699,17 @@ export default function StreetCleaningSettings() {
                         borderLeft: '3px solid #0284c7'
                       }}>
                         <div style={{
-                          fontSize: '12px',
-                          fontWeight: '600',
+                          fontSize: '13px',
+                          fontWeight: '500',
                           color: '#0369a1',
-                          marginBottom: '6px',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '6px'
                         }}>
-                          🚗 Directions from your address
-                          {zone.distance && zone.duration && (
-                            <span style={{ fontWeight: '400', color: '#0284c7' }}>
-                              ({zone.distance}, {zone.duration})
-                            </span>
-                          )}
-                        </div>
-                        <div style={{
-                          fontSize: '13px',
-                          lineHeight: '1.6',
-                          color: '#374151'
-                        }}>
-                          {zone.directions}
+                          🚗 <span style={{ textTransform: 'capitalize' }}>{zone.distance_miles.toFixed(1)} miles {zone.compass_direction}</span> of your address
                         </div>
                       </div>
-                    ) : null}
+                    )}
 
                     <button
                       className={styles.viewOnMapButton}
