@@ -2,14 +2,14 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 // Use MyStreetCleaning database for street cleaning schedule data
-const MSC_URL = process.env.MSC_SUPABASE_URL;
-const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
+const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
+const MSC_SUPABASE_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
 
-if (!MSC_URL || !MSC_KEY) {
-  throw new Error('MyStreetCleaning database credentials not configured');
+if (!MSC_SUPABASE_KEY) {
+  throw new Error('MSC_SUPABASE_SERVICE_ROLE_KEY not configured');
 }
 
-const mscSupabase = createClient(MSC_URL, MSC_KEY);
+const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_KEY);
 
 // Cache for alternative parking results (1 minute to ensure fresh "today" checks)
 const cache = new Map<string, { data: any; timestamp: number }>();
