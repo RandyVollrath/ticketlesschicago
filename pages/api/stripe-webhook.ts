@@ -155,6 +155,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             break;
           }
 
+          // Extract name and address from Stripe customer_details
+          const customerName = session.customer_details?.name;
+          const firstName = customerName?.split(' ')[0] || null;
+          const lastName = customerName?.split(' ').slice(1).join(' ') || null;
+          const zipCode = session.customer_details?.address?.postal_code || null;
+          const billingAddress = session.customer_details?.address?.line1 || null;
+
+          console.log('📋 Extracted from Stripe:', { firstName, lastName, zipCode, billingAddress });
+
           let userId = metadata.userId;
 
           // If no userId, create a new user account
@@ -184,20 +193,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               userId = newAuthData.user.id;
               console.log('✅ Created new user account:', userId);
 
+              // Create users table record first (required for foreign key)
+              const { error: usersError } = await supabaseAdmin
+                .from('users')
+                .upsert({
+                  id: userId,
+                  email: email,
+                  phone: metadata.phone || null,
+                  first_name: firstName,
+                  last_name: lastName,
+                  zip_code: zipCode,
+                  mailing_address: metadata.streetAddress || billingAddress,
+                  mailing_zip: zipCode,
+                  home_address_full: metadata.streetAddress || billingAddress,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'id'
+                });
+
+              if (usersError && !usersError.message.includes('duplicate')) {
+                console.error('Users table error:', usersError);
+              } else {
+                console.log('✅ Created users table record');
+              }
+
               // Create user profile
               const { error: profileError } = await supabaseAdmin
                 .from('user_profiles')
                 .insert({
                   user_id: userId,
                   email: email,
+                  first_name: firstName,
+                  last_name: lastName,
                   phone_number: metadata.phone || null,
+                  zip_code: zipCode,
                   has_protection: true,
                   city_sticker_expiry: metadata.citySticker || null,
                   license_plate_expiry: metadata.licensePlate || null,
-                  mailing_address: metadata.streetAddress || null,
-                  street_address: metadata.streetAddress || null,
-                  home_address_full: metadata.streetAddress || null,
-                  has_permit_zone: metadata.hasPermitZone === 'true',
+                  mailing_address: metadata.streetAddress || billingAddress,
+                  mailing_zip: zipCode,
+                  street_address: metadata.streetAddress || billingAddress,
+                  home_address_full: metadata.streetAddress || billingAddress,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 });
@@ -321,6 +358,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updated_at: new Date().toISOString()
           };
 
+          // Add name from Stripe customer details
+          if (firstName) updateData.first_name = firstName;
+          if (lastName) updateData.last_name = lastName;
+
+          // Add zip code
+          if (zipCode) {
+            updateData.zip_code = zipCode;
+            updateData.mailing_zip = zipCode;
+          }
+
           if (metadata.phone) {
             updateData.phone_number = metadata.phone;
           }
@@ -331,11 +378,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updateData.license_plate_expiry = metadata.licensePlate;
           }
 
-          // Save street address as both mailing and street cleaning address
-          if (metadata.streetAddress) {
-            updateData.mailing_address = metadata.streetAddress;
-            updateData.street_address = metadata.streetAddress;
-            updateData.home_address_full = metadata.streetAddress;
+          // Save street address as both mailing and street cleaning address (prefer metadata, fallback to billing)
+          const addressToSave = metadata.streetAddress || billingAddress;
+          if (addressToSave) {
+            updateData.mailing_address = addressToSave;
+            updateData.street_address = addressToSave;
+            updateData.home_address_full = addressToSave;
           }
 
           // Use upsert to create profile if it doesn't exist, or update if it does
