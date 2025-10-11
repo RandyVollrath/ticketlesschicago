@@ -147,143 +147,215 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`📍 User location: ${userLat}, ${userLng} (${hasUserAddress ? 'from address' : 'from zone center'})`);
 
-    // Get ALL zones with geometry for geographic proximity calculation
-    console.log('🗺️ Finding all zones with geographic proximity...');
-    const { data: allZonesWithGeometry, error: nearbyError } = await mscSupabase
+    // Helper function to get zone center from geometry for compass direction
+    const getZoneCenter = (geom: any): { lat: number, lng: number } | null => {
+      if (!geom) return null;
+
+      try {
+        if (geom.type === 'Polygon' && geom.coordinates[0]) {
+          const coords = geom.coordinates[0];
+          const lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+          const lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+          return { lat, lng };
+        } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
+          const coords = geom.coordinates[0][0];
+          const lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+          const lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+          return { lat, lng };
+        }
+      } catch (e) {
+        console.error('Error calculating zone center:', e);
+      }
+      return null;
+    };
+
+    // Use PostGIS to calculate distance from user point to nearest edge of each zone
+    console.log('🗺️ Using PostGIS ST_Distance to calculate to nearest zone edges...');
+
+    // First get all unique ward-section combinations (deduplicated)
+    const { data: allZones, error: zonesError } = await mscSupabase
       .from('street_cleaning_schedule')
-      .select('ward, section, cleaning_date, geom_simplified')
+      .select('ward, section, geom_simplified')
       .not('geom_simplified', 'is', null)
       .not('section', 'is', null)
       .not('ward', 'is', null);
 
-    if (nearbyError) {
-      console.error('❌ Error finding nearby zones:', nearbyError);
-    } else if (allZonesWithGeometry) {
-      // Helper function to calculate geographic distance
-      const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-        const R = 3959; // Earth's radius in miles
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c; // Distance in miles
-      };
-
-      // Helper function to get zone center from geometry
-      const getZoneCenter = (geom: any): { lat: number, lng: number } | null => {
-        if (!geom) return null;
-        
-        try {
-          if (geom.type === 'Polygon' && geom.coordinates[0]) {
-            const coords = geom.coordinates[0];
-            const lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-            const lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-            return { lat, lng };
-          } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
-            const coords = geom.coordinates[0][0];
-            const lat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-            const lng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-            return { lat, lng };
-          }
-        } catch (e) {
-          console.error('Error calculating zone center:', e);
-        }
-        return null;
-      };
-
-      // Group by ward-section and analyze cleaning conflicts + geographic distance
-      const zoneMap = new Map<string, {
-        ward: string;
-        section: string;
-        cleaningDates: string[];
-        hasConflict: boolean;
-        distance: number;
-        geometry: any;
-      }>();
-
-      allZonesWithGeometry.forEach(zone => {
-        const key = `${zone.ward}-${zone.section}`;
-        
-        // Skip user's own zone
-        if (zone.ward === userWard && zone.section === userSection) {
-          return;
-        }
-
-        if (!zoneMap.has(key)) {
-          // Calculate actual geographic distance from user address to zone center
-          const zoneCenter = getZoneCenter(zone.geom_simplified);
-          const distance = zoneCenter
-            ? calculateDistance(userLat, userLng, zoneCenter.lat, zoneCenter.lng)
-            : 999; // Large distance if we can't calculate
-
-          zoneMap.set(key, {
-            ward: zone.ward,
-            section: zone.section,
-            cleaningDates: [],
-            hasConflict: false,
-            distance,
-            geometry: zone.geom_simplified
-          });
-        }
-
-        const zoneData = zoneMap.get(key)!;
-        
-        // Check if this cleaning date conflicts with user's cleaning
-        if (zone.cleaning_date && 
-            zone.cleaning_date >= todayStr && 
-            zone.cleaning_date <= threeDaysStr) {
-          zoneData.cleaningDates.push(zone.cleaning_date);
-          
-          // Mark as conflict if cleaning is on same day as user
-          if (userCleaningDates.has(zone.cleaning_date)) {
-            zoneData.hasConflict = true;
-          }
-        }
-      });
-
-      // Filter out zones with conflicts and sort by actual geographic distance
-      const safeZones = Array.from(zoneMap.values())
-        .filter(zone => zone.distance < 5) // Only consider zones within 5 miles
-        .filter(zone => !zone.hasConflict) // ONLY show zones without cleaning conflicts
-        .sort((a, b) => a.distance - b.distance) // Sort by actual geographic distance
-        .slice(0, 5); // Get top 5 closest safe alternatives (increased from 3)
-
-      console.log('🎯 Safe alternatives by distance (no cleaning conflicts):');
-      safeZones.forEach((zone, i) => {
-        console.log(`${i+1}. Ward ${zone.ward}, Section ${zone.section} - ${zone.distance.toFixed(2)} miles, conflict: ${zone.hasConflict}`);
-      });
-
-      // Convert to alternatives format (preserve distance for sorting)
-      safeZones.forEach(zone => {
-        const distanceType = zone.ward === userWard ? 'same_ward' : 'adjacent_ward';
-
-        // Calculate simple compass direction
-        const { lat: zoneLat, lng: zoneLng } = getZoneCenter(zone.geometry) || { lat: 0, lng: 0 };
-        const latDiff = zoneLat - userLat;
-        const lngDiff = zoneLng - userLng;
-
-        let direction = '';
-        if (Math.abs(latDiff) > Math.abs(lngDiff)) {
-          direction = latDiff > 0 ? 'north' : 'south';
-        } else {
-          direction = lngDiff > 0 ? 'east' : 'west';
-        }
-
-        alternatives.push({
-          ward: zone.ward,
-          section: zone.section,
-          distance_type: distanceType,
-          distance_miles: zone.distance, // Preserve actual distance for final sorting
-          compass_direction: direction
-        });
-      });
-
-      console.log(`✅ Found ${alternatives.length} safe parking zones without cleaning conflicts`);
+    if (zonesError) {
+      console.error('❌ Error fetching zones:', zonesError);
+      throw new Error('Failed to fetch zones');
     }
 
-    console.log(`✅ Found ${alternatives.length} safe alternative sections (no cleaning conflicts)`);
+    // Deduplicate by ward-section
+    const uniqueZonesMap = new Map();
+    allZones?.forEach(zone => {
+      const key = `${zone.ward}-${zone.section}`;
+      if (!uniqueZonesMap.has(key) && !(zone.ward === userWard && zone.section === userSection)) {
+        uniqueZonesMap.set(key, {
+          ward: zone.ward,
+          section: zone.section,
+          geometry: zone.geom_simplified
+        });
+      }
+    });
+
+    const uniqueZones = Array.from(uniqueZonesMap.values());
+    console.log(`📏 Calculating distance to nearest edge for ${uniqueZones.length} zones...`);
+
+    // Calculate distance from user point to nearest edge of each zone polygon
+    // Using PostGIS ST_Distance which finds shortest distance to polygon boundary
+    const zoneDistances = await Promise.all(
+      uniqueZones.map(async (zone) => {
+        try {
+          // Query using raw SQL to calculate distance with PostGIS
+          // ST_Distance with geography returns meters
+          const { data, error } = await mscSupabase.rpc('calculate_distance_from_point', {
+            point_lat: userLat,
+            point_lng: userLng,
+            zone_ward: zone.ward,
+            zone_section: zone.section
+          });
+
+          if (error) {
+            // Fallback: calculate distance from user point to zone center (haversine)
+            console.warn(`⚠️ PostGIS distance error for ${zone.ward}-${zone.section}, using fallback`);
+
+            const geom = zone.geometry;
+            let zoneLat = 41.8781, zoneLng = -87.6298;
+
+            if (geom.type === 'Polygon' && geom.coordinates[0]) {
+              const coords = geom.coordinates[0];
+              zoneLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+              zoneLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
+              const coords = geom.coordinates[0][0];
+              zoneLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+              zoneLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            }
+
+            // Haversine formula
+            const R = 3959; // Earth's radius in miles
+            const dLat = (zoneLat - userLat) * Math.PI / 180;
+            const dLng = (zoneLng - userLng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(userLat * Math.PI / 180) * Math.cos(zoneLat * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distanceMiles = R * c;
+
+            return {
+              ward: zone.ward,
+              section: zone.section,
+              distance: distanceMiles,
+              geometry: zone.geometry
+            };
+          }
+
+          // data should be distance in meters, convert to miles
+          const distanceMiles = data / 1609.34;
+
+          return {
+            ward: zone.ward,
+            section: zone.section,
+            distance: distanceMiles,
+            geometry: zone.geometry
+          };
+        } catch (err) {
+          console.error(`Error calculating distance for ${zone.ward}-${zone.section}:`, err);
+          return null;
+        }
+      })
+    );
+
+    const validZoneDistances = zoneDistances.filter(z => z !== null);
+    console.log(`✅ Successfully calculated ${validZoneDistances.length} zone distances`);
+
+    // Now get cleaning schedules for conflict detection
+    const { data: scheduleData, error: schedError } = await mscSupabase
+      .from('street_cleaning_schedule')
+      .select('ward, section, cleaning_date')
+      .gte('cleaning_date', todayStr)
+      .lte('cleaning_date', threeDaysStr);
+
+    if (schedError) {
+      console.error('❌ Error fetching schedule data:', schedError);
+    }
+
+    // Group by ward-section and analyze cleaning conflicts
+    const zoneMap = new Map<string, {
+      ward: string;
+      section: string;
+      cleaningDates: string[];
+      hasConflict: boolean;
+      distance: number;
+      geometry: any;
+    }>();
+
+    // Initialize with distance data
+    validZoneDistances.forEach(zone => {
+      const key = `${zone.ward}-${zone.section}`;
+      zoneMap.set(key, {
+        ward: zone.ward,
+        section: zone.section,
+        cleaningDates: [],
+        hasConflict: false,
+        distance: zone.distance,
+        geometry: zone.geometry
+      });
+    });
+
+    // Add cleaning schedule data for conflict detection
+    scheduleData?.forEach(schedule => {
+      const key = `${schedule.ward}-${schedule.section}`;
+      const zoneData = zoneMap.get(key);
+
+      if (zoneData && schedule.cleaning_date) {
+        zoneData.cleaningDates.push(schedule.cleaning_date);
+
+        // Mark as conflict if cleaning is on same day as user
+        if (userCleaningDates.has(schedule.cleaning_date)) {
+          zoneData.hasConflict = true;
+        }
+      }
+    });
+
+    // Filter out zones with conflicts and sort by actual distance to nearest edge
+    const safeZones = Array.from(zoneMap.values())
+      .filter(zone => zone.distance < 5) // Only consider zones within 5 miles
+      .filter(zone => !zone.hasConflict) // ONLY show zones without cleaning conflicts
+      .sort((a, b) => a.distance - b.distance) // Sort by distance to nearest edge
+      .slice(0, 5); // Get top 5 closest safe alternatives
+
+    console.log('🎯 Safe alternatives by distance to nearest edge (no cleaning conflicts):');
+    safeZones.forEach((zone, i) => {
+      console.log(`${i+1}. Ward ${zone.ward}, Section ${zone.section} - ${zone.distance.toFixed(2)} miles to edge`);
+    });
+
+    // Convert to alternatives format
+    safeZones.forEach(zone => {
+      const distanceType = zone.ward === userWard ? 'same_ward' : 'adjacent_ward';
+
+      // Calculate simple compass direction
+      const { lat: zoneLat, lng: zoneLng } = getZoneCenter(zone.geometry) || { lat: 0, lng: 0 };
+      const latDiff = zoneLat - userLat;
+      const lngDiff = zoneLng - userLng;
+
+      let direction = '';
+      if (Math.abs(latDiff) > Math.abs(lngDiff)) {
+        direction = latDiff > 0 ? 'north' : 'south';
+      } else {
+        direction = lngDiff > 0 ? 'east' : 'west';
+      }
+
+      alternatives.push({
+        ward: zone.ward,
+        section: zone.section,
+        distance_type: distanceType,
+        distance_miles: zone.distance, // Distance to nearest edge of zone
+        compass_direction: direction
+      });
+    });
+
+    console.log(`✅ Found ${alternatives.length} safe parking zones without cleaning conflicts`);
 
     // 3. Get detailed information for each alternative section
     const detailedAlternatives = await Promise.all(
