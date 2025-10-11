@@ -11,9 +11,9 @@ if (!MSC_SUPABASE_KEY) {
 
 const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_KEY);
 
-// Cache for alternative parking results (1 minute to ensure fresh "today" checks)
+// Cache for alternative parking results (5 minutes is safe for distance calculations)
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 1 * 60 * 1000; // 1 minute (short cache for today filtering)
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
 interface AlternativeSection {
   ward: string;
@@ -199,12 +199,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const uniqueZones = Array.from(uniqueZonesMap.values());
-    console.log(`📏 Calculating distance to nearest edge for ${uniqueZones.length} zones...`);
+    console.log(`📏 Pre-filtering ${uniqueZones.length} zones by rough distance...`);
 
-    // Calculate distance from user point to nearest edge of each zone polygon
+    // OPTIMIZATION: Pre-filter zones using quick haversine to zone center
+    // Only calculate precise edge distances for zones that are roughly nearby
+    // Quick haversine distance
+    const quickDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+      const R = 3959;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+
+    // Pre-filter to only zones within ~3 miles (rough)
+    const nearbyZones = uniqueZones.filter(zone => {
+      const center = getZoneCenter(zone.geometry);
+      if (!center) return false;
+      const dist = quickDistance(userLat, userLng, center.lat, center.lng);
+      return dist < 3.5; // Slightly more than 3 miles to account for edge distances
+    });
+
+    console.log(`✂️ Filtered to ${nearbyZones.length} nearby zones (from ${uniqueZones.length})`);
+
+    // Calculate distance from user point to nearest edge of each nearby zone polygon
     // Using PostGIS ST_Distance which finds shortest distance to polygon boundary
     const zoneDistances = await Promise.all(
-      uniqueZones.map(async (zone) => {
+      nearbyZones.map(async (zone) => {
         try {
           // Query using raw SQL to calculate distance with PostGIS
           // ST_Distance with geography returns meters
