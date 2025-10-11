@@ -233,8 +233,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return R * c;
     };
 
-    // STEP 1: Quick filter - find zones within 5 miles using fast haversine
-    const roughNearbyZones = uniqueZones.map(zone => {
+    // Calculate distances to zone centers (fast haversine - instant results)
+    const zoneDistances = uniqueZones.map(zone => {
       const key = `${zone.ward}-${zone.section}`;
       const geom = geomMap.get(key);
 
@@ -251,62 +251,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return {
         ward: zone.ward,
         section: zone.section,
-        roughDistance: distance,
+        distance,
         geometry: geom
       };
     }).filter(z => z !== null);
 
-    console.log(`✅ Fast filter: ${roughNearbyZones.length} zones within 5 miles`);
-
-    // STEP 2: Precise calculation - use PostGIS for exact edge distance on nearby zones only
-    console.log(`📏 Calculating precise edge distances for ${roughNearbyZones.length} nearby zones...`);
-
-    const preciseDistances = await Promise.all(
-      roughNearbyZones.map(async (zone) => {
-        try {
-          // Use PostGIS to get exact distance to nearest edge
-          const { data, error } = await mscSupabase.rpc('calculate_distance_from_point', {
-            point_lat: userLat,
-            point_lng: userLng,
-            zone_ward: zone.ward,
-            zone_section: zone.section
-          });
-
-          if (error || data === null) {
-            // Fallback to rough distance if PostGIS fails
-            console.warn(`⚠️ PostGIS failed for ${zone.ward}-${zone.section}, using rough distance`);
-            return {
-              ward: zone.ward,
-              section: zone.section,
-              distance: zone.roughDistance,
-              geometry: zone.geometry
-            };
-          }
-
-          // Convert meters to miles
-          const distanceMiles = data / 1609.34;
-
-          return {
-            ward: zone.ward,
-            section: zone.section,
-            distance: distanceMiles,
-            geometry: zone.geometry
-          };
-        } catch (err) {
-          console.error(`Error for ${zone.ward}-${zone.section}:`, err);
-          // Fallback to rough distance
-          return {
-            ward: zone.ward,
-            section: zone.section,
-            distance: zone.roughDistance,
-            geometry: zone.geometry
-          };
-        }
-      })
-    );
-
-    const zoneDistances = preciseDistances.filter(z => z !== null);
-    console.log(`✅ Got precise distances for ${zoneDistances.length} zones`);
+    console.log(`✅ Calculated distances for ${zoneDistances.length} nearby zones`);
 
     // Now get cleaning schedules for conflict detection
     const { data: scheduleData, error: schedError } = await mscSupabase
@@ -389,7 +339,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ward: zone.ward,
         section: zone.section,
         distance_type: distanceType,
-        distance_miles: zone.distance, // Precise distance to nearest zone edge (PostGIS)
+        distance_miles: zone.distance, // Distance to zone center (instant calculation)
         compass_direction: direction
       });
     });
