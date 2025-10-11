@@ -22,6 +22,7 @@ interface AlternativeSection {
   street_boundaries?: string[];
   next_cleaning_date?: string | null;
   geometry?: any;
+  distance_miles?: number;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -211,14 +212,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log(`${i+1}. Ward ${zone.ward}, Section ${zone.section} - ${zone.distance.toFixed(2)} miles, conflict: ${zone.hasConflict}`);
       });
 
-      // Convert to alternatives format
+      // Convert to alternatives format (preserve distance for sorting)
       safeZones.forEach(zone => {
         const distanceType = zone.ward === userWard ? 'same_ward' : 'adjacent_ward';
-        
+
         alternatives.push({
           ward: zone.ward,
           section: zone.section,
-          distance_type: distanceType
+          distance_type: distanceType,
+          distance_miles: zone.distance // Preserve actual distance for final sorting
         });
       });
 
@@ -280,7 +282,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     );
 
-    // 4. Filter out any sections that couldn't be processed and sort by relevance
+    // 4. Filter out any sections that couldn't be processed and sort by actual distance
     const validAlternatives = detailedAlternatives
       .filter(alt => alt.ward && alt.section)
       .filter(alt => {
@@ -295,15 +297,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return true;
       })
       .sort((a, b) => {
-        // Prioritize same ward sections first
-        if (a.distance_type !== b.distance_type) {
-          return a.distance_type === 'same_ward' ? -1 : 1;
-        }
-        // Then sort by ward number proximity
-        const aWardNum = parseInt(a.ward);
-        const bWardNum = parseInt(b.ward);
-        const userWardNum = parseInt(userWard);
-        return Math.abs(aWardNum - userWardNum) - Math.abs(bWardNum - userWardNum);
+        // Sort by actual geographic distance (closest first)
+        const distA = a.distance_miles || 999;
+        const distB = b.distance_miles || 999;
+        return distA - distB;
       })
       .slice(0, 3); // Limit to top 3 alternatives
 
