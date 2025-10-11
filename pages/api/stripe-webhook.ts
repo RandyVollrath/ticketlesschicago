@@ -313,8 +313,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
 
-          // Update existing user profile with has_protection=true and renewal dates
+          // Update or create profile for existing user with has_protection=true and renewal dates
           const updateData: any = {
+            user_id: userId,
+            email: email,
             has_protection: true,
             updated_at: new Date().toISOString()
           };
@@ -336,15 +338,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updateData.home_address_full = metadata.streetAddress;
           }
 
-          // Save permit zone status
-          if (metadata.hasPermitZone === 'true') {
-            updateData.has_permit_zone = true;
-          }
-
+          // Use upsert to create profile if it doesn't exist, or update if it does
           const { error: updateError } = await supabaseAdmin
             .from('user_profiles')
-            .update(updateData)
-            .eq('user_id', userId);
+            .upsert(updateData, {
+              onConflict: 'user_id'
+            });
 
           if (updateError) {
             console.error('Error updating user profile with Protection:', updateError);
@@ -369,6 +368,85 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               } catch (winterError) {
                 // Don't fail checkout if winter ban notification fails
                 console.error('Winter ban notification failed (non-critical):', winterError);
+              }
+            }
+
+            // Send magic link to existing users who purchased protection
+            console.log('📧 Generating magic link for existing user upgrade:', email);
+            const { data: linkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+              type: 'magiclink',
+              email: email,
+              options: {
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+              }
+            });
+
+            if (magicLinkError) {
+              console.error('Error generating magic link for upgrade:', magicLinkError);
+            } else if (linkData?.properties?.action_link) {
+              console.log('✅ Magic link generated, sending via Resend...');
+
+              try {
+                const resendResponse = await fetch('https://api.resend.com/emails', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    from: 'Ticketless America <noreply@ticketlessamerica.com>',
+                    to: email,
+                    subject: 'Welcome to Ticketless Protection - Access Your Account',
+                    html: `
+                      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Protection is Active!</h2>
+
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                          Thanks for upgrading to Ticket Protection! Click the button below to access your account and verify your profile:
+                        </p>
+
+                        <div style="margin: 32px 0; text-align: center;">
+                          <a href="${linkData.properties.action_link}"
+                             style="background-color: #0052cc;
+                                    color: white;
+                                    padding: 14px 32px;
+                                    text-decoration: none;
+                                    border-radius: 8px;
+                                    font-weight: 600;
+                                    font-size: 16px;
+                                    display: inline-block;">
+                            Access My Account
+                          </a>
+                        </div>
+
+                        <p style="color: #666; font-size: 14px; margin-top: 32px;">
+                          <strong>Important:</strong> Your $200/year ticket guarantee requires a complete and accurate profile. Please verify all your information.
+                        </p>
+
+                        <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
+
+                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+
+                        <p style="color: #9ca3af; font-size: 13px;">
+                          Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
+                        </p>
+
+                        <p style="color: #9ca3af; font-size: 12px;">
+                          Ticketless America • Never get another parking ticket
+                        </p>
+                      </div>
+                    `
+                  })
+                });
+
+                if (resendResponse.ok) {
+                  console.log('✅ Magic link email sent to upgraded user via Resend');
+                } else {
+                  const errorText = await resendResponse.text();
+                  console.error('Error sending magic link via Resend:', errorText);
+                }
+              } catch (resendError) {
+                console.error('Error sending email via Resend:', resendError);
               }
             }
           }
