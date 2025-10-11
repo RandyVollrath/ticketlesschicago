@@ -13,47 +13,77 @@ export default function AuthCallback() {
         console.log('URL hash:', window.location.hash)
         console.log('URL search:', window.location.search)
 
-        // Check for error in URL first
+        // Check for error in URL first (both hash and query params)
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const searchParams = new URLSearchParams(window.location.search);
         const errorParam = hashParams.get('error') || searchParams.get('error');
         const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
 
         if (errorParam) {
-          console.error('Auth error in URL:', errorParam, errorDescription);
+          console.error('❌ Auth error in URL:', errorParam, errorDescription);
           router.push(`/login?error=${encodeURIComponent(errorDescription || errorParam)}`);
           return;
         }
 
-        // First, check if there's an ongoing auth flow by checking URL fragments
-        if (window.location.hash) {
-          console.log('URL hash detected:', window.location.hash.substring(0, 100))
+        // Explicitly handle auth tokens from URL (both hash and query params)
+        // Supabase should auto-detect with detectSessionInUrl: true, but we'll do it manually for reliability
+        let tokensFound = false;
 
-          // Extract tokens from hash
-          const hashParams = new URLSearchParams(window.location.hash.substring(1))
-          const accessToken = hashParams.get('access_token')
-          const refreshToken = hashParams.get('refresh_token')
+        // Check hash first (standard for implicit flow)
+        if (window.location.hash) {
+          console.log('🔍 Checking URL hash for tokens...');
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
 
           if (accessToken) {
-            console.log('Found access token in hash, setting session...')
+            console.log('✅ Found tokens in hash, setting session explicitly...');
             try {
               const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
-              })
+              });
 
               if (sessionError) {
-                console.error('Error setting session from hash:', sessionError)
+                console.error('❌ Error setting session from hash:', sessionError);
               } else {
-                console.log('✅ Session set successfully from hash')
+                console.log('✅ Session established from hash tokens');
+                tokensFound = true;
               }
             } catch (e) {
-              console.error('Exception setting session:', e)
+              console.error('❌ Exception setting session:', e);
             }
           }
+        }
 
-          // Wait for Supabase to process the auth
-          await new Promise(resolve => setTimeout(resolve, 1000))
+        // Also check query params (some auth flows use this)
+        if (!tokensFound && searchParams.get('access_token')) {
+          console.log('🔍 Found tokens in query params, setting session...');
+          const accessToken = searchParams.get('access_token');
+          const refreshToken = searchParams.get('refresh_token');
+
+          if (accessToken) {
+            try {
+              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken || ''
+              });
+
+              if (sessionError) {
+                console.error('❌ Error setting session from query:', sessionError);
+              } else {
+                console.log('✅ Session established from query params');
+                tokensFound = true;
+              }
+            } catch (e) {
+              console.error('❌ Exception setting session:', e);
+            }
+          }
+        }
+
+        // Wait for session to be fully established
+        if (tokensFound) {
+          console.log('⏳ Waiting for session to be fully established...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         const { data, error } = await supabase.auth.getSession()

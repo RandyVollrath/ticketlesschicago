@@ -5,6 +5,7 @@ import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integrati
 import { createRewardfulAffiliate } from '../../lib/rewardful-helper';
 import { Resend } from 'resend';
 import { logAuditEvent } from '../../lib/audit-logger';
+import { notifyNewUserAboutWinterBan } from '../../lib/winter-ban-notifications';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -205,6 +206,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.error('Error creating user profile:', profileError);
               } else {
                 console.log('✅ Created user profile with Protection');
+
+                // Check if user needs winter ban notification (Dec 1 - Apr 1)
+                if (metadata.streetAddress) {
+                  try {
+                    const winterBanResult = await notifyNewUserAboutWinterBan(
+                      userId,
+                      metadata.streetAddress,
+                      email,
+                      metadata.phone || null,
+                      metadata.firstName || null
+                    );
+                    if (winterBanResult.sent) {
+                      console.log('❄️ Winter ban notification sent to new Protection user');
+                    } else if (winterBanResult.reason) {
+                      console.log(`ℹ️ Winter ban not sent: ${winterBanResult.reason}`);
+                    }
+                  } catch (winterError) {
+                    // Don't fail checkout if winter ban notification fails
+                    console.error('Winter ban notification failed (non-critical):', winterError);
+                  }
+                }
               }
 
               // Generate and send magic link for new users
@@ -213,7 +235,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 type: 'magiclink',
                 email: email,
                 options: {
-                  redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings`
+                  redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
                 }
               });
 
@@ -328,6 +350,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Error updating user profile with Protection:', updateError);
           } else {
             console.log('✅ User profile updated with Protection status and renewal dates');
+
+            // Check if user needs winter ban notification (Dec 1 - Apr 1)
+            if (metadata.streetAddress) {
+              try {
+                const winterBanResult = await notifyNewUserAboutWinterBan(
+                  userId,
+                  metadata.streetAddress,
+                  email,
+                  metadata.phone || null,
+                  metadata.firstName || null
+                );
+                if (winterBanResult.sent) {
+                  console.log('❄️ Winter ban notification sent to Protection upgrade user');
+                } else if (winterBanResult.reason) {
+                  console.log(`ℹ️ Winter ban not sent: ${winterBanResult.reason}`);
+                }
+              } catch (winterError) {
+                // Don't fail checkout if winter ban notification fails
+                console.error('Winter ban notification failed (non-critical):', winterError);
+              }
+            }
           }
 
           // Log audit event for payment processing
@@ -702,6 +745,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } else {
               console.log('Successfully created user_profiles record');
 
+              // Check if user needs winter ban notification (Dec 1 - Apr 1)
+              const userAddress = formData.homeAddress || formData.streetAddress;
+              if (userAddress) {
+                try {
+                  const winterBanResult = await notifyNewUserAboutWinterBan(
+                    user.id,
+                    userAddress,
+                    email,
+                    formData.phone || null,
+                    formData.firstName || null
+                  );
+                  if (winterBanResult.sent) {
+                    console.log('❄️ Winter ban notification sent to new checkout user');
+                  } else if (winterBanResult.reason) {
+                    console.log(`ℹ️ Winter ban not sent: ${winterBanResult.reason}`);
+                  }
+                } catch (winterError) {
+                  // Don't fail checkout if winter ban notification fails
+                  console.error('Winter ban notification failed (non-critical):', winterError);
+                }
+              }
+
               // Auto-create Rewardful affiliate for customer referral program
               console.log('Creating Rewardful affiliate for customer referral program...');
               const affiliateData = await createRewardfulAffiliate({
@@ -862,7 +927,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'magiclink',
               email: email,
               options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/dashboard`
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/auth/callback`
               }
             });
 
