@@ -23,6 +23,7 @@ interface AlternativeSection {
   next_cleaning_date?: string | null;
   geometry?: any;
   distance_miles?: number;
+  compass_direction?: string;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -216,11 +217,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       safeZones.forEach(zone => {
         const distanceType = zone.ward === userWard ? 'same_ward' : 'adjacent_ward';
 
+        // Calculate simple compass direction
+        const { lat: zoneLat, lng: zoneLng } = getZoneCenter(zone.geometry) || { lat: 0, lng: 0 };
+        const latDiff = zoneLat - userCenterLat;
+        const lngDiff = zoneLng - userCenterLng;
+
+        let direction = '';
+        if (Math.abs(latDiff) > Math.abs(lngDiff)) {
+          direction = latDiff > 0 ? 'north' : 'south';
+        } else {
+          direction = lngDiff > 0 ? 'east' : 'west';
+        }
+
         alternatives.push({
           ward: zone.ward,
           section: zone.section,
           distance_type: distanceType,
-          distance_miles: zone.distance // Preserve actual distance for final sorting
+          distance_miles: zone.distance, // Preserve actual distance for final sorting
+          compass_direction: direction
         });
       });
 
