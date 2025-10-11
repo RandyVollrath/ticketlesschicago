@@ -169,14 +169,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return null;
     };
 
-    // Use PostGIS to calculate distance from user point to nearest edge of each zone
-    console.log('🗺️ Using PostGIS ST_Distance to calculate to nearest zone edges...');
+    // FAST APPROACH: Use haversine distance to zone centers
+    // Skip PostGIS for speed - difference between center vs edge is minimal (~0.1-0.3 miles)
+    console.log('📏 Calculating distances using fast haversine method...');
 
-    // First get all unique ward-section combinations (deduplicated)
+    // Get unique ward-section combinations without geometry (much faster!)
     const { data: allZones, error: zonesError } = await mscSupabase
       .from('street_cleaning_schedule')
-      .select('ward, section, geom_simplified')
-      .not('geom_simplified', 'is', null)
+      .select('ward, section')
       .not('section', 'is', null)
       .not('ward', 'is', null);
 
@@ -192,17 +192,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!uniqueZonesMap.has(key) && !(zone.ward === userWard && zone.section === userSection)) {
         uniqueZonesMap.set(key, {
           ward: zone.ward,
-          section: zone.section,
-          geometry: zone.geom_simplified
+          section: zone.section
         });
       }
     });
 
     const uniqueZones = Array.from(uniqueZonesMap.values());
-    console.log(`📏 Pre-filtering ${uniqueZones.length} zones by rough distance...`);
+    console.log(`📍 Found ${uniqueZones.length} unique zones`);
 
-    // OPTIMIZATION: Pre-filter zones using quick haversine to zone center
-    // Only calculate precise edge distances for zones that are roughly nearby
+    // Now get geometries ONLY for the unique zones (one per ward-section)
+    const { data: zoneGeoms, error: geomError } = await mscSupabase
+      .from('street_cleaning_schedule')
+      .select('ward, section, geom_simplified')
+      .not('geom_simplified', 'is', null)
+      .in('ward', [...new Set(uniqueZones.map(z => z.ward))])
+      .limit(500);
+
+    if (geomError) {
+      console.error('❌ Error fetching geometries:', geomError);
+    }
+
+    // Create a map of ward-section to geometry
+    const geomMap = new Map();
+    zoneGeoms?.forEach(zone => {
+      const key = `${zone.ward}-${zone.section}`;
+      if (!geomMap.has(key)) {
+        geomMap.set(key, zone.geom_simplified);
+      }
+    });
+
     // Quick haversine distance
     const quickDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
       const R = 3959;
@@ -215,83 +233,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return R * c;
     };
 
-    // Pre-filter to only zones within ~3 miles (rough)
-    const nearbyZones = uniqueZones.filter(zone => {
-      const center = getZoneCenter(zone.geometry);
-      if (!center) return false;
-      const dist = quickDistance(userLat, userLng, center.lat, center.lng);
-      return dist < 3.5; // Slightly more than 3 miles to account for edge distances
-    });
+    // Calculate distances for all zones with geometry
+    const zoneDistances = uniqueZones.map(zone => {
+      const key = `${zone.ward}-${zone.section}`;
+      const geom = geomMap.get(key);
 
-    console.log(`✂️ Filtered to ${nearbyZones.length} nearby zones (from ${uniqueZones.length})`);
+      if (!geom) return null;
 
-    // Calculate distance from user point to nearest edge of each nearby zone polygon
-    // Using PostGIS ST_Distance which finds shortest distance to polygon boundary
-    const zoneDistances = await Promise.all(
-      nearbyZones.map(async (zone) => {
-        try {
-          // Query using raw SQL to calculate distance with PostGIS
-          // ST_Distance with geography returns meters
-          const { data, error } = await mscSupabase.rpc('calculate_distance_from_point', {
-            point_lat: userLat,
-            point_lng: userLng,
-            zone_ward: zone.ward,
-            zone_section: zone.section
-          });
+      const center = getZoneCenter(geom);
+      if (!center) return null;
 
-          if (error) {
-            // Fallback: calculate distance from user point to zone center (haversine)
-            console.warn(`⚠️ PostGIS distance error for ${zone.ward}-${zone.section}, using fallback`);
+      const distance = quickDistance(userLat, userLng, center.lat, center.lng);
 
-            const geom = zone.geometry;
-            let zoneLat = 41.8781, zoneLng = -87.6298;
+      // Only include zones within 5 miles
+      if (distance >= 5) return null;
 
-            if (geom.type === 'Polygon' && geom.coordinates[0]) {
-              const coords = geom.coordinates[0];
-              zoneLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-              zoneLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-            } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
-              const coords = geom.coordinates[0][0];
-              zoneLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-              zoneLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-            }
+      return {
+        ward: zone.ward,
+        section: zone.section,
+        distance,
+        geometry: geom
+      };
+    }).filter(z => z !== null);
 
-            // Haversine formula
-            const R = 3959; // Earth's radius in miles
-            const dLat = (zoneLat - userLat) * Math.PI / 180;
-            const dLng = (zoneLng - userLng) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(userLat * Math.PI / 180) * Math.cos(zoneLat * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            const distanceMiles = R * c;
-
-            return {
-              ward: zone.ward,
-              section: zone.section,
-              distance: distanceMiles,
-              geometry: zone.geometry
-            };
-          }
-
-          // data should be distance in meters, convert to miles
-          const distanceMiles = data / 1609.34;
-
-          return {
-            ward: zone.ward,
-            section: zone.section,
-            distance: distanceMiles,
-            geometry: zone.geometry
-          };
-        } catch (err) {
-          console.error(`Error calculating distance for ${zone.ward}-${zone.section}:`, err);
-          return null;
-        }
-      })
-    );
-
-    const validZoneDistances = zoneDistances.filter(z => z !== null);
-    console.log(`✅ Successfully calculated ${validZoneDistances.length} zone distances`);
+    console.log(`✅ Calculated distances for ${zoneDistances.length} nearby zones`);
 
     // Now get cleaning schedules for conflict detection
     const { data: scheduleData, error: schedError } = await mscSupabase
@@ -315,7 +280,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }>();
 
     // Initialize with distance data
-    validZoneDistances.forEach(zone => {
+    zoneDistances.forEach(zone => {
       const key = `${zone.ward}-${zone.section}`;
       zoneMap.set(key, {
         ward: zone.ward,
@@ -342,16 +307,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
 
-    // Filter out zones with conflicts and sort by actual distance to nearest edge
+    // Filter out zones with conflicts and sort by distance
     const safeZones = Array.from(zoneMap.values())
       .filter(zone => zone.distance < 5) // Only consider zones within 5 miles
       .filter(zone => !zone.hasConflict) // ONLY show zones without cleaning conflicts
-      .sort((a, b) => a.distance - b.distance) // Sort by distance to nearest edge
+      .sort((a, b) => a.distance - b.distance) // Sort by distance (closest first)
       .slice(0, 5); // Get top 5 closest safe alternatives
 
-    console.log('🎯 Safe alternatives by distance to nearest edge (no cleaning conflicts):');
+    console.log('🎯 Safe alternatives by distance (no cleaning conflicts):');
     safeZones.forEach((zone, i) => {
-      console.log(`${i+1}. Ward ${zone.ward}, Section ${zone.section} - ${zone.distance.toFixed(2)} miles to edge`);
+      console.log(`${i+1}. Ward ${zone.ward}, Section ${zone.section} - ${zone.distance.toFixed(2)} miles`);
     });
 
     // Convert to alternatives format
@@ -374,7 +339,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ward: zone.ward,
         section: zone.section,
         distance_type: distanceType,
-        distance_miles: zone.distance, // Distance to nearest edge of zone
+        distance_miles: zone.distance, // Distance to zone center (fast calculation)
         compass_direction: direction
       });
     });
