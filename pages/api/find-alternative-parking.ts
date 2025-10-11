@@ -26,23 +26,51 @@ interface AlternativeSection {
   compass_direction?: string;
 }
 
+// Geocode address to get coordinates
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const googleApiKey = process.env.GOOGLE_API_KEY;
+
+  if (!googleApiKey) {
+    console.error('❌ Google API key not configured');
+    return null;
+  }
+
+  const normalizedAddress = `${address}, Chicago, IL, USA`;
+  const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalizedAddress)}&key=${googleApiKey}`;
+
+  try {
+    const response = await fetch(geocodeUrl);
+    const data = await response.json();
+
+    if (data.status === 'OK' && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      return { lat: location.lat, lng: location.lng };
+    }
+  } catch (error) {
+    console.error('Geocoding error:', error);
+  }
+
+  return null;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { ward, section } = req.query;
+  const { ward, section, address } = req.query;
 
   if (!ward || !section) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Ward and section parameters are required',
-      example: '/api/find-alternative-parking?ward=43&section=1'
+      example: '/api/find-alternative-parking?ward=43&section=1&address=123+Main+St'
     });
   }
 
   const userWard = String(ward);
   const userSection = String(section);
-  const cacheKey = `${userWard}-${userSection}`;
+  const userAddress = address ? String(address) : null;
+  const cacheKey = `${userWard}-${userSection}-${userAddress || 'no-addr'}`;
 
   // Check cache first
   const cached = cache.get(cacheKey);
@@ -76,34 +104,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userCleaningDates = new Set(userCleaningSchedule?.map(s => s.cleaning_date) || []);
     console.log(`🚗 User has cleaning on: ${Array.from(userCleaningDates).join(', ')}`);
 
-    // Get user's zone geometry for geographic distance calculation
-    console.log('📍 Getting user zone geometry...');
-    const { data: userGeometry } = await mscSupabase
-      .from('street_cleaning_schedule')
-      .select('geom_simplified')
-      .eq('ward', userWard)
-      .eq('section', userSection)
-      .not('geom_simplified', 'is', null)
-      .limit(1);
+    // Get user's actual address coordinates
+    console.log('📍 Getting user address coordinates...');
+    let userLat = 41.8781; // Default Chicago center
+    let userLng = -87.6298;
+    let hasUserAddress = false;
 
-    let userCenterLat = 41.8781; // Default Chicago center
-    let userCenterLng = -87.6298;
-
-    if (userGeometry && userGeometry[0]?.geom_simplified) {
-      // Calculate center point of user's zone
-      const geom = userGeometry[0].geom_simplified;
-      if (geom.type === 'Polygon' && geom.coordinates[0]) {
-        const coords = geom.coordinates[0];
-        userCenterLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-        userCenterLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-      } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
-        const coords = geom.coordinates[0][0];
-        userCenterLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-        userCenterLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+    // If address provided, geocode it for precise location
+    if (userAddress) {
+      const coords = await geocodeAddress(userAddress);
+      if (coords) {
+        userLat = coords.lat;
+        userLng = coords.lng;
+        hasUserAddress = true;
+        console.log(`✅ Geocoded user address: ${userLat}, ${userLng}`);
       }
     }
 
-    console.log(`📍 User zone center: ${userCenterLat}, ${userCenterLng}`);
+    // Fall back to zone center if no address
+    if (!hasUserAddress) {
+      const { data: userGeometry } = await mscSupabase
+        .from('street_cleaning_schedule')
+        .select('geom_simplified')
+        .eq('ward', userWard)
+        .eq('section', userSection)
+        .not('geom_simplified', 'is', null)
+        .limit(1);
+
+      if (userGeometry && userGeometry[0]?.geom_simplified) {
+        const geom = userGeometry[0].geom_simplified;
+        if (geom.type === 'Polygon' && geom.coordinates[0]) {
+          const coords = geom.coordinates[0];
+          userLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+          userLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+        } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]) {
+          const coords = geom.coordinates[0][0];
+          userLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+          userLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+        }
+      }
+    }
+
+    console.log(`📍 User location: ${userLat}, ${userLng} (${hasUserAddress ? 'from address' : 'from zone center'})`);
 
     // Get ALL zones with geometry for geographic proximity calculation
     console.log('🗺️ Finding all zones with geographic proximity...');
@@ -170,10 +212,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (!zoneMap.has(key)) {
-          // Calculate actual geographic distance
+          // Calculate actual geographic distance from user address to zone center
           const zoneCenter = getZoneCenter(zone.geom_simplified);
-          const distance = zoneCenter 
-            ? calculateDistance(userCenterLat, userCenterLng, zoneCenter.lat, zoneCenter.lng)
+          const distance = zoneCenter
+            ? calculateDistance(userLat, userLng, zoneCenter.lat, zoneCenter.lng)
             : 999; // Large distance if we can't calculate
 
           zoneMap.set(key, {
@@ -219,8 +261,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Calculate simple compass direction
         const { lat: zoneLat, lng: zoneLng } = getZoneCenter(zone.geometry) || { lat: 0, lng: 0 };
-        const latDiff = zoneLat - userCenterLat;
-        const lngDiff = zoneLng - userCenterLng;
+        const latDiff = zoneLat - userLat;
+        const lngDiff = zoneLng - userLng;
 
         let direction = '';
         if (Math.abs(latDiff) > Math.abs(lngDiff)) {

@@ -255,7 +255,13 @@ export default function StreetCleaningSettings() {
     setParkHereError('');
 
     try {
-      const response = await fetch(`/api/find-alternative-parking?ward=${ward}&section=${section}`);
+      // Build API URL with optional address parameter for accurate distance
+      let apiUrl = `/api/find-alternative-parking?ward=${ward}&section=${section}`;
+      if (homeAddress) {
+        apiUrl += `&address=${encodeURIComponent(homeAddress)}`;
+      }
+
+      const response = await fetch(apiUrl);
       const data = await response.json();
 
       if (!response.ok) {
