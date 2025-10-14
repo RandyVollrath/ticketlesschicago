@@ -144,14 +144,14 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Head>
-        <title>Profile Settings - Ticketless America</title>
+        <title>Profile Settings - Autopilot America</title>
       </Head>
 
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Ticketless America</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Autopilot America</h1>
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}

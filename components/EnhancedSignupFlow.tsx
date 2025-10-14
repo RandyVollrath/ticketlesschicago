@@ -167,7 +167,7 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
   if (step === 1) {
     return (
       <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Sign Up for Ticketless America</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">Sign Up for Autopilot America</h2>
         
         <div className="space-y-4">
           <div>
@@ -259,7 +259,7 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
 
           <div className="text-center">
             <p className="text-xs text-gray-500">
-              By continuing, you'll create accounts on both Ticketless America and MyStreetCleaning.com
+              By continuing, you'll create accounts on both Autopilot America and MyStreetCleaning.com
             </p>
           </div>
         </div>

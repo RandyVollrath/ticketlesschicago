@@ -75,7 +75,7 @@ export default function AlertsSuccess() {
       padding: '24px'
     }}>
       <Head>
-        <title>You're All Set! - Ticketless America</title>
+        <title>You're All Set! - Autopilot America</title>
         <meta name="description" content="Your free alerts are now active" />
       </Head>
 
@@ -384,7 +384,7 @@ export default function AlertsSuccess() {
           marginTop: '32px',
           margin: '32px 0 0 0'
         }}>
-          Questions? Email us at <a href="mailto:support@ticketlesschicago.com" style={{ color: '#0052cc', textDecoration: 'none' }}>support@ticketlesschicago.com</a>
+          Questions? Email us at <a href="mailto:support@autopilotamerica.com" style={{ color: '#0052cc', textDecoration: 'none' }}>support@autopilotamerica.com</a>
         </p>
       </div>
     </div>

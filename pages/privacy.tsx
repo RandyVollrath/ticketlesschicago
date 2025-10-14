@@ -12,8 +12,8 @@ export default function PrivacyPolicy() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <Head>
-        <title>Privacy Policy - Ticketless America</title>
-        <meta name="description" content="Privacy Policy for Ticketless America" />
+        <title>Privacy Policy - Autopilot America</title>
+        <meta name="description" content="Privacy Policy for Autopilot America" />
       </Head>
 
       {/* Header */}
@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-              Ticketless
+              Autopilot
             </span>
             <span style={{ fontSize: '10px', fontWeight: '600', color: '#666', letterSpacing: '1.5px' }}>
               AMERICA
@@ -95,7 +95,7 @@ export default function PrivacyPolicy() {
               1. Introduction
             </h2>
             <p>
-              Ticketless America ("we," "our," or "us") respects your privacy. This Privacy Policy explains how
+              Autopilot America ("we," "our," or "us") respects your privacy. This Privacy Policy explains how
               we collect, use, share, and protect your personal information when you use our services.
             </p>
           </section>
@@ -314,8 +314,8 @@ export default function PrivacyPolicy() {
             </ul>
             <p style={{ marginTop: '16px' }}>
               To exercise these rights, email us at{' '}
-              <a href="mailto:hello@ticketlessamerica.com" style={{ color: '#0052cc', textDecoration: 'underline' }}>
-                hello@ticketlessamerica.com
+              <a href="mailto:hello@autopilotamerica.com" style={{ color: '#0052cc', textDecoration: 'underline' }}>
+                hello@autopilotamerica.com
               </a>
             </p>
           </section>
@@ -369,8 +369,8 @@ export default function PrivacyPolicy() {
             </p>
             <p>
               Email:{' '}
-              <a href="mailto:hello@ticketlessamerica.com" style={{ color: '#0052cc', textDecoration: 'underline' }}>
-                hello@ticketlessamerica.com
+              <a href="mailto:hello@autopilotamerica.com" style={{ color: '#0052cc', textDecoration: 'underline' }}>
+                hello@autopilotamerica.com
               </a>
             </p>
           </section>

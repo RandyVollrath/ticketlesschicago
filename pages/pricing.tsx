@@ -148,7 +148,7 @@ export default function Pricing() {
                 color: '#374151', 
                 marginBottom: '8px' 
               }}>
-                Ticketless America
+                Autopilot America
               </h3>
               <p style={{ 
                 color: '#6b7280', 
@@ -287,7 +287,7 @@ export default function Pricing() {
                 color: '#374151', 
                 marginBottom: '12px' 
               }}>
-                Without Ticketless America:
+                Without Autopilot America:
               </h3>
               <ul style={{ 
                 margin: 0,

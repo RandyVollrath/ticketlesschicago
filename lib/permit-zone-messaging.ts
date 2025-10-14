@@ -13,7 +13,7 @@ export const PERMIT_ZONE_MESSAGES = {
 1. Your driver's license or state ID
 2. Proof of residency (utility bill, lease, or mortgage)
 
-Text them to this number OR email to documents@ticketlessamerica.com
+Text them to this number OR email to documents@autopilotamerica.com
 
 We'll handle the rest!`,
 
@@ -45,7 +45,7 @@ To get your residential parking permit for your Chicago address, we need two doc
 **How to submit (choose one):**
 - **Reply to this email** with both documents attached as photos or PDFs
 - **Text photos** to (833) 562-3866
-- **Email to** documents@ticketlessamerica.com
+- **Email to** documents@autopilotamerica.com
 
 **Important:** The name and address on your documents must match the information you provided to us.
 
@@ -66,7 +66,7 @@ To get your residential parking permit for your Chicago address, we need to veri
 2. **Proof of Residency** - Utility bill, mortgage/lease, property tax bill, etc.
 
 **Upload Your Documents:**
-Click here to securely upload your documents: https://ticketlessamerica.com/permit-zone-documents
+Click here to securely upload your documents: https://autopilotamerica.com/permit-zone-documents
 
 **Already have a Customer Code from the City of Chicago?**
 If you've purchased a permit online before, you can skip the document upload and just enter your Customer Code at the link above.
@@ -87,7 +87,7 @@ To get your residential parking permit, we need to verify your Chicago residency
 Text photos of your ID and proof of residency to: [YOUR_PHONE_NUMBER]
 
 **Option 2: Upload Online**
-Visit: https://ticketlessamerica.com/permit-zone-documents
+Visit: https://autopilotamerica.com/permit-zone-documents
 
 **Already have a Customer Code?**
 If you have a Customer Code from the City of Chicago, just text it to us or enter it at the link above.
@@ -120,7 +120,7 @@ We need:
 1. Valid photo ID
 2. Proof of residency
 
-Reply to this email with the documents or upload at: https://ticketlessamerica.com/permit-zone-documents
+Reply to this email with the documents or upload at: https://autopilotamerica.com/permit-zone-documents
 
 Let us know if you need any help!
 

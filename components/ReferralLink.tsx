@@ -126,7 +126,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
       </div>
 
       <p style={{ fontSize: '15px', color: '#6b7280', lineHeight: '1.6', marginBottom: '24px' }}>
-        Share Ticketless America with friends and earn rewards when they subscribe!
+        Share Autopilot America with friends and earn rewards when they subscribe!
       </p>
 
       {error && (
@@ -177,7 +177,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
               <strong>📋 Program Terms:</strong>
             </p>
             <ul style={{ fontSize: '13px', color: '#78350f', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
-              <li>Share your link with friends who might benefit from Ticketless</li>
+              <li>Share your link with friends who might benefit from Autopilot</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
               <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
               <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
@@ -302,7 +302,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
           }}>
             <strong>📋 Program Terms:</strong>
             <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-              <li>Share your link with friends who might benefit from Ticketless</li>
+              <li>Share your link with friends who might benefit from Autopilot</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
               <li>You earn <strong>${referralData.earnings.monthly}/month</strong> for each monthly subscriber, as long as they remain subscribed</li>
               <li>You earn <strong>${referralData.earnings.annual} one-time</strong> for annual subscribers</li>

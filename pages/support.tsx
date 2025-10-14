@@ -10,8 +10,8 @@ export default function Support() {
       title: 'General Questions',
       questions: [
         {
-          q: 'What is Ticketless America?',
-          a: 'Ticketless America is a protection plan that helps Chicago drivers avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) through alerts and provides reimbursement if tickets are still received.'
+          q: 'What is Autopilot America?',
+          a: 'Autopilot America is a protection plan that helps Chicago drivers avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) through alerts and provides reimbursement if tickets are still received.'
         },
         {
           q: 'Is this insurance?',
@@ -129,7 +129,7 @@ export default function Support() {
             fontSize: '20px', 
             color: '#6b7280' 
           }}>
-            Get help with your Ticketless America protection plan
+            Get help with your Autopilot America protection plan
           </p>
         </div>
 
@@ -175,14 +175,14 @@ export default function Support() {
               Get help via email within 24 hours
             </p>
             <a 
-              href="mailto:support@ticketlessamerica.com" 
+              href="mailto:support@autopilotamerica.com" 
               style={{ 
                 color: '#2563eb', 
                 textDecoration: 'none', 
                 fontWeight: '500' 
               }}
             >
-              support@ticketlessamerica.com
+              support@autopilotamerica.com
             </a>
           </div>
 

@@ -80,7 +80,7 @@ export default function ParkingMapPage() {
   return (
     <>
       <Head>
-        <title>Street Cleaning Map - Ticketless America</title>
+        <title>Street Cleaning Map - Autopilot America</title>
         <meta name="description" content="Street cleaning information" />
         <link 
           rel="stylesheet" 
@@ -245,7 +245,7 @@ export default function ParkingMapPage() {
             fontSize: '14px',
             margin: '0'
           }}>
-            © 2025 Ticketless America
+            © 2025 Autopilot America
           </p>
         </footer>
       </main>

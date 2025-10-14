@@ -174,7 +174,7 @@ export default function AlertsSignup() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <Head>
-        <title>Get Free Alerts - Ticketless America</title>
+        <title>Get Free Alerts - Autopilot America</title>
         <meta name="description" content="Sign up for free alerts for street cleaning, snow removal, city stickers, and license plates" />
         <style>{`
           @media (max-width: 768px) {
@@ -259,7 +259,7 @@ export default function AlertsSignup() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
               <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-                Ticketless
+                Autopilot
               </span>
               <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
                 AMERICA

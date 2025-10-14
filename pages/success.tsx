@@ -5,7 +5,7 @@ export default function Success() {
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       <Head>
-        <title>Welcome to TicketLess America</title>
+        <title>Welcome to Autopilot America</title>
         <meta name="description" content="Your vehicle protection is now active!" />
       </Head>
 

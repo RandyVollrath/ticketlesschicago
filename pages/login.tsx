@@ -265,7 +265,7 @@ export default function Login() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Sign In - Ticketless America</title>
+        <title>Sign In - Autopilot America</title>
         <style>{`
           @media (max-width: 768px) {
             header {
@@ -345,7 +345,7 @@ export default function Login() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
               <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-                Ticketless
+                Autopilot
               </span>
               <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
                 AMERICA
