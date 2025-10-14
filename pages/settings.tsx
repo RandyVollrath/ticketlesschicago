@@ -750,42 +750,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Attorney Marketplace - Available to all users */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '20px',
-          border: '1px solid #e5e7eb',
-          marginBottom: '32px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '0 0 4px 0' }}>
-                👨‍⚖️ Find an Attorney
-              </h3>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Browse experienced attorneys who specialize in contesting tickets
-              </p>
-            </div>
-            <button
-              onClick={() => router.push('/attorneys')}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#8b5cf6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Browse Attorneys
-            </button>
-          </div>
-        </div>
-
         {/* Reimbursement Link - Only for Protection users */}
         {profile.has_protection && (
           <div style={{
