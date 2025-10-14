@@ -124,7 +124,7 @@ const PaymentForm: React.FC<{
             className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
           <span className="text-sm text-gray-700">
-            <strong>I authorize TicketlessAmerica to:</strong>
+            <strong>I authorize AutopilotAmerica to:</strong>
             <ul className="list-disc list-inside mt-1 space-y-1">
               <li>Charge my payment method ${breakdown.total.toFixed(2)} for this renewal</li>
               <li>Pay the city on my behalf using our payment method</li>

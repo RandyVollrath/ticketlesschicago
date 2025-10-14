@@ -120,10 +120,10 @@ export class NotificationService {
         html: notification.html,
         text: notification.text,
         headers: {
-          'List-Unsubscribe': '<https://ticketlessamerica.com/unsubscribe>',
+          'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
           'X-Entity-Ref-ID': crypto.randomUUID(),
         },
-        reply_to: 'support@ticketlessamerica.com'
+        reply_to: 'support@autopilotamerica.com'
       });
 
       if (error) {
@@ -318,7 +318,7 @@ export class NotificationScheduler {
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
         <!-- Header -->
         <div style="background: #2563eb; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Ticketless America</h1>
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Autopilot America</h1>
           <p style="margin: 8px 0 0; font-size: 16px; opacity: 0.9;">Your Vehicle Compliance Partner</p>
         </div>
         
@@ -353,7 +353,7 @@ export class NotificationScheduler {
                    style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
                   Renew Online
                 </a>
-                <a href="https://ticketlessamerica.com/dashboard"
+                <a href="https://autopilotamerica.com/dashboard"
                    style="background: #374151; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
                   View Dashboard
                 </a>
@@ -364,10 +364,10 @@ export class NotificationScheduler {
             <div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 24px 0;">
               <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">💡 Want us to handle this for you?</h3>
               <p style="color: #065f46; margin: 0 0 16px; line-height: 1.6;">
-                Upgrade to Ticketless Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
+                Upgrade to Autopilot Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
               </p>
               <div style="text-align: center;">
-                <a href="https://ticketlessamerica.com/protection"
+                <a href="https://autopilotamerica.com/protection"
                    style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
                   Learn About Protection
                 </a>
@@ -397,7 +397,7 @@ export class NotificationScheduler {
                   <li><strong>Proof of Residency:</strong> Utility bill, lease agreement, or mortgage statement showing your address</li>
                 </ul>
                 <div style="text-align: center;">
-                  <a href="https://ticketlessamerica.com/dashboard"
+                  <a href="https://autopilotamerica.com/dashboard"
                      style="background: #f59e0b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
                     Upload Documents Now
                   </a>
@@ -430,20 +430,20 @@ export class NotificationScheduler {
           
           <!-- Support Message -->
           <div style="text-align: center; color: #6b7280; margin: 24px 0;">
-            <p style="margin: 0;">Questions? We're here to help at support@ticketlessamerica.com</p>
+            <p style="margin: 0;">Questions? We're here to help at support@autopilotamerica.com</p>
           </div>
         </div>
         
         <!-- Footer -->
         <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px;">
           <div style="margin-bottom: 12px;">
-            <strong style="color: #374151;">Ticketless America</strong><br>
+            <strong style="color: #374151;">Autopilot America</strong><br>
             Your trusted vehicle compliance partner
           </div>
           <div>
-            <a href="https://ticketlessamerica.com/dashboard" style="color: #6b7280; margin: 0 8px;">Dashboard</a> |
-            <a href="https://ticketlessamerica.com/support" style="color: #6b7280; margin: 0 8px;">Support</a> |
-            <a href="https://ticketlessamerica.com/unsubscribe?id=${obligation.obligation_id}" style="color: #6b7280; margin: 0 8px;">Unsubscribe</a>
+            <a href="https://autopilotamerica.com/dashboard" style="color: #6b7280; margin: 0 8px;">Dashboard</a> |
+            <a href="https://autopilotamerica.com/support" style="color: #6b7280; margin: 0 8px;">Support</a> |
+            <a href="https://autopilotamerica.com/unsubscribe?id=${obligation.obligation_id}" style="color: #6b7280; margin: 0 8px;">Unsubscribe</a>
           </div>
         </div>
       </div>
@@ -452,7 +452,7 @@ export class NotificationScheduler {
     const emailText = !hasProtection ? `
 Hello,
 
-This is a friendly reminder from Ticketless America about your upcoming ${renewalName}.
+This is a friendly reminder from Autopilot America about your upcoming ${renewalName}.
 
 Vehicle: ${obligation.license_plate}
 Due Date: ${dueDateFormatted}
@@ -461,20 +461,20 @@ Days Remaining: ${daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? '1 day
 ${daysUntilDue <= 1 ? 'We recommend renewing today to stay compliant.' : 'You have time to renew, but we wanted to give you a heads up.'}
 
 Renew online: ${renewalUrl}
-View your dashboard: https://ticketlessamerica.com/dashboard
+View your dashboard: https://autopilotamerica.com/dashboard
 
 💡 Want us to handle this for you?
-Upgrade to Ticketless Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
-Learn more: https://ticketlessamerica.com/protection
+Upgrade to Autopilot Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
+Learn more: https://autopilotamerica.com/protection
 
 Best regards,
-Ticketless America Team
+Autopilot America Team
 
-Questions? Reply to support@ticketlessamerica.com
+Questions? Reply to support@autopilotamerica.com
     ` : `
 Hello,
 
-This is a friendly reminder from Ticketless America about your upcoming ${renewalName}.
+This is a friendly reminder from Autopilot America about your upcoming ${renewalName}.
 
 Vehicle: ${obligation.license_plate}
 Due Date: ${dueDateFormatted}
@@ -492,7 +492,7 @@ Since you're in a residential permit parking zone, we need:
 - Driver's License (front and back)
 - Proof of Residency (utility bill, lease, or mortgage statement)
 
-Upload now: https://ticketlessamerica.com/dashboard
+Upload now: https://autopilotamerica.com/dashboard
 ` : ''}
 
 📝 PLEASE CONFIRM YOUR INFORMATION
@@ -501,54 +501,54 @@ Before we purchase your renewal, please reply if any of the following has change
 - License plate number
 - Mailing address
 
-View your dashboard: https://ticketlessamerica.com/dashboard
+View your dashboard: https://autopilotamerica.com/dashboard
 
 Best regards,
-Ticketless America Team
+Autopilot America Team
 
-Questions? Reply to support@ticketlessamerica.com
+Questions? Reply to support@autopilotamerica.com
     `;
 
     // SMS content - differentiate between simple reminders and auto-registration alerts
-    const shortUrl = 'ticketlessamerica.com';
+    const shortUrl = 'autopilotamerica.com';
     let smsMessage = '';
 
     if (!hasProtection) {
       // Simple reminder for free alert users
       if (daysUntilDue === 0) {
-        smsMessage = `Ticketless: ${renewalName} expires TODAY for plate ${obligation.license_plate}. Renew now to avoid fines. - Ticketless America`;
+        smsMessage = `Autopilot: ${renewalName} expires TODAY for plate ${obligation.license_plate}. Renew now to avoid fines. - Autopilot America`;
       } else if (daysUntilDue === 1) {
-        smsMessage = `Ticketless: ${renewalName} expires TOMORROW for plate ${obligation.license_plate}. Renew today to stay compliant. - Ticketless America`;
+        smsMessage = `Autopilot: ${renewalName} expires TOMORROW for plate ${obligation.license_plate}. Renew today to stay compliant. - Autopilot America`;
       } else if (daysUntilDue <= 7) {
-        smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Don't forget to renew! - Ticketless America`;
+        smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Don't forget to renew! - Autopilot America`;
       } else if (daysUntilDue <= 14) {
-        smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Time to renew soon. - Ticketless America`;
+        smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Time to renew soon. - Autopilot America`;
       } else {
-        smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Mark your calendar! - Ticketless America`;
+        smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. Mark your calendar! - Autopilot America`;
       }
     } else {
       // Auto-registration alerts for Protection plan users
       if (hasPermitZone) {
         // Permit zone users need to upload documents
         if (daysUntilDue === 14) {
-          smsMessage = `Ticketless: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We're purchasing it TODAY. Reply NOW if info changed (VIN, plate, or address). ALSO: Upload permit zone docs (front/back of license + proof of residency) at ${shortUrl}/dashboard - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We're purchasing it TODAY. Reply NOW if info changed (VIN, plate, or address). ALSO: Upload permit zone docs (front/back of license + proof of residency) at ${shortUrl}/dashboard - Autopilot America`;
         } else if (daysUntilDue <= 21) {
-          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase in 7 days. Reply if info changed (VIN, plate, or address). IMPORTANT: Upload permit zone docs at ${shortUrl}/dashboard - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase in 7 days. Reply if info changed (VIN, plate, or address). IMPORTANT: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
         } else if (daysUntilDue <= 30) {
-          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with updates. REQUIRED: Upload permit zone docs at ${shortUrl}/dashboard - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with updates. REQUIRED: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
         } else {
-          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with any updates. Don't forget: Upload permit zone docs at ${shortUrl}/dashboard - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with any updates. Don't forget: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
         }
       } else {
         // Standard protection users (no permit zone)
         if (daysUntilDue === 14) {
-          smsMessage = `Ticketless: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We're purchasing it TODAY. Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder. - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in 2 weeks for plate ${obligation.license_plate}. We're purchasing it TODAY. Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder. - Autopilot America`;
         } else if (daysUntilDue <= 21) {
-          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 7 days. Please reply by then if you have: New VIN (new car), new plate number, or new address. - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 7 days. Please reply by then if you have: New VIN (new car), new plate number, or new address. - Autopilot America`;
         } else if (daysUntilDue <= 30) {
-          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Autopilot America`;
         } else {
-          smsMessage = `Ticketless: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left, so you have time. If anything changed (new VIN, new plate, or address), reply anytime in the next month. - Ticketless America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left, so you have time. If anything changed (new VIN, new plate, or address), reply anytime in the next month. - Autopilot America`;
         }
       }
     }
@@ -556,8 +556,8 @@ Questions? Reply to support@ticketlessamerica.com
     // Voice content (friendly and informative)
     const plateSpoken = obligation.license_plate.split('').join(' '); // Spell out clearly: "A B C 1 2 3"
     const voiceMessage = daysUntilDue <= 1
-      ? `Hello, this is Ticketless America calling with a friendly reminder. Your ${renewalName} is due ${timeText === 'TODAY' ? 'today' : 'tomorrow'} for vehicle ${plateSpoken}. We recommend renewing as soon as possible to stay compliant. You can renew online or visit a local facility. Thank you for being a Ticketless America customer. Have a great day!`
-      : `Hello, this is Ticketless America calling. Your ${renewalName} is coming up in ${daysUntilDue} days for vehicle ${plateSpoken}. This is just a friendly reminder to help you stay on top of your renewals. You can renew online or visit a local facility when convenient. Thank you for being a Ticketless America customer. Have a great day!`;
+      ? `Hello, this is Autopilot America calling with a friendly reminder. Your ${renewalName} is due ${timeText === 'TODAY' ? 'today' : 'tomorrow'} for vehicle ${plateSpoken}. We recommend renewing as soon as possible to stay compliant. You can renew online or visit a local facility. Thank you for being a Autopilot America customer. Have a great day!`
+      : `Hello, this is Autopilot America calling. Your ${renewalName} is coming up in ${daysUntilDue} days for vehicle ${plateSpoken}. This is just a friendly reminder to help you stay on top of your renewals. You can renew online or visit a local facility when convenient. Thank you for being a Autopilot America customer. Have a great day!`;
 
     return {
       email: {

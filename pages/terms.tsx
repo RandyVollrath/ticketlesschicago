@@ -12,8 +12,8 @@ export default function TermsOfService() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <Head>
-        <title>Terms of Service - Ticketless America</title>
-        <meta name="description" content="Terms of Service for Ticketless America" />
+        <title>Terms of Service - Autopilot America</title>
+        <meta name="description" content="Terms of Service for Autopilot America" />
       </Head>
 
       {/* Header */}
@@ -55,7 +55,7 @@ export default function TermsOfService() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-              Ticketless
+              Autopilot
             </span>
             <span style={{ fontSize: '10px', fontWeight: '600', color: '#666', letterSpacing: '1.5px' }}>
               AMERICA
@@ -95,7 +95,7 @@ export default function TermsOfService() {
               1. Acceptance of Terms
             </h2>
             <p>
-              By using Ticketless America's services, you agree to these Terms of Service. If you do not agree,
+              By using Autopilot America's services, you agree to these Terms of Service. If you do not agree,
               please do not use our services.
             </p>
           </section>
@@ -105,7 +105,7 @@ export default function TermsOfService() {
               2. Description of Services
             </h2>
             <p style={{ marginBottom: '12px' }}>
-              Ticketless America provides two services:
+              Autopilot America provides two services:
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px' }}>
               <li style={{ marginBottom: '8px' }}>
@@ -122,7 +122,7 @@ export default function TermsOfService() {
               3. Agent Authorization (Ticket Protection Only)
             </h2>
             <p style={{ marginBottom: '12px', color: '#78350f' }}>
-              By subscribing to Ticket Protection, you explicitly authorize Ticketless America to act as your
+              By subscribing to Ticket Protection, you explicitly authorize Autopilot America to act as your
               legal agent for the following purposes:
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px', color: '#78350f' }}>
@@ -141,7 +141,7 @@ export default function TermsOfService() {
             </ul>
             <p style={{ color: '#78350f' }}>
               <strong>Important:</strong> Final acceptance of all filings is subject to approval by the issuing
-              government authority (City of Chicago or State of Illinois). Ticketless America cannot guarantee
+              government authority (City of Chicago or State of Illinois). Autopilot America cannot guarantee
               approval by these authorities.
             </p>
           </section>
@@ -222,7 +222,7 @@ export default function TermsOfService() {
               "Best Effort" Basis
             </h3>
             <p style={{ marginBottom: '12px', color: '#7f1d1d' }}>
-              Ticketless America provides services on a "best effort" basis. While we strive for accuracy and
+              Autopilot America provides services on a "best effort" basis. While we strive for accuracy and
               timeliness, we do not guarantee:
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '16px', color: '#7f1d1d' }}>
@@ -237,14 +237,14 @@ export default function TermsOfService() {
             </h3>
             <p style={{ marginBottom: '16px', color: '#7f1d1d' }}>
               The City of Chicago and State of Illinois have final authority over all renewal applications.
-              Ticketless America cannot control or guarantee their acceptance, processing times, or decisions.
+              Autopilot America cannot control or guarantee their acceptance, processing times, or decisions.
             </p>
 
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#991b1b', marginBottom: '12px' }}>
               Maximum Liability
             </h3>
             <p style={{ marginBottom: '12px', color: '#7f1d1d' }}>
-              Ticketless America's total liability to you is limited to:
+              Autopilot America's total liability to you is limited to:
             </p>
             <ul style={{ paddingLeft: '24px', color: '#7f1d1d' }}>
               <li style={{ marginBottom: '8px' }}>
@@ -318,8 +318,8 @@ export default function TermsOfService() {
             </h2>
             <p>
               Questions about these Terms? Email us at{' '}
-              <a href="mailto:hello@ticketlessamerica.com" style={{ color: '#0052cc', textDecoration: 'underline' }}>
-                hello@ticketlessamerica.com
+              <a href="mailto:hello@autopilotamerica.com" style={{ color: '#0052cc', textDecoration: 'underline' }}>
+                hello@autopilotamerica.com
               </a>
             </p>
           </section>

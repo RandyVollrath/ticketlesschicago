@@ -44,7 +44,7 @@ export default function Home() {
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#fff' }}>
       <Head>
-        <title>Autopilot America - Free Alerts for Street Cleaning & Renewals</title>
+        <title>Ticketless America - Free Alerts for Street Cleaning & Renewals</title>
         <meta name="description" content="Never get blindsided by a ticket again. Free alerts for street cleaning, snow removal, city stickers, and license plates." />
         <style>{`
           .responsive-grid {
@@ -67,63 +67,15 @@ export default function Home() {
             letterSpacing: -1px;
           }
           .how-it-works-container {
-            max-width: 900px;
+            maxWidth: 1200px;
             margin: 0 auto;
-            padding: 0 80px;
-            text-align: center;
-          }
-          .how-it-works-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 48px;
-            max-width: 700px;
-            margin: 0 auto;
-            align-items: center;
-          }
-          .how-it-works-step {
-            display: flex;
-            gap: 24px;
-            text-align: left;
-            align-items: flex-start;
-            width: 100%;
-            max-width: 600px;
+            padding: 0 40px;
+            textAlign: center;
           }
           .logo-mobile {
             display: none;
           }
-          .testimonials-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 32px;
-          }
           @media (max-width: 768px) {
-            .testimonials-grid {
-              grid-template-columns: 1fr;
-            }
-            nav {
-              height: 70px !important;
-              padding: 0 12px !important;
-            }
-            .nav-link {
-              font-size: 13px !important;
-              padding: 0 !important;
-            }
-            nav > div:first-child {
-              margin-right: 8px !important;
-            }
-            nav > div:last-child {
-              gap: 8px !important;
-              flex: 1;
-              justify-content: flex-end;
-              overflow-x: auto;
-              overflow-y: hidden;
-              -webkit-overflow-scrolling: touch;
-              scrollbar-width: none;
-              -ms-overflow-style: none;
-            }
-            nav > div:last-child::-webkit-scrollbar {
-              display: none;
-            }
             .logo-desktop {
               display: none !important;
             }
@@ -142,18 +94,14 @@ export default function Home() {
               font-size: 32px !important;
             }
             .how-it-works-container {
-              padding: 0 16px !important;
-            }
-            .how-it-works-steps {
-              max-width: 100%;
-            }
-            .how-it-works-step {
-              flex-direction: column;
-              gap: 16px;
+              padding: 0 !important;
             }
             .free-alerts-link {
-              font-size: 13px !important;
-              white-space: nowrap !important;
+              font-size: 11px !important;
+              line-height: 1.2 !important;
+              white-space: normal !important;
+              text-align: center !important;
+              max-width: 45px !important;
             }
             .hero-subtitle-desktop {
               display: none !important;
@@ -171,7 +119,7 @@ export default function Home() {
         top: 0,
         left: 0,
         right: 0,
-        height: '90px',
+        height: '70px',
         backgroundColor: 'rgba(255,255,255,0.98)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
@@ -179,68 +127,67 @@ export default function Home() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 48px'
+        padding: '0 16px'
       }}>
         <div
           onClick={() => window.location.reload()}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
+            gap: '12px',
             cursor: 'pointer',
             flexShrink: 0,
-            marginRight: '24px'
+            marginRight: '8px'
           }}
         >
           {/* Logo - desktop version with icon */}
-          <div className="logo-desktop" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="logo-desktop" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '10px',
+              width: '40px',
+              height: '40px',
+              borderRadius: '8px',
               background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '28px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
+              fontSize: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
               🛡️
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-              <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-                Autopilot
+              <span style={{ fontSize: '24px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+                Ticketless
               </span>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
                 AMERICA
               </span>
             </div>
           </div>
           {/* Logo - mobile version (text only) */}
-          <div className="logo-mobile" style={{ display: 'none', flexShrink: 0 }}>
-            <span style={{ fontSize: '18px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-              Autopilot
+          <div className="logo-mobile" style={{ display: 'none' }}>
+            <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
+              Ticketless
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '32px', alignItems: 'center', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
           <a
             href="/alerts/signup"
             onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
-            className="free-alerts-link nav-link"
-            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            className="free-alerts-link"
+            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
           >
             Free Alerts
           </a>
           <a
             href="/protection"
             onClick={(e) => { e.preventDefault(); router.push('/protection'); }}
-            className="nav-link"
-            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
           >
             Protection
           </a>
-          <a href="#faq" className="nav-link" style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+          <a href="#faq" style={{ color: '#666', textDecoration: 'none', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
             FAQ
           </a>
           {checkingAuth ? (
@@ -287,7 +234,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <div style={{
-        paddingTop: '160px',
+        paddingTop: '140px',
         paddingBottom: '100px',
         textAlign: 'center',
         background: 'linear-gradient(180deg, #fff 0%, #f8f9fa 100%)'
@@ -488,7 +435,7 @@ export default function Home() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                Guaranteed no more city sticker or license plate tickets — we handle renewals and cover eligible tickets up to $200/year
+                Upgrade to get done-for-you renewals and ticket coverage
               </p>
             </div>
 
@@ -540,8 +487,7 @@ export default function Home() {
             color: '#000',
             marginBottom: '24px',
             margin: '0 0 24px 0',
-            letterSpacing: '-1px',
-            textAlign: 'center'
+            letterSpacing: '-1px'
           }}>
             How It Works
           </h2>
@@ -549,123 +495,117 @@ export default function Home() {
             fontSize: '20px',
             color: '#666',
             marginBottom: '80px',
-            margin: '0 auto 80px auto',
-            maxWidth: '600px',
-            textAlign: 'center'
+            margin: '0 0 80px 0'
           }}>
             Get started in three simple steps
           </p>
 
-          <div className="how-it-works-steps">
-            <div className="how-it-works-step">
+          <div className="responsive-grid" style={{
+            textAlign: 'left'
+          }}>
+            <div>
               <div style={{
-                width: '56px',
-                height: '56px',
+                width: '48px',
+                height: '48px',
                 backgroundColor: '#0052cc',
-                borderRadius: '14px',
+                borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                marginBottom: '20px',
                 color: 'white',
-                fontSize: '28px',
-                fontWeight: '700',
-                flexShrink: 0
+                fontSize: '24px',
+                fontWeight: '700'
               }}>
                 1
               </div>
-              <div>
-                <h3 style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#000',
-                  marginBottom: '12px',
-                  margin: '0 0 12px 0'
-                }}>
-                  Create your account
-                </h3>
-                <p style={{
-                  fontSize: '18px',
-                  color: '#666',
-                  lineHeight: '1.7',
-                  margin: 0
-                }}>
-                  Sign up with your email and phone in under 60 seconds. No credit card required.
-                </p>
-              </div>
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Create your account
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Sign up with your email and phone in under 60 seconds. No credit card required.
+              </p>
             </div>
 
-            <div className="how-it-works-step">
+            <div>
               <div style={{
-                width: '56px',
-                height: '56px',
+                width: '48px',
+                height: '48px',
                 backgroundColor: '#0052cc',
-                borderRadius: '14px',
+                borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                marginBottom: '20px',
                 color: 'white',
-                fontSize: '28px',
-                fontWeight: '700',
-                flexShrink: 0
+                fontSize: '24px',
+                fontWeight: '700'
               }}>
                 2
               </div>
-              <div>
-                <h3 style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#000',
-                  marginBottom: '12px',
-                  margin: '0 0 12px 0'
-                }}>
-                  Add your vehicle
-                </h3>
-                <p style={{
-                  fontSize: '18px',
-                  color: '#666',
-                  lineHeight: '1.7',
-                  margin: 0
-                }}>
-                  Enter your license plate and parking address. We'll handle the rest.
-                </p>
-              </div>
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Add your vehicle
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Enter your license plate and parking address. We'll handle the rest.
+              </p>
             </div>
 
-            <div className="how-it-works-step">
+            <div>
               <div style={{
-                width: '56px',
-                height: '56px',
+                width: '48px',
+                height: '48px',
                 backgroundColor: '#0052cc',
-                borderRadius: '14px',
+                borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                marginBottom: '20px',
                 color: 'white',
-                fontSize: '28px',
-                fontWeight: '700',
-                flexShrink: 0
+                fontSize: '24px',
+                fontWeight: '700'
               }}>
                 3
               </div>
-              <div>
-                <h3 style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#000',
-                  marginBottom: '12px',
-                  margin: '0 0 12px 0'
-                }}>
-                  Get alerts
-                </h3>
-                <p style={{
-                  fontSize: '18px',
-                  color: '#666',
-                  lineHeight: '1.7',
-                  margin: 0
-                }}>
-                  Receive timely notifications before any deadline. Never get surprised again.
-                </p>
-              </div>
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: '#000',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Get alerts
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Receive timely notifications before any deadline. Never get surprised again.
+              </p>
             </div>
           </div>
         </div>
@@ -735,149 +675,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Testimonials Section */}
-      <div style={{
-        padding: '100px 16px',
-        backgroundColor: 'white'
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
-          <h2 style={{
-            textAlign: 'center',
-            fontSize: '48px',
-            fontWeight: '800',
-            color: '#000',
-            marginBottom: '16px',
-            letterSpacing: '-1px'
-          }}>
-            💬 What Our Users Say
-          </h2>
-          <p style={{
-            textAlign: 'center',
-            fontSize: '20px',
-            color: '#666',
-            marginBottom: '64px',
-            maxWidth: '600px',
-            margin: '0 auto 64px auto'
-          }}>
-            Real feedback from Chicago drivers who are saving money and avoiding tickets
-          </p>
-
-          <div className="testimonials-grid">
-            {[
-              {
-                text: "Love the simplicity. Solving a very specific, clear problem",
-                author: "Mitchell",
-                category: "Problem Solving"
-              },
-              {
-                text: "This is such a useful tool!",
-                author: "Hashim",
-                category: "Utility"
-              },
-              {
-                text: "I still know people in Chicago that would find this information extremely helpful.",
-                author: "Carlo",
-                category: "Helpful"
-              },
-              {
-                text: "It's a great service",
-                author: "Vasyl",
-                category: "Service Quality"
-              },
-              {
-                text: "I'm moving back and with a car so this is perfect!!",
-                author: "Nina",
-                category: "Perfect Timing"
-              },
-              {
-                text: "This is awesome",
-                author: "Justin",
-                category: "General Praise"
-              },
-              {
-                text: "You're doing the lords work",
-                author: "Kathleen",
-                category: "Impact"
-              },
-              {
-                text: "It's solid and it's a very needed service. I think it's super dope",
-                author: "Nasir",
-                category: "Service Quality"
-              },
-              {
-                text: "It's pretty damn smooth",
-                author: "Nasir",
-                category: "User Experience"
-              }
-            ].map((testimonial, index) => (
-              <div key={index} style={{
-                backgroundColor: 'white',
-                padding: '32px',
-                borderRadius: '16px',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                borderLeft: index % 3 === 0 ? '4px solid #0052cc' : index % 3 === 1 ? '4px solid #10b981' : '4px solid #f59e0b',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                position: 'relative'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
-              }}
-              >
-                <div style={{
-                  display: 'inline-block',
-                  background: index % 3 === 0 ? 'linear-gradient(135deg, #0052cc, #003d99)' : index % 3 === 1 ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                  color: 'white',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  marginBottom: '16px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  {testimonial.category}
-                </div>
-                <p style={{
-                  fontSize: '18px',
-                  lineHeight: '1.7',
-                  color: '#374151',
-                  marginBottom: '20px',
-                  fontStyle: 'italic',
-                  margin: '0 0 20px 0'
-                }}>
-                  "{testimonial.text}"
-                </p>
-                <div style={{
-                  fontWeight: '600',
-                  color: '#0052cc',
-                  fontSize: '16px',
-                  textAlign: 'right'
-                }}>
-                  — {testimonial.author}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* FAQ */}
       <div id="faq" style={{
         padding: '100px 16px',
         backgroundColor: '#f8f9fa'
       }}>
-        <div style={{
-          maxWidth: '800px',
-          margin: '0 auto'
-        }}>
+        <div>
           <h2 className="section-title" style={{
             fontSize: '48px',
             fontWeight: '800',
@@ -902,7 +705,7 @@ export default function Home() {
               },
               {
                 q: "What's Ticket Protection?",
-                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) guarantees no more tickets for street cleaning, city stickers, or license plate stickers — or we will pay them. We handle your city sticker & license plate renewals on your behalf and reimburse 80% of eligible tickets up to $200/year.'
+                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) where we handle your city sticker & license plate renewals and reimburse 80% of eligible tickets up to $200/year (street cleaning, snow removal, city sticker, or license plate renewal tickets).'
               },
               {
                 q: 'Is Ticket Protection available now?',
@@ -1001,7 +804,7 @@ export default function Home() {
             marginBottom: '32px',
             margin: '0 0 32px 0'
           }}>
-            Questions? Email us at <a href="mailto:support@autopilotamerica.com" style={{ color: '#0052cc', textDecoration: 'none' }}>support@autopilotamerica.com</a>
+            Questions? Email us at <a href="mailto:support@ticketlesschicago.com" style={{ color: '#0052cc', textDecoration: 'none' }}>support@ticketlesschicago.com</a>
           </p>
           <div style={{
             display: 'flex',

@@ -23,7 +23,7 @@ interface RegistrationResponse {
 }
 
 /**
- * Creates an account on mystreetcleaning.com for a new ticketlessamerica.com user
+ * Creates an account on mystreetcleaning.com for a new autopilotamerica.com user
  */
 export async function createMyStreetCleaningAccount(
   accountData: MyStreetCleaningAccount

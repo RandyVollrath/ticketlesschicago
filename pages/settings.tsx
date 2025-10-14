@@ -103,7 +103,7 @@ interface UserProfile {
   mailing_city?: string | null
   mailing_state?: string | null
   mailing_zip?: string | null
-  // Core Ticketless America fields (from user_profiles table)
+  // Core Autopilot America fields (from user_profiles table)
   license_plate: string | null
   home_address_full: string | null
   home_address_ward: string | null
@@ -250,7 +250,7 @@ export default function Dashboard() {
               voice_call_time: '7:00 AM',
               voice_calls_enabled: false,
               // SMS settings
-              sms_pro: true, // All Ticketless users are paid
+              sms_pro: true, // All Autopilot users are paid
               sms_gateway: null,
               // Status fields
               is_paid: true,
@@ -302,7 +302,7 @@ export default function Dashboard() {
               email: user.email,
               phone: null,
               phone_number: null,
-              // Core Ticketless America fields
+              // Core Autopilot America fields
               license_plate: null,
               home_address_full: null,
               home_address_ward: null,
@@ -325,7 +325,7 @@ export default function Dashboard() {
               voice_call_time: '7:00 AM',
               voice_calls_enabled: false,
               // SMS settings
-              sms_pro: true, // All Ticketless users are paid
+              sms_pro: true, // All Autopilot users are paid
               sms_gateway: null,
               // Status fields
               is_paid: true,
@@ -416,7 +416,7 @@ export default function Dashboard() {
     setSaving(true)
 
     try {
-      // Only save the specific changed data, and filter out fields that don't exist in Ticketless database
+      // Only save the specific changed data, and filter out fields that don't exist in Autopilot database
       const mappedData = { ...updatedData };
       
       // Handle phone number mapping if phone was changed
@@ -622,7 +622,7 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'white' }}>
       <Head>
-        <title>Account Settings - Ticketless America</title>
+        <title>Account Settings - Autopilot America</title>
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
@@ -685,7 +685,7 @@ export default function Dashboard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Ticketless America Member</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Autopilot America Member</h3>
               <p style={{ color: '#e0ecff', margin: 0 }}>Complete protection from parking violations with automated renewal handling</p>
             </div>
           </div>
@@ -694,6 +694,96 @@ export default function Dashboard() {
         {/* Protection Status Card */}
         <div style={{ marginBottom: '32px' }}>
           <UpgradeCard hasProtection={profile.has_protection || false} />
+        </div>
+
+        {/* Contest Ticket Tool - Available to all users */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          border: '1px solid #e5e7eb',
+          marginBottom: '32px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '0 0 4px 0' }}>
+                ⚖️ Contest Your Ticket
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                Generate professional contest letters with AI-powered analysis
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => router.push('/my-contests')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'white',
+                  color: '#10b981',
+                  border: '2px solid #10b981',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                View History
+              </button>
+              <button
+                onClick={() => router.push('/contest-ticket')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Contest Now
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Attorney Marketplace - Available to all users */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          border: '1px solid #e5e7eb',
+          marginBottom: '32px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '0 0 4px 0' }}>
+                👨‍⚖️ Find an Attorney
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                Browse experienced attorneys who specialize in contesting tickets
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/attorneys')}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#8b5cf6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Browse Attorneys
+            </button>
+          </div>
         </div>
 
         {/* Reimbursement Link - Only for Protection users */}
@@ -1391,7 +1481,7 @@ export default function Dashboard() {
               marginBottom: '16px',
               margin: '0 0 16px 0'
             }}>
-              Chicago offers the <strong>Clear Path Relief Program</strong>, which can forgive old debt and reduce ticket penalties if you qualify. This program is separate from Ticketless, but we wanted to make sure you know about it.
+              Chicago offers the <strong>Clear Path Relief Program</strong>, which can forgive old debt and reduce ticket penalties if you qualify. This program is separate from Autopilot, but we wanted to make sure you know about it.
             </p>
             <a
               href="https://www.chicago.gov/city/en/sites/clear-path-relief-pilot-program/home.html"

@@ -260,12 +260,12 @@ export default async function handler(
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Ticketless America <noreply@ticketlessamerica.com>',
+            from: 'Autopilot America <noreply@ticketlessamerica.com>',
             to: email,
-            subject: 'Welcome to Ticketless America - Access Your Account',
+            subject: 'Welcome to Autopilot America - Access Your Account',
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Ticketless America!</h2>
+                <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
 
                 <p style="color: #374151; font-size: 16px; line-height: 1.6;">
                   Your free alerts are now active! Click the button below to access your account and manage your settings:
@@ -298,7 +298,7 @@ export default async function handler(
                 </p>
 
                 <p style="color: #9ca3af; font-size: 12px;">
-                  Ticketless America • Never get another parking ticket
+                  Autopilot America • Never get another parking ticket
                 </p>
               </div>
             `
