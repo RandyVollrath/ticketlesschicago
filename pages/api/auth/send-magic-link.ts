@@ -41,63 +41,98 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('✅ Magic link generated, sending via Resend...');
 
-    // Send the magic link via Resend for reliable delivery
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'Autopilot America <noreply@autopilotamerica.com>',
-        to: email,
-        subject: 'Sign in to Autopilot America',
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1a1a1a; margin-bottom: 16px;">Sign in to Autopilot America</h2>
+    // Send the magic link via Resend with retry logic for reliability
+    let emailSent = false;
+    let lastError = null;
 
-            <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-              Click the button below to securely sign in to your account:
-            </p>
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📧 Email send attempt ${attempt}/3...`);
 
-            <div style="margin: 32px 0; text-align: center;">
-              <a href="${linkData.properties.action_link}"
-                 style="background-color: #0052cc;
-                        color: white;
-                        padding: 14px 32px;
-                        text-decoration: none;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        font-size: 16px;
-                        display: inline-block;">
-                Sign In Now
-              </a>
-            </div>
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Autopilot America <noreply@autopilotamerica.com>',
+            to: email,
+            subject: 'Sign in to Autopilot America',
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #1a1a1a; margin-bottom: 16px;">Sign in to Autopilot America</h2>
 
-            <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                  Click the button below to securely sign in to your account:
+                </p>
 
-            <p style="color: #666; font-size: 14px; margin-top: 24px;">
-              If you didn't request this email, you can safely ignore it.
-            </p>
+                <div style="margin: 32px 0; text-align: center;">
+                  <a href="${linkData.properties.action_link}"
+                     style="background-color: #0052cc;
+                            color: white;
+                            padding: 14px 32px;
+                            text-decoration: none;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            font-size: 16px;
+                            display: inline-block;">
+                    Sign In Now
+                  </a>
+                </div>
 
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+                <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
 
-            <p style="color: #9ca3af; font-size: 13px;">
-              Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
-            </p>
+                <p style="color: #666; font-size: 14px; margin-top: 24px;">
+                  If you didn't request this email, you can safely ignore it.
+                </p>
 
-            <p style="color: #9ca3af; font-size: 12px;">
-              Autopilot America • Never get another parking ticket
-            </p>
-          </div>
-        `
-      })
-    });
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
-    if (!resendResponse.ok) {
-      const errorText = await resendResponse.text();
-      console.error('Error sending magic link via Resend:', errorText);
-      return res.status(500).json({ error: 'Failed to send email' });
+                <p style="color: #9ca3af; font-size: 13px;">
+                  Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
+                </p>
+
+                <p style="color: #9ca3af; font-size: 12px;">
+                  Autopilot America • Never get another parking ticket
+                </p>
+              </div>
+            `
+          })
+        });
+
+        if (resendResponse.ok) {
+          const result = await resendResponse.json();
+          console.log(`✅ Magic link email sent successfully via Resend (Email ID: ${result.id})`);
+          emailSent = true;
+          break; // Success, exit retry loop
+        } else {
+          const errorText = await resendResponse.text();
+          lastError = `Resend API error (${resendResponse.status}): ${errorText}`;
+          console.error(`❌ Attempt ${attempt} failed:`, lastError);
+
+          // Wait before retry (exponential backoff)
+          if (attempt < 3) {
+            const waitTime = attempt * 1000; // 1s, 2s
+            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+      } catch (fetchError: any) {
+        lastError = `Network error: ${fetchError.message}`;
+        console.error(`❌ Attempt ${attempt} failed:`, lastError);
+
+        // Wait before retry
+        if (attempt < 3) {
+          const waitTime = attempt * 1000;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+
+    if (!emailSent) {
+      console.error('❌ CRITICAL: Failed to send magic link email after 3 attempts:', lastError);
+      return res.status(500).json({ error: 'Failed to send email after multiple attempts. Please try again.' });
     }
 
     console.log('✅ Magic link email sent via Resend');
