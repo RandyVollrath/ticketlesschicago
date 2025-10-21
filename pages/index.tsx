@@ -44,8 +44,8 @@ export default function Home() {
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#fff' }}>
       <Head>
-        <title>Autopilot America - Free Alerts for Street Cleaning & Renewals</title>
-        <meta name="description" content="Never get blindsided by a ticket again. Free alerts for street cleaning, snow removal, city stickers, and license plates." />
+        <title>Autopilot America - Automating Fairness</title>
+        <meta name="description" content="Automating fairness. Never miss another Chicago parking deadline with free alerts for street cleaning, snow removal, city stickers, and license plates." />
         <style>{`
           .responsive-grid {
             display: grid;
@@ -316,19 +316,29 @@ export default function Home() {
             fontSize: '72px',
             fontWeight: '800',
             color: '#000',
-            marginBottom: '24px',
-            margin: '0 0 24px 0',
+            marginBottom: '16px',
+            margin: '0 0 16px 0',
             lineHeight: '1.1',
             letterSpacing: '-2px'
           }}>
-            Never Get Blindsided
-            <br />
-            by a Ticket Again
+            Automating Fairness
           </h1>
+
+          {/* Tagline */}
+          <p style={{
+            fontSize: '28px',
+            color: '#1a1a1a',
+            marginBottom: '32px',
+            lineHeight: '1.3',
+            fontWeight: '500',
+            margin: '0 0 32px 0'
+          }}>
+            Never miss another Chicago parking deadline
+          </p>
 
           {/* Desktop version - clean paragraph */}
           <p className="hero-subtitle-desktop" style={{
-            fontSize: '24px',
+            fontSize: '20px',
             color: '#666',
             marginBottom: '48px',
             lineHeight: '1.5',
@@ -336,8 +346,6 @@ export default function Home() {
             margin: '0 0 48px 0'
           }}>
             Free alerts for street cleaning, snow removal, city stickers, license plates, and emissions testing.
-            <br />
-            Peace of mind for every driver in Chicago.
           </p>
 
           {/* Mobile version - bullet list */}
