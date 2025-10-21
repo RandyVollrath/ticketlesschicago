@@ -246,28 +246,28 @@ export default async function handler(
     //   console.error('Winter ban notification failed (non-critical):', winterError);
     // }
 
-    // Send magic link to new free users so they can login
-    // CRITICAL: This email is required for users to access their account
-    console.log('📧 Generating magic link for free user:', email);
-    const { data: linkData, error: magicLinkError } = await supabase.auth.admin.generateLink({
+    // Generate session for immediate login (no email wait required)
+    console.log('🔐 Generating login session for immediate access...');
+    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings`
       }
     });
 
-    if (magicLinkError) {
-      console.error('❌ CRITICAL: Failed to generate magic link:', magicLinkError);
-      throw new Error(`Failed to generate magic link: ${magicLinkError.message}`);
+    if (sessionError || !sessionData?.properties?.action_link) {
+      console.error('❌ Failed to generate session:', sessionError);
+      // Don't fail signup - user can still login with Google
+      console.log('⚠️  User created but cannot auto-login. They can use Google OAuth.');
     }
 
-    if (!linkData?.properties?.action_link) {
-      console.error('❌ CRITICAL: No action link in response');
-      throw new Error('Failed to generate magic link - no action link returned');
-    }
+    const loginLink = sessionData?.properties?.action_link;
+    console.log('✅ Login session generated');
 
-    console.log('✅ Magic link generated, sending via Resend...');
+    // Send welcome email in background (non-blocking, non-critical)
+    // This is a backup login method in case they logout
+    console.log('📧 Sending welcome email with magic link (background)...');
 
     // Send email with retry logic
     let emailSent = false;
@@ -358,16 +358,17 @@ export default async function handler(
       }
     }
 
-    // If email failed after all retries, throw error to fail the signup
+    // Log email send failure but don't block signup
     if (!emailSent) {
-      console.error('❌ CRITICAL: Failed to send magic link email after 3 attempts:', lastError);
-      throw new Error(`Failed to send welcome email: ${lastError}. Please contact support.`);
+      console.error('⚠️  Failed to send welcome email after 3 attempts:', lastError);
+      console.log('User can still access account via immediate login link');
     }
 
     return res.status(200).json({
       success: true,
       message: 'Account created successfully',
-      userId
+      userId,
+      loginLink: loginLink || null // Return immediate login link
     });
 
   } catch (error: any) {
