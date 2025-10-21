@@ -113,6 +113,23 @@ export default function AuthCallback() {
           const user = data.session.user
           console.log('User authenticated:', user.email, 'about to process profile data')
 
+          // Check if this is an email verification callback
+          const isVerified = new URLSearchParams(window.location.search).get('verified') === 'true';
+          if (isVerified && user.email_confirmed_at) {
+            console.log('✅ Email verified successfully');
+            // Mark email as verified in users table
+            try {
+              await fetch('/api/user/mark-verified', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id })
+              });
+              console.log('✅ Email verification status updated in database');
+            } catch (error) {
+              console.error('Error updating verification status:', error);
+            }
+          }
+
           // Check if this is a Google signup flow where we need to validate email
           const isGoogleSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'google-signup';
 

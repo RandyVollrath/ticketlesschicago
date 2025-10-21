@@ -79,10 +79,11 @@ export default async function handler(
         console.error('Error marking token as used:', tokenError);
       }
     }
-    // Create or get user via Supabase Auth (passwordless magic link)
+    // Create or get user via Supabase Auth
+    // Note: email_confirm is set to FALSE - user must verify email via link
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
-      email_confirm: true,
+      email_confirm: false, // Require email verification
       user_metadata: {
         first_name: firstName,
         last_name: lastName,
@@ -139,6 +140,7 @@ export default async function handler(
         phone: normalizedPhone,
         first_name: firstName,
         last_name: lastName,
+        email_verified: false, // Mark as unverified initially
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, {
@@ -246,13 +248,15 @@ export default async function handler(
     //   console.error('Winter ban notification failed (non-critical):', winterError);
     // }
 
-    // Generate session for immediate login (no email wait required)
+    // Generate TWO links:
+    // 1. Immediate login (for instant access)
+    // 2. Email verification (to confirm email ownership)
     console.log('🔐 Generating login session for immediate access...');
     const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings`
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings?welcome=true`
       }
     });
 
@@ -265,9 +269,20 @@ export default async function handler(
     const loginLink = sessionData?.properties?.action_link;
     console.log('✅ Login session generated');
 
-    // Send welcome email in background (non-blocking, non-critical)
-    // This is a backup login method in case they logout
-    console.log('📧 Sending welcome email with magic link (background)...');
+    // Generate email verification link
+    console.log('📧 Generating email verification link...');
+    const { data: verifyData, error: verifyError } = await supabase.auth.admin.generateLink({
+      type: 'signup',
+      email: email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings?verified=true`
+      }
+    });
+
+    const verificationLink = verifyData?.properties?.action_link;
+
+    // Send welcome email with verification link in background (non-blocking)
+    console.log('📧 Sending verification email (background)...');
 
     // Send email with retry logic
     let emailSent = false;
@@ -286,17 +301,17 @@ export default async function handler(
           body: JSON.stringify({
             from: 'Autopilot America <noreply@autopilotamerica.com>',
             to: email,
-            subject: 'Welcome to Autopilot America - Access Your Account',
+            subject: 'Verify Your Email - Autopilot America',
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
 
                 <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                  Your free alerts are now active! Click the button below to access your account and manage your settings:
+                  Thanks for signing up! Please verify your email address to activate your alerts and complete your account setup.
                 </p>
 
                 <div style="margin: 32px 0; text-align: center;">
-                  <a href="${linkData.properties.action_link}"
+                  <a href="${verificationLink || linkData?.properties?.action_link}"
                      style="background-color: #0052cc;
                             color: white;
                             padding: 14px 32px;
@@ -305,15 +320,19 @@ export default async function handler(
                             font-weight: 600;
                             font-size: 16px;
                             display: inline-block;">
-                    Access My Account
+                    Verify Email Address
                   </a>
                 </div>
 
-                <p style="color: #666; font-size: 14px; margin-top: 32px;">
-                  You can also sign in anytime using Google by going to <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #0052cc;">autopilotamerica.com/login</a>
+                <p style="color: #666; font-size: 14px; background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px;">
+                  <strong>Note:</strong> Email delivery may take up to 5 minutes due to Gmail processing. If you don't see this email, check your Spam or Promotions folder.
                 </p>
 
-                <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
+                <p style="color: #666; font-size: 14px; margin-top: 24px;">
+                  You can also sign in anytime using Google at <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #0052cc;">autopilotamerica.com/login</a>
+                </p>
+
+                <p style="color: #666; font-size: 14px;">This verification link will expire in 60 minutes.</p>
 
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
