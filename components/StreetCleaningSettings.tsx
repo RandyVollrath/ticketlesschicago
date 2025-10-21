@@ -233,7 +233,7 @@ export default function StreetCleaningSettings() {
           setCleaningStatus('no_upcoming_dates');
 
           // More helpful message - no upcoming dates doesn't necessarily mean invalid
-          setError(`No upcoming street cleaning dates found for Ward ${ward}, Section ${section}. This may mean street cleaning season has ended or there are no scheduled dates. You'll still receive alerts when dates are published.`);
+          setError(`No more upcoming cleaning dates for the year.`);
         }
       } else {
         setNextCleaningDate(null);
