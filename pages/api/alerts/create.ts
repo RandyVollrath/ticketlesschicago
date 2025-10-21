@@ -238,6 +238,7 @@ export default async function handler(
     // }
 
     // Send magic link to new free users so they can login
+    // CRITICAL: This email is required for users to access their account
     console.log('📧 Generating magic link for free user:', email);
     const { data: linkData, error: magicLinkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
@@ -248,11 +249,25 @@ export default async function handler(
     });
 
     if (magicLinkError) {
-      console.error('Error generating magic link:', magicLinkError);
-    } else if (linkData?.properties?.action_link) {
-      console.log('✅ Magic link generated, sending via Resend...');
+      console.error('❌ CRITICAL: Failed to generate magic link:', magicLinkError);
+      throw new Error(`Failed to generate magic link: ${magicLinkError.message}`);
+    }
 
+    if (!linkData?.properties?.action_link) {
+      console.error('❌ CRITICAL: No action link in response');
+      throw new Error('Failed to generate magic link - no action link returned');
+    }
+
+    console.log('✅ Magic link generated, sending via Resend...');
+
+    // Send email with retry logic
+    let emailSent = false;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
       try {
+        console.log(`📧 Email send attempt ${attempt}/3...`);
+
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -306,14 +321,38 @@ export default async function handler(
         });
 
         if (resendResponse.ok) {
-          console.log('✅ Magic link email sent via Resend');
+          const result = await resendResponse.json();
+          console.log(`✅ Magic link email sent successfully via Resend (Email ID: ${result.id})`);
+          emailSent = true;
+          break; // Success, exit retry loop
         } else {
           const errorText = await resendResponse.text();
-          console.error('Error sending magic link via Resend:', errorText);
+          lastError = `Resend API error (${resendResponse.status}): ${errorText}`;
+          console.error(`❌ Attempt ${attempt} failed:`, lastError);
+
+          // Wait before retry (exponential backoff)
+          if (attempt < 3) {
+            const waitTime = attempt * 1000; // 1s, 2s
+            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
         }
-      } catch (resendError) {
-        console.error('Error sending email via Resend:', resendError);
+      } catch (resendError: any) {
+        lastError = `Network error: ${resendError.message}`;
+        console.error(`❌ Attempt ${attempt} failed:`, lastError);
+
+        // Wait before retry
+        if (attempt < 3) {
+          const waitTime = attempt * 1000;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
+    }
+
+    // If email failed after all retries, throw error to fail the signup
+    if (!emailSent) {
+      console.error('❌ CRITICAL: Failed to send magic link email after 3 attempts:', lastError);
+      throw new Error(`Failed to send welcome email: ${lastError}. Please contact support.`);
     }
 
     return res.status(200).json({
