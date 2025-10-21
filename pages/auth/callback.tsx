@@ -139,9 +139,9 @@ export default function AuthCallback() {
           let pendingFreeSignup = null;
           let formData = null;
 
-          // Try database first
-          if (isFreeSignupFlow || user.email) {
-            console.log('Checking database for pending signup data...');
+          // ONLY check database if this is explicitly a free signup flow
+          if (isFreeSignupFlow) {
+            console.log('Free signup flow detected - checking database for pending signup data...');
             try {
               const dbResponse = await fetch(`/api/pending-signup/get?email=${encodeURIComponent(user.email || '')}`);
               if (dbResponse.ok) {
