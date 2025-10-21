@@ -94,24 +94,33 @@ export default async function handler(
 
     if (authError) {
       // If user already exists, try to get them
-      console.log('Auth error, trying to find existing user:', authError.message);
-      const { data: existingUser, error: existingError } = await supabase.auth.admin.listUsers();
+      console.log('Auth error, checking if user exists:', authError.message);
 
-      if (existingError) {
-        throw new Error(`Failed to list users: ${existingError.message}`);
+      // Check if error is "user already exists"
+      if (authError.message?.includes('already') || authError.message?.includes('exists')) {
+        console.log('User already exists, finding existing user...');
+        const { data: existingUser, error: existingError } = await supabase.auth.admin.listUsers();
+
+        if (existingError) {
+          throw new Error(`Failed to list users: ${existingError.message}`);
+        }
+
+        const user = existingUser?.users.find(u => u.email === email);
+
+        if (!user) {
+          throw new Error(`User exists but could not be found: ${authError.message}`);
+        }
+
+        userId = user.id;
+        console.log('✅ Found existing user:', email, userId);
+      } else {
+        // Real error, not just "already exists"
+        console.error('❌ Critical auth error:', authError);
+        throw new Error(`Failed to create user: ${authError.message}. Please try signing up with Google instead or contact support.`);
       }
-
-      const user = existingUser?.users.find(u => u.email === email);
-
-      if (!user) {
-        throw new Error(`Failed to create or find user: ${authError.message}`);
-      }
-
-      userId = user.id;
-      console.log('Found existing user:', email, userId);
     } else {
       userId = authData?.user?.id || null;
-      console.log('Created new user:', email, userId);
+      console.log('✅ Created new user:', email, userId);
     }
 
     if (!userId) {
