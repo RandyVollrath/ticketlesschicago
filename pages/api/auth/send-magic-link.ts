@@ -49,12 +49,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Ticketless America <noreply@ticketlessamerica.com>',
+        from: 'Autopilot America <noreply@autopilotamerica.com>',
         to: email,
-        subject: 'Sign in to Ticketless America',
+        subject: 'Sign in to Autopilot America',
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1a1a1a; margin-bottom: 16px;">Sign in to Ticketless America</h2>
+            <h2 style="color: #1a1a1a; margin-bottom: 16px;">Sign in to Autopilot America</h2>
 
             <p style="color: #374151; font-size: 16px; line-height: 1.6;">
               Click the button below to securely sign in to your account:
@@ -83,11 +83,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
             <p style="color: #9ca3af; font-size: 13px;">
-              Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
+              Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
             </p>
 
             <p style="color: #9ca3af; font-size: 12px;">
-              Ticketless America • Never get another parking ticket
+              Autopilot America • Never get another parking ticket
             </p>
           </div>
         `
