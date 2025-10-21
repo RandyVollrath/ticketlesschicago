@@ -227,12 +227,13 @@ export default function StreetCleaningSettings() {
           }
         } else {
           // Ward/section combination not found in API data
+          // This could mean: no upcoming dates, end of season, or invalid zone
           console.warn(`Ward ${ward}, Section ${section} not found in street cleaning data`);
           setNextCleaningDate(null);
-          setCleaningStatus('invalid_zone');
-          
-          // Set error message to help user fix the issue
-          setError(`Ward ${ward}, Section ${section} is not a valid street cleaning zone. Please update your address.`);
+          setCleaningStatus('no_upcoming_dates');
+
+          // More helpful message - no upcoming dates doesn't necessarily mean invalid
+          setError(`No upcoming street cleaning dates found for Ward ${ward}, Section ${section}. This may mean street cleaning season has ended or there are no scheduled dates. You'll still receive alerts when dates are published.`);
         }
       } else {
         setNextCleaningDate(null);
@@ -503,9 +504,10 @@ export default function StreetCleaningSettings() {
         statusClass = 'later';
         break;
       case 'invalid_zone':
-        statusIcon = '❌';
-        statusText = 'Invalid ward/section combination';
-        statusClass = 'error';
+      case 'no_upcoming_dates':
+        statusIcon = 'ℹ️';
+        statusText = 'No upcoming cleaning dates';
+        statusClass = 'info';
         break;
       default:
         statusIcon = '❓';
