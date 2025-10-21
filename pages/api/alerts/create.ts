@@ -260,7 +260,7 @@ export default async function handler(
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Autopilot America <noreply@ticketlessamerica.com>',
+            from: 'Autopilot America <noreply@autopilotamerica.com>',
             to: email,
             subject: 'Welcome to Autopilot America - Access Your Account',
             html: `
@@ -286,7 +286,7 @@ export default async function handler(
                 </div>
 
                 <p style="color: #666; font-size: 14px; margin-top: 32px;">
-                  You can also sign in anytime using Google by going to <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #0052cc;">ticketlessamerica.com/login</a>
+                  You can also sign in anytime using Google by going to <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #0052cc;">autopilotamerica.com/login</a>
                 </p>
 
                 <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
@@ -294,7 +294,7 @@ export default async function handler(
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
                 <p style="color: #9ca3af; font-size: 13px;">
-                  Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
+                  Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
                 </p>
 
                 <p style="color: #9ca3af; font-size: 12px;">
