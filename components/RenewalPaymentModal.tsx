@@ -6,8 +6,9 @@ import {
   useStripe,
   useElements
 } from '@stripe/react-stripe-js';
+import { getStripePublishableKey } from '../lib/stripe-client-config';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = loadStripe(getStripePublishableKey());
 
 interface RenewalPaymentModalProps {
   isOpen: boolean;
