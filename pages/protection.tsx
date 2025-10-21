@@ -19,6 +19,7 @@ export default function Protection() {
   const [hasVanityPlate, setHasVanityPlate] = useState(false);
   const [cityStickerDate, setCityStickerDate] = useState('');
   const [licensePlateDate, setLicensePlateDate] = useState('');
+  const [vehicleType, setVehicleType] = useState<'MB' | 'P' | 'LP' | 'ST' | 'LT'>('P'); // Default to Passenger
 
   // Permit zone detection
   const [streetAddress, setStreetAddress] = useState('');
@@ -128,8 +129,9 @@ export default function Protection() {
       streetAddress: streetAddress || undefined,
       hasPermitZone: hasPermitZone,
       permitZones: hasPermitZone ? zones : undefined,
+      vehicleType: vehicleType,
       renewals: {
-        citySticker: needsCitySticker ? { date: cityStickerDate } : null,
+        citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
         licensePlate: needsLicensePlate ? { date: licensePlateDate, isVanity: hasVanityPlate } : null
       }
     };
@@ -160,10 +162,19 @@ export default function Protection() {
     }
   };
 
+  // Vehicle type pricing and labels
+  const vehicleTypeInfo: Record<'MB' | 'P' | 'LP' | 'ST' | 'LT', { label: string; price: number; description: string }> = {
+    MB: { label: 'Motorbike', price: 53.04, description: 'Motorbike' },
+    P: { label: 'Passenger', price: 100.17, description: 'Vehicle ≤4,500 lbs curb weight, ≤2,499 lbs payload' },
+    LP: { label: 'Large Passenger', price: 159.12, description: 'Vehicle ≥4,501 lbs curb weight, ≤2,499 lbs payload' },
+    ST: { label: 'Small Truck', price: 235.71, description: 'Truck/Van ≤16,000 lbs or ≥2,500 lbs payload' },
+    LT: { label: 'Large Truck', price: 530.40, description: 'Truck/Vehicle ≥16,001 lbs or ≥2,500 lbs payload' }
+  };
+
   // Calculate total price
   const calculateTotal = () => {
     const subscriptionPrice = billingPlan === 'monthly' ? 12 : 120;
-    const cityStickerPrice = needsCitySticker ? 100 : 0;
+    const cityStickerPrice = needsCitySticker ? vehicleTypeInfo[vehicleType].price : 0;
     const licensePlatePrice = needsLicensePlate ? (hasVanityPlate ? 164 : 155) : 0;
     const permitFee = hasPermitZone ? 30 : 0;
     return subscriptionPrice + cityStickerPrice + licensePlatePrice + permitFee;
@@ -597,7 +608,7 @@ export default function Protection() {
                     color: '#374151',
                     marginBottom: '8px'
                   }}>
-                    Email Address
+                    Email Address <span style={{ color: '#dc2626' }}>*</span>
                   </label>
                   <input
                     type="email"
@@ -777,11 +788,41 @@ export default function Protection() {
                       City Sticker Renewal
                     </label>
                     <span style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>
-                      $100
+                      ${vehicleTypeInfo[vehicleType].price.toFixed(2)}
                     </span>
                   </div>
                   {needsCitySticker && (
                     <div style={{ paddingLeft: '26px' }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginBottom: '6px'
+                      }}>
+                        Vehicle Type
+                      </label>
+                      <select
+                        value={vehicleType}
+                        onChange={(e) => setVehicleType(e.target.value as 'MB' | 'P' | 'LP' | 'ST' | 'LT')}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box',
+                          marginBottom: '12px',
+                          backgroundColor: 'white'
+                        }}
+                      >
+                        {Object.entries(vehicleTypeInfo).map(([key, info]) => (
+                          <option key={key} value={key}>
+                            {info.label} - ${info.price.toFixed(2)} - {info.description}
+                          </option>
+                        ))}
+                      </select>
+
                       <label style={{
                         display: 'block',
                         fontSize: '13px',
@@ -930,8 +971,8 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>City sticker renewal (paid upfront)</span>
-                    <span>$100</span>
+                    <span>City sticker renewal - {vehicleTypeInfo[vehicleType].label} (paid upfront)</span>
+                    <span>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</span>
                   </div>
                 )}
                 {needsLicensePlate && (
