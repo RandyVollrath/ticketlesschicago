@@ -166,7 +166,9 @@ export default function Dashboard() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({})
   const [autoSaveTimeouts, setAutoSaveTimeouts] = useState<Record<string, NodeJS.Timeout>>({})
-  
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [resendingEmail, setResendingEmail] = useState(false)
+
   const router = useRouter()
 
   useEffect(() => {
@@ -219,6 +221,10 @@ export default function Dashboard() {
             phone: userProfile.phone_number || userProfile.phone,
             has_protection: userProfile.has_protection || false
           }
+
+          // Check email verification status from auth.users
+          const { data: authUser } = await supabase.auth.getUser()
+          setEmailVerified(!!authUser?.user?.email_confirmed_at)
         } else if (!userProfile) {
           // No profile exists - create a new one
           console.log('Creating new user profile for:', user.email)
@@ -556,6 +562,34 @@ export default function Dashboard() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
+  const handleResendVerification = async () => {
+    if (!user?.email) return
+
+    setResendingEmail(true)
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      })
+
+      if (response.ok) {
+        setMessage({
+          type: 'success',
+          text: 'Verification email sent! Check your inbox (and spam folder). Email may take up to 5 minutes to arrive.'
+        })
+      } else {
+        throw new Error('Failed to send verification email')
+      }
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: 'Failed to resend verification email. Please try again.'
+      })
+    } finally {
+      setResendingEmail(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -675,6 +709,48 @@ export default function Dashboard() {
       </header>
 
       <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Email Verification Banner */}
+        {!emailVerified && (
+          <div style={{
+            marginBottom: '24px',
+            backgroundColor: '#fef3c7',
+            border: '2px solid #f59e0b',
+            borderRadius: '12px',
+            padding: '20px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#92400e', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  ⚠️ Please Verify Your Email
+                </h3>
+                <p style={{ fontSize: '14px', color: '#78350f', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+                  We've sent a verification email to <strong>{user?.email}</strong>. Please check your inbox (and spam folder) to verify your email address and activate your alerts.
+                </p>
+                <p style={{ fontSize: '13px', color: '#92400e', margin: '0 0 12px 0', fontStyle: 'italic' }}>
+                  Note: Emails may take up to 5 minutes to arrive due to Gmail processing.
+                </p>
+                <button
+                  onClick={handleResendVerification}
+                  disabled={resendingEmail}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: resendingEmail ? 'not-allowed' : 'pointer',
+                    opacity: resendingEmail ? 0.6 : 1
+                  }}
+                >
+                  {resendingEmail ? 'Sending...' : 'Resend Verification Email'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pro Member Banner */}
         <div style={{
           marginBottom: '32px',
