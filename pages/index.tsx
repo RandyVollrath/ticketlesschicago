@@ -297,6 +297,21 @@ export default function Home() {
           margin: '0 auto',
           padding: '0 16px'
         }}>
+          {/* MyStreetCleaning Notice */}
+          <div style={{
+            display: 'inline-block',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '8px',
+            padding: '8px 16px',
+            marginBottom: '24px',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#1e40af'
+          }}>
+            Formerly MyStreetCleaning — now helping with several Chicago tickets
+          </div>
+
           <h1 className="hero-title" style={{
             fontSize: '72px',
             fontWeight: '800',
