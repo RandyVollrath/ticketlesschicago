@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { logAuditEvent, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
+import stripeConfig from '../../../lib/stripe-config';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(stripeConfig.secretKey!, {
   apiVersion: '2024-12-18.acacia',
 });
 
@@ -14,7 +15,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones } = req.body;
+  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType } = req.body;
 
   console.log('Protection checkout request:', {
     billingPlan,
@@ -23,7 +24,8 @@ export default async function handler(
     rewardfulReferral,
     hasRenewals: !!renewals,
     hasPermitZone,
-    streetAddress
+    streetAddress,
+    vehicleType
   });
 
   if (!email || typeof email !== 'string' || email.trim() === '') {
@@ -44,11 +46,11 @@ export default async function handler(
   try {
     // Create Stripe price IDs based on plan
     const priceId = billingPlan === 'monthly'
-      ? process.env.STRIPE_PROTECTION_MONTHLY_PRICE_ID
-      : process.env.STRIPE_PROTECTION_ANNUAL_PRICE_ID;
+      ? stripeConfig.protectionMonthlyPriceId
+      : stripeConfig.protectionAnnualPriceId;
 
     if (!priceId) {
-      throw new Error('Stripe price ID not configured');
+      throw new Error(`Stripe price ID not configured for ${stripeConfig.mode} mode`);
     }
 
     // Build line items array starting with subscription
@@ -60,19 +62,35 @@ export default async function handler(
     ];
 
     // Add renewal fees using permanent Stripe products (excluded from Rewardful via product metadata)
-    if (renewals?.citySticker && process.env.STRIPE_CITY_STICKER_PRICE_ID) {
-      lineItems.push({
-        price: process.env.STRIPE_CITY_STICKER_PRICE_ID,
-        quantity: 1,
-      });
+    if (renewals?.citySticker) {
+      // Select price ID based on vehicle type
+      const vehicleTypeFromRenewals = renewals.citySticker.vehicleType || vehicleType || 'P'; // Default to Passenger
+      const priceIdMap: Record<string, string | undefined> = {
+        MB: stripeConfig.cityStickerMbPriceId,
+        P: stripeConfig.cityStickerPPriceId,
+        LP: stripeConfig.cityStickerLpPriceId,
+        ST: stripeConfig.cityStickerStPriceId,
+        LT: stripeConfig.cityStickerLtPriceId
+      };
+
+      const selectedPriceId = priceIdMap[vehicleTypeFromRenewals];
+
+      if (selectedPriceId) {
+        lineItems.push({
+          price: selectedPriceId,
+          quantity: 1,
+        });
+      } else {
+        console.warn(`No price ID configured for vehicle type: ${vehicleTypeFromRenewals} in ${stripeConfig.mode} mode`);
+      }
     }
 
     if (renewals?.licensePlate) {
       // Check if it's a vanity plate (costs $164 instead of $155)
       const isVanity = renewals.licensePlate.isVanity === true;
       const priceId = isVanity
-        ? process.env.STRIPE_LICENSE_PLATE_VANITY_PRICE_ID
-        : process.env.STRIPE_LICENSE_PLATE_PRICE_ID;
+        ? stripeConfig.licensePlateVanityPriceId
+        : stripeConfig.licensePlatePriceId;
 
       if (priceId) {
         lineItems.push({
@@ -83,9 +101,9 @@ export default async function handler(
     }
 
     // Add permit fee if in a permit zone
-    if (hasPermitZone && process.env.STRIPE_PERMIT_FEE_PRICE_ID) {
+    if (hasPermitZone && stripeConfig.permitFeePriceId) {
       lineItems.push({
-        price: process.env.STRIPE_PERMIT_FEE_PRICE_ID,
+        price: stripeConfig.permitFeePriceId,
         quantity: 1,
       });
     }
@@ -105,6 +123,7 @@ export default async function handler(
         phone: phone || '',
         plan: billingPlan,
         product: 'ticket_protection',
+        vehicleType: vehicleType || 'P',
         citySticker: renewals?.citySticker ? renewals.citySticker.date : '',
         licensePlate: renewals?.licensePlate ? renewals.licensePlate.date : '',
         isVanityPlate: renewals?.licensePlate?.isVanity ? 'true' : 'false',
@@ -129,6 +148,7 @@ export default async function handler(
         phone,
         hasPermitZone,
         streetAddress,
+        vehicleType: vehicleType || 'P',
         renewals: {
           citySticker: renewals?.citySticker ? true : false,
           licensePlate: renewals?.licensePlate ? true : false,

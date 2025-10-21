@@ -6,8 +6,9 @@ import { createRewardfulAffiliate } from '../../lib/rewardful-helper';
 import { Resend } from 'resend';
 import { logAuditEvent } from '../../lib/audit-logger';
 import { notifyNewUserAboutWinterBan } from '../../lib/winter-ban-notifications';
+import stripeConfig from '../../lib/stripe-config';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(stripeConfig.secretKey!, {
   apiVersion: '2024-12-18.acacia'
 });
 
@@ -90,11 +91,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let event: Stripe.Event;
 
   try {
-    // In production, Vercel env vars are used, not .env.local
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const webhookSecret = stripeConfig.webhookSecret;
 
     if (!webhookSecret) {
-      console.error('❌ STRIPE_WEBHOOK_SECRET is not set in environment variables!');
+      console.error(`❌ STRIPE_WEBHOOK_SECRET is not set for ${stripeConfig.mode} mode!`);
       // Try to handle the event anyway in development
       if (process.env.NODE_ENV === 'development') {
         console.log('⚠️ Development mode: Processing without signature verification');
@@ -108,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sig,
         webhookSecret
       );
-      console.log('✅ Webhook signature verified successfully');
+      console.log(`✅ Webhook signature verified successfully (${stripeConfig.mode} mode)`);
     }
 
     console.log('Event type:', event.type);
@@ -228,6 +228,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   last_name: lastName,
                   phone_number: metadata.phone || null,
                   zip_code: zipCode,
+                  vehicle_type: metadata.vehicleType || 'P',
                   has_protection: true,
                   city_sticker_expiry: metadata.citySticker || null,
                   license_plate_expiry: metadata.licensePlate || null,
@@ -370,6 +371,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (metadata.phone) {
             updateData.phone_number = metadata.phone;
+          }
+          if (metadata.vehicleType) {
+            updateData.vehicle_type = metadata.vehicleType;
           }
           if (metadata.citySticker) {
             updateData.city_sticker_expiry = metadata.citySticker;
