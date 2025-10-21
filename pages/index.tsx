@@ -309,7 +309,7 @@ export default function Home() {
             fontWeight: '500',
             color: '#1e40af'
           }}>
-            Formerly MyStreetCleaning — now helping with several Chicago tickets
+            Formerly MyStreetCleaning — now helping with several different Chicago tickets
           </div>
 
           <h1 className="hero-title" style={{
