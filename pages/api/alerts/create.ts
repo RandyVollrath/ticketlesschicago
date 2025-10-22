@@ -269,10 +269,10 @@ export default async function handler(
     const loginLink = sessionData?.properties?.action_link;
     console.log('✅ Login session generated');
 
-    // Generate email verification link
+    // Generate email verification link (use magiclink type since user already exists)
     console.log('📧 Generating email verification link...');
     const { data: verifyData, error: verifyError } = await supabase.auth.admin.generateLink({
-      type: 'signup',
+      type: 'magiclink',
       email: email,
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings?verified=true`
@@ -280,6 +280,7 @@ export default async function handler(
     });
 
     const verificationLink = verifyData?.properties?.action_link;
+    console.log('Verification link generated:', !!verificationLink);
 
     // Send welcome email with verification link in background (non-blocking)
     console.log('📧 Sending verification email (background)...');
