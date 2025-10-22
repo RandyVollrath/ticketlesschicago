@@ -117,6 +117,7 @@ export default async function handler(
       } else {
         // Real error, not just "already exists"
         console.error('❌ Critical auth error:', authError);
+        console.error('Full error object:', JSON.stringify(authError, null, 2));
         throw new Error(`Failed to create user: ${authError.message}. Please try signing up with Google instead or contact support.`);
       }
     } else {
