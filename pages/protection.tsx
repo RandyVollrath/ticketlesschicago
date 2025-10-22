@@ -1303,10 +1303,11 @@ export default function Protection() {
                 paddingLeft: '24px',
                 margin: 0
               }}>
+                <li style={{ marginBottom: '8px' }}><strong>Have an active Concierge + Protection subscription</strong> at the time the ticket was issued</li>
+                <li style={{ marginBottom: '8px' }}><strong>30-day waiting period</strong> after signup before coverage begins</li>
                 <li style={{ marginBottom: '8px' }}><strong>Maintain a complete and accurate profile</strong> with all vehicle information, renewal dates, contact information, and street cleaning address - the guarantee is void if your profile is incomplete or inaccurate</li>
                 <li style={{ marginBottom: '8px' }}>Respond to alerts confirming you moved your vehicle (e.g., reply "Moved" to SMS)</li>
                 <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
-                <li style={{ marginBottom: '8px' }}>Have an active Ticket Protection subscription at the time the ticket was issued</li>
                 <li style={{ marginBottom: '8px' }}>Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered (not towing fees or moving violations)</li>
                 <li>Maximum reimbursement: 80% of eligible tickets up to $200 per year total</li>
               </ul>
