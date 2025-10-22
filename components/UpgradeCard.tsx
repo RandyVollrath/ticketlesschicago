@@ -272,7 +272,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 82, 204, 0.2)';
             }}
           >
-            Learn More
+            Get Protected →
           </button>
         </div>
 
