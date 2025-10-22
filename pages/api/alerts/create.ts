@@ -257,7 +257,7 @@ export default async function handler(
       type: 'magiclink',
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings?welcome=true`
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?redirect=/settings&welcome=true`
       }
     });
 
