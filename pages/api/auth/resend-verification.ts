@@ -20,9 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     console.log('📧 Resending verification email to:', email);
 
-    // Generate verification link
+    // Generate verification link (use magiclink since user already exists)
     const { data: verifyData, error: verifyError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
+      type: 'magiclink',
       email: email,
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings?verified=true`
