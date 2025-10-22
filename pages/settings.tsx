@@ -1378,16 +1378,19 @@ export default function Dashboard() {
           </div>
 
           {/* Notification Preferences */}
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '16px', 
-            border: '1px solid #e5e7eb', 
-            padding: '32px' 
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            padding: '32px'
           }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
-              Notification Preferences
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px', margin: '0 0 8px 0' }}>
+              Renewal Notification Preferences
             </h2>
-            
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px', margin: '0 0 24px 0' }}>
+              These settings control reminders for city sticker, license plate, and permit renewals. Street cleaning and snow removal alerts are sent separately via SMS/voice for urgent notifications.
+            </p>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
@@ -1411,7 +1414,7 @@ export default function Dashboard() {
                         Email Notifications
                       </label>
                       <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
-                        Receive email alerts for all reminders and renewals
+                        Receive email alerts for city sticker, license plate, and permit renewal reminders
                       </p>
                     </div>
                   </div>
@@ -1433,7 +1436,7 @@ export default function Dashboard() {
                         SMS Notifications
                       </label>
                       <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
-                        Get text message alerts for urgent reminders
+                        Get text message alerts for renewal reminders (street cleaning alerts are always sent via SMS)
                       </p>
                     </div>
                   </div>
@@ -1455,7 +1458,7 @@ export default function Dashboard() {
                         Voice Call Notifications
                       </label>
                       <p style={{ fontSize: '14px', color: '#6b7280', fontStyle: 'italic', margin: 0 }}>
-                        Receive phone call alerts for critical deadlines
+                        Receive phone call alerts for renewal reminders (street cleaning alerts may also use voice calls)
                       </p>
                     </div>
                   </div>
@@ -1469,7 +1472,7 @@ export default function Dashboard() {
                 <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
                   Select when you want to be reminded before each renewal deadline:
                 </p>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
                   {[60, 45, 30, 21, 14].map(days => (
                     <label key={days} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                       <input
@@ -1483,6 +1486,17 @@ export default function Dashboard() {
                       </span>
                     </label>
                   ))}
+                </div>
+                <div style={{
+                  backgroundColor: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginTop: '12px'
+                }}>
+                  <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
+                    <strong>Note:</strong> If you have Concierge + Protection, we'll process your renewal at 14 days before the deadline using the information in your profile. Make sure your profile data is up-to-date before then!
+                  </p>
                 </div>
               </div>
             </div>
