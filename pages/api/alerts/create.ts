@@ -326,10 +326,6 @@ export default async function handler(
                   </a>
                 </div>
 
-                <p style="color: #666; font-size: 14px; background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 4px;">
-                  <strong>Note:</strong> Email delivery may take up to 5 minutes due to Gmail processing. If you don't see this email, check your Spam or Promotions folder.
-                </p>
-
                 <p style="color: #666; font-size: 14px; margin-top: 24px;">
                   You can also sign in anytime using Google at <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #0052cc;">autopilotamerica.com/login</a>
                 </p>
