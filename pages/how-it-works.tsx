@@ -62,7 +62,7 @@ export default function HowItWorks() {
               lineHeight: '1.6'
             }}>
               Autopilot America offers comprehensive protection against compliance tickets and handles your vehicle registration renewals.
-              If we fail to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
+              We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
             </p>
             <div style={{
               background: '#dbeafe',
@@ -110,7 +110,7 @@ export default function HowItWorks() {
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              Get timely alerts for street cleaning and snow removal on your block. If we fail to notify you and you receive a ticket, we'll credit or cover it as part of our service guarantee.
+              Get timely alerts for street cleaning and snow removal on your block. If you receive a ticket despite following our alerts, we'll reimburse 80% as part of our service guarantee.
             </p>
             
             <div style={{
@@ -168,7 +168,7 @@ export default function HowItWorks() {
                   alignItems: 'flex-start'
                 }}>
                   <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Submit ticket photo within 7 days for service guarantee claim</span>
+                  <span style={{ color: '#6b7280' }}>Submit ticket photo within 7 days for 80% reimbursement</span>
                 </li>
               </ul>
             </div>
@@ -205,7 +205,7 @@ export default function HowItWorks() {
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              We handle your city sticker and license plate renewal registrations for you. Get reminders before deadlines and if we fail to notify you, our service guarantee covers you up to $200/year.
+              We handle your city sticker and license plate renewal registrations for you. Get reminders before deadlines and if you receive a ticket, we reimburse 80% up to $200/year.
             </p>
             
             <div style={{
@@ -288,7 +288,7 @@ export default function HowItWorks() {
                   marginBottom: '8px',
                   margin: '0 0 8px 0'
                 }}>
-                  Service Guarantee Covers:
+                  What's Covered:
                 </h4>
                 <ul style={{
                   margin: 0,
@@ -296,7 +296,8 @@ export default function HowItWorks() {
                   listStyle: 'none',
                   color: '#bfdbfe'
                 }}>
-                  <li style={{ marginBottom: '4px' }}>• Up to $200/year when we fail to notify</li>
+                  <li style={{ marginBottom: '4px' }}>• 80% reimbursement on eligible tickets</li>
+                  <li style={{ marginBottom: '4px' }}>• Up to $200/year total coverage</li>
                   <li style={{ marginBottom: '4px' }}>• Street cleaning tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• Snow removal tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• City sticker violations</li>
@@ -309,7 +310,7 @@ export default function HowItWorks() {
                   marginBottom: '8px',
                   margin: '0 0 8px 0'
                 }}>
-                  NOT Covered:
+                  What's NOT Covered:
                 </h4>
                 <ul style={{
                   margin: 0,
@@ -320,7 +321,7 @@ export default function HowItWorks() {
                   <li style={{ marginBottom: '4px' }}>• Towing fees ($150 + $25/night storage)</li>
                   <li style={{ marginBottom: '4px' }}>• Moving violations</li>
                   <li style={{ marginBottom: '4px' }}>• Meter violations</li>
-                  <li style={{ marginBottom: '4px' }}>• Tickets when you were properly notified</li>
+                  <li style={{ marginBottom: '4px' }}>• Tickets over $200/year total</li>
                   <li>• Tickets without proper documentation</li>
                 </ul>
               </div>

@@ -205,7 +205,7 @@ export default function Pricing() {
                 marginBottom: '12px'
               }}>
                 <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                <span style={{ color: '#374151', fontWeight: '600' }}>Service guarantee</span>
+                <span style={{ color: '#374151', fontWeight: '600' }}>80% ticket reimbursement</span>
               </li>
               <li style={{
                 display: 'flex',
@@ -213,7 +213,7 @@ export default function Pricing() {
                 marginBottom: '12px'
               }}>
                 <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                <span style={{ color: '#374151', fontWeight: '600' }}>Up to $200/year if we fail to notify</span>
+                <span style={{ color: '#374151', fontWeight: '600' }}>Up to $200/year coverage</span>
               </li>
               <li style={{ 
                 display: 'flex', 
@@ -318,7 +318,7 @@ export default function Pricing() {
               }}>
                 <li style={{ marginBottom: '8px' }}>• Monthly cost: $12</li>
                 <li style={{ marginBottom: '8px' }}>• Annual cost: $144 (or $120 if paid yearly)</li>
-                <li style={{ marginBottom: '8px' }}>• Service guarantee: Up to $200 if we fail to notify</li>
+                <li style={{ marginBottom: '8px' }}>• Coverage: 80% of eligible tickets up to $200/year</li>
                 <li>• Your savings: <span style={{ fontWeight: 'bold', color: '#16a34a' }}>$350+/year</span></li>
               </ul>
             </div>
@@ -329,7 +329,7 @@ export default function Pricing() {
             marginTop: '24px',
             fontWeight: '500'
           }}>
-            Worst case: Our service guarantee covers you if we fail to notify<br/>
+            Worst case: You get 80% of your ticket costs back<br/>
             Best case: You never get another compliance ticket again
           </p>
         </section>
@@ -369,7 +369,7 @@ export default function Pricing() {
                 color: '#6b7280',
                 margin: 0
               }}>
-                No, this is a protection plan with done-for-you renewals and comprehensive alerts. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
+                No, this is a protection plan with done-for-you renewals and comprehensive alerts. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
               </p>
             </div>
             <div style={{
@@ -383,13 +383,13 @@ export default function Pricing() {
                 color: '#374151',
                 marginBottom: '8px'
               }}>
-                When does the guarantee apply?
+                What makes tickets eligible for reimbursement?
               </h3>
               <p style={{
                 color: '#6b7280',
                 margin: 0
               }}>
-                Our service guarantee applies when Autopilot America fails to notify you about a covered event. The maximum coverage is $200 per year. With our comprehensive alerts, most users avoid tickets entirely.
+                Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered. You must respond to alerts, maintain a complete profile, and submit tickets within 7 days. Maximum coverage is 80% up to $200/year.
               </p>
             </div>
             <div style={{
@@ -423,13 +423,13 @@ export default function Pricing() {
                 color: '#374151',
                 marginBottom: '8px'
               }}>
-                How does the guarantee work?
+                How quickly do I get reimbursed?
               </h3>
               <p style={{
                 color: '#6b7280',
                 margin: 0
               }}>
-                If we fail to notify you and you receive a ticket, submit it within 7 days. We'll review and credit or cover the ticket as part of our service guarantee, typically within 3-5 business days.
+                Once you submit your ticket photo and it's verified, reimbursements (80% of the ticket amount) are typically processed within 3-5 business days.
               </p>
             </div>
           </div>

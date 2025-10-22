@@ -511,7 +511,7 @@ export default function Home() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                Done-for-you renewals and alerts. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
+                Done-for-you renewals and comprehensive alerts. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
               </p>
             </div>
 
@@ -925,11 +925,11 @@ export default function Home() {
               },
               {
                 q: "What's Ticket Protection?",
-                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) includes done-for-you renewals and comprehensive alerts. If Autopilot America fails to notify you about a covered event, we\'ll credit or cover up to $200 of the resulting ticket as a service guarantee.'
+                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) includes done-for-you renewals and comprehensive alerts. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.'
               },
               {
                 q: 'Is Ticket Protection available now?',
-                a: "Yes! Ticket Protection is available now. Sign up on the Protection page to get complete coverage with done-for-you renewals and our service guarantee."
+                a: "Yes! Ticket Protection is available now. Sign up on the Protection page to get complete coverage with done-for-you renewals and 80% ticket reimbursement."
               },
               {
                 q: 'What areas do you cover?',

@@ -305,7 +305,7 @@ export default function AlertsSignup() {
             textAlign: 'center',
             margin: '0 0 32px 0'
           }}>
-            Never miss a street cleaning, snow removal, or renewal deadline again. 100% free for one vehicle. Upgrade to Protection for done-for-you renewals and our service guarantee.
+            Never miss a street cleaning, snow removal, or renewal deadline again. 100% free for one vehicle. Upgrade to Protection for done-for-you renewals and 80% ticket reimbursement.
           </p>
 
           {prefilledData && (

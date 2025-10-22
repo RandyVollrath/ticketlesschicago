@@ -132,7 +132,7 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
         throw new Error(result.error || 'Failed to submit reimbursement request');
       }
 
-      setMessage('✅ Service guarantee claim submitted successfully! We\'ll review it within 3-5 business days.');
+      setMessage('✅ Reimbursement request submitted successfully! We\'ll review it within 3-5 business days.');
       setRemainingCoverage(result.remainingCoverage);
 
       // Reset form
@@ -168,10 +168,10 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
     }}>
       <div style={{ marginBottom: '16px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: '0 0 8px 0' }}>
-          🎫 Submit Ticket for Service Guarantee
+          🎫 Submit Ticket for Reimbursement
         </h2>
         <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
-          If Autopilot America failed to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket.
+          We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
           {remainingCoverage !== null && (
             <strong style={{ color: '#059669', marginLeft: '8px' }}>
               ${remainingCoverage.toFixed(2)} remaining this year
@@ -257,7 +257,7 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
           </div>
           {formData.ticketAmount && (
             <p style={{ fontSize: '12px', color: '#059669', margin: '4px 0 0 0' }}>
-              Coverage: Up to ${Math.min(parseFloat(formData.ticketAmount), remainingCoverage || 200).toFixed(2)}
+              Reimbursement: ${(parseFloat(formData.ticketAmount) * 0.8).toFixed(2)} (80%)
             </p>
           )}
         </div>
@@ -472,7 +472,7 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
             cursor: (loading || uploading || !frontPhotoUrl || !backPhotoUrl) ? 'not-allowed' : 'pointer'
           }}
         >
-          {loading ? 'Submitting...' : uploading ? 'Uploading Photo...' : 'Submit Service Guarantee Claim'}
+          {loading ? 'Submitting...' : uploading ? 'Uploading Photo...' : 'Submit Reimbursement Request'}
         </button>
       </form>
     </div>
