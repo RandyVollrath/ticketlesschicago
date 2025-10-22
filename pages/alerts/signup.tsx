@@ -158,15 +158,9 @@ export default function AlertsSignup() {
 
       console.log('free_signup_success', { email: formData.email });
 
-      // If we got an immediate login link, redirect to it for instant access
-      if (result.loginLink) {
-        console.log('✅ Redirecting to immediate login link');
-        window.location.href = result.loginLink;
-      } else {
-        // Fallback: redirect to success page and they can use Google OAuth
-        console.log('⚠️  No login link, redirecting to success page');
-        router.push('/alerts/success');
-      }
+      // Redirect to success page - user will receive magic link via email
+      console.log('✅ Signup successful, redirecting to success page');
+      router.push('/alerts/success');
     } catch (error: any) {
       console.error('Free signup error:', error);
       setMessage(`Error: ${error.message}`);
