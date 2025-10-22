@@ -348,7 +348,7 @@ export default function Protection() {
             margin: '0 auto 40px auto',
             lineHeight: '1.4'
           }}>
-            <strong>Done-for-you renewals and comprehensive alerts.</strong> We handle renewals on your behalf so you never have to worry about deadlines again. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
+            <strong>Done-for-you renewals and comprehensive alerts.</strong> We handle renewals on your behalf so you never have to worry about deadlines again. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
           </p>
         </div>
 
@@ -399,7 +399,7 @@ export default function Protection() {
               marginBottom: '12px',
               margin: '0 0 12px 0'
             }}>
-              Service Guarantee
+              Ticket Reimbursement Guarantee
             </h3>
             <p style={{
               fontSize: '16px',
@@ -407,7 +407,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
+              We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. Follow our alerts and submit tickets within 7 days for coverage.
             </p>
           </div>
 
@@ -1151,7 +1151,7 @@ export default function Protection() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee. See <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a> for full details.
+                Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. See <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a> for full details.
               </p>
             </div>
 
@@ -1275,7 +1275,7 @@ export default function Protection() {
               }}>
                 <li style={{ marginBottom: '8px' }}>We file your city sticker and license plate renewals with the city on your behalf before they expire</li>
                 <li style={{ marginBottom: '8px' }}>You'll receive advance notifications about upcoming renewal deadlines</li>
-                <li>If we fail to notify you about a renewal and you receive a late renewal ticket, we'll credit or cover the ticket as part of our service guarantee</li>
+                <li>If you receive a late renewal ticket, we reimburse 80% up to $200/year as part of our service guarantee</li>
               </ul>
 
               <h4 style={{
@@ -1285,7 +1285,7 @@ export default function Protection() {
                 marginBottom: '8px',
                 margin: '0 0 8px 0'
               }}>
-                Service Guarantee Eligibility
+                Ticket Reimbursement Eligibility
               </h4>
               <p style={{
                 fontSize: '15px',
@@ -1294,7 +1294,7 @@ export default function Protection() {
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee. To be eligible, you must:
+                We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. To be eligible, you must:
               </p>
               <ul style={{
                 fontSize: '15px',
@@ -1304,11 +1304,11 @@ export default function Protection() {
                 margin: 0
               }}>
                 <li style={{ marginBottom: '8px' }}><strong>Maintain a complete and accurate profile</strong> with all vehicle information, renewal dates, contact information, and street cleaning address - the guarantee is void if your profile is incomplete or inaccurate</li>
+                <li style={{ marginBottom: '8px' }}>Respond to alerts confirming you moved your vehicle (e.g., reply "Moved" to SMS)</li>
                 <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
                 <li style={{ marginBottom: '8px' }}>Have an active Ticket Protection subscription at the time the ticket was issued</li>
                 <li style={{ marginBottom: '8px' }}>Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered (not towing fees or moving violations)</li>
-                <li style={{ marginBottom: '8px' }}>The ticket must result from Autopilot America's failure to notify you - this is a service guarantee, not insurance</li>
-                <li>Maximum coverage: Up to $200 per year total</li>
+                <li>Maximum reimbursement: 80% of eligible tickets up to $200 per year total</li>
               </ul>
             </div>
           </div>
