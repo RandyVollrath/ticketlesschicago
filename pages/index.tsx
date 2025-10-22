@@ -511,7 +511,7 @@ export default function Home() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                Guaranteed no more city sticker or license plate tickets — we handle renewals and cover eligible tickets up to $200/year
+                Done-for-you renewals and alerts. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
               </p>
             </div>
 
@@ -925,11 +925,11 @@ export default function Home() {
               },
               {
                 q: "What's Ticket Protection?",
-                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) guarantees no more tickets for street cleaning, city stickers, or license plate stickers — or we will pay them. We handle your city sticker & license plate renewals on your behalf and reimburse 80% of eligible tickets up to $200/year.'
+                a: 'Our premium tier ($12/mo = $144/yr, or save $24 with annual at $120/yr) includes done-for-you renewals and comprehensive alerts. If Autopilot America fails to notify you about a covered event, we\'ll credit or cover up to $200 of the resulting ticket as a service guarantee.'
               },
               {
                 q: 'Is Ticket Protection available now?',
-                a: "Yes! Ticket Protection is available now. Sign up on the Protection page to get complete coverage with done-for-you renewals and ticket reimbursement."
+                a: "Yes! Ticket Protection is available now. Sign up on the Protection page to get complete coverage with done-for-you renewals and our service guarantee."
               },
               {
                 q: 'What areas do you cover?',
