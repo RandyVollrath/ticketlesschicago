@@ -312,28 +312,70 @@ export default function AlertsSuccess() {
             </div>
           ) : (
             <>
-              <button
-                onClick={() => router.push('/settings')}
-                style={{
-                  backgroundColor: '#0052cc',
-                  color: 'white',
-                  border: 'none',
+              {/* Check email reminder for free alerts users */}
+              {!isProtection && !isExistingUser && (
+                <div style={{
+                  backgroundColor: '#eff6ff',
+                  border: '2px solid #3b82f6',
                   borderRadius: '12px',
-                  padding: '16px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#003d99';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#0052cc';
-                }}
-              >
-                {isProtection ? 'Complete My Profile' : 'Go to My Account'}
-              </button>
+                  padding: '20px',
+                  textAlign: 'center',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>📧</div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: '#1e40af',
+                    margin: '0 0 12px 0'
+                  }}>
+                    Check Your Email to Login
+                  </h3>
+                  <p style={{
+                    fontSize: '15px',
+                    color: '#1e40af',
+                    lineHeight: '1.6',
+                    margin: 0
+                  }}>
+                    We've sent a secure login link to your email. Click the link to access your account settings.
+                  </p>
+                  <p style={{
+                    fontSize: '13px',
+                    color: '#60a5fa',
+                    marginTop: '12px',
+                    margin: '12px 0 0 0',
+                    fontStyle: 'italic'
+                  }}>
+                    Tip: Check your spam folder if you don't see it within 2 minutes
+                  </p>
+                </div>
+              )}
+
+              {/* For existing users, show account button */}
+              {isExistingUser && (
+                <button
+                  onClick={() => router.push('/settings')}
+                  style={{
+                    backgroundColor: '#0052cc',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#003d99';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0052cc';
+                  }}
+                >
+                  Go to My Account
+                </button>
+              )}
 
               {!isProtection && (
                 <button
