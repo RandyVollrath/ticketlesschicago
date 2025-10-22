@@ -348,7 +348,7 @@ export default function Protection() {
             margin: '0 auto 40px auto',
             lineHeight: '1.4'
           }}>
-            <strong>Guaranteed no more tickets for street cleaning, city stickers, or license plate stickers — or we will pay them.</strong> We handle renewals on your behalf so you never have to worry about deadlines again.
+            <strong>Done-for-you renewals and comprehensive alerts.</strong> We handle renewals on your behalf so you never have to worry about deadlines again. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
           </p>
         </div>
 
@@ -399,7 +399,7 @@ export default function Protection() {
               marginBottom: '12px',
               margin: '0 0 12px 0'
             }}>
-              Ticket Coverage Guarantee
+              Service Guarantee
             </h3>
             <p style={{
               fontSize: '16px',
@@ -407,7 +407,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              Guaranteed no more tickets for street cleaning, city stickers, or license plate stickers — or we will pay them. We reimburse 80% of eligible tickets up to $200/year total coverage.
+              If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
             </p>
           </div>
 
@@ -1151,7 +1151,7 @@ export default function Protection() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We reimburse 80% of street cleaning, snow removal, city sticker, and license plate renewal tickets. If you get any of these tickets despite following our alerts and our <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a>, we'll reimburse 80% up to $200/year total coverage.
+                Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee. See <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a> for full details.
               </p>
             </div>
 
@@ -1244,7 +1244,7 @@ export default function Protection() {
                 marginBottom: '16px',
                 margin: '0 0 16px 0'
               }}>
-                *Protection Coverage & Guarantee Conditions
+                *Service Guarantee Conditions
               </h3>
 
               <h4 style={{
@@ -1263,7 +1263,7 @@ export default function Protection() {
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                Your upfront renewal payment ($100 city sticker + $155 license plate) covers:
+                Your upfront renewal payment covers done-for-you filing with the city:
               </p>
               <ul style={{
                 fontSize: '15px',
@@ -1275,7 +1275,7 @@ export default function Protection() {
               }}>
                 <li style={{ marginBottom: '8px' }}>We file your city sticker and license plate renewals with the city on your behalf before they expire</li>
                 <li style={{ marginBottom: '8px' }}>You'll receive advance notifications about upcoming renewal deadlines</li>
-                <li>If we fail to file on time and you receive a late renewal ticket, we cover 100% of that ticket (not counted toward your $200 annual limit)</li>
+                <li>If we fail to notify you about a renewal and you receive a late renewal ticket, we'll credit or cover the ticket as part of our service guarantee</li>
               </ul>
 
               <h4 style={{
@@ -1285,7 +1285,7 @@ export default function Protection() {
                 marginBottom: '8px',
                 margin: '0 0 8px 0'
               }}>
-                Ticket Reimbursement Eligibility
+                Service Guarantee Eligibility
               </h4>
               <p style={{
                 fontSize: '15px',
@@ -1294,7 +1294,7 @@ export default function Protection() {
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                To be eligible for street cleaning/snow removal ticket reimbursement, you must:
+                If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee. To be eligible, you must:
               </p>
               <ul style={{
                 fontSize: '15px',
@@ -1304,11 +1304,11 @@ export default function Protection() {
                 margin: 0
               }}>
                 <li style={{ marginBottom: '8px' }}><strong>Maintain a complete and accurate profile</strong> with all vehicle information, renewal dates, contact information, and street cleaning address - the guarantee is void if your profile is incomplete or inaccurate</li>
-                <li style={{ marginBottom: '8px' }}>Respond to our alerts confirming you moved your vehicle (e.g., reply "Moved" to the SMS)</li>
                 <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
                 <li style={{ marginBottom: '8px' }}>Have an active Ticket Protection subscription at the time the ticket was issued</li>
                 <li style={{ marginBottom: '8px' }}>Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered (not towing fees or moving violations)</li>
-                <li>Maximum reimbursement: 80% of eligible tickets up to $200 per year total coverage</li>
+                <li style={{ marginBottom: '8px' }}>The ticket must result from Autopilot America's failure to notify you - this is a service guarantee, not insurance</li>
+                <li>Maximum coverage: Up to $200 per year total</li>
               </ul>
             </div>
           </div>

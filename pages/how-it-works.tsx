@@ -56,13 +56,13 @@ export default function HowItWorks() {
             }}>
               Your Parking Protection Plan
             </h2>
-            <p style={{ 
-              color: '#6b7280', 
+            <p style={{
+              color: '#6b7280',
               marginBottom: '24px',
               lineHeight: '1.6'
             }}>
-              Autopilot America offers comprehensive protection against compliance tickets and handles your vehicle registration renewals. 
-              We reimburse 80% of eligible tickets up to $200/year and send you alerts to help avoid tickets in the first place.
+              Autopilot America offers comprehensive protection against compliance tickets and handles your vehicle registration renewals.
+              If we fail to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
             </p>
             <div style={{
               background: '#dbeafe',
@@ -105,12 +105,12 @@ export default function HowItWorks() {
               </h3>
             </div>
             
-            <p style={{ 
-              color: '#6b7280', 
+            <p style={{
+              color: '#6b7280',
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              Get timely alerts for street cleaning and snow removal on your block. If you still get a ticket despite our alerts, we'll reimburse 80% of it.
+              Get timely alerts for street cleaning and snow removal on your block. If we fail to notify you and you receive a ticket, we'll credit or cover it as part of our service guarantee.
             </p>
             
             <div style={{
@@ -163,12 +163,12 @@ export default function HowItWorks() {
                   <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
                   <span style={{ color: '#6b7280' }}>Respond to at least 1 alert text (e.g., "Moved")</span>
                 </li>
-                <li style={{ 
-                  display: 'flex', 
+                <li style={{
+                  display: 'flex',
                   alignItems: 'flex-start'
                 }}>
                   <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Submit ticket photo within 7 days for reimbursement</span>
+                  <span style={{ color: '#6b7280' }}>Submit ticket photo within 7 days for service guarantee claim</span>
                 </li>
               </ul>
             </div>
@@ -200,12 +200,12 @@ export default function HowItWorks() {
               </h3>
             </div>
             
-            <p style={{ 
-              color: '#6b7280', 
+            <p style={{
+              color: '#6b7280',
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              We handle your city sticker and license plate renewal registrations for you. Get reminders before deadlines and if you still receive a ticket, we'll reimburse 80% of it.
+              We handle your city sticker and license plate renewal registrations for you. Get reminders before deadlines and if we fail to notify you, our service guarantee covers you up to $200/year.
             </p>
             
             <div style={{
@@ -283,21 +283,20 @@ export default function HowItWorks() {
               gap: '24px' 
             }}>
               <div>
-                <h4 style={{ 
-                  fontWeight: '600', 
+                <h4 style={{
+                  fontWeight: '600',
                   marginBottom: '8px',
                   margin: '0 0 8px 0'
                 }}>
-                  What's Covered:
+                  Service Guarantee Covers:
                 </h4>
-                <ul style={{ 
+                <ul style={{
                   margin: 0,
                   paddingLeft: '0',
                   listStyle: 'none',
                   color: '#bfdbfe'
                 }}>
-                  <li style={{ marginBottom: '4px' }}>• 80% reimbursement on eligible tickets</li>
-                  <li style={{ marginBottom: '4px' }}>• Up to $200/year total coverage</li>
+                  <li style={{ marginBottom: '4px' }}>• Up to $200/year when we fail to notify</li>
                   <li style={{ marginBottom: '4px' }}>• Street cleaning tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• Snow removal tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• City sticker violations</li>
@@ -305,14 +304,14 @@ export default function HowItWorks() {
                 </ul>
               </div>
               <div>
-                <h4 style={{ 
-                  fontWeight: '600', 
+                <h4 style={{
+                  fontWeight: '600',
                   marginBottom: '8px',
                   margin: '0 0 8px 0'
                 }}>
-                  What's NOT Covered:
+                  NOT Covered:
                 </h4>
-                <ul style={{ 
+                <ul style={{
                   margin: 0,
                   paddingLeft: '0',
                   listStyle: 'none',
@@ -321,7 +320,7 @@ export default function HowItWorks() {
                   <li style={{ marginBottom: '4px' }}>• Towing fees ($150 + $25/night storage)</li>
                   <li style={{ marginBottom: '4px' }}>• Moving violations</li>
                   <li style={{ marginBottom: '4px' }}>• Meter violations</li>
-                  <li style={{ marginBottom: '4px' }}>• Tickets over $200/year total</li>
+                  <li style={{ marginBottom: '4px' }}>• Tickets when you were properly notified</li>
                   <li>• Tickets without proper documentation</li>
                 </ul>
               </div>

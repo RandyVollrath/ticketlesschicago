@@ -199,21 +199,21 @@ export default function Pricing() {
                 <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
                 <span style={{ color: '#374151' }}>Street cleaning & snow removal alerts</span>
               </li>
-              <li style={{ 
-                display: 'flex', 
+              <li style={{
+                display: 'flex',
                 alignItems: 'flex-start',
                 marginBottom: '12px'
               }}>
                 <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                <span style={{ color: '#374151', fontWeight: '600' }}>80% ticket reimbursement</span>
+                <span style={{ color: '#374151', fontWeight: '600' }}>Service guarantee</span>
               </li>
-              <li style={{ 
-                display: 'flex', 
+              <li style={{
+                display: 'flex',
                 alignItems: 'flex-start',
                 marginBottom: '12px'
               }}>
                 <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                <span style={{ color: '#374151', fontWeight: '600' }}>Up to $200/year coverage</span>
+                <span style={{ color: '#374151', fontWeight: '600' }}>Up to $200/year if we fail to notify</span>
               </li>
               <li style={{ 
                 display: 'flex', 
@@ -318,18 +318,18 @@ export default function Pricing() {
               }}>
                 <li style={{ marginBottom: '8px' }}>• Monthly cost: $12</li>
                 <li style={{ marginBottom: '8px' }}>• Annual cost: $144 (or $120 if paid yearly)</li>
-                <li style={{ marginBottom: '8px' }}>• Coverage up to: $200 in tickets</li>
+                <li style={{ marginBottom: '8px' }}>• Service guarantee: Up to $200 if we fail to notify</li>
                 <li>• Your savings: <span style={{ fontWeight: 'bold', color: '#16a34a' }}>$350+/year</span></li>
               </ul>
             </div>
           </div>
-          <p style={{ 
-            textAlign: 'center', 
-            color: '#374151', 
-            marginTop: '24px', 
-            fontWeight: '500' 
+          <p style={{
+            textAlign: 'center',
+            color: '#374151',
+            marginTop: '24px',
+            fontWeight: '500'
           }}>
-            Worst case: You get your money back in ticket reimbursements<br/>
+            Worst case: Our service guarantee covers you if we fail to notify<br/>
             Best case: You never get another compliance ticket again
           </p>
         </section>
@@ -358,18 +358,18 @@ export default function Pricing() {
               padding: '24px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
+              <h3 style={{
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
               }}>
                 Is this insurance?
               </h3>
-              <p style={{ 
+              <p style={{
                 color: '#6b7280',
                 margin: 0
               }}>
-                No, this is a protection plan that helps you avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) and reimburses you if you still receive them despite following our alerts.
+                No, this is a protection plan with done-for-you renewals and comprehensive alerts. If Autopilot America fails to notify you about a covered event, we'll credit or cover up to $200 of the resulting ticket as a service guarantee.
               </p>
             </div>
             <div style={{
@@ -378,18 +378,18 @@ export default function Pricing() {
               padding: '24px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
+              <h3 style={{
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
               }}>
-                What if I get more than $200 in tickets?
+                When does the guarantee apply?
               </h3>
-              <p style={{ 
+              <p style={{
                 color: '#6b7280',
                 margin: 0
               }}>
-                Our annual coverage limit is $200. Any tickets beyond that amount would be your responsibility. However, with our alerts, most users avoid tickets entirely.
+                Our service guarantee applies when Autopilot America fails to notify you about a covered event. The maximum coverage is $200 per year. With our comprehensive alerts, most users avoid tickets entirely.
               </p>
             </div>
             <div style={{
@@ -398,14 +398,14 @@ export default function Pricing() {
               padding: '24px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
+              <h3 style={{
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
               }}>
                 Can I cancel anytime?
               </h3>
-              <p style={{ 
+              <p style={{
                 color: '#6b7280',
                 margin: 0
               }}>
@@ -418,18 +418,18 @@ export default function Pricing() {
               padding: '24px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{ 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
+              <h3 style={{
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
               }}>
-                How quickly do I get reimbursed?
+                How does the guarantee work?
               </h3>
-              <p style={{ 
+              <p style={{
                 color: '#6b7280',
                 margin: 0
               }}>
-                Once you submit your ticket photo and it's verified, reimbursements are typically processed within 3-5 business days.
+                If we fail to notify you and you receive a ticket, submit it within 7 days. We'll review and credit or cover the ticket as part of our service guarantee, typically within 3-5 business days.
               </p>
             </div>
           </div>
