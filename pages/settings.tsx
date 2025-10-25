@@ -1542,6 +1542,8 @@ export default function Dashboard() {
           <SnowBanSettings
             onSnowRoute={profile.on_snow_route || false}
             snowRouteStreet={profile.snow_route_street}
+            onWinterBanStreet={profile.on_winter_ban_street || false}
+            winterBanStreet={profile.winter_ban_street}
             notifySnowForecast={profile.notify_snow_forecast || false}
             notifySnowForecastEmail={profile.notify_snow_forecast_email !== false}
             notifySnowForecastSms={profile.notify_snow_forecast_sms !== false}

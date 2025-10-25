@@ -166,7 +166,7 @@ export default function CheckYourStreet() {
       <main style={{
         minHeight: '100vh',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        backgroundColor: '#ffffff'
+        backgroundColor: '#fafafa'
       }}>
         {/* Clean Hero Section */}
         <div style={{
@@ -176,7 +176,7 @@ export default function CheckYourStreet() {
           margin: '0 auto'
         }}>
           <h1 style={{
-            fontSize: '56px',
+            fontSize: '48px',
             fontWeight: '700',
             marginBottom: '20px',
             lineHeight: '1.1',
@@ -320,21 +320,21 @@ export default function CheckYourStreet() {
               {/* Winter Overnight Parking Ban Warning */}
               {searchResult.onWinterBan && searchResult.winterBanStreet && (
                 <div style={{
-                  backgroundColor: '#fef3c7',
-                  border: '1px solid #fde68a',
-                  padding: '20px 24px',
-                  borderRadius: '12px',
-                  marginBottom: '20px'
+                  backgroundColor: 'white',
+                  padding: '24px',
+                  borderRadius: '16px',
+                  marginBottom: '16px',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                    <div style={{ fontSize: '24px', lineHeight: '1' }}>🌙</div>
+                    <div style={{ fontSize: '32px', lineHeight: '1', marginTop: '2px' }}>🌙</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#d97706' }}>
+                      <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: '#000' }}>
                         Winter Overnight Parking Ban
                       </div>
-                      <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#6b7280' }}>
-                        <strong style={{ color: '#111827' }}>{searchResult.winterBanStreet}</strong> has a winter overnight parking ban.
-                        <strong style={{ color: '#111827' }}> No parking 3:00 AM - 7:00 AM</strong> every night from December 1 - April 1.
+                      <div style={{ fontSize: '15px', lineHeight: '1.6', color: '#6b7280' }}>
+                        <strong style={{ color: '#000' }}>{searchResult.winterBanStreet}</strong> has a winter overnight parking ban.
+                        <strong style={{ color: '#000' }}> No parking 3:00 AM - 7:00 AM</strong> every night from December 1 - April 1.
                       </div>
                     </div>
                   </div>
@@ -344,21 +344,21 @@ export default function CheckYourStreet() {
               {/* Snow Route Warning */}
               {searchResult.onSnowRoute && searchResult.snowRouteStreet && (
                 <div style={{
-                  backgroundColor: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  padding: '20px 24px',
-                  borderRadius: '12px',
-                  marginBottom: '20px'
+                  backgroundColor: 'white',
+                  padding: '24px',
+                  borderRadius: '16px',
+                  marginBottom: '16px',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                    <div style={{ fontSize: '24px', lineHeight: '1' }}>❄️</div>
+                    <div style={{ fontSize: '32px', lineHeight: '1', marginTop: '2px' }}>❄️</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#1d4ed8' }}>
+                      <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: '#000' }}>
                         2-Inch Snow Ban Route
                       </div>
-                      <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#6b7280' }}>
-                        <strong style={{ color: '#111827' }}>{searchResult.snowRouteStreet}</strong> is subject to Chicago's 2-inch snow parking ban.
-                        Parking prohibited when 2+ inches of snow falls until streets are cleared.
+                      <div style={{ fontSize: '15px', lineHeight: '1.6', color: '#6b7280' }}>
+                        <strong style={{ color: '#000' }}>{searchResult.snowRouteStreet}</strong> is subject to Chicago's 2-inch snow parking ban.
+                        Parking prohibited year-round when 2+ inches of snow falls until streets are cleared.
                       </div>
                     </div>
                   </div>
