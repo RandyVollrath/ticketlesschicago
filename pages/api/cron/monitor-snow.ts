@@ -42,11 +42,15 @@ export default async function handler(
       const { supabaseAdmin } = require('../../../lib/supabase');
       const event = snowCheckResult.event;
 
-      // Determine notification type based on whether snow has actually fallen
-      const isActualSnowfall = snowCheckResult.snowData.isCurrentlySnowing;
-      const notificationType = isActualSnowfall ? 'confirmation' : 'forecast';
+      // Determine notification type:
+      // - 'forecast': When 2+ inches is predicted (send early warning)
+      // - 'confirmation': When 2+ inches has accumulated (send urgent alert)
+      // For now, we'll use isCurrentlySnowing as a proxy for "snow has accumulated"
+      // In future, could check observation data for actual accumulation
+      const hasAccumulated = snowCheckResult.snowData.isCurrentlySnowing;
+      const notificationType = hasAccumulated ? 'confirmation' : 'forecast';
 
-      console.log(`2+ inches of snow ${isActualSnowfall ? 'falling NOW' : 'forecasted'} - sending ${notificationType} notifications...`);
+      console.log(`2+ inches of snow ${hasAccumulated ? 'has accumulated' : 'forecasted'} - sending ${notificationType} notifications...`);
 
       // Check if we've already sent this type of notification
       const { data: existingEvent } = await supabaseAdmin
