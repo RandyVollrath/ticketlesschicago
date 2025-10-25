@@ -40,7 +40,7 @@ export default function SnowBanSettings({
         fontWeight: '600',
         color: '#000'
       }}>
-        Winter Parking Alerts
+        2-Inch Snow Ban Alerts
       </h3>
       <p style={{
         margin: '0 0 32px',
@@ -48,130 +48,114 @@ export default function SnowBanSettings({
         color: '#6b7280',
         lineHeight: '1.6'
       }}>
-        Get notified about Chicago's winter parking restrictions. Never get towed or ticketed again.
+        Get notified when Chicago's 2-inch snow parking ban is forecasted or activated. Never get towed or ticketed again.
       </p>
 
-      {/* Status Cards */}
-      {(onWinterBanStreet || onSnowRoute) && (
-        <div style={{ marginBottom: '32px' }}>
-          <h4 style={{
-            margin: '0 0 16px',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Your Address Status
-          </h4>
-
-          {/* Winter Overnight Parking Ban Card */}
-          {onWinterBanStreet && winterBanStreet && (
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '12px',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{
-                  fontSize: '28px',
-                  lineHeight: '1',
-                  marginTop: '2px'
-                }}>🌙</div>
-                <div style={{ flex: 1 }}>
-                  <h5 style={{
-                    margin: '0 0 6px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#000'
-                  }}>
-                    Winter Overnight Parking Ban
-                  </h5>
-                  <p style={{
-                    margin: '0 0 4px',
-                    fontSize: '14px',
-                    color: '#6b7280',
-                    lineHeight: '1.5'
-                  }}>
-                    <strong style={{ color: '#000' }}>{winterBanStreet}</strong>
-                  </p>
-                  <p style={{
-                    margin: '0',
-                    fontSize: '13px',
-                    color: '#9ca3af'
-                  }}>
-                    No parking 3:00 AM - 7:00 AM every night from December 1 - April 1
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 2-Inch Snow Ban Card */}
-          {onSnowRoute && snowRouteStreet && (
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '12px',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{
-                  fontSize: '28px',
-                  lineHeight: '1',
-                  marginTop: '2px'
-                }}>❄️</div>
-                <div style={{ flex: 1 }}>
-                  <h5 style={{
-                    margin: '0 0 6px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#000'
-                  }}>
-                    2-Inch Snow Ban Route
-                  </h5>
-                  <p style={{
-                    margin: '0 0 4px',
-                    fontSize: '14px',
-                    color: '#6b7280',
-                    lineHeight: '1.5'
-                  }}>
-                    <strong style={{ color: '#000' }}>{snowRouteStreet}</strong>
-                  </p>
-                  <p style={{
-                    margin: '0',
-                    fontSize: '13px',
-                    color: '#9ca3af'
-                  }}>
-                    No parking when 2+ inches of snow falls (year-round, most active December 1 - April 1)
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!onSnowRoute && !onWinterBanStreet && (
+      {/* Winter Overnight Parking Ban Notice (if applicable) */}
+      {onWinterBanStreet && winterBanStreet && (
         <div style={{
           background: 'white',
           borderRadius: '12px',
           padding: '20px',
-          marginBottom: '32px',
+          marginBottom: '24px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <div style={{
+              fontSize: '28px',
+              lineHeight: '1',
+              marginTop: '2px'
+            }}>🌙</div>
+            <div style={{ flex: 1 }}>
+              <h5 style={{
+                margin: '0 0 6px',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#000'
+              }}>
+                Winter Overnight Parking Ban
+              </h5>
+              <p style={{
+                margin: '0 0 4px',
+                fontSize: '14px',
+                color: '#6b7280',
+                lineHeight: '1.5'
+              }}>
+                <strong style={{ color: '#000' }}>{winterBanStreet}</strong>
+              </p>
+              <p style={{
+                margin: '0',
+                fontSize: '13px',
+                color: '#9ca3af'
+              }}>
+                No parking 3:00 AM - 7:00 AM every night from December 1 - April 1. You'll receive a one-time reminder on November 30th.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2-Inch Snow Ban Status */}
+      {onSnowRoute && snowRouteStreet && (
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <div style={{
+              fontSize: '28px',
+              lineHeight: '1',
+              marginTop: '2px'
+            }}>❄️</div>
+            <div style={{ flex: 1 }}>
+              <h5 style={{
+                margin: '0 0 6px',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#000'
+              }}>
+                Your Address is on a 2-Inch Snow Ban Route
+              </h5>
+              <p style={{
+                margin: '0 0 4px',
+                fontSize: '14px',
+                color: '#6b7280',
+                lineHeight: '1.5'
+              }}>
+                <strong style={{ color: '#000' }}>{snowRouteStreet}</strong>
+              </p>
+              <p style={{
+                margin: '0',
+                fontSize: '13px',
+                color: '#9ca3af'
+              }}>
+                No parking when 2+ inches of snow falls until streets are cleared. We highly recommend enabling both alert types below.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!onSnowRoute && (
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
         }}>
           <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
-            Your street cleaning address is not on a winter parking ban street or 2-inch snow ban route. You can still opt in to forecast alerts below.
+            Your street cleaning address is not on a 2-inch snow ban route. You can still opt in to alerts below if you park on other streets affected by the ban.
           </p>
         </div>
       )}
 
       {/* Notification Preferences */}
       <h4 style={{
-        margin: '0 0 8px',
+        margin: '0 0 16px',
         fontSize: '14px',
         fontWeight: '600',
         color: '#374151',
@@ -180,21 +164,6 @@ export default function SnowBanSettings({
       }}>
         Notification Preferences
       </h4>
-      <p style={{
-        margin: '0 0 16px',
-        fontSize: '14px',
-        color: '#6b7280',
-        lineHeight: '1.5'
-      }}>
-        {(onSnowRoute || onWinterBanStreet) ? (
-          <>
-            Your address <strong style={{ color: '#000' }}>is on a {onSnowRoute && onWinterBanStreet ? '2-inch snow ban route and winter overnight ban street' : onSnowRoute ? '2-inch snow ban route' : 'winter overnight ban street'}</strong>.
-            {onSnowRoute && ' We recommend enabling both alert types.'}
-          </>
-        ) : (
-          <>Your address is <strong style={{ color: '#000' }}>not on a winter ban or 2-inch snow ban street</strong>. These alerts are only relevant if you park on affected streets.</>
-        )}
-      </p>
 
       {/* Forecast Alerts Card */}
       <div style={{
@@ -237,8 +206,7 @@ export default function SnowBanSettings({
                 color: '#6b7280',
                 lineHeight: '1.5'
               }}>
-                Get advance notice when 2+ inches of snow is forecasted for your address.
-                {onSnowRoute ? ' We\'ll remind you to move your car before the ban starts.' : ' Useful if you park on 2-inch snow ban streets.'}
+                Get advance notice when 2+ inches of snow is forecasted. We'll send parking ban rules and preparation tips.
               </div>
             </div>
           </label>
@@ -324,14 +292,16 @@ export default function SnowBanSettings({
           }}>
             <input
               type="checkbox"
-              checked={notifySnowConfirmation}
+              checked={notifySnowConfirmation || onSnowRoute}
               onChange={(e) => onUpdate('notify_snow_confirmation', e.target.checked)}
+              disabled={onSnowRoute}
               style={{
                 marginTop: '2px',
                 width: '20px',
                 height: '20px',
-                cursor: 'pointer',
-                accentColor: '#000'
+                cursor: onSnowRoute ? 'not-allowed' : 'pointer',
+                accentColor: '#000',
+                opacity: onSnowRoute ? 0.6 : 1
               }}
             />
             <div style={{ flex: 1 }}>
@@ -341,7 +311,7 @@ export default function SnowBanSettings({
                 color: '#000',
                 marginBottom: '4px'
               }}>
-                🚨 Confirmation Alerts
+                🚨 Confirmation Alerts {onSnowRoute && <span style={{ fontSize: '13px', fontWeight: '500', color: '#10b981' }}>(Required)</span>}
               </div>
               <div style={{
                 fontSize: '14px',
@@ -349,15 +319,15 @@ export default function SnowBanSettings({
                 lineHeight: '1.5'
               }}>
                 {onSnowRoute
-                  ? 'Immediate alert when 2+ inches has fallen and the parking ban is now active. You need to move your car ASAP.'
-                  : 'Alert when 2+ inches has fallen and the ban is active. Only relevant if you park on 2-inch snow ban streets.'
+                  ? 'Immediate alert when 2+ inches has fallen and the parking ban is now active. You need to move your car ASAP. Auto-enabled for your safety.'
+                  : 'Alert when 2+ inches has fallen and the ban is active. Only useful if you park on 2-inch snow ban streets.'
                 }
               </div>
             </div>
           </label>
         </div>
 
-        {notifySnowConfirmation && (
+        {(notifySnowConfirmation || onSnowRoute) && (
           <div style={{
             paddingLeft: '32px',
             paddingTop: '12px',
