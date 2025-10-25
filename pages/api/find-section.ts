@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
+import { isAddressOnWinterBan } from '../../lib/winter-ban-matcher';
 
 // MyStreetCleaning database for PostGIS queries (has the geospatial data)
 const MSC_SUPABASE_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
@@ -370,6 +371,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Check if address is on a 2-inch snow ban route
     let snowRouteInfo = { isOnSnowRoute: false, route: null, streetName: null };
+    let winterBanInfo = { isOnWinterBan: false, street: null, streetName: null };
+
     if (address && typeof address === 'string') {
       try {
         snowRouteInfo = await isAddressOnSnowRoute(address);
@@ -377,6 +380,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch (error) {
         console.error('Error checking snow route:', error);
         // Don't fail the whole request if snow route check fails
+      }
+
+      try {
+        winterBanInfo = await isAddressOnWinterBan(address);
+        console.log('Winter ban check:', winterBanInfo.isOnWinterBan ? `ON WINTER BAN: ${winterBanInfo.street?.street_name}` : 'Not on winter ban street');
+      } catch (error) {
+        console.error('Error checking winter ban:', error);
+        // Don't fail the whole request if winter ban check fails
       }
     }
 
@@ -390,6 +401,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       matchType: matchType,
       onSnowRoute: snowRouteInfo.isOnSnowRoute,
       snowRouteStreet: snowRouteInfo.route?.on_street || null,
+      onWinterBan: winterBanInfo.isOnWinterBan,
+      winterBanStreet: winterBanInfo.street?.street_name || null,
     };
 
     // Add date range specific fields if requested
