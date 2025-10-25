@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
 
 const BRAND = {
   name: 'Ticketless America',
@@ -56,21 +57,73 @@ async function sendSMS(to: string, body: string) {
   return data;
 }
 
-function getEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string): string {
+function getForecastEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
 
   return `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">🚨 2-Inch Snow Ban ACTIVE - Move Your Car NOW</h2>
+      <h2 style="margin:0 0 12px">❄️ 2+ Inches of Snow Forecasted for Your Street</h2>
       <p>${greeting}</p>
-      <p><strong>Chicago has received ${snowAmount}" of snow. The 2-inch parking ban is now in effect on your street.</strong></p>
+      <p><strong>Chicago is forecasted to receive ${snowAmount}" of snow, which may trigger the 2-inch parking ban on your street.</strong></p>
+
+      <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;margin:20px 0">
+        <strong>⚠️ PREPARE TO MOVE YOUR CAR</strong>
+        <ul style="margin:8px 0">
+          <li><strong>Your Street:</strong> ${streetInfo}</li>
+          <li><strong>Forecasted Snow:</strong> ${snowAmount} inches</li>
+          <li><strong>When Ban Activates:</strong> Once 2+ inches has actually fallen (not yet in effect)</li>
+          <li><strong>Penalty if Violated:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
+        </ul>
+      </div>
+
+      <p><strong>📋 Two-Inch Snow Ban Rules:</strong></p>
+      <ul>
+        <li>Applies to 500 miles of main streets in Chicago</li>
+        <li>Activates when 2+ inches of snow has actually fallen (any time, any day)</li>
+        <li>Remains in effect until snow removal is complete (24-48 hours typically)</li>
+        <li>Cars parked on affected streets may be ticketed and relocated</li>
+      </ul>
+
+      <p><strong>🚗 What to do:</strong></p>
+      <ol>
+        <li>Monitor weather conditions closely</li>
+        <li>Be prepared to move your car off ${streetInfo}</li>
+        <li><strong>We'll send you a confirmation alert when 2+ inches has actually fallen</strong></li>
+        <li>When confirmed, move to a side street (not a main arterial)</li>
+      </ol>
+
+      <p style="font-size:14px;color:#6b7280;margin-top:24px">
+        <strong>Important:</strong> The 2-inch snow ban is not yet in effect. This is a forecast alert to help you prepare. We will notify you again when the snow has actually fallen and the ban becomes active.
+      </p>
+
+      <p style="font-size:14px;color:#6b7280;">
+        <strong>Official info:</strong> <a href="https://www.chicago.gov/city/en/depts/streets/provdrs/traffic/svcs/winter-snow-parking-restrictions.html">Chicago.gov Winter Parking</a>
+      </p>
+
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
+      <p style="font-size:12px;color:#6b7280">
+        You're receiving this because you're registered with ${BRAND.name} at an address on a 2-inch snow ban street.
+        <a href="${BRAND.dashboardUrl}" style="color:#2563eb">Manage preferences</a>
+      </p>
+    </div>
+  `;
+}
+
+function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string): string {
+  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
+
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
+      <h2 style="margin:0 0 12px">🚨 2-Inch Snow Ban NOW ACTIVE - Move Your Car NOW</h2>
+      <p>${greeting}</p>
+      <p><strong>Chicago has received ${snowAmount}" of snow. The 2-inch parking ban is NOW IN EFFECT on your street.</strong></p>
 
       <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:16px;margin:20px 0">
         <strong>⚠️ IMMEDIATE ACTION REQUIRED</strong>
         <ul style="margin:8px 0">
           <li><strong>Ban Status:</strong> ACTIVE NOW - move your car immediately</li>
           <li><strong>Your Street:</strong> ${streetInfo}</li>
-          <li><strong>Penalty:</strong> $150+ towing fee + $60 ticket + $25/day storage</li>
+          <li><strong>Penalty:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
           <li><strong>Duration:</strong> Until snow is cleared (typically 24-48 hours)</li>
         </ul>
       </div>
@@ -87,7 +140,7 @@ function getEmailHtml(firstName: string | null, snowAmount: number, streetInfo: 
       </p>
 
       <p style="font-size:14px;color:#6b7280;">
-        <strong>Official info:</strong> <a href="https://www.chicago.gov/city/en/depts/streets/provdrs/streets_san/svcs/winter_snow_parking_restrictions.html">Chicago.gov Winter Parking</a>
+        <strong>Official info:</strong> <a href="https://www.chicago.gov/city/en/depts/streets/provdrs/traffic/svcs/winter-snow-parking-restrictions.html">Chicago.gov Winter Parking</a>
       </p>
 
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
@@ -99,8 +152,12 @@ function getEmailHtml(firstName: string | null, snowAmount: number, streetInfo: 
   `;
 }
 
-function getSMSText(snowAmount: number, streetInfo: string): string {
-  return `🚨 SNOW BAN ACTIVE! ${snowAmount}" snow detected. MOVE YOUR CAR from ${streetInfo} NOW! Violation = $150+ tow + $60 ticket. Ban active until streets cleared. ${BRAND.dashboardUrl}`;
+function getForecastSMSText(snowAmount: number, streetInfo: string): string {
+  return `❄️ ${snowAmount}" snow forecasted. 2-inch parking ban may activate on ${streetInfo}. We'll confirm when snow falls. Prepare to move your car. ${BRAND.dashboardUrl}`;
+}
+
+function getConfirmationSMSText(snowAmount: number, streetInfo: string): string {
+  return `🚨 SNOW BAN ACTIVE! ${snowAmount}" snow fallen. MOVE YOUR CAR from ${streetInfo} NOW! Violation = $235+ (tow+ticket+storage). ${BRAND.dashboardUrl}`;
 }
 
 export default async function handler(
@@ -109,6 +166,15 @@ export default async function handler(
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Get notification type from request body: 'forecast' or 'confirmation'
+  const { notificationType = 'confirmation' } = req.body || {};
+
+  if (!['forecast', 'confirmation'].includes(notificationType)) {
+    return res.status(400).json({
+      error: 'Invalid notification type. Must be "forecast" or "confirmation"'
+    });
   }
 
   const startTime = Date.now();
@@ -120,7 +186,8 @@ export default async function handler(
     smsSent: 0,
     smsFailed: 0,
     alreadyNotified: 0,
-    noActiveEvent: 0
+    noActiveEvent: 0,
+    notOnSnowRoute: 0
   };
 
   try {
@@ -144,41 +211,29 @@ export default async function handler(
 
     stats.noActiveEvent = 0;
 
-    // Get all users who have opted in for snow ban notifications
-    const { data: users, error: usersError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('user_id, email, phone_number, first_name, home_address_full, notify_snow_ban')
-      .eq('notify_snow_ban', true)
-      .not('home_address_full', 'is', null);
+    // Get users on snow routes (filters by home_address_full matching snow_routes table)
+    const usersOnSnowRoutes = await getUsersOnSnowRoutes();
 
-    if (usersError) throw usersError;
+    stats.usersChecked = usersOnSnowRoutes.length;
 
-    stats.usersChecked = users?.length || 0;
-
-    if (!users || users.length === 0) {
+    if (usersOnSnowRoutes.length === 0) {
       return res.status(200).json({
         success: true,
-        message: 'No users opted in for snow ban notifications',
+        message: 'No users found on 2-inch snow ban streets',
         stats,
         snowEvent
       });
     }
 
-    // Process each user
-    for (const user of users) {
-      if (!user.home_address_full) continue;
-
-      // For now, we notify ALL users who opted in
-      // TODO: Once you get the 2-inch ban street list, filter by street
-      // For demonstration, we'll use a simple check
-      const address = user.home_address_full.toLowerCase();
-
-      // Check if user has already been notified for this snow event
+    // Process each user on snow routes
+    for (const user of usersOnSnowRoutes) {
+      // Check if user has already been notified for this snow event and notification type
       const { data: existingNotification } = await supabaseAdmin
         .from('user_snow_ban_notifications')
         .select('id')
         .eq('user_id', user.user_id)
         .eq('snow_event_id', snowEvent.id)
+        .eq('notification_type', notificationType)
         .single();
 
       if (existingNotification) {
@@ -187,15 +242,24 @@ export default async function handler(
       }
 
       const channels: string[] = [];
-      const streetInfo = 'your street'; // TODO: Extract actual street name from address
+      const streetInfo = user.route.on_street;
+
+      // Choose the right email/SMS templates based on notification type
+      const isForecast = notificationType === 'forecast';
+      const emailSubject = isForecast
+        ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban May Apply`
+        : `🚨 2-Inch Snow Ban ACTIVE - Move Your Car (${snowEvent.snow_amount_inches}" snow)`;
+      const emailHtml = isForecast
+        ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo)
+        : getConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo);
+      const smsText = isForecast
+        ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo)
+        : getConfirmationSMSText(snowEvent.snow_amount_inches, streetInfo);
 
       // Send SMS
       if (user.phone_number) {
         try {
-          await sendSMS(
-            user.phone_number,
-            getSMSText(snowEvent.snow_amount_inches, streetInfo)
-          );
+          await sendSMS(user.phone_number, smsText);
           channels.push('sms');
           stats.smsSent++;
         } catch (error) {
@@ -207,11 +271,7 @@ export default async function handler(
       // Send Email
       if (user.email) {
         try {
-          await sendEmail(
-            user.email,
-            `🚨 2-Inch Snow Ban ACTIVE - Move Your Car (${snowEvent.snow_amount_inches}" snow)`,
-            getEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo)
-          );
+          await sendEmail(user.email, emailSubject, emailHtml);
           channels.push('email');
           stats.emailsSent++;
         } catch (error) {
@@ -228,6 +288,7 @@ export default async function handler(
             user_id: user.user_id,
             snow_event_id: snowEvent.id,
             notification_date: new Date().toISOString().split('T')[0],
+            notification_type: notificationType,
             channels,
             status: 'sent'
           });
@@ -237,16 +298,28 @@ export default async function handler(
     }
 
     // Mark the snow event as having triggered notifications
-    await supabaseAdmin
-      .from('snow_events')
-      .update({
-        two_inch_ban_triggered: true,
-        ban_triggered_at: new Date().toISOString()
-      })
-      .eq('id', snowEvent.id);
+    // Update different fields based on notification type
+    if (notificationType === 'forecast') {
+      await supabaseAdmin
+        .from('snow_events')
+        .update({
+          forecast_sent: true,
+          forecast_sent_at: new Date().toISOString()
+        })
+        .eq('id', snowEvent.id);
+    } else {
+      await supabaseAdmin
+        .from('snow_events')
+        .update({
+          two_inch_ban_triggered: true,
+          ban_triggered_at: new Date().toISOString()
+        })
+        .eq('id', snowEvent.id);
+    }
 
     return res.status(200).json({
       success: true,
+      notificationType,
       stats,
       snowEvent: {
         id: snowEvent.id,
