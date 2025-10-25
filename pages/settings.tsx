@@ -4,6 +4,7 @@ import Head from 'next/head'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import StreetCleaningSettings from '../components/StreetCleaningSettings'
+import SnowBanSettings from '../components/SnowBanSettings'
 import PasskeyManager from '../components/PasskeyManager'
 import UpgradeCard from '../components/UpgradeCard'
 import ReferralLink from '../components/ReferralLink'
@@ -125,6 +126,15 @@ interface UserProfile {
   voice_call_days_before: number[] | null
   voice_call_time: string | null
   voice_calls_enabled: boolean
+  // Snow ban notification preferences
+  notify_snow_forecast: boolean
+  notify_snow_forecast_email: boolean
+  notify_snow_forecast_sms: boolean
+  notify_snow_confirmation: boolean
+  notify_snow_confirmation_email: boolean
+  notify_snow_confirmation_sms: boolean
+  on_snow_route: boolean
+  snow_route_street: string | null
   // SMS settings
   sms_pro: boolean
   sms_gateway: string | null
@@ -561,6 +571,25 @@ export default function Dashboard() {
     const diffTime = dueDate.getTime() - today.getTime()
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
+
+  const handleSnowBanSettingUpdate = (field: string, value: boolean) => {
+    setEditedProfile(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Clear previous timeout for this field
+    if (autoSaveTimeouts[field]) {
+      clearTimeout(autoSaveTimeouts[field]);
+    }
+
+    // Auto-save after 500ms
+    const timeoutId = setTimeout(() => {
+      autoSaveProfile({ [field]: value });
+    }, 500);
+
+    setAutoSaveTimeouts(prev => ({ ...prev, [field]: timeoutId }));
+  };
 
   const handleResendVerification = async () => {
     if (!user?.email) return
@@ -1505,6 +1534,19 @@ export default function Dashboard() {
 
           {/* Street Cleaning Settings */}
           <StreetCleaningSettings />
+
+          {/* Snow Ban Notification Settings */}
+          <SnowBanSettings
+            onSnowRoute={profile.on_snow_route || false}
+            snowRouteStreet={profile.snow_route_street}
+            notifySnowForecast={profile.notify_snow_forecast || false}
+            notifySnowForecastEmail={profile.notify_snow_forecast_email !== false}
+            notifySnowForecastSms={profile.notify_snow_forecast_sms !== false}
+            notifySnowConfirmation={profile.notify_snow_confirmation || false}
+            notifySnowConfirmationEmail={profile.notify_snow_confirmation_email !== false}
+            notifySnowConfirmationSms={profile.notify_snow_confirmation_sms !== false}
+            onUpdate={handleSnowBanSettingUpdate}
+          />
 
           {/* Passkey Management */}
           <PasskeyManager />

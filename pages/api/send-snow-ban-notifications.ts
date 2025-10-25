@@ -214,19 +214,31 @@ export default async function handler(
     // Get users on snow routes (filters by home_address_full matching snow_routes table)
     const usersOnSnowRoutes = await getUsersOnSnowRoutes();
 
-    stats.usersChecked = usersOnSnowRoutes.length;
+    // Filter users based on their notification preferences for this type
+    const isForecastNotif = notificationType === 'forecast';
+    const filteredUsers = usersOnSnowRoutes.filter(user => {
+      if (isForecastNotif) {
+        // Forecast: user must have opted in
+        return user.notify_snow_forecast === true;
+      } else {
+        // Confirmation: user must have opted in (auto-enabled for snow route users)
+        return user.notify_snow_confirmation === true;
+      }
+    });
 
-    if (usersOnSnowRoutes.length === 0) {
+    stats.usersChecked = filteredUsers.length;
+
+    if (filteredUsers.length === 0) {
       return res.status(200).json({
         success: true,
-        message: 'No users found on 2-inch snow ban streets',
+        message: `No users opted in for ${notificationType} notifications`,
         stats,
         snowEvent
       });
     }
 
-    // Process each user on snow routes
-    for (const user of usersOnSnowRoutes) {
+    // Process each filtered user
+    for (const user of filteredUsers) {
       // Check if user has already been notified for this snow event and notification type
       const { data: existingNotification } = await supabaseAdmin
         .from('user_snow_ban_notifications')
@@ -256,8 +268,16 @@ export default async function handler(
         ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo)
         : getConfirmationSMSText(snowEvent.snow_amount_inches, streetInfo);
 
-      // Send SMS
-      if (user.phone_number) {
+      // Check channel preferences for this notification type
+      const smsEnabled = isForecast
+        ? user.notify_snow_forecast_sms !== false
+        : user.notify_snow_confirmation_sms !== false;
+      const emailEnabled = isForecast
+        ? user.notify_snow_forecast_email !== false
+        : user.notify_snow_confirmation_email !== false;
+
+      // Send SMS (if enabled and user has phone number)
+      if (smsEnabled && user.phone_number) {
         try {
           await sendSMS(user.phone_number, smsText);
           channels.push('sms');
@@ -268,8 +288,8 @@ export default async function handler(
         }
       }
 
-      // Send Email
-      if (user.email) {
+      // Send Email (if enabled and user has email)
+      if (emailEnabled && user.email) {
         try {
           await sendEmail(user.email, emailSubject, emailHtml);
           channels.push('email');

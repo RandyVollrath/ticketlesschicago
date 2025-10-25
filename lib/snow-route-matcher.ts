@@ -139,12 +139,30 @@ export async function getUsersOnSnowRoutes(): Promise<Array<{
   first_name: string;
   home_address_full: string;
   route: SnowRoute;
+  notify_snow_forecast: boolean;
+  notify_snow_forecast_email: boolean;
+  notify_snow_forecast_sms: boolean;
+  notify_snow_confirmation: boolean;
+  notify_snow_confirmation_email: boolean;
+  notify_snow_confirmation_sms: boolean;
 }>> {
   try {
-    // Get all users with street cleaning addresses
+    // Get all users with street cleaning addresses and their notification preferences
     const { data: users, error: usersError } = await supabaseAdmin
       .from('user_profiles')
-      .select('user_id, email, phone_number, first_name, home_address_full')
+      .select(`
+        user_id,
+        email,
+        phone_number,
+        first_name,
+        home_address_full,
+        notify_snow_forecast,
+        notify_snow_forecast_email,
+        notify_snow_forecast_sms,
+        notify_snow_confirmation,
+        notify_snow_confirmation_email,
+        notify_snow_confirmation_sms
+      `)
       .not('home_address_full', 'is', null);
 
     if (usersError) throw usersError;
