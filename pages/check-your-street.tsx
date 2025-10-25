@@ -24,6 +24,8 @@ interface SearchResult {
   nextCleaningDate: string | null
   coordinates: { lat: number; lng: number }
   geometry: any
+  onSnowRoute?: boolean
+  snowRouteStreet?: string
 }
 
 export default function CheckYourStreet() {
@@ -309,6 +311,41 @@ export default function CheckYourStreet() {
                   </div>
                 );
               })()}
+
+              {/* Snow Route Warning */}
+              {searchResult.onSnowRoute && searchResult.snowRouteStreet && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: 'white',
+                  padding: '20px 24px',
+                  borderRadius: '12px',
+                  marginBottom: '24px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ fontSize: '32px', lineHeight: '1' }}>❄️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
+                        2-Inch Snow Ban Route
+                      </div>
+                      <div style={{ fontSize: '15px', lineHeight: '1.5', opacity: 0.95 }}>
+                        <strong>{searchResult.snowRouteStreet}</strong> is subject to Chicago's 2-inch snow parking ban.
+                        When 2+ inches of snow falls, parking is prohibited until streets are cleared (typically 24-48 hours).
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        marginTop: '12px',
+                        padding: '10px 14px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        borderRadius: '6px',
+                        fontWeight: '500'
+                      }}>
+                        💡 Violation = $150 towing + $60 ticket + $25/day storage = $235+ total. Sign up to get automatic snow ban alerts!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div style={{ marginBottom: '24px' }}>
                 <h2 style={{
