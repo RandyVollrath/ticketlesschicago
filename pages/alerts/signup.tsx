@@ -21,7 +21,8 @@ export default function AlertsSignup() {
     model: '',
     citySticker: '',
     address: '',
-    zip: ''
+    zip: '',
+    marketingConsent: false
   });
 
   // Check for error from auth callback
@@ -75,10 +76,10 @@ export default function AlertsSignup() {
   }, [router.query.token, prefilledData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'licensePlate' ? value.toUpperCase() : value
+      [name]: type === 'checkbox' ? checked : (name === 'licensePlate' ? value.toUpperCase() : value)
     }));
   };
 
@@ -568,6 +569,45 @@ export default function AlertsSignup() {
                 {message}
               </div>
             )}
+
+            {/* Marketing Consent Checkbox */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              padding: '16px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+              marginTop: '8px'
+            }}>
+              <input
+                type="checkbox"
+                name="marketingConsent"
+                id="marketingConsent"
+                checked={formData.marketingConsent}
+                onChange={handleInputChange}
+                style={{
+                  marginTop: '2px',
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              />
+              <label
+                htmlFor="marketingConsent"
+                style={{
+                  fontSize: '14px',
+                  color: '#374151',
+                  lineHeight: '1.5',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
+                I'd like to get updates or offers from Autopilot America about new ticket-prevention services.
+              </label>
+            </div>
 
             <button
               type="submit"

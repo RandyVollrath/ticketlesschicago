@@ -57,7 +57,8 @@ export default async function handler(
     make,
     model,
     citySticker,
-    token
+    token,
+    marketingConsent
   } = req.body;
 
   if (!email || !phone || !licensePlate || !address || !zip) {
@@ -175,6 +176,7 @@ export default async function handler(
       notify_sms: true,
       is_paid: true, // Free users are considered "paid" for alerts
       has_protection: false,
+      marketing_consent: marketingConsent === true, // CAN-SPAM compliance
       updated_at: new Date().toISOString()
     };
 
