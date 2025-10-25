@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Head from 'next/head'
 import dynamic from 'next/dynamic'
+import { getHighRiskWardData } from '../lib/high-risk-wards'
 
 // Dynamically import the map to avoid SSR issues
 const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
@@ -264,6 +265,51 @@ export default function CheckYourStreet() {
               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
               border: '2px solid #e5e7eb'
             }}>
+              {/* High-Risk Ward Warning */}
+              {(() => {
+                const wardData = getHighRiskWardData(searchResult.ward);
+                if (!wardData) return null;
+
+                const isHighest = wardData.riskLevel === 'highest';
+                const bgColor = isHighest ? '#dc2626' : '#f59e0b';
+                const emoji = isHighest ? '🚨' : '⚠️';
+
+                return (
+                  <div style={{
+                    background: `linear-gradient(135deg, ${bgColor} 0%, ${isHighest ? '#b91c1c' : '#d97706'} 100%)`,
+                    color: 'white',
+                    padding: '20px 24px',
+                    borderRadius: '12px',
+                    marginBottom: '24px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ fontSize: '32px', lineHeight: '1' }}>{emoji}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
+                          {isHighest ? 'HIGHEST RISK WARD' : 'HIGHER RISK WARD'} - Ranked #{wardData.rank}
+                        </div>
+                        <div style={{ fontSize: '15px', lineHeight: '1.5', opacity: 0.95 }}>
+                          Ward {wardData.ward} had <strong>{wardData.totalTickets.toLocaleString()} street cleaning tickets</strong> from 2020-2025.
+                          About <strong>{Math.round(wardData.ticketsPer100Residents)} out of every 100 residents</strong> received a ticket over that period.
+                          {wardData.ticketsPer100Residents > 100 && ' That\'s more than one ticket per resident!'}
+                        </div>
+                        <div style={{
+                          fontSize: '13px',
+                          marginTop: '12px',
+                          padding: '10px 14px',
+                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: '6px',
+                          fontWeight: '500'
+                        }}>
+                          💡 Extra vigilance required! Consider setting up automatic reminders to avoid tickets.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ marginBottom: '24px' }}>
                 <h2 style={{
                   fontSize: '28px',
