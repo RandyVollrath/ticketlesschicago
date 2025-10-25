@@ -223,7 +223,15 @@ export default function Home() {
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '32px', alignItems: 'center', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', gap: '32px', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <a
+            href="/check-your-street"
+            onClick={(e) => { e.preventDefault(); router.push('/check-your-street'); }}
+            className="nav-link"
+            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
+            Check Street
+          </a>
           <a
             href="/alerts/signup"
             onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
