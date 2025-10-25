@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 
 // MyStreetCleaning database for PostGIS queries (has the geospatial data)
 const MSC_SUPABASE_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
@@ -367,6 +368,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Location search successful:', foundWard, foundSection, nextCleaningDate);
 
+    // Check if address is on a 2-inch snow ban route
+    let snowRouteInfo = { isOnSnowRoute: false, route: null, streetName: null };
+    if (address && typeof address === 'string') {
+      try {
+        snowRouteInfo = await isAddressOnSnowRoute(address);
+        console.log('Snow route check:', snowRouteInfo.isOnSnowRoute ? `ON ROUTE: ${snowRouteInfo.route?.on_street}` : 'Not on snow route');
+      } catch (error) {
+        console.error('Error checking snow route:', error);
+        // Don't fail the whole request if snow route check fails
+      }
+    }
+
     // Build response object
     const responseData: any = {
       ward: foundWard,
@@ -375,19 +388,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       coordinates: coordinates,
       geometry: foundGeometry,
       matchType: matchType,
+      onSnowRoute: snowRouteInfo.isOnSnowRoute,
+      snowRouteStreet: snowRouteInfo.route?.on_street || null,
     };
-    
+
     // Add date range specific fields if requested
     if (isDateRangeRequest) {
       responseData.datesInRange = datesInRange || [];
-      
+
       // For trip feature, also find safe parking sections (sections with no cleaning during the period)
       // This is a simplified version - in a full implementation, you'd find nearby sections
       responseData.safeParkingSections = [];
-      
+
       console.log(`📅 Date range query: Found ${datesInRange?.length || 0} cleaning dates between ${startDate} and ${endDate}`);
     }
-    
+
     return res.status(200).json(responseData);
 
   } catch (error: any) {
