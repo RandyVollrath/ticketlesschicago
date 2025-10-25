@@ -135,6 +135,9 @@ interface UserProfile {
   notify_snow_confirmation_sms: boolean
   on_snow_route: boolean
   snow_route_street: string | null
+  // Winter ban detection
+  on_winter_ban_street: boolean
+  winter_ban_street: string | null
   // SMS settings
   sms_pro: boolean
   sms_gateway: string | null

@@ -26,6 +26,8 @@ interface SearchResult {
   geometry: any
   onSnowRoute?: boolean
   snowRouteStreet?: string
+  onWinterBan?: boolean
+  winterBanStreet?: string
 }
 
 export default function CheckYourStreet() {
@@ -314,6 +316,30 @@ export default function CheckYourStreet() {
                   </div>
                 );
               })()}
+
+              {/* Winter Overnight Parking Ban Warning */}
+              {searchResult.onWinterBan && searchResult.winterBanStreet && (
+                <div style={{
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #fde68a',
+                  padding: '20px 24px',
+                  borderRadius: '12px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                    <div style={{ fontSize: '24px', lineHeight: '1' }}>🌙</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#d97706' }}>
+                        Winter Overnight Parking Ban
+                      </div>
+                      <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#6b7280' }}>
+                        <strong style={{ color: '#111827' }}>{searchResult.winterBanStreet}</strong> has a winter overnight parking ban.
+                        <strong style={{ color: '#111827' }}> No parking 3:00 AM - 7:00 AM</strong> every night from December 1 - April 1.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Snow Route Warning */}
               {searchResult.onSnowRoute && searchResult.snowRouteStreet && (
