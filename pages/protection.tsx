@@ -171,13 +171,18 @@ export default function Protection() {
     LT: { label: 'Large Truck', price: 530.40, description: 'Truck/Vehicle ≥16,001 lbs or ≥2,500 lbs payload' }
   };
 
-  // Calculate total price
+  // Calculate total price - OPTION A: Subscription only, no upfront sticker/plate fees
   const calculateTotal = () => {
     const subscriptionPrice = billingPlan === 'monthly' ? 12 : 120;
-    const cityStickerPrice = needsCitySticker ? vehicleTypeInfo[vehicleType].price : 0;
-    const licensePlatePrice = needsLicensePlate ? (hasVanityPlate ? 164 : 155) : 0;
-    const permitFee = hasPermitZone ? 30 : 0;
-    return subscriptionPrice + cityStickerPrice + licensePlatePrice + permitFee;
+    // COMMENTED OUT - No longer collecting upfront payment for stickers/plates
+    // We'll charge when deadlines approach and use remitter service
+    // const cityStickerPrice = needsCitySticker ? vehicleTypeInfo[vehicleType].price : 0;
+    // const licensePlatePrice = needsLicensePlate ? (hasVanityPlate ? 164 : 155) : 0;
+    // const permitFee = hasPermitZone ? 30 : 0;
+    // return subscriptionPrice + cityStickerPrice + licensePlatePrice + permitFee;
+
+    // NEW MODEL: Just subscription fee, stickers/plates charged later
+    return subscriptionPrice;
   };
 
   return (
@@ -754,7 +759,7 @@ export default function Protection() {
                   margin: '0 0 20px 0',
                   lineHeight: '1.5'
                 }}>
-                  Pay upfront for your city sticker and license plate renewals. We'll file these on your behalf before they expire. <strong>Renewals only</strong> — initial registration not included. Required for full Protection coverage.
+                  We'll handle your city sticker and license plate renewals before they expire. When your deadline approaches, we'll charge your card and use our remitter service to file with the city. <strong>Renewals only</strong> — initial registration not included. Required for full Protection coverage.
                 </p>
 
                 {/* City Sticker */}
@@ -963,6 +968,7 @@ export default function Protection() {
                   <span>Protection subscription ({billingPlan})</span>
                   <span>${billingPlan === 'monthly' ? '12' : '120'}</span>
                 </div>
+                {/* OPTION A: No upfront fees shown - charged when deadlines approach */}
                 {needsCitySticker && (
                   <div style={{
                     display: 'flex',
@@ -971,8 +977,8 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>City sticker renewal - {vehicleTypeInfo[vehicleType].label} (paid upfront)</span>
-                    <span>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</span>
+                    <span>City sticker renewal - {vehicleTypeInfo[vehicleType].label} <em style={{ fontSize: '13px', color: '#9ca3af' }}>(charged later)</em></span>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</span>
                   </div>
                 )}
                 {needsLicensePlate && (
@@ -983,10 +989,11 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>License plate renewal (paid upfront) {hasVanityPlate && '(vanity)'}</span>
-                    <span>${hasVanityPlate ? '164' : '155'}</span>
+                    <span>License plate renewal {hasVanityPlate && '(vanity)'} <em style={{ fontSize: '13px', color: '#9ca3af' }}>(charged later)</em></span>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>${hasVanityPlate ? '164' : '155'}</span>
                   </div>
                 )}
+                {/* Permit zone fee also charged later if needed */}
                 {hasPermitZone && (
                   <div style={{
                     display: 'flex',
@@ -995,8 +1002,8 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>Residential parking permit fee</span>
-                    <span>$30</span>
+                    <span>Residential parking permit <em style={{ fontSize: '13px', color: '#9ca3af' }}>(charged later if needed)</em></span>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>$30</span>
                   </div>
                 )}
                 <div style={{
@@ -1020,7 +1027,7 @@ export default function Protection() {
                   fontStyle: 'italic',
                   lineHeight: '1.5'
                 }}>
-                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. Renewal fees are paid upfront so we have funds to file your registrations with the city on your behalf.
+                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. When your renewal deadlines approach, we'll charge your card for the government fees and file everything through our remitter service.
                 </p>
               </div>
 
@@ -1071,7 +1078,7 @@ export default function Protection() {
                     required
                   />
                   <span>
-                    <strong>I authorize Autopilot America to act as my agent</strong> to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
+                    <strong>I authorize Autopilot America to act as my agent</strong> to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. <strong>I authorize Autopilot America to charge my card</strong> for government renewal fees (city sticker, license plate, parking permits) when my deadlines approach, which will be processed through our remitter service. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
                   </span>
                 </label>
               </div>
@@ -1263,7 +1270,7 @@ export default function Protection() {
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                Your upfront renewal payment covers done-for-you filing with the city:
+                Our concierge renewal service handles everything for you:
               </p>
               <ul style={{
                 fontSize: '15px',
