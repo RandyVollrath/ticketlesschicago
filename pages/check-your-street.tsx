@@ -3,8 +3,8 @@ import Head from 'next/head'
 import dynamic from 'next/dynamic'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 
-// Dynamically import the map to avoid SSR issues
-const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
+// Dynamically import the simple map (without "Park Here Instead" messaging)
+const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMapSimple'), {
   ssr: false,
   loading: () => <div style={{
     height: '500px',

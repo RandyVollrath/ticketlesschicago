@@ -1,0 +1,278 @@
+import React, { useEffect, useRef } from 'react';
+
+// Define interface for schedule data features
+export interface ScheduleData {
+  type: 'Feature';
+  geometry: any;
+  properties: {
+    id: string;
+    ward: string | null;
+    section: string | null;
+    cleaningStatus?: 'today' | 'soon' | 'later' | 'none';
+    nextCleaningDateISO?: string;
+    [key: string]: any;
+  };
+}
+
+interface StreetCleaningMapProps {
+  data: ScheduleData[];
+  triggerPopup?: { ward: string; section: string } | null;
+  onMapClick?: (lat: number, lng: number) => void;
+}
+
+// Simple map component that uses Leaflet directly without react-leaflet
+const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopup }) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Dynamically import Leaflet to avoid SSR issues
+    const initMap = async () => {
+      if (typeof window === 'undefined' || !mapRef.current) return;
+
+      const L = (await import('leaflet')).default;
+      
+      // Initialize map
+      if (!mapInstanceRef.current) {
+        mapInstanceRef.current = L.map(mapRef.current).setView([41.8781, -87.6298], 11);
+        
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapInstanceRef.current);
+      }
+
+      // Clear existing layers
+      mapInstanceRef.current.eachLayer((layer: any) => {
+        if (layer.options.attribution) return; // Keep tile layer
+        mapInstanceRef.current.removeLayer(layer);
+      });
+
+      // Add legend
+      const legend = L.control({ position: 'topleft' });
+      legend.onAdd = () => {
+        const div = L.DomUtil.create('div', 'map-legend');
+        div.style.background = 'rgba(255, 255, 255, 0.9)';
+        div.style.padding = '8px';
+        div.style.borderRadius = '5px';
+        div.style.boxShadow = '0 0 15px rgba(0,0,0,0.2)';
+        div.style.fontSize = '12px';
+        div.style.fontFamily = 'Arial, sans-serif';
+        
+        div.innerHTML = `
+          <div style="font-weight: bold; margin-bottom: 4px;">Street Cleaning</div>
+          <div style="display: flex; align-items: center; margin-bottom: 2px;">
+            <div style="width: 12px; height: 12px; background: #dc3545; margin-right: 5px; border: 1px solid #333;"></div>
+            <span>Today</span>
+          </div>
+          <div style="display: flex; align-items: center; margin-bottom: 2px;">
+            <div style="width: 12px; height: 12px; background: #ffc107; margin-right: 5px; border: 1px solid #333;"></div>
+            <span>Soon (1-3 days)</span>
+          </div>
+          <div style="display: flex; align-items: center; margin-bottom: 2px;">
+            <div style="width: 12px; height: 12px; background: #28a745; margin-right: 5px; border: 1px solid #333;"></div>
+            <span>Later</span>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <div style="width: 12px; height: 12px; background: #6c757d; margin-right: 5px; border: 1px solid #333;"></div>
+            <span>No schedule</span>
+          </div>
+        `;
+        return div;
+      };
+      legend.addTo(mapInstanceRef.current);
+
+      // Add GeoJSON data
+      data.forEach((feature) => {
+        if (!feature.geometry) return;
+
+        const status = feature.properties?.cleaningStatus;
+        let fillColor = '#28a745'; // Green default
+        let color = '#28a745';
+        let weight = 1;
+        let fillOpacity = 0.5;
+        
+        // Check if this is the highlighted section
+        const isHighlighted = triggerPopup && 
+          feature.properties?.ward === triggerPopup.ward && 
+          feature.properties?.section === triggerPopup.section;
+        
+        if (isHighlighted) {
+          // Make highlighted section more prominent
+          weight = 3;
+          fillOpacity = 0.8;
+          color = '#007bff'; // Blue border for highlighted
+          fillColor = '#007bff'; // Blue fill for highlighted
+        } else {
+          switch (status) {
+            case 'today': fillColor = '#dc3545'; color = '#b02a37'; break;
+            case 'soon': fillColor = '#ffc107'; color = '#c79100'; break;
+            case 'later': fillColor = '#28a745'; color = '#1e7e34'; break;
+            case 'none': fillColor = '#6c757d'; color = '#5a6268'; break;
+            default: fillColor = '#6c757d'; color = '#5a6268'; break;
+          }
+        }
+
+        const geojsonLayer = L.geoJSON(feature.geometry, {
+          style: {
+            color: color,
+            weight: weight,
+            fillColor: fillColor,
+            fillOpacity: fillOpacity
+          }
+        });
+
+        // Add popup with modern styling
+        const props = feature.properties;
+        
+        // Create styled popup content
+        let popupContent = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+            <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
+                ${props?.ward || 'N/A'}
+              </div>
+              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
+                ${props?.section || 'N/A'}
+              </div>
+            </div>
+        `;
+        
+        // For the simple map, don't show "Park Here Instead" - just highlight the zone
+        
+        if (props?.nextCleaningDateISO) {
+          try {
+            const dateObj = new Date(props.nextCleaningDateISO + 'T00:00:00Z');
+            const formattedDate = dateObj.toLocaleDateString('en-US', { 
+              weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' 
+            });
+            popupContent += `
+              <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 12px; color: #065f46; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
+                <div style="color: #047857; font-weight: 600;">${formattedDate}</div>
+              </div>
+            `;
+          } catch (e) { 
+            popupContent += `
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px;">
+                <div style="color: #dc2626; font-weight: 500;">Error formatting date</div>
+              </div>
+            `;
+          }
+        } else { 
+          popupContent += `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px;">
+              <div style="font-size: 12px; color: #6b7280; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
+              <div style="color: #6b7280;">No future cleaning dates</div>
+            </div>
+          `;
+        }
+        
+        popupContent += '</div>';
+
+        geojsonLayer.bindPopup(popupContent);
+        geojsonLayer.addTo(mapInstanceRef.current);
+      });
+
+      // Handle trigger popup with delay to ensure map is ready
+      if (triggerPopup && data.length > 0) {
+        console.log('Trigger popup requested for ward:', triggerPopup.ward, 'section:', triggerPopup.section);
+        console.log('Available features:', data.map(f => ({ ward: f.properties?.ward, section: f.properties?.section })));
+        console.log('Map instance ready:', !!mapInstanceRef.current);
+        
+        // Add longer delay to ensure map and all layers are fully rendered
+        setTimeout(() => {
+          const targetFeature = data.find(feature => 
+            String(feature.properties?.ward) === String(triggerPopup.ward) && 
+            String(feature.properties?.section) === String(triggerPopup.section)
+          );
+
+          if (targetFeature && targetFeature.geometry) {
+            console.log('Found target feature:', targetFeature.properties);
+            
+            // Calculate center point and open popup
+            let centerLat = 0, centerLng = 0;
+            if (targetFeature.geometry.type === 'Polygon' && targetFeature.geometry.coordinates[0]) {
+              const coords = targetFeature.geometry.coordinates[0];
+              centerLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+              centerLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            } else if (targetFeature.geometry.type === 'MultiPolygon' && targetFeature.geometry.coordinates[0]) {
+              // Handle MultiPolygon geometries
+              const coords = targetFeature.geometry.coordinates[0][0];
+              centerLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
+              centerLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
+            }
+
+            if (centerLat && centerLng) {
+              console.log('About to center map on:', centerLat, centerLng, 'zoom level: 16');
+              console.log('Current map view:', mapInstanceRef.current.getCenter(), 'zoom:', mapInstanceRef.current.getZoom());
+              
+              const props = targetFeature.properties;
+              
+              // Create modern styled popup content for zoom popup
+              let popupContent = `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+                  <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                      <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
+                      ${props?.ward || 'N/A'}
+                    </div>
+                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                      <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
+                      ${props?.section || 'N/A'}
+                    </div>
+                  </div>
+              `;
+              
+              // For the simple map, don't show "Park Here Instead" in zoom popup
+              
+              popupContent += '</div>';
+              
+              // Set view first, then add popup
+              mapInstanceRef.current.setView([centerLat, centerLng], 16);
+              
+              // Add popup after view change
+              setTimeout(() => {
+                const popup = L.popup()
+                  .setLatLng([centerLat, centerLng])
+                  .setContent(popupContent)
+                  .openOn(mapInstanceRef.current);
+                
+                console.log('Map view after zoom:', mapInstanceRef.current.getCenter(), 'zoom:', mapInstanceRef.current.getZoom());
+              }, 100);
+            } else {
+              console.log('Could not calculate center coordinates');
+            }
+          } else {
+            console.log('Target feature not found in data');
+            console.log('Available wards/sections:', data.map(f => `${f.properties?.ward}-${f.properties?.section}`).slice(0, 10));
+          }
+        }, 1000); // 1000ms delay for more reliable zoom
+      }
+    };
+
+    initMap();
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [data, triggerPopup]);
+
+  return (
+    <div 
+      ref={mapRef} 
+      style={{ 
+        height: '600px', 
+        width: '100%',
+        position: 'relative'
+      }} 
+    />
+  );
+};
+
+export default StreetCleaningMap;
