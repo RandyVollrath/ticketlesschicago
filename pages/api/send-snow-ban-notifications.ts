@@ -114,24 +114,24 @@ function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, 
 
   return `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">🚨 2-Inch Snow Ban NOW ACTIVE - Move Your Car NOW</h2>
+      <h2 style="margin:0 0 12px">🚨 2-Inch Snow Ban Active on Your Street</h2>
       <p>${greeting}</p>
-      <p><strong>Chicago has received ${snowAmount}" of snow. The 2-inch parking ban is NOW IN EFFECT on your street.</strong></p>
+      <p><strong>Chicago has received ${snowAmount}" of snow. The 2-inch parking ban is now in effect on ${streetInfo}.</strong></p>
 
       <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:16px;margin:20px 0">
-        <strong>⚠️ IMMEDIATE ACTION REQUIRED</strong>
+        <strong>⚠️ Action Required</strong>
         <ul style="margin:8px 0">
-          <li><strong>Ban Status:</strong> ACTIVE NOW - move your car immediately</li>
+          <li><strong>Ban Status:</strong> Active now</li>
           <li><strong>Your Street:</strong> ${streetInfo}</li>
           <li><strong>Penalty:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
           <li><strong>Duration:</strong> Until snow is cleared (typically 24-48 hours)</li>
         </ul>
       </div>
 
-      <p><strong>🚗 What to do RIGHT NOW:</strong></p>
+      <p><strong>🚗 Next Steps:</strong></p>
       <ol>
-        <li>Move your car off ${streetInfo} immediately</li>
-        <li>Find parking on a side street (not a main arterial street)</li>
+        <li>Move your car off ${streetInfo} as soon as possible</li>
+        <li>Park on a side street (not a main arterial street)</li>
         <li>Monitor city announcements for when the ban is lifted</li>
       </ol>
 
@@ -157,7 +157,7 @@ function getForecastSMSText(snowAmount: number, streetInfo: string): string {
 }
 
 function getConfirmationSMSText(snowAmount: number, streetInfo: string): string {
-  return `🚨 SNOW BAN ACTIVE! ${snowAmount}" snow fallen. MOVE YOUR CAR from ${streetInfo} NOW! Violation = $235+ (tow+ticket+storage). ${BRAND.dashboardUrl}`;
+  return `🚨 2-inch snow ban active on ${streetInfo}. ${snowAmount}" has fallen. Please move your car to avoid $235+ penalty. ${BRAND.dashboardUrl}`;
 }
 
 export default async function handler(
@@ -248,7 +248,7 @@ export default async function handler(
       const isForecast = notificationType === 'forecast';
       const emailSubject = isForecast
         ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban May Apply`
-        : `🚨 2-Inch Snow Ban ACTIVE - Move Your Car (${snowEvent.snow_amount_inches}" snow)`;
+        : `🚨 2-Inch Snow Ban Active on Your Street (${snowEvent.snow_amount_inches}" snow)`;
       const emailHtml = isForecast
         ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo)
         : getConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo);
