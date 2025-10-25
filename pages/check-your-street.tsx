@@ -99,6 +99,11 @@ export default function CheckYourStreet() {
     }
   }
 
+  const handleDownloadCalendar = (ward: string, section: string) => {
+    const calendarUrl = `/api/generate-calendar?ward=${ward}&section=${section}`
+    window.location.href = calendarUrl
+  }
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'No upcoming cleaning scheduled'
 
@@ -313,18 +318,57 @@ export default function CheckYourStreet() {
                   {formatDate(searchResult.nextCleaningDate)}
                 </div>
                 {searchResult.nextCleaningDate && (
-                  <div style={{
-                    display: 'inline-block',
-                    padding: '8px 16px',
-                    backgroundColor: getCleaningStatus(searchResult.nextCleaningDate).color,
-                    color: 'white',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    marginTop: '8px'
-                  }}>
-                    {getCleaningStatus(searchResult.nextCleaningDate).text}
-                  </div>
+                  <>
+                    <div style={{
+                      display: 'inline-block',
+                      padding: '8px 16px',
+                      backgroundColor: getCleaningStatus(searchResult.nextCleaningDate).color,
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginTop: '8px'
+                    }}>
+                      {getCleaningStatus(searchResult.nextCleaningDate).text}
+                    </div>
+                    <div style={{ marginTop: '16px' }}>
+                      <button
+                        onClick={() => handleDownloadCalendar(searchResult.ward, searchResult.section)}
+                        style={{
+                          backgroundColor: '#10b981',
+                          color: 'white',
+                          padding: '12px 24px',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = '#059669'
+                          e.currentTarget.style.transform = 'scale(1.05)'
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = '#10b981'
+                          e.currentTarget.style.transform = 'scale(1)'
+                        }}
+                      >
+                        📅 Download Calendar (.ics)
+                      </button>
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginTop: '8px',
+                        fontStyle: 'italic'
+                      }}>
+                        Add all future cleaning dates to your calendar app
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 
