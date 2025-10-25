@@ -171,7 +171,7 @@ export default function SnowBanSettings({
 
       {/* Notification Preferences */}
       <h4 style={{
-        margin: '0 0 16px',
+        margin: '0 0 8px',
         fontSize: '14px',
         fontWeight: '600',
         color: '#374151',
@@ -180,6 +180,21 @@ export default function SnowBanSettings({
       }}>
         Notification Preferences
       </h4>
+      <p style={{
+        margin: '0 0 16px',
+        fontSize: '14px',
+        color: '#6b7280',
+        lineHeight: '1.5'
+      }}>
+        {(onSnowRoute || onWinterBanStreet) ? (
+          <>
+            Your address <strong style={{ color: '#000' }}>is on a {onSnowRoute && onWinterBanStreet ? '2-inch snow ban route and winter overnight ban street' : onSnowRoute ? '2-inch snow ban route' : 'winter overnight ban street'}</strong>.
+            {onSnowRoute && ' We recommend enabling both alert types.'}
+          </>
+        ) : (
+          <>Your address is <strong style={{ color: '#000' }}>not on a winter ban or 2-inch snow ban street</strong>. These alerts are only relevant if you park on affected streets.</>
+        )}
+      </p>
 
       {/* Forecast Alerts Card */}
       <div style={{
@@ -222,7 +237,8 @@ export default function SnowBanSettings({
                 color: '#6b7280',
                 lineHeight: '1.5'
               }}>
-                Get advance notice when 2+ inches of snow is forecasted. We'll send you parking ban rules and preparation tips.
+                Get advance notice when 2+ inches of snow is forecasted for your address.
+                {onSnowRoute ? ' We\'ll remind you to move your car before the ban starts.' : ' Useful if you park on 2-inch snow ban streets.'}
               </div>
             </div>
           </label>
@@ -333,8 +349,8 @@ export default function SnowBanSettings({
                 lineHeight: '1.5'
               }}>
                 {onSnowRoute
-                  ? 'Alert when the ban is active and you need to move your car. Auto-enabled for snow route addresses.'
-                  : 'Alert when the ban is active. Only relevant if you park on snow ban streets.'
+                  ? 'Immediate alert when 2+ inches has fallen and the parking ban is now active. You need to move your car ASAP.'
+                  : 'Alert when 2+ inches has fallen and the ban is active. Only relevant if you park on 2-inch snow ban streets.'
                 }
               </div>
             </div>
