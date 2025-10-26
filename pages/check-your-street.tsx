@@ -3,8 +3,8 @@ import Head from 'next/head'
 import dynamic from 'next/dynamic'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 
-// Dynamically import the simple map (without "Park Here Instead" messaging)
-const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMapSimple'), {
+// Dynamically import the map with "Park Here Instead" functionality
+const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
   ssr: false,
   loading: () => <div style={{
     height: '500px',
@@ -671,6 +671,49 @@ export default function CheckYourStreet() {
               }}>
                 Click zones to see cleaning schedules
               </p>
+
+              {searchResult && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#0369a1',
+                    marginBottom: '4px'
+                  }}>
+                    💡 Zones with "Park Here Instead" shown below
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    color: '#075985',
+                    lineHeight: '1.5'
+                  }}>
+                    {dateRangeResult && tripStartDate && tripEndDate ? (
+                      <>
+                        Highlighted zones have <strong>NO street cleaning</strong> from{' '}
+                        <strong>{new Date(tripStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> to{' '}
+                        <strong>{new Date(tripEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
+                        Safe to park during your trip!
+                      </>
+                    ) : searchResult.nextCleaningDate ? (
+                      <>
+                        Highlighted zones have <strong>NO street cleaning</strong> on{' '}
+                        <strong>{new Date(searchResult.nextCleaningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong>.
+                        Safe alternative parking nearby!
+                      </>
+                    ) : (
+                      <>
+                        Highlighted zones show alternative parking options.
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {isLoadingMap ? (
