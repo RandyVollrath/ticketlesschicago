@@ -605,11 +605,19 @@ export default function Dashboard() {
   }
 
   const handleReminderDayToggle = (day: number) => {
-    const currentDays = editedProfile.notification_preferences?.reminder_days || profile?.notification_preferences?.reminder_days || []
+    // Default reminder days based on user type if none set
+    const defaultDays = profile.has_protection
+      ? [60, 45, 37, 30, 14, 7, 1]  // Protection: more reminders to confirm info before charge
+      : [30, 7, 1];                  // Free: standard renewal reminders
+
+    const currentDays = editedProfile.notification_preferences?.reminder_days
+      || profile?.notification_preferences?.reminder_days
+      || defaultDays;
+
     const updatedDays = currentDays.includes(day)
       ? currentDays.filter(d => d !== day)
       : [...currentDays, day].sort((a, b) => b - a)
-    
+
     // Use the same auto-save approach as other notification preferences
     handleNotificationPreferenceChange('reminder_days', updatedDays)
   }
@@ -1671,19 +1679,30 @@ export default function Dashboard() {
                   Select when you want to be reminded before each renewal deadline:
                 </p>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                  {[60, 45, 37, 30, 21, 14, 7, 1].map(days => (
-                    <label key={days} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={(editedProfile.notification_preferences?.reminder_days || profile.notification_preferences?.reminder_days || []).includes(days)}
-                        onChange={() => handleReminderDayToggle(days)}
-                        style={{ marginRight: '6px', accentColor: '#0052cc' }}
-                      />
+                  {[60, 45, 37, 30, 21, 14, 7, 1].map(days => {
+                    // Default reminder days based on user type
+                    const defaultDays = profile.has_protection
+                      ? [60, 45, 37, 30, 14, 7, 1]
+                      : [30, 7, 1];
+
+                    const currentDays = editedProfile.notification_preferences?.reminder_days
+                      || profile.notification_preferences?.reminder_days
+                      || defaultDays;
+
+                    return (
+                      <label key={days} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={currentDays.includes(days)}
+                          onChange={() => handleReminderDayToggle(days)}
+                          style={{ marginRight: '6px', accentColor: '#0052cc' }}
+                        />
                       <span style={{ fontSize: '14px' }}>
                         {days === 1 ? '1 day' : `${days} days`}
                       </span>
                     </label>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div style={{
                   backgroundColor: '#eff6ff',
