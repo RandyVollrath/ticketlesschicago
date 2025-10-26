@@ -783,6 +783,40 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Incomplete Fields Warning Banner */}
+        {(() => {
+          const missingFields = [];
+          if (!profile.license_plate) missingFields.push('License Plate');
+          if (!profile.home_address_full) missingFields.push('Home Address');
+          if (!profile.zip_code) missingFields.push('ZIP Code');
+          if (!profile.phone_number) missingFields.push('Phone Number');
+
+          if (missingFields.length > 0) {
+            return (
+              <div style={{
+                marginBottom: '24px',
+                backgroundColor: '#fef2f2',
+                border: '2px solid #fca5a5',
+                borderRadius: '12px',
+                padding: '20px'
+              }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#991b1b', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  ⚠️ Complete Your Profile
+                </h3>
+                <p style={{ fontSize: '14px', color: '#7f1d1d', margin: '0 0 8px 0', lineHeight: '1.5' }}>
+                  Please fill in the following required fields to activate your alerts:
+                </p>
+                <ul style={{ fontSize: '14px', color: '#7f1d1d', margin: '0', paddingLeft: '20px' }}>
+                  {missingFields.map(field => (
+                    <li key={field}><strong>{field}</strong></li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Pro Member Banner */}
         <div style={{
           marginBottom: '32px',
@@ -976,6 +1010,16 @@ export default function Dashboard() {
                   }}
                   placeholder="(555) 123-4567"
                 />
+                {!profile.phone_number && (
+                  <p style={{
+                    marginTop: '8px',
+                    fontSize: '13px',
+                    color: '#dc2626',
+                    fontWeight: '500'
+                  }}>
+                    ⚠️ Required field - needed for alert notifications
+                  </p>
+                )}
               </div>
 
               {/* Name fields */}
@@ -1068,6 +1112,16 @@ export default function Dashboard() {
                   }}
                   placeholder="ABC1234"
                 />
+                {!profile.license_plate && (
+                  <p style={{
+                    marginTop: '8px',
+                    fontSize: '13px',
+                    color: '#dc2626',
+                    fontWeight: '500'
+                  }}>
+                    ⚠️ Required field
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1180,6 +1234,16 @@ export default function Dashboard() {
                   }}
                   placeholder="60614"
                 />
+                {!profile.zip_code && (
+                  <p style={{
+                    marginTop: '8px',
+                    fontSize: '13px',
+                    color: '#dc2626',
+                    fontWeight: '500'
+                  }}>
+                    ⚠️ Required field
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1552,6 +1616,125 @@ export default function Dashboard() {
             notifySnowConfirmationSms={editedProfile.notify_snow_confirmation_sms ?? profile.notify_snow_confirmation_sms ?? true}
             onUpdate={handleSnowBanSettingUpdate}
           />
+
+          {/* Trip Mode / Snooze Notifications */}
+          <div style={{
+            background: '#fafafa',
+            padding: '32px',
+            borderRadius: '16px',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{
+              margin: '0 0 12px',
+              fontSize: '24px',
+              fontWeight: '600',
+              color: '#000'
+            }}>
+              ✈️ Trip Mode / Snooze Notifications
+            </h3>
+            <p style={{
+              margin: '0 0 24px',
+              fontSize: '16px',
+              color: '#6b7280',
+              lineHeight: '1.6'
+            }}>
+              Pause all notifications while you're away or traveling. Alerts will resume automatically after the snooze period ends.
+            </p>
+
+            {profile.snooze_until_date && new Date(profile.snooze_until_date) > new Date() ? (
+              <div style={{
+                background: '#fff7ed',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '20px',
+                border: '2px solid #fb923c'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ fontSize: '24px' }}>⏸️</div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{
+                      margin: '0 0 8px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#9a3412'
+                    }}>
+                      Notifications Paused
+                    </h4>
+                    <p style={{
+                      margin: '0 0 12px',
+                      fontSize: '14px',
+                      color: '#7c2d12',
+                      lineHeight: '1.5'
+                    }}>
+                      Alerts will resume on <strong>{new Date(profile.snooze_until_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong>
+                      {profile.snooze_reason && ` (${profile.snooze_reason})`}
+                    </p>
+                    <button
+                      onClick={() => {
+                        handleInputChange('snooze_until_date', null);
+                        handleInputChange('snooze_reason', null);
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#f97316',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Resume Notifications Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '20px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+              }}>
+                <button
+                  onClick={() => {
+                    const oneWeekFromNow = new Date();
+                    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+                    handleInputChange('snooze_until_date', oneWeekFromNow.toISOString().split('T')[0]);
+                    handleInputChange('snooze_reason', 'Vacation');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    backgroundColor: '#f97316',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    marginBottom: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  ⏸️ Quick Snooze (1 Week)
+                </button>
+
+                <p style={{
+                  fontSize: '13px',
+                  color: '#9ca3af',
+                  margin: '0',
+                  textAlign: 'center'
+                }}>
+                  Custom snooze dates coming soon
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Passkey Management */}
           <PasskeyManager />
