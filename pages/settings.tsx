@@ -270,6 +270,26 @@ export default function Dashboard() {
               combinedProfile.license_plate = vehicles[0].license_plate
             }
           }
+
+          // Auto-fill mailing address from home address if empty
+          if (userProfile.home_address_full && !userProfile.mailing_address) {
+            console.log('📬 Auto-filling mailing address from home address...')
+            await supabase
+              .from('user_profiles')
+              .update({
+                mailing_address: userProfile.home_address_full,
+                mailing_city: 'Chicago',
+                mailing_state: 'IL',
+                mailing_zip: userProfile.zip_code
+              })
+              .eq('user_id', user.id)
+
+            // Update local state
+            combinedProfile.mailing_address = userProfile.home_address_full
+            combinedProfile.mailing_city = 'Chicago'
+            combinedProfile.mailing_state = 'IL'
+            combinedProfile.mailing_zip = userProfile.zip_code
+          }
         } else if (!userProfile) {
           // No profile exists - create a new one
           console.log('Creating new user profile for:', user.email)
