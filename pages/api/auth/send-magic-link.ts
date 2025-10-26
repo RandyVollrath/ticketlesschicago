@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Autopilot America <noreply@autopilotamerica.com>',
+            from: 'Autopilot America <noreply@ticketlessamerica.com>',
             to: email,
             subject: 'Sign in to Autopilot America',
             html: `
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
                 <p style="color: #9ca3af; font-size: 13px;">
-                  Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
+                  Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
                 </p>
 
                 <p style="color: #9ca3af; font-size: 12px;">
