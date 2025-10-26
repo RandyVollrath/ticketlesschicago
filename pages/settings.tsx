@@ -898,7 +898,8 @@ export default function Dashboard() {
           <UpgradeCard hasProtection={profile.has_protection || false} />
         </div>
 
-        {/* Contest Ticket Tool - Available to all users */}
+        {/* Contest Ticket Tool - COMMENTED OUT - Not production ready yet
+            TODO: Requires AI/OCR integration for ticket extraction and letter generation
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -951,6 +952,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        */}
 
         {/* Reimbursement Link - Only for Protection users */}
         {profile.has_protection && (
