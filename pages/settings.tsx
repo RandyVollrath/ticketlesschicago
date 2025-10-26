@@ -614,6 +614,13 @@ export default function Dashboard() {
       || profile?.notification_preferences?.reminder_days
       || defaultDays;
 
+    // For Protection users: Don't allow unchecking 60, 45, 37 until profile confirmed
+    const isMandatory = profile.has_protection && [60, 45, 37].includes(day) && !profile.profile_confirmed_at;
+    if (isMandatory && currentDays.includes(day)) {
+      // Can't uncheck mandatory days
+      return;
+    }
+
     const updatedDays = currentDays.includes(day)
       ? currentDays.filter(d => d !== day)
       : [...currentDays, day].sort((a, b) => b - a)
@@ -1689,16 +1696,31 @@ export default function Dashboard() {
                       || profile.notification_preferences?.reminder_days
                       || defaultDays;
 
+                    // For Protection users: Make 60, 45, 37 mandatory until profile confirmed
+                    const isMandatory = profile.has_protection && [60, 45, 37].includes(days) && !profile.profile_confirmed_at;
+                    const isDisabled = isMandatory;
+
                     return (
-                      <label key={days} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <label key={days} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        opacity: isDisabled ? 0.7 : 1
+                      }}>
                         <input
                           type="checkbox"
                           checked={currentDays.includes(days)}
                           onChange={() => handleReminderDayToggle(days)}
-                          style={{ marginRight: '6px', accentColor: '#0052cc' }}
+                          disabled={isDisabled}
+                          style={{
+                            marginRight: '6px',
+                            accentColor: '#0052cc',
+                            cursor: isDisabled ? 'not-allowed' : 'pointer'
+                          }}
                         />
                       <span style={{ fontSize: '14px' }}>
                         {days === 1 ? '1 day' : `${days} days`}
+                        {isMandatory && <span style={{ color: '#dc2626', fontSize: '12px', marginLeft: '4px' }}>(required)</span>}
                       </span>
                     </label>
                     );
@@ -1715,6 +1737,53 @@ export default function Dashboard() {
                     <strong>Note:</strong> If you have Concierge + Protection, we'll process your renewal at 30 days before the deadline using the information in your profile. Make sure your profile data is up-to-date before then!
                   </p>
                 </div>
+
+                {profile.has_protection && !profile.profile_confirmed_at && (
+                  <div style={{
+                    backgroundColor: '#fef3c7',
+                    border: '2px solid #f59e0b',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginTop: '12px'
+                  }}>
+                    <p style={{ fontSize: '14px', color: '#92400e', margin: '0 0 8px 0', fontWeight: '600' }}>
+                      ⚠️ Profile Confirmation Required
+                    </p>
+                    <p style={{ fontSize: '13px', color: '#78350f', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+                      Before we can charge your card for renewals, you must confirm your profile information is current. You'll receive reminders at 60, 45, and 37 days (these are required). Once you confirm your profile is up-to-date, you can customize which reminders you receive.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('user_profiles')
+                            .update({ profile_confirmed_at: new Date().toISOString() })
+                            .eq('user_id', user.id);
+
+                          if (error) throw error;
+
+                          // Refresh profile
+                          window.location.reload();
+                        } catch (error: any) {
+                          console.error('Error confirming profile:', error);
+                          alert('Failed to confirm profile. Please try again.');
+                        }
+                      }}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#f59e0b',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ✅ Confirm Profile is Up-to-Date
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

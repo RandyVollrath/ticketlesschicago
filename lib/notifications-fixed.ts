@@ -130,7 +130,13 @@ export class NotificationScheduler {
                     message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card in 7 days (on ${purchaseDateStr}). Please update your profile NOW if you have: New VIN (new car), new plate number, or new address. This is your last reminder before charge day.`;
                   } else if (daysUntil > 37) {
                     // Before purchase - collecting info
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr} (30 days before expiration). Please confirm your info is up-to-date in your profile or reply with any changes: New VIN (if new car), new plate number, or new address.`;
+                    // Check if user already confirmed their profile
+                    const profileConfirmed = user.profile_confirmed_at !== null;
+                    if (!profileConfirmed) {
+                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr}. Reply CONFIRM if your profile info is current (VIN, plate, address). Or visit autopilotamerica.com/settings to update.`;
+                    } else {
+                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr} (30 days before expiration). Your profile is confirmed. Reply if you need to update anything!`;
+                    }
                   } else if (daysUntil >= 14) {
                     // After charge, before sticker expected
                     message = `Autopilot: Good news! We already purchased your ${renewal.type}. Your sticker will arrive by mail within 10-14 days. No action needed from you!`;
@@ -278,16 +284,20 @@ export class NotificationScheduler {
                           <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
                             <h3 style="color: #0c4a6e; margin: 0 0 12px; font-size: 18px;">📝 Please Confirm Your Information</h3>
                             <p style="color: #0369a1; margin: 0 0 16px; line-height: 1.6;">
-                              Before we charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>, please verify your profile is up-to-date. Reply to this email or update your profile if any of the following has changed:
+                              Before we charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>, please verify your profile is up-to-date. If any of the following has changed, update your profile now:
                             </p>
-                            <ul style="color: #0369a1; margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <ul style="color: #0369a1; margin: 0 0 16px; padding-left: 20px; line-height: 1.8;">
                               <li>VIN (if you got a new vehicle)</li>
                               <li>License plate number</li>
                               <li>Mailing address (where we'll send your sticker)</li>
                             </ul>
-                            <div style="text-align: center; margin-top: 16px;">
+                            <div style="text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                               <a href="https://autopilotamerica.com/settings"
                                  style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
+                                ✅ Confirm Profile is Current
+                              </a>
+                              <a href="https://autopilotamerica.com/settings"
+                                 style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
                                 Update My Profile
                               </a>
                             </div>

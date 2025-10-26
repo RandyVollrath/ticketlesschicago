@@ -22,7 +22,7 @@ export default function AlertsSignup() {
     citySticker: '',
     address: '',
     zip: '',
-    marketingConsent: false
+    marketingConsent: true  // Auto-checked - users can opt out
   });
 
   // Check for error from auth callback
@@ -90,6 +90,20 @@ export default function AlertsSignup() {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setMessage('⚠️ Please enter a valid email address');
+      return;
+    }
+
+    // Validate phone number format (US format: 10 digits)
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length !== 10) {
+      setMessage('⚠️ Please enter a valid 10-digit phone number');
+      return;
+    }
+
     setGoogleAuthLoading(true);
     setMessage('');
 
@@ -135,6 +149,21 @@ export default function AlertsSignup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setMessage('⚠️ Please enter a valid email address');
+      return;
+    }
+
+    // Validate phone number format (US format: 10 digits)
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length !== 10) {
+      setMessage('⚠️ Please enter a valid 10-digit phone number');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
