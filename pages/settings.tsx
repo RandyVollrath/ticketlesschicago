@@ -1544,12 +1544,12 @@ export default function Dashboard() {
             snowRouteStreet={profile.snow_route_street}
             onWinterBanStreet={profile.on_winter_ban_street || false}
             winterBanStreet={profile.winter_ban_street}
-            notifySnowForecast={profile.notify_snow_forecast || false}
-            notifySnowForecastEmail={profile.notify_snow_forecast_email !== false}
-            notifySnowForecastSms={profile.notify_snow_forecast_sms !== false}
-            notifySnowConfirmation={profile.notify_snow_confirmation || false}
-            notifySnowConfirmationEmail={profile.notify_snow_confirmation_email !== false}
-            notifySnowConfirmationSms={profile.notify_snow_confirmation_sms !== false}
+            notifySnowForecast={editedProfile.notify_snow_forecast ?? profile.notify_snow_forecast ?? false}
+            notifySnowForecastEmail={editedProfile.notify_snow_forecast_email ?? profile.notify_snow_forecast_email ?? true}
+            notifySnowForecastSms={editedProfile.notify_snow_forecast_sms ?? profile.notify_snow_forecast_sms ?? true}
+            notifySnowConfirmation={editedProfile.notify_snow_confirmation ?? profile.notify_snow_confirmation ?? false}
+            notifySnowConfirmationEmail={editedProfile.notify_snow_confirmation_email ?? profile.notify_snow_confirmation_email ?? true}
+            notifySnowConfirmationSms={editedProfile.notify_snow_confirmation_sms ?? profile.notify_snow_confirmation_sms ?? true}
             onUpdate={handleSnowBanSettingUpdate}
           />
 
