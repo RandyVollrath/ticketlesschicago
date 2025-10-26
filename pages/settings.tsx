@@ -238,7 +238,38 @@ export default function Dashboard() {
 
           // Check email verification status from auth.users
           const { data: authUser } = await supabase.auth.getUser()
-          setEmailVerified(!!authUser?.user?.email_confirmed_at)
+          const isEmailVerified = !!authUser?.user?.email_confirmed_at
+          setEmailVerified(isEmailVerified)
+
+          // Sync email_verified to user_profiles if it doesn't match
+          if (isEmailVerified && !userProfile.email_verified) {
+            console.log('📧 Syncing email_verified to user_profiles...')
+            await supabase
+              .from('user_profiles')
+              .update({ email_verified: true })
+              .eq('user_id', user.id)
+          }
+
+          // Sync license_plate from vehicles table if missing in user_profiles
+          if (!userProfile.license_plate) {
+            console.log('🚗 Checking vehicles table for license plate...')
+            const { data: vehicles } = await supabase
+              .from('vehicles')
+              .select('license_plate')
+              .eq('user_id', user.id)
+              .limit(1)
+
+            if (vehicles && vehicles.length > 0 && vehicles[0].license_plate) {
+              console.log('📝 Syncing license_plate to user_profiles:', vehicles[0].license_plate)
+              await supabase
+                .from('user_profiles')
+                .update({ license_plate: vehicles[0].license_plate })
+                .eq('user_id', user.id)
+
+              // Update local state
+              combinedProfile.license_plate = vehicles[0].license_plate
+            }
+          }
         } else if (!userProfile) {
           // No profile exists - create a new one
           console.log('Creating new user profile for:', user.email)
