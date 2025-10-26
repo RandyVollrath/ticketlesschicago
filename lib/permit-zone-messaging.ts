@@ -52,7 +52,7 @@ To get your residential parking permit for your Chicago address, we need two doc
 Questions? Just reply to this email or text us.
 
 Best,
-Ticketless America Team
+Autopilot America Team
     `.trim(),
 
     // Option 2: Upload portal method
@@ -74,7 +74,7 @@ If you've purchased a permit online before, you can skip the document upload and
 Questions? Just reply to this email.
 
 Best,
-Ticketless America Team
+Autopilot America Team
     `.trim(),
 
     // Option 3: Hybrid method (both options)
@@ -99,7 +99,7 @@ If you have a Customer Code from the City of Chicago, just text it to us or ente
 Questions? Reply to this email or text us.
 
 Best,
-Ticketless America Team
+Autopilot America Team
     `.trim(),
   },
 
@@ -125,7 +125,7 @@ Reply to this email with the documents or upload at: https://autopilotamerica.co
 Let us know if you need any help!
 
 Best,
-Ticketless America Team
+Autopilot America Team
       `.trim(),
     },
   },

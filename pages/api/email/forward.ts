@@ -203,12 +203,12 @@ function generateRandomToken(): string {
 async function sendSignupEmail(data: ParsedEmailData, token: string) {
   const signupUrl = `https://ticketlessamerica.com/signup?token=${token}`;
 
-  const subject = '🚗 Complete Your Ticketless America Signup';
+  const subject = '🚗 Complete Your Autopilot America Signup';
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: #2563eb; color: white; padding: 24px; text-align: center;">
-        <h1 style="margin: 0; font-size: 24px;">Ticketless America</h1>
+        <h1 style="margin: 0; font-size: 24px;">Autopilot America</h1>
       </div>
 
       <div style="padding: 32px 24px; background: white;">
@@ -256,7 +256,7 @@ async function sendSignupEmail(data: ParsedEmailData, token: string) {
       </div>
 
       <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px;">
-        <strong style="color: #374151;">Ticketless America</strong><br>
+        <strong style="color: #374151;">Autopilot America</strong><br>
         Never miss a renewal deadline again
       </div>
     </div>
@@ -300,7 +300,7 @@ async function sendVehicleAddLink(data: ParsedEmailData) {
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: #2563eb; color: white; padding: 24px; text-align: center;">
-        <h1 style="margin: 0; font-size: 24px;">Ticketless America</h1>
+        <h1 style="margin: 0; font-size: 24px;">Autopilot America</h1>
       </div>
 
       <div style="padding: 32px 24px; background: white;">

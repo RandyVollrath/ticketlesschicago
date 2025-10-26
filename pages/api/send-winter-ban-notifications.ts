@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 
 const BRAND = {
-  name: 'Ticketless America',
+  name: 'Autopilot America',
   dashboardUrl: 'https://ticketlessamerica.com/dashboard',
-  emailFrom: process.env.RESEND_FROM || 'Ticketless America <noreply@ticketlessamerica.com>',
+  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
 };
 
 interface User {

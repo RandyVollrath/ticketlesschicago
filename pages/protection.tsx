@@ -40,6 +40,26 @@ export default function Protection() {
       if (user) {
         setUser(user);
         setEmail(user.email || '');
+
+        // Fetch user profile to pre-populate fields
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('phone_number, home_address_full, street_address')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile) {
+          // Pre-populate phone number if available
+          if (profile.phone_number && !phone) {
+            setPhone(profile.phone_number);
+          }
+
+          // Pre-populate street address if available (prefer home_address_full, fallback to street_address)
+          const existingAddress = profile.home_address_full || profile.street_address;
+          if (existingAddress && !streetAddress) {
+            setStreetAddress(existingAddress);
+          }
+        }
       }
     };
     checkUser();
@@ -580,7 +600,7 @@ export default function Protection() {
                       boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
-                    Monthly <span style={{ color: '#9ca3af', fontSize: '14px' }}>($144/yr)</span>
+                    Monthly <span style={{ color: '#9ca3af', fontSize: '14px' }}>($12/mo)</span>
                   </button>
                   <button
                     onClick={() => setBillingPlan('annual')}
@@ -1078,7 +1098,7 @@ export default function Protection() {
                     required
                   />
                   <span>
-                    <strong>I authorize Autopilot America to act as my agent</strong> to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. <strong>I authorize Autopilot America to charge my card</strong> for government renewal fees (city sticker, license plate, parking permits) when my deadlines approach, which will be processed through our remitter service. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
+                    <strong>I authorize Autopilot America to act as my concierge service</strong> to monitor my vehicle renewal deadlines and coordinate renewals on my behalf. Autopilot America is not a government agency or licensed remitter. <strong>I authorize Autopilot America to charge my payment method</strong> for the subscription service fee plus government renewal fees (city sticker, license plate, parking permits) <strong>30 days before my deadlines</strong>. Autopilot America will forward the government fees to our licensed remitter partner who will execute the official submission with the City of Chicago and State of Illinois. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
                   </span>
                 </label>
               </div>

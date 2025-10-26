@@ -295,7 +295,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'Ticketless America <noreply@ticketlessamerica.com>',
+          from: 'Autopilot America <noreply@ticketlessamerica.com>',
           to: 'ticketlessamerica@gmail.com',
           subject: emailSubject,
           html: emailHtml

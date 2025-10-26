@@ -169,7 +169,7 @@ export default function MyContests() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>My Contest History - Ticketless America</title>
+        <title>My Contest History - Autopilot America</title>
       </Head>
 
       {/* Header */}

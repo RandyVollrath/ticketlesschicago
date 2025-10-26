@@ -127,7 +127,7 @@ export default async function handler(
         // Test Voice
         if (prefs.voice && userData.phone_number && notif.daysUntil <= 3) {
           log(`\n📞 Testing voice call for ${notif.type}...`);
-          const voiceMessage = `Hello from Ticketless America. Your ${notif.type} expires in ${notif.daysUntil} day${notif.daysUntil !== 1 ? 's' : ''}. Please renew promptly.`;
+          const voiceMessage = `Hello from Autopilot America. Your ${notif.type} expires in ${notif.daysUntil} day${notif.daysUntil !== 1 ? 's' : ''}. Please renew promptly.`;
           log(`  Message: ${voiceMessage}`);
           
           try {

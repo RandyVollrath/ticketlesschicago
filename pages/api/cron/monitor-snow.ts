@@ -23,6 +23,31 @@ export default async function handler(
   const startTime = Date.now();
 
   try {
+    // Smart polling: Skip full weather check if no active snow events
+    // (saves API calls on 15-min checks when there's no snow forecasted)
+    const { supabaseAdmin } = require('../../../lib/supabase');
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data: activeEvent } = await supabaseAdmin
+      .from('snow_events')
+      .select('*')
+      .eq('is_active', true)
+      .gte('event_date', today)
+      .single();
+
+    // If no active event, skip full check (except on hourly runs at :00)
+    const currentMinute = new Date().getMinutes();
+    const isHourlyRun = currentMinute === 0;
+
+    if (!activeEvent && !isHourlyRun) {
+      return res.status(200).json({
+        success: true,
+        message: 'No active snow event - skipping 15-min check',
+        skipped: true,
+        processingTime: Date.now() - startTime
+      });
+    }
+
     // Step 1: Check for snow
     const checkSnowResponse = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/weather/check-snow`,

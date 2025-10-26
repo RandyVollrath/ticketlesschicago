@@ -181,7 +181,7 @@ export default function AttorneyDashboard() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Attorney Dashboard - Ticketless America</title>
+        <title>Attorney Dashboard - Autopilot America</title>
       </Head>
 
       {/* Header */}

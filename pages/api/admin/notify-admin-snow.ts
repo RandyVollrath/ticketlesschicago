@@ -62,7 +62,7 @@ export default async function handler(
         <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
 
         <p style="font-size:12px;color:#6b7280">
-          This is an automated alert from your Ticketless America snow monitoring system.<br>
+          This is an automated alert from your Autopilot America snow monitoring system.<br>
           Detected at: ${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })} (Chicago time)<br>
           Data source: National Weather Service (NWS) API
         </p>
@@ -76,7 +76,7 @@ export default async function handler(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM || 'Ticketless America <noreply@ticketlessamerica.com>',
+        from: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
         to: [ADMIN_EMAIL],
         subject: `🚨 2-Inch Snow Alert: ${snowAmount}" forecasted in Chicago`,
         html: emailHtml

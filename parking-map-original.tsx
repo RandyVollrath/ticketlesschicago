@@ -190,7 +190,7 @@ export default function ParkingMapPage() {
   return (
     <>
       <Head>
-        <title>Street Cleaning Map - Ticketless America</title>
+        <title>Street Cleaning Map - Autopilot America</title>
         <meta name="description" content="Interactive street cleaning map with live schedule updates and alternative parking zones" />
       </Head>
       
@@ -211,7 +211,7 @@ export default function ParkingMapPage() {
               
               {/* App Logo/Title */}
               <div className="hidden sm:block">
-                <h2 className="text-lg font-semibold text-slate-900">Ticketless America</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Autopilot America</h2>
               </div>
               
               {/* Status Indicator */}
@@ -537,7 +537,7 @@ export default function ParkingMapPage() {
             {/* Copyright */}
             <div className="mt-8 pt-8 border-t border-slate-300/50 text-center">
               <p className="text-sm text-slate-500">
-                © 2025 Ticketless America. Making parking stress-free, one zone at a time.
+                © 2025 Autopilot America. Making parking stress-free, one zone at a time.
               </p>
             </div>
           </div>

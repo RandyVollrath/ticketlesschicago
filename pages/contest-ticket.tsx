@@ -46,7 +46,7 @@ export default function ContestTicket() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Contest Your Ticket - Ticketless America</title>
+        <title>Contest Your Ticket - Autopilot America</title>
         <meta name="description" content="Automatically generate professional contest letters for parking tickets" />
         <style>{`
           @media (max-width: 768px) {
@@ -120,7 +120,7 @@ export default function ContestTicket() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-              Ticketless
+              Autopilot
             </span>
             <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
               AMERICA

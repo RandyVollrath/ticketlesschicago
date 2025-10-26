@@ -531,7 +531,7 @@ export default function ProfileUpdates() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Profile Update Requests - Ticketless America Admin</title>
+        <title>Profile Update Requests - Autopilot America Admin</title>
       </Head>
 
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px' }}>

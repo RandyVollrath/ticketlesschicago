@@ -14,7 +14,7 @@ const supabaseAdmin = createClient(
   }
 )
 
-const rpName = 'Ticketless America'
+const rpName = 'Autopilot America'
 
 // Dynamically determine RP ID and origin based on the request
 function getRpConfig(req: NextApiRequest) {

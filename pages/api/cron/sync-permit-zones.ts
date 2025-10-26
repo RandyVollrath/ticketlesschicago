@@ -235,7 +235,7 @@ export default async function handler(
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
 
             <p style="color: #9ca3af; font-size: 13px; margin: 0;">
-              Ticketless America • Automated Permit Zone Sync
+              Autopilot America • Automated Permit Zone Sync
             </p>
           </div>
         `

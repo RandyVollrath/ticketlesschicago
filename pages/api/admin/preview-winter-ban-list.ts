@@ -161,7 +161,7 @@ export default async function handler(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM || 'Ticketless America <noreply@ticketlessamerica.com>',
+        from: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
         to: ['ticketlessamerica@gmail.com'],
         subject: `Winter Ban Notification Preview - ${usersToNotify.length} users will be notified`,
         html: htmlReport

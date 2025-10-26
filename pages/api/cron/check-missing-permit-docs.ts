@@ -217,7 +217,7 @@ export default async function handler(
     `;
 
     await resend.emails.send({
-      from: 'Ticketless America <alerts@ticketlessamerica.com>',
+      from: 'Autopilot America <alerts@ticketlessamerica.com>',
       to: ['ticketlessamerica@gmail.com', 'randyvollrath@gmail.com'],
       subject: `🚨 URGENT: ${usersNeedingDocs.length} user${usersNeedingDocs.length !== 1 ? 's' : ''} need${usersNeedingDocs.length === 1 ? 's' : ''} permit docs (${urgentUsers.length} critical!)`,
       html: emailHtml

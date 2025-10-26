@@ -124,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             <!-- Footer -->
             <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px;">
               <div style="margin-bottom: 12px;">
-                <strong style="color: #374151;">Ticketless America</strong><br>
+                <strong style="color: #374151;">Autopilot America</strong><br>
                 Your trusted vehicle compliance partner
               </div>
               <div>
@@ -156,11 +156,11 @@ View your dashboard: https://ticketlessamerica.com/dashboard
 Questions or concerns? Contact us at support@ticketlessamerica.com
 
 Best regards,
-Ticketless America Team
+Autopilot America Team
         `;
 
         // SMS notification
-        const smsMessage = `Ticketless: Good news! Your ${stickerText} for plate ${user.license_plate} has been purchased and is in the mail. Expect delivery in 7-10 business days. Questions? Reply or email support@ticketlessamerica.com - Ticketless America`;
+        const smsMessage = `Ticketless: Good news! Your ${stickerText} for plate ${user.license_plate} has been purchased and is in the mail. Expect delivery in 7-10 business days. Questions? Reply or email support@ticketlessamerica.com - Autopilot America`;
 
         // Send email
         try {

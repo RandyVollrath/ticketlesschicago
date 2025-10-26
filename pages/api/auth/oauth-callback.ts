@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('📋 Processing signup data:', JSON.stringify(signupData, null, 2));
 
-    // Update the user's metadata in Ticketless America Supabase
+    // Update the user's metadata in Autopilot America Supabase
     const userMetadata = {
       address: signupData.address,
       notificationMethod: signupData.notificationMethod,
@@ -84,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('❌ Error updating user metadata:', updateError);
       // Continue anyway, don't fail the whole flow
     } else {
-      console.log('✅ Updated user metadata in Ticketless America');
+      console.log('✅ Updated user metadata in Autopilot America');
     }
 
     // Parse notification preferences

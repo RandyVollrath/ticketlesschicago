@@ -344,29 +344,29 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
   switch (type) {
     case 'morning_reminder':
       if (daysUntil === 0) {
-        message = `🚗 Street cleaning TODAY at 9am at ${addressText}. Move your car NOW to avoid a ticket! - Ticketless America`;
+        message = `🚗 Street cleaning TODAY at 9am at ${addressText}. Move your car NOW to avoid a ticket! - Autopilot America`;
         subject = '🚗 Street Cleaning TODAY - Move Your Car!';
       } else if (daysUntil === 1) {
-        message = `🗓️ Street cleaning TOMORROW (${formattedDate}) at 9am at ${addressText}. Don't forget to move your car! - Ticketless America`;
+        message = `🗓️ Street cleaning TOMORROW (${formattedDate}) at 9am at ${addressText}. Don't forget to move your car! - Autopilot America`;
         subject = '🗓️ Street Cleaning Tomorrow';
       } else {
-        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. Remember to move your car! - Ticketless America`;
+        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. Remember to move your car! - Autopilot America`;
         subject = `📅 Street Cleaning in ${daysUntil} Days`;
       }
       break;
 
     case 'evening_reminder':
       if (daysUntil === 1) {
-        message = `🌙 Street cleaning TOMORROW at 9am at ${addressText}. Don't forget to move your car! - Ticketless America`;
+        message = `🌙 Street cleaning TOMORROW at 9am at ${addressText}. Don't forget to move your car! - Autopilot America`;
         subject = '🌙 Street Cleaning Tomorrow Morning';
       } else {
-        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. - Ticketless America`;
+        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. - Autopilot America`;
         subject = `📅 Street Cleaning in ${daysUntil} Days`;
       }
       break;
 
     case 'follow_up':
-      message = `✅ Street cleaning completed in your area today. You can park normally now. Did you move your car and avoid a ticket? Reply and let us know! - Ticketless America`;
+      message = `✅ Street cleaning completed in your area today. You can park normally now. Did you move your car and avoid a ticket? Reply and let us know! - Autopilot America`;
       subject = '✅ Street Cleaning Complete';
       break;
   }
