@@ -225,8 +225,10 @@ async function sendWelcomeEmail(email: string, firstName?: string) {
 
           <ul style="color: #374151; font-size: 16px; line-height: 1.8; margin-bottom: 24px;">
             <li><strong>Street cleaning</strong> sweeps through your neighborhood</li>
-            <li><strong>Snow bans</strong> go into effect (2-inch rule + winter overnight bans)</li>
-            <li><strong>City sticker and license plate</strong> deadlines approach</li>
+            <li><strong>Winter overnight parking bans</strong> (Dec 1 - Apr 1, nightly 3am-7am)</li>
+            <li><strong>2-inch snow removal</strong> — forecast alerts when snow is predicted, plus confirmed alerts when 2+ inches falls on your street</li>
+            <li><strong>City sticker and license plate renewal</strong> deadlines approach</li>
+            <li><strong>Emissions testing</strong> deadlines (if applicable to your vehicle)</li>
           </ul>
 
           <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
