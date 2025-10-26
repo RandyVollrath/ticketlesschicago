@@ -786,10 +786,16 @@ export default function Dashboard() {
         {/* Incomplete Fields Warning Banner */}
         {(() => {
           const missingFields = [];
-          if (!profile.license_plate) missingFields.push('License Plate');
-          if (!profile.home_address_full) missingFields.push('Home Address');
-          if (!profile.zip_code) missingFields.push('ZIP Code');
-          if (!profile.phone_number) missingFields.push('Phone Number');
+          // Check editedProfile first, then fall back to profile
+          const currentLicensePlate = editedProfile.license_plate !== undefined ? editedProfile.license_plate : profile.license_plate;
+          const currentHomeAddress = editedProfile.home_address_full !== undefined ? editedProfile.home_address_full : profile.home_address_full;
+          const currentZipCode = editedProfile.zip_code !== undefined ? editedProfile.zip_code : profile.zip_code;
+          const currentPhone = editedProfile.phone || profile.phone_number;
+
+          if (!currentLicensePlate || currentLicensePlate.trim() === '') missingFields.push('License Plate');
+          if (!currentHomeAddress || currentHomeAddress.trim() === '') missingFields.push('Home Address');
+          if (!currentZipCode || currentZipCode.trim() === '') missingFields.push('ZIP Code');
+          if (!currentPhone || currentPhone.trim() === '') missingFields.push('Phone Number');
 
           if (missingFields.length > 0) {
             return (
@@ -1010,16 +1016,22 @@ export default function Dashboard() {
                   }}
                   placeholder="(555) 123-4567"
                 />
-                {!profile.phone_number && (
-                  <p style={{
-                    marginTop: '8px',
-                    fontSize: '13px',
-                    color: '#dc2626',
-                    fontWeight: '500'
-                  }}>
-                    ⚠️ Required field - needed for alert notifications
-                  </p>
-                )}
+                {(() => {
+                  const currentPhone = editedProfile.phone || profile.phone_number;
+                  if (!currentPhone || currentPhone.trim() === '') {
+                    return (
+                      <p style={{
+                        marginTop: '8px',
+                        fontSize: '13px',
+                        color: '#dc2626',
+                        fontWeight: '500'
+                      }}>
+                        ⚠️ Required field - needed for alert notifications
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Name fields */}
@@ -1112,16 +1124,22 @@ export default function Dashboard() {
                   }}
                   placeholder="ABC1234"
                 />
-                {!profile.license_plate && (
-                  <p style={{
-                    marginTop: '8px',
-                    fontSize: '13px',
-                    color: '#dc2626',
-                    fontWeight: '500'
-                  }}>
-                    ⚠️ Required field
-                  </p>
-                )}
+                {(() => {
+                  const currentLicensePlate = editedProfile.license_plate !== undefined ? editedProfile.license_plate : profile.license_plate;
+                  if (!currentLicensePlate || currentLicensePlate.trim() === '') {
+                    return (
+                      <p style={{
+                        marginTop: '8px',
+                        fontSize: '13px',
+                        color: '#dc2626',
+                        fontWeight: '500'
+                      }}>
+                        ⚠️ Required field
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               <div>
@@ -1234,16 +1252,22 @@ export default function Dashboard() {
                   }}
                   placeholder="60614"
                 />
-                {!profile.zip_code && (
-                  <p style={{
-                    marginTop: '8px',
-                    fontSize: '13px',
-                    color: '#dc2626',
-                    fontWeight: '500'
-                  }}>
-                    ⚠️ Required field
-                  </p>
-                )}
+                {(() => {
+                  const currentZipCode = editedProfile.zip_code !== undefined ? editedProfile.zip_code : profile.zip_code;
+                  if (!currentZipCode || currentZipCode.trim() === '') {
+                    return (
+                      <p style={{
+                        marginTop: '8px',
+                        fontSize: '13px',
+                        color: '#dc2626',
+                        fontWeight: '500'
+                      }}>
+                        ⚠️ Required field
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           </div>
