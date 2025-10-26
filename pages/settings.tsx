@@ -182,6 +182,8 @@ export default function Dashboard() {
   const [emailVerified, setEmailVerified] = useState(false)
   const [resendingEmail, setResendingEmail] = useState(false)
   const [vinError, setVinError] = useState<string | null>(null)
+  const [customSnoozeDate, setCustomSnoozeDate] = useState('')
+  const [customSnoozeReason, setCustomSnoozeReason] = useState('')
 
   const router = useRouter()
 
@@ -1874,14 +1876,124 @@ export default function Dashboard() {
                   ⏸️ Quick Snooze (1 Week)
                 </button>
 
-                <p style={{
-                  fontSize: '13px',
-                  color: '#9ca3af',
-                  margin: '0',
-                  textAlign: 'center'
+                <div style={{
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid #e5e7eb'
                 }}>
-                  Custom snooze dates coming soon
-                </p>
+                  <p style={{
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    margin: '0 0 12px 0'
+                  }}>
+                    Or choose a custom date:
+                  </p>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: '#6b7280',
+                      marginBottom: '6px'
+                    }}>
+                      Snooze until
+                    </label>
+                    <input
+                      type="date"
+                      value={customSnoozeDate}
+                      onChange={(e) => setCustomSnoozeDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: '#6b7280',
+                      marginBottom: '6px'
+                    }}>
+                      Reason (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={customSnoozeReason}
+                      onChange={(e) => setCustomSnoozeReason(e.target.value)}
+                      placeholder="e.g., Vacation, Business trip"
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!customSnoozeDate) {
+                        setMessage({ type: 'error', text: 'Please select a snooze end date' });
+                        return;
+                      }
+
+                      try {
+                        const { error } = await supabase
+                          .from('user_profiles')
+                          .update({
+                            snooze_until_date: customSnoozeDate,
+                            snooze_reason: customSnoozeReason || 'Custom snooze',
+                            snooze_created_at: new Date().toISOString()
+                          })
+                          .eq('user_id', profile.user_id);
+
+                        if (error) {
+                          console.error('Error setting custom snooze:', error);
+                          setMessage({ type: 'error', text: 'Failed to activate Trip Mode' });
+                        } else {
+                          setProfile({
+                            ...profile,
+                            snooze_until_date: customSnoozeDate,
+                            snooze_reason: customSnoozeReason || 'Custom snooze'
+                          });
+                          setCustomSnoozeDate('');
+                          setCustomSnoozeReason('');
+                          setMessage({
+                            type: 'success',
+                            text: `✈️ Trip Mode activated until ${new Date(customSnoozeDate).toLocaleDateString()}!`
+                          });
+                        }
+                      } catch (err) {
+                        console.error('Custom snooze error:', err);
+                        setMessage({ type: 'error', text: 'Failed to activate Trip Mode' });
+                      }
+                    }}
+                    disabled={!customSnoozeDate}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: customSnoozeDate ? '#0052cc' : '#9ca3af',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: customSnoozeDate ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    Set Custom Snooze
+                  </button>
+                </div>
               </div>
             )}
           </div>
