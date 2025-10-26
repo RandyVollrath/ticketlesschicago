@@ -1671,7 +1671,7 @@ export default function Dashboard() {
                   Select when you want to be reminded before each renewal deadline:
                 </p>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                  {[60, 45, 30, 21, 14].map(days => (
+                  {[60, 45, 37, 30, 21, 14, 7, 1].map(days => (
                     <label key={days} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
