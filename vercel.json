@@ -11,6 +11,9 @@
     },
     "pages/api/cron/check-renewal-deadlines.ts": {
       "maxDuration": 60
+    },
+    "pages/api/drip/send-emails.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -77,6 +80,10 @@
     {
       "path": "/api/cron/check-renewal-deadlines",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/drip/send-emails",
+      "schedule": "0 14 * * *"
     }
   ],
   "github": {

@@ -196,6 +196,28 @@ export default async function handler(
 
     console.log('[Profile Create] Profile upserted successfully:', profileResult);
 
+    // If user opted into marketing, add them to drip campaign
+    if (marketingConsent === true) {
+      console.log('📧 User opted into marketing - adding to drip campaign');
+
+      const { error: dripError } = await supabase
+        .from('drip_campaign_status')
+        .upsert({
+          user_id: userId,
+          email: email,
+          campaign_name: 'free_alerts_onboarding'
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        });
+
+      if (dripError) {
+        console.error('⚠️  Failed to add to drip campaign (non-critical):', dripError);
+      } else {
+        console.log('✅ Added to drip campaign');
+      }
+    }
+
     // For free alerts signup, we upsert the vehicle (update if exists, create if not)
     // This is a signup/update flow, not an "add vehicle" flow
     const vehicleData: any = {
