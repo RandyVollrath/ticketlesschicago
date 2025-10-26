@@ -1768,9 +1768,34 @@ export default function Dashboard() {
                       {profile.snooze_reason && ` (${profile.snooze_reason})`}
                     </p>
                     <button
-                      onClick={() => {
-                        handleInputChange('snooze_until_date', null);
-                        handleInputChange('snooze_reason', null);
+                      onClick={async () => {
+                        // Save immediately to database
+                        try {
+                          const { error } = await supabase
+                            .from('user_profiles')
+                            .update({
+                              snooze_until_date: null,
+                              snooze_reason: null,
+                              snooze_created_at: null
+                            })
+                            .eq('user_id', profile.user_id);
+
+                          if (error) {
+                            console.error('Error resuming notifications:', error);
+                            setMessage({ type: 'error', text: 'Failed to resume notifications' });
+                          } else {
+                            // Update local state
+                            setProfile({
+                              ...profile,
+                              snooze_until_date: null,
+                              snooze_reason: null
+                            });
+                            setMessage({ type: 'success', text: '✅ Trip Mode deactivated! Notifications resumed.' });
+                          }
+                        } catch (err) {
+                          console.error('Resume error:', err);
+                          setMessage({ type: 'error', text: 'Failed to resume notifications' });
+                        }
                       }}
                       style={{
                         padding: '8px 16px',
@@ -1796,11 +1821,38 @@ export default function Dashboard() {
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
               }}>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const oneWeekFromNow = new Date();
                     oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-                    handleInputChange('snooze_until_date', oneWeekFromNow.toISOString().split('T')[0]);
-                    handleInputChange('snooze_reason', 'Vacation');
+                    const snoozeDate = oneWeekFromNow.toISOString().split('T')[0];
+
+                    // Save immediately to database
+                    try {
+                      const { error } = await supabase
+                        .from('user_profiles')
+                        .update({
+                          snooze_until_date: snoozeDate,
+                          snooze_reason: 'Vacation',
+                          snooze_created_at: new Date().toISOString()
+                        })
+                        .eq('user_id', profile.user_id);
+
+                      if (error) {
+                        console.error('Error setting snooze:', error);
+                        setMessage({ type: 'error', text: 'Failed to activate Trip Mode' });
+                      } else {
+                        // Update local state
+                        setProfile({
+                          ...profile,
+                          snooze_until_date: snoozeDate,
+                          snooze_reason: 'Vacation'
+                        });
+                        setMessage({ type: 'success', text: '✈️ Trip Mode activated! Notifications paused for 1 week.' });
+                      }
+                    } catch (err) {
+                      console.error('Snooze error:', err);
+                      setMessage({ type: 'error', text: 'Failed to activate Trip Mode' });
+                    }
                   }}
                   style={{
                     width: '100%',
