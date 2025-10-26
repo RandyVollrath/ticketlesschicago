@@ -67,7 +67,12 @@ export class NotificationScheduler {
           const daysUntil = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           // Check if this matches a reminder day for the user
-          const reminderDays = user.notification_preferences?.reminder_days || [30, 7, 1];
+          // Default: More reminders for Protection users to confirm info before 30-day charge
+          const defaultReminderDays = user.has_protection
+            ? [60, 45, 30, 21, 14, 7, 1]  // Protection: frequent reminders to confirm info + post-charge updates
+            : [30, 7, 1];                  // Free: standard reminders to renew themselves
+
+          const reminderDays = user.notification_preferences?.reminder_days || defaultReminderDays;
           
           if (reminderDays.includes(daysUntil)) {
             results.processed++;
@@ -113,22 +118,22 @@ export class NotificationScheduler {
                   }
                 } else {
                   // Protection users - professional, clear communication about auto-registration
-                  const daysUntilPurchase = Math.max(0, daysUntil - 14);
-                  const purchaseDate = new Date(dueDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                  const daysUntilPurchase = Math.max(0, daysUntil - 30);
+                  const purchaseDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000);
                   const purchaseDateStr = purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-                  if (daysUntil === 14) {
-                    // Purchase day - urgent
-                    message = `Autopilot: Your ${renewal.type} expires in 2 weeks. We're purchasing it TODAY. Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder.`;
-                  } else if (daysUntil <= 21) {
-                    // Within 3 weeks - specify days until purchase
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll purchase it in ${daysUntilPurchase} days (on ${purchaseDateStr}). Please reply by then if you have: New VIN (new car), new plate number, or new address.`;
-                  } else if (daysUntil <= 30) {
-                    // Within a month - emphasize they have time
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll purchase it on ${purchaseDateStr} (when there's 30 days left). Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address.`;
+                  if (daysUntil === 30) {
+                    // Purchase day - urgent final reminder
+                    message = `Autopilot: We're charging your card TODAY for your ${renewal.type} renewal (expires in 30 days). Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder before we process payment.`;
+                  } else if (daysUntil > 30) {
+                    // Before purchase - collecting info
+                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr} (30 days before expiration). Please confirm your info is up-to-date in your profile or reply with any changes: New VIN (if new car), new plate number, or new address.`;
+                  } else if (daysUntil >= 14) {
+                    // After charge, before sticker expected
+                    message = `Autopilot: Good news! We already purchased your ${renewal.type}. Your sticker will arrive by mail within 2-3 weeks. No action needed from you!`;
                   } else {
-                    // 30+ days out - reassuring
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll purchase it on ${purchaseDateStr}, so you have time. If anything changed (new VIN, new plate, or address), reply anytime in the next month.`;
+                    // Sticker should have arrived
+                    message = `Autopilot: Your ${renewal.type} sticker should arrive soon (if it hasn't already). It was purchased on ${purchaseDateStr} and typically takes 2-3 weeks to arrive. Contact us if you haven't received it.`;
                   }
 
                   // Add permit zone docs request
@@ -186,11 +191,11 @@ export class NotificationScheduler {
                   const emailSubject = daysUntil <= 1
                     ? `${renewal.type} Renewal Reminder - Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}`
                     : hasProtection
-                    ? `${renewal.type} Renewal - ${daysUntil === 14 ? "We're purchasing today!" : "We'll handle it for you"}`
+                    ? `${renewal.type} Renewal - ${daysUntil === 30 ? "Charging your card today!" : daysUntil > 30 ? "Confirm your info" : "Sticker arriving soon"}`
                     : `${renewal.type} coming up in ${daysUntil} days`;
 
-                  const daysUntilPurchase = Math.max(0, daysUntil - 14);
-                  const purchaseDate = new Date(dueDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                  const daysUntilPurchase = Math.max(0, daysUntil - 30);
+                  const purchaseDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
                   const emailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
@@ -252,29 +257,37 @@ export class NotificationScheduler {
                           <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin-bottom: 24px; border-radius: 4px;">
                             <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">✅ We're Handling This For You</h3>
                             <p style="color: #065f46; margin: 0; line-height: 1.6;">
-                              ${daysUntil === 14
-                                ? `We're purchasing your ${renewal.type} <strong>today</strong> on your behalf. You don't need to do anything!`
-                                : daysUntil > 14
-                                ? `We'll automatically purchase your ${renewal.type} in ${daysUntilPurchase} days (on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>, when there are 30 days left). You don't need to do anything!`
-                                : daysUntil < 14
-                                ? `We already purchased your ${renewal.type} - your sticker is in the mail and should arrive within 7-10 business days!`
-                                : `We'll automatically purchase your ${renewal.type} on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> (when there are 30 days left). You have plenty of time!`
+                              ${daysUntil === 30
+                                ? `We're <strong>charging your card today</strong> for your ${renewal.type} renewal (expires in 30 days). The sticker will be mailed to you and should arrive within 2-3 weeks!`
+                                : daysUntil > 30
+                                ? `We'll automatically charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> (30 days before expiration) for your ${renewal.type} renewal. You have time to update your info if needed!`
+                                : daysUntil >= 14
+                                ? `Good news! We already purchased your ${renewal.type} renewal. Your sticker is in the mail and should arrive within 2-3 weeks. No action needed from you!`
+                                : `Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} and it typically takes 2-3 weeks to arrive.`
                               }
                             </p>
                           </div>
 
-                          <!-- Confirm Information -->
+                          ${daysUntil > 30 ? `
+                          <!-- Confirm Information (Only shown before 30-day charge) -->
                           <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
                             <h3 style="color: #0c4a6e; margin: 0 0 12px; font-size: 18px;">📝 Please Confirm Your Information</h3>
                             <p style="color: #0369a1; margin: 0 0 16px; line-height: 1.6;">
-                              Before we purchase your renewal, please reply to this email if any of the following has changed:
+                              Before we charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>, please verify your profile is up-to-date. Reply to this email or update your profile if any of the following has changed:
                             </p>
                             <ul style="color: #0369a1; margin: 0; padding-left: 20px; line-height: 1.8;">
                               <li>VIN (if you got a new vehicle)</li>
                               <li>License plate number</li>
-                              <li>Mailing address</li>
+                              <li>Mailing address (where we'll send your sticker)</li>
                             </ul>
+                            <div style="text-align: center; margin-top: 16px;">
+                              <a href="https://autopilotamerica.com/settings"
+                                 style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
+                                Update My Profile
+                              </a>
+                            </div>
                           </div>
+                          ` : ''}
                         `}
 
                         ${needsPermitDocs ? `
