@@ -1689,7 +1689,7 @@ export default function Dashboard() {
                   marginTop: '12px'
                 }}>
                   <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
-                    <strong>Note:</strong> If you have Concierge + Protection, we'll process your renewal at 14 days before the deadline using the information in your profile. Make sure your profile data is up-to-date before then!
+                    <strong>Note:</strong> If you have Concierge + Protection, we'll process your renewal at 30 days before the deadline using the information in your profile. Make sure your profile data is up-to-date before then!
                   </p>
                 </div>
               </div>

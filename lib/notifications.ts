@@ -380,7 +380,7 @@ export class NotificationScheduler {
               <p style="color: #065f46; margin: 0; line-height: 1.6;">
                 ${daysUntilDue <= 14
                   ? `We're purchasing your ${renewalName} on your behalf ${daysUntilDue === 14 ? 'today' : `in ${14 - daysUntilDue} days`}. You don't need to do anything!`
-                  : `We'll purchase your ${renewalName} when there are 14 days left until expiration. You don't need to do anything!`
+                  : `We'll purchase your ${renewalName} when there are 30 days left until expiration. You don't need to do anything!`
                 }
               </p>
             </div>
@@ -483,7 +483,7 @@ Days Remaining: ${daysUntilDue === 0 ? 'Due today' : daysUntilDue === 1 ? '1 day
 ✅ WE'VE GOT THIS COVERED
 ${daysUntilDue <= 14
   ? `We're purchasing your ${renewalName} on your behalf ${daysUntilDue === 14 ? 'today' : `in ${14 - daysUntilDue} days`}. You don't need to do anything!`
-  : `We'll purchase your ${renewalName} when there are 14 days left until expiration. You don't need to do anything!`
+  : `We'll purchase your ${renewalName} when there are 30 days left until expiration. You don't need to do anything!`
 }
 
 ${hasPermitZone ? `
@@ -535,9 +535,9 @@ Questions? Reply to support@autopilotamerica.com
         } else if (daysUntilDue <= 21) {
           smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase in 7 days. Reply if info changed (VIN, plate, or address). IMPORTANT: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
         } else if (daysUntilDue <= 30) {
-          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with updates. REQUIRED: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 30 days left. Reply with updates. REQUIRED: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
         } else {
-          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 14 days left. Reply with any updates. Don't forget: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase when there's 30 days left. Reply with any updates. Don't forget: Upload permit zone docs at ${shortUrl}/dashboard - Autopilot America`;
         }
       } else {
         // Standard protection users (no permit zone)
@@ -546,9 +546,9 @@ Questions? Reply to support@autopilotamerica.com
         } else if (daysUntilDue <= 21) {
           smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it in 7 days. Please reply by then if you have: New VIN (new car), new plate number, or new address. - Autopilot America`;
         } else if (daysUntilDue <= 30) {
-          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Autopilot America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 30 days left. Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address. - Autopilot America`;
         } else {
-          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 14 days left, so you have time. If anything changed (new VIN, new plate, or address), reply anytime in the next month. - Autopilot America`;
+          smsMessage = `Autopilot: ${renewalName} expires in ${daysUntilDue} days for plate ${obligation.license_plate}. We'll purchase it when there's 30 days left, so you have time. If anything changed (new VIN, new plate, or address), reply anytime before then. - Autopilot America`;
         }
       }
     }
@@ -593,7 +593,7 @@ Questions? Reply to support@autopilotamerica.com
 
     try {
       // Check all standard reminder intervals
-      // Updated schedule: Stop at 14 days (when we process renewals)
+      // Updated schedule: Stop at 30 days (when we process renewals)
       const reminderDays = [60, 45, 30, 21, 14];
       
       for (const days of reminderDays) {
