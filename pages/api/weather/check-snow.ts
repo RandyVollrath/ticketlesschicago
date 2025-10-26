@@ -55,6 +55,18 @@ export default async function handler(
           console.error('Error creating snow event:', insertError);
         } else {
           console.log('Created new snow event:', newEvent);
+
+          // Auto-activate snow route status for mobile app
+          const { error: activateError } = await supabaseAdmin.rpc('activate_snow_ban', {
+            p_snow_amount: snowData.snowAmountInches,
+            p_notes: `Auto-activated by weather monitoring - ${snowData.snowAmountInches}" forecasted`
+          });
+
+          if (activateError) {
+            console.error('Error activating snow ban:', activateError);
+          } else {
+            console.log('Snow route status activated for mobile app');
+          }
         }
 
         return res.status(200).json({
@@ -84,6 +96,16 @@ export default async function handler(
 
         if (updateError) {
           console.error('Error updating snow event:', updateError);
+        } else {
+          // Ensure snow route status is activated
+          const { error: activateError } = await supabaseAdmin.rpc('activate_snow_ban', {
+            p_snow_amount: Math.max(existingEvent.snow_amount_inches, snowData.snowAmountInches),
+            p_notes: `Auto-updated by weather monitoring - ${snowData.snowAmountInches}" detected`
+          });
+
+          if (activateError) {
+            console.error('Error activating snow ban:', activateError);
+          }
         }
 
         return res.status(200).json({

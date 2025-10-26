@@ -51,7 +51,7 @@ export default function AuthSuccess() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Payment Successful - Ticketless America</title>
+        <title>Payment Successful - Autopilot America</title>
       </Head>
 
       {/* Professional header */}

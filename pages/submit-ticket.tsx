@@ -61,7 +61,7 @@ export default function SubmitTicket() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Submit Ticket for Reimbursement - Ticketless America</title>
+        <title>Submit Ticket for Reimbursement - Autopilot America</title>
         <style>{`
           @media (max-width: 768px) {
             header {

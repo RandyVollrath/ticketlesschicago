@@ -3,9 +3,9 @@ import { supabaseAdmin } from '../../lib/supabase';
 import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
 
 const BRAND = {
-  name: 'Ticketless America',
+  name: 'Autopilot America',
   dashboardUrl: 'https://ticketlessamerica.com/dashboard',
-  emailFrom: process.env.RESEND_FROM || 'Ticketless America <noreply@ticketlessamerica.com>',
+  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
 };
 
 async function sendEmail(to: string, subject: string, html: string) {

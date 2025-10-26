@@ -95,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           to: attorney.email,
           subject: `New Quote Request - ${violationCode || 'Parking Ticket'}`,
           html: `
-            <h2>New Quote Request from Ticketless America</h2>
+            <h2>New Quote Request from Autopilot America</h2>
             <p>You have a new quote request from a client:</p>
 
             <h3>Client Details</h3>

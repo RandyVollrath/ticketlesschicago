@@ -1,9 +1,9 @@
 import { supabaseAdmin } from './supabase';
 
 const BRAND = {
-  name: 'Ticketless America',
+  name: 'Autopilot America',
   dashboardUrl: 'https://autopilotamerica.com/dashboard',
-  emailFrom: process.env.RESEND_FROM || 'Ticketless America <noreply@autopilotamerica.com>',
+  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@autopilotamerica.com>',
 };
 
 /**

@@ -291,12 +291,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                       'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                      from: 'Ticketless America <noreply@ticketlessamerica.com>',
+                      from: 'Autopilot America <noreply@ticketlessamerica.com>',
                       to: email,
-                      subject: 'Welcome to Ticketless America - Complete Your Profile',
+                      subject: 'Welcome to Autopilot America - Complete Your Profile',
                       html: `
                         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                          <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Ticketless America!</h2>
+                          <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
 
                           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
                             Thanks for purchasing Ticket Protection! Click the button below to securely log in to your account and complete your profile:
@@ -329,7 +329,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                           </p>
 
                           <p style="color: #9ca3af; font-size: 12px;">
-                            Ticketless America • Never get another parking ticket
+                            Autopilot America • Never get another parking ticket
                           </p>
                         </div>
                       `
@@ -446,9 +446,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    from: 'Ticketless America <noreply@ticketlessamerica.com>',
+                    from: 'Autopilot America <noreply@ticketlessamerica.com>',
                     to: email,
-                    subject: 'Welcome to Ticketless Protection - Access Your Account',
+                    subject: 'Welcome to Autopilot Protection - Access Your Account',
                     html: `
                       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
                         <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Protection is Active!</h2>
@@ -484,7 +484,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         </p>
 
                         <p style="color: #9ca3af; font-size: 12px;">
-                          Ticketless America • Never get another parking ticket
+                          Autopilot America • Never get another parking ticket
                         </p>
                       </div>
                     `
@@ -529,7 +529,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
 
           // Log user consent for legal compliance
-          const consentText = 'I authorize Ticketless America to act as my agent to purchase and file my vehicle renewals (city stickers, license plates, and residential parking permits) with the City of Chicago and State of Illinois on my behalf. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested.';
+          const consentText = 'I authorize Autopilot America to act as my concierge service to monitor my vehicle renewal deadlines and coordinate renewals on my behalf. Autopilot America is not a government agency or licensed remitter. I authorize Autopilot America to charge my payment method for the subscription service fee plus government renewal fees (city sticker, license plate, parking permits) 30 days before my deadlines. Autopilot America will forward the government fees to our licensed remitter partner who will execute the official submission with the City of Chicago and State of Illinois. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested.';
 
           const { error: consentError } = await supabaseAdmin
             .from('user_consents')

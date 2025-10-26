@@ -69,7 +69,7 @@ export default function CourtStatistics() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <Head>
-        <title>Court Statistics - Ticketless America</title>
+        <title>Court Statistics - Autopilot America</title>
       </Head>
 
       {/* Header */}

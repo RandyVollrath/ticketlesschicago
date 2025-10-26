@@ -140,7 +140,7 @@ export default async function handler(
         await resend.emails.send({
           from: process.env.RESEND_FROM || 'noreply@ticketlessamerica.com',
           to: profile.email,
-          subject: '🎉 Your Ticketless America Referral Link is Ready!',
+          subject: '🎉 Your Autopilot America Referral Link is Ready!',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2>Your Referral Link is Ready!</h2>
@@ -169,7 +169,7 @@ export default async function handler(
               <p>You can also find your referral link anytime in your account settings at <a href="https://ticketlessamerica.com/settings">ticketlessamerica.com/settings</a></p>
 
               <p>Thanks for spreading the word!</p>
-              <p>- The Ticketless America Team</p>
+              <p>- The Autopilot America Team</p>
             </div>
           `
         });

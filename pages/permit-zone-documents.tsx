@@ -162,7 +162,7 @@ export default function PermitZoneDocuments() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '20px' }}>
       <Head>
-        <title>Permit Zone Documents - Ticketless America</title>
+        <title>Permit Zone Documents - Autopilot America</title>
       </Head>
 
       <style>
@@ -190,7 +190,7 @@ export default function PermitZoneDocuments() {
             🅿️ Residential Permit Zone Documents
           </h1>
           <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
-            Upload your documents to purchase a residential parking permit through Ticketless America.
+            Upload your documents to purchase a residential parking permit through Autopilot America.
             We'll handle the entire process with the City of Chicago for you.
           </p>
         </div>

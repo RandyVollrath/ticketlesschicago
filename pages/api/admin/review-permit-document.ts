@@ -142,7 +142,7 @@ export default async function handler(
       try {
         if (action === 'approve') {
           await resend.emails.send({
-            from: 'Ticketless America <hello@ticketlessamerica.com>',
+            from: 'Autopilot America <hello@ticketlessamerica.com>',
             to: userEmail,
             subject: 'Your Permit Zone Documents Have Been Approved! ✅',
             html: `
@@ -155,13 +155,13 @@ export default async function handler(
                 </div>
                 <p>We'll purchase your permit from the City of Chicago on your behalf. You should receive it at your address within 2-3 weeks.</p>
                 <p>If you have any questions, just reply to this email.</p>
-                <p>Best,<br>The Ticketless America Team</p>
+                <p>Best,<br>The Autopilot America Team</p>
               </div>
             `,
           });
         } else {
           await resend.emails.send({
-            from: 'Ticketless America <hello@ticketlessamerica.com>',
+            from: 'Autopilot America <hello@ticketlessamerica.com>',
             to: userEmail,
             subject: 'Action Needed: Permit Zone Documents',
             html: `
@@ -185,7 +185,7 @@ export default async function handler(
                   </a>
                 </p>
                 <p>If you have any questions, just reply to this email and we'll be happy to help.</p>
-                <p>Best,<br>The Ticketless America Team</p>
+                <p>Best,<br>The Autopilot America Team</p>
               </div>
             `,
           });

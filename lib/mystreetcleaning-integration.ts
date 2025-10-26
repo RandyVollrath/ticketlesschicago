@@ -118,7 +118,7 @@ export async function createMyStreetCleaningAccount(
         console.error('❌ [MSC Integration] Error updating user profile:', updateError);
       }
 
-      // Note: user_addresses sync removed - street cleaning notifications now handled by Ticketless America directly
+      // Note: user_addresses sync removed - street cleaning notifications now handled by Autopilot America directly
 
       return {
         success: true,
@@ -146,7 +146,7 @@ export async function createMyStreetCleaningAccount(
       phone_call_enabled: prefs.voice !== undefined ? prefs.voice : false,
       is_paid: false,
       updated_at: new Date().toISOString(),
-      // Fields specific to Ticketless America users
+      // Fields specific to Autopilot America users
       role: 'ticketless_user',
       affiliate_signup_date: new Date().toISOString()
     };

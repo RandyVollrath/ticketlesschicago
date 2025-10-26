@@ -140,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         <!-- Footer -->
         <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px;">
-          <strong style="color: #374151;">Ticketless America - Admin Notification</strong><br>
+          <strong style="color: #374151;">Autopilot America - Admin Notification</strong><br>
           Automated daily renewal check
         </div>
       </div>
@@ -166,7 +166,7 @@ NEXT STEPS:
 4. Mark them as notified in the system
 
 ---
-Ticketless America - Admin Notification
+Autopilot America - Admin Notification
     `;
 
     // Send email to all admins
