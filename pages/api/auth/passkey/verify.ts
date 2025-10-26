@@ -31,10 +31,18 @@ function getRpConfig(req: NextApiRequest) {
   }
   
   // For production domain
+  if (host === 'autopilotamerica.com' || host === 'www.autopilotamerica.com') {
+    return {
+      rpID: 'autopilotamerica.com',
+      origin: `https://${host}`  // Use the actual host (www or non-www)
+    }
+  }
+
+  // Legacy domain support
   if (host === 'ticketlessamerica.com' || host === 'www.ticketlessamerica.com') {
     return {
       rpID: 'ticketlessamerica.com',
-      origin: `https://${host}`  // Use the actual host (www or non-www)
+      origin: `https://${host}`
     }
   }
   
