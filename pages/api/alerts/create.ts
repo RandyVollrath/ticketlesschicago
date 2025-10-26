@@ -48,7 +48,7 @@ export default async function handler(
   const {
     firstName,
     lastName,
-    email,
+    email: rawEmail,
     phone,
     licensePlate,
     address,
@@ -61,8 +61,32 @@ export default async function handler(
     marketingConsent
   } = req.body;
 
-  if (!email || !phone || !licensePlate || !address || !zip) {
+  if (!rawEmail || !phone || !licensePlate || !address || !zip) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Normalize email: Gmail ignores +aliases and dots before @
+  // randyvollrath+10@gmail.com → randyvollrath@gmail.com
+  // randy.vollrath@gmail.com → randyvollrath@gmail.com
+  const normalizeEmail = (email: string): string => {
+    const [localPart, domain] = email.toLowerCase().split('@');
+
+    // For Gmail, remove dots and anything after +
+    if (domain === 'gmail.com') {
+      const cleanLocal = localPart.replace(/\./g, '').split('+')[0];
+      return `${cleanLocal}@${domain}`;
+    }
+
+    // For other providers, just lowercase
+    return email.toLowerCase();
+  };
+
+  const email = normalizeEmail(rawEmail);
+  const formEmail = rawEmail.toLowerCase(); // Keep original for logging
+
+  // Log if user entered an alias email (for analytics)
+  if (email !== formEmail) {
+    console.log(`📧 Email normalized: ${formEmail} → ${email}`);
   }
 
   try {
@@ -231,6 +255,15 @@ export default async function handler(
 
     console.log('✅ Free signup successful:', email);
 
+    // Check if user already has OAuth provider (Google login)
+    const { data: userData } = await supabase.auth.admin.getUserById(userId);
+    const hasOAuthProvider = userData?.user?.identities && userData.user.identities.length > 0;
+    const oauthProvider = hasOAuthProvider ? userData.user.identities[0]?.provider : null;
+
+    if (hasOAuthProvider) {
+      console.log(`✅ User already authenticated via OAuth (${oauthProvider}), skipping verification email`);
+    }
+
     // Check if user needs winter ban notification (Dec 1 - Apr 1)
     // TODO: Re-enable when winter-ban-notifications type errors are fixed
     // try {
@@ -286,13 +319,18 @@ export default async function handler(
     console.log('Verification link generated:', !!verificationLink);
 
     // Send welcome email with verification link in background (non-blocking)
-    console.log('📧 Sending verification email (background)...');
-
-    // Send email with retry logic
+    // Skip email if user is already authenticated via OAuth
     let emailSent = false;
     let lastError = null;
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    if (hasOAuthProvider) {
+      console.log('⏭️  Skipping verification email - user authenticated via OAuth');
+      emailSent = true; // Mark as "sent" so we don't log errors
+    } else {
+      console.log('📧 Sending verification email (background)...');
+    }
+
+    for (let attempt = 1; attempt <= 3 && !hasOAuthProvider; attempt++) {
       try {
         console.log(`📧 Email send attempt ${attempt}/3...`);
 
@@ -385,9 +423,13 @@ export default async function handler(
 
     return res.status(200).json({
       success: true,
-      message: 'Account created successfully',
+      message: hasOAuthProvider
+        ? 'Account updated successfully. You are already logged in via Google.'
+        : 'Account created successfully',
       userId,
-      loginLink: loginLink || null // Return immediate login link
+      loginLink: loginLink || null, // Return immediate login link
+      alreadyAuthenticated: hasOAuthProvider,
+      emailNormalized: email !== formEmail ? { from: formEmail, to: email } : null
     });
 
   } catch (error: any) {
