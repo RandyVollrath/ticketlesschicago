@@ -125,7 +125,7 @@ export class NotificationScheduler {
                     message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll purchase it in ${daysUntilPurchase} days (on ${purchaseDateStr}). Please reply by then if you have: New VIN (new car), new plate number, or new address.`;
                   } else if (daysUntil <= 30) {
                     // Within a month - emphasize they have time
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll purchase it on ${purchaseDateStr} (when there's 14 days left). Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address.`;
+                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll purchase it on ${purchaseDateStr} (when there's 30 days left). Reply anytime before then with any updates: New VIN (if new car), new plate number, or new address.`;
                   } else {
                     // 30+ days out - reassuring
                     message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll purchase it on ${purchaseDateStr}, so you have time. If anything changed (new VIN, new plate, or address), reply anytime in the next month.`;
@@ -255,10 +255,10 @@ export class NotificationScheduler {
                               ${daysUntil === 14
                                 ? `We're purchasing your ${renewal.type} <strong>today</strong> on your behalf. You don't need to do anything!`
                                 : daysUntil > 14
-                                ? `We'll automatically purchase your ${renewal.type} in ${daysUntilPurchase} days (on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>, when there are 14 days left). You don't need to do anything!`
+                                ? `We'll automatically purchase your ${renewal.type} in ${daysUntilPurchase} days (on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>, when there are 30 days left). You don't need to do anything!`
                                 : daysUntil < 14
                                 ? `We already purchased your ${renewal.type} - your sticker is in the mail and should arrive within 7-10 business days!`
-                                : `We'll automatically purchase your ${renewal.type} on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> (when there are 14 days left). You have plenty of time!`
+                                : `We'll automatically purchase your ${renewal.type} on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> (when there are 30 days left). You have plenty of time!`
                               }
                             </p>
                           </div>
@@ -352,10 +352,10 @@ Days Remaining: ${daysUntil === 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `$
 ${daysUntil === 14
   ? `We're purchasing your ${renewal.type} TODAY on your behalf. You don't need to do anything!`
   : daysUntil > 14
-  ? `We'll automatically purchase your ${renewal.type} in ${daysUntilPurchase} days (on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, when there are 14 days left). You don't need to do anything!`
+  ? `We'll automatically purchase your ${renewal.type} in ${daysUntilPurchase} days (on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, when there are 30 days left). You don't need to do anything!`
   : daysUntil < 14
   ? `We already purchased your ${renewal.type} - your sticker is in the mail and should arrive within 7-10 business days!`
-  : `We'll automatically purchase your ${renewal.type} on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (when there are 14 days left). You have plenty of time!`
+  : `We'll automatically purchase your ${renewal.type} on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (when there are 30 days left). You have plenty of time!`
 }
 
 📝 PLEASE CONFIRM YOUR INFORMATION
