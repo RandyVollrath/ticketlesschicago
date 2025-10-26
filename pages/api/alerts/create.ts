@@ -254,9 +254,11 @@ export default async function handler(
     console.log('✅ Free signup successful:', email);
 
     // Check if user already has OAuth provider (Google login)
+    // Note: "email" provider means they signed up with email/password, not OAuth
     const { data: userData } = await supabase.auth.admin.getUserById(userId);
-    const hasOAuthProvider = userData?.user?.identities && userData.user.identities.length > 0;
-    const oauthProvider = hasOAuthProvider ? userData.user.identities[0]?.provider : null;
+    const oauthIdentities = userData?.user?.identities?.filter(i => i.provider !== 'email') || [];
+    const hasOAuthProvider = oauthIdentities.length > 0;
+    const oauthProvider = hasOAuthProvider ? oauthIdentities[0]?.provider : null;
 
     if (hasOAuthProvider) {
       console.log(`✅ User already authenticated via OAuth (${oauthProvider}), skipping verification email`);
