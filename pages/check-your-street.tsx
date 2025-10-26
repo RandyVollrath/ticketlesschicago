@@ -38,6 +38,9 @@ export default function CheckYourStreet() {
   const [mapData, setMapData] = useState([])
   const [isLoadingMap, setIsLoadingMap] = useState(true)
   const [highlightZone, setHighlightZone] = useState<{ ward: string; section: string } | null>(null)
+  const [tripStartDate, setTripStartDate] = useState('')
+  const [tripEndDate, setTripEndDate] = useState('')
+  const [dateRangeResult, setDateRangeResult] = useState<{cleaningDates: string[], hasCleaningDuringTrip: boolean} | null>(null)
 
   // Load map data on mount
   useEffect(() => {
@@ -107,6 +110,40 @@ export default function CheckYourStreet() {
   const handleDownloadCalendar = (ward: string, section: string) => {
     const calendarUrl = `/api/generate-calendar?ward=${ward}&section=${section}`
     window.location.href = calendarUrl
+  }
+
+  const handleCheckDateRange = async () => {
+    if (!searchResult || !tripStartDate || !tripEndDate) {
+      return
+    }
+
+    try {
+      // Fetch all cleaning dates for this ward/section
+      const response = await fetch(`/api/get-cleaning-schedule?ward=${searchResult.ward}&section=${searchResult.section}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        console.error('Failed to fetch cleaning schedule')
+        return
+      }
+
+      // Filter cleaning dates that fall within the trip range
+      const cleaningDates = data.cleaningDates || []
+      const start = new Date(tripStartDate)
+      const end = new Date(tripEndDate)
+
+      const cleaningDuringTrip = cleaningDates.filter((dateStr: string) => {
+        const cleaningDate = new Date(dateStr)
+        return cleaningDate >= start && cleaningDate <= end
+      })
+
+      setDateRangeResult({
+        cleaningDates: cleaningDuringTrip,
+        hasCleaningDuringTrip: cleaningDuringTrip.length > 0
+      })
+    } catch (err) {
+      console.error('Error checking date range:', err)
+    }
   }
 
   const formatDate = (dateStr: string | null) => {
@@ -487,6 +524,122 @@ export default function CheckYourStreet() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Going on a Trip? Date Range Checker */}
+              <div style={{
+                backgroundColor: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: '16px',
+                padding: '28px',
+                marginTop: '20px'
+              }}>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    ✈️ Going on a trip?
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
+                    Check if there's street cleaning during your dates
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={tripStartDate}
+                      onChange={(e) => {
+                        setTripStartDate(e.target.value);
+                        setDateRangeResult(null);
+                      }}
+                      min={new Date().toISOString().split('T')[0]}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={tripEndDate}
+                      onChange={(e) => {
+                        setTripEndDate(e.target.value);
+                        setDateRangeResult(null);
+                      }}
+                      min={tripStartDate || new Date().toISOString().split('T')[0]}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <button
+                      onClick={handleCheckDateRange}
+                      disabled={!tripStartDate || !tripEndDate}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        backgroundColor: (tripStartDate && tripEndDate) ? '#0052cc' : '#9ca3af',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: (tripStartDate && tripEndDate) ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      Check
+                    </button>
+                  </div>
+                </div>
+
+                {dateRangeResult && (
+                  <div style={{
+                    backgroundColor: dateRangeResult.hasCleaningDuringTrip ? '#fef2f2' : '#f0fdf4',
+                    border: `1px solid ${dateRangeResult.hasCleaningDuringTrip ? '#fecaca' : '#bbf7d0'}`,
+                    borderRadius: '10px',
+                    padding: '16px',
+                    marginTop: '12px'
+                  }}>
+                    {dateRangeResult.hasCleaningDuringTrip ? (
+                      <>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#dc2626', marginBottom: '8px' }}>
+                          ⚠️ Street cleaning scheduled during your trip
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
+                          You'll need to move your car on:
+                        </div>
+                        <ul style={{ margin: '0', paddingLeft: '20px', fontSize: '14px', color: '#374151' }}>
+                          {dateRangeResult.cleaningDates.map((date) => (
+                            <li key={date}>
+                              <strong>{formatDate(date)}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '15px', fontWeight: '600', color: '#059669' }}>
+                        ✅ No street cleaning during your trip dates
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

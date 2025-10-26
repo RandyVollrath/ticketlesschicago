@@ -562,15 +562,6 @@ export default function StreetCleaningSettings() {
           onChange={(e) => setHomeAddress(e.target.value)}
           placeholder="123 N State St, Chicago, IL"
         />
-        {mailingAddress && homeAddress !== mailingAddress && (
-          <button
-            type="button"
-            onClick={handleUseMailingAddress}
-            className={styles.useMailingButton}
-          >
-            Use Mailing Address ({mailingAddress})
-          </button>
-        )}
         {ward && section && (
           <div className={styles.addressInfo}>
             ✓ Ward {ward}, Section {section}
