@@ -181,6 +181,7 @@ export default function Dashboard() {
   const [autoSaveTimeouts, setAutoSaveTimeouts] = useState<Record<string, NodeJS.Timeout>>({})
   const [emailVerified, setEmailVerified] = useState(false)
   const [resendingEmail, setResendingEmail] = useState(false)
+  const [vinError, setVinError] = useState<string | null>(null)
 
   const router = useRouter()
 
@@ -1155,18 +1156,40 @@ export default function Dashboard() {
                 <input
                   type="text"
                   value={editedProfile.vin !== undefined ? editedProfile.vin : (profile?.vin || '')}
-                  onChange={(e) => handleInputChange('vin', e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    handleInputChange('vin', e.target.value.toUpperCase());
+                    // Clear error while typing
+                    if (vinError) setVinError(null);
+                  }}
+                  onBlur={(e) => {
+                    const vin = e.target.value.trim();
+                    if (vin && vin.length !== 17) {
+                      setVinError('VIN must be exactly 17 characters');
+                    } else {
+                      setVinError(null);
+                    }
+                  }}
                   maxLength={17}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: '1px solid #e5e7eb',
+                    border: vinError ? '1px solid #dc2626' : '1px solid #e5e7eb',
                     borderRadius: '8px',
                     fontSize: '14px',
                     textTransform: 'uppercase'
                   }}
                   placeholder="Enter your 17-character VIN"
                 />
+                {vinError && (
+                  <p style={{
+                    marginTop: '8px',
+                    fontSize: '13px',
+                    color: '#dc2626',
+                    fontWeight: '500'
+                  }}>
+                    ⚠️ {vinError}
+                  </p>
+                )}
               </div>
 
               <div>
