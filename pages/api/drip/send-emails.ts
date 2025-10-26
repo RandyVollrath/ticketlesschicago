@@ -67,6 +67,9 @@ export default async function handler(
 
           results.welcomeEmails++;
           console.log(`✅ Sent welcome email to ${user.email}`);
+
+          // Wait 600ms between emails to stay under 2 req/sec rate limit
+          await new Promise(resolve => setTimeout(resolve, 600));
         } catch (error: any) {
           results.errors.push(`Welcome email failed for ${user.email}: ${error.message}`);
           console.error(`❌ Failed to send welcome to ${user.email}:`, error);
@@ -107,6 +110,9 @@ export default async function handler(
 
           results.proofEmails++;
           console.log(`✅ Sent proof email to ${user.email}`);
+
+          // Wait 600ms between emails to stay under 2 req/sec rate limit
+          await new Promise(resolve => setTimeout(resolve, 600));
         } catch (error: any) {
           results.errors.push(`Proof email failed for ${user.email}: ${error.message}`);
           console.error(`❌ Failed to send proof to ${user.email}:`, error);
@@ -165,6 +171,9 @@ export default async function handler(
 
           results.softSellEmails++;
           console.log(`✅ Sent soft-sell email to ${user.email}`);
+
+          // Wait 600ms between emails to stay under 2 req/sec rate limit
+          await new Promise(resolve => setTimeout(resolve, 600));
         } catch (error: any) {
           results.errors.push(`Soft-sell email failed for ${user.email}: ${error.message}`);
           console.error(`❌ Failed to send soft-sell to ${user.email}:`, error);
