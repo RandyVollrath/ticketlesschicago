@@ -48,7 +48,7 @@ export default async function handler(
   const {
     firstName,
     lastName,
-    email: rawEmail,
+    email,
     phone,
     licensePlate,
     address,
@@ -61,32 +61,8 @@ export default async function handler(
     marketingConsent
   } = req.body;
 
-  if (!rawEmail || !phone || !licensePlate || !address || !zip) {
+  if (!email || !phone || !licensePlate || !address || !zip) {
     return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  // Normalize email: Gmail ignores +aliases and dots before @
-  // randyvollrath+10@gmail.com → randyvollrath@gmail.com
-  // randy.vollrath@gmail.com → randyvollrath@gmail.com
-  const normalizeEmail = (email: string): string => {
-    const [localPart, domain] = email.toLowerCase().split('@');
-
-    // For Gmail, remove dots and anything after +
-    if (domain === 'gmail.com') {
-      const cleanLocal = localPart.replace(/\./g, '').split('+')[0];
-      return `${cleanLocal}@${domain}`;
-    }
-
-    // For other providers, just lowercase
-    return email.toLowerCase();
-  };
-
-  const email = normalizeEmail(rawEmail);
-  const formEmail = rawEmail.toLowerCase(); // Keep original for logging
-
-  // Log if user entered an alias email (for analytics)
-  if (email !== formEmail) {
-    console.log(`📧 Email normalized: ${formEmail} → ${email}`);
   }
 
   try {
@@ -428,8 +404,7 @@ export default async function handler(
         : 'Account created successfully',
       userId,
       loginLink: loginLink || null, // Return immediate login link
-      alreadyAuthenticated: hasOAuthProvider,
-      emailNormalized: email !== formEmail ? { from: formEmail, to: email } : null
+      alreadyAuthenticated: hasOAuthProvider
     });
 
   } catch (error: any) {
