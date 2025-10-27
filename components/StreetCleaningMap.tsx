@@ -74,7 +74,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           div.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 4px;">❄️ Snow Ban Routes</div>
             <div style="display: flex; align-items: center; margin-bottom: 2px;">
-              <div style="width: 12px; height: 12px; background: #ff0099; margin-right: 5px; border: 1px solid #333;"></div>
+              <div style="width: 12px; height: 12px; background: #ff00ff; margin-right: 5px; border: 1px solid #333;"></div>
               <span>No Parking (Snow Ban)</span>
             </div>
             <div style="display: flex; align-items: center;">
@@ -206,18 +206,18 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
           const snowRouteLayer = L.geoJSON(route.geometry, {
             style: {
-              color: '#ff0099',
-              weight: 10,
+              color: '#ff00ff',      // Bright magenta/fuchsia border
+              weight: 14,            // Much thicker lines
               opacity: 1.0,
-              fillColor: '#ff66cc',
-              fillOpacity: 0.95
+              fillColor: '#ff00ff',  // Same bright magenta fill
+              fillOpacity: 0.6       // Semi-transparent so you can see streets underneath
             }
           });
 
           // Add popup with route info
           const routePopup = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
-              <div style="background: linear-gradient(135deg, #ff0099, #ff1493); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(255,0,153,0.3);">
+              <div style="background: linear-gradient(135deg, #ff00ff, #ff00cc); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(255,0,255,0.5);">
                 ❄️ 2-Inch Snow Ban Route
               </div>
               <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 8px 10px;">
