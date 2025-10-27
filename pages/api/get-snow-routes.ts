@@ -2,15 +2,21 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 // MyStreetCleaning database for snow routes
-const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL!;
-const MSC_SUPABASE_ANON_KEY = process.env.MSC_SUPABASE_ANON_KEY!;
-
-const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY);
+const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL;
+const MSC_SUPABASE_ANON_KEY = process.env.MSC_SUPABASE_ANON_KEY;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Check if environment variables are set
+  if (!MSC_SUPABASE_URL || !MSC_SUPABASE_ANON_KEY) {
+    console.error('Missing MSC Supabase credentials');
+    return res.status(200).json({ routes: [], count: 0 }); // Return empty array instead of erroring
+  }
+
+  const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY);
 
   try {
     // Fetch all snow routes with geometries

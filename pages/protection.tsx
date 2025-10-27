@@ -32,7 +32,8 @@ export default function Protection() {
   const [phone, setPhone] = useState('');
 
   // Check feature flags
-  const isWaitlistMode = process.env.NEXT_PUBLIC_PROTECTION_WAITLIST === 'true';
+  // HARDCODED: Waitlist mode enabled - checkout is commented out
+  const isWaitlistMode = true; // process.env.NEXT_PUBLIC_PROTECTION_WAITLIST === 'true';
 
   useEffect(() => {
     const checkUser = async () => {
