@@ -43,6 +43,8 @@ export default function CheckYourStreet() {
   const [dateRangeResult, setDateRangeResult] = useState<{cleaningDates: string[], hasCleaningDuringTrip: boolean} | null>(null)
   const [showSnowSafeMode, setShowSnowSafeMode] = useState(false)
   const [snowRoutes, setSnowRoutes] = useState<any[]>([])
+  const [alternativeZones, setAlternativeZones] = useState<any[]>([])
+  const [loadingAlternatives, setLoadingAlternatives] = useState(false)
 
   // Load map data on mount
   useEffect(() => {
@@ -151,6 +153,29 @@ export default function CheckYourStreet() {
   const handleDownloadCalendar = (ward: string, section: string) => {
     const calendarUrl = `/api/generate-calendar?ward=${ward}&section=${section}`
     window.location.href = calendarUrl
+  }
+
+  const handleFindAlternativeParking = async () => {
+    if (!searchResult) return
+
+    setLoadingAlternatives(true)
+    try {
+      const response = await fetch(`/api/find-alternative-parking?ward=${searchResult.ward}&section=${searchResult.section}`)
+      const data = await response.json()
+
+      if (response.ok && data.alternatives) {
+        setAlternativeZones(data.alternatives)
+        // Clear user's current zone highlight to show alternatives
+        setHighlightZone(null)
+      } else {
+        alert('No alternative parking zones found nearby.')
+      }
+    } catch (error) {
+      console.error('Error fetching alternative parking:', error)
+      alert('Failed to find alternative parking.')
+    } finally {
+      setLoadingAlternatives(false)
+    }
   }
 
   const handleCheckDateRange = async () => {
@@ -624,6 +649,43 @@ export default function CheckYourStreet() {
                       >
                         🔔 Get Alerts
                       </button>
+
+                      {/* Show Find Safe Parking button when cleaning is today or soon */}
+                      {searchResult.nextCleaningDate &&
+                       (getCleaningStatus(searchResult.nextCleaningDate).status === 'today' ||
+                        getCleaningStatus(searchResult.nextCleaningDate).status === 'soon') && (
+                        <button
+                          onClick={handleFindAlternativeParking}
+                          disabled={loadingAlternatives}
+                          style={{
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            padding: '12px 20px',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: loadingAlternatives ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'all 0.2s ease',
+                            opacity: loadingAlternatives ? 0.6 : 1
+                          }}
+                          onMouseOver={(e) => {
+                            if (!loadingAlternatives) {
+                              e.currentTarget.style.backgroundColor = '#059669'
+                            }
+                          }}
+                          onMouseOut={(e) => {
+                            if (!loadingAlternatives) {
+                              e.currentTarget.style.backgroundColor = '#10b981'
+                            }
+                          }}
+                        >
+                          {loadingAlternatives ? '⏳ Finding...' : '🅿️ Find Safe Parking Nearby'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -836,6 +898,7 @@ export default function CheckYourStreet() {
                 snowRoutes={snowRoutes}
                 showSnowSafeMode={showSnowSafeMode}
                 userLocation={searchResult?.coordinates}
+                alternativeZones={alternativeZones}
               />
             )}
 
