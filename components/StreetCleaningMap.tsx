@@ -201,10 +201,24 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
       // Add snow routes overlay when in snow safe mode
       if (showSnowSafeMode && snowRoutes.length > 0) {
-        snowRoutes.forEach((route) => {
-          if (!route.geometry) return;
+        console.log('🌨️ Adding snow routes to map:', snowRoutes.length, 'routes');
+
+        // Create a pane for snow routes with high z-index so they render on top
+        if (!mapInstanceRef.current.getPane('snowRoutes')) {
+          mapInstanceRef.current.createPane('snowRoutes');
+          mapInstanceRef.current.getPane('snowRoutes')!.style.zIndex = '650'; // Higher than overlays (400) and markers (600)
+          console.log('✅ Created snowRoutes pane with z-index 650');
+        }
+
+        snowRoutes.forEach((route, index) => {
+          if (!route.geometry) {
+            console.warn(`⚠️ Route ${index} has no geometry`);
+            return;
+          }
+          console.log(`📍 Adding route ${index}:`, route.properties?.on_street);
 
           const snowRouteLayer = L.geoJSON(route.geometry, {
+            pane: 'snowRoutes',  // Use custom pane with high z-index
             style: {
               color: '#ff00ff',      // Bright magenta/fuchsia border
               weight: 14,            // Much thicker lines
