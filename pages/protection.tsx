@@ -451,7 +451,7 @@ export default function Protection() {
               marginBottom: '12px',
               margin: '0 0 12px 0'
             }}>
-              Unlimited Vehicles
+              One Vehicle, Fully Covered
             </h3>
             <p style={{
               fontSize: '16px',
@@ -459,7 +459,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              Add as many vehicles as you want. Perfect for families and small fleets.
+              Complete protection for your tracked vehicle, including renewals and ticket reimbursement.
             </p>
           </div>
         </div>
