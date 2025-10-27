@@ -432,7 +432,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              We reimburse 80% of eligible tickets up to $200/year for your tracked address as a service guarantee, not insurance. Follow our alerts and submit tickets within 7 days for coverage.
+              We reimburse 80% of eligible tickets up to $200/year for tickets received at your tracked address and vehicle as a service guarantee, not insurance. Coverage only applies to the address and vehicle listed in your profile at the time the ticket was issued. Follow our alerts and submit tickets within 7 days for coverage.
             </p>
           </div>
 
@@ -1332,6 +1332,8 @@ export default function Protection() {
               }}>
                 <li style={{ marginBottom: '8px' }}><strong>Have an active Concierge + Protection subscription</strong> at the time the ticket was issued</li>
                 <li style={{ marginBottom: '8px' }}><strong>30-day waiting period</strong> after signup before coverage begins</li>
+                <li style={{ marginBottom: '8px' }}><strong>Ticket must be for the address and vehicle</strong> listed in your profile at the time the ticket was issued - coverage only applies to your tracked address and vehicle</li>
+                <li style={{ marginBottom: '8px' }}><strong>Vehicle changes limited to once per year</strong> - changing your vehicle more than once per year voids coverage for any new vehicles</li>
                 <li style={{ marginBottom: '8px' }}><strong>Maintain a complete and accurate profile</strong> with all vehicle information, renewal dates, contact information, and street cleaning address - the guarantee is void if your profile is incomplete or inaccurate</li>
                 <li style={{ marginBottom: '8px' }}>Respond to alerts confirming you moved your vehicle (e.g., reply "Moved" to SMS)</li>
                 <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>

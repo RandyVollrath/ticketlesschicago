@@ -178,7 +178,7 @@ export default function SubmitTicket() {
             color: '#6b7280',
             margin: 0
           }}>
-            We reimburse 80% of eligible tickets up to $200 per year. Submit your ticket photos and details below.
+            We reimburse 80% of eligible tickets up to $200 per year for your tracked address and vehicle. Tickets must be for the address and vehicle in your profile at the time the ticket was issued. Submit your ticket photos and details below.
           </p>
         </div>
 
