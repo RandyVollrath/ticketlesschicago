@@ -185,6 +185,19 @@ export default function Dashboard() {
   const [customSnoozeDate, setCustomSnoozeDate] = useState('')
   const [customSnoozeReason, setCustomSnoozeReason] = useState('')
 
+  // Accordion state
+  const [openSections, setOpenSections] = useState({
+    account: true,
+    vehicle: false,
+    alerts: true,
+    security: false,
+    other: false
+  })
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
   const router = useRouter()
 
   useEffect(() => {
@@ -1021,17 +1034,38 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-          {/* Account Information */}
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '16px', 
-            border: '1px solid #e5e7eb', 
-            padding: '32px' 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Account & Contact Section */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            overflow: 'hidden'
           }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
-              Account Information
-            </h2>
+            <button
+              onClick={() => toggleSection('account')}
+              style={{
+                width: '100%',
+                padding: '24px 32px',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                borderBottom: openSections.account ? '1px solid #e5e7eb' : 'none'
+              }}
+            >
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                👤 Account & Contact
+              </h2>
+              <span style={{ fontSize: '24px', color: '#6b7280' }}>
+                {openSections.account ? '−' : '+'}
+              </span>
+            </button>
+
+            {openSections.account && (
+              <div style={{ padding: '32px' }}>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div>
@@ -1157,18 +1191,44 @@ export default function Dashboard() {
               </div>
 
             </div>
+              </div>
+            )}
           </div>
 
-          {/* Vehicle Information */}
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '16px', 
-            border: '1px solid #e5e7eb', 
-            padding: '32px' 
+          {/* Vehicle, Address & Renewals Section */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            overflow: 'hidden'
           }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '24px', margin: '0 0 24px 0' }}>
-              Vehicle Information
-            </h2>
+            <button
+              onClick={() => toggleSection('vehicle')}
+              style={{
+                width: '100%',
+                padding: '24px 32px',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                borderBottom: openSections.vehicle ? '1px solid #e5e7eb' : 'none'
+              }}
+            >
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                🚗 Vehicle, Address & Renewals
+              </h2>
+              <span style={{ fontSize: '24px', color: '#6b7280' }}>
+                {openSections.vehicle ? '−' : '+'}
+              </span>
+            </button>
+
+            {openSections.vehicle && (
+              <div style={{ padding: '32px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '20px' }}>
+                  Vehicle Information
+                </h3>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div>
@@ -1787,13 +1847,46 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+              </div>
+            )}
+          </div>
 
+          {/* Alerts & Notifications Section */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => toggleSection('alerts')}
+              style={{
+                width: '100%',
+                padding: '24px 32px',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                borderBottom: openSections.alerts ? '1px solid #e5e7eb' : 'none'
+              }}
+            >
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                🔔 Alerts & Notifications
+              </h2>
+              <span style={{ fontSize: '24px', color: '#6b7280' }}>
+                {openSections.alerts ? '−' : '+'}
+              </span>
+            </button>
 
-          {/* Street Cleaning Settings */}
-          <StreetCleaningSettings />
+            {openSections.alerts && (
+              <div style={{ padding: '0' }}>
+                {/* Street Cleaning Settings */}
+                <StreetCleaningSettings />
 
-          {/* Snow Ban Notification Settings */}
-          <SnowBanSettings
+                {/* Snow Ban Notification Settings */}
+                <SnowBanSettings
             onSnowRoute={profile.on_snow_route || false}
             snowRouteStreet={profile.snow_route_street}
             onWinterBanStreet={profile.on_winter_ban_street || false}
@@ -2086,15 +2179,82 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+              </div>
+            )}
           </div>
 
-          {/* Passkey Management */}
-          <PasskeyManager />
+          {/* Security Section */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => toggleSection('security')}
+              style={{
+                width: '100%',
+                padding: '24px 32px',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                borderBottom: openSections.security ? '1px solid #e5e7eb' : 'none'
+              }}
+            >
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                🔒 Security
+              </h2>
+              <span style={{ fontSize: '24px', color: '#6b7280' }}>
+                {openSections.security ? '−' : '+'}
+              </span>
+            </button>
 
-          {/* Referral Program */}
-          <ReferralLink userId={profile.user_id} />
+            {openSections.security && (
+              <div style={{ padding: '0' }}>
+                {/* Passkey Management */}
+                <PasskeyManager />
+              </div>
+            )}
+          </div>
 
-          {/* Helpful Resources */}
+          {/* Other Section */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => toggleSection('other')}
+              style={{
+                width: '100%',
+                padding: '24px 32px',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                borderBottom: openSections.other ? '1px solid #e5e7eb' : 'none'
+              }}
+            >
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                💡 Referral & Resources
+              </h2>
+              <span style={{ fontSize: '24px', color: '#6b7280' }}>
+                {openSections.other ? '−' : '+'}
+              </span>
+            </button>
+
+            {openSections.other && (
+              <div style={{ padding: '32px' }}>
+                {/* Referral Program */}
+                <ReferralLink userId={profile.user_id} />
+
+                {/* Helpful Resources */}
           <div style={{
             backgroundColor: '#fef3c7',
             borderRadius: '16px',
@@ -2143,6 +2303,9 @@ export default function Dashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>
+          </div>
+              </div>
+            )}
           </div>
 
           {/* Auto-save Status */}
