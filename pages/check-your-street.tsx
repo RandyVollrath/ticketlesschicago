@@ -513,87 +513,71 @@ export default function CheckYourStreet() {
                 </div>
               </label>
 
-              {/* Main Result Card */}
+              {/* Main Result - Next Cleaning Date (Hero) */}
+              <div style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '20px',
+                padding: '48px 32px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  color: '#9ca3af',
+                  marginBottom: '12px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: '600'
+                }}>
+                  Next Street Cleaning
+                </div>
+                <div style={{
+                  fontSize: '48px',
+                  fontWeight: '700',
+                  color: '#111827',
+                  marginBottom: '16px',
+                  letterSpacing: '-0.02em',
+                  lineHeight: '1.1'
+                }}>
+                  {formatDate(searchResult.nextCleaningDate)}
+                </div>
+                {searchResult.nextCleaningDate && (
+                  <div style={{
+                    display: 'inline-block',
+                    padding: '10px 20px',
+                    backgroundColor: getCleaningStatus(searchResult.nextCleaningDate).color,
+                    color: 'white',
+                    borderRadius: '100px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    marginBottom: '24px'
+                  }}>
+                    {getCleaningStatus(searchResult.nextCleaningDate).text}
+                  </div>
+                )}
+                <div style={{
+                  fontSize: '16px',
+                  color: '#6b7280',
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid #f3f4f6'
+                }}>
+                  Ward {searchResult.ward}, Section {searchResult.section}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
               <div style={{
                 backgroundColor: '#ffffff',
                 border: '1px solid #e5e7eb',
                 borderRadius: '16px',
-                padding: '32px',
+                padding: '24px',
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                 marginBottom: '20px'
               }}>
-                <div style={{ marginBottom: '32px' }}>
-                  <div style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#111827',
-                    marginBottom: '16px'
-                  }}>
-                    You are in Ward {searchResult.ward}, Section {searchResult.section}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                    <div style={{
-                      backgroundColor: '#f9fafb',
-                      padding: '16px 24px',
-                      borderRadius: '10px',
-                      border: '1px solid #e5e7eb',
-                      flex: 1
-                    }}>
-                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500' }}>Ward</div>
-                      <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>{searchResult.ward}</div>
-                    </div>
-                    <div style={{
-                      backgroundColor: '#f9fafb',
-                      padding: '16px 24px',
-                      borderRadius: '10px',
-                      border: '1px solid #e5e7eb',
-                      flex: 1
-                    }}>
-                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500' }}>Section</div>
-                      <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>{searchResult.section}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '24px' }}>
-                    <div style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: '#111827',
-                      marginBottom: '12px'
-                    }}>
-                      Your next street cleaning is scheduled for:
-                    </div>
-                    <div style={{
-                      backgroundColor: '#f9fafb',
-                      padding: '16px 24px',
-                      borderRadius: '10px',
-                      border: '1px solid #e5e7eb',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500' }}>Next Cleaning Date</div>
-                      <div style={{
-                        fontSize: '24px',
-                        fontWeight: '700',
-                        color: '#111827'
-                      }}>
-                        {formatDate(searchResult.nextCleaningDate)}
-                      </div>
-                    </div>
-                    {searchResult.nextCleaningDate && (
-                      <div style={{
-                        display: 'inline-block',
-                        padding: '6px 12px',
-                        backgroundColor: getCleaningStatus(searchResult.nextCleaningDate).color,
-                        color: 'white',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600'
-                      }}>
-                        {getCleaningStatus(searchResult.nextCleaningDate).text}
-                      </div>
-                    )}
-                  </div>
+                <div style={{ marginBottom: '0px' }}>
 
                   {searchResult.nextCleaningDate && (
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
