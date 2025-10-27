@@ -997,7 +997,7 @@ export default function Dashboard() {
                   🎫 Ticket Reimbursement
                 </h3>
                 <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                  Submit tickets for reimbursement (80% up to $200/year)
+                  Submit tickets for reimbursement (80% up to $200/year for your tracked address & vehicle)
                 </p>
               </div>
               <button
