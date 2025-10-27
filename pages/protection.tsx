@@ -483,8 +483,18 @@ export default function Protection() {
                 textAlign: 'center',
                 margin: '0 0 16px 0'
               }}>
-                Join the Waitlist
+                Coming Soon
               </h2>
+              <p style={{
+                fontSize: '18px',
+                color: '#111827',
+                marginBottom: '12px',
+                textAlign: 'center',
+                margin: '0 0 12px 0',
+                fontWeight: '600'
+              }}>
+                Ticket Protection and more coming soon — join the waitlist to lock in early pricing.
+              </p>
               <p style={{
                 fontSize: '16px',
                 color: '#666',
@@ -492,7 +502,7 @@ export default function Protection() {
                 textAlign: 'center',
                 margin: '0 0 32px 0'
               }}>
-                Ticket Protection is rolling out to early users now. Enter your email to get notified when it's available.
+                Be the first to know when we launch with exclusive early access pricing for waitlist members.
               </p>
 
               <form onSubmit={handleWaitlistSubmit} style={{
