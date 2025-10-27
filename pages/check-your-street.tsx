@@ -41,6 +41,8 @@ export default function CheckYourStreet() {
   const [tripStartDate, setTripStartDate] = useState('')
   const [tripEndDate, setTripEndDate] = useState('')
   const [dateRangeResult, setDateRangeResult] = useState<{cleaningDates: string[], hasCleaningDuringTrip: boolean} | null>(null)
+  const [showSnowSafeMode, setShowSnowSafeMode] = useState(false)
+  const [snowRoutes, setSnowRoutes] = useState<any[]>([])
 
   // Load map data on mount
   useEffect(() => {
@@ -72,6 +74,45 @@ export default function CheckYourStreet() {
     }
 
     fetchMapData()
+  }, [])
+
+  // Load snow routes for overlay
+  useEffect(() => {
+    const fetchSnowRoutes = async () => {
+      try {
+        const response = await fetch('/api/get-snow-routes')
+        if (response.ok) {
+          const result = await response.json()
+          setSnowRoutes(result.routes || [])
+        }
+      } catch (error) {
+        console.error('Error fetching snow routes:', error)
+      }
+    }
+
+    fetchSnowRoutes()
+  }, [])
+
+  // Check for URL parameters (from email/SMS links or profile page)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlAddress = urlParams.get('address')
+    const mode = urlParams.get('mode')
+
+    if (urlAddress) {
+      setAddress(urlAddress)
+      // Trigger search after setting address
+      setTimeout(() => {
+        const form = document.querySelector('form')
+        if (form) {
+          form.requestSubmit()
+        }
+      }, 100)
+    }
+
+    if (mode === 'snow') {
+      setShowSnowSafeMode(true)
+    }
   }, [])
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -402,6 +443,51 @@ export default function CheckYourStreet() {
                 </div>
               )}
 
+              {/* Snow Safe Parking Toggle */}
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '16px',
+                padding: '20px 24px',
+                background: showSnowSafeMode ? '#ecfdf5' : 'white',
+                borderRadius: '16px',
+                marginBottom: '16px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                border: `2px solid ${showSnowSafeMode ? '#10b981' : '#e5e7eb'}`,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={showSnowSafeMode}
+                  onChange={(e) => setShowSnowSafeMode(e.target.checked)}
+                  style={{
+                    marginTop: '2px',
+                    width: '20px',
+                    height: '20px',
+                    cursor: 'pointer',
+                    accentColor: '#10b981'
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    marginBottom: '6px',
+                    color: '#000'
+                  }}>
+                    🅿️ Show Safe Parking During Snow Ban
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    lineHeight: '1.5'
+                  }}>
+                    Highlight streets near you that are <strong style={{ color: '#10b981' }}>NOT affected</strong> by the 2-inch snow parking ban. Safe to park year-round when snow falls.
+                  </div>
+                </div>
+              </label>
+
               {/* Main Result Card */}
               <div style={{
                 backgroundColor: '#ffffff',
@@ -727,7 +813,13 @@ export default function CheckYourStreet() {
                 Loading map...
               </div>
             ) : (
-              <StreetCleaningMap data={mapData} triggerPopup={highlightZone} />
+              <StreetCleaningMap
+                data={mapData}
+                triggerPopup={highlightZone}
+                snowRoutes={snowRoutes}
+                showSnowSafeMode={showSnowSafeMode}
+                userLocation={searchResult?.coordinates}
+              />
             )}
 
             {/* Map Legend */}

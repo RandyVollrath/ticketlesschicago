@@ -18,10 +18,19 @@ interface StreetCleaningMapProps {
   data: ScheduleData[];
   triggerPopup?: { ward: string; section: string } | null;
   onMapClick?: (lat: number, lng: number) => void;
+  snowRoutes?: any[];
+  showSnowSafeMode?: boolean;
+  userLocation?: { lat: number; lng: number };
 }
 
 // Simple map component that uses Leaflet directly without react-leaflet
-const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopup }) => {
+const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
+  data,
+  triggerPopup,
+  snowRoutes = [],
+  showSnowSafeMode = false,
+  userLocation
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
@@ -58,26 +67,40 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopu
         div.style.boxShadow = '0 0 15px rgba(0,0,0,0.2)';
         div.style.fontSize = '12px';
         div.style.fontFamily = 'Arial, sans-serif';
-        
-        div.innerHTML = `
-          <div style="font-weight: bold; margin-bottom: 4px;">Street Cleaning</div>
-          <div style="display: flex; align-items: center; margin-bottom: 2px;">
-            <div style="width: 12px; height: 12px; background: #dc3545; margin-right: 5px; border: 1px solid #333;"></div>
-            <span>Today</span>
-          </div>
-          <div style="display: flex; align-items: center; margin-bottom: 2px;">
-            <div style="width: 12px; height: 12px; background: #ffc107; margin-right: 5px; border: 1px solid #333;"></div>
-            <span>Soon (1-3 days)</span>
-          </div>
-          <div style="display: flex; align-items: center; margin-bottom: 2px;">
-            <div style="width: 12px; height: 12px; background: #28a745; margin-right: 5px; border: 1px solid #333;"></div>
-            <span>Later</span>
-          </div>
-          <div style="display: flex; align-items: center;">
-            <div style="width: 12px; height: 12px; background: #6c757d; margin-right: 5px; border: 1px solid #333;"></div>
-            <span>No schedule</span>
-          </div>
-        `;
+
+        if (showSnowSafeMode) {
+          div.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 4px;">❄️ Snow Ban Routes</div>
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <div style="width: 12px; height: 12px; background: #dc2626; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>No Parking (Snow Ban)</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <div style="width: 12px; height: 12px; background: #10b981; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>Safe to Park</span>
+            </div>
+          `;
+        } else {
+          div.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 4px;">Street Cleaning</div>
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <div style="width: 12px; height: 12px; background: #dc3545; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>Today</span>
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <div style="width: 12px; height: 12px; background: #ffc107; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>Soon (1-3 days)</span>
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <div style="width: 12px; height: 12px; background: #28a745; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>Later</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <div style="width: 12px; height: 12px; background: #6c757d; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>No schedule</span>
+            </div>
+          `;
+        }
         return div;
       };
       legend.addTo(mapInstanceRef.current);
@@ -178,6 +201,51 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopu
         geojsonLayer.addTo(mapInstanceRef.current);
       });
 
+      // Add snow routes overlay when in snow safe mode
+      if (showSnowSafeMode && snowRoutes.length > 0) {
+        snowRoutes.forEach((route) => {
+          if (!route.geometry) return;
+
+          const snowRouteLayer = L.geoJSON(route.geometry, {
+            style: {
+              color: '#dc2626',
+              weight: 3,
+              opacity: 0.8,
+              fillColor: '#dc2626',
+              fillOpacity: 0.2
+            }
+          });
+
+          // Add popup with route info
+          const routePopup = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
+              <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(220,38,38,0.3);">
+                ❄️ 2-Inch Snow Ban Route
+              </div>
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 13px; color: #991b1b; font-weight: 600; margin-bottom: 4px;">${route.properties?.on_street || 'Unknown Street'}</div>
+                ${route.properties?.from_street && route.properties?.to_street ?
+                  `<div style="font-size: 12px; color: #7f1d1d;">From ${route.properties.from_street} to ${route.properties.to_street}</div>` :
+                  ''}
+              </div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic;">
+                ⚠️ No parking when 2+ inches of snow falls
+              </div>
+            </div>
+          `;
+
+          snowRouteLayer.bindPopup(routePopup);
+          snowRouteLayer.addTo(mapInstanceRef.current);
+        });
+
+        // Zoom to user location if available
+        if (userLocation) {
+          setTimeout(() => {
+            mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 15);
+          }, 500);
+        }
+      }
+
       // Handle trigger popup with delay to ensure map is ready
       if (triggerPopup && data.length > 0) {
         console.log('Trigger popup requested for ward:', triggerPopup.ward, 'section:', triggerPopup.section);
@@ -265,7 +333,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({ data, triggerPopu
         mapInstanceRef.current = null;
       }
     };
-  }, [data, triggerPopup]);
+  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, userLocation]);
 
   return (
     <div 
