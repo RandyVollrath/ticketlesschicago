@@ -12,13 +12,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Check if environment variables are set
   if (!MSC_SUPABASE_URL || !MSC_SUPABASE_ANON_KEY) {
-    console.error('Missing MSC Supabase credentials');
-    return res.status(200).json({ routes: [], count: 0 }); // Return empty array instead of erroring
+    console.error('❌ Missing MSC Supabase credentials - URL:', !!MSC_SUPABASE_URL, 'KEY:', !!MSC_SUPABASE_ANON_KEY);
+    return res.status(500).json({
+      error: 'MSC Supabase credentials not configured',
+      details: {
+        hasUrl: !!MSC_SUPABASE_URL,
+        hasKey: !!MSC_SUPABASE_ANON_KEY
+      }
+    });
   }
 
+  console.log('✅ MSC Supabase credentials found, creating client...');
   const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY);
 
   try {
+    console.log('📡 Fetching snow routes from MSC database...');
     // Fetch all snow routes with geometries
     const { data: routes, error } = await mscSupabase
       .from('snow_routes')
@@ -26,9 +34,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .not('geom', 'is', null);
 
     if (error) {
-      console.error('Error fetching snow routes:', error);
-      return res.status(500).json({ error: 'Failed to fetch snow routes' });
+      console.error('❌ Error fetching snow routes:', error);
+      return res.status(500).json({
+        error: 'Failed to fetch snow routes',
+        details: error.message,
+        code: error.code
+      });
     }
+
+    console.log(`✅ Successfully fetched ${routes?.length || 0} snow routes`);
 
     // Transform to GeoJSON format for map
     const geoJsonRoutes = (routes || []).map(route => ({
