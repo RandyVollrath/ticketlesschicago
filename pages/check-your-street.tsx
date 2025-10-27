@@ -498,12 +498,22 @@ export default function CheckYourStreet() {
                 marginBottom: '20px'
               }}>
                 <div style={{ marginBottom: '32px' }}>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '16px'
+                  }}>
+                    You are in Ward {searchResult.ward}, Section {searchResult.section}
+                  </div>
+
                   <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                     <div style={{
                       backgroundColor: '#f9fafb',
                       padding: '16px 24px',
                       borderRadius: '10px',
-                      border: '1px solid #e5e7eb'
+                      border: '1px solid #e5e7eb',
+                      flex: 1
                     }}>
                       <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500' }}>Ward</div>
                       <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>{searchResult.ward}</div>
@@ -512,7 +522,8 @@ export default function CheckYourStreet() {
                       backgroundColor: '#f9fafb',
                       padding: '16px 24px',
                       borderRadius: '10px',
-                      border: '1px solid #e5e7eb'
+                      border: '1px solid #e5e7eb',
+                      flex: 1
                     }}>
                       <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500' }}>Section</div>
                       <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>{searchResult.section}</div>
@@ -521,22 +532,28 @@ export default function CheckYourStreet() {
 
                   <div style={{ marginBottom: '24px' }}>
                     <div style={{
-                      fontSize: '12px',
-                      color: '#9ca3af',
-                      marginBottom: '8px',
-                      textTransform: 'uppercase',
-                      fontWeight: '600',
-                      letterSpacing: '0.05em'
-                    }}>
-                      Next Cleaning Date
-                    </div>
-                    <div style={{
-                      fontSize: '24px',
+                      fontSize: '16px',
                       fontWeight: '600',
                       color: '#111827',
                       marginBottom: '12px'
                     }}>
-                      {formatDate(searchResult.nextCleaningDate)}
+                      Your next street cleaning is scheduled for:
+                    </div>
+                    <div style={{
+                      backgroundColor: '#f9fafb',
+                      padding: '16px 24px',
+                      borderRadius: '10px',
+                      border: '1px solid #e5e7eb',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500' }}>Next Cleaning Date</div>
+                      <div style={{
+                        fontSize: '24px',
+                        fontWeight: '700',
+                        color: '#111827'
+                      }}>
+                        {formatDate(searchResult.nextCleaningDate)}
+                      </div>
                     </div>
                     {searchResult.nextCleaningDate && (
                       <div style={{
