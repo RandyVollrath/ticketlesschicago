@@ -57,8 +57,9 @@ async function sendSMS(to: string, body: string) {
   return data;
 }
 
-function getForecastEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string): string {
+function getForecastEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string, userAddress: string): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
+  const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
 
   return `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
@@ -74,6 +75,13 @@ function getForecastEmailHtml(firstName: string | null, snowAmount: number, stre
           <li><strong>When Ban Activates:</strong> Once 2+ inches has actually fallen (not yet in effect)</li>
           <li><strong>Penalty if Violated:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
         </ul>
+      </div>
+
+      <div style="text-align:center;margin:24px 0">
+        <a href="${safeParkingUrl}" style="display:inline-block;background:#ec4899;color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">
+          🅿️ Find Safe Parking Near You
+        </a>
+        <p style="font-size:13px;color:#6b7280;margin-top:8px">See which streets near you are NOT affected by the snow ban</p>
       </div>
 
       <p><strong>📋 Two-Inch Snow Ban Rules:</strong></p>
@@ -109,8 +117,9 @@ function getForecastEmailHtml(firstName: string | null, snowAmount: number, stre
   `;
 }
 
-function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string): string {
+function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string, userAddress: string): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
+  const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
 
   return `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
@@ -119,13 +128,20 @@ function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, 
       <p><strong>Chicago has received ${snowAmount}" of snow. The 2-inch parking ban is now in effect on ${streetInfo}.</strong></p>
 
       <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:16px;margin:20px 0">
-        <strong>⚠️ Action Required</strong>
+        <strong>⚠️ MOVE YOUR CAR NOW</strong>
         <ul style="margin:8px 0">
           <li><strong>Ban Status:</strong> Active now</li>
           <li><strong>Your Street:</strong> ${streetInfo}</li>
           <li><strong>Penalty:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
           <li><strong>Duration:</strong> Until snow is cleared (typically 24-48 hours)</li>
         </ul>
+      </div>
+
+      <div style="text-align:center;margin:24px 0">
+        <a href="${safeParkingUrl}" style="display:inline-block;background:#ec4899;color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">
+          🅿️ Find Safe Parking Near You
+        </a>
+        <p style="font-size:13px;color:#6b7280;margin-top:8px">See which streets near you are NOT affected by the snow ban</p>
       </div>
 
       <p><strong>🚗 Next Steps:</strong></p>
@@ -152,12 +168,14 @@ function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, 
   `;
 }
 
-function getForecastSMSText(snowAmount: number, streetInfo: string): string {
-  return `❄️ ${snowAmount}" snow forecasted. 2-inch parking ban may activate on ${streetInfo}. We'll confirm when snow falls. Prepare to move your car. ${BRAND.dashboardUrl}`;
+function getForecastSMSText(snowAmount: number, streetInfo: string, userAddress: string): string {
+  const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
+  return `❄️ ${snowAmount}" snow forecasted. 2-inch parking ban may activate on ${streetInfo}. Find safe parking: ${safeParkingUrl}`;
 }
 
-function getConfirmationSMSText(snowAmount: number, streetInfo: string): string {
-  return `🚨 2-inch snow ban active on ${streetInfo}. ${snowAmount}" has fallen. Please move your car to avoid $235+ penalty. ${BRAND.dashboardUrl}`;
+function getConfirmationSMSText(snowAmount: number, streetInfo: string, userAddress: string): string {
+  const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
+  return `🚨 2-inch snow ban ACTIVE on ${streetInfo}. ${snowAmount}" has fallen. Move your car now! Find safe parking: ${safeParkingUrl}`;
 }
 
 export default async function handler(
@@ -255,6 +273,7 @@ export default async function handler(
 
       const channels: string[] = [];
       const streetInfo = user.route.on_street;
+      const userAddress = user.home_address_full || user.route.on_street;
 
       // Choose the right email/SMS templates based on notification type
       const isForecast = notificationType === 'forecast';
@@ -262,11 +281,11 @@ export default async function handler(
         ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban May Apply`
         : `🚨 2-Inch Snow Ban Active on Your Street (${snowEvent.snow_amount_inches}" snow)`;
       const emailHtml = isForecast
-        ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo)
-        : getConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo);
+        ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress)
+        : getConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress);
       const smsText = isForecast
-        ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo)
-        : getConfirmationSMSText(snowEvent.snow_amount_inches, streetInfo);
+        ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress)
+        : getConfirmationSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress);
 
       // Check channel preferences for this notification type
       const smsEnabled = isForecast
