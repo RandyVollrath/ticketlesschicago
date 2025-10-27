@@ -1020,6 +1020,54 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Profile Confirmation Required - Top Priority Banner */}
+        {profile.has_protection && !profile.profile_confirmed_at && (
+          <div style={{
+            backgroundColor: '#fef3c7',
+            border: '2px solid #f59e0b',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '32px'
+          }}>
+            <p style={{ fontSize: '16px', color: '#92400e', margin: '0 0 8px 0', fontWeight: '600' }}>
+              ⚠️ Profile Confirmation Required
+            </p>
+            <p style={{ fontSize: '14px', color: '#78350f', margin: '0 0 16px 0', lineHeight: '1.5' }}>
+              Before we can charge your card for renewals, you must confirm your profile information is current. You'll receive reminders at 60, 45, and 37 days (these are required). Once you confirm your profile is up-to-date, you can customize which reminders you receive.
+            </p>
+            <button
+              onClick={async () => {
+                try {
+                  const { error } = await supabase
+                    .from('user_profiles')
+                    .update({ profile_confirmed_at: new Date().toISOString() })
+                    .eq('user_id', user.id);
+
+                  if (error) throw error;
+
+                  // Refresh profile
+                  window.location.reload();
+                } catch (error: any) {
+                  console.error('Error confirming profile:', error);
+                  alert('Failed to confirm profile. Please try again.');
+                }
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              ✅ Confirm Profile is Up-to-Date
+            </button>
+          </div>
+        )}
+
         {message && (
           <div style={{
             marginBottom: '24px',
@@ -1752,12 +1800,18 @@ export default function Dashboard() {
                       ? [60, 45, 37, 30, 14, 7, 1]
                       : [30, 7, 1];
 
-                    const currentDays = editedProfile.notification_preferences?.reminder_days
+                    let currentDays = editedProfile.notification_preferences?.reminder_days
                       || profile.notification_preferences?.reminder_days
                       || defaultDays;
 
                     // For Protection users: Make 60, 45, 37 mandatory until profile confirmed
                     const isMandatory = profile.has_protection && [60, 45, 37].includes(days) && !profile.profile_confirmed_at;
+
+                    // Force required days to be checked
+                    if (isMandatory && !currentDays.includes(days)) {
+                      currentDays = [...currentDays, days].sort((a, b) => b - a);
+                    }
+
                     const isDisabled = isMandatory;
 
                     return (
@@ -1798,52 +1852,6 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                {profile.has_protection && !profile.profile_confirmed_at && (
-                  <div style={{
-                    backgroundColor: '#fef3c7',
-                    border: '2px solid #f59e0b',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    marginTop: '12px'
-                  }}>
-                    <p style={{ fontSize: '14px', color: '#92400e', margin: '0 0 8px 0', fontWeight: '600' }}>
-                      ⚠️ Profile Confirmation Required
-                    </p>
-                    <p style={{ fontSize: '13px', color: '#78350f', margin: '0 0 12px 0', lineHeight: '1.5' }}>
-                      Before we can charge your card for renewals, you must confirm your profile information is current. You'll receive reminders at 60, 45, and 37 days (these are required). Once you confirm your profile is up-to-date, you can customize which reminders you receive.
-                    </p>
-                    <button
-                      onClick={async () => {
-                        try {
-                          const { error } = await supabase
-                            .from('user_profiles')
-                            .update({ profile_confirmed_at: new Date().toISOString() })
-                            .eq('user_id', user.id);
-
-                          if (error) throw error;
-
-                          // Refresh profile
-                          window.location.reload();
-                        } catch (error: any) {
-                          console.error('Error confirming profile:', error);
-                          alert('Failed to confirm profile. Please try again.');
-                        }
-                      }}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#f59e0b',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✅ Confirm Profile is Up-to-Date
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
