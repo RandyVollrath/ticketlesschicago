@@ -432,7 +432,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. Follow our alerts and submit tickets within 7 days for coverage.
+              We reimburse 80% of eligible tickets up to $200/year for your tracked address as a service guarantee, not insurance. Follow our alerts and submit tickets within 7 days for coverage.
             </p>
           </div>
 
