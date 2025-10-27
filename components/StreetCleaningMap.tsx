@@ -21,6 +21,7 @@ interface StreetCleaningMapProps {
   snowRoutes?: any[];
   showSnowSafeMode?: boolean;
   userLocation?: { lat: number; lng: number };
+  alternativeZones?: any[];
 }
 
 // Simple map component that uses Leaflet directly without react-leaflet
@@ -29,7 +30,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
   triggerPopup,
   snowRoutes = [],
   showSnowSafeMode = false,
-  userLocation
+  userLocation,
+  alternativeZones = []
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -72,7 +74,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           div.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 4px;">❄️ Snow Ban Routes</div>
             <div style="display: flex; align-items: center; margin-bottom: 2px;">
-              <div style="width: 12px; height: 12px; background: #ec4899; margin-right: 5px; border: 1px solid #333;"></div>
+              <div style="width: 12px; height: 12px; background: #ff1493; margin-right: 5px; border: 1px solid #333;"></div>
               <span>No Parking (Snow Ban)</span>
             </div>
             <div style="display: flex; align-items: center;">
@@ -204,18 +206,18 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
           const snowRouteLayer = L.geoJSON(route.geometry, {
             style: {
-              color: '#ec4899',
-              weight: 6,
+              color: '#ff1493',
+              weight: 8,
               opacity: 1.0,
-              fillColor: '#ec4899',
-              fillOpacity: 0.6
+              fillColor: '#ff1493',
+              fillOpacity: 0.85
             }
           });
 
           // Add popup with route info
           const routePopup = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
-              <div style="background: linear-gradient(135deg, #ec4899, #db2777); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(236,72,153,0.3);">
+              <div style="background: linear-gradient(135deg, #ff1493, #c71585); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(255,20,147,0.3);">
                 ❄️ 2-Inch Snow Ban Route
               </div>
               <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 8px 10px;">
@@ -240,6 +242,57 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 15);
           }, 500);
         }
+      }
+
+      // Add alternative parking zones overlay (bright green with "Park Here Instead")
+      if (alternativeZones.length > 0) {
+        alternativeZones.forEach((altZone) => {
+          const altFeature = data.find(feature =>
+            String(feature.properties?.ward) === String(altZone.ward) &&
+            String(feature.properties?.section) === String(altZone.section)
+          );
+
+          if (altFeature && altFeature.geometry) {
+            const altLayer = L.geoJSON(altFeature.geometry, {
+              style: {
+                color: '#10b981',
+                weight: 4,
+                fillColor: '#10b981',
+                fillOpacity: 0.7
+              }
+            });
+
+            // Add popup with "Park Here Instead" badge
+            const altPopup = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+                <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">
+                  🅿️ Park Here Instead
+                </div>
+                <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                  <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                    <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
+                    ${altFeature.properties?.ward || 'N/A'}
+                  </div>
+                  <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                    <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
+                    ${altFeature.properties?.section || 'N/A'}
+                  </div>
+                </div>
+                <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
+                  <div style="font-size: 12px; color: #065f46; font-weight: 500; margin-bottom: 2px;">Distance</div>
+                  <div style="color: #047857; font-weight: 600;">${altZone.distance} miles away</div>
+                </div>
+                <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 6px; padding: 8px 10px;">
+                  <div style="font-size: 12px; color: #065f46; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
+                  <div style="color: #047857; font-weight: 600;">${altZone.nextCleaningDate ? new Date(altZone.nextCleaningDate + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) : 'No scheduled cleaning'}</div>
+                </div>
+              </div>
+            `;
+
+            altLayer.bindPopup(altPopup);
+            altLayer.addTo(mapInstanceRef.current);
+          }
+        });
       }
 
       // Handle trigger popup with delay to ensure map is ready
@@ -325,7 +378,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, userLocation]);
+  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, userLocation, alternativeZones]);
 
   return (
     <div 
