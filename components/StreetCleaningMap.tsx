@@ -72,7 +72,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           div.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 4px;">❄️ Snow Ban Routes</div>
             <div style="display: flex; align-items: center; margin-bottom: 2px;">
-              <div style="width: 12px; height: 12px; background: #dc2626; margin-right: 5px; border: 1px solid #333;"></div>
+              <div style="width: 12px; height: 12px; background: #ec4899; margin-right: 5px; border: 1px solid #333;"></div>
               <span>No Parking (Snow Ban)</span>
             </div>
             <div style="display: flex; align-items: center;">
@@ -163,7 +163,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             </div>
         `;
         
-        if (isHighlighted) {
+        // Only show "Park Here Instead" if NOT in snow safe mode
+        if (isHighlighted && !showSnowSafeMode) {
           popupContent += '<div style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,123,255,0.3);">Park Here Instead</div>';
         }
         
@@ -208,24 +209,24 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
           const snowRouteLayer = L.geoJSON(route.geometry, {
             style: {
-              color: '#dc2626',
-              weight: 3,
-              opacity: 0.8,
-              fillColor: '#dc2626',
-              fillOpacity: 0.2
+              color: '#ec4899',
+              weight: 4,
+              opacity: 0.9,
+              fillColor: '#ec4899',
+              fillOpacity: 0.3
             }
           });
 
           // Add popup with route info
           const routePopup = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
-              <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(220,38,38,0.3);">
+              <div style="background: linear-gradient(135deg, #ec4899, #db2777); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(236,72,153,0.3);">
                 ❄️ 2-Inch Snow Ban Route
               </div>
-              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px;">
-                <div style="font-size: 13px; color: #991b1b; font-weight: 600; margin-bottom: 4px;">${route.properties?.on_street || 'Unknown Street'}</div>
+              <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 13px; color: #9f1239; font-weight: 600; margin-bottom: 4px;">${route.properties?.on_street || 'Unknown Street'}</div>
                 ${route.properties?.from_street && route.properties?.to_street ?
-                  `<div style="font-size: 12px; color: #7f1d1d;">From ${route.properties.from_street} to ${route.properties.to_street}</div>` :
+                  `<div style="font-size: 12px; color: #831843;">From ${route.properties.from_street} to ${route.properties.to_street}</div>` :
                   ''}
               </div>
               <div style="font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic;">
