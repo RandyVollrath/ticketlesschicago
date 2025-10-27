@@ -210,10 +210,10 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           const snowRouteLayer = L.geoJSON(route.geometry, {
             style: {
               color: '#ec4899',
-              weight: 4,
-              opacity: 0.9,
+              weight: 6,
+              opacity: 1.0,
               fillColor: '#ec4899',
-              fillOpacity: 0.3
+              fillOpacity: 0.6
             }
           });
 
@@ -297,7 +297,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
                   </div>
               `;
               
-              if (String(triggerPopup.ward) === String(props?.ward) && String(triggerPopup.section) === String(props?.section)) {
+              // Only show "Park Here Instead" if NOT in snow safe mode
+              if (String(triggerPopup.ward) === String(props?.ward) && String(triggerPopup.section) === String(props?.section) && !showSnowSafeMode) {
                 popupContent += '<div style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,123,255,0.3);">Park Here Instead</div>';
               }
               
