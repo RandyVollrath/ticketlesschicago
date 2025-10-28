@@ -914,6 +914,10 @@ export default function CheckYourStreet() {
                   <div style={{ width: '14px', height: '14px', backgroundColor: '#6b7280', borderRadius: '3px' }}></div>
                   <span style={{ color: '#6b7280' }}><strong style={{ color: '#111827' }}>Gray:</strong> No schedule</span>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '28px', height: '4px', backgroundColor: '#ff00ff', borderRadius: '2px' }}></div>
+                  <span style={{ color: '#6b7280' }}><strong style={{ color: '#ff00ff' }}>Magenta:</strong> 2" Snow Ban</span>
+                </div>
               </div>
             </div>
           </div>

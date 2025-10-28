@@ -199,34 +199,38 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         geojsonLayer.addTo(mapInstanceRef.current);
       });
 
-      // Add snow routes overlay when in snow safe mode
-      if (showSnowSafeMode && snowRoutes.length > 0) {
-        console.log('🌨️ Adding snow routes to map:', snowRoutes.length, 'routes');
+      // ALWAYS add snow routes overlay (visible regardless of showSnowSafeMode)
+      if (snowRoutes && snowRoutes.length > 0) {
+        console.log('🌨️ DRAWING SNOW ROUTES ON MAP:', snowRoutes.length, 'routes');
+        console.log('🌨️ Snow routes data:', JSON.stringify(snowRoutes.slice(0, 2), null, 2));
 
-        // Create a pane for snow routes with high z-index so they render on top
-        if (!mapInstanceRef.current.getPane('snowRoutes')) {
-          mapInstanceRef.current.createPane('snowRoutes');
-          mapInstanceRef.current.getPane('snowRoutes')!.style.zIndex = '650'; // Higher than overlays (400) and markers (600)
-          console.log('✅ Created snowRoutes pane with z-index 650');
+        // Create a pane for snow routes with VERY HIGH z-index so they render on top of EVERYTHING
+        if (!mapInstanceRef.current.getPane('snowRoutesPane')) {
+          mapInstanceRef.current.createPane('snowRoutesPane');
+          mapInstanceRef.current.getPane('snowRoutesPane')!.style.zIndex = '9999'; // WAY higher than everything
+          mapInstanceRef.current.getPane('snowRoutesPane')!.style.pointerEvents = 'auto'; // Make sure mouse events work
+          console.log('✅ Created snowRoutesPane with z-index 9999');
         }
 
+        let drawnCount = 0;
         snowRoutes.forEach((route, index) => {
           if (!route.geometry) {
-            console.warn(`⚠️ Route ${index} has no geometry`);
+            console.warn(`⚠️ Route ${index} has NO geometry`);
             return;
           }
-          console.log(`📍 Adding route ${index}:`, route.properties?.on_street);
+          console.log(`📍 Drawing route ${index}:`, route.properties?.on_street, 'geometry type:', route.geometry?.type);
 
-          const snowRouteLayer = L.geoJSON(route.geometry, {
-            pane: 'snowRoutes',  // Use custom pane with high z-index
-            style: {
-              color: '#ff00ff',      // Bright magenta/fuchsia border
-              weight: 14,            // Much thicker lines
-              opacity: 1.0,
-              fillColor: '#ff00ff',  // Same bright magenta fill
-              fillOpacity: 0.6       // Semi-transparent so you can see streets underneath
-            }
-          });
+          try {
+            const snowRouteLayer = L.geoJSON(route.geometry, {
+              pane: 'snowRoutesPane',  // Use custom pane with VERY high z-index
+              style: {
+                color: '#ff00ff',      // BRIGHT MAGENTA border
+                weight: 8,             // THICK lines (8 pixels)
+                opacity: 1.0,          // FULLY OPAQUE
+                fillColor: '#ff00ff',  // BRIGHT MAGENTA fill
+                fillOpacity: 0.0       // No fill, just thick lines
+              }
+            });
 
           // Add popup with route info
           const routePopup = `
@@ -246,9 +250,16 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             </div>
           `;
 
-          snowRouteLayer.bindPopup(routePopup);
-          snowRouteLayer.addTo(mapInstanceRef.current);
+            snowRouteLayer.bindPopup(routePopup);
+            snowRouteLayer.addTo(mapInstanceRef.current);
+            drawnCount++;
+            console.log(`✅ Successfully added route ${index} to map`);
+          } catch (error) {
+            console.error(`❌ ERROR adding route ${index} to map:`, error);
+          }
         });
+
+        console.log(`🎯 TOTAL SNOW ROUTES DRAWN: ${drawnCount} out of ${snowRoutes.length}`);
 
         // Zoom to user location if available
         if (userLocation) {
@@ -256,6 +267,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 15);
           }, 500);
         }
+      } else {
+        console.log('⚠️ No snow routes to draw:', { hasSnowRoutes: !!snowRoutes, length: snowRoutes?.length });
       }
 
       // Add alternative parking zones overlay (bright green with "Park Here Instead")
