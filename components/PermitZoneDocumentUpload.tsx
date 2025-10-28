@@ -402,8 +402,7 @@ export function PermitZoneDocumentUpload({
               marginBottom: '12px',
               lineHeight: '1.5'
             }}>
-              Please enter your existing City of Chicago Customer Code below.
-              We'll use this to purchase your permit on your behalf.
+              Please enter your existing City of Chicago Customer Code below for our records and to help you track your permit renewal.
             </div>
             <input
               type="text"

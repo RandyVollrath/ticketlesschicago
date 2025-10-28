@@ -127,22 +127,17 @@ export default function TermsOfService() {
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px', color: '#78350f' }}>
               <li style={{ marginBottom: '8px' }}>
-                Purchase and file vehicle city sticker renewals with the City of Chicago on your behalf
+                Send reminders before your vehicle city sticker renewal deadlines
               </li>
               <li style={{ marginBottom: '8px' }}>
-                Purchase and file license plate sticker renewals with the State of Illinois on your behalf
+                Send reminders before your license plate sticker renewal deadlines
               </li>
               <li style={{ marginBottom: '8px' }}>
-                Purchase and file residential parking permits with the City of Chicago on your behalf
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                Submit required documentation and information to government agencies as necessary to complete these transactions
+                Track and remind you about residential parking permit requirements
               </li>
             </ul>
             <p style={{ color: '#78350f' }}>
-              <strong>Important:</strong> Final acceptance of all filings is subject to approval by the issuing
-              government authority (City of Chicago or State of Illinois). Autopilot America cannot guarantee
-              approval by these authorities.
+              <strong>Important:</strong> You are responsible for completing your own renewals with the City of Chicago or State of Illinois when you receive our reminders. We provide reminder services only.
             </p>
           </section>
 
@@ -263,7 +258,7 @@ export default function TermsOfService() {
             </h2>
             <ul style={{ paddingLeft: '24px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Subscription billing:</strong> Monthly ($12/month) or Annual ($120/year)
+                <strong>Subscription billing:</strong> Monthly ($10/month) or Annual ($100/year)
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Renewal fees:</strong> City sticker ($100), License plate ($155 standard, $164 vanity)
