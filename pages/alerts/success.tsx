@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Script from 'next/script';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 import { posthog } from '../../lib/posthog';
@@ -78,6 +79,7 @@ export default function AlertsSuccess() {
         <title>You're All Set! - Autopilot America</title>
         <meta name="description" content="Your free alerts are now active" />
       </Head>
+      <Script src="https://js.stripe.com/v3/buy-button.js" strategy="lazyOnload" />
 
       <div style={{
         maxWidth: '600px',
@@ -418,6 +420,35 @@ export default function AlertsSuccess() {
             Back to Home
           </button>
         </div>
+
+        {/* Donation Support - Only show for free alerts users */}
+        {!isProtection && (
+          <div style={{
+            marginTop: '32px',
+            paddingTop: '32px',
+            borderTop: '1px solid #e5e7eb',
+            textAlign: 'center'
+          }}>
+            <p style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              marginBottom: '16px',
+              margin: '0 0 16px 0',
+              lineHeight: '1.5'
+            }}>
+              Your support helps keep the alerts free for Chicago drivers.
+            </p>
+            <div dangerouslySetInnerHTML={{
+              __html: `
+                <stripe-buy-button
+                  buy-button-id="buy_btn_1SNLupPSdzV8LIExfgCtQqHx"
+                  publishable-key="pk_live_51SHvt6PSdzV8LIEx8Zuj7dyiFzP7gqiIomXkOCbpKZ9rgXz49cWRUDRZb4zAvAQdVJXjop1MdtI2DF6ir0pa5ZIN00AKpUqIBH"
+                >
+                </stripe-buy-button>
+              `
+            }} />
+          </div>
+        )}
 
         {/* Support */}
         <p style={{
