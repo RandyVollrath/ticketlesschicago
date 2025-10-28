@@ -32,8 +32,7 @@ export default function Protection() {
   const [phone, setPhone] = useState('');
 
   // Check feature flags
-  // HARDCODED: Waitlist mode enabled - checkout is commented out
-  const isWaitlistMode = true; // process.env.NEXT_PUBLIC_PROTECTION_WAITLIST === 'true';
+  const isWaitlistMode = false; // Protection is now enabled
 
   useEffect(() => {
     const checkUser = async () => {
@@ -194,7 +193,7 @@ export default function Protection() {
 
   // Calculate total price - OPTION A: Subscription only, no upfront sticker/plate fees
   const calculateTotal = () => {
-    const subscriptionPrice = billingPlan === 'monthly' ? 12 : 120;
+    const subscriptionPrice = billingPlan === 'monthly' ? 10 : 100;
     // COMMENTED OUT - No longer collecting upfront payment for stickers/plates
     // We'll charge when deadlines approach and use remitter service
     // const cityStickerPrice = needsCitySticker ? vehicleTypeInfo[vehicleType].price : 0;
@@ -214,7 +213,7 @@ export default function Protection() {
     }}>
       <Head>
         <title>Ticket Protection - Autopilot America</title>
-        <meta name="description" content="Premium done-for-you renewals and ticket coverage" />
+        <meta name="description" content="Premium renewal reminders and ticket coverage" />
         <style>{`
           @media (max-width: 768px) {
             header {
@@ -374,7 +373,7 @@ export default function Protection() {
             margin: '0 auto 40px auto',
             lineHeight: '1.4'
           }}>
-            <strong>Done-for-you renewals and comprehensive alerts.</strong> We handle renewals on your behalf so you never have to worry about deadlines again. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
+            <strong>Comprehensive renewal reminders and ticket protection.</strong> Get timely alerts before your renewal deadlines so you never miss one. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
           </p>
         </div>
 
@@ -399,7 +398,7 @@ export default function Protection() {
               marginBottom: '12px',
               margin: '0 0 12px 0'
             }}>
-              Done-For-You Renewals
+              Renewal Reminders
             </h3>
             <p style={{
               fontSize: '16px',
@@ -407,7 +406,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              No more worrying about remembering to register for city sticker and license plate stickers — we handle it on your behalf before they expire. You never lift a finger.
+              Get timely reminders before your city sticker and license plate renewal deadlines. Never miss a deadline with our proactive alerts and notifications.
             </p>
           </div>
 
@@ -611,7 +610,7 @@ export default function Protection() {
                       boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
-                    Monthly <span style={{ color: '#9ca3af', fontSize: '14px' }}>($12/mo)</span>
+                    Monthly <span style={{ color: '#9ca3af', fontSize: '14px' }}>($10/mo)</span>
                   </button>
                   <button
                     onClick={() => setBillingPlan('annual')}
@@ -627,7 +626,7 @@ export default function Protection() {
                       boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
-                    Annual <span style={{ color: '#16a34a', fontSize: '14px' }}>Save $24</span>
+                    Annual <span style={{ color: '#16a34a', fontSize: '14px' }}>Save $20</span>
                   </button>
                 </div>
               </div>
@@ -790,7 +789,7 @@ export default function Protection() {
                   margin: '0 0 20px 0',
                   lineHeight: '1.5'
                 }}>
-                  We'll handle your city sticker and license plate renewals before they expire. When your deadline approaches, we'll charge your card and use our remitter service to file with the city. <strong>Renewals only</strong> — initial registration not included. Required for full Protection coverage.
+                  Track your city sticker and license plate renewal deadlines. We'll send you reminders before they expire so you can complete your renewals on time. Required for full Protection coverage.
                 </p>
 
                 {/* City Sticker */}
@@ -986,7 +985,7 @@ export default function Protection() {
                     marginBottom: '16px',
                     textAlign: 'center'
                   }}>
-                    💰 Save $24/year with annual billing
+                    💰 Save $20/year with annual billing
                   </div>
                 )}
                 <div style={{
@@ -997,7 +996,7 @@ export default function Protection() {
                   color: '#374151'
                 }}>
                   <span>Protection subscription ({billingPlan})</span>
-                  <span>${billingPlan === 'monthly' ? '12' : '120'}</span>
+                  <span>${billingPlan === 'monthly' ? '10' : '100'}</span>
                 </div>
                 {/* OPTION A: No upfront fees shown - charged when deadlines approach */}
                 {needsCitySticker && (
@@ -1058,7 +1057,7 @@ export default function Protection() {
                   fontStyle: 'italic',
                   lineHeight: '1.5'
                 }}>
-                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. When your renewal deadlines approach, we'll charge your card for the government fees and file everything through our remitter service.
+                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. You are responsible for completing your own renewals when you receive reminders.
                 </p>
               </div>
 
@@ -1109,7 +1108,7 @@ export default function Protection() {
                     required
                   />
                   <span>
-                    <strong>I authorize Autopilot America to act as my concierge service</strong> to monitor my vehicle renewal deadlines and coordinate renewals on my behalf. Autopilot America is not a government agency or licensed remitter. <strong>I authorize Autopilot America to charge my payment method</strong> for the subscription service fee plus government renewal fees (city sticker, license plate, parking permits) <strong>30 days before my deadlines</strong>. Autopilot America will forward the government fees to our licensed remitter partner who will execute the official submission with the City of Chicago and State of Illinois. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
+                    <strong>I authorize Autopilot America to monitor my vehicle renewal deadlines</strong> and send me reminders before they expire. I understand that I am responsible for completing my own renewals with the City of Chicago and State of Illinois. <strong>I authorize Autopilot America to charge my payment method</strong> for the subscription service fee. I agree to provide accurate information and maintain up-to-date renewal dates in my profile. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
                   </span>
                 </label>
               </div>
@@ -1214,7 +1213,7 @@ export default function Protection() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We monitor your renewal dates and file your city sticker and license plate renewals before they expire. You'll get email confirmations for each transaction.
+                We monitor your renewal dates and send you reminders before your city sticker and license plate renewals expire. You'll receive email and SMS alerts so you can complete your renewals on time.
               </p>
             </div>
 
@@ -1292,7 +1291,7 @@ export default function Protection() {
                 marginBottom: '8px',
                 margin: '0 0 8px 0'
               }}>
-                Renewal Filing Service
+                Renewal Reminder Service
               </h4>
               <p style={{
                 fontSize: '15px',
@@ -1301,7 +1300,7 @@ export default function Protection() {
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                Our concierge renewal service handles everything for you:
+                Our renewal reminder service keeps you on track:
               </p>
               <ul style={{
                 fontSize: '15px',
@@ -1311,9 +1310,9 @@ export default function Protection() {
                 marginBottom: '20px',
                 margin: '0 0 20px 0'
               }}>
-                <li style={{ marginBottom: '8px' }}>We file your city sticker and license plate renewals with the city on your behalf before they expire</li>
+                <li style={{ marginBottom: '8px' }}>We send you reminders before your city sticker and license plate renewals expire so you can complete them on time</li>
                 <li style={{ marginBottom: '8px' }}>You'll receive advance notifications about upcoming renewal deadlines</li>
-                <li>If you receive a late renewal ticket, we reimburse 80% up to $200/year as part of our service guarantee</li>
+                <li>If you receive a late renewal ticket despite our reminders, we reimburse 80% up to $200/year as part of our service guarantee</li>
               </ul>
 
               <h4 style={{
@@ -1341,7 +1340,7 @@ export default function Protection() {
                 paddingLeft: '24px',
                 margin: 0
               }}>
-                <li style={{ marginBottom: '8px' }}><strong>Have an active Concierge + Protection subscription</strong> at the time the ticket was issued</li>
+                <li style={{ marginBottom: '8px' }}><strong>Have an active Protection subscription</strong> at the time the ticket was issued</li>
                 <li style={{ marginBottom: '8px' }}><strong>30-day waiting period</strong> after signup before coverage begins</li>
                 <li style={{ marginBottom: '8px' }}><strong>Ticket must be for the address and vehicle</strong> listed in your profile at the time the ticket was issued - coverage only applies to your tracked address and vehicle</li>
                 <li style={{ marginBottom: '8px' }}><strong>Vehicle changes limited to once per year</strong> - changing your vehicle more than once per year voids coverage for any new vehicles</li>

@@ -19,7 +19,7 @@ export default function Support() {
         },
         {
           q: 'How much does it cost?',
-          a: 'Our protection plan costs $12/month or $120/year (save $24 with annual billing).'
+          a: 'Our protection plan costs $10/month or $100/year (save $20 with annual billing).'
         },
         {
           q: 'Can I cancel anytime?',
@@ -32,7 +32,7 @@ export default function Support() {
       questions: [
         {
           q: 'What tickets are covered?',
-          a: 'We cover street cleaning tickets ($60 each), snow removal tickets ($60 each), city sticker tickets ($200 each), and license plate renewal tickets if you get them despite following our alerts and meeting our guarantee conditions (see Protection page for details). Towing fees ($150 + $25/night storage) and moving violations are not covered. With Ticket Protection, we file city sticker and license plate renewals on your behalf before they expire.'
+          a: 'We cover street cleaning tickets ($60 each), snow removal tickets ($60 each), city sticker tickets ($200 each), and license plate renewal tickets if you get them despite following our alerts and meeting our guarantee conditions (see Protection page for details). Towing fees ($150 + $25/night storage) and moving violations are not covered. With Ticket Protection, we send you reminders before your city sticker and license plate renewals expire.'
         },
         {
           q: 'How much will I be reimbursed?',

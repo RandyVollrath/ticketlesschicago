@@ -82,7 +82,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                   marginRight: '8px',
                   fontSize: '16px'
                 }}>✓</span>
-                Done-for-you renewal filing
+                Renewal reminders & tracking
               </li>
               <li style={{
                 display: 'flex',
@@ -297,7 +297,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             lineHeight: '1',
             marginBottom: '4px'
           }}>
-            $12
+            $10
           </div>
           <div style={{
             fontSize: '14px',

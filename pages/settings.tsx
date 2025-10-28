@@ -1376,12 +1376,46 @@ export default function Dashboard() {
               Renewal Dates
             </h2>
 
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
               Enter your renewal dates to receive reminder notifications.
               {!profile.has_protection && (
-                <span> To purchase renewals on your behalf, <a href="/protection" style={{ color: '#0052cc', textDecoration: 'underline' }}>subscribe to Ticket Protection</a>.</span>
+                <span> To get renewal reminders, <a href="/protection" style={{ color: '#0052cc', textDecoration: 'underline' }}>subscribe to Ticket Protection</a>.</span>
               )}
             </p>
+
+            {/* Friendly reminder banner */}
+            {(!profile.city_sticker_expiry || !profile.license_plate_expiry) && (
+              <div style={{
+                backgroundColor: '#eff6ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                marginBottom: '24px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '20px', flexShrink: 0 }}>📅</span>
+                <div>
+                  <p style={{
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    color: '#1e40af',
+                    margin: '0 0 6px 0'
+                  }}>
+                    Don't miss your renewal deadlines!
+                  </p>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#1e40af',
+                    margin: 0,
+                    lineHeight: '1.5'
+                  }}>
+                    Add your renewal dates below so we can remind you well in advance. Late renewals can result in costly tickets ($200 for expired city stickers).
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
               <div>
@@ -1740,7 +1774,7 @@ export default function Dashboard() {
                   marginTop: '12px'
                 }}>
                   <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
-                    <strong>Note:</strong> If you have Concierge + Protection, we'll process your renewal at 30 days before the deadline using the information in your profile. Make sure your profile data is up-to-date before then!
+                    <strong>Note:</strong> If you have Protection, we'll send you reminders starting 30 days before the deadline. Make sure your profile data is up-to-date so we can remind you at the right time!
                   </p>
                 </div>
 

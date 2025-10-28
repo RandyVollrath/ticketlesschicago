@@ -205,7 +205,7 @@ export default function HowItWorks() {
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              We handle your city sticker and license plate renewal registrations for you. Get reminders before deadlines and if you receive a ticket, we reimburse 80% up to $200/year.
+              Get timely reminders before your city sticker and license plate renewal deadlines. If you receive a ticket, we reimburse 80% up to $200/year.
             </p>
             
             <div style={{

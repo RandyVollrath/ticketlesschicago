@@ -610,7 +610,15 @@ export default function StreetCleaningSettings() {
       {/* Park Here Instead Feature - MSC Style */}
       {ward && section && (
         <div className={styles.formGroup}>
-          <label>Park Here Instead</label>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#111827',
+            marginBottom: '12px',
+            marginTop: '0'
+          }}>
+            🅿️ Park Here Instead
+          </h3>
           <div className={styles.parkHereInfo}>
             <p className={styles.parkHereDescription}>
               Safe parking zones nearby that <strong>do not have cleaning conflicts</strong> when your area does:

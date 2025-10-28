@@ -176,15 +176,13 @@ export default function PrivacyPolicy() {
             </h2>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Provide services:</strong> Send street cleaning alerts, file vehicle renewals, process
-                permit applications, and manage reimbursements
+                <strong>Provide services:</strong> Send street cleaning alerts, renewal reminders, and manage reimbursements
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Act as your agent:</strong> Submit renewal applications and required documentation to
-                the City of Chicago and State of Illinois on your behalf (Ticket Protection subscribers only)
+                <strong>Send renewal reminders:</strong> Monitor your renewal deadlines and send you timely alerts (Ticket Protection subscribers only)
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Process payments:</strong> Handle subscription billing and renewal payments
+                <strong>Process payments:</strong> Handle subscription billing
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Communicate with you:</strong> Send service notifications, renewal reminders, account
