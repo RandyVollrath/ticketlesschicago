@@ -225,6 +225,38 @@ export default function AlertsSuccess() {
           </ul>
         </div>
 
+        {/* Donation Support - Only show for free alerts users */}
+        {!isProtection && (
+          <div style={{
+            backgroundColor: '#f0f4ff',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '32px',
+            textAlign: 'center',
+            border: '2px solid #635bff'
+          }}>
+            <p style={{
+              fontSize: '16px',
+              color: '#635bff',
+              fontWeight: '600',
+              marginBottom: '16px',
+              margin: '0 0 16px 0',
+              lineHeight: '1.5'
+            }}>
+              💙 Your support helps keep the alerts free for Chicago drivers
+            </p>
+            <div dangerouslySetInnerHTML={{
+              __html: `
+                <stripe-buy-button
+                  buy-button-id="buy_btn_1SNLupPSdzV8LIExfgCtQqHx"
+                  publishable-key="pk_live_51SHvt6PSdzV8LIEx8Zuj7dyiFzP7gqiIomXkOCbpKZ9rgXz49cWRUDRZb4zAvAQdVJXjop1MdtI2DF6ir0pa5ZIN00AKpUqIBH"
+                >
+                </stripe-buy-button>
+              `
+            }} />
+          </div>
+        )}
+
         {/* Clear Path Relief Program */}
         <div style={{
           backgroundColor: '#fef3c7',
@@ -420,35 +452,6 @@ export default function AlertsSuccess() {
             Back to Home
           </button>
         </div>
-
-        {/* Donation Support - Only show for free alerts users */}
-        {!isProtection && (
-          <div style={{
-            marginTop: '32px',
-            paddingTop: '32px',
-            borderTop: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <p style={{
-              fontSize: '14px',
-              color: '#6b7280',
-              marginBottom: '16px',
-              margin: '0 0 16px 0',
-              lineHeight: '1.5'
-            }}>
-              Your support helps keep the alerts free for Chicago drivers.
-            </p>
-            <div dangerouslySetInnerHTML={{
-              __html: `
-                <stripe-buy-button
-                  buy-button-id="buy_btn_1SNLupPSdzV8LIExfgCtQqHx"
-                  publishable-key="pk_live_51SHvt6PSdzV8LIEx8Zuj7dyiFzP7gqiIomXkOCbpKZ9rgXz49cWRUDRZb4zAvAQdVJXjop1MdtI2DF6ir0pa5ZIN00AKpUqIBH"
-                >
-                </stripe-buy-button>
-              `
-            }} />
-          </div>
-        )}
 
         {/* Support */}
         <p style={{

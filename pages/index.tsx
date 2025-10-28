@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
+import Footer from '../components/Footer';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -1018,36 +1019,7 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <div style={{
-        padding: '60px 16px',
-        backgroundColor: '#f8f9fa',
-        borderTop: '1px solid #e5e7eb'
-      }}>
-        <div style={{
-          textAlign: 'center'
-        }}>
-          <p style={{
-            fontSize: '14px',
-            color: '#999',
-            marginBottom: '32px',
-            margin: '0 0 32px 0'
-          }}>
-            Questions? Email us at <a href="mailto:support@autopilotamerica.com" style={{ color: '#0052cc', textDecoration: 'none' }}>support@autopilotamerica.com</a>
-          </p>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '32px',
-            fontSize: '14px',
-            color: '#666'
-          }}>
-            <a href="#" style={{ color: '#666', textDecoration: 'none' }}>About</a>
-            <a href="#faq" style={{ color: '#666', textDecoration: 'none' }}>FAQ</a>
-            <a href="/support" style={{ color: '#666', textDecoration: 'none' }}>Contact</a>
-            <a href="/parking-map" style={{ color: '#666', textDecoration: 'none' }}>Parking Map</a>
-          </div>
-        </div>
-      </div>
+      <Footer />
     </div>
   );
 }
