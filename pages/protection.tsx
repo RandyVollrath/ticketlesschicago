@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { usePermitZoneCheck } from '../hooks/usePermitZoneCheck';
+import Footer from '../components/Footer';
 import { PermitZoneWarning } from '../components/PermitZoneWarning';
 
 export default function Protection() {
