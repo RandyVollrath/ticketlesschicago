@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Head from 'next/head'
 import dynamic from 'next/dynamic'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
+import Footer from '../components/Footer'
 
 // Dynamically import the map with "Park Here Instead" functionality
 const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
@@ -924,20 +925,7 @@ export default function CheckYourStreet() {
         </div>
 
         {/* Footer */}
-        <footer style={{
-          padding: '40px 20px',
-          textAlign: 'center',
-          borderTop: '1px solid #e5e7eb',
-          backgroundColor: '#fafafa'
-        }}>
-          <p style={{
-            color: '#9ca3af',
-            fontSize: '14px',
-            margin: '0'
-          }}>
-            © 2025 Autopilot America
-          </p>
-        </footer>
+        <Footer />
       </main>
     </>
   )

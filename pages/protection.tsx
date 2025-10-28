@@ -1354,6 +1354,9 @@ export default function Protection() {
           </div>
         </div>
       </main>
+
+      {/* Footer */}
+      <Footer hideDonation={true} />
     </div>
   );
 }
