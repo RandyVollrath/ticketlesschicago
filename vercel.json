@@ -23,6 +23,12 @@
     },
     "pages/api/drip/send-emails.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/sync-towing-data.ts": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/check-towed-vehicles.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -97,6 +103,14 @@
     {
       "path": "/api/boston-street-cleaning/process",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sync-towing-data",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/check-towed-vehicles",
+      "schedule": "0 */2 * * *"
     }
   ],
   "github": {

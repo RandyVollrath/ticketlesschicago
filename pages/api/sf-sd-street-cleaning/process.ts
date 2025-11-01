@@ -38,7 +38,7 @@ export default async function handler(
   const { hour, pstTime } = getPacificTime();
 
   console.log('========================================');
-  console.log('🧹 SF/SD STREET CLEANING CRON EXECUTION');
+  console.log('🧹 SF/SD/LA STREET CLEANING CRON EXECUTION');
   console.log('========================================');
   console.log('UTC Time:', now.toISOString());
   console.log('PST Time:', pstTime);
@@ -71,25 +71,26 @@ export default async function handler(
   }
 
   try {
-    // Process both SF and SD users
+    // Process SF, SD, and LA users (all Pacific timezone)
     const sfResults = await processSFStreetCleaningReminders(notificationType);
     const sdResults = await processSDStreetCleaningReminders(notificationType);
+    const laResults = await processLAStreetCleaningReminders(notificationType);
 
     res.status(200).json({
       success: true,
-      processed: sfResults.processed + sdResults.processed,
-      successful: sfResults.successful + sdResults.successful,
-      failed: sfResults.failed + sdResults.failed,
-      errors: [...sfResults.errors, ...sdResults.errors],
+      processed: sfResults.processed + sdResults.processed + laResults.processed,
+      successful: sfResults.successful + sdResults.successful + laResults.successful,
+      failed: sfResults.failed + sdResults.failed + laResults.failed,
+      errors: [...sfResults.errors, ...sdResults.errors, ...laResults.errors],
       timestamp: new Date().toISOString(),
       type: notificationType,
-      cities: `SF: ${sfResults.processed}, SD: ${sdResults.processed}`
+      cities: `SF: ${sfResults.processed}, SD: ${sdResults.processed}, LA: ${laResults.processed}`
     });
 
   } catch (error) {
-    console.error('❌ Error processing SF/SD street cleaning notifications:', error);
+    console.error('❌ Error processing SF/SD/LA street cleaning notifications:', error);
     res.status(500).json({
-      error: 'Failed to process SF/SD street cleaning notifications'
+      error: 'Failed to process SF/SD/LA street cleaning notifications'
     });
   }
 }
@@ -527,6 +528,149 @@ async function processSDStreetCleaningReminders(type: string) {
 
   } catch (error) {
     errors.push(`Fatal SD error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return { processed, successful, failed, errors };
+  }
+}
+
+async function processLAStreetCleaningReminders(type: string) {
+  let processed = 0;
+  let successful = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  try {
+    const { data: users, error: userError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('*')
+      .eq('city', 'los-angeles')
+      .eq('notify_sms', true)
+      .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
+
+    if (userError) {
+      errors.push(`Failed to fetch LA users: ${userError.message}`);
+      return { processed, successful, failed, errors };
+    }
+
+    if (!users || users.length === 0) {
+      console.log('No LA users found with notifications enabled');
+      return { processed, successful, failed, errors };
+    }
+
+    console.log(`Found ${users.length} LA users to process`);
+
+    for (const user of users) {
+      processed++;
+
+      try {
+        if (!user.home_address_full) {
+          console.log(`Skipping LA user ${user.id} - no address`);
+          continue;
+        }
+
+        const googleApiKey = process.env.GOOGLE_API_KEY;
+        if (!googleApiKey) {
+          console.error('Google API key not configured');
+          continue;
+        }
+
+        // Geocode user address
+        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(user.home_address_full + ', Los Angeles, CA')}&key=${googleApiKey}`;
+        const geocodeRes = await fetch(geocodeUrl);
+        const geocodeData = await geocodeRes.json();
+
+        if (geocodeData.status !== 'OK' || !geocodeData.results || geocodeData.results.length === 0) {
+          console.log(`Failed to geocode LA user address: ${user.home_address_full}`);
+          continue;
+        }
+
+        const location = geocodeData.results[0].geometry.location;
+
+        // Find routes using PostGIS polygon matching
+        const { data: routes, error: routeError } = await supabaseAdmin.rpc('find_la_route_for_point', {
+          lat: location.lat,
+          lng: location.lng
+        });
+
+        if (routeError || !routes || routes.length === 0) {
+          console.log(`No LA routes found for user ${user.id}`);
+          continue;
+        }
+
+        // LA routes have specific days (M, Tu, W, Th, F)
+        // Match today's day of week
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayAbbr: {[key: string]: string} = {
+          'Monday': 'M',
+          'Tuesday': 'Tu',
+          'Wednesday': 'W',
+          'Thursday': 'Th',
+          'Friday': 'F'
+        };
+
+        const notifyDays = user.notification_preferences?.reminder_days || [0, 1];
+        const messages: string[] = [];
+
+        for (const daysUntil of notifyDays) {
+          const targetDate = new Date(today);
+          targetDate.setDate(today.getDate() + daysUntil);
+          const targetDayName = daysOfWeek[targetDate.getDay()];
+          const targetDayAbbr = dayAbbr[targetDayName];
+
+          if (!targetDayAbbr) continue; // Weekend
+
+          const routesForDay = routes.filter((r: any) => r.day_of_week === targetDayAbbr);
+
+          if (routesForDay.length > 0) {
+            const dayDesc = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `in ${daysUntil} days`;
+            let msg = `🧹 Street sweeping ${dayDesc} (${targetDayName}):\n`;
+
+            for (const route of routesForDay) {
+              msg += `\nRoute ${route.route_no}\n`;
+              msg += `Time: ${route.time_start} - ${route.time_end}\n`;
+              msg += `Area: ${route.boundaries}\n`;
+            }
+
+            msg += `\nLA sweeps on a biweekly schedule (1st/3rd OR 2nd/4th weeks). Check posted signs to confirm.`;
+            messages.push(msg);
+          }
+        }
+
+        if (messages.length === 0) {
+          continue;
+        }
+
+        const message = messages.join('\n\n');
+
+        if (user.notify_sms && user.phone_number) {
+          await notificationService.sendSMS(user.phone_number, message);
+          console.log(`✅ Sent LA SMS to ${user.phone_number}`);
+        }
+
+        if (user.notify_email && user.email) {
+          await notificationService.sendEmail(
+            user.email,
+            'Street Sweeping Reminder - Los Angeles',
+            message
+          );
+          console.log(`✅ Sent LA email to ${user.email}`);
+        }
+
+        successful++;
+
+      } catch (userError) {
+        failed++;
+        const errorMsg = `Failed to process LA user ${user.id}: ${userError instanceof Error ? userError.message : 'Unknown error'}`;
+        errors.push(errorMsg);
+        console.error(errorMsg);
+      }
+    }
+
+    return { processed, successful, failed, errors };
+
+  } catch (error) {
+    errors.push(`Fatal LA error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return { processed, successful, failed, errors };
   }
 }
