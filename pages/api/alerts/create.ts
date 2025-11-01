@@ -53,6 +53,7 @@ export default async function handler(
     licensePlate,
     address,
     zip,
+    city,
     vin,
     make,
     model,
@@ -157,6 +158,14 @@ export default async function handler(
       }
     }
 
+    // Map city to timezone
+    const cityTimezoneMap: { [key: string]: { timezone: string; mailingCity: string; mailingState: string } } = {
+      'chicago': { timezone: 'America/Chicago', mailingCity: 'Chicago', mailingState: 'IL' },
+      'san-francisco': { timezone: 'America/Los_Angeles', mailingCity: 'San Francisco', mailingState: 'CA' }
+    };
+
+    const cityConfig = cityTimezoneMap[city || 'chicago'] || cityTimezoneMap['chicago'];
+
     // Create user profile
     const profileData = {
       user_id: userId,
@@ -167,10 +176,12 @@ export default async function handler(
       zip_code: zip,
       license_plate: licensePlate.toUpperCase(),
       home_address_full: address,
+      city: city || 'chicago',
+      timezone: cityConfig.timezone,
       // Auto-populate mailing address from home address
       mailing_address: address,
-      mailing_city: 'Chicago',
-      mailing_state: 'IL',
+      mailing_city: cityConfig.mailingCity,
+      mailing_state: cityConfig.mailingState,
       mailing_zip: zip,
       notify_email: true,
       notify_sms: true,
