@@ -9,6 +9,9 @@
     "pages/api/street-cleaning/process.ts": {
       "maxDuration": 60
     },
+    "pages/api/sf-street-cleaning/process.ts": {
+      "maxDuration": 60
+    },
     "pages/api/cron/check-renewal-deadlines.ts": {
       "maxDuration": 60
     },
@@ -84,6 +87,10 @@
     {
       "path": "/api/drip/send-emails",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/sf-street-cleaning/process",
+      "schedule": "0 15 * * *"
     }
   ],
   "github": {
