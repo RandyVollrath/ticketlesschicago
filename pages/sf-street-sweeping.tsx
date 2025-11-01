@@ -184,7 +184,7 @@ export default function SFStreetSweeping() {
                   fontWeight: '600'
                 }}
               >
-                📅 Download All Events
+                Download all cleaning dates
               </a>
             </div>
 
@@ -231,7 +231,7 @@ export default function SFStreetSweeping() {
                   </a>
 
                   <a
-                    href="/signup"
+                    href="/alerts/signup"
                     style={{
                       display: 'inline-block',
                       padding: '10px 20px',
@@ -368,7 +368,7 @@ export default function SFStreetSweeping() {
                 Sign up for free SMS and email reminders before every street cleaning day. Never get a $97 ticket again!
               </p>
               <a
-                href="/signup"
+                href="/alerts/signup"
                 style={{
                   display: 'inline-block',
                   padding: '12px 24px',
@@ -422,7 +422,7 @@ export default function SFStreetSweeping() {
             Sign up for Autopilot America to get automatic text and email reminders before every street sweeping day.
           </p>
           <a
-            href="/signup"
+            href="/alerts/signup"
             style={{
               display: 'inline-block',
               padding: '12px 24px',

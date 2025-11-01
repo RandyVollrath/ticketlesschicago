@@ -184,7 +184,7 @@ export default function BostonStreetSweeping() {
                   fontWeight: '600'
                 }}
               >
-                📅 Download All Events
+                Download all cleaning dates
               </a>
             </div>
 
@@ -351,7 +351,7 @@ export default function BostonStreetSweeping() {
                 Sign up for free SMS and email reminders before every street cleaning day. Never get a $40 ticket again!
               </p>
               <a
-                href="/signup"
+                href="/alerts/signup"
                 style={{
                   display: 'inline-block',
                   padding: '12px 24px',
