@@ -124,14 +124,58 @@ async function processSFStreetCleaningReminders(type: string) {
       processed++;
 
       try {
-        // Get user's street sweeping schedule
-        const { data: schedules, error: schedError } = await supabaseAdmin
-          .from('sf_street_sweeping')
-          .select('*')
-          .ilike('corridor', user.home_address?.split(',')[0] || '');
+        // Geocode user's address to find nearest street segment
+        let schedules: SFStreetSweepingSchedule[] = [];
 
-        if (schedError || !schedules || schedules.length === 0) {
-          console.log(`No schedule found for user ${user.id}`);
+        if (user.home_address_full) {
+          const googleApiKey = process.env.GOOGLE_API_KEY;
+
+          if (googleApiKey) {
+            try {
+              // Geocode the address
+              const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(user.home_address_full + ', San Francisco, CA')}&key=${googleApiKey}`;
+              const geocodeRes = await fetch(geocodeUrl);
+              const geocodeData = await geocodeRes.json();
+
+              if (geocodeData.status === 'OK' && geocodeData.results && geocodeData.results.length > 0) {
+                const location = geocodeData.results[0].geometry.location;
+                const { lat, lng } = location;
+
+                // Find nearest street segment using PostGIS function
+                const { data: nearbyStreets, error: geoError } = await supabaseAdmin.rpc('find_nearest_sf_street', {
+                  lat,
+                  lng,
+                  max_distance_meters: 100
+                });
+
+                if (!geoError && nearbyStreets && nearbyStreets.length > 0) {
+                  schedules = nearbyStreets as SFStreetSweepingSchedule[];
+                  console.log(`✅ Found ${schedules.length} street segments near ${user.home_address_full}`);
+                }
+              }
+            } catch (geoError) {
+              console.error(`Failed to geocode ${user.home_address_full}:`, geoError);
+            }
+          }
+        }
+
+        // Fallback: try simple street name match if geocoding failed
+        if (schedules.length === 0 && user.home_address_full) {
+          const streetName = user.home_address_full.split(',')[0].trim();
+          const { data: nameMatches, error: nameError } = await supabaseAdmin
+            .from('sf_street_sweeping')
+            .select('*')
+            .ilike('corridor', `%${streetName}%`)
+            .limit(10);
+
+          if (!nameError && nameMatches && nameMatches.length > 0) {
+            schedules = nameMatches as SFStreetSweepingSchedule[];
+            console.log(`✅ Found ${schedules.length} street segments matching "${streetName}"`);
+          }
+        }
+
+        if (schedules.length === 0) {
+          console.log(`❌ No schedule found for user ${user.id} at ${user.home_address_full}`);
           continue;
         }
 
