@@ -22,6 +22,7 @@ export default function AlertsSignup() {
     citySticker: '',
     address: '',
     zip: '',
+    city: 'chicago',  // Default to Chicago
     marketingConsent: true  // Auto-checked - users can opt out
   });
 
@@ -583,6 +584,45 @@ export default function AlertsSignup() {
                   boxSizing: 'border-box'
                 }}
               />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                City *
+              </label>
+              <select
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="chicago">Chicago, IL</option>
+                <option value="san-francisco">San Francisco, CA</option>
+              </select>
+              <p style={{
+                fontSize: '12px',
+                color: '#6b7280',
+                marginTop: '4px',
+                marginBottom: 0
+              }}>
+                Select your city to get accurate street cleaning alerts
+              </p>
             </div>
 
             {message && (
