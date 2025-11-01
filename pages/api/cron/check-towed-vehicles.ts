@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import twilio from 'twilio';
 
-// Checks if any user's car was towed in the last 24 hours
+// Checks if any user's car was towed recently
 // Sends immediate SMS/email alerts
-// Run every 2 hours via vercel.json
+// Run every hour via vercel.json
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
