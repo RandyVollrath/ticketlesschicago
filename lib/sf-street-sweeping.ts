@@ -243,3 +243,77 @@ export function formatNextCleaning(event: NextCleaningEvent): string {
 
   return `${dateStr}, ${event.startTime} - ${event.endTime}`;
 }
+
+/**
+ * Generate .ics calendar file with ALL cleaning events for next 12 months
+ * Returns data URL that can be downloaded
+ */
+export function generateICSFile(events: NextCleaningEvent[], address: string): string {
+  const icsEvents: string[] = [];
+
+  // Generate events for next 12 months
+  const endDate = new Date();
+  endDate.setFullYear(endDate.getFullYear() + 1);
+
+  for (const event of events) {
+    let currentDate = new Date(event.date);
+
+    while (currentDate < endDate) {
+      const startDateTime = new Date(currentDate);
+      const [startHour, startMin] = event.startTime.split(':');
+      startDateTime.setHours(parseInt(startHour), parseInt(startMin), 0);
+
+      const endDateTime = new Date(currentDate);
+      const [endHour, endMin] = event.endTime.split(':');
+      endDateTime.setHours(parseInt(endHour), parseInt(endMin), 0);
+
+      // Format as YYYYMMDDTHHMMSS
+      const formatICS = (d: Date) => {
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        const hour = d.getHours().toString().padStart(2, '0');
+        const min = d.getMinutes().toString().padStart(2, '0');
+        const sec = d.getSeconds().toString().padStart(2, '0');
+        return `${year}${month}${day}T${hour}${min}${sec}`;
+      };
+
+      const uid = `sf-sweep-${event.streetName.replace(/\s/g, '-')}-${formatICS(startDateTime)}@autopilotamerica.com`;
+
+      icsEvents.push(`BEGIN:VEVENT
+UID:${uid}
+DTSTAMP:${formatICS(new Date())}
+DTSTART:${formatICS(startDateTime)}
+DTEND:${formatICS(endDateTime)}
+SUMMARY:Move Car - Street Cleaning
+DESCRIPTION:Street cleaning on ${event.streetName}${event.blockSide ? ` (${event.blockSide} side)` : ''}\\n\\nMake sure to move your car before ${event.startTime} to avoid a ticket!\\n\\nPowered by Autopilot America
+LOCATION:${event.streetName}, San Francisco, CA
+STATUS:CONFIRMED
+SEQUENCE:0
+BEGIN:VALARM
+TRIGGER:-PT12H
+DESCRIPTION:Street cleaning tomorrow on ${event.streetName}
+ACTION:DISPLAY
+END:VALARM
+END:VEVENT`);
+
+      // Find next occurrence (move forward by 7 days or to next scheduled week)
+      currentDate.setDate(currentDate.getDate() + 7);
+    }
+  }
+
+  const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Autopilot America//SF Street Sweeping//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:SF Street Sweeping - ${address}
+X-WR-TIMEZONE:America/Los_Angeles
+X-WR-CALDESC:Street sweeping schedule for ${address} in San Francisco
+${icsEvents.join('\n')}
+END:VCALENDAR`;
+
+  // Create data URL
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+  return URL.createObjectURL(blob);
+}
