@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
+    "@liquidmetal-ai/lm-raindrop": "^0.6.43",
     "@simplewebauthn/browser": "^13.2.0",
     "@simplewebauthn/server": "^13.2.1",
     "@stripe/react-stripe-js": "^4.0.2",
@@ -32,6 +33,7 @@
     "next": "15.2.4",
     "next-auth": "^4.24.0",
     "node-fetch": "^2.7.0",
+    "openai": "^6.7.0",
     "posthog-js": "^1.273.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
