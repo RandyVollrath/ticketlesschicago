@@ -341,18 +341,46 @@ async function processSDStreetCleaningReminders(type: string) {
               if (geocodeData.status === 'OK' && geocodeData.results && geocodeData.results.length > 0) {
                 const addressComponents = geocodeData.results[0].address_components;
                 const routeComponent = addressComponents.find((c: any) => c.types.includes('route'));
+                const streetNumberComponent = addressComponents.find((c: any) => c.types.includes('street_number'));
 
                 if (routeComponent) {
                   const streetName = routeComponent.long_name;
+                  const streetNumber = streetNumberComponent ? parseInt(streetNumberComponent.long_name) : null;
 
-                  const { data: nameMatches, error: nameError } = await supabaseAdmin
+                  const { data: allMatches, error: nameError } = await supabaseAdmin
                     .from('sd_street_sweeping')
                     .select('*')
                     .ilike('rd20full', `%${streetName}%`)
-                    .limit(20);
+                    .limit(100);
 
-                  if (!nameError && nameMatches && nameMatches.length > 0) {
-                    schedules = nameMatches as SDStreetSweepingSchedule[];
+                  if (!nameError && allMatches && allMatches.length > 0) {
+                    // Filter by address range if we have a street number
+                    if (streetNumber !== null) {
+                      const matchingSegments: SDStreetSweepingSchedule[] = [];
+
+                      for (const segment of allMatches) {
+                        const leftLow = parseInt(segment.llowaddr) || 0;
+                        const leftHigh = parseInt(segment.lhighaddr) || 0;
+                        const rightLow = parseInt(segment.rlowaddr) || 0;
+                        const rightHigh = parseInt(segment.rhighaddr) || 0;
+
+                        const inLeftRange = streetNumber >= leftLow && streetNumber <= leftHigh;
+                        const inRightRange = streetNumber >= rightLow && streetNumber <= rightHigh;
+
+                        if (inLeftRange || inRightRange) {
+                          matchingSegments.push(segment);
+                        }
+                      }
+
+                      if (matchingSegments.length > 0) {
+                        schedules = matchingSegments;
+                      } else {
+                        // Fallback to first few if no range match
+                        schedules = allMatches.slice(0, 3) as SDStreetSweepingSchedule[];
+                      }
+                    } else {
+                      schedules = allMatches.slice(0, 3) as SDStreetSweepingSchedule[];
+                    }
                   }
                 }
               }

@@ -48,6 +48,10 @@ export default async function handler(
 
     const streetName = routeComponent.long_name;
 
+    // Extract street number from the address
+    const streetNumberComponent = addressComponents.find((c: any) => c.types.includes('street_number'));
+    const streetNumber = streetNumberComponent ? parseInt(streetNumberComponent.long_name) : null;
+
     // Find all segments matching this street name
     const { data: allMatches, error: matchError } = await supabaseAdmin
       .from('sd_street_sweeping')
@@ -64,59 +68,75 @@ export default async function handler(
       return res.status(404).json({ error: 'No street sweeping schedule found for this address' });
     }
 
-    // Calculate distance to each segment (using midpoint of address range)
-    const segmentsWithDistance: Array<{ schedule: SDStreetSweepingSchedule; distance: number }> = [];
+    // Filter segments by address range matching
+    const matchingSegments: SDStreetSweepingSchedule[] = [];
 
-    for (const segment of allMatches) {
-      // Calculate midpoint of segment address range
-      const leftLow = parseInt(segment.llowaddr) || 0;
-      const leftHigh = parseInt(segment.lhighaddr) || 0;
-      const rightLow = parseInt(segment.rlowaddr) || 0;
-      const rightHigh = parseInt(segment.rhighaddr) || 0;
+    if (streetNumber !== null) {
+      // Match by address range
+      for (const segment of allMatches) {
+        const leftLow = parseInt(segment.llowaddr) || 0;
+        const leftHigh = parseInt(segment.lhighaddr) || 0;
+        const rightLow = parseInt(segment.rlowaddr) || 0;
+        const rightHigh = parseInt(segment.rhighaddr) || 0;
 
-      const avgLat = lat;
-      const avgLng = lng;
+        // Check if street number falls within either left or right side range
+        const inLeftRange = streetNumber >= leftLow && streetNumber <= leftHigh;
+        const inRightRange = streetNumber >= rightLow && streetNumber <= rightHigh;
 
-      // Use cached geocoded location if available, otherwise estimate
-      let segmentLat = segment.segment_lat;
-      let segmentLng = segment.segment_lng;
+        if (inLeftRange || inRightRange) {
+          matchingSegments.push(segment);
+        }
+      }
+    }
 
-      if (!segmentLat || !segmentLng) {
-        // If no geocoded location, we'll still include it but with a higher distance
-        segmentLat = avgLat;
-        segmentLng = avgLng;
+    // If no address range matches, fall back to closest segments by lat/lng
+    if (matchingSegments.length === 0) {
+      console.log(`No address range match for ${streetNumber} ${streetName}, falling back to distance`);
+
+      const segmentsWithDistance: Array<{ schedule: SDStreetSweepingSchedule; distance: number }> = [];
+
+      for (const segment of allMatches) {
+        // Use lat/lng if available, otherwise skip
+        if (segment.segment_lat && segment.segment_lng) {
+          const R = 6371e3; // Earth radius in meters
+          const φ1 = (lat * Math.PI) / 180;
+          const φ2 = (segment.segment_lat * Math.PI) / 180;
+          const Δφ = ((segment.segment_lat - lat) * Math.PI) / 180;
+          const Δλ = ((segment.segment_lng - lng) * Math.PI) / 180;
+
+          const a =
+            Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          const distance = R * c;
+
+          segmentsWithDistance.push({ schedule: segment, distance });
+        }
       }
 
-      // Haversine distance
-      const R = 6371e3; // Earth radius in meters
-      const φ1 = (avgLat * Math.PI) / 180;
-      const φ2 = (segmentLat * Math.PI) / 180;
-      const Δφ = ((segmentLat - avgLat) * Math.PI) / 180;
-      const Δλ = ((segmentLng - avgLng) * Math.PI) / 180;
+      if (segmentsWithDistance.length > 0) {
+        segmentsWithDistance.sort((a, b) => a.distance - b.distance);
 
-      const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distance = R * c;
+        // Take segments within 200m
+        const nearby = segmentsWithDistance
+          .filter((item) => item.distance <= 200)
+          .map((item) => item.schedule);
 
-      segmentsWithDistance.push({ schedule: segment, distance });
+        if (nearby.length > 0) {
+          matchingSegments.push(...nearby);
+        } else {
+          // Take closest segment if none within 200m
+          matchingSegments.push(segmentsWithDistance[0].schedule);
+        }
+      } else {
+        // No geocoded segments, take first few as fallback
+        matchingSegments.push(...allMatches.slice(0, 3));
+      }
     }
 
-    // Sort by distance
-    segmentsWithDistance.sort((a, b) => a.distance - b.distance);
+    console.log(`Matched ${matchingSegments.length} segments for ${streetNumber} ${streetName}`);
 
-    // Take segments within 200m (San Diego blocks can be longer)
-    const nearbySchedules = segmentsWithDistance
-      .filter((item) => item.distance <= 200)
-      .map((item) => item.schedule);
-
-    if (nearbySchedules.length === 0) {
-      // If no segments within 200m, take the closest one
-      nearbySchedules.push(segmentsWithDistance[0].schedule);
-    }
-
-    return res.status(200).json({ schedules: nearbySchedules });
+    return res.status(200).json({ schedules: matchingSegments });
   } catch (error) {
     console.error('Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
