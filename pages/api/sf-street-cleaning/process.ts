@@ -44,9 +44,19 @@ export default async function handler(
   console.log('SF Hour:', hour);
   console.log('========================================');
 
-  // Only run at 7am PST
-  if (hour !== 7) {
-    console.log(`⏭️  Skipped: Current hour ${hour} doesn't match 7am PST`);
+  // Determine notification type based on SF time
+  let notificationType = 'unknown';
+  if (hour === 7) {
+    notificationType = 'morning_reminder';
+    console.log('✅ Matched: morning_reminder (7am PST)');
+  } else if (hour === 15) {
+    notificationType = 'follow_up';
+    console.log('✅ Matched: follow_up (3pm PST)');
+  } else if (hour === 19) {
+    notificationType = 'evening_reminder';
+    console.log('✅ Matched: evening_reminder (7pm PST)');
+  } else {
+    console.log(`⏭️  Skipped: Current hour ${hour} doesn't match any notification schedule (7am, 3pm, 7pm PST)`);
     return res.status(200).json({
       success: true,
       processed: 0,
@@ -60,7 +70,7 @@ export default async function handler(
   }
 
   try {
-    const results = await processSFStreetCleaningReminders();
+    const results = await processSFStreetCleaningReminders(notificationType);
 
     res.status(200).json({
       success: true,
@@ -69,7 +79,7 @@ export default async function handler(
       failed: results.failed,
       errors: results.errors,
       timestamp: new Date().toISOString(),
-      type: 'morning_reminder',
+      type: notificationType,
       city: 'san-francisco'
     });
 
@@ -81,11 +91,13 @@ export default async function handler(
   }
 }
 
-async function processSFStreetCleaningReminders() {
+async function processSFStreetCleaningReminders(type: string) {
   let processed = 0;
   let successful = 0;
   let failed = 0;
   const errors: string[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   try {
     // Get all San Francisco users with notifications enabled
@@ -93,7 +105,8 @@ async function processSFStreetCleaningReminders() {
       .from('user_profiles')
       .select('*')
       .eq('city', 'san-francisco')
-      .eq('notify_sms', true);
+      .eq('notify_sms', true)
+      .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
 
     if (userError) {
       errors.push(`Failed to fetch SF users: ${userError.message}`);
@@ -153,14 +166,32 @@ async function processSFStreetCleaningReminders() {
           continue;
         }
 
-        // Build message
+        // Build message based on notification type and days until
         let message = '';
-        if (daysUntil === 0) {
-          message = `🧹 Street cleaning TODAY on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Move your car now!`;
-        } else if (daysUntil === 1) {
-          message = `🧹 Street cleaning TOMORROW on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Set a reminder!`;
-        } else {
-          message = `🧹 Street cleaning in ${daysUntil} days on ${nextCleaning.streetName} at ${nextCleaning.startTime}.`;
+        if (type === 'morning_reminder') {
+          if (daysUntil === 0) {
+            message = `🧹 Street cleaning TODAY on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Move your car now! ($97 ticket if you don't)`;
+          } else if (daysUntil === 1) {
+            message = `🧹 Street cleaning TOMORROW on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Set a reminder!`;
+          } else {
+            message = `🧹 Street cleaning in ${daysUntil} days on ${nextCleaning.streetName} at ${nextCleaning.startTime}.`;
+          }
+        } else if (type === 'follow_up') {
+          // 3pm follow-up: Only for next-day cleaning
+          if (daysUntil === 1) {
+            message = `🧹 REMINDER: Street cleaning TOMORROW on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Don't forget to move your car tonight!`;
+          } else if (daysUntil === 0) {
+            message = `🧹 LAST CHANCE: Street cleaning TODAY on ${nextCleaning.streetName}. Move your car NOW to avoid a $97 ticket!`;
+          } else {
+            continue; // Skip follow-up for cleanings more than 1 day away
+          }
+        } else if (type === 'evening_reminder') {
+          // 7pm reminder: For next-day cleaning
+          if (daysUntil === 1) {
+            message = `🧹 Street cleaning TOMORROW at ${nextCleaning.startTime} on ${nextCleaning.streetName}. Move your car tonight before you sleep!`;
+          } else {
+            continue; // Skip evening reminder for other days
+          }
         }
 
         // Send notification
