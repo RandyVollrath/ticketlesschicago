@@ -6,7 +6,8 @@ import {
   NextCleaningEvent,
   calculateNextCleaning,
   generateGoogleCalendarLink,
-  formatNextCleaning
+  formatNextCleaning,
+  generateICSFile
 } from '../lib/sf-street-sweeping';
 
 export default function SFStreetSweeping() {
@@ -125,9 +126,26 @@ export default function SFStreetSweeping() {
 
         {nextCleanings.length > 0 && (
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '20px' }}>
-              Next Cleaning Dates
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>
+                Next Cleaning Dates
+              </h2>
+              <a
+                href={generateICSFile(nextCleanings, address)}
+                download={`sf-street-sweeping-${address.replace(/\s/g, '-')}.ics`}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#4285f4',
+                  color: '#fff',
+                  textDecoration: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                📅 Download All Events
+              </a>
+            </div>
 
             {nextCleanings.map((event, index) => (
               <div
@@ -171,12 +189,14 @@ export default function SFStreetSweeping() {
                     Add to Google Calendar
                   </a>
 
-                  <button
-                    onClick={() => router.push('/signup')}
+                  <a
+                    href="/signup"
                     style={{
+                      display: 'inline-block',
                       padding: '10px 20px',
                       backgroundColor: '#000',
                       color: '#fff',
+                      textDecoration: 'none',
                       border: 'none',
                       borderRadius: '6px',
                       fontSize: '14px',
@@ -185,7 +205,7 @@ export default function SFStreetSweeping() {
                     }}
                   >
                     Get Automatic Reminders
-                  </button>
+                  </a>
                 </div>
               </div>
             ))}
@@ -227,21 +247,23 @@ export default function SFStreetSweeping() {
           <p style={{ fontSize: '16px', color: '#333', marginBottom: '16px' }}>
             Sign up for Autopilot America to get automatic text and email reminders before every street sweeping day.
           </p>
-          <button
-            onClick={() => router.push('/signup')}
+          <a
+            href="/signup"
             style={{
+              display: 'inline-block',
               padding: '12px 24px',
               fontSize: '16px',
               fontWeight: '600',
               backgroundColor: '#000',
               color: '#fff',
+              textDecoration: 'none',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer'
             }}
           >
             Sign Up Now
-          </button>
+          </a>
         </div>
       </div>
     </>
