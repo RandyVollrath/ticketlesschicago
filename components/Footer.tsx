@@ -76,6 +76,7 @@ export default function Footer({ hideDonation = false }: FooterProps) {
             <a href="/check-your-street" style={{ color: '#666', textDecoration: 'none' }}>Chicago</a>
             <a href="/sf-street-sweeping" style={{ color: '#666', textDecoration: 'none' }}>San Francisco</a>
             <a href="/boston-street-sweeping" style={{ color: '#666', textDecoration: 'none' }}>Boston</a>
+            <a href="/sd-street-sweeping" style={{ color: '#666', textDecoration: 'none' }}>San Diego</a>
             <a href="/protection" style={{ color: '#666', textDecoration: 'none' }}>Protection</a>
             <a href="/support" style={{ color: '#666', textDecoration: 'none' }}>Support</a>
             <a href="/terms" style={{ color: '#666', textDecoration: 'none' }}>Terms</a>
