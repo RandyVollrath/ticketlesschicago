@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 
-// Daily cron to sync new towing data from Chicago API
-// Fetches yesterday's tows and adds to database
-// Run at 6am Central daily via vercel.json
+// Hourly cron to sync new towing data from Chicago API
+// Fetches latest tows and adds to database
+// Run every hour via vercel.json
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,20 +16,17 @@ export default async function handler(
   }
 
   try {
-    console.log('Starting daily towing data sync...');
+    console.log('Starting hourly towing data sync...');
 
-    // Fetch yesterday's tows from Chicago API
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    // Fetch tows from last 2 hours (to catch any delays in city data)
+    const twoHoursAgo = new Date();
+    twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+    const twoHoursAgoStr = twoHoursAgo.toISOString();
 
     // Fetch from Chicago API
-    const url = `https://data.cityofchicago.org/resource/ygr5-vcbg.json?$where=tow_date>='${yesterdayStr}' AND tow_date<'${todayStr}'&$limit=5000&$order=tow_date DESC`;
+    const url = `https://data.cityofchicago.org/resource/ygr5-vcbg.json?$where=tow_date>='${twoHoursAgoStr}'&$limit=5000&$order=tow_date DESC`;
 
-    console.log(`Fetching tows for ${yesterdayStr}...`);
+    console.log(`Fetching tows since ${twoHoursAgo.toLocaleString()}...`);
 
     const response = await fetch(url);
     const data = await response.json();
@@ -83,7 +80,7 @@ export default async function handler(
       message: 'Towing data synced',
       count: records.length,
       skipped: data.length - records.length,
-      date: yesterdayStr
+      time: new Date().toISOString()
     });
 
   } catch (error) {
