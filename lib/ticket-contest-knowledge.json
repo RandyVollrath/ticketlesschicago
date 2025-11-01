@@ -1,0 +1,178 @@
+[
+  {
+    "violation_type": "Street Cleaning",
+    "violation_codes": ["0964125", "0964126"],
+    "contestable_reasons": [
+      {
+        "reason": "Sign was missing or obscured",
+        "win_probability": 0.85,
+        "evidence_needed": "Photo showing missing/blocked sign",
+        "explanation": "If the street cleaning sign was not visible, you have a strong case for dismissal."
+      },
+      {
+        "reason": "Sign showed different day/time",
+        "win_probability": 0.90,
+        "evidence_needed": "Photo of sign showing conflicting information",
+        "explanation": "Conflicting signage is grounds for automatic dismissal."
+      },
+      {
+        "reason": "Street cleaning did not occur",
+        "win_probability": 0.70,
+        "evidence_needed": "Photos showing dirty street after supposed cleaning time",
+        "explanation": "If street was not actually cleaned, ticket may be dismissed."
+      },
+      {
+        "reason": "Weather made cleaning impossible",
+        "win_probability": 0.60,
+        "evidence_needed": "Weather report showing rain/snow during cleaning time",
+        "explanation": "Street cleaning is often suspended in bad weather."
+      }
+    ],
+    "typical_fine": 60,
+    "contest_difficulty": "easy"
+  },
+  {
+    "violation_type": "Expired Meter",
+    "violation_codes": ["0964150", "0964155"],
+    "contestable_reasons": [
+      {
+        "reason": "Meter was broken",
+        "win_probability": 0.80,
+        "evidence_needed": "Photo of broken meter screen, receipt showing payment attempt",
+        "explanation": "If meter was malfunctioning, you cannot be held responsible."
+      },
+      {
+        "reason": "Paid but receipt not visible",
+        "win_probability": 0.75,
+        "evidence_needed": "Payment receipt from ParkChicago app or meter",
+        "explanation": "Digital payment records override visible receipt requirements."
+      },
+      {
+        "reason": "Wrong license plate on ticket",
+        "win_probability": 0.95,
+        "evidence_needed": "Copy of ticket showing incorrect plate, your vehicle registration",
+        "explanation": "Incorrect license plate information invalidates the ticket."
+      }
+    ],
+    "typical_fine": 65,
+    "contest_difficulty": "medium"
+  },
+  {
+    "violation_type": "Residential Permit Zone",
+    "violation_codes": ["0964180", "0964185"],
+    "contestable_reasons": [
+      {
+        "reason": "Had valid permit not visible",
+        "win_probability": 0.85,
+        "evidence_needed": "Copy of valid permit with matching dates",
+        "explanation": "If you had a valid permit but it wasn't visible, ticket can be dismissed."
+      },
+      {
+        "reason": "Sign showed different hours",
+        "win_probability": 0.90,
+        "evidence_needed": "Photo showing permit hours different from ticket time",
+        "explanation": "If parked during non-permit hours, ticket is invalid."
+      },
+      {
+        "reason": "Guest pass was active",
+        "win_probability": 0.80,
+        "evidence_needed": "Screenshot of active guest pass from city portal",
+        "explanation": "Valid guest passes are equivalent to resident permits."
+      }
+    ],
+    "typical_fine": 75,
+    "contest_difficulty": "easy"
+  },
+  {
+    "violation_type": "No City Sticker",
+    "violation_codes": ["0976160A"],
+    "contestable_reasons": [
+      {
+        "reason": "Had valid sticker not visible",
+        "win_probability": 0.70,
+        "evidence_needed": "Photo of sticker on vehicle, receipt showing purchase before ticket date",
+        "explanation": "If sticker was purchased before ticket, you can contest."
+      },
+      {
+        "reason": "Vehicle registered outside Chicago",
+        "win_probability": 0.90,
+        "evidence_needed": "Vehicle registration showing non-Chicago address",
+        "explanation": "Only Chicago residents need city stickers."
+      },
+      {
+        "reason": "Recently moved to Chicago",
+        "win_probability": 0.60,
+        "evidence_needed": "Lease agreement, utility bills showing move-in date within 30 days",
+        "explanation": "You have 30 days after moving to Chicago to get a sticker."
+      }
+    ],
+    "typical_fine": 200,
+    "contest_difficulty": "medium"
+  },
+  {
+    "violation_type": "Fire Hydrant",
+    "violation_codes": ["0964300"],
+    "contestable_reasons": [
+      {
+        "reason": "More than 15 feet from hydrant",
+        "win_probability": 0.85,
+        "evidence_needed": "Photos with measurements showing distance >15ft",
+        "explanation": "Law requires 15 feet clearance. If you were farther, ticket is invalid."
+      },
+      {
+        "reason": "Hydrant was hidden/unmarked",
+        "win_probability": 0.75,
+        "evidence_needed": "Photo showing hydrant obscured by bushes/snow",
+        "explanation": "If hydrant wasn't reasonably visible, you may win."
+      }
+    ],
+    "typical_fine": 100,
+    "contest_difficulty": "hard"
+  },
+  {
+    "violation_type": "Expired Plate/Registration",
+    "violation_codes": ["0976160B"],
+    "contestable_reasons": [
+      {
+        "reason": "Registration was valid",
+        "win_probability": 0.95,
+        "evidence_needed": "Copy of valid registration with dates",
+        "explanation": "Officer error. If registration was valid, ticket is automatically dismissed."
+      },
+      {
+        "reason": "Temporary plate was displayed",
+        "win_probability": 0.80,
+        "evidence_needed": "Copy of temporary registration permit",
+        "explanation": "Valid temp permits are legal."
+      }
+    ],
+    "typical_fine": 120,
+    "contest_difficulty": "easy"
+  },
+  {
+    "violation_type": "Snow Route Parking",
+    "violation_codes": ["0964405"],
+    "contestable_reasons": [
+      {
+        "reason": "No snow emergency declared",
+        "win_probability": 0.90,
+        "evidence_needed": "City records showing no active snow emergency",
+        "explanation": "Snow route restrictions only apply during declared emergencies."
+      },
+      {
+        "reason": "Less than 2 inches of snow",
+        "win_probability": 0.80,
+        "evidence_needed": "Weather service data showing snowfall amount",
+        "explanation": "Snow route ban requires 2+ inches of snow."
+      },
+      {
+        "reason": "Parked before ban took effect",
+        "win_probability": 0.75,
+        "evidence_needed": "Timestamp proof (receipt, parking app, witness)",
+        "explanation": "If you parked before 3am when ban started, may be dismissed."
+      }
+    ],
+    "typical_fine": 150,
+    "contest_difficulty": "medium"
+  }
+]
