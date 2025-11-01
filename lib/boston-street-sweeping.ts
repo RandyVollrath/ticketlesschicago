@@ -32,6 +32,8 @@ export interface BostonStreetSweepingSchedule {
   saturday: boolean;
   every_day: boolean;
   year_round: boolean;
+  segment_lat?: number | null; // Cached geocoded latitude
+  segment_lng?: number | null; // Cached geocoded longitude
 }
 
 export interface NextCleaningEvent {

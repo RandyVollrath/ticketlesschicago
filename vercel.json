@@ -12,6 +12,9 @@
     "pages/api/sf-street-cleaning/process.ts": {
       "maxDuration": 60
     },
+    "pages/api/boston-street-cleaning/process.ts": {
+      "maxDuration": 60
+    },
     "pages/api/cron/check-renewal-deadlines.ts": {
       "maxDuration": 60
     },
@@ -99,6 +102,18 @@
     {
       "path": "/api/sf-street-cleaning/process",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/boston-street-cleaning/process",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/boston-street-cleaning/process",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/boston-street-cleaning/process",
+      "schedule": "0 0 * * *"
     }
   ],
   "github": {

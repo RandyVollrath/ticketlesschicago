@@ -142,10 +142,11 @@ async function processSFStreetCleaningReminders(type: string) {
                 const { lat, lng } = location;
 
                 // Find nearest street segment using PostGIS function
+                // 75 meters = about one city block (tighter to avoid false positives)
                 const { data: nearbyStreets, error: geoError } = await supabaseAdmin.rpc('find_nearest_sf_street', {
                   lat,
                   lng,
-                  max_distance_meters: 100
+                  max_distance_meters: 75
                 });
 
                 if (!geoError && nearbyStreets && nearbyStreets.length > 0) {
@@ -179,7 +180,7 @@ async function processSFStreetCleaningReminders(type: string) {
           continue;
         }
 
-        // Calculate next cleaning dates
+        // Calculate ALL upcoming cleaning dates (not just the next one)
         const upcomingCleanings = [];
         for (const schedule of schedules as SFStreetSweepingSchedule[]) {
           const next = calculateNextCleaning(schedule);
@@ -192,51 +193,88 @@ async function processSFStreetCleaningReminders(type: string) {
           continue;
         }
 
-        // Sort by date and get the next one
         upcomingCleanings.sort((a, b) => a.date.getTime() - b.date.getTime());
-        const nextCleaning = upcomingCleanings[0];
 
-        // Calculate days until cleaning
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        const cleaningDate = new Date(nextCleaning.date);
-        cleaningDate.setHours(0, 0, 0, 0);
-        const daysUntil = Math.floor((cleaningDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-        // Check if user wants notification for this many days ahead
         const notifyDays = user.notification_preferences?.reminder_days || [0, 1];
-        if (!notifyDays.includes(daysUntil)) {
-          console.log(`User ${user.id}: Not sending (${daysUntil} days not in remind list)`);
+
+        // Group cleanings by date and notify about ALL cleanings on notify days
+        const cleaningsByDate = new Map<number, any[]>();
+
+        for (const cleaning of upcomingCleanings) {
+          const cleaningDate = new Date(cleaning.date);
+          cleaningDate.setHours(0, 0, 0, 0);
+          const daysUntil = Math.floor((cleaningDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (notifyDays.includes(daysUntil)) {
+            if (!cleaningsByDate.has(daysUntil)) {
+              cleaningsByDate.set(daysUntil, []);
+            }
+            cleaningsByDate.get(daysUntil)!.push(cleaning);
+          }
+        }
+
+        if (cleaningsByDate.size === 0) {
+          console.log(`User ${user.id}: No cleanings on notify days`);
           continue;
         }
 
-        // Build message based on notification type and days until
-        let message = '';
-        if (type === 'morning_reminder') {
-          if (daysUntil === 0) {
-            message = `🧹 Street cleaning TODAY on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Move your car now! ($97 ticket if you don't)`;
-          } else if (daysUntil === 1) {
-            message = `🧹 Street cleaning TOMORROW on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Set a reminder!`;
-          } else {
-            message = `🧹 Street cleaning in ${daysUntil} days on ${nextCleaning.streetName} at ${nextCleaning.startTime}.`;
+        // Build message for each notify day
+        const messages: string[] = [];
+
+        for (const [daysUntil, cleanings] of cleaningsByDate.entries()) {
+          // Group cleanings by segment to show cross streets
+          const segmentMessages: string[] = [];
+
+          for (const cleaning of cleanings) {
+            const schedule = schedules.find(s => s.corridor === cleaning.streetName);
+            const limits = schedule?.limits || '';
+
+            let locationInfo = cleaning.streetName;
+            if (limits) {
+              // Clean up the limits string (sometimes has "Start: " prefix)
+              const cleanLimits = limits.replace(/Start:\s*/g, '').trim();
+              locationInfo = `${cleaning.streetName} (${cleanLimits})`;
+            }
+
+            const startTime = cleaning.startTime;
+
+            let segmentMsg = '';
+            if (type === 'morning_reminder') {
+              if (daysUntil === 0) {
+                segmentMsg = `🧹 Street cleaning TODAY on ${locationInfo} at ${startTime}. Move your car now! ($97 ticket if you don't)`;
+              } else if (daysUntil === 1) {
+                segmentMsg = `🧹 Street cleaning TOMORROW on ${locationInfo} at ${startTime}. Set a reminder!`;
+              } else {
+                segmentMsg = `🧹 Street cleaning in ${daysUntil} days on ${locationInfo} at ${startTime}.`;
+              }
+            } else if (type === 'follow_up') {
+              if (daysUntil === 1) {
+                segmentMsg = `🧹 REMINDER: Street cleaning TOMORROW on ${locationInfo} at ${startTime}. Don't forget to move your car tonight!`;
+              } else if (daysUntil === 0) {
+                segmentMsg = `🧹 LAST CHANCE: Street cleaning TODAY on ${locationInfo}. Move your car NOW to avoid a $97 ticket!`;
+              }
+            } else if (type === 'evening_reminder') {
+              if (daysUntil === 1) {
+                segmentMsg = `🧹 Street cleaning TOMORROW at ${startTime} on ${locationInfo}. Move your car tonight before you sleep!`;
+              }
+            }
+
+            if (segmentMsg && !segmentMessages.includes(segmentMsg)) {
+              segmentMessages.push(segmentMsg);
+            }
           }
-        } else if (type === 'follow_up') {
-          // 3pm follow-up: Only for next-day cleaning
-          if (daysUntil === 1) {
-            message = `🧹 REMINDER: Street cleaning TOMORROW on ${nextCleaning.streetName} at ${nextCleaning.startTime}. Don't forget to move your car tonight!`;
-          } else if (daysUntil === 0) {
-            message = `🧹 LAST CHANCE: Street cleaning TODAY on ${nextCleaning.streetName}. Move your car NOW to avoid a $97 ticket!`;
-          } else {
-            continue; // Skip follow-up for cleanings more than 1 day away
-          }
-        } else if (type === 'evening_reminder') {
-          // 7pm reminder: For next-day cleaning
-          if (daysUntil === 1) {
-            message = `🧹 Street cleaning TOMORROW at ${nextCleaning.startTime} on ${nextCleaning.streetName}. Move your car tonight before you sleep!`;
-          } else {
-            continue; // Skip evening reminder for other days
-          }
+
+          messages.push(...segmentMessages);
         }
+
+        if (messages.length === 0) {
+          continue;
+        }
+
+        // Combine all messages
+        const message = messages.join('\n\n');
 
         // Send notification
         if (user.notify_sms && user.phone_number) {

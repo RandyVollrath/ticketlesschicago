@@ -614,6 +614,7 @@ export default function AlertsSignup() {
               >
                 <option value="chicago">Chicago, IL</option>
                 <option value="san-francisco">San Francisco, CA</option>
+                <option value="boston">Boston, MA</option>
               </select>
               <p style={{
                 fontSize: '12px',
