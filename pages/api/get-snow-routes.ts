@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
-// MyStreetCleaning database for snow routes
-const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL;
-const MSC_SUPABASE_ANON_KEY = process.env.MSC_SUPABASE_ANON_KEY;
+// Main Autopilot America database (snow routes are stored here)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -11,24 +11,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Check if environment variables are set
-  if (!MSC_SUPABASE_URL || !MSC_SUPABASE_ANON_KEY) {
-    console.error('❌ Missing MSC Supabase credentials - URL:', !!MSC_SUPABASE_URL, 'KEY:', !!MSC_SUPABASE_ANON_KEY);
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('❌ Missing Supabase credentials - URL:', !!SUPABASE_URL, 'KEY:', !!SUPABASE_ANON_KEY);
     return res.status(500).json({
-      error: 'MSC Supabase credentials not configured',
+      error: 'Supabase credentials not configured',
       details: {
-        hasUrl: !!MSC_SUPABASE_URL,
-        hasKey: !!MSC_SUPABASE_ANON_KEY
+        hasUrl: !!SUPABASE_URL,
+        hasKey: !!SUPABASE_ANON_KEY
       }
     });
   }
 
-  console.log('✅ MSC Supabase credentials found, creating client...');
-  const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY);
+  console.log('✅ Supabase credentials found, creating client...');
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   try {
-    console.log('📡 Fetching snow routes from MSC database...');
+    console.log('📡 Fetching snow routes from database...');
     // Fetch all snow routes with geometries
-    const { data: routes, error } = await mscSupabase
+    const { data: routes, error } = await supabase
       .from('snow_routes')
       .select('on_street, from_street, to_street, geom')
       .not('geom', 'is', null);
