@@ -199,67 +199,87 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         geojsonLayer.addTo(mapInstanceRef.current);
       });
 
-      // ALWAYS add snow routes overlay (visible regardless of showSnowSafeMode)
+      // ALWAYS add snow routes overlay - NEW APPROACH: Use simple polylines
       if (snowRoutes && snowRoutes.length > 0) {
-        console.log('🌨️ DRAWING SNOW ROUTES ON MAP:', snowRoutes.length, 'routes');
-        console.log('🌨️ Snow routes data:', JSON.stringify(snowRoutes.slice(0, 2), null, 2));
-
-        // Create a pane for snow routes with VERY HIGH z-index so they render on top of EVERYTHING
-        if (!mapInstanceRef.current.getPane('snowRoutesPane')) {
-          mapInstanceRef.current.createPane('snowRoutesPane');
-          mapInstanceRef.current.getPane('snowRoutesPane')!.style.zIndex = '9999'; // WAY higher than everything
-          mapInstanceRef.current.getPane('snowRoutesPane')!.style.pointerEvents = 'auto'; // Make sure mouse events work
-          console.log('✅ Created snowRoutesPane with z-index 9999');
-        }
+        console.log('🌨️🌨️🌨️ DRAWING SNOW ROUTES - ATTEMPTING:', snowRoutes.length, 'routes');
 
         let drawnCount = 0;
+        let failedCount = 0;
+
         snowRoutes.forEach((route, index) => {
           if (!route.geometry) {
-            console.warn(`⚠️ Route ${index} has NO geometry`);
+            console.warn(`⚠️ Route ${index}: NO GEOMETRY`);
+            failedCount++;
             return;
           }
-          console.log(`📍 Drawing route ${index}:`, route.properties?.on_street, 'geometry type:', route.geometry?.type);
 
           try {
-            const snowRouteLayer = L.geoJSON(route.geometry, {
-              pane: 'snowRoutesPane',  // Use custom pane with VERY high z-index
-              style: {
-                color: '#ff00ff',      // BRIGHT MAGENTA border
-                weight: 8,             // THICK lines (8 pixels)
-                opacity: 1.0,          // FULLY OPAQUE
-                fillColor: '#ff00ff',  // BRIGHT MAGENTA fill
-                fillOpacity: 0.0       // No fill, just thick lines
-              }
+            // Extract coordinates based on geometry type
+            let coordinates: any[] = [];
+
+            if (route.geometry.type === 'LineString') {
+              // LineString: coordinates are array of [lng, lat] pairs
+              coordinates = route.geometry.coordinates;
+              console.log(`📍 Route ${index} (LineString): ${coordinates.length} points`);
+            } else if (route.geometry.type === 'MultiLineString') {
+              // MultiLineString: coordinates are array of arrays
+              coordinates = route.geometry.coordinates[0]; // Use first line
+              console.log(`📍 Route ${index} (MultiLineString): ${coordinates.length} points`);
+            } else {
+              console.warn(`⚠️ Route ${index}: Unknown geometry type: ${route.geometry.type}`);
+              failedCount++;
+              return;
+            }
+
+            if (!coordinates || coordinates.length === 0) {
+              console.warn(`⚠️ Route ${index}: Empty coordinates`);
+              failedCount++;
+              return;
+            }
+
+            // Convert [lng, lat] to [lat, lng] for Leaflet
+            const latLngs = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+
+            // Draw as simple polyline - MAXIMUM VISIBILITY
+            const polyline = L.polyline(latLngs, {
+              color: '#ff00ff',        // BRIGHT MAGENTA
+              weight: 10,              // EXTRA THICK - 10 pixels!
+              opacity: 1.0,            // FULLY OPAQUE
+              zIndexOffset: 10000      // Make sure it's on top
             });
 
-          // Add popup with route info
-          const routePopup = `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
-              <div style="background: linear-gradient(135deg, #ff00ff, #ff00cc); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(255,0,255,0.5);">
-                ❄️ 2-Inch Snow Ban Route
+            // Add popup
+            const routePopup = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
+                <div style="background: #ff00ff; color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px;">
+                  ❄️ 2-Inch Snow Ban Route
+                </div>
+                <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 8px 10px;">
+                  <div style="font-size: 13px; color: #9f1239; font-weight: 600; margin-bottom: 4px;">${route.properties?.on_street || 'Unknown Street'}</div>
+                  ${route.properties?.from_street && route.properties?.to_street ?
+                    `<div style="font-size: 12px; color: #831843;">From ${route.properties.from_street} to ${route.properties.to_street}</div>` :
+                    ''}
+                </div>
               </div>
-              <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 8px 10px;">
-                <div style="font-size: 13px; color: #9f1239; font-weight: 600; margin-bottom: 4px;">${route.properties?.on_street || 'Unknown Street'}</div>
-                ${route.properties?.from_street && route.properties?.to_street ?
-                  `<div style="font-size: 12px; color: #831843;">From ${route.properties.from_street} to ${route.properties.to_street}</div>` :
-                  ''}
-              </div>
-              <div style="font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic;">
-                ⚠️ No parking when 2+ inches of snow falls
-              </div>
-            </div>
-          `;
+            `;
 
-            snowRouteLayer.bindPopup(routePopup);
-            snowRouteLayer.addTo(mapInstanceRef.current);
+            polyline.bindPopup(routePopup);
+            polyline.addTo(mapInstanceRef.current);
             drawnCount++;
-            console.log(`✅ Successfully added route ${index} to map`);
+            console.log(`✅✅✅ Route ${index} DRAWN: ${route.properties?.on_street}`);
+
           } catch (error) {
-            console.error(`❌ ERROR adding route ${index} to map:`, error);
+            console.error(`❌ ERROR Route ${index}:`, error);
+            failedCount++;
           }
         });
 
-        console.log(`🎯 TOTAL SNOW ROUTES DRAWN: ${drawnCount} out of ${snowRoutes.length}`);
+        console.log(`
+🎯🎯🎯 SNOW ROUTES FINAL STATUS:
+✅ Successfully drawn: ${drawnCount}
+❌ Failed: ${failedCount}
+📊 Total routes: ${snowRoutes.length}
+        `);
 
         // Zoom to user location if available
         if (userLocation) {
@@ -268,7 +288,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           }, 500);
         }
       } else {
-        console.log('⚠️ No snow routes to draw:', { hasSnowRoutes: !!snowRoutes, length: snowRoutes?.length });
+        console.log('⚠️⚠️⚠️ NO SNOW ROUTES DATA:', { hasSnowRoutes: !!snowRoutes, length: snowRoutes?.length });
       }
 
       // Add alternative parking zones overlay (bright green with "Park Here Instead")
