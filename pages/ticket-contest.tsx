@@ -40,6 +40,8 @@ export default function TicketContest() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showInstructions, setShowInstructions] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoMode, setPhotoMode] = useState(false);
   const router = useRouter();
 
   const analyzeTicket = async () => {
@@ -125,6 +127,57 @@ Win Probability: ${(reason.win_probability * 100).toFixed(0)}%
     a.click();
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    setError('');
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+
+        // Analyze photo
+        const response = await fetch('/api/analyze-ticket-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64 })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to analyze photo');
+        }
+
+        // Auto-fill form
+        if (data.violation_type && data.violation_type !== 'Other') {
+          setViolationType(data.violation_type);
+        }
+        if (data.ticket_number) {
+          setTicketNumber(data.ticket_number);
+        }
+        if (data.ticket_date) {
+          setTicketDate(data.ticket_date);
+        }
+        if (data.violation_description) {
+          setSituationDescription(data.violation_description);
+        }
+
+        setPhotoMode(false);
+        alert('✅ Ticket analyzed! Review the auto-filled info below.');
+      };
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyze photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'easy': return '#10b981';
@@ -180,9 +233,46 @@ Win Probability: ${(reason.win_probability * 100).toFixed(0)}%
             <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '600', color: '#111827' }}>
               Contest Your Ticket in 3 Steps
             </h2>
-            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>
               Free AI-powered analysis + downloadable contest letter
             </p>
+
+            {/* Photo Upload Option */}
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#eff6ff',
+              border: '2px dashed #3b82f6',
+              borderRadius: '8px',
+              textAlign: 'center',
+              marginBottom: '24px'
+            }}>
+              <p style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#1e40af' }}>
+                📸 Quick Option: Upload Ticket Photo
+              </p>
+              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>
+                AI will auto-fill violation type, ticket number, and details
+              </p>
+              <label style={{
+                display: 'inline-block',
+                padding: '10px 24px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                borderRadius: '6px',
+                cursor: uploadingPhoto ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}>
+                {uploadingPhoto ? '🔄 Analyzing Photo...' : '📷 Upload Ticket Photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handlePhotoUpload}
+                  disabled={uploadingPhoto}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
