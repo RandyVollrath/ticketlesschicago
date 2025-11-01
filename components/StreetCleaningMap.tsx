@@ -35,6 +35,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const snowRouteLayersRef = useRef<any[]>([]);
 
   useEffect(() => {
     // Dynamically import Leaflet to avoid SSR issues
@@ -199,9 +200,23 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         geojsonLayer.addTo(mapInstanceRef.current);
       });
 
-      // ALWAYS add snow routes overlay - NEW APPROACH: Use simple polylines
-      if (snowRoutes && snowRoutes.length > 0) {
+      // Only add snow routes overlay when user enables it via checkbox
+      if (showSnowSafeMode && snowRoutes && snowRoutes.length > 0) {
         console.log('🌨️🌨️🌨️ DRAWING SNOW ROUTES - ATTEMPTING:', snowRoutes.length, 'routes');
+
+        // Clear any existing snow route layers
+        snowRouteLayersRef.current.forEach(layer => {
+          mapInstanceRef.current.removeLayer(layer);
+        });
+        snowRouteLayersRef.current = [];
+
+        // Function to calculate line weight based on zoom level
+        const getWeightForZoom = (zoom: number) => {
+          // Zoom 10-11: weight 1-2 (city view - thin)
+          // Zoom 13: weight 5 (neighborhood - medium)
+          // Zoom 15+: weight 8-10 (street level - thick)
+          return Math.max(1, Math.min(10, (zoom - 10) * 1.5));
+        };
 
         let drawnCount = 0;
         let failedCount = 0;
@@ -240,10 +255,14 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             // Convert [lng, lat] to [lat, lng] for Leaflet
             const latLngs = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
 
-            // Draw as simple polyline - MAXIMUM VISIBILITY
+            // Get initial weight based on current zoom
+            const currentZoom = mapInstanceRef.current.getZoom();
+            const initialWeight = getWeightForZoom(currentZoom);
+
+            // Draw as simple polyline with zoom-responsive weight
             const polyline = L.polyline(latLngs, {
               color: '#ff00ff',        // BRIGHT MAGENTA
-              weight: 10,              // EXTRA THICK - 10 pixels!
+              weight: initialWeight,   // Responsive to zoom level
               opacity: 1.0,            // FULLY OPAQUE
               zIndexOffset: 10000      // Make sure it's on top
             });
@@ -265,6 +284,10 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
             polyline.bindPopup(routePopup);
             polyline.addTo(mapInstanceRef.current);
+
+            // Store in ref for zoom updates
+            snowRouteLayersRef.current.push(polyline);
+
             drawnCount++;
             console.log(`✅✅✅ Route ${index} DRAWN: ${route.properties?.on_street}`);
 
@@ -281,6 +304,17 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 📊 Total routes: ${snowRoutes.length}
         `);
 
+        // Add zoom event listener to update line weights dynamically
+        mapInstanceRef.current.off('zoomend'); // Remove any existing listener
+        mapInstanceRef.current.on('zoomend', () => {
+          const newZoom = mapInstanceRef.current.getZoom();
+          const newWeight = getWeightForZoom(newZoom);
+
+          snowRouteLayersRef.current.forEach(layer => {
+            layer.setStyle({ weight: newWeight });
+          });
+        });
+
         // Zoom to user location if available
         if (userLocation) {
           setTimeout(() => {
@@ -288,7 +322,20 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           }, 500);
         }
       } else {
-        console.log('⚠️⚠️⚠️ NO SNOW ROUTES DATA:', { hasSnowRoutes: !!snowRoutes, length: snowRoutes?.length });
+        // Remove snow routes if showSnowSafeMode is disabled
+        snowRouteLayersRef.current.forEach(layer => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.removeLayer(layer);
+          }
+        });
+        snowRouteLayersRef.current = [];
+
+        // Remove zoom listener when not showing snow routes
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.off('zoomend');
+        }
+
+        console.log('⚠️ Snow routes not shown - checkbox not enabled');
       }
 
       // Add alternative parking zones overlay (bright green with "Park Here Instead")
