@@ -162,7 +162,8 @@ export default async function handler(
     const cityTimezoneMap: { [key: string]: { timezone: string; mailingCity: string; mailingState: string } } = {
       'chicago': { timezone: 'America/Chicago', mailingCity: 'Chicago', mailingState: 'IL' },
       'san-francisco': { timezone: 'America/Los_Angeles', mailingCity: 'San Francisco', mailingState: 'CA' },
-      'boston': { timezone: 'America/New_York', mailingCity: 'Boston', mailingState: 'MA' }
+      'boston': { timezone: 'America/New_York', mailingCity: 'Boston', mailingState: 'MA' },
+      'san-diego': { timezone: 'America/Los_Angeles', mailingCity: 'San Diego', mailingState: 'CA' }
     };
 
     const cityConfig = cityTimezoneMap[city || 'chicago'] || cityTimezoneMap['chicago'];
