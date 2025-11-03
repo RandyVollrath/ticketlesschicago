@@ -1,0 +1,42 @@
+Credit balance is too low
+
+  #  Node.js[3213817]: void node::ResetStdio() at ../src/node.cc:751
+  #  Assertion failed: !(err != 0) || (err == -1 && (*__errno_location ()) == 1)
+
+----- Native stack trace -----
+
+ 1: 0xcb2ef7 node::Assert(node::AssertionInfo const&) [claude]
+ 2: 0xc5f924  [claude]
+ 3: 0x7a72f5447a76  [/lib/x86_64-linux-gnu/libc.so.6]
+ 4: 0x7a72f5447bbe  [/lib/x86_64-linux-gnu/libc.so.6]
+ 5: 0xbbf62f node::DefaultProcessExitHandlerInternal(node::Environment*, node::ExitCode) [claude]
+ 6: 0xc1ef0f node::Environment::Exit(node::ExitCode) [claude]
+ 7: 0xf4e44f v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo) [claude]
+ 8: 0xf4ecbd  [claude]
+ 9: 0xf4f185 v8::internal::Builtin_HandleApiCall(int, unsigned long*, v8::internal::Isolate*) [claude]
+10: 0x1959df6  [claude]
+
+  #  Node.js[3213817]: void node::ResetStdio() at ../src/node.cc:751
+  #  Assertion failed: !(err != 0) || (err == -1 && (*__errno_location ()) == 1)
+
+----- Native stack trace -----
+
+ 1: 0xcb2ef7 node::Assert(node::AssertionInfo const&) [claude]
+ 2: 0xc5f924  [claude]
+ 3: 0xc5ff3d node::TrapWebAssemblyOrContinue(int, siginfo_t*, void*) [claude]
+ 4: 0x7a72f5445330  [/lib/x86_64-linux-gnu/libc.so.6]
+ 5: 0x1589870 v8::internal::tracing::TraceEventHelper::GetTracingController() [claude]
+ 6: 0x1060455 v8::internal::Isolate::CaptureDetailedStackTrace(int, v8::StackTrace::StackTraceOptions) [claude]
+ 7: 0xeeed70 v8::StackTrace::CurrentStackTrace(v8::Isolate*, int, v8::StackTrace::StackTraceOptions) [claude]
+ 8: 0xcb2e56 node::GetCurrentStackTrace(v8::Isolate*, int) [claude]
+ 9: 0xbffbbb node::DumpJavaScriptBacktrace(_IO_FILE*) [claude]
+10: 0xcb2f03 node::Assert(node::AssertionInfo const&) [claude]
+11: 0xc5f924  [claude]
+12: 0x7a72f5447a76  [/lib/x86_64-linux-gnu/libc.so.6]
+13: 0x7a72f5447bbe  [/lib/x86_64-linux-gnu/libc.so.6]
+14: 0xbbf62f node::DefaultProcessExitHandlerInternal(node::Environment*, node::ExitCode) [claude]
+15: 0xc1ef0f node::Environment::Exit(node::ExitCode) [claude]
+16: 0xf4e44f v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo) [claude]
+17: 0xf4ecbd  [claude]
+18: 0xf4f185 v8::internal::Builtin_HandleApiCall(int, unsigned long*, v8::internal::Isolate*) [claude]
+19: 0x1959df6  [claude]
