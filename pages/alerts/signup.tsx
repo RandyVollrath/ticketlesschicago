@@ -23,6 +23,7 @@ export default function AlertsSignup() {
     address: '',
     zip: '',
     city: 'chicago',  // Default to Chicago
+    smsConsent: true,  // Auto-checked - required for SMS alerts (TCPA compliance)
     marketingConsent: true  // Auto-checked - users can opt out
   });
 
@@ -640,6 +641,45 @@ export default function AlertsSignup() {
                 {message}
               </div>
             )}
+
+            {/* SMS Consent Checkbox (TCPA Compliance) */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              padding: '16px',
+              backgroundColor: '#eff6ff',
+              borderRadius: '8px',
+              border: '2px solid #3b82f6',
+              marginTop: '8px'
+            }}>
+              <input
+                type="checkbox"
+                name="smsConsent"
+                id="smsConsent"
+                checked={formData.smsConsent}
+                onChange={handleInputChange}
+                style={{
+                  marginTop: '2px',
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              />
+              <label
+                htmlFor="smsConsent"
+                style={{
+                  fontSize: '14px',
+                  color: '#1e40af',
+                  lineHeight: '1.5',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
+                <strong>Yes, send me SMS/text alerts!</strong> I consent to receive automated text messages from Autopilot America about street cleaning, towing, and parking alerts. Message & data rates may apply. Reply STOP to opt-out anytime.
+              </label>
+            </div>
 
             {/* Marketing Consent Checkbox */}
             <div style={{
