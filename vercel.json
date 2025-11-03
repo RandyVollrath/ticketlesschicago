@@ -42,15 +42,7 @@
     },
     {
       "path": "/api/street-cleaning/process",
-      "schedule": "0 13 * * *"
-    },
-    {
-      "path": "/api/street-cleaning/process",
-      "schedule": "0 21 * * *"
-    },
-    {
-      "path": "/api/street-cleaning/process",
-      "schedule": "0 1 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/monitor-snow",
