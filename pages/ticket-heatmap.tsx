@@ -188,14 +188,15 @@ export default function TicketHeatmap() {
           </div>
         </div>
 
-        {/* Conversion CTA */}
+        {/* Conversion CTAs */}
         <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
+          {/* Consumer CTA */}
           <div style={{
             backgroundColor: '#eff6ff',
             border: '2px solid #3b82f6',
             borderRadius: '12px',
             padding: '24px',
-            marginBottom: '30px',
+            marginBottom: '20px',
             textAlign: 'center'
           }}>
             <h2 style={{ margin: '0 0 12px 0', fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>
@@ -234,6 +235,38 @@ export default function TicketHeatmap() {
               }}
             >
               Try Free Alerts First
+            </button>
+          </div>
+
+          {/* Fleet Partner CTA */}
+          <div style={{
+            backgroundColor: '#f0fdf4',
+            border: '2px solid #86efac',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '30px',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: 'bold', color: '#166534' }}>
+              🚗 Fleet Operator? See how we can reduce your parking tickets by 75%
+            </h2>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#166534' }}>
+              API integration for car sharing, rental, and fleet management platforms
+            </p>
+            <button
+              onClick={() => router.push('/partners')}
+              style={{
+                backgroundColor: '#16a34a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 24px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Learn About Fleet Partnerships →
             </button>
           </div>
         </div>
