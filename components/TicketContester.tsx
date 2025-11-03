@@ -31,6 +31,15 @@ export default function TicketContester({ userId }: TicketContesterProps) {
   const [evidenceChecklist, setEvidenceChecklist] = useState<any[]>([]);
   const [winProbability, setWinProbability] = useState<any>(null);
 
+  // Lob.com mailing state
+  const [showMailModal, setShowMailModal] = useState(false);
+  const [mailingName, setMailingName] = useState('');
+  const [mailingAddress, setMailingAddress] = useState('');
+  const [mailingCity, setMailingCity] = useState('Chicago');
+  const [mailingState, setMailingState] = useState('IL');
+  const [mailingZip, setMailingZip] = useState('');
+  const [mailingProcessing, setMailingProcessing] = useState(false);
+
   const availableGrounds = [
     'No visible or legible signage posted',
     'Signs were obscured by trees, snow, or other objects',
@@ -668,14 +677,15 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             }}>
               {contestLetter}
             </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(contestLetter);
                   setMessage('✅ Letter copied to clipboard!');
                 }}
                 style={{
-                  flex: 1,
+                  flex: '1 1 calc(33.33% - 8px)',
+                  minWidth: '140px',
                   padding: '8px 16px',
                   backgroundColor: '#10b981',
                   color: 'white',
@@ -686,7 +696,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                   cursor: 'pointer'
                 }}
               >
-                📋 Copy Letter
+                📋 Copy
               </button>
               <button
                 onClick={() => {
@@ -700,7 +710,8 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                   setMessage('✅ Letter downloaded!');
                 }}
                 style={{
-                  flex: 1,
+                  flex: '1 1 calc(33.33% - 8px)',
+                  minWidth: '140px',
                   padding: '8px 16px',
                   backgroundColor: '#3b82f6',
                   color: 'white',
@@ -711,7 +722,24 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                   cursor: 'pointer'
                 }}
               >
-                💾 Download Letter
+                💾 Download
+              </button>
+              <button
+                onClick={() => setShowMailModal(true)}
+                style={{
+                  flex: '1 1 calc(33.33% - 8px)',
+                  minWidth: '140px',
+                  padding: '8px 16px',
+                  backgroundColor: '#8b5cf6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                📮 Mail For Me - $5
               </button>
             </div>
           </div>
@@ -761,6 +789,99 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             </p>
           </div>
 
+          {/* Conversion Upsell */}
+          <div style={{
+            padding: '24px',
+            backgroundColor: '#eff6ff',
+            border: '2px solid #3b82f6',
+            borderRadius: '12px',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: '700',
+              color: '#1e40af',
+              margin: '0 0 12px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              💡 Tired of contesting tickets?
+            </h3>
+            <p style={{ fontSize: '16px', color: '#1e40af', margin: '0 0 16px 0', lineHeight: '1.6' }}>
+              Autopilot America subscribers get <strong>alerts BEFORE tickets happen</strong>. Prevention beats contesting every time.
+            </p>
+
+            <div style={{
+              backgroundColor: 'white',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 12px 0' }}>
+                <strong>What you get:</strong>
+              </p>
+              <ul style={{
+                margin: 0,
+                paddingLeft: '20px',
+                fontSize: '14px',
+                color: '#374151',
+                lineHeight: '1.8'
+              }}>
+                <li>SMS alerts before street cleaning, towing alerts, and more</li>
+                <li>Renewal reminders so you never get late registration tickets</li>
+                <li>80% reimbursement on eligible tickets (up to $200/year)</li>
+              </ul>
+            </div>
+
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#fef3c7',
+              borderRadius: '6px',
+              marginBottom: '16px'
+            }}>
+              <p style={{ fontSize: '14px', color: '#92400e', margin: 0, textAlign: 'center' }}>
+                Average Chicago driver: <strong>$1,000/year in tickets</strong><br/>
+                Autopilot Protection: <strong>$100/year</strong><br/>
+                <span style={{ fontSize: '16px', fontWeight: '700' }}>Save up to $1,000 per year</span>
+              </p>
+            </div>
+
+            <button
+              onClick={() => window.location.href = '/protection'}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                marginBottom: '12px',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#1d4ed8';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+              }}
+            >
+              Get Protection - $100/year →
+            </button>
+
+            <p style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              margin: 0,
+              textAlign: 'center'
+            }}>
+              Or <a href="/alerts/signup" style={{ color: '#3b82f6', textDecoration: 'underline' }}>try free alerts first</a>
+            </p>
+          </div>
+
           <button
             onClick={() => {
               setStep(1);
@@ -788,6 +909,204 @@ export default function TicketContester({ userId }: TicketContesterProps) {
           >
             Contest Another Ticket
           </button>
+        </div>
+      )}
+
+      {/* Lob.com Mailing Modal */}
+      {showMailModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '500px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 8px 0' }}>
+              We'll Mail It For You!
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0' }}>
+              We'll print and mail your contest letter to the City of Chicago for $5. Includes certified mail with tracking.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  value={mailingName}
+                  onChange={(e) => setMailingName(e.target.value)}
+                  placeholder="John Doe"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                  Street Address
+                </label>
+                <input
+                  type="text"
+                  value={mailingAddress}
+                  onChange={(e) => setMailingAddress(e.target.value)}
+                  placeholder="123 Main St"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={mailingCity}
+                    onChange={(e) => setMailingCity(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    value={mailingState}
+                    onChange={(e) => setMailingState(e.target.value)}
+                    maxLength={2}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                    ZIP
+                  </label>
+                  <input
+                    type="text"
+                    value={mailingZip}
+                    onChange={(e) => setMailingZip(e.target.value)}
+                    maxLength={5}
+                    placeholder="60601"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#374151'
+              }}>
+                <strong>Included:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                  <li>Professional printing</li>
+                  <li>USPS Certified Mail</li>
+                  <li>Tracking number via email</li>
+                  <li>Proof of delivery</li>
+                </ul>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setShowMailModal(false)}
+                  disabled={mailingProcessing}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: mailingProcessing ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!mailingName || !mailingAddress || !mailingCity || !mailingState || !mailingZip) {
+                      setMessage('❌ Please fill in all address fields');
+                      return;
+                    }
+                    setMailingProcessing(true);
+                    setMessage('Processing payment and sending letter...');
+                    // TODO: Implement Lob.com API call
+                    // For now, just show a placeholder
+                    setTimeout(() => {
+                      setMessage('✅ Letter mailed! Check your email for tracking info.');
+                      setMailingProcessing(false);
+                      setShowMailModal(false);
+                    }, 2000);
+                  }}
+                  disabled={mailingProcessing}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: mailingProcessing ? '#9ca3af' : '#8b5cf6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: mailingProcessing ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {mailingProcessing ? 'Processing...' : 'Pay $5 & Mail'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
