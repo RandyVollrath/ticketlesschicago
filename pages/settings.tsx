@@ -106,6 +106,7 @@ interface UserProfile {
   mailing_zip?: string | null
   // Core Autopilot America fields (from user_profiles table)
   license_plate: string | null
+  license_state: string | null
   home_address_full: string | null
   home_address_ward: string | null
   home_address_section: string | null
@@ -1171,46 +1172,123 @@ export default function Dashboard() {
             </h2>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>
-                  License Plate <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editedProfile.license_plate !== undefined ? editedProfile.license_plate : (profile?.license_plate || '')}
-                  onChange={(e) => handleInputChange('license_plate', e.target.value.toUpperCase())}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{
+                    display: 'block',
                     fontSize: '14px',
-                    textTransform: 'uppercase'
-                  }}
-                  placeholder="ABC1234"
-                />
-                {(() => {
-                  const currentLicensePlate = editedProfile.license_plate !== undefined ? editedProfile.license_plate : profile.license_plate;
-                  if (!currentLicensePlate || currentLicensePlate.trim() === '') {
-                    return (
-                      <p style={{
-                        marginTop: '8px',
-                        fontSize: '13px',
-                        color: '#dc2626',
-                        fontWeight: '500'
-                      }}>
-                        ⚠️ Required field
-                      </p>
-                    );
-                  }
-                  return null;
-                })()}
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    License Plate <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editedProfile.license_plate !== undefined ? editedProfile.license_plate : (profile?.license_plate || '')}
+                    onChange={(e) => handleInputChange('license_plate', e.target.value.toUpperCase())}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      textTransform: 'uppercase'
+                    }}
+                    placeholder="ABC1234"
+                  />
+                  {(() => {
+                    const currentLicensePlate = editedProfile.license_plate !== undefined ? editedProfile.license_plate : profile.license_plate;
+                    if (!currentLicensePlate || currentLicensePlate.trim() === '') {
+                      return (
+                        <p style={{
+                          marginTop: '8px',
+                          fontSize: '13px',
+                          color: '#dc2626',
+                          fontWeight: '500'
+                        }}>
+                          ⚠️ Required field
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    State <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={editedProfile.license_state !== undefined ? editedProfile.license_state : (profile?.license_state || 'IL')}
+                    onChange={(e) => handleInputChange('license_state', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    <option value="IL">Illinois</option>
+                    <option value="IN">Indiana</option>
+                    <option value="WI">Wisconsin</option>
+                    <option value="IA">Iowa</option>
+                    <option value="MI">Michigan</option>
+                    <option value="MO">Missouri</option>
+                    <option value="KY">Kentucky</option>
+                    <option value="OH">Ohio</option>
+                    <option value="AL">Alabama</option>
+                    <option value="AK">Alaska</option>
+                    <option value="AZ">Arizona</option>
+                    <option value="AR">Arkansas</option>
+                    <option value="CA">California</option>
+                    <option value="CO">Colorado</option>
+                    <option value="CT">Connecticut</option>
+                    <option value="DE">Delaware</option>
+                    <option value="FL">Florida</option>
+                    <option value="GA">Georgia</option>
+                    <option value="HI">Hawaii</option>
+                    <option value="ID">Idaho</option>
+                    <option value="KS">Kansas</option>
+                    <option value="LA">Louisiana</option>
+                    <option value="ME">Maine</option>
+                    <option value="MD">Maryland</option>
+                    <option value="MA">Massachusetts</option>
+                    <option value="MN">Minnesota</option>
+                    <option value="MS">Mississippi</option>
+                    <option value="MT">Montana</option>
+                    <option value="NE">Nebraska</option>
+                    <option value="NV">Nevada</option>
+                    <option value="NH">New Hampshire</option>
+                    <option value="NJ">New Jersey</option>
+                    <option value="NM">New Mexico</option>
+                    <option value="NY">New York</option>
+                    <option value="NC">North Carolina</option>
+                    <option value="ND">North Dakota</option>
+                    <option value="OK">Oklahoma</option>
+                    <option value="OR">Oregon</option>
+                    <option value="PA">Pennsylvania</option>
+                    <option value="RI">Rhode Island</option>
+                    <option value="SC">South Carolina</option>
+                    <option value="SD">South Dakota</option>
+                    <option value="TN">Tennessee</option>
+                    <option value="TX">Texas</option>
+                    <option value="UT">Utah</option>
+                    <option value="VT">Vermont</option>
+                    <option value="VA">Virginia</option>
+                    <option value="WA">Washington</option>
+                    <option value="WV">West Virginia</option>
+                    <option value="WY">Wyoming</option>
+                  </select>
+                </div>
               </div>
 
               <div>
