@@ -59,6 +59,7 @@ export default async function handler(
     model,
     citySticker,
     token,
+    smsConsent,
     marketingConsent
   } = req.body;
 
@@ -186,7 +187,7 @@ export default async function handler(
       mailing_state: cityConfig.mailingState,
       mailing_zip: zip,
       notify_email: true,
-      notify_sms: true,
+      notify_sms: smsConsent === true, // TCPA compliance - only enable if user consented
       is_paid: true, // Free users are considered "paid" for alerts
       has_protection: false,
       marketing_consent: marketingConsent === true, // CAN-SPAM compliance
