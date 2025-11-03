@@ -62,7 +62,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
   async function handleUploadAndExtract() {
     if (!ticketPhoto) {
-      setMessage('Please select a ticket photo');
+      setMessage('❌ Please select a ticket photo');
       return;
     }
 
@@ -71,11 +71,16 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
     try {
       const reader = new FileReader();
+      reader.onerror = () => {
+        setMessage('❌ Failed to read the image file. Please try again.');
+        setLoading(false);
+      };
+
       reader.onloadend = async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            setMessage('Please log in to continue');
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !session) {
+            setMessage('❌ Your session has expired. Please log in again.');
             setLoading(false);
             return;
           }
@@ -95,16 +100,28 @@ export default function TicketContester({ userId }: TicketContesterProps) {
           const result = await response.json();
 
           if (!response.ok) {
-            throw new Error(result.error || 'Failed to upload ticket');
+            if (response.status === 401) {
+              throw new Error('Your session has expired. Please refresh the page and log in again.');
+            } else if (response.status === 413) {
+              throw new Error('Image file is too large. Please use a smaller image (max 10MB).');
+            } else {
+              throw new Error(result.error || 'Failed to upload ticket. Please try again.');
+            }
           }
 
           setContestId(result.contest.id);
-          setExtractedData(result.extractedData);
+          setExtractedData(result.extractedData || {});
           setMessage('✅ Ticket uploaded and analyzed successfully!');
+
+          // If extraction failed but upload succeeded, still proceed
+          if (!result.extractedData || Object.keys(result.extractedData).length === 0) {
+            setMessage('✅ Ticket uploaded! (Note: Could not auto-extract data, please enter manually)');
+          }
+
           setStep(2);
         } catch (error: any) {
           console.error('Upload error:', error);
-          setMessage(`❌ ${error.message}`);
+          setMessage(`❌ ${error.message || 'Failed to upload ticket. Please check your connection and try again.'}`);
         } finally {
           setLoading(false);
         }
@@ -112,7 +129,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
       reader.readAsDataURL(ticketPhoto);
     } catch (error: any) {
       console.error('Upload error:', error);
-      setMessage(`❌ ${error.message}`);
+      setMessage(`❌ ${error.message || 'An unexpected error occurred. Please try again.'}`);
       setLoading(false);
     }
   }
@@ -158,7 +175,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
   async function handleGenerateLetter() {
     if (contestGrounds.length === 0) {
-      setMessage('Please select at least one ground for contesting');
+      setMessage('❌ Please select at least one ground for contesting');
       return;
     }
 
@@ -166,9 +183,9 @@ export default function TicketContester({ userId }: TicketContesterProps) {
     setMessage('Generating contest letter...');
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setMessage('Please log in to continue');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        setMessage('❌ Your session has expired. Please log in again.');
         setLoading(false);
         return;
       }
@@ -189,16 +206,27 @@ export default function TicketContester({ userId }: TicketContesterProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to generate letter');
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please refresh the page and log in again.');
+        } else if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        } else {
+          throw new Error(result.error || 'Failed to generate letter. Please try again.');
+        }
       }
 
-      setContestLetter(result.contestLetter);
-      setEvidenceChecklist(result.evidenceChecklist);
+      setContestLetter(result.contestLetter || '');
+      setEvidenceChecklist(result.evidenceChecklist || []);
+
+      if (!result.contestLetter) {
+        throw new Error('Letter generation failed. Please try again.');
+      }
+
       setMessage('✅ Contest letter generated successfully!');
       setStep(4);
     } catch (error: any) {
       console.error('Generate letter error:', error);
-      setMessage(`❌ ${error.message}`);
+      setMessage(`❌ ${error.message || 'Failed to generate letter. Please check your connection and try again.'}`);
     } finally {
       setLoading(false);
     }
@@ -301,40 +329,180 @@ export default function TicketContester({ userId }: TicketContesterProps) {
       {step === 2 && extractedData && (
         <div>
           <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 12px 0' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
               Extracted Ticket Information
             </h3>
-            <div style={{ display: 'grid', gap: '8px', fontSize: '14px' }}>
-              <div><strong>Ticket Number:</strong> {extractedData.ticketNumber || 'Not found'}</div>
-              <div><strong>Violation:</strong> {extractedData.violationDescription || 'Not found'}</div>
-              <div><strong>Violation Code:</strong> {extractedData.violationCode || 'Not found'}</div>
-              <div><strong>Date:</strong> {extractedData.ticketDate || 'Not found'}</div>
-              <div><strong>Amount:</strong> ${extractedData.ticketAmount || 'Not found'}</div>
-              <div><strong>Location:</strong> {extractedData.location || 'Not found'}</div>
-              <div><strong>License Plate:</strong> {extractedData.licensePlate || 'Not found'}</div>
+            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
+              Review and edit any fields that were incorrectly detected
+            </p>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                  Ticket Number
+                </label>
+                <input
+                  type="text"
+                  value={extractedData.ticketNumber || ''}
+                  onChange={(e) => setExtractedData({ ...extractedData, ticketNumber: e.target.value })}
+                  placeholder="Enter ticket number"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                  Violation Description
+                </label>
+                <input
+                  type="text"
+                  value={extractedData.violationDescription || ''}
+                  onChange={(e) => setExtractedData({ ...extractedData, violationDescription: e.target.value })}
+                  placeholder="Enter violation description"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                    Violation Code
+                  </label>
+                  <input
+                    type="text"
+                    value={extractedData.violationCode || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, violationCode: e.target.value })}
+                    placeholder="Code"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                    Ticket Date
+                  </label>
+                  <input
+                    type="date"
+                    value={extractedData.ticketDate || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, ticketDate: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                    Ticket Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={extractedData.ticketAmount || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, ticketAmount: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
+                    step="0.01"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                    License Plate
+                  </label>
+                  <input
+                    type="text"
+                    value={extractedData.licensePlate || ''}
+                    onChange={(e) => setExtractedData({ ...extractedData, licensePlate: e.target.value })}
+                    placeholder="ABC1234"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={extractedData.location || ''}
+                  onChange={(e) => setExtractedData({ ...extractedData, location: e.target.value })}
+                  placeholder="Enter location"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
             </div>
           </div>
 
-          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
-            Please review the extracted information above. You can proceed to select your grounds for contesting.
-          </p>
-
-          <button
-            onClick={() => setStep(3)}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              width: '100%'
-            }}
-          >
-            Continue to Contest Grounds
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setStep(1)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                flex: '0 0 auto'
+              }}
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => setStep(3)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                flex: 1
+              }}
+            >
+              Continue to Contest Grounds
+            </button>
+          </div>
         </div>
       )}
 
@@ -440,23 +608,42 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             />
           </div>
 
-          <button
-            onClick={handleGenerateLetter}
-            disabled={loading || contestGrounds.length === 0}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: (loading || contestGrounds.length === 0) ? '#9ca3af' : '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: (loading || contestGrounds.length === 0) ? 'not-allowed' : 'pointer',
-              width: '100%'
-            }}
-          >
-            {loading ? 'Generating...' : 'Generate Contest Letter'}
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setStep(2)}
+              disabled={loading}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: loading ? '#9ca3af' : '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                flex: '0 0 auto'
+              }}
+            >
+              ← Back
+            </button>
+            <button
+              onClick={handleGenerateLetter}
+              disabled={loading || contestGrounds.length === 0}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: (loading || contestGrounds.length === 0) ? '#9ca3af' : '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: (loading || contestGrounds.length === 0) ? 'not-allowed' : 'pointer',
+                flex: 1
+              }}
+            >
+              {loading ? 'Generating...' : 'Generate Contest Letter'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -481,25 +668,52 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             }}>
               {contestLetter}
             </div>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(contestLetter);
-                setMessage('✅ Letter copied to clipboard!');
-              }}
-              style={{
-                marginTop: '12px',
-                padding: '8px 16px',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}
-            >
-              📋 Copy Letter
-            </button>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(contestLetter);
+                  setMessage('✅ Letter copied to clipboard!');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 16px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                📋 Copy Letter
+              </button>
+              <button
+                onClick={() => {
+                  const blob = new Blob([contestLetter], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `ticket-contest-${extractedData?.ticketNumber || Date.now()}.txt`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  setMessage('✅ Letter downloaded!');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 16px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                💾 Download Letter
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: '24px' }}>
