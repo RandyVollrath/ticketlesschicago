@@ -1,17 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
-import twilio from 'twilio';
+import { sendClickSendSMS } from '../../../lib/sms-service';
 
 // Checks if any user's car was towed recently
 // Sends immediate SMS/email alerts
 // Run every hour via vercel.json
 
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
-const TWILIO_PHONE = process.env.TWILIO_PHONE_NUMBER;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 export default async function handler(
@@ -107,15 +101,15 @@ Call immediately to retrieve your vehicle. Fees increase daily.
 - Autopilot America`;
 
       // Send SMS if enabled
-      if (user.notify_sms && user.phone_number && TWILIO_PHONE) {
+      if (user.notify_sms && user.phone_number) {
         try {
-          await twilioClient.messages.create({
-            body: message,
-            to: user.phone_number,
-            from: TWILIO_PHONE
-          });
-          console.log(`✓ SMS sent to ${user.phone_number}`);
-          notificationsSent++;
+          const result = await sendClickSendSMS(user.phone_number, message);
+          if (result.success) {
+            console.log(`✓ SMS sent to ${user.phone_number}`);
+            notificationsSent++;
+          } else {
+            console.error(`Error sending SMS to ${user.phone_number}:`, result.error);
+          }
         } catch (smsError) {
           console.error(`Error sending SMS to ${user.phone_number}:`, smsError);
         }
