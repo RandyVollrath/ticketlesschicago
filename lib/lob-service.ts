@@ -11,8 +11,18 @@ interface MailingAddress {
   zip: string;
 }
 
+// Chicago Department of Finance - Parking Ticket Contest Address
+export const CHICAGO_PARKING_CONTEST_ADDRESS: MailingAddress = {
+  name: 'City of Chicago - Department of Finance',
+  address: 'PO Box 88298', // TODO: User will provide correct address
+  city: 'Chicago',
+  state: 'IL',
+  zip: '60680'
+};
+
 interface SendLetterParams {
-  to: MailingAddress;
+  from: MailingAddress; // User's address (sender)
+  to: MailingAddress; // City department address (recipient)
   letterContent: string; // HTML content of the letter
   description?: string;
   metadata?: Record<string, string>;
@@ -27,9 +37,11 @@ interface LobMailResponse {
 
 /**
  * Send a letter via Lob.com
+ * from = User's address (appears as sender)
+ * to = City department (recipient)
  */
 export async function sendLetter(params: SendLetterParams): Promise<LobMailResponse> {
-  const { to, letterContent, description, metadata } = params;
+  const { from, to, letterContent, description, metadata } = params;
 
   if (!process.env.LOB_API_KEY) {
     throw new Error('LOB_API_KEY not configured');
@@ -57,11 +69,11 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
           address_country: 'US'
         },
         from: {
-          name: 'Autopilot America',
-          address_line1: '2434 N Southport Ave Unit 1R',
-          address_city: 'Chicago',
-          address_state: 'IL',
-          address_zip: '60614',
+          name: from.name,
+          address_line1: from.address,
+          address_city: from.city,
+          address_state: from.state,
+          address_zip: from.zip,
           address_country: 'US'
         },
         file: letterContent, // HTML string
