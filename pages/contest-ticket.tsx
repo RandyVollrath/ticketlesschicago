@@ -151,14 +151,27 @@ export default function ContestTicket() {
         padding: '120px 16px 60px 16px'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h1 style={{
-            fontSize: '38px',
-            fontWeight: 'bold',
-            color: '#111827',
-            margin: '0 0 12px 0'
-          }}>
-            Contest Your Ticket
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+            <h1 style={{
+              fontSize: '38px',
+              fontWeight: 'bold',
+              color: '#111827',
+              margin: 0
+            }}>
+              Contest Your Ticket
+            </h1>
+            <span style={{
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '600',
+              letterSpacing: '0.5px'
+            }}>
+              BETA
+            </span>
+          </div>
           <p style={{
             fontSize: '18px',
             color: '#6b7280',
