@@ -171,7 +171,7 @@ async function updateEvidenceQuality(contestId: string) {
   try {
     const { data: contest } = await supabase
       .from('ticket_contests')
-      .select('evidence_photos, supporting_documents, evidence_checklist, witness_statements')
+      .select('evidence_photos, supporting_documents, evidence_checklist, written_statement')
       .eq('id', contestId)
       .single();
 
@@ -199,7 +199,7 @@ async function updateEvidenceQuality(contestId: string) {
       if (itemName.includes('photo') || itemName.includes('picture')) {
         hasEvidence = evidencePhotos.length > 0;
       } else if (itemName.includes('witness')) {
-        hasEvidence = !!contest.witness_statements;
+        hasEvidence = !!contest.written_statement;
       } else if (itemName.includes('permit') || itemName.includes('proof')) {
         hasEvidence = supportingDocs.some(doc => doc.type === 'permit' || doc.type === 'receipt');
       } else if (itemName.includes('ticket')) {
