@@ -118,6 +118,56 @@ export default function TicketHeatmap() {
           </div>
         </div>
 
+        {/* Conversion CTA */}
+        <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '2px solid #3b82f6',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '30px',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>
+              💰 Chicago Paid $276M in Parking Tickets Last Year
+            </h2>
+            <p style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af' }}>
+              Average driver loses $1,000/year to preventable tickets. Don't be a statistic.
+            </p>
+            <button
+              onClick={() => router.push('/protection')}
+              style={{
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 32px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                marginRight: '12px'
+              }}
+            >
+              Get Protection - $100/year
+            </button>
+            <button
+              onClick={() => router.push('/alerts/signup')}
+              style={{
+                backgroundColor: 'white',
+                color: '#2563eb',
+                border: '2px solid #2563eb',
+                borderRadius: '8px',
+                padding: '12px 32px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Try Free Alerts First
+            </button>
+          </div>
+        </div>
+
         {/* Stats Summary */}
         <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
           <div style={{
