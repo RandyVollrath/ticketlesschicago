@@ -86,6 +86,12 @@ export default function AlertsSignup() {
   };
 
   const handleGoogleSignup = async () => {
+    // Validate SMS consent (required for signup)
+    if (!formData.smsConsent) {
+      setMessage('⚠️ SMS alerts are required to use Autopilot America. Please check the box to receive text alerts.');
+      return;
+    }
+
     // Validate required fields first
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.licensePlate || !formData.address || !formData.zip) {
       setMessage('⚠️ Please fill out ALL required fields (including first & last name) before continuing with Google');
@@ -151,6 +157,12 @@ export default function AlertsSignup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate SMS consent (required for signup)
+    if (!formData.smsConsent) {
+      setMessage('⚠️ SMS alerts are required to use Autopilot America. Please check the box to receive text alerts.');
+      return;
+    }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -642,7 +654,7 @@ export default function AlertsSignup() {
               </div>
             )}
 
-            {/* SMS Consent Checkbox (TCPA Compliance) */}
+            {/* SMS Consent - REQUIRED (TCPA Compliance) */}
             <div style={{
               display: 'flex',
               alignItems: 'flex-start',
@@ -659,6 +671,7 @@ export default function AlertsSignup() {
                 id="smsConsent"
                 checked={formData.smsConsent}
                 onChange={handleInputChange}
+                required
                 style={{
                   marginTop: '2px',
                   width: '18px',
@@ -677,7 +690,7 @@ export default function AlertsSignup() {
                   userSelect: 'none'
                 }}
               >
-                <strong>Yes, send me SMS/text alerts!</strong> I consent to receive automated text messages from Autopilot America about street cleaning, towing, and parking alerts. Message & data rates may apply. Reply STOP to opt-out anytime.
+                <strong>Yes, send me SMS/text alerts! <span style={{ color: '#dc2626' }}>*</span></strong> I consent to receive automated text messages from Autopilot America about street cleaning, towing, registration alerts, and parking reminders. Message & data rates may apply. Reply STOP to opt-out anytime.
               </label>
             </div>
 
