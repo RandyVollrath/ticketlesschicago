@@ -15,8 +15,7 @@ export default function Home() {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session && !error) {
           setUser(session.user);
-          // Redirect logged-in users to settings page
-          router.push('/settings');
+          // Don't auto-redirect - let users access homepage even when logged in
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -30,8 +29,7 @@ export default function Home() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
         setUser(session.user);
-        // Redirect to settings on sign in
-        router.push('/settings');
+        // Don't auto-redirect on sign in - users might want to stay on homepage
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
       }
