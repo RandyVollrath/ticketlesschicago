@@ -7,6 +7,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 const MAIL_SERVICE_COST = 500; // $5.00 in cents
+// Note: Stripe Price ID for mail service: price_1SPELQPSdzV8LIExv2ocaI0A
+// (Currently using PaymentIntent directly for more flexible one-time payments)
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
