@@ -34,11 +34,11 @@
   "crons": [
     {
       "path": "/api/notifications/process",
-      "schedule": "0 14 * * *"
+      "schedule": "0 13 * * *"
     },
     {
       "path": "/api/admin/notify-renewals",
-      "schedule": "0 9 * * *"
+      "schedule": "0 13 * * *"
     },
     {
       "path": "/api/street-cleaning/process",
