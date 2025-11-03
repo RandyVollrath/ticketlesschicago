@@ -371,7 +371,7 @@ export default function Home() {
             fontWeight: '600',
             margin: '0 0 48px 0'
           }}>
-            "Thanks! Just moved my car because of your text." — Real user feedback we get daily
+            "Thanks! Just moved my car because of your text." — Real user feedback we get regularly
           </p>
 
           {/* Mobile version - bullet list */}
