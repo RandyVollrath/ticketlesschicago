@@ -248,7 +248,7 @@ export default function TicketHeatmap() {
             textAlign: 'center'
           }}>
             <h2 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: 'bold', color: '#166534' }}>
-              🚗 Fleet Operator? See how we can reduce your parking tickets by 75%
+              🚗 Fleet Operator? Prevent tickets with location-based alerts
             </h2>
             <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#166534' }}>
               API integration for car sharing, rental, and fleet management platforms

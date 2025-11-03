@@ -5,8 +5,6 @@ import Footer from '../components/Footer';
 
 export default function Partners() {
   const router = useRouter();
-  const [fleetSize, setFleetSize] = useState(100);
-  const [avgTicketsPerCar, setAvgTicketsPerCar] = useState(2.5);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,14 +13,6 @@ export default function Partners() {
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
-
-  const avgTicketCost = 65; // Average Chicago parking ticket
-  const preventionRate = 0.75; // 75% of tickets preventable with alerts
-
-  const annualTicketCost = fleetSize * avgTicketsPerCar * avgTicketCost;
-  const preventableCost = annualTicketCost * preventionRate;
-  const ourCost = fleetSize * 50; // $50/vehicle/year
-  const netSavings = preventableCost - ourCost;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +111,7 @@ export default function Partners() {
             lineHeight: '1.1',
             letterSpacing: '-2px'
           }}>
-            Reduce Fleet Parking Tickets by 75%
+            Prevent Fleet Parking Tickets
           </h1>
           <p style={{
             fontSize: '20px',
@@ -223,9 +213,9 @@ export default function Partners() {
         </div>
       </div>
 
-      {/* ROI Calculator */}
+      {/* What We Offer */}
       <div style={{ padding: '80px 24px', backgroundColor: '#f8f9fa' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <h2 style={{
             fontSize: '42px',
             fontWeight: '800',
@@ -234,95 +224,87 @@ export default function Partners() {
             marginBottom: '16px',
             margin: '0 0 16px 0'
           }}>
-            Calculate Your Savings
+            Prevention, Not Forensics
           </h2>
           <p style={{
-            fontSize: '16px',
+            fontSize: '18px',
             color: '#666',
             textAlign: 'center',
             marginBottom: '48px',
-            margin: '0 0 48px 0'
+            margin: '0 0 48px 0',
+            maxWidth: '700px',
+            marginLeft: 'auto',
+            marginRight: 'auto'
           }}>
-            See how much your fleet could save with automated parking alerts
+            We can't audit your past tickets, but we can prevent future ones with real-time location-based alerts.
           </p>
 
           <div style={{
-            backgroundColor: 'white',
-            padding: '40px',
-            borderRadius: '16px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '24px'
           }}>
-            <div style={{ marginBottom: '32px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
-                Fleet Size (number of vehicles)
-              </label>
-              <input
-                type="range"
-                min="10"
-                max="1000"
-                value={fleetSize}
-                onChange={(e) => setFleetSize(parseInt(e.target.value))}
-                style={{ width: '100%', marginBottom: '8px' }}
-              />
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#0052cc' }}>{fleetSize} vehicles</div>
-            </div>
-
-            <div style={{ marginBottom: '32px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
-                Average Tickets per Vehicle per Year
-              </label>
-              <input
-                type="range"
-                min="0.5"
-                max="10"
-                step="0.5"
-                value={avgTicketsPerCar}
-                onChange={(e) => setAvgTicketsPerCar(parseFloat(e.target.value))}
-                style={{ width: '100%', marginBottom: '8px' }}
-              />
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#0052cc' }}>{avgTicketsPerCar} tickets/vehicle/year</div>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '32px',
+              borderRadius: '16px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#000', margin: '0 0 12px 0' }}>
+                Street Cleaning Alerts
+              </h3>
+              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6', margin: 0 }}>
+                80% of preventable tickets. Alert customers before sweeping starts based on exact GPS location.
+              </p>
             </div>
 
             <div style={{
-              borderTop: '2px solid #e5e7eb',
-              paddingTop: '32px',
-              marginTop: '32px'
+              backgroundColor: 'white',
+              padding: '32px',
+              borderRadius: '16px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
-              <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '16px', color: '#666' }}>Annual ticket costs:</span>
-                <span style={{ fontSize: '20px', fontWeight: '600', color: '#dc2626' }}>
-                  ${annualTicketCost.toLocaleString()}
-                </span>
-              </div>
-              <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '16px', color: '#666' }}>Preventable (75%):</span>
-                <span style={{ fontSize: '20px', fontWeight: '600', color: '#ea580c' }}>
-                  ${preventableCost.toLocaleString()}
-                </span>
-              </div>
-              <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '16px', color: '#666' }}>Autopilot cost:</span>
-                <span style={{ fontSize: '20px', fontWeight: '600', color: '#666' }}>
-                  ${ourCost.toLocaleString()}/year
-                </span>
-              </div>
-              <div style={{
-                backgroundColor: '#f0fdf4',
-                padding: '24px',
-                borderRadius: '12px',
-                marginTop: '24px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '20px', fontWeight: '700', color: '#166534' }}>Net Annual Savings:</span>
-                  <span style={{ fontSize: '32px', fontWeight: '800', color: '#16a34a' }}>
-                    ${netSavings.toLocaleString()}
-                  </span>
-                </div>
-                <p style={{ fontSize: '14px', color: '#166534', margin: '8px 0 0 0' }}>
-                  ROI: {Math.round((netSavings / ourCost) * 100)}%
-                </p>
-              </div>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>❄️</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#000', margin: '0 0 12px 0' }}>
+                Snow Ban Warnings
+              </h3>
+              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6', margin: 0 }}>
+                Winter parking bans result in $60-$150 tickets plus potential towing. We monitor and alert proactively.
+              </p>
             </div>
+
+            <div style={{
+              backgroundColor: 'white',
+              padding: '32px',
+              borderRadius: '16px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🅿️</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#000', margin: '0 0 12px 0' }}>
+                Permit Zone Checks
+              </h3>
+              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6', margin: 0 }}>
+                Instant check if location requires residential permit. Helps customers avoid $75+ tickets.
+              </p>
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: '48px',
+            backgroundColor: '#eff6ff',
+            padding: '32px',
+            borderRadius: '16px',
+            border: '2px solid #3b82f6',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#1e40af', margin: '0 0 12px 0' }}>
+              Real Impact
+            </h3>
+            <p style={{ fontSize: '16px', color: '#1e40af', lineHeight: '1.6', margin: 0 }}>
+              <strong>Street cleaning tickets:</strong> $60 each, issued 80K+ times/year in high-traffic neighborhoods.<br/>
+              Prevent just 1 ticket per vehicle per year → $60/vehicle savings on $4-8/month service.
+            </p>
           </div>
         </div>
       </div>
