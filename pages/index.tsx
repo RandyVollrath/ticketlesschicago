@@ -234,6 +234,14 @@ export default function Home() {
             Check Street
           </a>
           <a
+            href="/contest-ticket"
+            onClick={(e) => { e.preventDefault(); router.push('/contest-ticket'); }}
+            className="nav-link"
+            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
+            Contest Ticket
+          </a>
+          <a
             href="/alerts/signup"
             onClick={(e) => { e.preventDefault(); router.push('/alerts/signup'); }}
             className="free-alerts-link nav-link"
@@ -330,31 +338,42 @@ export default function Home() {
             lineHeight: '1.1',
             letterSpacing: '-2px'
           }}>
-            Automating Fairness
+            Avoid $1,000/Year in Fees
           </h1>
 
           {/* Tagline */}
           <p style={{
             fontSize: '28px',
             color: '#1a1a1a',
-            marginBottom: '32px',
+            marginBottom: '24px',
             lineHeight: '1.3',
             fontWeight: '500',
-            margin: '0 0 32px 0'
+            margin: '0 0 24px 0'
           }}>
-            Never miss another Chicago parking deadline
+            Get SMS alerts before tickets happen
           </p>
 
           {/* Desktop version - clean paragraph */}
           <p className="hero-subtitle-desktop" style={{
             fontSize: '20px',
             color: '#666',
-            marginBottom: '48px',
+            marginBottom: '16px',
             lineHeight: '1.5',
             fontWeight: '400',
+            margin: '0 0 16px 0'
+          }}>
+            Join 155+ Chicagoans getting free alerts for street cleaning, snow removal, towing, and renewals.
+          </p>
+
+          <p className="hero-subtitle-desktop" style={{
+            fontSize: '18px',
+            color: '#16a34a',
+            marginBottom: '48px',
+            lineHeight: '1.5',
+            fontWeight: '600',
             margin: '0 0 48px 0'
           }}>
-            Free alerts for street cleaning, snow removal, city stickers, license plates, and emissions testing.
+            "Thanks! Just moved my car because of your text." — Real user feedback we get daily
           </p>
 
           {/* Mobile version - bullet list */}
@@ -520,7 +539,7 @@ export default function Home() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                Comprehensive renewal reminders and ticket protection. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
+                Never miss a renewal deadline. Get comprehensive reminders for city stickers, license plates, and emissions. Plus 80% reimbursement on eligible tickets up to $200/year.
               </p>
             </div>
 
@@ -934,7 +953,7 @@ export default function Home() {
               },
               {
                 q: "What's Ticket Protection?",
-                a: 'Our premium tier ($10/mo = $120/yr, or save $20 with annual at $100/yr) includes comprehensive renewal reminders and ticket protection. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.'
+                a: 'Our premium tier ($100/year, or $10/month) includes comprehensive renewal reminders so you never miss city sticker, license plate, or emissions deadlines. Plus 80% reimbursement on eligible tickets up to $200/year as a service guarantee, not insurance.'
               },
               {
                 q: 'Is Ticket Protection available now?',
