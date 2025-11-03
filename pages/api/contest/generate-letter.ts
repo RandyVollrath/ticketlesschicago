@@ -250,7 +250,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Determine what evidence user has
     const evidencePhotos = (contest.evidence_photos as any[]) || [];
     const supportingDocs = (contest.supporting_documents as any[]) || [];
-    const hasWitnessStatement = !!contest.witness_statements;
+    const hasWitnessStatement = !!contest.written_statement;
 
     const userEvidence = {
       hasPhotos: evidencePhotos.length > 0,
