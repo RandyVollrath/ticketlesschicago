@@ -979,6 +979,10 @@ export default function Home() {
               {
                 q: 'What happens if my city sticker expires?',
                 a: 'Vehicles can be ticketed $200 per ticket starting 15 days after expiration. Tickets can be issued daily until you display a new sticker. Our alerts help you avoid this!'
+              },
+              {
+                q: 'Which Chicago wards have the most parking tickets?',
+                a: 'Ward 42 (The Loop) has the highest risk with over 234,000 tickets in 2024. Check out our interactive Ticket Heatmap to see risk levels for all 50 wards based on 5 years of data.'
               }
             ].map((faq, i) => (
               <div key={i} style={{
@@ -1043,6 +1047,135 @@ export default function Home() {
           >
             Get Started Free
           </button>
+        </div>
+      </div>
+
+      {/* Know Your Risk - Ticket Heatmap */}
+      <div style={{
+        padding: '80px 16px',
+        backgroundColor: '#fff'
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h2 className="section-title" style={{
+              fontSize: '48px',
+              fontWeight: '800',
+              color: '#000',
+              marginBottom: '16px',
+              margin: '0 0 16px 0',
+              letterSpacing: '-1px'
+            }}>
+              🎯 Know Your Parking Risk
+            </h2>
+            <p style={{
+              fontSize: '18px',
+              color: '#666',
+              maxWidth: '600px',
+              margin: '0 auto',
+              lineHeight: '1.6'
+            }}>
+              See which Chicago wards have the highest parking ticket risk based on 5 years of real data
+            </p>
+          </div>
+
+          {/* Preview Stats Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '24px',
+            marginBottom: '40px'
+          }}>
+            <div style={{
+              backgroundColor: '#fef2f2',
+              padding: '32px',
+              borderRadius: '16px',
+              border: '2px solid #fecaca',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔴</div>
+              <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626', margin: '0 0 8px 0' }}>
+                Highest Risk
+              </h3>
+              <p style={{ fontSize: '32px', fontWeight: '800', color: '#000', margin: '0 0 8px 0' }}>
+                Ward 42
+              </p>
+              <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>
+                234,747 tickets in 2024
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              padding: '32px',
+              borderRadius: '16px',
+              border: '2px solid #bbf7d0',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🟢</div>
+              <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#16a34a', margin: '0 0 8px 0' }}>
+                Lowest Risk
+              </h3>
+              <p style={{ fontSize: '32px', fontWeight: '800', color: '#000', margin: '0 0 8px 0' }}>
+                Ward 19
+              </p>
+              <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>
+                8,368 tickets in 2024
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: '#f8f9fa',
+              padding: '32px',
+              borderRadius: '16px',
+              border: '2px solid #e5e7eb',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>📊</div>
+              <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#374151', margin: '0 0 8px 0' }}>
+                City Total
+              </h3>
+              <p style={{ fontSize: '32px', fontWeight: '800', color: '#000', margin: '0 0 8px 0' }}>
+                2.9M
+              </p>
+              <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>
+                tickets in 2024
+              </p>
+            </div>
+          </div>
+
+          {/* CTA Button */}
+          <div style={{ textAlign: 'center' }}>
+            <button
+              onClick={() => router.push('/ticket-heatmap')}
+              style={{
+                backgroundColor: '#000',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '16px 40px',
+                fontSize: '18px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                transition: 'transform 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              View Interactive Heatmap →
+            </button>
+            <p style={{
+              marginTop: '16px',
+              fontSize: '14px',
+              color: '#999',
+              margin: '16px 0 0 0'
+            }}>
+              See risk levels, trends, and 5-year data for all 50 wards
+            </p>
+          </div>
         </div>
       </div>
 
