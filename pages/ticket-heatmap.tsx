@@ -28,6 +28,59 @@ export default function TicketHeatmap() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Ward to neighborhood mapping (major neighborhoods)
+  const wardNeighborhoods: { [key: string]: string } = {
+    '01': 'Gold Coast',
+    '02': 'Lincoln Park',
+    '03': 'South Loop',
+    '04': 'South Loop',
+    '05': 'Hyde Park',
+    '06': 'West Englewood',
+    '07': 'Englewood',
+    '08': 'Chatham',
+    '09': 'South Chicago',
+    '10': 'East Side',
+    '11': 'Bridgeport',
+    '12': 'Brighton Park',
+    '13': 'West Lawn',
+    '14': 'Archer Heights',
+    '15': 'Gage Park',
+    '16': 'Little Village',
+    '17': 'North Lawndale',
+    '18': 'Montclare',
+    '19': 'Mount Greenwood',
+    '20': 'Rogers Park',
+    '21': 'Clearing',
+    '22': 'Garfield Ridge',
+    '23': 'Garfield Ridge',
+    '24': 'Rogers Park',
+    '25': 'West Town',
+    '26': 'Humboldt Park',
+    '27': 'West Loop',
+    '28': 'Near West Side',
+    '29': 'Austin',
+    '30': 'Austin',
+    '31': 'Portage Park',
+    '32': 'Lakeview',
+    '33': 'Uptown',
+    '34': 'Edgewater',
+    '35': 'Albany Park',
+    '36': 'Irving Park',
+    '37': 'Austin',
+    '38': 'Jefferson Park',
+    '39': 'Albany Park',
+    '40': 'Lincoln Square',
+    '41': 'Edison Park',
+    '42': 'The Loop',
+    '43': 'Lincoln Park',
+    '44': 'Lakeview',
+    '46': 'Uptown',
+    '47': 'Lincoln Square',
+    '48': 'Edgewater',
+    '49': 'Rogers Park',
+    '50': 'West Ridge'
+  };
+
   useEffect(() => {
     fetch('/api/ticket-heatmap')
       .then(res => res.json())
@@ -113,7 +166,7 @@ export default function TicketHeatmap() {
               🎯 Chicago Parking Ticket Heatmap
             </h1>
             <p style={{ margin: '10px 0 0 0', color: '#6b7280', fontSize: '16px' }}>
-              See which wards have the highest parking ticket risk (2020-2024 data)
+              See which neighborhoods and wards have the highest parking ticket risk (2020-2024 data)
             </p>
           </div>
         </div>
@@ -182,11 +235,14 @@ export default function TicketHeatmap() {
               borderRadius: '12px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>HIGHEST RISK WARD</p>
-              <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#dc2626' }}>
+              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>HIGHEST RISK</p>
+              <p style={{ margin: '8px 0 4px 0', fontSize: '28px', fontWeight: 'bold', color: '#dc2626', lineHeight: '1.1' }}>
+                {wardNeighborhoods[data.stats.highest_risk.ward] || `Ward ${data.stats.highest_risk.ward}`}
+              </p>
+              <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#9ca3af' }}>
                 Ward {data.stats.highest_risk.ward}
               </p>
-              <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6b7280' }}>
+              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280' }}>
                 {data.stats.highest_risk.tickets_2024.toLocaleString()} tickets in 2024
               </p>
             </div>
@@ -197,11 +253,14 @@ export default function TicketHeatmap() {
               borderRadius: '12px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>LOWEST RISK WARD</p>
-              <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>
+              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>LOWEST RISK</p>
+              <p style={{ margin: '8px 0 4px 0', fontSize: '28px', fontWeight: 'bold', color: '#10b981', lineHeight: '1.1' }}>
+                {wardNeighborhoods[data.stats.lowest_risk.ward] || `Ward ${data.stats.lowest_risk.ward}`}
+              </p>
+              <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#9ca3af' }}>
                 Ward {data.stats.lowest_risk.ward}
               </p>
-              <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6b7280' }}>
+              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280' }}>
                 {data.stats.lowest_risk.tickets_2024.toLocaleString()} tickets in 2024
               </p>
             </div>
@@ -263,15 +322,24 @@ export default function TicketHeatmap() {
                   borderLeft: `4px solid ${getRiskColor(ward.risk_level)}`
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827' }}>Ward {ward.ward}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', lineHeight: '1.2' }}>
+                      {wardNeighborhoods[ward.ward] || `Ward ${ward.ward}`}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '2px' }}>
+                      Ward {ward.ward}
+                    </div>
+                  </div>
                   <span style={{
                     fontSize: '11px',
                     fontWeight: '600',
                     color: getRiskColor(ward.risk_level),
                     backgroundColor: `${getRiskColor(ward.risk_level)}15`,
                     padding: '2px 8px',
-                    borderRadius: '4px'
+                    borderRadius: '4px',
+                    flexShrink: 0,
+                    marginLeft: '8px'
                   }}>
                     {getRiskLabel(ward.risk_level)}
                   </span>

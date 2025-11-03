@@ -982,7 +982,7 @@ export default function Home() {
               },
               {
                 q: 'Which Chicago wards have the most parking tickets?',
-                a: 'Ward 42 (The Loop) has the highest risk with over 234,000 tickets in 2024. Check out our interactive Ticket Heatmap to see risk levels for all 50 wards based on 5 years of data.'
+                a: 'The Loop (Ward 42) has the highest risk with over 234,000 tickets in 2024, while Mount Greenwood (Ward 19) has the lowest with just 8,000. Check out our interactive Ticket Heatmap to see risk levels for all 50 wards and neighborhoods based on 5 years of data.'
               }
             ].map((faq, i) => (
               <div key={i} style={{
@@ -1099,7 +1099,10 @@ export default function Home() {
               <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626', margin: '0 0 8px 0' }}>
                 Highest Risk
               </h3>
-              <p style={{ fontSize: '32px', fontWeight: '800', color: '#000', margin: '0 0 8px 0' }}>
+              <p style={{ fontSize: '32px', fontWeight: '800', color: '#000', margin: '0 0 4px 0' }}>
+                The Loop
+              </p>
+              <p style={{ fontSize: '16px', color: '#999', margin: '0 0 8px 0' }}>
                 Ward 42
               </p>
               <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>
@@ -1118,7 +1121,10 @@ export default function Home() {
               <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#16a34a', margin: '0 0 8px 0' }}>
                 Lowest Risk
               </h3>
-              <p style={{ fontSize: '32px', fontWeight: '800', color: '#000', margin: '0 0 8px 0' }}>
+              <p style={{ fontSize: '32px', fontWeight: '800', color: '#000', margin: '0 0 4px 0' }}>
+                Mount Greenwood
+              </p>
+              <p style={{ fontSize: '16px', color: '#999', margin: '0 0 8px 0' }}>
                 Ward 19
               </p>
               <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>
