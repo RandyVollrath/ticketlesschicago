@@ -412,8 +412,8 @@ export default function CheckYourStreet() {
                           {isHighest ? 'Highest' : 'Higher'} Risk Ward — Ranked #{wardData.rank}
                         </div>
                         <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#6b7280' }}>
-                          Ward {wardData.ward} had <strong style={{ color: '#111827' }}>{wardData.totalTickets.toLocaleString()} tickets</strong> from 2020-2025.
-                          About <strong style={{ color: '#111827' }}>{Math.round(wardData.ticketsPer100Residents)} out of 100 residents</strong> got a ticket over that period.
+                          Ward {wardData.ward} had <strong style={{ color: '#111827' }}>{wardData.totalTickets.toLocaleString()} street cleaning tickets</strong> from 2020-2025.
+                          About <strong style={{ color: '#111827' }}>{Math.round(wardData.ticketsPer100Residents)} out of 100 residents</strong> got a street cleaning ticket over that period.
                         </div>
                       </div>
                     </div>
