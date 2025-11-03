@@ -15,11 +15,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, contestId, mailingAddress } = req.body;
+  const { userId, contestId, mailingAddress, signature } = req.body;
 
   // Validate input
   if (!userId || !contestId || !mailingAddress) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (!signature) {
+    return res.status(400).json({ error: 'Signature required' });
   }
 
   const { name, address, city, state, zip } = mailingAddress;
@@ -64,13 +68,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userId,
         contestId,
         service: 'contest_letter_mailing',
-        mailingAddress: JSON.stringify(mailingAddress)
+        mailingAddress: JSON.stringify(mailingAddress),
+        hasSignature: 'true'
       },
       description: `Mail contest letter to ${name}`,
       receipt_email: user.email
     });
 
-    // Update contest record with payment info
+    // Update contest record with payment info and signature
     const { error: updateError } = await supabaseAdmin
       .from('ticket_contests')
       .update({
@@ -79,7 +84,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mail_service_payment_status: 'pending',
         mail_service_amount: MAIL_SERVICE_COST / 100,
         mailing_address: mailingAddress,
-        mail_status: 'pending'
+        mail_status: 'pending',
+        extracted_data: {
+          ...(contest.extracted_data || {}),
+          signature: signature
+        }
       })
       .eq('id', contestId);
 

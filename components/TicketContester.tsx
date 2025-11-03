@@ -46,6 +46,12 @@ export default function TicketContester({ userId }: TicketContesterProps) {
   const [clientSecret, setClientSecret] = useState<string>('');
   const [paymentStep, setPaymentStep] = useState<'address' | 'payment'>('address');
 
+  // Signature capture
+  const [signature, setSignature] = useState<string>('');
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
   const availableGrounds = [
     'No visible or legible signage posted',
     'Signs were obscured by trees, snow, or other objects',
@@ -56,6 +62,66 @@ export default function TicketContester({ userId }: TicketContesterProps) {
     'Incorrect violation code or description',
     'Ticket issued in error (wrong vehicle/plate)'
   ];
+
+  // Signature canvas handlers
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      setIsDrawing(true);
+    }
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  const saveSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const signatureImage = canvas.toDataURL('image/png');
+    setSignature(signatureImage);
+    setShowSignatureModal(false);
+  };
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -683,6 +749,42 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             }}>
               {contestLetter}
             </div>
+
+            {/* Signature Section */}
+            <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#fffbeb', border: '2px solid #f59e0b', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#92400e', margin: '0 0 4px 0' }}>
+                    ✍️ Signature Required
+                  </h4>
+                  <p style={{ fontSize: '13px', color: '#78350f', margin: 0 }}>
+                    City requires letter to be signed by registered owner
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSignatureModal(true)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: signature ? '#10b981' : '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {signature ? '✓ Signed' : 'Sign Letter'}
+                </button>
+              </div>
+              {signature && (
+                <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #fbbf24' }}>
+                  <p style={{ fontSize: '12px', color: '#78350f', margin: '0 0 8px 0' }}>Your signature:</p>
+                  <img src={signature} alt="Signature" style={{ maxWidth: '200px', height: 'auto', border: '1px solid #d1d5db' }} />
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => {
@@ -1097,6 +1199,12 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                     setMessage('Creating payment...');
 
                     try {
+                      if (!signature) {
+                        setMessage('❌ Please sign your letter first');
+                        setMailingProcessing(false);
+                        return;
+                      }
+
                       // Create payment intent
                       const response = await fetch('/api/contest/create-mail-payment', {
                         method: 'POST',
@@ -1110,7 +1218,8 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                             city: mailingCity,
                             state: mailingState,
                             zip: mailingZip
-                          }
+                          },
+                          signature
                         })
                       });
 
@@ -1167,6 +1276,115 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                 </Elements>
               )
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Signature Modal */}
+      {showSignatureModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1001,
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '500px',
+            width: '100%'
+          }}>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 8px 0' }}>
+              Sign Your Letter
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>
+              Draw your signature below using your mouse or finger
+            </p>
+
+            <div style={{
+              border: '2px solid #d1d5db',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              backgroundColor: '#fff'
+            }}>
+              <canvas
+                ref={canvasRef}
+                width={450}
+                height={150}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                style={{
+                  width: '100%',
+                  height: '150px',
+                  cursor: 'crosshair',
+                  touchAction: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowSignatureModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={clearSignature}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Clear
+              </button>
+              <button
+                onClick={saveSignature}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}
