@@ -1,7 +1,24 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import Footer from '../components/Footer';
+
+const WardHeatMap = dynamic(() => import('../components/WardHeatMap'), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      height: '600px',
+      backgroundColor: '#f3f4f6',
+      borderRadius: '12px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <p style={{ color: '#6b7280' }}>Loading map...</p>
+    </div>
+  )
+});
 
 interface WardData {
   ward: string;
@@ -279,6 +296,28 @@ export default function TicketHeatmap() {
                 Avg: {data.stats.avg_tickets.toLocaleString()} per ward
               </p>
             </div>
+          </div>
+
+          {/* Interactive Map */}
+          <div style={{ marginBottom: '30px' }}>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#111827',
+              marginBottom: '16px',
+              margin: '0 0 16px 0'
+            }}>
+              Interactive Ward Map
+            </h3>
+            <p style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              marginBottom: '16px',
+              margin: '0 0 16px 0'
+            }}>
+              Click on any ward to see ticket counts and risk level
+            </p>
+            <WardHeatMap wardsData={data.wards} />
           </div>
 
           {/* Risk Legend */}
