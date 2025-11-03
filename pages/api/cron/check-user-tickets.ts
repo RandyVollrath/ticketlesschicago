@@ -5,7 +5,7 @@ import { checkAllUserTickets } from '../../../lib/ticket-monitor';
  * Cron job to check for new parking tickets for all users
  * Run every 3 hours via vercel.json
  *
- * Schedule: 0 */3 * * * (every 3 hours)
+ * Schedule: 0 *\/3 * * * (every 3 hours)
  */
 export default async function handler(
   req: NextApiRequest,
