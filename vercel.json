@@ -106,11 +106,11 @@
     },
     {
       "path": "/api/cron/sync-towing-data",
-      "schedule": "0 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/check-towed-vehicles",
-      "schedule": "15 * * * *"
+      "schedule": "2,17,32,47 * * * *"
     }
   ],
   "github": {
