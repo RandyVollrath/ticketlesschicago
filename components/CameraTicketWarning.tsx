@@ -111,7 +111,8 @@ export default function CameraTicketWarning({
 
     // Calculate cost-benefit
     const estimatedTimeHours = violationCode === '9-102-020' ? 12 : 8; // Red light needs more work
-    const estimatedCost = 150; // FOIA requests, mechanic calibration, etc.
+    const estimatedCost = violationCode.includes('075') || violationCode.includes('076') ? 50 : 0;
+    // Speed cameras may need speedometer calibration ($50), red light is just time
     const winProbability = ordinance.winProbability || 10;
     const expectedValue = (fineAmount * (winProbability / 100)) - estimatedCost;
 
@@ -197,8 +198,11 @@ export default function CameraTicketWarning({
                   <span className="font-semibold">{guidance.costBenefit.estimatedTimeHours} hours</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Estimated Costs (FOIA, docs, etc.):</span>
+                  <span className="text-gray-600">Estimated Costs (calibration test, etc.):</span>
                   <span className="font-semibold">${guidance.costBenefit.estimatedCost}</span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Note: FOIA requests are free. Cost is for mechanic services if needed.
                 </div>
                 <div className="flex justify-between border-t pt-2 mt-2">
                   <span className="text-gray-900 font-semibold">Expected Value:</span>
