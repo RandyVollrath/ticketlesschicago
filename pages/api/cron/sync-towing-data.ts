@@ -18,17 +18,12 @@ export default async function handler(
   try {
     console.log('Starting hourly towing data sync...');
 
-    // Fetch tows from last 48 hours
-    // City backdates tow_date to midnight, so we need a wider window
-    // This ensures we catch all of today's tows plus yesterday's
-    const fortyEightHoursAgo = new Date();
-    fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
-    const fortyEightHoursAgoStr = fortyEightHoursAgo.toISOString();
+    // Fetch latest 5000 tows (covers last few days)
+    // Note: tow_date field is TEXT in the API, not datetime, so we can't use >= comparison
+    // Just grab the latest 5000 records sorted by tow_date descending
+    const url = `https://data.cityofchicago.org/resource/ygr5-vcbg.json?$limit=5000&$order=tow_date DESC`;
 
-    // Fetch from Chicago API
-    const url = `https://data.cityofchicago.org/resource/ygr5-vcbg.json?$where=tow_date>='${fortyEightHoursAgoStr}'&$limit=5000&$order=tow_date DESC`;
-
-    console.log(`Fetching tows since ${fortyEightHoursAgo.toLocaleString()}...`);
+    console.log(`Fetching latest 5000 tows from Chicago API...`);
 
     const response = await fetch(url);
     const data = await response.json();
