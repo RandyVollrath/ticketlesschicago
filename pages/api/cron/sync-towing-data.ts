@@ -18,15 +18,17 @@ export default async function handler(
   try {
     console.log('Starting hourly towing data sync...');
 
-    // Fetch tows from last 2 hours (to catch any delays in city data)
-    const twoHoursAgo = new Date();
-    twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
-    const twoHoursAgoStr = twoHoursAgo.toISOString();
+    // Fetch tows from last 48 hours
+    // City backdates tow_date to midnight, so we need a wider window
+    // This ensures we catch all of today's tows plus yesterday's
+    const fortyEightHoursAgo = new Date();
+    fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
+    const fortyEightHoursAgoStr = fortyEightHoursAgo.toISOString();
 
     // Fetch from Chicago API
-    const url = `https://data.cityofchicago.org/resource/ygr5-vcbg.json?$where=tow_date>='${twoHoursAgoStr}'&$limit=5000&$order=tow_date DESC`;
+    const url = `https://data.cityofchicago.org/resource/ygr5-vcbg.json?$where=tow_date>='${fortyEightHoursAgoStr}'&$limit=5000&$order=tow_date DESC`;
 
-    console.log(`Fetching tows since ${twoHoursAgo.toLocaleString()}...`);
+    console.log(`Fetching tows since ${fortyEightHoursAgo.toLocaleString()}...`);
 
     const response = await fetch(url);
     const data = await response.json();
