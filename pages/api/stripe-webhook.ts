@@ -1184,6 +1184,88 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`Subscription ${subscription.id} status updated to: ${subscription.status}`);
       break;
 
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      console.log('Payment intent succeeded:', paymentIntent.id);
+
+      // Check if this is a contest letter mailing payment
+      if (paymentIntent.metadata?.service === 'contest_letter_mailing') {
+        console.log('📮 Processing contest letter mailing payment');
+        const contestId = paymentIntent.metadata.contestId;
+
+        try {
+          // Update contest record
+          const { data: contest, error: contestError } = await supabaseAdmin
+            .from('ticket_contests')
+            .select('contest_letter, mailing_address')
+            .eq('id', contestId)
+            .single();
+
+          if (contestError || !contest) {
+            console.error('Contest not found:', contestId);
+            break;
+          }
+
+          // Update payment status
+          await supabaseAdmin
+            .from('ticket_contests')
+            .update({
+              mail_service_payment_status: 'paid'
+            })
+            .eq('id', contestId);
+
+          console.log('✅ Contest mail service payment marked as paid');
+
+          // Import Lob service (note: will need to handle errors if LOB_API_KEY not set)
+          try {
+            const { sendLetter, formatLetterAsHTML } = await import('../../lib/lob-service');
+
+            const mailingAddress = paymentIntent.metadata.mailingAddress
+              ? JSON.parse(paymentIntent.metadata.mailingAddress)
+              : contest.mailing_address;
+
+            const letterHTML = formatLetterAsHTML(contest.contest_letter);
+
+            const lobResponse = await sendLetter({
+              to: mailingAddress,
+              letterContent: letterHTML,
+              description: `Contest letter for ticket ${paymentIntent.metadata.contestId}`,
+              metadata: {
+                contestId: contestId,
+                paymentIntentId: paymentIntent.id
+              }
+            });
+
+            // Update contest with Lob tracking info
+            await supabaseAdmin
+              .from('ticket_contests')
+              .update({
+                lob_mail_id: lobResponse.id,
+                mail_status: 'sent',
+                mail_sent_at: new Date().toISOString(),
+                mail_tracking_url: lobResponse.url
+              })
+              .eq('id', contestId);
+
+            console.log(`✅ Letter sent via Lob. ID: ${lobResponse.id}`);
+
+          } catch (lobError: any) {
+            console.error('Error sending letter via Lob:', lobError);
+            // Update status to failed
+            await supabaseAdmin
+              .from('ticket_contests')
+              .update({
+                mail_status: 'failed'
+              })
+              .eq('id', contestId);
+          }
+
+        } catch (error) {
+          console.error('Error processing mail service payment:', error);
+        }
+      }
+      break;
+
     default:
       console.log(`Unhandled event type ${event.type}`);
   }
