@@ -12,12 +12,13 @@ interface MailingAddress {
 }
 
 // Chicago Department of Finance - Parking Ticket Contest Address
+// Per city website: must be signed by registered owner
 export const CHICAGO_PARKING_CONTEST_ADDRESS: MailingAddress = {
   name: 'City of Chicago - Department of Finance',
-  address: 'PO Box 88298', // TODO: User will provide correct address
+  address: 'PO Box 88292',
   city: 'Chicago',
   state: 'IL',
-  zip: '60680'
+  zip: '60680-1292'
 };
 
 interface SendLetterParams {
@@ -106,8 +107,9 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
 
 /**
  * Convert plain text letter to HTML format for Lob
+ * Optionally includes signature image
  */
-export function formatLetterAsHTML(letterText: string): string {
+export function formatLetterAsHTML(letterText: string, signatureImage?: string): string {
   // Escape HTML entities
   const escaped = letterText
     .replace(/&/g, '&amp;')
@@ -116,6 +118,14 @@ export function formatLetterAsHTML(letterText: string): string {
 
   // Convert line breaks to <br> and wrap in basic HTML structure
   const withBreaks = escaped.replace(/\n/g, '<br>');
+
+  // Add signature if provided
+  const signatureHTML = signatureImage
+    ? `<div style="margin-top: 30px;">
+        <p style="margin-bottom: 10px;">Signature:</p>
+        <img src="${signatureImage}" alt="Signature" style="max-width: 300px; height: auto; border-bottom: 1px solid #000;" />
+      </div>`
+    : '';
 
   return `
 <!DOCTYPE html>
@@ -132,6 +142,7 @@ export function formatLetterAsHTML(letterText: string): string {
 </head>
 <body>
   ${withBreaks}
+  ${signatureHTML}
 </body>
 </html>
   `.trim();
