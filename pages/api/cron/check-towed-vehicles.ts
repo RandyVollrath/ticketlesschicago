@@ -49,16 +49,16 @@ export default async function handler(
       const plate = user.license_plate.toUpperCase();
       const state = user.license_state || 'IL';
 
-      // Check if this plate was towed in last 24 hours
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
+      // Check if this plate was towed in last 48 hours
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
       const { data: tows, error: towError } = await supabaseAdmin
         .from('towed_vehicles')
         .select('*')
         .eq('plate', plate)
         .eq('state', state)
-        .gte('tow_date', yesterday.toISOString())
+        .gte('tow_date', twoDaysAgo.toISOString())
         .order('tow_date', { ascending: false });
 
       if (towError || !tows || tows.length === 0) {
