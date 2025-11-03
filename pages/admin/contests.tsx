@@ -202,19 +202,35 @@ export default function AdminContests() {
                 Review and manage all ticket contests
               </p>
             </div>
-            <button
-              onClick={() => router.push('/settings')}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#f3f4f6',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
-            >
-              Back to Settings
-            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => router.push('/admin/add-court-outcome')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                + Add Court Outcome
+              </button>
+              <button
+                onClick={() => router.push('/settings')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                Back to Settings
+              </button>
+            </div>
           </div>
         </div>
       </div>
