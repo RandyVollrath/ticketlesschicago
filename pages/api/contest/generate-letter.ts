@@ -12,6 +12,90 @@ const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
 
+/**
+ * Get historical court data for a specific violation to improve letter quality
+ */
+async function getCourtDataForViolation(violationCode: string | null, location: string | null) {
+  if (!violationCode) {
+    return {
+      hasData: false,
+      stats: {},
+      successfulGrounds: [],
+      similarCases: []
+    };
+  }
+
+  try {
+    // Get win rate statistics for this violation code
+    const { data: stats } = await supabase
+      .from('win_rate_statistics')
+      .select('*')
+      .eq('stat_type', 'violation_code')
+      .eq('stat_key', violationCode)
+      .single();
+
+    // Get successful cases for this violation
+    const { data: successfulCases } = await supabase
+      .from('court_case_outcomes')
+      .select('*')
+      .eq('violation_code', violationCode)
+      .in('outcome', ['dismissed', 'reduced'])
+      .not('contest_grounds', 'is', null)
+      .limit(20);
+
+    if (!stats || !successfulCases) {
+      return {
+        hasData: false,
+        stats: {},
+        successfulGrounds: [],
+        similarCases: []
+      };
+    }
+
+    // Analyze which contest grounds are most successful
+    const groundsAnalysis: Record<string, { success: number; total: number }> = {};
+
+    successfulCases.forEach(c => {
+      if (c.contest_grounds && Array.isArray(c.contest_grounds)) {
+        c.contest_grounds.forEach((ground: string) => {
+          if (!groundsAnalysis[ground]) {
+            groundsAnalysis[ground] = { success: 0, total: 0 };
+          }
+          groundsAnalysis[ground].total++;
+          if (c.outcome === 'dismissed' || c.outcome === 'reduced') {
+            groundsAnalysis[ground].success++;
+          }
+        });
+      }
+    });
+
+    const successfulGrounds = Object.entries(groundsAnalysis)
+      .map(([ground, data]) => ({
+        ground,
+        success_rate: Math.round((data.success / data.total) * 100),
+        cases: data.total
+      }))
+      .filter(g => g.cases >= 3) // Only show grounds used in 3+ cases
+      .sort((a, b) => b.success_rate - a.success_rate)
+      .slice(0, 5);
+
+    return {
+      hasData: true,
+      stats,
+      successfulGrounds,
+      similarCases: successfulCases.slice(0, 5)
+    };
+  } catch (error) {
+    console.error('Error fetching court data:', error);
+    return {
+      hasData: false,
+      stats: {},
+      successfulGrounds: [],
+      similarCases: []
+    };
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -59,6 +143,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Look up ordinance info
     const ordinanceInfo = contest.violation_code ? getOrdinanceByCode(contest.violation_code) : null;
 
+    // Get court data for this violation type
+    const courtData = await getCourtDataForViolation(contest.violation_code, contest.ticket_location);
+
     // Generate evidence checklist
     const evidenceChecklist = generateEvidenceChecklist(contest, contestGrounds, ordinanceInfo);
 
@@ -88,6 +175,25 @@ Ordinance Info: ${ordinanceInfo ? JSON.stringify(ordinanceInfo) : 'Not available
 
 Additional Context: ${additionalContext || 'None provided'}
 
+${courtData.hasData ? `IMPORTANT - HISTORICAL COURT DATA FOR THIS VIOLATION TYPE:
+Based on analysis of ${courtData.stats.total_cases} actual cases:
+- Win Rate: ${courtData.stats.win_rate}% (${courtData.stats.dismissed_count} dismissed, ${courtData.stats.reduced_count} reduced)
+- Dismissal Rate: ${courtData.stats.dismissal_rate}%
+${courtData.stats.sample_size_adequate ? '- High confidence (30+ cases analyzed)' : '- Limited data (use cautiously)'}
+
+Successful Contest Grounds (from real cases):
+${courtData.successfulGrounds.map(g => `  • ${g.ground}: ${g.success_rate}% success rate (${g.cases} cases)`).join('\n')}
+
+${courtData.similarCases.length > 0 ? `Similar Successful Cases:
+${courtData.similarCases.slice(0, 3).map((c, i) => `  ${i + 1}. ${c.violation_description} - ${c.outcome} ${c.contest_grounds ? `(argued: ${c.contest_grounds.join(', ')})` : ''}`).join('\n')}` : ''}
+
+⚠️ USE THIS DATA TO STRENGTHEN THE LETTER:
+- Reference the historical win rate to show this is a contestable violation
+- Use arguments that have actually worked in real cases
+- If similar cases were successful, mention that similar circumstances have led to dismissal
+- Be specific about why this case fits the pattern of successful contests
+` : ''}
+
 Sender Information:
 - Name: ${profile?.full_name || '[YOUR NAME]'}
 - Address: ${profile?.address || '[YOUR ADDRESS]'}
@@ -97,11 +203,12 @@ Sender Information:
 Generate a professional contest letter that:
 1. Clearly states the intent to contest the ticket
 2. References the specific violation code and ordinance
-3. Presents the grounds for contest in a clear, factual manner
-4. Cites relevant legal precedents or ordinance language if applicable
+3. ${courtData.hasData ? 'USES THE HISTORICAL DATA ABOVE to strengthen arguments with evidence that these defenses work' : 'Presents the grounds for contest in a clear, factual manner'}
+4. ${courtData.hasData ? 'References the win rate and successful strategies from real cases' : 'Cites relevant legal precedents or ordinance language if applicable'}
 5. Requests dismissal or reduction
 6. Is respectful and professional in tone
 7. Includes proper formatting for a formal letter
+${courtData.hasData ? '\n8. CRITICAL: Incorporate the statistical evidence and successful case patterns to make this letter more persuasive than a generic template' : ''}
 
 Use a formal letter format with proper salutation and closing.`
             }
