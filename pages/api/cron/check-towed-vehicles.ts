@@ -86,7 +86,8 @@ export default async function handler(
         minute: '2-digit'
       });
 
-      const message = `🚨 YOUR CAR WAS TOWED!
+      const message = `🚨 AUTOPILOT AMERICA ALERT
+Your car was towed!
 
 Vehicle: ${tow.color} ${tow.make}
 Plate: ${plate} (${state})
@@ -98,7 +99,7 @@ Inventory #: ${tow.inventory_number}
 
 Call immediately to retrieve your vehicle. Fees increase daily.
 
-- Autopilot America`;
+Reply STOP to unsubscribe from Autopilot America alerts.`;
 
       // Send SMS if enabled
       if (user.notify_sms && user.phone_number) {
