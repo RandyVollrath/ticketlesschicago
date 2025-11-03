@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface TicketContesterProps {
   userId: string;
@@ -39,6 +43,8 @@ export default function TicketContester({ userId }: TicketContesterProps) {
   const [mailingState, setMailingState] = useState('IL');
   const [mailingZip, setMailingZip] = useState('');
   const [mailingProcessing, setMailingProcessing] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string>('');
+  const [paymentStep, setPaymentStep] = useState<'address' | 'payment'>('address');
 
   const availableGrounds = [
     'No visible or legible signage posted',
@@ -937,13 +943,16 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             overflowY: 'auto'
           }}>
             <h3 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 8px 0' }}>
-              We'll Mail It For You!
+              {paymentStep === 'address' ? "We'll Mail It For You!" : 'Complete Payment'}
             </h3>
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0' }}>
-              We'll print and mail your contest letter to the City of Chicago for $5. Includes certified mail with tracking.
+              {paymentStep === 'address'
+                ? "We'll print and mail your contest letter to the City of Chicago for $5."
+                : 'Enter your payment details to complete the mailing service.'}
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {paymentStep === 'address' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
                   Your Name
@@ -1057,7 +1066,11 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
-                  onClick={() => setShowMailModal(false)}
+                  onClick={() => {
+                    setShowMailModal(false);
+                    setPaymentStep('address');
+                    setClientSecret('');
+                  }}
                   disabled={mailingProcessing}
                   style={{
                     flex: 1,
@@ -1079,15 +1092,42 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                       setMessage('❌ Please fill in all address fields');
                       return;
                     }
+
                     setMailingProcessing(true);
-                    setMessage('Processing payment and sending letter...');
-                    // TODO: Implement Lob.com API call
-                    // For now, just show a placeholder
-                    setTimeout(() => {
-                      setMessage('✅ Letter mailed! Check your email for tracking info.');
+                    setMessage('Creating payment...');
+
+                    try {
+                      // Create payment intent
+                      const response = await fetch('/api/contest/create-mail-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          userId,
+                          contestId,
+                          mailingAddress: {
+                            name: mailingName,
+                            address: mailingAddress,
+                            city: mailingCity,
+                            state: mailingState,
+                            zip: mailingZip
+                          }
+                        })
+                      });
+
+                      if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to create payment');
+                      }
+
+                      const { clientSecret } = await response.json();
+                      setClientSecret(clientSecret);
+                      setPaymentStep('payment');
+                      setMessage('');
+                    } catch (error: any) {
+                      setMessage(`❌ ${error.message}`);
+                    } finally {
                       setMailingProcessing(false);
-                      setShowMailModal(false);
-                    }, 2000);
+                    }
                   }}
                   disabled={mailingProcessing}
                   style={{
@@ -1102,10 +1142,31 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                     cursor: mailingProcessing ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {mailingProcessing ? 'Processing...' : 'Pay $5 & Mail'}
+                  {mailingProcessing ? 'Creating payment...' : 'Continue to Payment'}
                 </button>
               </div>
             </div>
+            ) : (
+              /* Payment Form */
+              clientSecret && (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <PaymentForm
+                    contestId={contestId}
+                    onSuccess={() => {
+                      setMessage('✅ Payment successful! Letter will be mailed within 24 hours. Check your email for tracking.');
+                      setShowMailModal(false);
+                      setPaymentStep('address');
+                      setClientSecret('');
+                    }}
+                    onError={(error) => {
+                      setMessage(`❌ ${error}`);
+                      setPaymentStep('address');
+                      setClientSecret('');
+                    }}
+                  />
+                </Elements>
+              )
+            )}
           </div>
         </div>
       )}
@@ -1126,5 +1187,74 @@ export default function TicketContester({ userId }: TicketContesterProps) {
         </div>
       )}
     </div>
+  );
+}
+
+// Stripe Payment Form Component
+function PaymentForm({
+  onSuccess,
+  onError,
+  contestId
+}: {
+  onSuccess: () => void;
+  onError: (error: string) => void;
+  contestId: string;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/contest-ticket?success=true`,
+        },
+        redirect: 'if_required'
+      });
+
+      if (error) {
+        onError(error.message || 'Payment failed');
+        setProcessing(false);
+      } else {
+        onSuccess();
+      }
+    } catch (err: any) {
+      onError(err.message || 'Payment failed');
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <PaymentElement />
+      <button
+        type="submit"
+        disabled={!stripe || processing}
+        style={{
+          width: '100%',
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: processing ? '#9ca3af' : '#8b5cf6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          fontWeight: '600',
+          cursor: processing ? 'not-allowed' : 'pointer'
+        }}
+      >
+        {processing ? 'Processing...' : 'Pay $5 & Mail Letter'}
+      </button>
+    </form>
   );
 }

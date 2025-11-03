@@ -1218,16 +1218,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // Import Lob service (note: will need to handle errors if LOB_API_KEY not set)
           try {
-            const { sendLetter, formatLetterAsHTML } = await import('../../lib/lob-service');
+            const { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS } = await import('../../lib/lob-service');
 
-            const mailingAddress = paymentIntent.metadata.mailingAddress
+            const userAddress = paymentIntent.metadata.mailingAddress
               ? JSON.parse(paymentIntent.metadata.mailingAddress)
               : contest.mailing_address;
 
             const letterHTML = formatLetterAsHTML(contest.contest_letter);
 
             const lobResponse = await sendLetter({
-              to: mailingAddress,
+              from: userAddress, // User's address (return address on envelope)
+              to: CHICAGO_PARKING_CONTEST_ADDRESS, // City department
               letterContent: letterHTML,
               description: `Contest letter for ticket ${paymentIntent.metadata.contestId}`,
               metadata: {
