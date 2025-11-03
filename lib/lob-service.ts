@@ -58,10 +58,10 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
         },
         from: {
           name: 'Autopilot America',
-          address_line1: '123 Main St', // TODO: Replace with actual return address
+          address_line1: '2434 N Southport Ave Unit 1R',
           address_city: 'Chicago',
           address_state: 'IL',
-          address_zip: '60601',
+          address_zip: '60614',
           address_country: 'US'
         },
         file: letterContent, // HTML string
