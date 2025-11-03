@@ -60,7 +60,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               lineHeight: '1.5',
               margin: '0 0 20px 0'
             }}>
-              Your Ticket Protection is active. We're handling your renewals and reimbursing 80% of eligible tickets (up to $200/year).
+              Your Ticket Protection is active. Get renewal reminders and 80% reimbursement on eligible tickets (up to $200/year).
             </p>
 
             <ul style={{
@@ -195,7 +195,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             lineHeight: '1.5',
             margin: '0 0 20px 0'
           }}>
-            We handle all your city sticker and license plate renewals, plus reimburse 80% of eligible tickets that slip through (up to $200/year).
+            Get comprehensive renewal reminders so you never miss city sticker, license plate, or emissions deadlines. Plus 80% reimbursement on eligible tickets (up to $200/year).
           </p>
 
           <ul style={{
@@ -217,7 +217,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                 marginRight: '8px',
                 fontSize: '16px'
               }}>✓</span>
-              Done-for-you renewal filing
+              Renewal reminders & tracking
             </li>
             <li style={{
               display: 'flex',
@@ -230,7 +230,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                 marginRight: '8px',
                 fontSize: '16px'
               }}>✓</span>
-              80% reimbursement for street cleaning, snow, city sticker & license plate renewal tickets
+              80% ticket reimbursement (up to $200/year)
             </li>
             <li style={{
               display: 'flex',
