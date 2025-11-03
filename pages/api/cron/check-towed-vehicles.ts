@@ -93,8 +93,10 @@ Vehicle: ${tow.color} ${tow.make}
 Plate: ${plate} (${state})
 Towed: ${dateStr}
 
-Location: ${tow.towed_to_address}
-Phone: ${tow.tow_facility_phone}
+IMPOUND LOT:
+${tow.towed_to_address}
+${tow.tow_facility_phone}
+
 Inventory #: ${tow.inventory_number}
 
 Call immediately to retrieve your vehicle. Fees increase daily.
