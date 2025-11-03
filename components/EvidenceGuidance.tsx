@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import CameraTicketWarning from './CameraTicketWarning';
+import { getOrdinanceByCode } from '../lib/chicago-ordinances';
 
 interface EvidenceGuidanceProps {
   violationCode: string;
+  fineAmount?: number;
   onEvidenceRecommendation?: (recommendations: EvidenceRecommendation[]) => void;
 }
 
@@ -38,13 +41,19 @@ interface CourtDataResponse {
   }>;
 }
 
-export default function EvidenceGuidance({ violationCode, onEvidenceRecommendation }: EvidenceGuidanceProps) {
+export default function EvidenceGuidance({ violationCode, fineAmount, onEvidenceRecommendation }: EvidenceGuidanceProps) {
   const [loading, setLoading] = useState(true);
   const [courtData, setCourtData] = useState<CourtDataResponse | null>(null);
   const [recommendations, setRecommendations] = useState<EvidenceRecommendation[]>([]);
+  const [isCameraViolation, setIsCameraViolation] = useState(false);
 
   useEffect(() => {
     if (violationCode) {
+      // Check if this is a camera violation
+      const ordinance = getOrdinanceByCode(violationCode);
+      const isCamera = ['9-102-020', '9-102-075', '9-102-076'].includes(violationCode);
+      setIsCameraViolation(isCamera);
+
       loadCourtData();
     }
   }, [violationCode]);
@@ -278,17 +287,71 @@ export default function EvidenceGuidance({ violationCode, onEvidenceRecommendati
 
   if (!courtData || !courtData.hasData) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-        <p className="text-gray-600">
-          No historical data available for this violation type yet.
-          We recommend gathering as much evidence as possible.
-        </p>
+      <div className="space-y-4">
+        {/* Show camera warning even without court data */}
+        {isCameraViolation && fineAmount && (
+          <CameraTicketWarning
+            violationCode={violationCode}
+            fineAmount={fineAmount}
+          />
+        )}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+          <p className="text-gray-600">
+            No historical data available for this violation type yet.
+            We recommend gathering as much evidence as possible.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Camera Ticket Warning - Show FIRST if this is a camera violation */}
+      {isCameraViolation && fineAmount && (
+        <CameraTicketWarning
+          violationCode={violationCode}
+          fineAmount={fineAmount}
+        />
+      )}
+      {/* Low Win Rate Warning */}
+      {courtData.stats.win_rate < 30 && !isCameraViolation && (
+        <div className={`border-2 rounded-lg p-4 ${
+          courtData.stats.win_rate < 15
+            ? 'bg-red-50 border-red-400'
+            : courtData.stats.win_rate < 20
+            ? 'bg-orange-50 border-orange-400'
+            : 'bg-yellow-50 border-yellow-400'
+        }`}>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <h4 className={`font-bold mb-1 ${
+                courtData.stats.win_rate < 15 ? 'text-red-900' : 'text-yellow-900'
+              }`}>
+                {courtData.stats.win_rate < 15
+                  ? 'Very Low Success Rate'
+                  : courtData.stats.win_rate < 20
+                  ? 'Low Success Rate'
+                  : 'Below Average Success Rate'
+                }
+              </h4>
+              <p className={`text-sm ${
+                courtData.stats.win_rate < 15 ? 'text-red-800' : 'text-yellow-800'
+              }`}>
+                Historical data shows only {courtData.stats.win_rate}% of similar cases succeed.
+                {courtData.stats.win_rate < 15 && (
+                  <span className="font-semibold"> Consider whether contesting is worth your time and effort.</span>
+                )}
+                {courtData.stats.win_rate >= 15 && courtData.stats.win_rate < 20 && (
+                  <span> Make sure you have strong evidence before contesting.</span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header with stats */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-start justify-between mb-4">
@@ -301,10 +364,21 @@ export default function EvidenceGuidance({ violationCode, onEvidenceRecommendati
             </p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-blue-600">
+            <div className={`text-2xl font-bold ${
+              courtData.stats.win_rate >= 50 ? 'text-green-600' :
+              courtData.stats.win_rate >= 30 ? 'text-blue-600' :
+              courtData.stats.win_rate >= 20 ? 'text-orange-600' :
+              'text-red-600'
+            }`}>
               {courtData.stats.win_rate}%
             </div>
             <div className="text-xs text-gray-600">Overall Win Rate</div>
+            {courtData.stats.win_rate >= 50 && (
+              <div className="text-xs text-green-600 font-medium mt-1">Strong chance ✓</div>
+            )}
+            {courtData.stats.win_rate < 30 && (
+              <div className="text-xs text-red-600 font-medium mt-1">Difficult contest</div>
+            )}
           </div>
         </div>
 
@@ -429,12 +503,25 @@ export default function EvidenceGuidance({ violationCode, onEvidenceRecommendati
         </div>
       )}
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p className="text-sm text-yellow-800">
-          <strong>💡 Pro Tip:</strong> Even if you're a day or two late, take photos anyway!
-          Historical data shows that any photographic evidence significantly improves your chances.
-        </p>
-      </div>
+      {!isCameraViolation && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-sm text-yellow-800">
+            <strong>💡 Pro Tip:</strong> Even if you're a day or two late, take photos anyway!
+            Historical data shows that any photographic evidence significantly improves your chances.
+          </p>
+        </div>
+      )}
+
+      {isCameraViolation && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <p className="text-sm text-orange-900">
+            <strong>⚠️ Camera Ticket Note:</strong> The evidence recommendations above are for
+            regular parking/moving violations. Camera tickets require additional specialized
+            evidence as detailed in the warning section above. Regular evidence alone rarely
+            succeeds for camera violations.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

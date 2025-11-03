@@ -303,6 +303,316 @@ export const CHICAGO_ORDINANCES: { [key: string]: Ordinance } = {
       'Ticket timestamp analysis',
       'Photos showing vehicle position'
     ]
+  },
+
+  // CAMERA ENFORCEMENT VIOLATIONS
+  // Note: These have VERY LOW win rates (8-12%) - special handling required
+
+  '9-102-020': {
+    code: '9-102-020',
+    title: 'Red Light Camera Violation',
+    description: 'Automated red light enforcement - vehicle entered intersection after light turned red',
+    fineAmount: 100,
+    category: 'moving',
+    winProbability: 10, // VERY LOW - only 10% succeed
+    contestGrounds: [
+      'Vehicle entered intersection while light was yellow',
+      'Vehicle was stolen at time of violation (police report required)',
+      'Medical emergency required running red light',
+      'Making way for emergency vehicle (ambulance, fire truck)',
+      'Already cited by police officer at the scene for same incident',
+      'Camera malfunction or improper calibration',
+      'Wrong vehicle identified in photo',
+      'Yellow light duration was too short (violation of federal standards)'
+    ],
+    commonDefenses: [
+      'Frame-by-frame video analysis showing yellow light entry',
+      'Yellow light timing calculations (must be 3.0-4.0 seconds minimum)',
+      'FOIA request for camera calibration records',
+      'Police report showing vehicle was stolen',
+      'Medical emergency documentation (hospital records)',
+      'Witness statement from emergency vehicle operator',
+      'Photo evidence showing different vehicle or license plate'
+    ],
+    requiredEvidence: [
+      'CRITICAL: Frame-by-frame analysis of camera footage',
+      'Yellow light timing calculations with expert analysis',
+      'Police report (if vehicle stolen)',
+      'Medical records (if emergency)',
+      'Camera calibration records (via FOIA)'
+    ]
+  },
+
+  '9-102-075': {
+    code: '9-102-075',
+    title: 'Speed Camera Violation - School/Park Zone',
+    description: 'Automated speed enforcement in school or park safety zone - exceeded posted speed limit by 6+ mph',
+    fineAmount: 35, // $35 for 6-10 mph over, $100 for 11+ mph over
+    category: 'moving',
+    winProbability: 8, // VERY LOW - only 8% succeed
+    contestGrounds: [
+      'Vehicle was stolen at time of violation (police report required)',
+      'Camera malfunction or improper calibration',
+      'Speedometer was recently calibrated and showed different speed',
+      'Emergency situation required exceeding speed limit',
+      'Signage for speed camera zone was not properly posted',
+      'Camera was not operating during school zone hours (7am-7pm on school days)',
+      'Wrong vehicle identified in photo',
+      'Speed reading was inaccurate due to multiple vehicles'
+    ],
+    commonDefenses: [
+      'Police report showing vehicle was stolen',
+      'FOIA request for camera calibration and maintenance records',
+      'Vehicle speedometer calibration certificate',
+      'Photo evidence showing improper or missing signage',
+      'Documentation that camera operated outside permitted hours',
+      'Evidence showing camera captured wrong vehicle',
+      'Expert testimony on radar interference or calibration issues'
+    ],
+    requiredEvidence: [
+      'CRITICAL: Camera calibration records (FOIA request)',
+      'Speedometer calibration certificate from mechanic',
+      'Photos of all speed camera signage',
+      'Police report (if vehicle stolen)',
+      'Documentation of school/park zone hours',
+      'Expert analysis of camera accuracy'
+    ]
+  },
+
+  '9-102-076': {
+    code: '9-102-076',
+    title: 'Speed Camera Violation - Child Safety Zone',
+    description: 'Automated speed enforcement in child safety zone near schools and parks',
+    fineAmount: 35,
+    category: 'moving',
+    winProbability: 8,
+    contestGrounds: [
+      'Vehicle was stolen at time of violation',
+      'Camera malfunction or improper calibration',
+      'Signs not properly posted per city ordinance',
+      'Camera operated outside permitted hours',
+      'Medical emergency required exceeding speed',
+      'Wrong vehicle or license plate in photo',
+      'Speed reading inaccurate (multiple vehicles, weather conditions)'
+    ],
+    commonDefenses: [
+      'Police report for stolen vehicle',
+      'FOIA records showing camera calibration issues',
+      'Photos of missing/improper signage',
+      'Time/date analysis showing non-school hours',
+      'Medical emergency documentation',
+      'Photo comparison showing different vehicle'
+    ],
+    requiredEvidence: [
+      'Camera calibration and maintenance records (FOIA)',
+      'Photos of all relevant signage',
+      'Police report if applicable',
+      'Time/date analysis',
+      'Expert witness on camera accuracy'
+    ]
+  },
+
+  // EQUIPMENT VIOLATIONS
+
+  '9-80-200': {
+    code: '9-80-200',
+    title: 'Inoperative or Missing Headlights/Taillights',
+    description: 'Vehicle operated with broken, missing, or non-functioning headlights or taillights',
+    fineAmount: 75,
+    category: 'equipment',
+    winProbability: 55,
+    contestGrounds: [
+      'Lights were functional at time of stop (burned out after)',
+      'Lights were just repaired/replaced (show receipt)',
+      'Daytime violation when lights not required',
+      'Officer error - lights were actually working',
+      'Emergency situation prevented immediate repair'
+    ],
+    commonDefenses: [
+      'Repair receipt showing lights fixed within 24 hours',
+      'Photo/video of working lights',
+      'Witness testimony that lights were working',
+      'Proof of recent purchase/installation',
+      'Timestamp showing daytime hours'
+    ],
+    requiredEvidence: [
+      'Repair receipt with date/time',
+      'Photos of repaired lights',
+      'Mechanic statement',
+      'Purchase receipt for new bulbs/lights'
+    ]
+  },
+
+  '9-80-190': {
+    code: '9-80-190',
+    title: 'Expired or Missing Registration',
+    description: 'Vehicle operated without valid registration or with expired registration displayed',
+    fineAmount: 100,
+    category: 'equipment',
+    winProbability: 45,
+    contestGrounds: [
+      'Registration was valid but not visible to officer',
+      'Registration renewed but sticker not yet received',
+      'Recently purchased vehicle, registration pending',
+      'Temporary registration was valid',
+      'Out-of-state vehicle (temporary visitor)'
+    ],
+    commonDefenses: [
+      'Current registration receipt',
+      'Secretary of State online records showing valid registration',
+      'Proof of recent purchase with temp registration',
+      'Out-of-state registration with proof of temporary stay'
+    ],
+    requiredEvidence: [
+      'Registration documents',
+      'Payment receipt for renewal',
+      'Secretary of State records',
+      'Vehicle purchase documents if recent'
+    ]
+  },
+
+  '9-80-040': {
+    code: '9-80-040',
+    title: 'Obscured or Illegible License Plate',
+    description: 'License plate obscured, covered, or not clearly visible',
+    fineAmount: 75,
+    category: 'equipment',
+    winProbability: 40,
+    contestGrounds: [
+      'Plate was clearly visible at time of violation',
+      'Obscured by weather conditions (snow, mud)',
+      'Frame/holder came from dealership (not intentional)',
+      'Recently cleaned/fixed',
+      'Temporary obstruction (bike rack, cargo)'
+    ],
+    commonDefenses: [
+      'Photos showing clean, visible plate',
+      'Weather conditions documentation',
+      'Dealership frame documentation',
+      'Proof of cleaning/repair immediately after'
+    ],
+    requiredEvidence: [
+      'Photos of license plate',
+      'Weather reports if applicable',
+      'Documentation of obstruction reason'
+    ]
+  },
+
+  '9-76-190': {
+    code: '9-76-190',
+    title: 'Excessive Window Tint',
+    description: 'Front side windows tinted beyond legal limit (35% light transmission minimum)',
+    fineAmount: 100,
+    category: 'equipment',
+    winProbability: 35,
+    contestGrounds: [
+      'Tint meets legal requirements (provide measurement)',
+      'Medical exemption certificate for window tint',
+      'Factory tint within legal limits',
+      'Tint was measured incorrectly by officer',
+      'Tint has been removed since violation'
+    ],
+    commonDefenses: [
+      'Professional tint meter reading showing compliance',
+      'Medical exemption documentation',
+      'Factory specifications showing legal tint',
+      'Tint removal receipt'
+    ],
+    requiredEvidence: [
+      'Professional light transmission measurement',
+      'Medical exemption certificate',
+      'Vehicle manufacturer specifications',
+      'Proof of tint removal'
+    ]
+  },
+
+  // MOVING VIOLATIONS (Non-Camera)
+
+  '9-40-100': {
+    code: '9-40-100',
+    title: 'Disobeying Traffic Control Device',
+    description: 'Failure to obey traffic signs or signals (non-camera enforcement)',
+    fineAmount: 100,
+    category: 'moving',
+    winProbability: 30,
+    contestGrounds: [
+      'Traffic control device was not visible or missing',
+      'Sign/signal was obscured by vegetation, weather, or obstruction',
+      'Sign/signal was damaged or unclear',
+      'Conflicting signals or signs',
+      'Emergency situation required disobedience',
+      'Officer error or misidentification'
+    ],
+    commonDefenses: [
+      'Photos showing missing or obscured signage',
+      'Photos of damaged or unclear signals',
+      'Documentation of conflicting traffic controls',
+      'Emergency documentation',
+      'Witness statements'
+    ],
+    requiredEvidence: [
+      'Photos of traffic control device from driver perspective',
+      'Photos showing obstruction or damage',
+      'Witness statements',
+      'Emergency documentation if applicable'
+    ]
+  },
+
+  '9-40-025': {
+    code: '9-40-025',
+    title: 'Failure to Yield to Pedestrian in Crosswalk',
+    description: 'Failure to yield right-of-way to pedestrian in marked or unmarked crosswalk',
+    fineAmount: 200,
+    category: 'moving',
+    winProbability: 25,
+    contestGrounds: [
+      'Pedestrian was not in crosswalk at time of violation',
+      'Pedestrian entered crosswalk unsafely (darting out)',
+      'Officer did not have clear view of incident',
+      'Vehicle was already in intersection when pedestrian entered',
+      'Pedestrian gave signal to proceed'
+    ],
+    commonDefenses: [
+      'Dashcam video showing incident',
+      'Witness testimony about pedestrian behavior',
+      'Photos showing crosswalk location and sight lines',
+      'Diagram showing vehicle and pedestrian positions'
+    ],
+    requiredEvidence: [
+      'Dashcam footage if available',
+      'Photos of crosswalk and intersection',
+      'Witness statements',
+      'Diagram of incident'
+    ]
+  },
+
+  '9-40-165': {
+    code: '9-40-165',
+    title: 'Illegal Turn or Turn from Wrong Lane',
+    description: 'Making prohibited turn or turning from incorrect lane',
+    fineAmount: 100,
+    category: 'moving',
+    winProbability: 32,
+    contestGrounds: [
+      'No signage prohibiting the turn',
+      'Turn signals or lane markings were unclear/missing',
+      'Emergency situation required the maneuver',
+      'Officer misidentified vehicle or location',
+      'Road construction changed normal traffic patterns'
+    ],
+    commonDefenses: [
+      'Photos showing lack of proper signage',
+      'Photos of unclear lane markings',
+      'Documentation of construction or detours',
+      'Witness statements',
+      'Emergency documentation'
+    ],
+    requiredEvidence: [
+      'Photos of intersection and signage',
+      'Photos of lane markings',
+      'Documentation of road conditions',
+      'Witness statements'
+    ]
   }
 };
 
