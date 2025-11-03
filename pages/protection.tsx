@@ -342,8 +342,8 @@ export default function Protection() {
         }}>
           <div style={{
             display: 'inline-block',
-            backgroundColor: '#dcfce7',
-            color: '#166534',
+            backgroundColor: '#fef3c7',
+            color: '#92400e',
             padding: '6px 16px',
             borderRadius: '20px',
             fontSize: '14px',
@@ -352,7 +352,7 @@ export default function Protection() {
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
           }}>
-            Premium Feature
+            Coming Soon
           </div>
 
           <h1 style={{
@@ -369,13 +369,45 @@ export default function Protection() {
           <p style={{
             fontSize: '24px',
             color: '#666',
-            marginBottom: '40px',
+            marginBottom: '24px',
             maxWidth: '700px',
-            margin: '0 auto 40px auto',
+            margin: '0 auto 24px auto',
             lineHeight: '1.4'
           }}>
-            <strong>Comprehensive renewal reminders and ticket protection.</strong> Get timely alerts before your renewal deadlines so you never miss one. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
+            <strong>We're building something special.</strong> Help us design the perfect protection plan for Chicago drivers.
           </p>
+
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '2px solid #3b82f6',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '600px',
+            margin: '0 auto 40px auto'
+          }}>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1e40af', margin: '0 0 12px 0' }}>
+              🎯 We want your input!
+            </h3>
+            <p style={{ fontSize: '16px', color: '#1e40af', margin: '0 0 16px 0' }}>
+              Tell us which features matter most to you. Your feedback will shape our Protection tier.
+            </p>
+            <button
+              onClick={() => router.push('/protection-interest')}
+              style={{
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                width: '100%'
+              }}
+            >
+              Take 2-Minute Survey →
+            </button>
+          </div>
         </div>
 
         {/* Features Grid */}

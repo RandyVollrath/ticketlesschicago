@@ -235,9 +235,20 @@ export default function Home() {
             href="/contest-ticket"
             onClick={(e) => { e.preventDefault(); router.push('/contest-ticket'); }}
             className="nav-link"
-            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            style={{ color: '#374151', textDecoration: 'none', fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             Contest Ticket
+            <span style={{
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontSize: '10px',
+              fontWeight: '600',
+              letterSpacing: '0.5px'
+            }}>
+              BETA
+            </span>
           </a>
           <a
             href="/alerts/signup"
@@ -371,7 +382,7 @@ export default function Home() {
             fontWeight: '600',
             margin: '0 0 48px 0'
           }}>
-            "Thanks! Just moved my car because of your text." — Real user feedback we get regularly
+            Users regularly text us confirming they moved their car and avoided a ticket thanks to our alerts.
           </p>
 
           {/* Mobile version - bullet list */}
