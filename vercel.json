@@ -33,6 +33,14 @@
   },
   "crons": [
     {
+      "path": "/api/cron/sync-towing-data",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/check-towed-vehicles",
+      "schedule": "2,17,32,47 * * * *"
+    },
+    {
       "path": "/api/notifications/process",
       "schedule": "0 14 * * *"
     },
@@ -103,14 +111,6 @@
     {
       "path": "/api/boston-street-cleaning/process",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/sync-towing-data",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/check-towed-vehicles",
-      "schedule": "2,17,32,47 * * * *"
     }
   ],
   "github": {
