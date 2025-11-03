@@ -3,6 +3,9 @@
 
 import { chromium, Browser, Page } from 'playwright';
 import { supabaseAdmin } from './supabase';
+import Captcha from '2captcha';
+
+const solver = new Captcha.Solver(process.env.CAPTCHA_API_KEY || '');
 
 interface TicketResult {
   ticket_number: string;
@@ -18,6 +21,25 @@ interface UserToCheck {
   license_state: string;
   last_name: string;
   email: string;
+}
+
+/**
+ * Solve hCaptcha using 2captcha service
+ */
+async function solveHCaptcha(page: Page, siteKey: string): Promise<string> {
+  console.log('  🔓 Solving hCaptcha...');
+
+  const pageUrl = page.url();
+
+  try {
+    // Send captcha to 2captcha service
+    const result = await solver.hcaptcha(siteKey, pageUrl);
+    console.log('  ✅ Captcha solved!');
+    return result.data;
+  } catch (error) {
+    console.error('  ❌ Failed to solve captcha:', error);
+    throw error;
+  }
 }
 
 /**
@@ -49,36 +71,71 @@ export async function lookupTickets(
     });
 
     // Wait for React/Angular to load
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
-    // TODO: Fill in actual selectors after running test-ticket-lookup.js
-    // These are placeholder selectors - need to be updated based on actual form
-
-    // Try to find and fill license plate field
-    const plateSelector = 'input[name="licensePlate"], input[id*="plate"], input[placeholder*="plate" i]';
-    await page.waitForSelector(plateSelector, { timeout: 10000 });
-    await page.fill(plateSelector, plate);
-
-    // Fill state (if separate field)
-    const stateSelector = 'select[name="state"], select[id*="state"]';
-    const stateExists = await page.$(stateSelector);
-    if (stateExists) {
-      await page.selectOption(stateSelector, state);
+    // Click on License Plate tab
+    console.log('  🖱️  Clicking License Plate tab...');
+    const licensePlateTab = await page.getByText('License Plate', { exact: false });
+    if (licensePlateTab) {
+      await licensePlateTab.click();
+      await page.waitForTimeout(2000);
     }
 
-    // Fill last name
-    const lastNameSelector = 'input[name="lastName"], input[id*="lastName"], input[placeholder*="last name" i]';
-    const lastNameExists = await page.$(lastNameSelector);
-    if (lastNameExists) {
-      await page.fill(lastNameSelector, lastName);
+    // Fill license plate (first input.form-control)
+    console.log('  📝 Filling license plate...');
+    const inputs = await page.$$('input.form-control');
+    if (inputs.length >= 2) {
+      await inputs[0].fill(plate);
+      console.log('  ✅ License plate filled');
+    } else {
+      throw new Error('Could not find license plate field');
     }
 
-    // Click search/submit button
-    const submitSelector = 'button[type="submit"], button:has-text("Search"), button:has-text("Find")';
-    await page.click(submitSelector);
+    // Select state
+    console.log('  📋 Selecting state...');
+    const stateDropdown = await page.$('select.form-control');
+    if (stateDropdown) {
+      await stateDropdown.selectOption(state);
+      console.log('  ✅ State selected');
+    } else {
+      throw new Error('Could not find state dropdown');
+    }
+
+    // Fill last name (second input.form-control)
+    console.log('  📝 Filling last name...');
+    if (inputs.length >= 2) {
+      await inputs[1].fill(lastName);
+      console.log('  ✅ Last name filled');
+    } else {
+      throw new Error('Could not find last name field');
+    }
+
+    // Solve hCaptcha
+    const hCaptchaSiteKey = 'cd38d875-4dbb-4893-a4c9-736eab35e83a'; // Found in HTML
+    const captchaToken = await solveHCaptcha(page, hCaptchaSiteKey);
+
+    // Inject captcha token into the page
+    await page.evaluate((token) => {
+      const responseInput = document.querySelector('[name="h-captcha-response"]') as HTMLTextAreaElement;
+      const gRecaptchaResponse = document.querySelector('[name="g-recaptcha-response"]') as HTMLTextAreaElement;
+      if (responseInput) responseInput.value = token;
+      if (gRecaptchaResponse) gRecaptchaResponse.value = token;
+    }, captchaToken);
+
+    console.log('  ✅ Captcha token injected');
+
+    // Click search button
+    console.log('  🔍 Clicking search button...');
+    const searchButton = await page.$('button.btn.btn-primary:has-text("Search")');
+    if (searchButton) {
+      await searchButton.click();
+      console.log('  ✅ Search button clicked');
+    } else {
+      throw new Error('Could not find search button');
+    }
 
     // Wait for results
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
     // Capture the raw HTML for proof
     const rawHtml = await page.content();
