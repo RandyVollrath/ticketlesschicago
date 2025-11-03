@@ -81,23 +81,11 @@ outcome, decision_reason, final_fine, appeal_status
 
 **PURPOSE:**
 
-This data will be used for public interest research to:
-- Analyze administrative hearing outcomes and success rates by violation type
-- Identify which contest grounds and evidence types are most effective
-- Provide transparency into the administrative hearing process
-- Help Chicago residents understand their rights and make informed decisions about contesting violations
-- Improve public access to justice
+This data will be used to develop a commercial service that helps Chicago residents contest parking and traffic violations by providing data-driven guidance on contest strategies and evidence requirements.
 
-**FEE WAIVER REQUEST:**
+**FEES:**
 
-Pursuant to 5 ILCS 140/6(c), I request a waiver of all fees associated with this request on the grounds that:
-
-1. This request is not for a commercial purpose (5 ILCS 140/2(c-10))
-2. The disclosure is in the public interest (5 ILCS 140/6(c))
-3. The information will be used to benefit the public by providing transparency into administrative hearing processes and outcomes
-4. The requested information will help Chicago residents exercise their rights to contest violations
-
-If a fee waiver is denied, please provide an itemized estimate of costs before proceeding.
+Please provide an itemized cost estimate for this request. If the estimated cost exceeds $500, please contact me before proceeding.
 
 **LEGAL AUTHORITY:**
 
@@ -208,16 +196,11 @@ yellow_light_seconds, speed_limit, last_timing_audit
 
 **PURPOSE:**
 
-This information will be used for public interest research to:
-- Verify compliance with Illinois automated traffic law enforcement requirements (625 ILCS 5/11-208.6)
-- Analyze camera system reliability and accuracy
-- Ensure yellow light timing meets federal standards (3.0-4.0 seconds minimum)
-- Provide transparency in automated enforcement
-- Help Chicago residents understand the reliability of camera evidence
+This information will be used to develop a commercial service that helps Chicago residents contest camera violations by identifying camera reliability issues and calibration defects.
 
-**FEE WAIVER REQUEST:**
+**FEES:**
 
-Pursuant to 5 ILCS 140/6(c), I request a waiver of all fees on the grounds that disclosure is in the public interest and will benefit the public by ensuring transparency and accountability in automated traffic enforcement.
+Please provide an itemized cost estimate for this request. If the estimated cost exceeds $250, please contact me before proceeding.
 
 **LEGAL AUTHORITY:**
 
@@ -326,16 +309,11 @@ permitted_hours, signage_compliant, issues_found
 
 **PURPOSE:**
 
-Public interest research to:
-- Verify compliance with Illinois speed camera laws (625 ILCS 5/11-208.8 and 11-208.9)
-- Analyze camera accuracy and reliability
-- Ensure cameras operate only during permitted hours
-- Verify proper signage and public notice
-- Provide transparency in child safety zone enforcement
+This information will be used to develop a commercial service that helps Chicago residents contest speed camera violations by identifying camera calibration issues, signage defects, and operating hours violations.
 
-**FEE WAIVER REQUEST:**
+**FEES:**
 
-Request fee waiver under 5 ILCS 140/6(c) as this disclosure is in the public interest and will benefit the public by ensuring child safety zone cameras operate lawfully and accurately.
+Please provide an itemized cost estimate for this request. If the estimated cost exceeds $250, please contact me before proceeding.
 
 **LEGAL AUTHORITY:**
 
@@ -407,11 +385,12 @@ Chicago, IL 60602
 4. ❌ **Denied** - You can appeal (instructions provided)
 
 **If They Charge Fees:**
-- First 50 pages: Free
-- Electronic records: Usually free
-- Large database: May claim "commercial purpose" fee
-- **Response:** Reiterate public interest + fee waiver request
-- **Alternative:** Offer to accept a sample dataset first
+- First 50 pages: Free for individuals
+- Commercial requests: May charge actual costs
+- Large database: Typically $0.10-0.25 per record or hourly staff time
+- Estimated cost for 50K records: $500-2,500 (negotiable)
+- **Negotiate:** Offer to accept CSV export (cheaper than printed pages)
+- **Alternative:** Request sample dataset first (1,000 records) to validate before full purchase
 
 ### Priority Order:
 
@@ -481,11 +460,10 @@ Pursuant to the Illinois Freedom of Information Act (5 ILCS 140/), I request the
      signage audits
    - Format: CSV/Excel
 
-PURPOSE: Public interest research on administrative hearing outcomes and
-automated enforcement system reliability to help Chicago residents
-understand their rights and ensure system accountability.
+PURPOSE: Commercial service development to help Chicago residents contest
+violations using data-driven guidance on contest strategies and evidence.
 
-FEE WAIVER: Requested under 5 ILCS 140/6(c) - public interest disclosure.
+FEES: Please provide cost estimate. Contact me if estimate exceeds $500.
 
 Please forward to appropriate departments and respond within 5 business days
 per 5 ILCS 140/3(d).
