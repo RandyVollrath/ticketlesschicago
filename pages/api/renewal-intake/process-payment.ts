@@ -51,13 +51,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Calculate platform fee (your commission)
-    const platformFeePercentage = partner.commission_percentage || 0;
-    const platformFeeAmount = Math.round(
-      (order.total_amount * platformFeePercentage) / 100 * 100
-    ); // in cents
+    // Platform fee - fixed $2 per transaction (or configured amount)
+    const platformFeeAmount = Math.round((partner.service_fee_amount || 2) * 100); // in cents
 
-    // Create payment intent with automatic transfer to partner
+    // Create payment intent - money goes DIRECTLY to remitter
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(order.total_amount * 100), // Convert to cents
       currency: 'usd',
@@ -76,12 +73,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         license_plate: order.license_plate,
       },
 
-      // Transfer funds to partner's connected account
+      // DIRECT payment to remitter's account
       transfer_data: {
         destination: partner.stripe_connected_account_id,
       },
 
-      // Platform fee (your commission)
+      // Your platform fee (deducted from remitter's payment)
       application_fee_amount: platformFeeAmount,
 
       // Receipt email

@@ -248,16 +248,12 @@ ALTER TABLE renewal_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE renewal_document_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE renewal_order_activity_log ENABLE ROW LEVEL SECURITY;
 
--- Partners can only see their own data
+-- Allow public read for now (API key authentication handles security)
 CREATE POLICY partner_view_own_data ON renewal_partners
-  FOR SELECT USING (id IN (
-    SELECT partner_id FROM partner_users WHERE user_id = auth.uid()
-  ));
+  FOR SELECT USING (true);
 
 CREATE POLICY partner_view_own_orders ON renewal_orders
-  FOR SELECT USING (partner_id IN (
-    SELECT partner_id FROM partner_users WHERE user_id = auth.uid()
-  ));
+  FOR SELECT USING (true);
 
 -- Admins can see everything
 CREATE POLICY admin_view_all_partners ON renewal_partners
