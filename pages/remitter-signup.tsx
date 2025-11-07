@@ -12,6 +12,7 @@ export default function RemitterSignup() {
   const [error, setError] = useState('');
   const [step, setStep] = useState<'signup' | 'success'>('signup');
   const [apiKey, setApiKey] = useState('');
+  const [partnerId, setPartnerId] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -41,6 +42,7 @@ export default function RemitterSignup() {
       }
 
       setApiKey(data.apiKey);
+      setPartnerId(data.partner.id);
       setStep('success');
 
     } catch (err: any) {
@@ -52,7 +54,11 @@ export default function RemitterSignup() {
 
   const handleConnectStripe = () => {
     // Redirect to Stripe Connect authorization
-    window.location.href = `/api/stripe-connect/authorize?partnerId=${apiKey.split('_')[2]}`;
+    if (!partnerId) {
+      setError('Partner ID missing. Please contact support with your API key.');
+      return;
+    }
+    window.location.href = `/api/stripe-connect/authorize?partnerId=${partnerId}`;
   };
 
   if (step === 'success') {
