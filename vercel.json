@@ -29,6 +29,9 @@
     },
     "pages/api/cron/check-towed-vehicles.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/process-renewals.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -103,6 +106,10 @@
     {
       "path": "/api/cron/check-towed-vehicles",
       "schedule": "2,17,32,47 * * * *"
+    },
+    {
+      "path": "/api/cron/process-renewals",
+      "schedule": "0 13 * * *"
     }
   ],
   "github": {
