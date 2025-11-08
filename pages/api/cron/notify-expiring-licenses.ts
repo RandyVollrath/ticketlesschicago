@@ -2,10 +2,11 @@
  * Cron Job: Notify users with expiring driver's licenses
  *
  * Runs daily to find users whose driver's license will expire before their next
- * city sticker renewal. Sends email notification requesting updated license upload.
+ * city sticker renewal. Only notifies if license expires 60+ days before sticker
+ * renewal to give user enough time to get new license and upload it.
  *
  * Schedule: Daily at 3 AM CT
- * Trigger: 30 days before license expiration
+ * Trigger: 60+ days before city sticker renewal
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
@@ -23,28 +24,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Find users with licenses expiring in next 30 days
-    // who have given multi-year reuse consent
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    // Find users with city sticker renewals in next 90 days
+    // whose license expires before renewal
+    const ninetyDaysFromNow = new Date();
+    ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
 
-    const { data: expiringLicenses, error: queryError } = await supabase
+    const { data: profiles, error: queryError } = await supabase
       .from('user_profiles')
       .select('user_id, email, full_name, license_valid_until, city_sticker_expiry')
       .eq('license_reuse_consent_given', true)
       .not('license_valid_until', 'is', null)
-      .lte('license_valid_until', thirtyDaysFromNow.toISOString().split('T')[0])
-      .eq('has_protection', true);
+      .not('city_sticker_expiry', 'is', null)
+      .eq('has_protection', true)
+      .lte('city_sticker_expiry', ninetyDaysFromNow.toISOString().split('T')[0]);
 
     if (queryError) {
       console.error('Query error:', queryError);
       return res.status(500).json({ error: 'Database query failed' });
     }
 
-    if (!expiringLicenses || expiringLicenses.length === 0) {
+    if (!profiles || profiles.length === 0) {
       return res.status(200).json({
         success: true,
-        message: 'No expiring licenses found',
+        message: 'No upcoming renewals with expiring licenses',
         count: 0,
       });
     }
@@ -52,22 +54,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let notifiedCount = 0;
     const errors: any[] = [];
 
-    for (const profile of expiringLicenses) {
+    for (const profile of profiles) {
       try {
-        // Check if license expires before next city sticker renewal
         const licenseExpiry = new Date(profile.license_valid_until);
-        const stickerExpiry = profile.city_sticker_expiry
-          ? new Date(profile.city_sticker_expiry)
-          : null;
+        const stickerExpiry = new Date(profile.city_sticker_expiry);
+        const renewalDate = new Date(stickerExpiry.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days before sticker expiry
 
-        // If no sticker expiry set, still notify (they may need it soon)
-        const needsUpdate =
-          !stickerExpiry || licenseExpiry < stickerExpiry;
-
-        if (!needsUpdate) {
-          console.log(`User ${profile.user_id}: License expires after sticker, skipping`);
+        // Check if license expires before renewal date
+        if (licenseExpiry >= renewalDate) {
+          console.log(`User ${profile.user_id}: License valid until renewal, skipping`);
           continue;
         }
+
+        // Check if we have at least 60 days until renewal (gives user time to get new license)
+        const daysUntilRenewal = Math.ceil((renewalDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+        if (daysUntilRenewal < 60) {
+          console.log(`User ${profile.user_id}: Only ${daysUntilRenewal} days until renewal, too late to notify`);
+          continue;
+        }
+
+        console.log(`User ${profile.user_id}: License expires before renewal (${daysUntilRenewal} days out), notifying...`);
 
         // Send email notification
         const emailSent = await sendExpiringLicenseEmail(profile);

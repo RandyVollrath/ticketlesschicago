@@ -70,26 +70,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`📧 Received email: From=${from}, To=${to}, Subject=${subject}`);
 
-    // Extract forwarding ID from email address
-    // Format: documents+12345@autopilotamerica.com
-    const match = to?.match(/documents\+(\d{5})@autopilotamerica\.com/);
+    // Extract user UUID from email address
+    // Format: documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com
+    const match = to?.match(/documents\+([0-9a-f-]{36})@autopilotamerica\.com/i);
     if (!match) {
       console.error('Invalid recipient format:', to);
       return res.status(400).json({ error: 'Invalid recipient format' });
     }
 
-    const forwardingId = parseInt(match[1]);
-    console.log(`🔍 Forwarding ID: ${forwardingId}`);
+    const userId = match[1];
+    console.log(`🔍 User ID: ${userId}`);
 
-    // Look up user by forwarding ID
+    // Look up user by UUID
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('email_forwarding_id', forwardingId)
+      .eq('user_id', userId)
       .single();
 
     if (profileError || !profile) {
-      console.error('User not found for forwarding ID:', forwardingId);
+      console.error('User not found for UUID:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -184,7 +184,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       success: true,
       message: 'Utility bill processed successfully',
-      forwardingId,
       userId: profile.user_id,
       fileName,
     });
