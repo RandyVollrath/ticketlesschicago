@@ -135,9 +135,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .remove([profile.residency_proof_path]);
     }
 
-    // Upload new bill to Supabase Storage
-    const fileName = `${profile.user_id}_${Date.now()}.pdf`;
-    const filePath = `residency-proofs/${fileName}`;
+    // Upload new bill to Supabase Storage with organized folder structure
+    // Format: proof/{uuid}/{yyyy-mm-dd}/bill.pdf
+    // This makes it easy for remitters to find and send proofs
+    const today = new Date();
+    const dateFolder = today.toISOString().split('T')[0]; // yyyy-mm-dd
+    const filePath = `proof/${profile.user_id}/${dateFolder}/bill.pdf`;
 
     console.log(`📤 Uploading to: ${filePath}`);
 
