@@ -996,8 +996,11 @@ export default function Protection() {
                     <span>${billingPlan === 'monthly' ? '11' : '87'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>• Automated Sticker Service</span>
+                    <span>• Sticker Processing Service Fee</span>
                     <span>${billingPlan === 'monthly' ? '1' : '12'}</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic', marginTop: '4px' }}>
+                    (Covers remitter processing costs at renewal)
                   </div>
                 </div>
                 {/* OPTION A: No upfront fees shown - charged when deadlines approach */}
@@ -1038,6 +1041,51 @@ export default function Protection() {
                     <span style={{ fontSize: '13px', color: '#9ca3af' }}>$30</span>
                   </div>
                 )}
+
+                {/* Renewal Cost Disclosure */}
+                {needsCitySticker && (
+                  <div style={{
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    marginTop: '16px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#1e40af',
+                      marginBottom: '8px'
+                    }}>
+                      💡 At renewal time (30 days before expiration):
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#374151',
+                      lineHeight: '1.6'
+                    }}>
+                      <div style={{ marginBottom: '4px' }}>
+                        • City sticker ({vehicleTypeInfo[vehicleType].label}): <strong>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</strong>
+                      </div>
+                      <div style={{ marginBottom: '4px' }}>
+                        • Platform service fee: <strong>$2.50</strong>
+                      </div>
+                      <div style={{ marginBottom: '8px' }}>
+                        • Payment processing fee: <strong>~${((vehicleTypeInfo[vehicleType].price + 2.50) * 0.029 + 0.30).toFixed(2)}</strong>
+                      </div>
+                      <div style={{
+                        paddingTop: '8px',
+                        borderTop: '1px solid #bfdbfe',
+                        fontWeight: '600',
+                        color: '#1e40af'
+                      }}>
+                        Total renewal charge: <strong>${((vehicleTypeInfo[vehicleType].price + 2.50 + 0.30) / 0.971).toFixed(2)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{
                   borderTop: '2px solid ' + (billingPlan === 'annual' ? '#bbf7d0' : '#dbeafe'),
                   marginTop: '12px',
