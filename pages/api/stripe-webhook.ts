@@ -402,6 +402,92 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } else {
             console.log('✅ User profile updated with Protection status and renewal dates');
 
+            // Process $12 remitter setup fee via Stripe Connect
+            if (metadata.hasRemitterFee === 'true') {
+              console.log('💰 Processing $12 remitter setup fee via Stripe Connect');
+
+              try {
+                // Get default remitter (TODO: assign based on user location/zip code)
+                const { data: remitter, error: remitterError } = await supabaseAdmin
+                  .from('renewal_partners')
+                  .select('*')
+                  .eq('status', 'active')
+                  .limit(1)
+                  .single();
+
+                if (remitterError || !remitter) {
+                  console.error('No active remitter found:', remitterError);
+                } else if (!remitter.stripe_connected_account_id) {
+                  console.error('Remitter has no Stripe connected account');
+                } else {
+                  // Get the customer's payment method
+                  const customer = await stripe.customers.retrieve(session.customer as string);
+
+                  if (customer.deleted) {
+                    throw new Error('Customer was deleted');
+                  }
+
+                  // @ts-ignore
+                  const defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
+
+                  if (!defaultPaymentMethod) {
+                    console.error('No default payment method found for customer');
+                  } else {
+                    // Create payment intent for $12 remitter fee
+                    const remitterPayment = await stripe.paymentIntents.create({
+                      amount: 1200, // $12.00
+                      currency: 'usd',
+                      customer: session.customer as string,
+                      payment_method: defaultPaymentMethod as string,
+                      confirm: true,
+                      off_session: true, // Charging saved card
+                      description: 'Remitter Setup Fee - City Sticker Renewal Service',
+                      metadata: {
+                        user_id: userId,
+                        remitter_id: remitter.id,
+                        type: 'remitter_setup_fee',
+                      },
+
+                      // Send payment to remitter via Stripe Connect
+                      transfer_data: {
+                        destination: remitter.stripe_connected_account_id,
+                      },
+
+                      // No platform fee on setup charge
+                      application_fee_amount: 0,
+                    });
+
+                    console.log('✅ Remitter setup fee payment successful:', remitterPayment.id);
+
+                    // Log in renewal_charges table
+                    const { error: chargeLogError } = await supabaseAdmin
+                      .from('renewal_charges')
+                      .insert({
+                        user_id: userId,
+                        charge_type: 'remitter_onetime',
+                        amount: 12,
+                        stripe_payment_intent_id: remitterPayment.id,
+                        status: 'succeeded',
+                        remitter_partner_id: remitter.id,
+                        remitter_received_amount: 12,
+                        platform_fee_amount: 0,
+                        succeeded_at: new Date().toISOString(),
+                      });
+
+                    if (chargeLogError) {
+                      console.error('Error logging remitter charge:', chargeLogError);
+                    } else {
+                      console.log('✅ Remitter charge logged in database');
+                    }
+                  }
+                }
+              } catch (remitterPaymentError) {
+                // Don't fail the entire checkout if remitter payment fails
+                // Customer's subscription is still active
+                console.error('Remitter payment failed (non-critical):', remitterPaymentError);
+              }
+            }
+
             // Check if user needs winter ban notification (Dec 1 - Apr 1)
             if (metadata.streetAddress) {
               try {

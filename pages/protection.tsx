@@ -194,7 +194,7 @@ export default function Protection() {
 
   // Calculate total price - OPTION A: Subscription only, no upfront sticker/plate fees
   const calculateTotal = () => {
-    const subscriptionPrice = billingPlan === 'monthly' ? 10 : 100;
+    const subscriptionPrice = billingPlan === 'monthly' ? 12 : 99;
     // COMMENTED OUT - No longer collecting upfront payment for stickers/plates
     // We'll charge when deadlines approach and use remitter service
     // const cityStickerPrice = needsCitySticker ? vehicleTypeInfo[vehicleType].price : 0;
@@ -340,21 +340,6 @@ export default function Protection() {
           textAlign: 'center',
           marginBottom: '60px'
         }}>
-          <div style={{
-            display: 'inline-block',
-            backgroundColor: '#fef3c7',
-            color: '#92400e',
-            padding: '6px 16px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '600',
-            marginBottom: '20px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Coming Soon
-          </div>
-
           <h1 style={{
             fontSize: '48px',
             fontWeight: 'bold',
@@ -367,47 +352,15 @@ export default function Protection() {
           </h1>
 
           <p style={{
-            fontSize: '24px',
+            fontSize: '20px',
             color: '#666',
-            marginBottom: '24px',
+            marginBottom: '40px',
             maxWidth: '700px',
-            margin: '0 auto 24px auto',
+            margin: '0 auto 40px auto',
             lineHeight: '1.4'
           }}>
-            <strong>We're building something special.</strong> Help us design the perfect protection plan for Chicago drivers.
+            $12/month or $99/year • Automated renewal reminders • 80% ticket reimbursement
           </p>
-
-          <div style={{
-            backgroundColor: '#eff6ff',
-            border: '2px solid #3b82f6',
-            borderRadius: '12px',
-            padding: '24px',
-            maxWidth: '600px',
-            margin: '0 auto 40px auto'
-          }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1e40af', margin: '0 0 12px 0' }}>
-              🎯 We want your input!
-            </h3>
-            <p style={{ fontSize: '16px', color: '#1e40af', margin: '0 0 16px 0' }}>
-              Tell us which features matter most to you. Your feedback will shape our Protection tier.
-            </p>
-            <button
-              onClick={() => router.push('/protection-interest')}
-              style={{
-                backgroundColor: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '12px 24px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                width: '100%'
-              }}
-            >
-              Take 2-Minute Survey →
-            </button>
-          </div>
         </div>
 
         {/* Features Grid */}
@@ -643,7 +596,7 @@ export default function Protection() {
                       boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
-                    Monthly <span style={{ color: '#9ca3af', fontSize: '14px' }}>($10/mo)</span>
+                    Monthly <span style={{ color: '#9ca3af', fontSize: '14px' }}>($12/mo)</span>
                   </button>
                   <button
                     onClick={() => setBillingPlan('annual')}
@@ -659,7 +612,7 @@ export default function Protection() {
                       boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
-                    Annual <span style={{ color: '#16a34a', fontSize: '14px' }}>Save $20</span>
+                    Annual <span style={{ color: '#16a34a', fontSize: '14px' }}>Save $45</span>
                   </button>
                 </div>
               </div>
@@ -1018,7 +971,7 @@ export default function Protection() {
                     marginBottom: '16px',
                     textAlign: 'center'
                   }}>
-                    💰 Save $20/year with annual billing
+                    💰 Save $45/year with annual billing
                   </div>
                 )}
                 <div style={{
@@ -1178,213 +1131,47 @@ export default function Protection() {
           )}
         </div>
 
-        {/* FAQ Section */}
+        {/* Link to Guarantee Page */}
         <div style={{
-          marginTop: '60px',
-          maxWidth: '800px',
-          margin: '60px auto 0 auto'
+          marginTop: '48px',
+          textAlign: 'center',
+          padding: '24px',
+          backgroundColor: '#f0f8ff',
+          borderRadius: '12px',
+          maxWidth: '600px',
+          margin: '48px auto 0 auto'
         }}>
-          <h2 style={{
-            fontSize: '32px',
-            fontWeight: 'bold',
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
             color: '#1a1a1a',
-            marginBottom: '32px',
-            textAlign: 'center',
-            margin: '0 0 32px 0'
+            marginBottom: '12px'
           }}>
-            Frequently Asked Questions
-          </h2>
-
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px'
+            Questions about coverage?
+          </h3>
+          <p style={{
+            fontSize: '16px',
+            color: '#666',
+            marginBottom: '16px',
+            lineHeight: '1.5'
           }}>
-            <div style={{
+            See what's covered, how it works, and full guarantee conditions
+          </p>
+          <button
+            onClick={() => router.push('/protection/guarantee')}
+            style={{
               backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                What tickets are covered?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. See <a href="#guarantee-conditions" style={{ color: '#0052cc', textDecoration: 'underline' }}>guarantee conditions*</a> for full details.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                How do renewals work?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                We monitor your renewal dates and send you reminders before your city sticker and license plate renewals expire. You'll receive email and SMS alerts so you can complete your renewals on time.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                What happens if my city sticker expires?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Vehicles can be ticketed $200 per ticket starting 15 days after your city sticker expires. Tickets can be issued daily until a new unexpired sticker is displayed. With Ticket Protection, we handle your renewal before it expires so you never have to worry about these costly tickets.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                Can I cancel anytime?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Yes, you can cancel your Ticket Protection subscription at any time. You'll continue to have access until the end of your current billing period.
-              </p>
-            </div>
-
-            <div id="guarantee-conditions" style={{
-              backgroundColor: '#fef3c7',
-              padding: '24px',
-              borderRadius: '12px',
-              border: '2px solid #fde68a',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#92400e',
-                marginBottom: '16px',
-                margin: '0 0 16px 0'
-              }}>
-                *Service Guarantee Conditions
-              </h3>
-
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: '#92400e',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                Renewal Reminder Service
-              </h4>
-              <p style={{
-                fontSize: '15px',
-                color: '#78350f',
-                lineHeight: '1.6',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                Our renewal reminder service keeps you on track:
-              </p>
-              <ul style={{
-                fontSize: '15px',
-                color: '#78350f',
-                lineHeight: '1.6',
-                paddingLeft: '24px',
-                marginBottom: '20px',
-                margin: '0 0 20px 0'
-              }}>
-                <li style={{ marginBottom: '8px' }}>We send you reminders before your city sticker and license plate renewals expire so you can complete them on time</li>
-                <li style={{ marginBottom: '8px' }}>You'll receive advance notifications about upcoming renewal deadlines</li>
-                <li>If you receive a late renewal ticket despite our reminders, we reimburse 80% up to $200/year as part of our service guarantee</li>
-              </ul>
-
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: '#92400e',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                Ticket Reimbursement Eligibility
-              </h4>
-              <p style={{
-                fontSize: '15px',
-                color: '#78350f',
-                lineHeight: '1.6',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. To be eligible, you must:
-              </p>
-              <ul style={{
-                fontSize: '15px',
-                color: '#78350f',
-                lineHeight: '1.6',
-                paddingLeft: '24px',
-                margin: 0
-              }}>
-                <li style={{ marginBottom: '8px' }}><strong>Have an active Protection subscription</strong> at the time the ticket was issued</li>
-                <li style={{ marginBottom: '8px' }}><strong>30-day waiting period</strong> after signup before coverage begins</li>
-                <li style={{ marginBottom: '8px' }}><strong>Ticket must be for the address and vehicle</strong> listed in your profile at the time the ticket was issued - coverage only applies to your tracked address and vehicle</li>
-                <li style={{ marginBottom: '8px' }}><strong>Vehicle changes limited to once per year</strong> - changing your vehicle more than once per year voids coverage for any new vehicles</li>
-                <li style={{ marginBottom: '8px' }}><strong>Maintain a complete and accurate profile</strong> with all vehicle information, renewal dates, contact information, and street cleaning address - the guarantee is void if your profile is incomplete or inaccurate</li>
-                <li style={{ marginBottom: '8px' }}>Respond to alerts confirming you moved your vehicle (e.g., reply "Moved" to SMS)</li>
-                <li style={{ marginBottom: '8px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
-                <li style={{ marginBottom: '8px' }}>Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered (not towing fees or moving violations)</li>
-                <li>Maximum reimbursement: 80% of eligible tickets up to $200 per year total</li>
-              </ul>
-            </div>
-          </div>
+              color: '#0052cc',
+              border: '2px solid #0052cc',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            View Service Guarantee & FAQ →
+          </button>
         </div>
       </main>
 

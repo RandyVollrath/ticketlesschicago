@@ -108,6 +108,14 @@ export default async function handler(
       });
     }
 
+    // Add $12 remitter setup fee (one-time charge that will be sent to remitter via Connect)
+    if (stripeConfig.remitterSetupFeePriceId) {
+      lineItems.push({
+        price: stripeConfig.remitterSetupFeePriceId,
+        quantity: 1,
+      });
+    }
+
     // Create Stripe Checkout session with mixed line items
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
@@ -130,7 +138,8 @@ export default async function handler(
         streetAddress: streetAddress || '',
         hasPermitZone: hasPermitZone ? 'true' : 'false',
         permitZones: hasPermitZone && permitZones ? JSON.stringify(permitZones) : '',
-        rewardful_referral_id: rewardfulReferral || ''
+        rewardful_referral_id: rewardfulReferral || '',
+        hasRemitterFee: 'true' // Flag to process $12 remitter payment in webhook
       }
     });
 
