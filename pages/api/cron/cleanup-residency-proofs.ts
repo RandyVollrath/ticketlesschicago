@@ -1,12 +1,9 @@
 /**
- * Cron Job: Clean up residency proof documents after city sticker purchase
+ * Cron Job: Clean up residency proof documents
  *
- * Deletes stored utility bills ONLY after successful city sticker purchase confirmation.
- * Ephemeral storage model - keep bills until purchase confirmed, not just submitted.
- *
- * Two deletion scenarios:
- * 1. Successful purchase confirmed (city_sticker_purchase_confirmed_at is set)
- * 2. Documents older than 60 days outside renewal window (likely stale/abandoned)
+ * Simple deletion policy: Delete utility bills older than 30 days.
+ * User forwards all bills monthly, we keep only recent ones.
+ * Don't wait for remitter confirmation - just delete old bills.
  *
  * Schedule: Daily at 2 AM CT
  */
@@ -29,21 +26,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let deletedCount = 0;
     const errors: any[] = [];
 
-    // Scenario 1: Delete bills AFTER successful city sticker purchase confirmation
-    const { data: confirmedPurchases, error: confirmedError } = await supabase
-      .from('user_profiles')
-      .select('user_id, residency_proof_path, city_sticker_purchase_confirmed_at')
-      .not('residency_proof_path', 'is', null)
-      .not('city_sticker_purchase_confirmed_at', 'is', null);
+    // Simple: Delete bills older than 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    if (confirmedError) {
-      console.error('Error fetching confirmed purchases:', confirmedError);
-      throw confirmedError;
+    const { data: oldBills, error: queryError } = await supabase
+      .from('user_profiles')
+      .select('user_id, residency_proof_path, residency_proof_uploaded_at')
+      .not('residency_proof_path', 'is', null)
+      .lt('residency_proof_uploaded_at', thirtyDaysAgo.toISOString());
+
+    if (queryError) {
+      console.error('Error fetching old bills:', queryError);
+      throw queryError;
     }
 
-    console.log(`Found ${confirmedPurchases?.length || 0} confirmed purchases with residency proofs`);
+    console.log(`Found ${oldBills?.length || 0} bills older than 30 days`);
 
-    for (const profile of confirmedPurchases || []) {
+    for (const profile of oldBills || []) {
       try {
         // Delete from Supabase Storage
         const { error: deleteError } = await supabase.storage
@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        console.log(`✓ Deleted residency proof for user ${profile.user_id} (purchase confirmed)`);
+        console.log(`✓ Deleted 30+ day old bill for user ${profile.user_id}`);
         deletedCount++;
       } catch (error: any) {
         console.error(`Error processing user ${profile.user_id}:`, error);
@@ -91,67 +91,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Scenario 2: Delete stale/abandoned bills (older than 60 days outside renewal window)
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-
-    const { data: staleBills, error: staleError } = await supabase
-      .from('user_profiles')
-      .select('user_id, residency_proof_path, residency_proof_uploaded_at, city_sticker_expiry')
-      .not('residency_proof_path', 'is', null)
-      .is('city_sticker_purchase_confirmed_at', null)
-      .lt('residency_proof_uploaded_at', sixtyDaysAgo.toISOString());
-
-    if (staleError) {
-      console.error('Error fetching stale bills:', staleError);
-    } else {
-      console.log(`Found ${staleBills?.length || 0} stale residency proofs (60+ days old)`);
-
-      for (const profile of staleBills || []) {
-        try {
-          // Check if we're NOT within 60 days of city sticker renewal
-          const stickerExpiry = profile.city_sticker_expiry ? new Date(profile.city_sticker_expiry) : null;
-          const renewalDate = stickerExpiry ? new Date(stickerExpiry.getTime() - 30 * 24 * 60 * 60 * 1000) : null;
-
-          if (renewalDate) {
-            const daysUntilRenewal = Math.ceil((renewalDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-            if (daysUntilRenewal <= 60 && daysUntilRenewal >= -7) {
-              console.log(`User ${profile.user_id}: Within renewal window, keeping bill`);
-              continue;
-            }
-          }
-
-          // Delete stale bill
-          const { error: deleteError } = await supabase.storage
-            .from('residency-proofs-temp')
-            .remove([profile.residency_proof_path]);
-
-          if (deleteError) {
-            console.error(`Failed to delete stale ${profile.residency_proof_path}:`, deleteError);
-            continue;
-          }
-
-          await supabase
-            .from('user_profiles')
-            .update({
-              residency_proof_path: null,
-              residency_proof_uploaded_at: null,
-              residency_proof_verified: false,
-              residency_proof_verified_at: null,
-            })
-            .eq('user_id', profile.user_id);
-
-          console.log(`✓ Deleted stale residency proof for user ${profile.user_id}`);
-          deletedCount++;
-        } catch (error: any) {
-          console.error(`Error processing stale bill for ${profile.user_id}:`, error);
-        }
-      }
-    }
-
     return res.status(200).json({
       success: true,
-      message: `Cleaned up ${deletedCount} residency proofs`,
+      message: `Cleaned up ${deletedCount} residency proofs (30+ days old)`,
       deletedCount,
       errors: errors.length > 0 ? errors : undefined,
     });

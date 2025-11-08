@@ -37,9 +37,9 @@ WHERE residency_forwarding_consent_given IS NULL;
 CREATE OR REPLACE FUNCTION generate_email_forwarding_address()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Only generate if user has protection + permit zone + hasn't already been assigned
+  -- Generate email forwarding address for all protection users
+  -- (permit zone check happens at UI level)
   IF NEW.has_protection = true
-     AND NEW.has_permit_zone = true
      AND NEW.email_forwarding_address IS NULL
   THEN
     NEW.email_forwarding_address := 'documents+' || NEW.user_id || '@autopilotamerica.com';
@@ -48,9 +48,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to auto-generate email forwarding address when user signs up for protection + permit
+-- Trigger to auto-generate email forwarding address when user signs up for protection
 CREATE TRIGGER set_email_forwarding_address
-  BEFORE INSERT OR UPDATE OF has_protection, has_permit_zone ON user_profiles
+  BEFORE INSERT OR UPDATE OF has_protection ON user_profiles
   FOR EACH ROW
   EXECUTE FUNCTION generate_email_forwarding_address();
 
