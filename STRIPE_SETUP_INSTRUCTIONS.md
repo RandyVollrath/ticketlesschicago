@@ -6,10 +6,18 @@
 - Monthly: $10/mo → **$12/mo**
 - Annual: $100/year → **$99/year**
 
-### New Feature: $12 Remitter Setup Fee
-- One-time $12 charge at signup
-- Sent directly to remitter via Stripe Connect
-- No platform fee on this charge
+### Service Fee Breakdown (Regulatory Compliance)
+**Monthly ($12/mo):**
+- Ticket Protection & Guarantee: $11/mo → Platform
+- Sticker Service Fee: $1/mo → (Regulated, paid to remitter at renewal time)
+
+**Annual ($99/year):**
+- Ticket Protection & Guarantee: $87/year → Platform
+- Sticker Service Fee: $12/year → (Regulated, paid to remitter at renewal time)
+
+### Payment Timing
+- **At signup**: Customer pays $12/mo or $99/year → ALL goes to platform
+- **At renewal** (30 days before expiration): Customer pays sticker cost → Remitter gets paid via Stripe Connect
 
 ---
 
@@ -38,27 +46,6 @@
 
 ---
 
-### 2. Create Remitter Setup Fee Product
-
-**In Stripe Dashboard:**
-
-1. Go to Products → Create Product
-2. Name: "Remitter Setup Fee"
-3. Description: "One-time setup fee for city sticker renewal service"
-4. Pricing:
-   - Price: **$12.00**
-   - One time (not recurring)
-5. Metadata (important for excluding from Rewardful):
-   ```
-   exclude_from_commission: true
-   ```
-6. Save and copy the Price ID
-
-7. Add to Vercel environment variables:
-   ```
-   STRIPE_REMITTER_SETUP_FEE_PRICE_ID=price_xxxxx
-   ```
-
 ---
 
 ## How It Works
@@ -70,31 +57,37 @@ When a customer signs up for Protection:
 1. **Stripe Checkout shows:**
    ```
    Protection Service (Monthly)     $12/mo
-   Remitter Setup Fee (one-time)    $12
+     • Ticket Protection             $11/mo
+     • Sticker Service Fee           $1/mo
    ────────────────────────────────
-   Total due today: $24
+   Total due today: $12
    Then $12/month recurring
    ```
 
    OR for annual:
    ```
    Protection Service (Annual)      $99/year
-   Remitter Setup Fee (one-time)    $12
+     • Ticket Protection             $87/year
+     • Sticker Service Fee           $12/year
    ────────────────────────────────
-   Total due today: $111
+   Total due today: $99
    Then $99/year recurring
    ```
 
 2. **Webhook processes payment:**
    - Creates user profile with `has_protection: true`
-   - Saves renewal dates
-   - **Charges $12 to customer's saved card**
-   - **Sends $12 to remitter via Stripe Connect** (transfer_data)
-   - Logs transaction in `renewal_charges` table
+   - Saves renewal dates and vehicle type
+   - Saves stripe_customer_id for future charges
+   - Records consent for automated renewals
 
 3. **Automated renewals (30 days before expiration):**
-   - Charges $100-530 for sticker (depends on vehicle type)
-   - Sends to remitter via Connect
+   - Charges customer for sticker based on vehicle type:
+     - Motorbike (MB): $53.04
+     - Passenger (P): $100.17
+     - Large Passenger (LP): $159.12
+     - Small Truck (ST): $235.71
+     - Large Truck (LT): $530.40
+   - Sends payment to remitter via Stripe Connect
    - Platform keeps $2 fee
 
 ---
@@ -123,8 +116,8 @@ When a customer signs up for Protection:
 3. Use Stripe test card: `4242 4242 4242 4242`
 4. Check Stripe Dashboard:
    - Subscription created ✓
-   - $12 charge to customer ✓
-   - Transfer to remitter Connect account ✓
+   - $12/mo or $99/year charged ✓
+   - Payment method saved for future renewals ✓
 
 ---
 
@@ -133,7 +126,6 @@ When a customer signs up for Protection:
 Before going live:
 
 - [ ] Live subscription products created ($12/mo, $99/year)
-- [ ] Remitter setup fee product created ($12 one-time)
 - [ ] All LIVE price IDs added to Vercel
 - [ ] Stripe Connect live client ID approved and added
 - [ ] Active remitter with connected Stripe account
@@ -152,17 +144,16 @@ Required in Vercel:
 STRIPE_PROTECTION_MONTHLY_PRICE_ID=price_xxxxx  # $12/mo
 STRIPE_PROTECTION_ANNUAL_PRICE_ID=price_xxxxx   # $99/year
 
-# Remitter fee
-STRIPE_REMITTER_SETUP_FEE_PRICE_ID=price_xxxxx  # $12 one-time
-
 # Stripe Connect
 STRIPE_CONNECT_CLIENT_ID=ca_xxxxx               # Live client ID
+
+# Cron job security
+CRON_SECRET=<your-existing-cron-secret>
 
 # Test mode (optional - only if testing)
 STRIPE_MODE=test
 STRIPE_TEST_PROTECTION_MONTHLY_PRICE_ID=price_xxxxx
 STRIPE_TEST_PROTECTION_ANNUAL_PRICE_ID=price_xxxxx
-STRIPE_TEST_REMITTER_SETUP_FEE_PRICE_ID=price_xxxxx
 ```
 
 ---
@@ -170,19 +161,21 @@ STRIPE_TEST_REMITTER_SETUP_FEE_PRICE_ID=price_xxxxx
 ## Revenue Model
 
 ### Per Customer Signup:
-- **You receive**: $12/mo or $99/year (subscription)
-- **Remitter receives**: $12 (setup fee, via Connect)
+- **Customer pays**: $12/mo or $99/year
+- **You receive**: $12/mo or $99/year (100% of subscription)
+  - Includes: Protection guarantee + Regulated sticker service fee
+- **Remitter receives**: $0 upfront (paid at renewal time)
 
-### Per Renewal (automated):
-- **Customer pays**: $100-530 (sticker cost)
-- **Remitter receives**: $98-528 (sticker cost minus $2)
+### Per Renewal (automated, 30 days before expiration):
+- **Customer pays**: $53-530 (sticker cost, varies by vehicle type)
+- **Remitter receives**: $51-528 (sticker cost minus $2)
 - **You receive**: $2 (platform fee, via Connect)
 
 ### Example: 100 Customers
-- **Monthly subscriptions**: $1,200/mo recurring revenue
-- **Or annual**: $9,900/year recurring revenue
-- **Setup fees**: $1,200 one-time to remitters
-- **Renewal fees**: $200 in platform fees per 100 renewals
+- **Monthly subscriptions**: $1,200/mo recurring revenue ($14,400/year)
+- **Or annual subscriptions**: $9,900/year recurring revenue
+- **Renewal platform fees**: ~$200 per 100 renewals
+- **Total first year** (monthly): $14,400 + $200 = **$14,600**
 
 ---
 
