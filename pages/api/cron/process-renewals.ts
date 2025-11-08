@@ -133,8 +133,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Check if we should process this renewal
         const notificationDays = customer.renewal_notification_days || 30;
 
-        if (daysUntilExpiry !== notificationDays) {
-          // Not time to renew yet (or already past)
+        // Process if within renewal window (up to 30 days before expiration)
+        // This handles missed cron runs - if cron fails on day 30, it will catch on day 29, 28, etc.
+        if (daysUntilExpiry > notificationDays) {
+          // Too early - not time yet
+          continue;
+        }
+
+        if (daysUntilExpiry < 0) {
+          // Already expired - too late to renew
+          console.log(`Sticker already expired for customer ${customer.user_id} (${Math.abs(daysUntilExpiry)} days ago)`);
           continue;
         }
 
