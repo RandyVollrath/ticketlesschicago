@@ -1,43 +1,47 @@
-# Concierge Service Setup Guide
-## Automated City Sticker Renewals with Subscription Billing
+# Protection Service - Automated Renewals Setup
+## Automated City Sticker Renewals for Protection Subscribers
 
 ---
 
 ## 🎯 Overview
 
-This system automates city sticker renewals for customers who subscribe to your concierge service:
+This system automates city sticker renewals for Protection subscribers:
 
-- **$12/month subscription** → Goes to your platform (concierge service fee)
-- **$12-15 one-time fee** → Goes to remitter (initial setup)
+- **$10/month or $100/year subscription** → Protection service (ticket reimbursement + renewal reminders)
 - **Automated renewals** → Customer's card is charged 30-60 days before sticker expires
 - **Direct to remitter** → Sticker payments go directly to remitter via Stripe Connect
 - **$2 platform fee** → Automatically deducted from each renewal
+- **Integrated with existing Protection flow** → No separate signup needed
 
 ---
 
 ## 💰 Payment Flow
 
-### Customer Signup
+### Customer Signup (Existing Protection Flow)
 ```
-1. Customer visits /concierge-signup
-2. Enters vehicle & payment info
-3. Authorizes future charges
-4. Immediately charged:
-   - $12-15 one-time → Remitter (via Connect)
-   - $12 recurring → Platform (subscription)
-5. Card saved for future renewals
+1. Customer visits /protection
+2. Enters email, phone, vehicle info, renewal dates
+3. Selects monthly ($10) or annual ($100) plan
+4. Checks out via Stripe
+5. Stripe webhook:
+   - Sets has_protection: true
+   - Saves renewal dates (city_sticker_expiry, license_plate_expiry)
+   - Records consent for automated renewals
+   - Saves stripe_customer_id
+6. Card saved by Stripe for future renewals
 ```
 
 ### Automated Renewal (30-60 days before expiration)
 ```
 1. Cron job runs daily at 7am CST
-2. Finds customers with expiring stickers
-3. Charges saved payment method
-4. Payment flow:
-   - $100 (sticker) → Remitter
+2. Finds Protection subscribers with expiring stickers
+3. Gets payment method from Stripe customer
+4. Charges for sticker renewal
+5. Payment flow:
+   - $100 (sticker) → Remitter (via Stripe Connect)
    - $2 (platform fee) → Platform
-5. Creates order for remitter to fulfill
-6. Notifies customer via email/SMS
+6. Creates order for remitter to fulfill
+7. Notifies customer via email/SMS
 ```
 
 ### Payment Failure
@@ -98,10 +102,12 @@ Vercel will automatically deploy and set up the cron job.
 
 ### Step 4: Test Signup Flow
 
-1. Visit: `https://autopilotamerica.com/concierge-signup`
-2. Fill out form with test data
-3. Use Stripe test card: `4242 4242 4242 4242`
-4. Verify charges appear in Stripe Dashboard
+1. Visit: `https://autopilotamerica.com/protection`
+2. Fill out form with vehicle and renewal info
+3. Select monthly or annual plan
+4. Use Stripe test card: `4242 4242 4242 4242`
+5. Verify subscription appears in Stripe Dashboard
+6. Check that `has_protection: true` is set in user_profiles
 
 ---
 
@@ -168,20 +174,24 @@ created_at TIMESTAMPTZ
 
 ### Customer-Facing
 
-**pages/concierge-signup.tsx**
-- Multi-step signup form
-- Stripe Elements integration
-- Payment authorization
-- Terms & conditions
+**pages/protection.tsx** (Existing)
+- Protection service signup page
+- Collects email, phone, vehicle info, renewal dates
+- Stripe Checkout integration
+- Monthly ($10) or Annual ($100) plans
+- Already handles payment authorization and consent
 
-**pages/api/concierge/signup.ts**
-- Creates Stripe Customer
-- Attaches payment method
-- Charges one-time remitter fee ($12-15)
-- Creates $12/mo subscription
-- Saves to database
+**pages/api/protection/checkout.ts** (Existing)
+- Creates Stripe Checkout session
+- Passes renewal dates and vehicle info to webhook via metadata
 
-### Automated Processing
+**pages/api/stripe-webhook.ts** (Existing)
+- Processes completed checkouts
+- Sets `has_protection: true` in user_profiles
+- Saves renewal dates
+- Records consent for automated renewals
+
+### Automated Processing (New)
 
 **pages/api/cron/process-renewals.ts**
 - Runs daily at 7am CST
@@ -246,7 +256,7 @@ const PLATFORM_FEE = 2; // $2 per renewal
 
 ## 📊 Monitoring & Reports
 
-### View Active Subscriptions
+### View Active Protection Subscribers
 
 ```sql
 SELECT
@@ -254,12 +264,13 @@ SELECT
   last_name,
   license_plate,
   city_sticker_expiry,
-  subscription_status,
+  license_plate_expiry,
   renewal_notification_days,
-  stripe_customer_id
+  stripe_customer_id,
+  email
 FROM user_profiles
-WHERE concierge_service = true
-  AND subscription_status = 'active'
+WHERE has_protection = true
+  AND stripe_customer_id IS NOT NULL
 ORDER BY city_sticker_expiry;
 ```
 
@@ -272,10 +283,12 @@ SELECT
   license_plate,
   city_sticker_expiry,
   city_sticker_expiry - CURRENT_DATE as days_until_expiry,
-  renewal_notification_days
+  COALESCE(renewal_notification_days, 30) as notification_days,
+  email,
+  phone_number
 FROM user_profiles
-WHERE concierge_service = true
-  AND subscription_status = 'active'
+WHERE has_protection = true
+  AND stripe_customer_id IS NOT NULL
   AND city_sticker_expiry > CURRENT_DATE
 ORDER BY city_sticker_expiry;
 ```
@@ -301,17 +314,18 @@ ORDER BY rc.created_at DESC;
 ### View Revenue
 
 ```sql
--- Monthly subscription revenue
+-- Active Protection subscribers
 SELECT
-  COUNT(*) as active_subscribers,
-  COUNT(*) * 12 as monthly_revenue
+  COUNT(*) as active_protection_subscribers
 FROM user_profiles
-WHERE subscription_status = 'active';
+WHERE has_protection = true
+  AND stripe_customer_id IS NOT NULL;
 
 -- Renewal platform fees (lifetime)
 SELECT
   SUM(platform_fee_amount) as total_platform_fees,
-  COUNT(*) as total_renewals
+  COUNT(*) as total_renewals,
+  SUM(amount) as total_renewal_charges
 FROM renewal_charges
 WHERE charge_type = 'sticker_renewal'
   AND status = 'succeeded';
