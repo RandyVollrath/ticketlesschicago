@@ -15,11 +15,11 @@
 ### 1. User Flow
 
 1. User signs up for Protection + City Sticker + Permit Zone
-2. System auto-generates unique forwarding email: `documents+12345@autopilotamerica.com`
+2. System auto-generates unique forwarding email using their Supabase UUID: `documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com`
 3. User sets up email forwarding from utility providers:
-   - Comcast → Forward bills to documents+12345@autopilotamerica.com
-   - ConEd → Forward bills to documents+12345@autopilotamerica.com
-   - Peoples Gas → Forward bills to documents+12345@autopilotamerica.com
+   - Comcast → Forward bills to documents+{uuid}@autopilotamerica.com
+   - ConEd → Forward bills to documents+{uuid}@autopilotamerica.com
+   - Peoples Gas → Forward bills to documents+{uuid}@autopilotamerica.com
    - Any other utility bills
 4. You receive forwarded emails throughout the year
 5. When renewal season hits (30 days before city sticker expires):
@@ -70,22 +70,23 @@ CREATE FUNCTION generate_email_forwarding_id() ...
 CREATE TRIGGER set_email_forwarding_id ...
 ```
 
-### Email Forwarding ID Format
+### Email Forwarding Address Format
 
-- **Length:** 5 digits (10000-99999)
-- **Format:** `documents+{id}@autopilotamerica.com`
-- **Example:** `documents+12345@autopilotamerica.com`
+- **Format:** `documents+{user_uuid}@autopilotamerica.com`
+- **Example:** `documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com`
+- **UUID:** Uses Supabase user UUID (36 characters)
 - **Auto-generated:** When user signs up for Protection + Permit Zone
+- **Privacy:** UUID is not PII - it's a random hash that reveals nothing about the user
 - **Unique:** One per user, never reused
 
 ### Email Processing Pipeline
 
 **Incoming email flow:**
 
-1. Email arrives at `documents+12345@autopilotamerica.com`
+1. Email arrives at `documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com`
 2. Email service (SendGrid Inbound Parse or similar) receives it
-3. Extract forwarding ID (12345) from recipient address
-4. Look up user: `SELECT * FROM user_profiles WHERE email_forwarding_id = 12345`
+3. Extract user UUID from recipient address
+4. Look up user: `SELECT * FROM user_profiles WHERE user_id = '049f3b4a-32d4-4d09-87de-eb0cfe33c04e'`
 5. Extract utility bill:
    - If PDF attachment exists → Use PDF
    - If no attachment → Convert email body to PDF screenshot
@@ -100,7 +101,7 @@ CREATE TRIGGER set_email_forwarding_id ...
    SET residency_proof_path = 'residency-proofs-temp/...',
        residency_proof_uploaded_at = NOW(),
        residency_proof_verified = false
-   WHERE email_forwarding_id = 12345
+   WHERE user_id = '049f3b4a-32d4-4d09-87de-eb0cfe33c04e'
    ```
 9. **Delete previous bill** (only keep latest)
 
@@ -196,7 +197,7 @@ CREATE TRIGGER set_email_forwarding_id ...
 3. SendGrid forwards all `documents+*@autopilotamerica.com` emails to your webhook
 
 **Webhook receives:**
-- `to`: `documents+12345@autopilotamerica.com`
+- `to`: `documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com`
 - `from`: `noreply@comcast.com`
 - `subject`: "Your Comcast Bill for January 2025"
 - `attachments`: `[{filename: 'bill.pdf', content: base64}]`
@@ -237,20 +238,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Parse SendGrid Inbound Parse payload
     const { to, from, subject, attachments, text, html } = req.body;
 
-    // Extract forwarding ID from email address
-    // to = "documents+12345@autopilotamerica.com"
-    const match = to.match(/documents\+(\d{5})@autopilotamerica\.com/);
+    // Extract user UUID from email address
+    // to = "documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com"
+    const match = to.match(/documents\+([0-9a-f-]{36})@autopilotamerica\.com/i);
     if (!match) {
       return res.status(400).json({ error: 'Invalid recipient format' });
     }
 
-    const forwardingId = parseInt(match[1]);
+    const userId = match[1];
 
     // Look up user
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('email_forwarding_id', forwardingId)
+      .eq('user_id', userId)
       .single();
 
     if (profileError || !profile) {
@@ -326,7 +327,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       success: true,
       message: 'Utility bill processed successfully',
-      forwardingId,
       userId: profile.user_id,
     });
 
@@ -446,7 +446,7 @@ For users with permit parking city stickers, we offer an email forwarding
 service to simplify proof of residency verification.
 
 How it works:
-- You receive a unique email address (e.g., documents+12345@autopilotamerica.com)
+- You receive a unique email address (e.g., documents+{your-uuid}@autopilotamerica.com)
 - You set up forwarding from your utility providers (Comcast, ConEd, etc.)
 - We receive forwarded utility bills throughout the year
 - We store only your most recent bill for city sticker renewal processing
@@ -510,14 +510,15 @@ Before going live:
 
 ## Key Takeaways
 
-1. **Email forwarding ID = 5 digits** (10000-99999) - short, unique, not sensitive
-2. **Format:** `documents+{id}@autopilotamerica.com`
-3. **Auto-generated** when user signs up for Protection + Permit
-4. **Ephemeral storage** - only keep latest bill, delete after renewal
-5. **Consent required** before processing forwarded emails
-6. **Privacy-first** - automated processing, no human review, immediate deletion
-7. **Cost-effective** - ~$3/month for 1000 users with SendGrid
-8. **User experience** - Set up once, never upload bills again
+1. **Email forwarding uses Supabase UUID** - secure, unique, not PII
+2. **Format:** `documents+{user-uuid}@autopilotamerica.com`
+3. **Example:** `documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com`
+4. **Auto-generated** when user signs up for Protection + Permit
+5. **Ephemeral storage** - only keep latest bill, delete after purchase confirmed or 60 days outside renewal window
+6. **Consent required** before processing forwarded emails
+7. **Privacy-first** - automated processing, no human review, immediate deletion
+8. **Cost-effective** - ~$3/month for 1000 users with SendGrid
+9. **User experience** - Set up once, never upload bills again
 
 ---
 

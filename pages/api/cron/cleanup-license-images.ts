@@ -1,10 +1,10 @@
 /**
  * Cleanup License Images Cron Job
  *
- * Runs daily to:
- * 1. Delete license images that have been verified (no longer needed)
- * 2. Delete license images older than 48 hours (expired, likely abandoned signups)
- * 3. Clear database references to deleted images
+ * Runs daily to delete license images based on:
+ * 1. Users who opted OUT of multi-year reuse: Delete 48 hours after last access
+ * 2. Users who opted IN to multi-year reuse: Keep until license expires
+ * 3. Unverified uploads (abandoned): Delete 48 hours after upload
  *
  * Security: Only authorized cron jobs can run this endpoint
  */
@@ -30,84 +30,90 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const results = {
-      verifiedImagesDeleted: 0,
-      expiredImagesDeleted: 0,
+      optedOutDeleted: 0,
+      abandonedDeleted: 0,
       errors: [] as any[],
     };
 
-    // Find verified images (no longer needed)
-    const { data: verifiedProfiles, error: verifiedError } = await supabase
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+    // Category 1: Users who opted OUT of multi-year reuse
+    // Delete 48 hours after last access (or upload if never accessed)
+    const { data: optedOutProfiles, error: optedOutError } = await supabase
       .from('user_profiles')
-      .select('user_id, license_image_path')
-      .eq('license_image_verified', true)
+      .select('user_id, license_image_path, license_last_accessed_at, license_image_uploaded_at')
+      .eq('license_reuse_consent_given', false)
       .not('license_image_path', 'is', null);
 
-    if (verifiedError) {
-      console.error('Error fetching verified profiles:', verifiedError);
-      throw verifiedError;
+    if (optedOutError) {
+      console.error('Error fetching opted-out profiles:', optedOutError);
+      throw optedOutError;
     }
 
-    console.log(`Found ${verifiedProfiles?.length || 0} verified license images to delete`);
+    console.log(`Found ${optedOutProfiles?.length || 0} opted-out users with licenses`);
 
-    // Delete verified images
-    for (const profile of verifiedProfiles || []) {
+    for (const profile of optedOutProfiles || []) {
       try {
-        // Delete from storage
-        const { error: deleteError } = await supabase.storage
-          .from(BUCKET_NAME)
-          .remove([profile.license_image_path]);
+        // Use last_accessed_at if available, otherwise use uploaded_at
+        const relevantDate = profile.license_last_accessed_at || profile.license_image_uploaded_at;
 
-        if (deleteError) {
-          console.error(`Failed to delete ${profile.license_image_path}:`, deleteError);
-          results.errors.push({
-            type: 'verified_delete',
-            user_id: profile.user_id,
-            path: profile.license_image_path,
-            error: deleteError.message,
-          });
-          continue;
+        if (!relevantDate || relevantDate < fortyEightHoursAgo) {
+          // Delete from storage
+          const { error: deleteError } = await supabase.storage
+            .from(BUCKET_NAME)
+            .remove([profile.license_image_path]);
+
+          if (deleteError) {
+            console.error(`Failed to delete ${profile.license_image_path}:`, deleteError);
+            results.errors.push({
+              type: 'opted_out_delete',
+              user_id: profile.user_id,
+              path: profile.license_image_path,
+              error: deleteError.message,
+            });
+            continue;
+          }
+
+          // Clear database reference
+          await supabase
+            .from('user_profiles')
+            .update({
+              license_image_path: null,
+              license_image_uploaded_at: null,
+              license_last_accessed_at: null,
+            })
+            .eq('user_id', profile.user_id);
+
+          results.optedOutDeleted++;
+          console.log(`✅ Deleted opted-out license (48h after ${profile.license_last_accessed_at ? 'access' : 'upload'}): ${profile.license_image_path}`);
         }
-
-        // Clear database reference
-        await supabase
-          .from('user_profiles')
-          .update({
-            license_image_path: null,
-          })
-          .eq('user_id', profile.user_id);
-
-        results.verifiedImagesDeleted++;
-        console.log(`✅ Deleted verified image: ${profile.license_image_path}`);
-
       } catch (error: any) {
-        console.error(`Error processing verified image for ${profile.user_id}:`, error);
+        console.error(`Error processing opted-out image for ${profile.user_id}:`, error);
         results.errors.push({
-          type: 'verified_processing',
+          type: 'opted_out_processing',
           user_id: profile.user_id,
           error: error.message,
         });
       }
     }
 
-    // Find expired images (older than 48 hours, unverified)
-    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-
-    const { data: expiredProfiles, error: expiredError } = await supabase
+    // Category 2: Abandoned uploads (unverified after 48 hours)
+    // These are users who uploaded but never completed verification
+    const { data: abandonedProfiles, error: abandonedError } = await supabase
       .from('user_profiles')
       .select('user_id, license_image_path')
       .eq('license_image_verified', false)
       .not('license_image_path', 'is', null)
       .lt('license_image_uploaded_at', fortyEightHoursAgo);
 
-    if (expiredError) {
-      console.error('Error fetching expired profiles:', expiredError);
-      throw expiredError;
+    if (abandonedError) {
+      console.error('Error fetching abandoned profiles:', abandonedError);
+      throw abandonedError;
     }
 
-    console.log(`Found ${expiredProfiles?.length || 0} expired license images to delete`);
+    console.log(`Found ${abandonedProfiles?.length || 0} abandoned license uploads`);
 
-    // Delete expired images
-    for (const profile of expiredProfiles || []) {
+    for (const profile of abandonedProfiles || []) {
       try {
         // Delete from storage
         const { error: deleteError } = await supabase.storage
@@ -117,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (deleteError) {
           console.error(`Failed to delete ${profile.license_image_path}:`, deleteError);
           results.errors.push({
-            type: 'expired_delete',
+            type: 'abandoned_delete',
             user_id: profile.user_id,
             path: profile.license_image_path,
             error: deleteError.message,
@@ -134,13 +140,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           })
           .eq('user_id', profile.user_id);
 
-        results.expiredImagesDeleted++;
-        console.log(`✅ Deleted expired image: ${profile.license_image_path}`);
+        results.abandonedDeleted++;
+        console.log(`✅ Deleted abandoned upload: ${profile.license_image_path}`);
 
       } catch (error: any) {
-        console.error(`Error processing expired image for ${profile.user_id}:`, error);
+        console.error(`Error processing abandoned image for ${profile.user_id}:`, error);
         results.errors.push({
-          type: 'expired_processing',
+          type: 'abandoned_processing',
           user_id: profile.user_id,
           error: error.message,
         });
