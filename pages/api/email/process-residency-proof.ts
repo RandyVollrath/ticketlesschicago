@@ -124,23 +124,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // TODO: Validate bill (date within 30 days, contains address)
-    // For now, we'll skip validation and just store the bill
+    // Delete ALL previous bills for this user (only keep most recent)
+    // User forwards all bills year-round, we auto-delete old ones
+    const userFolder = `proof/${profile.user_id}`;
 
-    // Delete previous bill (only keep latest)
-    if (profile.residency_proof_path) {
-      console.log(`🗑️  Deleting previous bill: ${profile.residency_proof_path}`);
-      await supabase.storage
-        .from(BUCKET_NAME)
-        .remove([profile.residency_proof_path]);
+    console.log(`🗑️  Deleting all previous bills in: ${userFolder}/`);
+
+    // List all date folders for this user
+    const { data: existingFolders, error: listError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .list(userFolder);
+
+    if (!listError && existingFolders && existingFolders.length > 0) {
+      // Delete all existing date folders and their contents
+      const filesToDelete = existingFolders
+        .filter(item => item.name.match(/^\d{4}-\d{2}-\d{2}$/)) // Match yyyy-mm-dd folders
+        .map(folder => `${userFolder}/${folder.name}/bill.pdf`);
+
+      if (filesToDelete.length > 0) {
+        console.log(`Found ${filesToDelete.length} old bills to delete`);
+        await supabase.storage
+          .from(BUCKET_NAME)
+          .remove(filesToDelete);
+      }
     }
 
     // Upload new bill to Supabase Storage with organized folder structure
     // Format: proof/{uuid}/{yyyy-mm-dd}/bill.pdf
-    // This makes it easy for remitters to find and send proofs
     const today = new Date();
     const dateFolder = today.toISOString().split('T')[0]; // yyyy-mm-dd
-    const filePath = `proof/${profile.user_id}/${dateFolder}/bill.pdf`;
+    const filePath = `${userFolder}/${dateFolder}/bill.pdf`;
 
     console.log(`📤 Uploading to: ${filePath}`);
 
@@ -178,6 +191,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log(`✅ Successfully processed utility bill for user ${profile.user_id}`);
+    console.log(`📊 Stats: Deleted ${filesToDelete?.length || 0} old bills, stored 1 new bill`);
 
     // Clean up temp file
     if (pdfFile) {
@@ -186,9 +200,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
-      message: 'Utility bill processed successfully',
+      message: 'Utility bill processed successfully. Old bills deleted, keeping most recent only.',
       userId: profile.user_id,
       fileName,
+      deletedOldBills: filesToDelete?.length || 0,
+      storedAt: filePath,
     });
   } catch (error: any) {
     console.error('Email processing error:', error);
