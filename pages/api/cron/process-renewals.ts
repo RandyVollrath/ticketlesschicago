@@ -47,13 +47,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       errors: [] as any[],
     };
 
-    // Get customers with active subscriptions whose stickers are expiring soon
+    // Get customers with active Protection subscriptions whose stickers are expiring soon
     const { data: customers, error: customersError } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('concierge_service', true)
-      .eq('subscription_status', 'active')
-      .not('stripe_payment_method_id', 'is', null)
+      .eq('has_protection', true)
+      .not('stripe_customer_id', 'is', null)
       .not('city_sticker_expiry', 'is', null);
 
     if (customersError) {
@@ -112,12 +111,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const totalAmount = stickerPrice; // Customer pays sticker price
         const platformFeeAmount = PLATFORM_FEE; // You take $2
 
+        // Get payment method from Stripe customer
+        const stripeCustomer = await stripe.customers.retrieve(customer.stripe_customer_id);
+
+        if (!stripeCustomer || stripeCustomer.deleted) {
+          throw new Error('Stripe customer not found');
+        }
+
+        // @ts-ignore - TypeScript doesn't know about invoice_settings
+        const defaultPaymentMethod = stripeCustomer.invoice_settings?.default_payment_method;
+
+        if (!defaultPaymentMethod) {
+          throw new Error('No default payment method found for customer');
+        }
+
         // Create payment intent
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(totalAmount * 100),
           currency: 'usd',
           customer: customer.stripe_customer_id,
-          payment_method: customer.stripe_payment_method_id,
+          payment_method: defaultPaymentMethod as string,
           confirm: true,
           description: `City Sticker Renewal - ${customer.license_plate}`,
           metadata: {
