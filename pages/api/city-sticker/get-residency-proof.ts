@@ -77,14 +77,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Update last accessed timestamp
-    await supabase
-      .from('user_profiles')
-      .update({
-        license_last_accessed_at: new Date().toISOString(), // Track access for 48h deletion window
-      })
-      .eq('user_id', userId);
-
     console.log(`✓ Generated residency proof URL for user ${userId}: ${profile.residency_proof_path}`);
 
     return res.status(200).json({
