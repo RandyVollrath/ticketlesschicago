@@ -13,6 +13,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import stripeConfig from '../../../lib/stripe-config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -23,14 +24,40 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Sticker prices by vehicle type (exact amounts that must reach remitter)
-const STICKER_PRICES: Record<string, number> = {
-  MB: 53.04,  // Motorbike
-  P: 100.17,   // Passenger (≤4,500 lbs curb weight, ≤2,499 lbs payload)
-  LP: 159.12,  // Large Passenger (≥4,501 lbs curb weight, ≤2,499 lbs payload)
-  ST: 235.71,  // Small Truck (≤16,000 lbs or ≥2,500 lbs payload)
-  LT: 530.40,  // Large Truck (≥16,001 lbs or ≥2,500 lbs payload)
+// Map vehicle types to Stripe Price IDs (source of truth for pricing)
+const STICKER_PRICE_IDS: Record<string, string | undefined> = {
+  MB: stripeConfig.cityStickerMbPriceId,
+  P: stripeConfig.cityStickerPPriceId,
+  LP: stripeConfig.cityStickerLpPriceId,
+  ST: stripeConfig.cityStickerStPriceId,
+  LT: stripeConfig.cityStickerLtPriceId,
 };
+
+/**
+ * Fetch sticker price from Stripe for a given vehicle type
+ * This ensures prices stay in sync with Stripe dashboard
+ */
+async function getStickerPrice(vehicleType: string): Promise<number> {
+  const priceId = STICKER_PRICE_IDS[vehicleType] || STICKER_PRICE_IDS.P;
+
+  if (!priceId) {
+    throw new Error(`No Stripe price ID configured for vehicle type: ${vehicleType}`);
+  }
+
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+
+    if (!price.unit_amount) {
+      throw new Error(`Stripe price ${priceId} has no unit_amount`);
+    }
+
+    // Convert from cents to dollars
+    return price.unit_amount / 100;
+  } catch (error: any) {
+    console.error(`Failed to fetch price for ${vehicleType}:`, error);
+    throw new Error(`Failed to fetch sticker price: ${error.message}`);
+  }
+}
 
 // Stripe processing fee: 2.9% + $0.30
 const STRIPE_PERCENTAGE_FEE = 0.029;
@@ -142,7 +169,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Determine sticker price based on vehicle type
         const vehicleType = customer.vehicle_type || 'P'; // Default to Passenger
-        const stickerPrice = STICKER_PRICES[vehicleType] || STICKER_PRICES.P;
+
+        // Fetch current price from Stripe (ensures prices stay in sync with dashboard)
+        const stickerPrice = await getStickerPrice(vehicleType);
 
         // Calculate total charge (includes sticker + service fee + Stripe processing)
         const { total: totalAmount, serviceFee } = calculateTotalWithFees(stickerPrice);
