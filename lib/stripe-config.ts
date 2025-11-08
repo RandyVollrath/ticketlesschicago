@@ -65,6 +65,11 @@ export const stripeConfig = {
     ? process.env.STRIPE_TEST_PERMIT_FEE_PRICE_ID
     : process.env.STRIPE_PERMIT_FEE_PRICE_ID || process.env.STRIPE_LIVE_PERMIT_FEE_PRICE_ID,
 
+  // Remitter setup fee (one-time $12 charge sent to remitter via Connect)
+  remitterSetupFeePriceId: isTestMode
+    ? process.env.STRIPE_TEST_REMITTER_SETUP_FEE_PRICE_ID
+    : process.env.STRIPE_REMITTER_SETUP_FEE_PRICE_ID || process.env.STRIPE_LIVE_REMITTER_SETUP_FEE_PRICE_ID,
+
   // Mode indicator
   isTestMode,
   mode: isTestMode ? 'test' : 'live',
