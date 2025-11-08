@@ -81,17 +81,19 @@ When a customer signs up for Protection:
    - Records consent for automated renewals
 
 3. **Automated renewals (30 days before expiration):**
-   - Charges customer for sticker + processing fee:
+   - Charges customer for sticker + service fee + processing fee:
      - Base sticker prices (exact amounts remitter receives):
        - Motorbike (MB): $53.04
        - Passenger (P): $100.17
        - Large Passenger (LP): $159.12
        - Small Truck (ST): $235.71
        - Large Truck (LT): $530.40
-     - Processing fee added to customer charge: (sticker price × 2.9%) + $0.30
-     - Example: $100.17 sticker → customer pays ~$103.37 ($100.17 + $3.20 processing)
+     - Service fee: $2.50 (operational costs, support, infrastructure)
+     - Processing fee: Calculated to cover Stripe's 2.9% + $0.30 on total transaction
+     - Example: $100.17 sticker → customer pays $106.05 total
+       - Breakdown: Remitter gets $100.17, Platform gets $2.50, Stripe gets $3.38
    - Sends 100% of sticker price to remitter via Stripe Connect
-   - Platform keeps $0 from renewals (all revenue from subscriptions)
+   - Platform keeps $2.50 service fee per renewal
 
 ---
 
@@ -169,17 +171,19 @@ STRIPE_TEST_PROTECTION_ANNUAL_PRICE_ID=price_xxxxx
 - **Remitter receives**: $0 upfront (paid at renewal time)
 
 ### Per Renewal (automated, 30 days before expiration):
-- **Customer pays**: Sticker cost + processing fee (varies by vehicle type)
-  - Example: $100.17 (sticker) + $3.20 (processing) = $103.37 total
+- **Customer pays**: Sticker cost + service fee + processing fee (varies by vehicle type)
+  - Example: $100.17 (sticker) + $2.50 (service) + $3.38 (processing) = $106.05 total
 - **Remitter receives**: 100% of sticker cost ($53-530, depending on vehicle type)
-- **Platform receives**: $0 from renewals (all revenue from subscriptions)
-- **Processing fee**: Covers Stripe's 2.9% + $0.30 transaction cost
+- **Platform receives**: $2.50 service fee per renewal
+- **Stripe receives**: Processing fee (2.9% + $0.30 on total transaction)
 
-### Example: 100 Customers
+### Example: 100 Customers (all Passenger vehicles)
 - **Monthly subscriptions**: $1,200/mo recurring revenue ($14,400/year)
 - **Or annual subscriptions**: $9,900/year recurring revenue
-- **Renewal revenue**: $0 (pass-through to remitter + processing fee to Stripe)
-- **Total annual revenue**: $14,400 or $9,900 (subscriptions only)
+- **Renewal revenue**: $2.50 × 100 renewals = $250/year
+- **Total annual revenue**:
+  - Monthly plan: $14,400 + $250 = **$14,650**
+  - Annual plan: $9,900 + $250 = **$10,150**
 
 ---
 
