@@ -23,11 +23,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Sticker prices by type
-const STICKER_PRICES = {
-  passenger: 100,
-  large_vehicle: 150,
-  senior_disabled: 50,
+// Sticker prices by vehicle type (must match protection page)
+const STICKER_PRICES: Record<string, number> = {
+  MB: 53.04,  // Motorbike
+  P: 100.17,   // Passenger (≤4,500 lbs curb weight, ≤2,499 lbs payload)
+  LP: 159.12,  // Large Passenger (≥4,501 lbs curb weight, ≤2,499 lbs payload)
+  ST: 235.71,  // Small Truck (≤16,000 lbs or ≥2,500 lbs payload)
+  LT: 530.40,  // Large Truck (≥16,001 lbs or ≥2,500 lbs payload)
 };
 
 const PLATFORM_FEE = 2; // $2 per renewal
@@ -105,9 +107,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           throw new Error('No active remitter available');
         }
 
-        // Determine sticker price
-        const vehicleType = customer.vehicle_type || 'passenger';
-        const stickerPrice = STICKER_PRICES[vehicleType as keyof typeof STICKER_PRICES] || STICKER_PRICES.passenger;
+        // Determine sticker price based on vehicle type
+        const vehicleType = customer.vehicle_type || 'P'; // Default to Passenger
+        const stickerPrice = STICKER_PRICES[vehicleType] || STICKER_PRICES.P;
         const totalAmount = stickerPrice; // Customer pays sticker price
         const platformFeeAmount = PLATFORM_FEE; // You take $2
 

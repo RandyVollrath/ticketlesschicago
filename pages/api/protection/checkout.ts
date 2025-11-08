@@ -108,13 +108,9 @@ export default async function handler(
       });
     }
 
-    // Add $12 remitter setup fee (one-time charge that will be sent to remitter via Connect)
-    if (stripeConfig.remitterSetupFeePriceId) {
-      lineItems.push({
-        price: stripeConfig.remitterSetupFeePriceId,
-        quantity: 1,
-      });
-    }
+    // NOTE: We do NOT charge remitter fee upfront
+    // Remitter gets paid when they perform the renewal service (30 days before expiration)
+    // Subscription ($12/mo or $99/year) goes entirely to platform for protection service
 
     // Create Stripe Checkout session with mixed line items
     const session = await stripe.checkout.sessions.create({
@@ -138,8 +134,7 @@ export default async function handler(
         streetAddress: streetAddress || '',
         hasPermitZone: hasPermitZone ? 'true' : 'false',
         permitZones: hasPermitZone && permitZones ? JSON.stringify(permitZones) : '',
-        rewardful_referral_id: rewardfulReferral || '',
-        hasRemitterFee: 'true' // Flag to process $12 remitter payment in webhook
+        rewardful_referral_id: rewardfulReferral || ''
       }
     });
 

@@ -977,12 +977,28 @@ export default function Protection() {
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  marginBottom: '12px',
+                  marginBottom: '8px',
                   fontSize: '15px',
-                  color: '#374151'
+                  color: '#374151',
+                  fontWeight: '600'
                 }}>
                   <span>Protection subscription ({billingPlan})</span>
-                  <span>${billingPlan === 'monthly' ? '10' : '100'}</span>
+                  <span>${billingPlan === 'monthly' ? '12' : '99'}</span>
+                </div>
+                <div style={{
+                  paddingLeft: '16px',
+                  marginBottom: '12px',
+                  fontSize: '14px',
+                  color: '#6b7280'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span>• Ticket Protection & Guarantee</span>
+                    <span>${billingPlan === 'monthly' ? '11' : '87'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>• Automated Sticker Service</span>
+                    <span>${billingPlan === 'monthly' ? '1' : '12'}</span>
+                  </div>
                 </div>
                 {/* OPTION A: No upfront fees shown - charged when deadlines approach */}
                 {needsCitySticker && (
@@ -1094,7 +1110,7 @@ export default function Protection() {
                     required
                   />
                   <span>
-                    <strong>I authorize Autopilot America to monitor my vehicle renewal deadlines</strong> and send me reminders before they expire. I understand that I am responsible for completing my own renewals with the City of Chicago and State of Illinois. <strong>I authorize Autopilot America to charge my payment method</strong> for the subscription service fee. I agree to provide accurate information and maintain up-to-date renewal dates in my profile. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
+                    <strong>I authorize Autopilot America to monitor my vehicle renewal deadlines</strong> and coordinate automated renewals on my behalf. <strong>I authorize Autopilot America to charge my payment method</strong> for (1) the subscription service fee of ${billingPlan === 'monthly' ? '$12/month' : '$99/year'} (which includes ${billingPlan === 'monthly' ? '$11/month' : '$87/year'} for Ticket Protection & Guarantee and ${billingPlan === 'monthly' ? '$1/month' : '$12/year'} for the regulated sticker service fee), and (2) the cost of city sticker renewals approximately 30 days before expiration. Autopilot America works with licensed remitter partners who execute official submissions with the City of Chicago. I agree to provide accurate information and maintain up-to-date renewal dates in my profile. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
                   </span>
                 </label>
               </div>
