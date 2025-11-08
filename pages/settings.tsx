@@ -148,6 +148,11 @@ interface UserProfile {
   has_protection: boolean
   role: string | null
   guarantee_opt_in_year: number | null
+  // License image (for permit zone users)
+  license_image_path?: string | null
+  license_image_uploaded_at?: string | null
+  license_image_verified?: boolean | null
+  has_permit_zone?: boolean | null
 }
 
 interface Vehicle {
@@ -185,6 +190,18 @@ export default function Dashboard() {
   const [vinError, setVinError] = useState<string | null>(null)
   const [customSnoozeDate, setCustomSnoozeDate] = useState('')
   const [customSnoozeReason, setCustomSnoozeReason] = useState('')
+
+  // License upload state
+  const [licenseFile, setLicenseFile] = useState<File | null>(null)
+  const [licensePreview, setLicensePreview] = useState<string | null>(null)
+  const [licenseUploading, setLicenseUploading] = useState(false)
+  const [licenseUploadError, setLicenseUploadError] = useState('')
+  const [licenseUploadSuccess, setLicenseUploadSuccess] = useState(false)
+
+  // License consent
+  const [thirdPartyConsent, setThirdPartyConsent] = useState(false)
+  const [reuseConsent, setReuseConsent] = useState(false)
+  const [licenseExpiryDate, setLicenseExpiryDate] = useState('')
 
   const router = useRouter()
 
@@ -690,6 +707,108 @@ export default function Dashboard() {
       })
     } finally {
       setResendingEmail(false)
+    }
+  }
+
+  const handleLicenseFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setLicenseUploadError('Please upload a JPEG, PNG, or WebP image')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setLicenseUploadError('File size must be less than 5MB')
+      return
+    }
+
+    // Validate consent
+    if (!thirdPartyConsent) {
+      setLicenseUploadError('Please consent to Google Cloud Vision processing your license image')
+      return
+    }
+
+    // Clear previous errors
+    setLicenseUploadError('')
+    setLicenseUploadSuccess(false)
+    setLicenseFile(file)
+
+    // Create image preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setLicensePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Upload to server immediately with quality verification
+    if (user?.id) {
+      setLicenseUploading(true)
+      try {
+        const formData = new FormData()
+        formData.append('license', file)
+        formData.append('userId', user.id)
+
+        const response = await fetch('/api/protection/upload-license', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Upload failed')
+        }
+
+        setLicenseUploadSuccess(true)
+        setMessage({
+          type: 'success',
+          text: 'Driver\'s license uploaded successfully! Image verified and will be used for city sticker processing.'
+        })
+
+        // Save consents to database
+        if (reuseConsent || licenseExpiryDate) {
+          await supabase
+            .from('user_profiles')
+            .update({
+              third_party_processing_consent: true,
+              third_party_processing_consent_at: new Date().toISOString(),
+              license_reuse_consent_given: reuseConsent,
+              license_reuse_consent_given_at: reuseConsent ? new Date().toISOString() : null,
+              license_valid_until: licenseExpiryDate || null,
+            })
+            .eq('user_id', user.id)
+        }
+
+        console.log('License uploaded successfully:', result)
+
+        // Reload profile to update license_image_path
+        const { data: updatedProfile } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+
+        if (updatedProfile) {
+          setProfile(prev => prev ? { ...prev, ...updatedProfile } : updatedProfile)
+        }
+
+      } catch (error: any) {
+        console.error('License upload error:', error)
+        setLicenseUploadError(error.message || 'Failed to upload license image')
+        setLicenseFile(null)
+        setLicensePreview(null)
+        setMessage({
+          type: 'error',
+          text: error.message || 'Failed to upload license image'
+        })
+      } finally {
+        setLicenseUploading(false)
+      }
     }
   }
 
@@ -1442,6 +1561,221 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Driver's License Upload - Only for Protection users with city sticker + permit zone */}
+          {profile.has_protection && profile.city_sticker_expiry && profile.has_permit_zone && (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              border: profile.license_image_path ? '1px solid #10b981' : '2px solid #f59e0b',
+              padding: '32px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                <span style={{ fontSize: '28px' }}>📸</span>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+                  Driver's License
+                </h2>
+              </div>
+
+              {!profile.license_image_path && !licenseUploadSuccess && (
+                <div style={{
+                  backgroundColor: '#fef3c7',
+                  border: '2px solid #f59e0b',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '24px'
+                }}>
+                  <p style={{
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    color: '#92400e',
+                    margin: '0 0 8px 0'
+                  }}>
+                    Action Required: Upload Driver's License
+                  </p>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#78350f',
+                    margin: 0,
+                    lineHeight: '1.5'
+                  }}>
+                    Because your address is in a residential permit zone, we need a photo of your driver's license to process your city sticker renewal with the city clerk.
+                  </p>
+                </div>
+              )}
+
+              {profile.license_image_path && (
+                <div style={{
+                  backgroundColor: '#dcfce7',
+                  border: '2px solid #10b981',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '24px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>✓</span>
+                    <p style={{
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      color: '#166534',
+                      margin: 0
+                    }}>
+                      Driver's license on file
+                    </p>
+                  </div>
+                  <p style={{
+                    fontSize: '13px',
+                    color: '#166534',
+                    margin: '8px 0 0 0',
+                    lineHeight: '1.5'
+                  }}>
+                    Uploaded {profile.license_image_uploaded_at ? new Date(profile.license_image_uploaded_at).toLocaleDateString() : 'recently'}. You can upload a new photo if needed.
+                  </p>
+                </div>
+              )}
+
+              <div style={{
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde047',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '12px'
+              }}>
+                <p style={{
+                  fontSize: '13px',
+                  color: '#92400e',
+                  margin: 0,
+                  lineHeight: '1.5'
+                }}>
+                  <strong>Photo requirements:</strong> Clear, well-lit image showing all text. Avoid glare, shadows, or blur.
+                </p>
+              </div>
+
+              <div style={{
+                backgroundColor: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
+                  <div>
+                    <p style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#0c4a6e',
+                      margin: '0 0 6px 0'
+                    }}>
+                      Privacy & Security
+                    </p>
+                    <p style={{
+                      fontSize: '12px',
+                      color: '#0c4a6e',
+                      margin: 0,
+                      lineHeight: '1.6'
+                    }}>
+                      Your license image is stored securely and <strong>temporarily</strong>. We access it ONLY when processing your city sticker renewal (30 days before expiration). The image is <strong>automatically deleted within 48 hours</strong> of verification or processing. We never sell or share your personal information.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleLicenseFileChange}
+                disabled={licenseUploading}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'white',
+                  cursor: licenseUploading ? 'not-allowed' : 'pointer',
+                  marginBottom: '12px'
+                }}
+              />
+
+              {licenseUploading && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '14px',
+                  color: '#0052cc',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid #0052cc',
+                    borderTop: '2px solid transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                  <span>Verifying image quality...</span>
+                </div>
+              )}
+
+              {licenseUploadError && (
+                <div style={{
+                  backgroundColor: '#fee2e2',
+                  border: '1px solid #fca5a5',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  color: '#b91c1c',
+                  marginBottom: '12px'
+                }}>
+                  <strong>⚠️ Upload failed:</strong> {licenseUploadError}
+                  <br />
+                  <span style={{ fontSize: '13px', color: '#991b1b', marginTop: '6px', display: 'block' }}>
+                    Please try again with a clearer photo.
+                  </span>
+                </div>
+              )}
+
+              {licensePreview && !licenseUploading && !licenseUploadError && (
+                <div style={{
+                  border: '2px solid #10b981',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  marginTop: '12px'
+                }}>
+                  <img
+                    src={licensePreview}
+                    alt="License preview"
+                    style={{
+                      width: '100%',
+                      maxHeight: '300px',
+                      objectFit: 'contain',
+                      display: 'block',
+                      backgroundColor: '#f9fafb'
+                    }}
+                  />
+                  {licenseUploadSuccess && (
+                    <div style={{
+                      backgroundColor: '#dcfce7',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <p style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#166534',
+                        margin: 0
+                      }}>
+                        ✓ Upload successful! Image verified and ready for processing.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Renewal Dates */}
           <div style={{
