@@ -23,7 +23,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Sticker prices by vehicle type (must match protection page)
+// Sticker prices by vehicle type (exact amounts that must reach remitter)
 const STICKER_PRICES: Record<string, number> = {
   MB: 53.04,  // Motorbike
   P: 100.17,   // Passenger (≤4,500 lbs curb weight, ≤2,499 lbs payload)
@@ -32,7 +32,22 @@ const STICKER_PRICES: Record<string, number> = {
   LT: 530.40,  // Large Truck (≥16,001 lbs or ≥2,500 lbs payload)
 };
 
-const PLATFORM_FEE = 2; // $2 per renewal
+// Stripe processing fee: 2.9% + $0.30
+const STRIPE_PERCENTAGE_FEE = 0.029;
+const STRIPE_FIXED_FEE = 0.30;
+
+/**
+ * Calculate total charge including Stripe processing fee
+ * Customer pays: sticker price + processing fee
+ * Remitter receives: exact sticker price
+ */
+function calculateTotalWithProcessingFee(stickerPrice: number): { total: number; processingFee: number } {
+  const processingFee = (stickerPrice * STRIPE_PERCENTAGE_FEE) + STRIPE_FIXED_FEE;
+  return {
+    total: stickerPrice + processingFee,
+    processingFee: Math.round(processingFee * 100) / 100, // Round to 2 decimals
+  };
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify this is a cron request (Vercel adds this header)
@@ -110,8 +125,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Determine sticker price based on vehicle type
         const vehicleType = customer.vehicle_type || 'P'; // Default to Passenger
         const stickerPrice = STICKER_PRICES[vehicleType] || STICKER_PRICES.P;
-        const totalAmount = stickerPrice; // Customer pays sticker price
-        const platformFeeAmount = PLATFORM_FEE; // You take $2
+
+        // Calculate total including Stripe processing fee
+        const { total: totalAmount, processingFee } = calculateTotalWithProcessingFee(stickerPrice);
 
         // Get payment method from Stripe customer
         const stripeCustomer = await stripe.customers.retrieve(customer.stripe_customer_id);
@@ -128,27 +144,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Create payment intent
+        // Customer pays: sticker price + processing fee
+        // Remitter receives: exact sticker price (100% of what city requires)
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(totalAmount * 100),
           currency: 'usd',
           customer: customer.stripe_customer_id,
           payment_method: defaultPaymentMethod as string,
           confirm: true,
-          description: `City Sticker Renewal - ${customer.license_plate}`,
+          description: `City Sticker Renewal - ${customer.license_plate} (includes processing fee)`,
           metadata: {
             user_id: customer.user_id,
             license_plate: customer.license_plate,
             renewal_type: 'city_sticker',
             expiry_date: customer.city_sticker_expiry,
+            sticker_price: stickerPrice.toString(),
+            processing_fee: processingFee.toString(),
           },
 
-          // Send payment to remitter
+          // Send exact sticker price to remitter (100% of city sticker cost)
           transfer_data: {
             destination: remitter.stripe_connected_account_id,
+            amount: Math.round(stickerPrice * 100), // Remitter gets exact sticker price
           },
 
-          // Platform fee
-          application_fee_amount: Math.round(platformFeeAmount * 100),
+          // No platform fee - processing fee covers Stripe's costs
+          // Platform revenue comes from subscription ($12/mo or $99/year)
 
           // Send receipt to customer
           receipt_email: customer.email || undefined,
@@ -163,8 +184,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           stripe_charge_id: paymentIntent.latest_charge as string,
           status: 'succeeded',
           remitter_partner_id: remitter.id,
-          remitter_received_amount: totalAmount - platformFeeAmount,
-          platform_fee_amount: platformFeeAmount,
+          remitter_received_amount: stickerPrice, // Remitter gets 100% of sticker price
+          platform_fee_amount: 0, // No platform fee on renewals
           renewal_type: 'city_sticker',
           renewal_due_date: customer.city_sticker_expiry,
           succeeded_at: new Date().toISOString(),
@@ -187,8 +208,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           zip_code: customer.zip_code,
           sticker_type: vehicleType,
           sticker_price: stickerPrice,
-          service_fee: platformFeeAmount,
-          total_amount: totalAmount,
+          service_fee: 0, // No service fee charged to remitter
+          total_amount: stickerPrice, // Remitter receives exact sticker price
           payment_status: 'paid',
           status: 'pending',
           stripe_payment_intent_id: paymentIntent.id,

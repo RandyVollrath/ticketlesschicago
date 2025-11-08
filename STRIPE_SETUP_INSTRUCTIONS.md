@@ -81,14 +81,17 @@ When a customer signs up for Protection:
    - Records consent for automated renewals
 
 3. **Automated renewals (30 days before expiration):**
-   - Charges customer for sticker based on vehicle type:
-     - Motorbike (MB): $53.04
-     - Passenger (P): $100.17
-     - Large Passenger (LP): $159.12
-     - Small Truck (ST): $235.71
-     - Large Truck (LT): $530.40
-   - Sends payment to remitter via Stripe Connect
-   - Platform keeps $2 fee
+   - Charges customer for sticker + processing fee:
+     - Base sticker prices (exact amounts remitter receives):
+       - Motorbike (MB): $53.04
+       - Passenger (P): $100.17
+       - Large Passenger (LP): $159.12
+       - Small Truck (ST): $235.71
+       - Large Truck (LT): $530.40
+     - Processing fee added to customer charge: (sticker price × 2.9%) + $0.30
+     - Example: $100.17 sticker → customer pays ~$103.37 ($100.17 + $3.20 processing)
+   - Sends 100% of sticker price to remitter via Stripe Connect
+   - Platform keeps $0 from renewals (all revenue from subscriptions)
 
 ---
 
@@ -101,7 +104,6 @@ When a customer signs up for Protection:
    ```
    STRIPE_TEST_PROTECTION_MONTHLY_PRICE_ID=price_xxxxx
    STRIPE_TEST_PROTECTION_ANNUAL_PRICE_ID=price_xxxxx
-   STRIPE_TEST_REMITTER_SETUP_FEE_PRICE_ID=price_xxxxx
    ```
 
 3. Set test mode:
@@ -167,23 +169,24 @@ STRIPE_TEST_PROTECTION_ANNUAL_PRICE_ID=price_xxxxx
 - **Remitter receives**: $0 upfront (paid at renewal time)
 
 ### Per Renewal (automated, 30 days before expiration):
-- **Customer pays**: $53-530 (sticker cost, varies by vehicle type)
-- **Remitter receives**: $51-528 (sticker cost minus $2)
-- **You receive**: $2 (platform fee, via Connect)
+- **Customer pays**: Sticker cost + processing fee (varies by vehicle type)
+  - Example: $100.17 (sticker) + $3.20 (processing) = $103.37 total
+- **Remitter receives**: 100% of sticker cost ($53-530, depending on vehicle type)
+- **Platform receives**: $0 from renewals (all revenue from subscriptions)
+- **Processing fee**: Covers Stripe's 2.9% + $0.30 transaction cost
 
 ### Example: 100 Customers
 - **Monthly subscriptions**: $1,200/mo recurring revenue ($14,400/year)
 - **Or annual subscriptions**: $9,900/year recurring revenue
-- **Renewal platform fees**: ~$200 per 100 renewals
-- **Total first year** (monthly): $14,400 + $200 = **$14,600**
+- **Renewal revenue**: $0 (pass-through to remitter + processing fee to Stripe)
+- **Total annual revenue**: $14,400 or $9,900 (subscriptions only)
 
 ---
 
 ## Next Steps
 
 1. ✅ Wait for Stripe Connect live client ID approval
-2. Create subscription products in Stripe
-3. Create remitter setup fee product
-4. Add all price IDs to Vercel
-5. Test in test mode
-6. Switch to live and launch!
+2. Create subscription products in Stripe ($12/mo, $99/year)
+3. Add all price IDs to Vercel
+4. Test in test mode
+5. Switch to live and launch!
