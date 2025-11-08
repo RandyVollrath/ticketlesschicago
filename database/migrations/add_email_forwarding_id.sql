@@ -2,16 +2,36 @@
 -- Format: documents+{user_uuid}@autopilotamerica.com
 -- Example: documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com
 
+-- Add columns without defaults first
 ALTER TABLE user_profiles
-ADD COLUMN email_forwarding_address TEXT,
-ADD COLUMN residency_proof_path TEXT,
-ADD COLUMN residency_proof_uploaded_at TIMESTAMPTZ,
-ADD COLUMN residency_proof_verified BOOLEAN DEFAULT false,
-ADD COLUMN residency_proof_verified_at TIMESTAMPTZ,
-ADD COLUMN residency_forwarding_enabled BOOLEAN DEFAULT false,
-ADD COLUMN residency_forwarding_consent_given BOOLEAN DEFAULT false,
-ADD COLUMN residency_forwarding_consent_given_at TIMESTAMPTZ,
-ADD COLUMN city_sticker_purchase_confirmed_at TIMESTAMPTZ;
+ADD COLUMN IF NOT EXISTS email_forwarding_address TEXT,
+ADD COLUMN IF NOT EXISTS residency_proof_path TEXT,
+ADD COLUMN IF NOT EXISTS residency_proof_uploaded_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS residency_proof_verified BOOLEAN,
+ADD COLUMN IF NOT EXISTS residency_proof_verified_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS residency_forwarding_enabled BOOLEAN,
+ADD COLUMN IF NOT EXISTS residency_forwarding_consent_given BOOLEAN,
+ADD COLUMN IF NOT EXISTS residency_forwarding_consent_given_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS city_sticker_purchase_confirmed_at TIMESTAMPTZ;
+
+-- Set defaults separately
+ALTER TABLE user_profiles
+ALTER COLUMN residency_proof_verified SET DEFAULT false,
+ALTER COLUMN residency_forwarding_enabled SET DEFAULT false,
+ALTER COLUMN residency_forwarding_consent_given SET DEFAULT false;
+
+-- Update existing rows
+UPDATE user_profiles
+SET residency_proof_verified = false
+WHERE residency_proof_verified IS NULL;
+
+UPDATE user_profiles
+SET residency_forwarding_enabled = false
+WHERE residency_forwarding_enabled IS NULL;
+
+UPDATE user_profiles
+SET residency_forwarding_consent_given = false
+WHERE residency_forwarding_consent_given IS NULL;
 
 -- Function to generate email forwarding address using user UUID
 CREATE OR REPLACE FUNCTION generate_email_forwarding_address()

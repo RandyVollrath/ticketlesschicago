@@ -237,6 +237,27 @@ export default function PrivacyPolicy() {
               <li style={{ marginBottom: '8px' }}>
                 <strong>Vercel:</strong> Website hosting
               </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Google Cloud Vision:</strong> Automated image quality verification for driver's license uploads (with your explicit consent). Ensures images are clear for city clerk processing. Google does not retain images after analysis. <a href="https://cloud.google.com/vision/docs/data-usage" target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', textDecoration: 'underline' }}>Learn more</a>
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Cloudflare Email Routing:</strong> Routes forwarded utility bills from your email provider to our system for proof of residency processing (permit zone applicants only, with your explicit consent). Emails are not stored by Cloudflare - they are routed directly to our secure processing system.
+              </li>
+            </ul>
+
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: '12px', marginTop: '16px' }}>
+              Third-Party Data Processing (Permit Zone Applicants)
+            </h3>
+            <p style={{ marginBottom: '12px', color: '#1e3a8a' }}>
+              For permit zone city sticker renewals, we process sensitive documents with your explicit consent:
+            </p>
+            <ul style={{ paddingLeft: '24px', marginBottom: '16px', color: '#1e3a8a' }}>
+              <li style={{ marginBottom: '12px' }}>
+                <strong>Driver's License Image Verification:</strong> We use Google Cloud Vision API to verify image quality (blur detection, text readability, document type). This ensures your image is clear for city clerk processing. Processing occurs only with your consent, completes within seconds, and Google does not retain your image. <a href="https://cloud.google.com/vision/docs/data-usage" target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', textDecoration: 'underline' }}>Google's data usage policy</a>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <strong>Utility Bill Email Forwarding (Optional):</strong> You may optionally forward utility bills from your provider (Comcast, ConEd, Peoples Gas, etc.) to your unique email address (documents+[your-id]@autopilotamerica.com) for automated proof of residency. Forwarded emails are routed through Cloudflare Email Routing directly to our system - they are not stored in any email inbox. We extract and store only your most recent bill, which is automatically deleted after your city sticker purchase is confirmed or after 60 days outside the renewal window. You can revoke consent at any time.
+              </li>
             </ul>
 
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: '12px', marginTop: '16px' }}>
@@ -280,8 +301,38 @@ export default function PrivacyPolicy() {
                 We will delete your data within 30 days, except where required by law to retain it
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Uploaded documents:</strong> ID and proof of residency documents are deleted 90 days
-                after permit approval or 30 days after account deletion
+                <strong>Driver's License Images (Permit Zone Applicants):</strong>
+                <ul style={{ paddingLeft: '24px', marginTop: '8px' }}>
+                  <li style={{ marginBottom: '8px' }}>
+                    <strong>Multi-year reuse (default):</strong> Stored securely until your driver's license expires. You will be notified 60+ days before expiration to upload an updated license. You can opt out and request deletion at any time in your account settings.
+                  </li>
+                  <li style={{ marginBottom: '8px' }}>
+                    <strong>Opted out of multi-year reuse:</strong> Deleted 48 hours after last access for city sticker renewal processing
+                  </li>
+                  <li style={{ marginBottom: '8px' }}>
+                    <strong>Abandoned uploads:</strong> Unverified images deleted after 48 hours
+                  </li>
+                </ul>
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Utility Bills (Proof of Residency, Permit Zone Applicants):</strong>
+                <ul style={{ paddingLeft: '24px', marginTop: '8px' }}>
+                  <li style={{ marginBottom: '8px' }}>
+                    Only your most recent bill is stored (previous bills are automatically deleted when a new bill arrives)
+                  </li>
+                  <li style={{ marginBottom: '8px' }}>
+                    Deleted immediately after successful city sticker purchase confirmation
+                  </li>
+                  <li style={{ marginBottom: '8px' }}>
+                    Kept during renewal window (60 days before to 7 days after renewal submission)
+                  </li>
+                  <li style={{ marginBottom: '8px' }}>
+                    Stale bills (60+ days old outside renewal window) are automatically deleted
+                  </li>
+                </ul>
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Other uploaded documents:</strong> ID and proof of residency documents (non-automatic processing) are deleted 90 days after permit approval or 30 days after account deletion
               </li>
             </ul>
           </section>
