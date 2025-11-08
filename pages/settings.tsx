@@ -8,6 +8,7 @@ import SnowBanSettings from '../components/SnowBanSettings'
 import PasskeyManager from '../components/PasskeyManager'
 import UpgradeCard from '../components/UpgradeCard'
 import ReferralLink from '../components/ReferralLink'
+import DocumentStatus from '../components/DocumentStatus'
 
 // Phone number formatting utilities
 const formatPhoneNumber = (value: string): string => {
@@ -1032,6 +1033,11 @@ export default function Dashboard() {
         <div style={{ marginBottom: '32px' }}>
           <UpgradeCard hasProtection={profile.has_protection || false} />
         </div>
+
+        {/* Document Status - Only for Protection users with permit zones */}
+        {profile.has_protection && profile.has_permit_zone && user && (
+          <DocumentStatus userId={user.id} hasPermitZone={true} />
+        )}
 
         {/* Contest Ticket Tool - COMMENTED OUT - Not production ready yet
             TODO: Requires AI/OCR integration for ticket extraction and letter generation
