@@ -187,31 +187,74 @@ CREATE TRIGGER set_email_forwarding_id ...
 
 ## Email Service Integration
 
-### Option 1: SendGrid Inbound Parse (Recommended)
+### Option 1: Cloudflare Email Routing (Recommended - FREE)
 
-**Why:** Built for this exact use case, $0 for first 100 emails/day
+**Why:**
+- Completely free (unlimited emails)
+- Simple setup (5 minutes)
+- No email storage - routes directly to webhook
+- Managed by Cloudflare (reliable, secure)
+- Auto-deletes after processing
+
+**Setup:**
+1. Go to Cloudflare Dashboard → Email → Email Routing
+2. Add domain: `autopilotamerica.com`
+3. Verify DNS records (Cloudflare adds automatically)
+4. Create Custom Address:
+   - Pattern: `documents+*@autopilotamerica.com`
+   - Forward to: Webhook → `https://ticketlesschicago.com/api/email/process-residency-proof`
+5. Done!
+
+**How it works:**
+- Email arrives at `documents+{uuid}@autopilotamerica.com`
+- Cloudflare routes to your webhook via HTTP POST
+- Webhook processes and stores PDF
+- Email is NOT stored anywhere - ephemeral routing only
+- No Gmail, no inbox, no manual deletion needed
+
+**Webhook receives:**
+```json
+{
+  "to": "documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com",
+  "from": "noreply@comcast.com",
+  "subject": "Your Comcast Bill for January 2025",
+  "headers": {...},
+  "attachments": [{
+    "filename": "bill.pdf",
+    "contentType": "application/pdf",
+    "content": "base64EncodedPDF..."
+  }],
+  "text": "Email body text",
+  "html": "<html>Email body HTML</html>"
+}
+```
+
+### Option 2: AWS SES + Lambda
+
+**Why:** More control, cheaper at scale (but more complex)
+
+**Setup:**
+1. Verify domain: `autopilotamerica.com` in SES
+2. Create SES receipt rule: `documents+*@autopilotamerica.com` → Lambda function
+3. Lambda function:
+   - Receives email from S3 (SES stores temporarily)
+   - Parses email and extracts PDF
+   - Calls `/api/email/process-residency-proof` webhook
+   - Deletes email from S3
+4. Configure S3 lifecycle policy: Delete emails older than 1 day (backup cleanup)
+
+**Cost:** $0.10 per 1000 emails received
+
+### Option 3: SendGrid Inbound Parse
+
+**Why:** Designed for this, but costs money after 100/day
 
 **Setup:**
 1. Add MX record: `autopilotamerica.com` → SendGrid
 2. Configure Inbound Parse webhook → `POST /api/email/process-residency-proof`
 3. SendGrid forwards all `documents+*@autopilotamerica.com` emails to your webhook
 
-**Webhook receives:**
-- `to`: `documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com`
-- `from`: `noreply@comcast.com`
-- `subject`: "Your Comcast Bill for January 2025"
-- `attachments`: `[{filename: 'bill.pdf', content: base64}]`
-- `text`: Email body text
-- `html`: Email body HTML
-
-### Option 2: AWS SES + Lambda
-
-**Why:** More control, cheaper at scale
-
-**Setup:**
-1. Verify domain: `autopilotamerica.com`
-2. Create SES rule: `documents+*@autopilotamerica.com` → Lambda function
-3. Lambda processes email → Calls Next.js API endpoint
+**Cost:** Free for first 100 emails/day, $0.0001/email after
 
 ---
 
@@ -490,15 +533,19 @@ Before going live:
 
 ## Cost Analysis
 
-**SendGrid Inbound Parse:**
-- Free: 100 emails/day
-- $0.0001/email beyond 100/day
-- **Estimated cost for 1000 users:** ~$3/month (30 emails/user/year = 30k emails/year)
+**Cloudflare Email Routing:**
+- **Cost:** $0 (completely free, unlimited)
+- **Estimated cost for 1000 users:** $0/month
 
 **AWS SES + Lambda:**
 - $0.10 per 1000 emails received
 - $0.20 per million Lambda requests
 - **Estimated cost for 1000 users:** ~$1/month
+
+**SendGrid Inbound Parse:**
+- Free: 100 emails/day
+- $0.0001/email beyond 100/day
+- **Estimated cost for 1000 users:** ~$3/month (30 emails/user/year = 30k emails/year)
 
 **Supabase Storage:**
 - Included in Pro plan (100GB)
@@ -514,11 +561,13 @@ Before going live:
 2. **Format:** `documents+{user-uuid}@autopilotamerica.com`
 3. **Example:** `documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com`
 4. **Auto-generated** when user signs up for Protection + Permit
-5. **Ephemeral storage** - only keep latest bill, delete after purchase confirmed or 60 days outside renewal window
-6. **Consent required** before processing forwarded emails
-7. **Privacy-first** - automated processing, no human review, immediate deletion
-8. **Cost-effective** - ~$3/month for 1000 users with SendGrid
-9. **User experience** - Set up once, never upload bills again
+5. **Ephemeral routing** - Cloudflare routes directly to webhook, NO email storage
+6. **Organized storage** - `proof/{uuid}/{yyyy-mm-dd}/bill.pdf` for easy remitter access
+7. **Delete after purchase** - Bills deleted after city sticker purchase confirmed or 60 days outside renewal window
+8. **Consent required** - User must consent before processing forwarded emails
+9. **Privacy-first** - No Gmail, no inbox, automated processing, immediate deletion
+10. **Cost-effective** - $0/month with Cloudflare Email Routing
+11. **User experience** - Set up once, never upload bills again
 
 ---
 
