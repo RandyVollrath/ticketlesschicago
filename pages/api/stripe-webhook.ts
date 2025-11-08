@@ -230,6 +230,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   zip_code: zipCode,
                   vehicle_type: metadata.vehicleType || 'P',
                   has_protection: true,
+                  stripe_customer_id: session.customer as string, // CRITICAL: Save for future renewals
                   city_sticker_expiry: metadata.citySticker || null,
                   license_plate_expiry: metadata.licensePlate || null,
                   mailing_address: metadata.streetAddress || billingAddress,
@@ -356,6 +357,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             user_id: userId,
             email: email,
             has_protection: true,
+            stripe_customer_id: session.customer as string, // CRITICAL: Save for future renewals
             updated_at: new Date().toISOString()
           };
 
