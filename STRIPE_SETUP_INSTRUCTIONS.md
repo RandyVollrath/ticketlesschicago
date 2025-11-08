@@ -81,19 +81,27 @@ When a customer signs up for Protection:
    - Records consent for automated renewals
 
 3. **Automated renewals (30 days before expiration):**
-   - Charges customer for sticker + service fee + processing fee:
+   - Charges customer for sticker + platform service fee + processing fee:
      - Base sticker prices (exact amounts remitter receives):
        - Motorbike (MB): $53.04
        - Passenger (P): $100.17
        - Large Passenger (LP): $159.12
        - Small Truck (ST): $235.71
        - Large Truck (LT): $530.40
-     - Service fee: $2.50 (operational costs, support, infrastructure)
+     - Platform service fee: $2.50 (operational costs, support, infrastructure)
      - Processing fee: Calculated to cover Stripe's 2.9% + $0.30 on total transaction
      - Example: $100.17 sticker → customer pays $106.05 total
-       - Breakdown: Remitter gets $100.17, Platform gets $2.50, Stripe gets $3.38
-   - Sends 100% of sticker price to remitter via Stripe Connect
-   - Platform keeps $2.50 service fee per renewal
+       - Customer charged: $106.05
+       - Remitter receives: $112.17 ($100.17 sticker + $12 processing service)
+       - Platform keeps: $2.50 (from customer)
+       - Platform pays: $12 (from subscription balance to remitter)
+       - Stripe keeps: $3.38 (processing fee)
+   - **Two transfers to remitter:**
+     - Transfer #1 (from customer payment): $100.17 (sticker cost)
+     - Transfer #2 (from platform balance): $12.00 (processing service fee)
+     - **Total remitter receives: $112.17**
+   - **Platform net:** $2.50 - $12 = **-$9.50 per renewal**
+     - This is covered by subscription revenue ($1/mo × 12 months = $12/year per customer)
 
 ---
 
@@ -171,19 +179,27 @@ STRIPE_TEST_PROTECTION_ANNUAL_PRICE_ID=price_xxxxx
 - **Remitter receives**: $0 upfront (paid at renewal time)
 
 ### Per Renewal (automated, 30 days before expiration):
-- **Customer pays**: Sticker cost + service fee + processing fee (varies by vehicle type)
-  - Example: $100.17 (sticker) + $2.50 (service) + $3.38 (processing) = $106.05 total
-- **Remitter receives**: 100% of sticker cost ($53-530, depending on vehicle type)
-- **Platform receives**: $2.50 service fee per renewal
-- **Stripe receives**: Processing fee (2.9% + $0.30 on total transaction)
+- **Customer pays**: Sticker cost + platform service fee + processing fee (varies by vehicle type)
+  - Example: $100.17 (sticker) + $2.50 (platform service) + $3.38 (processing) = $106.05 total
+- **Remitter receives**: Sticker cost + $12 processing service fee
+  - Example: $100.17 + $12 = $112.17 total
+  - Transfer #1 (from customer): $100.17
+  - Transfer #2 (from platform balance): $12.00
+- **Platform receives**: $2.50 per renewal (from customer)
+- **Platform pays**: $12 per renewal (to remitter, from subscription balance)
+- **Platform net per renewal**: $2.50 - $12 = **-$9.50**
+- **Stripe receives**: Processing fee (~$3.38 for Passenger vehicle)
 
-### Example: 100 Customers (all Passenger vehicles)
-- **Monthly subscriptions**: $1,200/mo recurring revenue ($14,400/year)
-- **Or annual subscriptions**: $9,900/year recurring revenue
-- **Renewal revenue**: $2.50 × 100 renewals = $250/year
-- **Total annual revenue**:
-  - Monthly plan: $14,400 + $250 = **$14,650**
-  - Annual plan: $9,900 + $250 = **$10,150**
+### Example: 100 Customers (all Passenger vehicles, monthly plan)
+- **Subscription revenue**: $1,200/mo ($14,400/year)
+  - Protection revenue: $1,100/mo ($13,200/year)
+  - Reserved for remitter service: $100/mo ($1,200/year)
+- **Renewal revenue from customers**: $2.50 × 100 = $250
+- **Renewal payments to remitters**: $12 × 100 = -$1,200
+- **Net renewal revenue**: $250 - $1,200 = **-$950**
+- **Total annual revenue**: $13,200 + $250 - $1,200 = **$12,250**
+
+**Key insight:** The $1/mo subscription fee covers the $12 annual payment to remitters. Platform makes money from Protection service ($11/mo) + small renewal fee ($2.50).
 
 ---
 

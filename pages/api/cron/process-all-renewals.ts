@@ -40,8 +40,11 @@ const STICKER_PRICE_IDS: Record<string, string | undefined> = {
 const STRIPE_PERCENTAGE_FEE = 0.029;
 const STRIPE_FIXED_FEE = 0.30;
 
-// Service fee for operational costs
+// Service fee for operational costs (processing, infrastructure)
 const SERVICE_FEE = 2.50;
+
+// Remitter processing fee (paid from subscription revenue)
+const REMITTER_SERVICE_FEE = 12.00;
 
 /**
  * Fetch sticker price from Stripe
@@ -202,10 +205,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           transfer_data: {
             destination: remitter.stripe_connected_account_id,
-            amount: Math.round(stickerPrice * 100),
+            amount: Math.round(stickerPrice * 100), // Remitter gets exact sticker price
           },
           receipt_email: customer.email || undefined,
         });
+
+        // Send $12 service fee from platform balance to remitter
+        // This comes from the $1/mo or $12/year collected in subscription
+        console.log(`💸 Transferring $${REMITTER_SERVICE_FEE} service fee to remitter from platform balance...`);
+        const serviceFeeTransfer = await stripe.transfers.create({
+          amount: Math.round(REMITTER_SERVICE_FEE * 100),
+          currency: 'usd',
+          destination: remitter.stripe_connected_account_id,
+          description: `Sticker Processing Service Fee - ${customer.license_plate}`,
+          metadata: {
+            user_id: customer.user_id,
+            license_plate: customer.license_plate,
+            renewal_type: 'city_sticker',
+            payment_intent_id: paymentIntent.id,
+          },
+        });
+
+        console.log(`✅ Service fee transfer complete: ${serviceFeeTransfer.id}`);
 
         // Log successful charge
         await supabase.from('renewal_charges').insert({
@@ -216,8 +237,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           stripe_charge_id: paymentIntent.latest_charge as string,
           status: 'succeeded',
           remitter_partner_id: remitter.id,
-          remitter_received_amount: stickerPrice,
-          platform_fee_amount: serviceFee,
+          remitter_received_amount: stickerPrice + REMITTER_SERVICE_FEE, // Sticker + $12 service fee
+          platform_fee_amount: serviceFee, // $2.50 platform keeps
           renewal_type: 'city_sticker',
           renewal_due_date: customer.city_sticker_expiry,
           succeeded_at: new Date().toISOString(),
@@ -240,15 +261,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           zip_code: customer.zip_code,
           sticker_type: vehicleType,
           sticker_price: stickerPrice,
-          service_fee: serviceFee,
-          total_amount: totalAmount,
+          service_fee: REMITTER_SERVICE_FEE, // $12 processing fee to remitter
+          total_amount: stickerPrice + REMITTER_SERVICE_FEE, // Total remitter receives
           payment_status: 'paid',
           status: 'pending',
           stripe_payment_intent_id: paymentIntent.id,
         });
 
         results.cityStickerSucceeded++;
-        console.log(`✅ Charged city sticker for ${customer.user_id}: $${totalAmount}`);
+        console.log(`✅ Renewal complete for ${customer.user_id}:
+          - Customer charged: $${totalAmount}
+          - Remitter received: $${(stickerPrice + REMITTER_SERVICE_FEE).toFixed(2)} ($${stickerPrice} sticker + $${REMITTER_SERVICE_FEE} service)
+          - Platform kept: $${serviceFee}`);
 
       } catch (error: any) {
         console.error(`Failed to process city sticker for customer ${customer.user_id}:`, error);
