@@ -9,24 +9,28 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
 
+  // IMMEDIATE redirect check before anything else
+  useEffect(() => {
+    const immediateCheck = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // If user is logged in and on home page, ALWAYS redirect to settings
+        // This catches ALL cases where auth callback fails
+        console.log('🚨 HOME PAGE: User is logged in, forcing redirect to /settings');
+        console.log('Current URL:', window.location.href);
+        window.location.replace('/settings');
+      }
+    };
+    immediateCheck();
+  }, []);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session && !error) {
           setUser(session.user);
-
-          // FORCE redirect to settings if user just logged in (within last 30 seconds)
-          const sessionCreatedAt = new Date(session.user.created_at || 0).getTime();
-          const now = Date.now();
-          const thirtySecondsAgo = now - 30000;
-
-          // If coming from auth callback (has hash or specific query params), redirect to settings
-          if (window.location.hash || window.location.search.includes('session_id') || window.location.search.includes('verified')) {
-            console.log('Home page: User just logged in, redirecting to settings');
-            window.location.href = '/settings';
-            return;
-          }
+          // Already handled by immediate check above
         }
       } catch (error) {
         console.error('Error checking auth:', error);
