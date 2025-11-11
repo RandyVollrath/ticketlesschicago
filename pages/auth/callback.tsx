@@ -309,21 +309,16 @@ export default function AuthCallback() {
             }
           }
           
-          // Check for redirect parameter first, then admin users, then default to settings
+          // Check for redirect parameter first, then default to settings
           const redirectTo = new URLSearchParams(window.location.search).get('redirect');
-          const adminEmails = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
 
           console.log('=== REDIRECT LOGIC ===')
           console.log('redirect param:', redirectTo)
           console.log('user email:', user.email)
-          console.log('is admin:', adminEmails.includes(user.email || ''))
 
           if (redirectTo) {
             console.log('Redirecting to:', redirectTo);
             await router.push(redirectTo);
-          } else if (adminEmails.includes(user.email || '')) {
-            console.log('Admin user detected, redirecting to admin panel');
-            await router.push('/admin/profile-updates');
           } else {
             console.log('Executing router.push("/settings")');
             await router.push('/settings');
