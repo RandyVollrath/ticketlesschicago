@@ -15,7 +15,18 @@ export default function Home() {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session && !error) {
           setUser(session.user);
-          // Don't auto-redirect - let users access homepage even when logged in
+
+          // FORCE redirect to settings if user just logged in (within last 30 seconds)
+          const sessionCreatedAt = new Date(session.user.created_at || 0).getTime();
+          const now = Date.now();
+          const thirtySecondsAgo = now - 30000;
+
+          // If coming from auth callback (has hash or specific query params), redirect to settings
+          if (window.location.hash || window.location.search.includes('session_id') || window.location.search.includes('verified')) {
+            console.log('Home page: User just logged in, redirecting to settings');
+            window.location.href = '/settings';
+            return;
+          }
         }
       } catch (error) {
         console.error('Error checking auth:', error);
