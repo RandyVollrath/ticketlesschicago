@@ -22,7 +22,8 @@ export default function Login() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         console.log('User already logged in, redirecting to settings:', user.email)
-        router.replace('/settings')
+        window.location.href = '/settings'
+        return
       }
     }
     checkUser()
@@ -178,7 +179,7 @@ export default function Login() {
       } else {
         // Successful sign in
         console.log('Password login successful, redirecting to settings')
-        router.replace('/settings')
+        window.location.href = '/settings'
       }
     } catch (error: any) {
       setMessage({
@@ -242,7 +243,7 @@ export default function Login() {
         })
 
         console.log('Passkey login successful, redirecting to settings')
-        router.replace('/settings')
+        window.location.href = '/settings'
       }
     } catch (error: any) {
       console.error('Passkey auth error:', error)
