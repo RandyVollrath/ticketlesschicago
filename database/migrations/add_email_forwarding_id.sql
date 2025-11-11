@@ -49,17 +49,21 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to auto-generate email forwarding address when user signs up for protection
+DROP TRIGGER IF EXISTS set_email_forwarding_address ON user_profiles;
+
 CREATE TRIGGER set_email_forwarding_address
   BEFORE INSERT OR UPDATE OF has_protection ON user_profiles
   FOR EACH ROW
   EXECUTE FUNCTION generate_email_forwarding_address();
 
 -- Index for cleanup of old residency proofs
+DROP INDEX IF EXISTS idx_residency_proof_cleanup;
 CREATE INDEX idx_residency_proof_cleanup
 ON user_profiles(residency_proof_uploaded_at)
 WHERE residency_proof_path IS NOT NULL;
 
 -- Index for finding users with confirmed purchases (for cleanup)
+DROP INDEX IF EXISTS idx_city_sticker_purchase_confirmed;
 CREATE INDEX idx_city_sticker_purchase_confirmed
 ON user_profiles(city_sticker_purchase_confirmed_at)
 WHERE city_sticker_purchase_confirmed_at IS NOT NULL;

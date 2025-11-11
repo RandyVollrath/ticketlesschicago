@@ -9,6 +9,8 @@ import PasskeyManager from '../components/PasskeyManager'
 import UpgradeCard from '../components/UpgradeCard'
 import ReferralLink from '../components/ReferralLink'
 import DocumentStatus from '../components/DocumentStatus'
+import EmailForwardingSetup from '../components/EmailForwardingSetup'
+import LicenseAccessHistory from '../components/LicenseAccessHistory'
 
 // Phone number formatting utilities
 const formatPhoneNumber = (value: string): string => {
@@ -100,6 +102,13 @@ interface UserProfile {
   city_sticker_expiry?: string | null
   license_plate_expiry?: string | null
   emissions_date?: string | null
+  // License plate renewal info
+  license_plate_type?: string | null
+  license_plate_is_personalized?: boolean | null
+  license_plate_is_vanity?: boolean | null
+  license_plate_renewal_cost?: number | null
+  trailer_weight?: number | null
+  rv_weight?: number | null
   // Mailing address (from users table)
   mailing_address?: string | null
   mailing_city?: string | null
@@ -154,6 +163,8 @@ interface UserProfile {
   license_image_uploaded_at?: string | null
   license_image_verified?: boolean | null
   has_permit_zone?: boolean | null
+  // Email forwarding
+  email_forwarding_address?: string | null
 }
 
 interface Vehicle {
@@ -1039,6 +1050,20 @@ export default function Dashboard() {
           <DocumentStatus userId={user.id} hasPermitZone={true} />
         )}
 
+        {/* Email Forwarding Setup - Only for Protection users with permit zones */}
+        {profile.has_protection && profile.has_permit_zone && profile.email_forwarding_address && (
+          <div style={{ marginTop: '32px' }}>
+            <EmailForwardingSetup forwardingEmail={profile.email_forwarding_address} />
+          </div>
+        )}
+
+        {/* License Access History - Only for Protection users with permit zones who uploaded license */}
+        {profile.has_protection && profile.has_permit_zone && profile.license_image_path && user && (
+          <div style={{ marginTop: '32px' }}>
+            <LicenseAccessHistory userId={user.id} />
+          </div>
+        )}
+
         {/* Contest Ticket Tool - COMMENTED OUT - Not production ready yet
             TODO: Requires AI/OCR integration for ticket extraction and letter generation
         <div style={{
@@ -1681,7 +1706,7 @@ export default function Dashboard() {
                       margin: 0,
                       lineHeight: '1.6'
                     }}>
-                      Your license image is stored securely and <strong>temporarily</strong>. We access it ONLY when processing your city sticker renewal (30 days before expiration). The image is <strong>automatically deleted within 48 hours</strong> of verification or processing. We never sell or share your personal information.
+                      Your license is encrypted with bank-level security. We access it <strong>only once per year</strong>, 30 days before your city sticker renewal. If you opt out of multi-year storage, it's deleted within 48 hours. If you opt in, it's stored until your license expires and then automatically deleted. We never sell or share your information.
                     </p>
                   </div>
                 </div>
@@ -1883,6 +1908,174 @@ export default function Dashboard() {
                   }}
                 />
               </div>
+
+              {/* License Plate Type - For Protection users */}
+              {profile.has_protection && (
+                <>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '8px'
+                    }}>
+                      Illinois License Plate Type
+                      <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'normal', marginLeft: '8px' }}>
+                        (Required for automatic renewal)
+                      </span>
+                    </label>
+                    <select
+                      value={editedProfile.license_plate_type !== undefined ? editedProfile.license_plate_type : (profile?.license_plate_type || '')}
+                      onChange={(e) => handleInputChange('license_plate_type', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value="">Select plate type</option>
+                      <option value="PASSENGER">Passenger ($151/year)</option>
+                      <option value="MOTORCYCLE">Motorcycle ($41/year)</option>
+                      <option value="B-TRUCK">B-Truck ($151/year)</option>
+                      <option value="C-TRUCK">C-Truck ($218/year)</option>
+                      <option value="PERSONS_WITH_DISABILITIES">Persons with Disabilities ($151/year)</option>
+                      <option value="RT">Recreational Trailer ($18-$50/year)</option>
+                      <option value="RV">Recreational Vehicle ($78-$102/year)</option>
+                    </select>
+                  </div>
+
+                  {/* Weight input for RT/RV plates */}
+                  {(editedProfile.license_plate_type === 'RT' || profile?.license_plate_type === 'RT') && (
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginBottom: '8px'
+                      }}>
+                        Trailer Weight (lbs)
+                        <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'normal', marginLeft: '8px' }}>
+                          (≤3,000: $18 | 3,001-8,000: $30 | 8,001-10,000: $38 | 10,001+: $50)
+                        </span>
+                      </label>
+                      <input
+                        type="number"
+                        value={editedProfile.trailer_weight !== undefined ? editedProfile.trailer_weight : (profile?.trailer_weight || '')}
+                        onChange={(e) => handleInputChange('trailer_weight', parseInt(e.target.value) || null)}
+                        min="0"
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {(editedProfile.license_plate_type === 'RV' || profile?.license_plate_type === 'RV') && (
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginBottom: '8px'
+                      }}>
+                        RV Weight (lbs)
+                        <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'normal', marginLeft: '8px' }}>
+                          (≤8,000: $78 | 8,001-10,000: $90 | 10,001+: $102)
+                        </span>
+                      </label>
+                      <input
+                        type="number"
+                        value={editedProfile.rv_weight !== undefined ? editedProfile.rv_weight : (profile?.rv_weight || '')}
+                        onChange={(e) => handleInputChange('rv_weight', parseInt(e.target.value) || null)}
+                        min="0"
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Personalized/Vanity checkboxes */}
+                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#374151'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={editedProfile.license_plate_is_personalized !== undefined ? editedProfile.license_plate_is_personalized : (profile?.license_plate_is_personalized || false)}
+                        onChange={(e) => handleInputChange('license_plate_is_personalized', e.target.checked)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          accentColor: '#0052cc',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      Personalized Plate (+$7/year)
+                    </label>
+
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#374151'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={editedProfile.license_plate_is_vanity !== undefined ? editedProfile.license_plate_is_vanity : (profile?.license_plate_is_vanity || false)}
+                        onChange={(e) => handleInputChange('license_plate_is_vanity', e.target.checked)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          accentColor: '#0052cc',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      Vanity Plate (+$13/year)
+                    </label>
+                  </div>
+
+                  {/* Show calculated renewal cost */}
+                  {profile.license_plate_renewal_cost && (
+                    <div style={{
+                      backgroundColor: '#f0f9ff',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '8px',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ fontSize: '14px', color: '#0c4a6e', fontWeight: '500' }}>
+                        Calculated Renewal Cost:
+                      </span>
+                      <span style={{ fontSize: '18px', color: '#0c4a6e', fontWeight: 'bold' }}>
+                        ${profile.license_plate_renewal_cost.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
 
               <div>
                 <label style={{

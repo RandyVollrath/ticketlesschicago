@@ -83,6 +83,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .eq('user_id', userId);
 
+    // 🔍 AUDIT LOG: Record this access for transparency and security monitoring
+    await supabase
+      .from('license_access_log')
+      .insert({
+        user_id: userId,
+        accessed_at: new Date().toISOString(),
+        accessed_by: 'remitter_automation',
+        reason: 'city_sticker_renewal',
+        ip_address: req.headers['x-forwarded-for'] as string || req.headers['x-real-ip'] as string || null,
+        user_agent: req.headers['user-agent'] as string || null,
+        license_image_path: profile.license_image_path,
+        metadata: {
+          multi_year_consent: profile.license_reuse_consent_given,
+          license_expires: profile.license_valid_until,
+        },
+      });
+
     console.log(`⚠️ REMITTER ACCESS: License accessed for user ${userId}`);
     console.log(`  - License: ${profile.license_image_path}`);
     console.log(`  - Multi-year consent: ${profile.license_reuse_consent_given ? 'YES (kept until expiry)' : 'NO (delete 48h after access)'}`);
