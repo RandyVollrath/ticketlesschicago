@@ -316,8 +316,8 @@ export default function Pricing() {
                 listStyle: 'none',
                 color: '#6b7280'
               }}>
-                <li style={{ marginBottom: '8px' }}>• Monthly cost: $10</li>
-                <li style={{ marginBottom: '8px' }}>• Annual cost: $120 (or $100 if paid yearly)</li>
+                <li style={{ marginBottom: '8px' }}>• Monthly cost: $12</li>
+                <li style={{ marginBottom: '8px' }}>• Annual cost: $120 (save 2 months with annual)</li>
                 <li style={{ marginBottom: '8px' }}>• Coverage: 80% of eligible tickets up to $200/year</li>
                 <li>• Your savings: <span style={{ fontWeight: 'bold', color: '#16a34a' }}>$350+/year</span></li>
               </ul>

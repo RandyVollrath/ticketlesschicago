@@ -19,7 +19,7 @@ export default function Support() {
         },
         {
           q: 'How much does it cost?',
-          a: 'Our protection plan costs $10/month or $100/year (save $20 with annual billing).'
+          a: 'Our protection plan costs $12/month or $120/year (save 2 months with annual billing).'
         },
         {
           q: 'Can I cancel anytime?',

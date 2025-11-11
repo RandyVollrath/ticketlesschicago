@@ -297,7 +297,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             lineHeight: '1',
             marginBottom: '4px'
           }}>
-            $10
+            $12
           </div>
           <div style={{
             fontSize: '14px',

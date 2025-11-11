@@ -962,7 +962,7 @@ export default function Home() {
               },
               {
                 q: "What's Ticket Protection?",
-                a: 'Our premium tier ($100/year, or $10/month) includes comprehensive renewal reminders so you never miss city sticker, license plate, or emissions deadlines. Plus 80% reimbursement on eligible tickets up to $200/year as a service guarantee, not insurance.'
+                a: 'Our premium tier ($120/year, or $12/month) includes comprehensive renewal reminders so you never miss city sticker, license plate, or emissions deadlines. Plus 80% reimbursement on eligible tickets up to $200/year as a service guarantee, not insurance.'
               },
               {
                 q: 'Is Ticket Protection available now?',
