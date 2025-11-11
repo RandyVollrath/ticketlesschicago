@@ -322,12 +322,10 @@ export default function AuthCallback() {
           console.log('=== FORCING REDIRECT TO SETTINGS ===')
           console.log('user email:', user.email)
           console.log('current path:', window.location.pathname)
-          console.log('Executing router.push("/settings")');
 
-          // Use replace instead of push to prevent back button issues
-          await router.replace('/settings');
-
-          console.log('router.replace completed, new path:', window.location.pathname)
+          // Use window.location for absolute redirect - bypasses Next.js router
+          console.log('Redirecting with window.location.href to /settings')
+          window.location.href = '/settings';
         } else {
           // No session, redirect to home
           console.log('No session found, redirecting to home')
