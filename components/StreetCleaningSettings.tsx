@@ -495,12 +495,23 @@ export default function StreetCleaningSettings() {
         break;
       case 'next-3-days':
         statusIcon = '⚠️';
-        statusText = 'Street cleaning in the next 3 days';
+        // Calculate actual days for more accurate message
+        if (nextCleaningDate) {
+          const cleaningDate = new Date(nextCleaningDate + 'T00:00:00Z');
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          cleaningDate.setHours(0, 0, 0, 0);
+          const diffTime = cleaningDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          statusText = `Street cleaning in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+        } else {
+          statusText = 'Street cleaning soon';
+        }
         statusClass = 'soon';
         break;
       case 'later':
         statusIcon = '📅';
-        statusText = 'No street cleaning in the next 3 days';
+        statusText = 'No street cleaning soon';
         statusClass = 'later';
         break;
       case 'invalid_zone':
