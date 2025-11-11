@@ -19,6 +19,16 @@ export default function AuthSuccess() {
           throw new Error('Missing session information')
         }
 
+        // Check if user is already logged in
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (session) {
+          // User is already logged in, redirect directly to settings
+          console.log('User already logged in, redirecting to settings')
+          window.location.href = '/settings'
+          return
+        }
+
         // Modern approach: Direct Google OAuth instead of magic links
         console.log('Payment successful, initiating modern OAuth flow for:', email)
 
@@ -35,10 +45,15 @@ export default function AuthSuccess() {
         console.error('Error during auth success:', error)
         setError(error.message)
         setLoading(false)
-        
-        // Fallback: redirect to login page after delay
+
+        // Fallback: redirect to settings if there's a session, otherwise login
+        const { data: { session } } = await supabase.auth.getSession()
         setTimeout(() => {
-          router.push('/login')
+          if (session) {
+            window.location.href = '/settings'
+          } else {
+            router.push('/login')
+          }
         }, 3000)
       }
     }
