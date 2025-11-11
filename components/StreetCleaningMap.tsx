@@ -36,6 +36,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const snowRouteLayersRef = useRef<any[]>([]);
+  const geoJsonLayersRef = useRef<any[]>([]);
+  const legendRef = useRef<any>(null);
 
   useEffect(() => {
     // Dynamically import Leaflet to avoid SSR issues
@@ -54,11 +56,16 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         }).addTo(mapInstanceRef.current);
       }
 
-      // Clear existing layers
-      mapInstanceRef.current.eachLayer((layer: any) => {
-        if (layer.options.attribution) return; // Keep tile layer
+      // Clear existing GeoJSON layers
+      geoJsonLayersRef.current.forEach(layer => {
         mapInstanceRef.current.removeLayer(layer);
       });
+      geoJsonLayersRef.current = [];
+
+      // Remove old legend if exists
+      if (legendRef.current) {
+        mapInstanceRef.current.removeControl(legendRef.current);
+      }
 
       // Add legend
       const legend = L.control({ position: 'topleft' });
@@ -107,6 +114,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         return div;
       };
       legend.addTo(mapInstanceRef.current);
+      legendRef.current = legend;
 
       // Add GeoJSON data
       data.forEach((feature) => {
@@ -198,6 +206,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
         geojsonLayer.bindPopup(popupContent);
         geojsonLayer.addTo(mapInstanceRef.current);
+        geoJsonLayersRef.current.push(geojsonLayer);
       });
 
       // Only add snow routes overlay when user enables it via checkbox
