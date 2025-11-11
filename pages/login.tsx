@@ -448,7 +448,7 @@ export default function Login() {
                 marginBottom: '32px'
               }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', marginBottom: '8px' }}>
-                  🛡️ Ticket Protection ($10/mo or $100/year):
+                  🛡️ Ticket Protection ($12/mo or $120/year):
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>

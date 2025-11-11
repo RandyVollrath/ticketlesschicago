@@ -258,7 +258,7 @@ export default function TermsOfService() {
             </h2>
             <ul style={{ paddingLeft: '24px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Subscription billing:</strong> Monthly ($10/month) or Annual ($100/year)
+                <strong>Subscription billing:</strong> Monthly ($12/month) or Annual ($120/year)
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Renewal fees:</strong> City sticker ($100), License plate ($155 standard, $164 vanity)
