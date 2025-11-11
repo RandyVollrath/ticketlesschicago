@@ -106,11 +106,20 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
-          // Wait a bit to ensure session is fully established
+          // Wait longer to ensure session is fully established and persisted
           console.log('Session found, waiting for it to be fully established...')
-          await new Promise(resolve => setTimeout(resolve, 500))
+          await new Promise(resolve => setTimeout(resolve, 1500))
+
+          // Double-check session is still valid
+          const { data: recheckData } = await supabase.auth.getSession()
+          if (!recheckData.session) {
+            console.error('❌ Session lost after initial check, redirecting to login')
+            router.push('/login?error=session_lost')
+            return
+          }
+
           // User is authenticated
-          const user = data.session.user
+          const user = recheckData.session.user
           console.log('User authenticated:', user.email, 'about to process profile data')
 
           // Check if this is an email verification callback
