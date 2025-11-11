@@ -194,7 +194,7 @@ export default function Protection() {
 
   // Calculate total price - OPTION A: Subscription only, no upfront sticker/plate fees
   const calculateTotal = () => {
-    const subscriptionPrice = billingPlan === 'monthly' ? 12 : 99;
+    const subscriptionPrice = billingPlan === 'monthly' ? 12 : 120;
     // COMMENTED OUT - No longer collecting upfront payment for stickers/plates
     // We'll charge when deadlines approach and use remitter service
     // const cityStickerPrice = needsCitySticker ? vehicleTypeInfo[vehicleType].price : 0;
@@ -359,7 +359,7 @@ export default function Protection() {
             margin: '0 auto 40px auto',
             lineHeight: '1.4'
           }}>
-            $12/month or $99/year • Automated renewal reminders • 80% ticket reimbursement
+            $12/month or $120/year (2 months free) • Automated renewal reminders • 80% ticket reimbursement
           </p>
         </div>
 
@@ -612,7 +612,7 @@ export default function Protection() {
                       boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
-                    Annual <span style={{ color: '#16a34a', fontSize: '14px' }}>Save $45</span>
+                    Annual <span style={{ color: '#16a34a', fontSize: '14px' }}>($120/yr - 2 months free)</span>
                   </button>
                 </div>
               </div>
@@ -1158,7 +1158,7 @@ export default function Protection() {
                     required
                   />
                   <span>
-                    <strong>I authorize Autopilot America to monitor my vehicle renewal deadlines</strong> and coordinate automated renewals on my behalf. <strong>I authorize Autopilot America to charge my payment method</strong> for (1) the subscription service fee of ${billingPlan === 'monthly' ? '$12/month' : '$99/year'} (which includes ${billingPlan === 'monthly' ? '$11/month' : '$87/year'} for Ticket Protection & Guarantee and ${billingPlan === 'monthly' ? '$1/month' : '$12/year'} for the regulated sticker service fee), and (2) city sticker renewal charges approximately 30 days before expiration (including the city sticker cost, a $2.50 service fee, and payment processing fees). Autopilot America works with licensed remitter partners who execute official submissions with the City of Chicago. I agree to provide accurate information and maintain up-to-date renewal dates in my profile. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
+                    <strong>I authorize Autopilot America to monitor my vehicle renewal deadlines</strong> and coordinate automated renewals on my behalf. <strong>I authorize Autopilot America to charge my payment method</strong> for (1) the subscription service fee of ${billingPlan === 'monthly' ? '$12/month' : '$120/year'} (which includes ${billingPlan === 'monthly' ? '$11/month' : '$108/year'} for Ticket Protection & Guarantee and ${billingPlan === 'monthly' ? '$1/month' : '$12/year'} for the regulated sticker service fee), and (2) city sticker renewal charges approximately 30 days before expiration (including the city sticker cost, a $2.50 service fee, and payment processing fees). Autopilot America works with licensed remitter partners who execute official submissions with the City of Chicago. I agree to provide accurate information and maintain up-to-date renewal dates in my profile. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
                   </span>
                 </label>
               </div>

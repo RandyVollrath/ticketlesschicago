@@ -26,6 +26,10 @@ export default function AlertsSuccess() {
   const [reuseConsent, setReuseConsent] = useState(false);
   const [licenseExpiryDate, setLicenseExpiryDate] = useState('');
 
+  // Email forwarding address for bill forwarding
+  const [emailForwardingAddress, setEmailForwardingAddress] = useState<string | null>(null);
+  const [hasPermitZone, setHasPermitZone] = useState(false);
+
   // Track activation_complete event and capture UTM parameters
   useEffect(() => {
     const trackActivation = () => {
@@ -70,7 +74,7 @@ export default function AlertsSuccess() {
         // Fetch user profile to check if they have city sticker AND permit zone
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('city_sticker_expiry, has_permit_zone, license_image_path')
+          .select('city_sticker_expiry, has_permit_zone, license_image_path, email_forwarding_address')
           .eq('user_id', authUser.id)
           .single();
 
@@ -80,6 +84,8 @@ export default function AlertsSuccess() {
         const hasLicense = !!profile?.license_image_path;
 
         setNeedsLicenseUpload(hasCitySticker && hasPermitZone && !hasLicense);
+        setHasPermitZone(hasPermitZone);
+        setEmailForwardingAddress(profile?.email_forwarding_address || null);
       } catch (error) {
         console.error('Error checking license upload need:', error);
       }
@@ -381,7 +387,7 @@ export default function AlertsSuccess() {
                     margin: 0,
                     lineHeight: '1.6'
                   }}>
-                    Your license image is stored securely and <strong>temporarily</strong>. We access it ONLY when processing your city sticker renewal (30 days before expiration). The image is <strong>automatically deleted within 48 hours</strong> of verification or processing.
+                    Your license is encrypted with bank-level security. We access it <strong>only once per year</strong>, 30 days before your city sticker renewal. If you opt out of multi-year storage, it's deleted within 48 hours. If you opt in, it's stored until your license expires and then automatically deleted.
                   </p>
                 </div>
               </div>
@@ -455,7 +461,11 @@ export default function AlertsSuccess() {
                   color: '#166534',
                   lineHeight: '1.5'
                 }}>
-                  <strong>Optional:</strong> Allow reusing this license image for future city sticker renewals (until license expires). This saves you from uploading every year.
+                  <strong>Optional:</strong> Store my license until it expires (up to 4 years) for automatic city sticker renewals.
+                  <br />
+                  <span style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Your license will ONLY be accessed once per year, 30 days before your city sticker renewal. We never access it otherwise. This saves you from uploading every year.
+                  </span>
                 </span>
               </label>
 
@@ -601,6 +611,131 @@ export default function AlertsSuccess() {
               lineHeight: '1.5'
             }}>
               Your driver's license has been verified and uploaded. We'll use this to process your city sticker renewal.
+            </p>
+          </div>
+        )}
+
+        {/* Email Forwarding Setup - For permit zone users */}
+        {isProtection && hasPermitZone && emailForwardingAddress && (
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '2px solid #3b82f6',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '32px',
+            textAlign: 'left'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#1e40af',
+              margin: '0 0 12px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              📬 Next Step: Auto-Forward Your Utility Bills
+            </h3>
+            <p style={{
+              fontSize: '15px',
+              color: '#1e3a8a',
+              lineHeight: '1.6',
+              margin: '0 0 16px 0'
+            }}>
+              Set up automatic bill forwarding so we always have your most recent proof of residency for city sticker renewals.
+            </p>
+
+            <div style={{
+              backgroundColor: '#dbeafe',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <p style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#1e40af',
+                margin: '0 0 8px 0'
+              }}>
+                Your Forwarding Address:
+              </p>
+              <div style={{
+                backgroundColor: 'white',
+                border: '1px solid #93c5fd',
+                borderRadius: '6px',
+                padding: '12px',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                color: '#1e40af',
+                wordBreak: 'break-all'
+              }}>
+                {emailForwardingAddress}
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: '#fef3c7',
+              border: '1px solid #fde68a',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '16px'
+            }}>
+              <p style={{
+                fontSize: '13px',
+                color: '#92400e',
+                margin: 0,
+                lineHeight: '1.6'
+              }}>
+                <strong>Why this matters:</strong> The city requires proof of residency (utility bill) for city sticker renewals in permit zones. Set up forwarding once, and your bills are always up-to-date automatically.
+              </p>
+            </div>
+
+            <p style={{
+              fontSize: '14px',
+              color: '#1e3a8a',
+              margin: '0 0 12px 0',
+              fontWeight: '600'
+            }}>
+              Quick Setup (2 minutes):
+            </p>
+            <ol style={{
+              margin: '0 0 16px 0',
+              paddingLeft: '24px',
+              fontSize: '14px',
+              color: '#1e40af',
+              lineHeight: '1.8'
+            }}>
+              <li>Open Gmail and search for your utility provider (ComEd, Peoples Gas, or Xfinity)</li>
+              <li>Click "Show search options" and create a filter</li>
+              <li>Forward to: <code style={{ backgroundColor: '#dbeafe', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{emailForwardingAddress}</code></li>
+              <li>Verify the forwarding address when Gmail sends confirmation</li>
+            </ol>
+
+            <a
+              href="/settings#email-forwarding"
+              style={{
+                display: 'inline-block',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontWeight: '600',
+                fontSize: '14px',
+                textAlign: 'center'
+              }}
+            >
+              View Full Setup Guide →
+            </a>
+
+            <p style={{
+              fontSize: '12px',
+              color: '#60a5fa',
+              marginTop: '12px',
+              margin: '12px 0 0 0',
+              fontStyle: 'italic'
+            }}>
+              Don't worry - you can also set this up later in your account settings
             </p>
           </div>
         )}
