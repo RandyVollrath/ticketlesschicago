@@ -318,21 +318,16 @@ export default function AuthCallback() {
             }
           }
           
-          // Check for redirect parameter first, then default to settings
-          const redirectTo = new URLSearchParams(window.location.search).get('redirect');
-
-          console.log('=== REDIRECT LOGIC ===')
-          console.log('redirect param:', redirectTo)
+          // ALWAYS redirect to settings after successful login
+          console.log('=== FORCING REDIRECT TO SETTINGS ===')
           console.log('user email:', user.email)
+          console.log('current path:', window.location.pathname)
+          console.log('Executing router.push("/settings")');
 
-          if (redirectTo) {
-            console.log('Redirecting to:', redirectTo);
-            await router.push(redirectTo);
-          } else {
-            console.log('Executing router.push("/settings")');
-            await router.push('/settings');
-          }
-          console.log('router.push completed, current path:', window.location.pathname)
+          // Use replace instead of push to prevent back button issues
+          await router.replace('/settings');
+
+          console.log('router.replace completed, new path:', window.location.pathname)
         } else {
           // No session, redirect to home
           console.log('No session found, redirecting to home')

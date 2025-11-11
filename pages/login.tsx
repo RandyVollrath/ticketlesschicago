@@ -21,7 +21,8 @@ export default function Login() {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        router.push('/settings')
+        console.log('User already logged in, redirecting to settings:', user.email)
+        router.replace('/settings')
       }
     }
     checkUser()
@@ -176,7 +177,8 @@ export default function Login() {
         throw signInError
       } else {
         // Successful sign in
-        router.push('/settings')
+        console.log('Password login successful, redirecting to settings')
+        router.replace('/settings')
       }
     } catch (error: any) {
       setMessage({
@@ -238,9 +240,9 @@ export default function Login() {
           access_token: result.session.access_token,
           refresh_token: result.session.refresh_token
         })
-        
-        console.log('Session set, redirecting to settings')
-        router.push('/settings')
+
+        console.log('Passkey login successful, redirecting to settings')
+        router.replace('/settings')
       }
     } catch (error: any) {
       console.error('Passkey auth error:', error)
