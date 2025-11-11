@@ -35,9 +35,6 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  const snowRouteLayersRef = useRef<any[]>([]);
-  const geoJsonLayersRef = useRef<any[]>([]);
-  const legendRef = useRef<any>(null);
 
   useEffect(() => {
     // Dynamically import Leaflet to avoid SSR issues
@@ -56,16 +53,11 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         }).addTo(mapInstanceRef.current);
       }
 
-      // Clear existing GeoJSON layers
-      geoJsonLayersRef.current.forEach(layer => {
+      // Clear existing layers
+      mapInstanceRef.current.eachLayer((layer: any) => {
+        if (layer.options.attribution) return; // Keep tile layer
         mapInstanceRef.current.removeLayer(layer);
       });
-      geoJsonLayersRef.current = [];
-
-      // Remove old legend if exists
-      if (legendRef.current) {
-        mapInstanceRef.current.removeControl(legendRef.current);
-      }
 
       // Add legend
       const legend = L.control({ position: 'topleft' });
@@ -82,7 +74,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           div.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 4px;">❄️ Snow Ban Routes</div>
             <div style="display: flex; align-items: center; margin-bottom: 2px;">
-              <div style="width: 12px; height: 12px; background: #ff00ff; margin-right: 5px; border: 1px solid #333;"></div>
+              <div style="width: 12px; height: 12px; background: #ff1493; margin-right: 5px; border: 1px solid #333;"></div>
               <span>No Parking (Snow Ban)</span>
             </div>
             <div style="display: flex; align-items: center;">
@@ -114,7 +106,6 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         return div;
       };
       legend.addTo(mapInstanceRef.current);
-      legendRef.current = legend;
 
       // Add GeoJSON data
       data.forEach((feature) => {
@@ -206,122 +197,43 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
         geojsonLayer.bindPopup(popupContent);
         geojsonLayer.addTo(mapInstanceRef.current);
-        geoJsonLayersRef.current.push(geojsonLayer);
       });
 
-      // Only add snow routes overlay when user enables it via checkbox
-      if (showSnowSafeMode && snowRoutes && snowRoutes.length > 0) {
-        console.log('🌨️🌨️🌨️ DRAWING SNOW ROUTES - ATTEMPTING:', snowRoutes.length, 'routes');
+      // Add snow routes overlay when in snow safe mode
+      if (showSnowSafeMode && snowRoutes.length > 0) {
+        snowRoutes.forEach((route) => {
+          if (!route.geometry) return;
 
-        // Clear any existing snow route layers
-        snowRouteLayersRef.current.forEach(layer => {
-          mapInstanceRef.current.removeLayer(layer);
-        });
-        snowRouteLayersRef.current = [];
-
-        // Function to calculate line weight based on zoom level
-        const getWeightForZoom = (zoom: number) => {
-          // Zoom 10-11: weight 1-2 (city view - thin)
-          // Zoom 13: weight 5 (neighborhood - medium)
-          // Zoom 15+: weight 8-10 (street level - thick)
-          return Math.max(1, Math.min(10, (zoom - 10) * 1.5));
-        };
-
-        let drawnCount = 0;
-        let failedCount = 0;
-
-        snowRoutes.forEach((route, index) => {
-          if (!route.geometry) {
-            console.warn(`⚠️ Route ${index}: NO GEOMETRY`);
-            failedCount++;
-            return;
-          }
-
-          try {
-            // Extract coordinates based on geometry type
-            let coordinates: any[] = [];
-
-            if (route.geometry.type === 'LineString') {
-              // LineString: coordinates are array of [lng, lat] pairs
-              coordinates = route.geometry.coordinates;
-              console.log(`📍 Route ${index} (LineString): ${coordinates.length} points`);
-            } else if (route.geometry.type === 'MultiLineString') {
-              // MultiLineString: coordinates are array of arrays
-              coordinates = route.geometry.coordinates[0]; // Use first line
-              console.log(`📍 Route ${index} (MultiLineString): ${coordinates.length} points`);
-            } else {
-              console.warn(`⚠️ Route ${index}: Unknown geometry type: ${route.geometry.type}`);
-              failedCount++;
-              return;
+          const snowRouteLayer = L.geoJSON(route.geometry, {
+            style: {
+              color: '#ff1493',
+              weight: 8,
+              opacity: 1.0,
+              fillColor: '#ff1493',
+              fillOpacity: 0.85
             }
-
-            if (!coordinates || coordinates.length === 0) {
-              console.warn(`⚠️ Route ${index}: Empty coordinates`);
-              failedCount++;
-              return;
-            }
-
-            // Convert [lng, lat] to [lat, lng] for Leaflet
-            const latLngs = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
-
-            // Get initial weight based on current zoom
-            const currentZoom = mapInstanceRef.current.getZoom();
-            const initialWeight = getWeightForZoom(currentZoom);
-
-            // Draw as simple polyline with zoom-responsive weight
-            const polyline = L.polyline(latLngs, {
-              color: '#ff00ff',        // BRIGHT MAGENTA
-              weight: initialWeight,   // Responsive to zoom level
-              opacity: 1.0,            // FULLY OPAQUE
-              zIndexOffset: 10000      // Make sure it's on top
-            });
-
-            // Add popup
-            const routePopup = `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
-                <div style="background: #ff00ff; color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px;">
-                  ❄️ 2-Inch Snow Ban Route
-                </div>
-                <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 8px 10px;">
-                  <div style="font-size: 13px; color: #9f1239; font-weight: 600; margin-bottom: 4px;">${route.properties?.on_street || 'Unknown Street'}</div>
-                  ${route.properties?.from_street && route.properties?.to_street ?
-                    `<div style="font-size: 12px; color: #831843;">From ${route.properties.from_street} to ${route.properties.to_street}</div>` :
-                    ''}
-                </div>
-              </div>
-            `;
-
-            polyline.bindPopup(routePopup);
-            polyline.addTo(mapInstanceRef.current);
-
-            // Store in ref for zoom updates
-            snowRouteLayersRef.current.push(polyline);
-
-            drawnCount++;
-            console.log(`✅✅✅ Route ${index} DRAWN: ${route.properties?.on_street}`);
-
-          } catch (error) {
-            console.error(`❌ ERROR Route ${index}:`, error);
-            failedCount++;
-          }
-        });
-
-        console.log(`
-🎯🎯🎯 SNOW ROUTES FINAL STATUS:
-✅ Successfully drawn: ${drawnCount}
-❌ Failed: ${failedCount}
-📊 Total routes: ${snowRoutes.length}
-        `);
-
-        // Add zoom event listener to update line weights dynamically
-        mapInstanceRef.current.off('zoomend'); // Remove any existing listener
-        mapInstanceRef.current.on('zoomend', () => {
-          const newZoom = mapInstanceRef.current.getZoom();
-          const newWeight = getWeightForZoom(newZoom);
-
-          snowRouteLayersRef.current.forEach(layer => {
-            layer.setStyle({ weight: newWeight });
           });
+
+          // Add popup with route info
+          const routePopup = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
+              <div style="background: linear-gradient(135deg, #ff1493, #c71585); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(255,20,147,0.3);">
+                ❄️ 2-Inch Snow Ban Route
+              </div>
+              <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 13px; color: #9f1239; font-weight: 600; margin-bottom: 4px;">${route.properties?.on_street || 'Unknown Street'}</div>
+                ${route.properties?.from_street && route.properties?.to_street ?
+                  `<div style="font-size: 12px; color: #831843;">From ${route.properties.from_street} to ${route.properties.to_street}</div>` :
+                  ''}
+              </div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic;">
+                ⚠️ No parking when 2+ inches of snow falls
+              </div>
+            </div>
+          `;
+
+          snowRouteLayer.bindPopup(routePopup);
+          snowRouteLayer.addTo(mapInstanceRef.current);
         });
 
         // Zoom to user location if available
@@ -330,21 +242,6 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 15);
           }, 500);
         }
-      } else {
-        // Remove snow routes if showSnowSafeMode is disabled
-        snowRouteLayersRef.current.forEach(layer => {
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.removeLayer(layer);
-          }
-        });
-        snowRouteLayersRef.current = [];
-
-        // Remove zoom listener when not showing snow routes
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.off('zoomend');
-        }
-
-        console.log('⚠️ Snow routes not shown - checkbox not enabled');
       }
 
       // Add alternative parking zones overlay (bright green with "Park Here Instead")
@@ -481,116 +378,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, []); // Only run once on mount - data updates are handled separately
-
-  // Separate effect for data updates that doesn't recreate the map
-  useEffect(() => {
-    const updateLayers = async () => {
-      if (!mapInstanceRef.current || typeof window === 'undefined') return;
-
-      const L = (await import('leaflet')).default;
-
-      // Clear only GeoJSON layers
-      geoJsonLayersRef.current.forEach(layer => {
-        mapInstanceRef.current.removeLayer(layer);
-      });
-      geoJsonLayersRef.current = [];
-
-      // Re-add GeoJSON data with current styles
-      data.forEach((feature) => {
-        if (!feature.geometry) return;
-
-        const status = feature.properties?.cleaningStatus;
-        let fillColor = '#28a745';
-        let color = '#28a745';
-        let weight = 1;
-        let fillOpacity = 0.5;
-
-        const isHighlighted = triggerPopup &&
-          feature.properties?.ward === triggerPopup.ward &&
-          feature.properties?.section === triggerPopup.section;
-
-        if (isHighlighted) {
-          weight = 3;
-          fillOpacity = 0.8;
-          color = '#007bff';
-          fillColor = '#007bff';
-        } else {
-          switch (status) {
-            case 'today': fillColor = '#dc3545'; color = '#b02a37'; break;
-            case 'soon': fillColor = '#ffc107'; color = '#c79100'; break;
-            case 'later': fillColor = '#28a745'; color = '#1e7e34'; break;
-            case 'none': fillColor = '#6c757d'; color = '#5a6268'; break;
-            default: fillColor = '#6c757d'; color = '#5a6268'; break;
-          }
-        }
-
-        const geojsonLayer = L.geoJSON(feature.geometry, {
-          style: {
-            color: color,
-            weight: weight,
-            fillColor: fillColor,
-            fillOpacity: fillOpacity
-          }
-        });
-
-        const props = feature.properties;
-        let popupContent = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
-            <div style="display: flex; gap: 16px; margin-bottom: 12px;">
-              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
-                <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
-                ${props?.ward || 'N/A'}
-              </div>
-              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
-                <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
-                ${props?.section || 'N/A'}
-              </div>
-            </div>
-        `;
-
-        if (props?.nextCleaningDateISO) {
-          try {
-            const dateObj = new Date(props.nextCleaningDateISO + 'T00:00:00Z');
-            const formattedDate = dateObj.toLocaleDateString('en-US', {
-              weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC'
-            });
-            popupContent += `
-              <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 6px; padding: 8px 10px;">
-                <div style="font-size: 12px; color: #065f46; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
-                <div style="color: #047857; font-weight: 600;">${formattedDate}</div>
-              </div>
-            `;
-          } catch (e) {
-            popupContent += `
-              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px;">
-                <div style="color: #dc2626; font-weight: 500;">Error formatting date</div>
-              </div>
-            `;
-          }
-        } else {
-          popupContent += `
-            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px;">
-              <div style="font-size: 12px; color: #6b7280; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
-              <div style="color: #6b7280;">No future cleaning dates</div>
-            </div>
-          `;
-        }
-
-        popupContent += '</div>';
-
-        geojsonLayer.bindPopup(popupContent);
-        geojsonLayer.addTo(mapInstanceRef.current);
-        geoJsonLayersRef.current.push(geojsonLayer);
-
-        if (isHighlighted) {
-          geojsonLayer.openPopup(geojsonLayer.getBounds().getCenter());
-        }
-      });
-    };
-
-    updateLayers();
-  }, [data, triggerPopup]);
+  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, userLocation, alternativeZones]);
 
   return (
     <div 
