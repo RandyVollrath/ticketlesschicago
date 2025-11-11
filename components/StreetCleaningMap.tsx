@@ -481,7 +481,116 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, userLocation, alternativeZones]);
+  }, []); // Only run once on mount - data updates are handled separately
+
+  // Separate effect for data updates that doesn't recreate the map
+  useEffect(() => {
+    const updateLayers = async () => {
+      if (!mapInstanceRef.current || typeof window === 'undefined') return;
+
+      const L = (await import('leaflet')).default;
+
+      // Clear only GeoJSON layers
+      geoJsonLayersRef.current.forEach(layer => {
+        mapInstanceRef.current.removeLayer(layer);
+      });
+      geoJsonLayersRef.current = [];
+
+      // Re-add GeoJSON data with current styles
+      data.forEach((feature) => {
+        if (!feature.geometry) return;
+
+        const status = feature.properties?.cleaningStatus;
+        let fillColor = '#28a745';
+        let color = '#28a745';
+        let weight = 1;
+        let fillOpacity = 0.5;
+
+        const isHighlighted = triggerPopup &&
+          feature.properties?.ward === triggerPopup.ward &&
+          feature.properties?.section === triggerPopup.section;
+
+        if (isHighlighted) {
+          weight = 3;
+          fillOpacity = 0.8;
+          color = '#007bff';
+          fillColor = '#007bff';
+        } else {
+          switch (status) {
+            case 'today': fillColor = '#dc3545'; color = '#b02a37'; break;
+            case 'soon': fillColor = '#ffc107'; color = '#c79100'; break;
+            case 'later': fillColor = '#28a745'; color = '#1e7e34'; break;
+            case 'none': fillColor = '#6c757d'; color = '#5a6268'; break;
+            default: fillColor = '#6c757d'; color = '#5a6268'; break;
+          }
+        }
+
+        const geojsonLayer = L.geoJSON(feature.geometry, {
+          style: {
+            color: color,
+            weight: weight,
+            fillColor: fillColor,
+            fillOpacity: fillOpacity
+          }
+        });
+
+        const props = feature.properties;
+        let popupContent = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+            <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
+                ${props?.ward || 'N/A'}
+              </div>
+              <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
+                <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
+                ${props?.section || 'N/A'}
+              </div>
+            </div>
+        `;
+
+        if (props?.nextCleaningDateISO) {
+          try {
+            const dateObj = new Date(props.nextCleaningDateISO + 'T00:00:00Z');
+            const formattedDate = dateObj.toLocaleDateString('en-US', {
+              weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC'
+            });
+            popupContent += `
+              <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 12px; color: #065f46; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
+                <div style="color: #047857; font-weight: 600;">${formattedDate}</div>
+              </div>
+            `;
+          } catch (e) {
+            popupContent += `
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px;">
+                <div style="color: #dc2626; font-weight: 500;">Error formatting date</div>
+              </div>
+            `;
+          }
+        } else {
+          popupContent += `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px;">
+              <div style="font-size: 12px; color: #6b7280; font-weight: 500; margin-bottom: 2px;">Next Cleaning</div>
+              <div style="color: #6b7280;">No future cleaning dates</div>
+            </div>
+          `;
+        }
+
+        popupContent += '</div>';
+
+        geojsonLayer.bindPopup(popupContent);
+        geojsonLayer.addTo(mapInstanceRef.current);
+        geoJsonLayersRef.current.push(geojsonLayer);
+
+        if (isHighlighted) {
+          geojsonLayer.openPopup(geojsonLayer.getBounds().getCenter());
+        }
+      });
+    };
+
+    updateLayers();
+  }, [data, triggerPopup]);
 
   return (
     <div 
