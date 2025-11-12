@@ -80,10 +80,10 @@ export default function AuthCallback() {
           }
         }
 
-        // Wait for session to be fully established
+        // Wait briefly for session to be fully established (reduced from 1000ms to 300ms)
         if (tokensFound) {
           console.log('⏳ Waiting for session to be fully established...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
 
         const { data, error } = await supabase.auth.getSession()
@@ -106,9 +106,9 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
-          // Wait longer to ensure session is fully established and persisted
+          // Reduced wait time for faster redirect (500ms instead of 1500ms)
           console.log('Session found, waiting for it to be fully established...')
-          await new Promise(resolve => setTimeout(resolve, 1500))
+          await new Promise(resolve => setTimeout(resolve, 500))
 
           // Double-check session is still valid
           const { data: recheckData } = await supabase.auth.getSession()
@@ -251,8 +251,8 @@ export default function AuthCallback() {
                   console.error('Failed to delete pending signup:', error);
                 }
 
-                // Wait a moment to ensure database write completes
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Wait briefly to ensure database write completes (reduced to 300ms)
+                await new Promise(resolve => setTimeout(resolve, 300));
                 // Redirect to success page
                 router.push('/alerts/success');
                 return;
