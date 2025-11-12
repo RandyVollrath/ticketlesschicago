@@ -10,13 +10,21 @@ export default function Home() {
   const router = useRouter();
 
   // IMMEDIATE redirect check before anything else
+  // Skip if coming from OAuth (has hash tokens) to avoid flash
   useEffect(() => {
     const immediateCheck = async () => {
+      // Skip redirect if URL has hash (OAuth callback tokens)
+      // This prevents flash when OAuth redirects here before going to /auth/callback
+      if (window.location.hash && window.location.hash.includes('access_token')) {
+        console.log('🔗 OAuth tokens in hash, skipping home page redirect');
+        // Let Supabase handle the redirect to /auth/callback
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // If user is logged in and on home page, ALWAYS redirect to settings
-        // This catches ALL cases where auth callback fails
-        console.log('🚨 HOME PAGE: User is logged in, forcing redirect to /settings');
+        // If user is logged in and on home page WITHOUT OAuth tokens, redirect to settings
+        console.log('🚨 HOME PAGE: User is logged in (no OAuth flow), forcing redirect to /settings');
         console.log('Current URL:', window.location.href);
         window.location.replace('/settings');
       }
