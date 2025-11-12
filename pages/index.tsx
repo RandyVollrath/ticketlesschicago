@@ -9,25 +9,17 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
 
-  // IMMEDIATE redirect check - handle OAuth tokens and logged-in users
+  // Handle OAuth redirect only - don't redirect logged-in users
   useEffect(() => {
-    const immediateCheck = async () => {
+    const handleOAuth = async () => {
       // If OAuth tokens in hash, redirect to callback immediately
       if (window.location.hash && window.location.hash.includes('access_token')) {
         console.log('🔗 OAuth tokens detected, redirecting to /auth/callback');
         window.location.href = '/auth/callback' + window.location.hash;
         return;
       }
-
-      // Check for existing session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log('🚨 HOME PAGE: User is logged in, forcing redirect to /settings');
-        console.log('Current URL:', window.location.href);
-        window.location.replace('/settings');
-      }
     };
-    immediateCheck();
+    handleOAuth();
   }, []);
 
   useEffect(() => {
