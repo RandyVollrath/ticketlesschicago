@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import FOIATicketInsights from './FOIATicketInsights';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -550,7 +551,14 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          {/* FOIA Historical Data Insights */}
+          {extractedData.violationCode && (
+            <div style={{ marginTop: '20px' }}>
+              <FOIATicketInsights violationCode={extractedData.violationCode} />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
             <button
               onClick={() => setStep(1)}
               style={{
