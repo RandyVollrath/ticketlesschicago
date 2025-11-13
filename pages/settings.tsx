@@ -203,12 +203,18 @@ export default function Dashboard() {
   const [customSnoozeDate, setCustomSnoozeDate] = useState('')
   const [customSnoozeReason, setCustomSnoozeReason] = useState('')
 
-  // License upload state
-  const [licenseFile, setLicenseFile] = useState<File | null>(null)
-  const [licensePreview, setLicensePreview] = useState<string | null>(null)
-  const [licenseUploading, setLicenseUploading] = useState(false)
-  const [licenseUploadError, setLicenseUploadError] = useState('')
-  const [licenseUploadSuccess, setLicenseUploadSuccess] = useState(false)
+  // License upload state - separate for front and back
+  const [licenseFrontFile, setLicenseFrontFile] = useState<File | null>(null)
+  const [licenseFrontPreview, setLicenseFrontPreview] = useState<string | null>(null)
+  const [licenseFrontUploading, setLicenseFrontUploading] = useState(false)
+  const [licenseFrontUploadError, setLicenseFrontUploadError] = useState('')
+  const [licenseFrontUploadSuccess, setLicenseFrontUploadSuccess] = useState(false)
+
+  const [licenseBackFile, setLicenseBackFile] = useState<File | null>(null)
+  const [licenseBackPreview, setLicenseBackPreview] = useState<string | null>(null)
+  const [licenseBackUploading, setLicenseBackUploading] = useState(false)
+  const [licenseBackUploadError, setLicenseBackUploadError] = useState('')
+  const [licenseBackUploadSuccess, setLicenseBackUploadSuccess] = useState(false)
 
   // License consent
   const [thirdPartyConsent, setThirdPartyConsent] = useState(false)
@@ -722,48 +728,77 @@ export default function Dashboard() {
     }
   }
 
-  const handleLicenseFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLicenseFileChange = async (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
     const file = e.target.files?.[0]
     if (!file) return
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
-      setLicenseUploadError('Please upload a JPEG, PNG, or WebP image')
+      if (side === 'front') {
+        setLicenseFrontUploadError('Please upload a JPEG, PNG, or WebP image')
+      } else {
+        setLicenseBackUploadError('Please upload a JPEG, PNG, or WebP image')
+      }
       return
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      setLicenseUploadError('File size must be less than 5MB')
+      if (side === 'front') {
+        setLicenseFrontUploadError('File size must be less than 5MB')
+      } else {
+        setLicenseBackUploadError('File size must be less than 5MB')
+      }
       return
     }
 
     // Validate consent
     if (!thirdPartyConsent) {
-      setLicenseUploadError('Please consent to Google Cloud Vision processing your license image')
+      const errorMsg = 'Please consent to Google Cloud Vision processing your license image'
+      if (side === 'front') {
+        setLicenseFrontUploadError(errorMsg)
+      } else {
+        setLicenseBackUploadError(errorMsg)
+      }
       return
     }
 
     // Clear previous errors
-    setLicenseUploadError('')
-    setLicenseUploadSuccess(false)
-    setLicenseFile(file)
+    if (side === 'front') {
+      setLicenseFrontUploadError('')
+      setLicenseFrontUploadSuccess(false)
+      setLicenseFrontFile(file)
+    } else {
+      setLicenseBackUploadError('')
+      setLicenseBackUploadSuccess(false)
+      setLicenseBackFile(file)
+    }
 
     // Create image preview
     const reader = new FileReader()
     reader.onloadend = () => {
-      setLicensePreview(reader.result as string)
+      if (side === 'front') {
+        setLicenseFrontPreview(reader.result as string)
+      } else {
+        setLicenseBackPreview(reader.result as string)
+      }
     }
     reader.readAsDataURL(file)
 
     // Upload to server immediately with quality verification
     if (user?.id) {
-      setLicenseUploading(true)
+      if (side === 'front') {
+        setLicenseFrontUploading(true)
+      } else {
+        setLicenseBackUploading(true)
+      }
+
       try {
         const formData = new FormData()
         formData.append('license', file)
         formData.append('userId', user.id)
+        formData.append('side', side) // NEW: Tell API which side this is
 
         const response = await fetch('/api/protection/upload-license', {
           method: 'POST',
@@ -776,14 +811,19 @@ export default function Dashboard() {
           throw new Error(result.error || 'Upload failed')
         }
 
-        setLicenseUploadSuccess(true)
+        if (side === 'front') {
+          setLicenseFrontUploadSuccess(true)
+        } else {
+          setLicenseBackUploadSuccess(true)
+        }
+
         setMessage({
           type: 'success',
-          text: 'Driver\'s license uploaded successfully! Image verified and will be used for city sticker processing.'
+          text: `Driver's license (${side}) uploaded successfully! Image verified and will be used for city sticker processing.`
         })
 
-        // Save consents to database
-        if (reuseConsent || licenseExpiryDate) {
+        // Save consents to database (only once, on first upload)
+        if ((reuseConsent || licenseExpiryDate) && side === 'front') {
           await supabase
             .from('user_profiles')
             .update({
@@ -796,7 +836,7 @@ export default function Dashboard() {
             .eq('user_id', user.id)
         }
 
-        console.log('License uploaded successfully:', result)
+        console.log(`License ${side} uploaded successfully:`, result)
 
         // Reload profile to update license_image_path
         const { data: updatedProfile } = await supabase
@@ -810,16 +850,29 @@ export default function Dashboard() {
         }
 
       } catch (error: any) {
-        console.error('License upload error:', error)
-        setLicenseUploadError(error.message || 'Failed to upload license image')
-        setLicenseFile(null)
-        setLicensePreview(null)
+        console.error(`License ${side} upload error:`, error)
+        const errorMsg = error.message || 'Failed to upload license image'
+
+        if (side === 'front') {
+          setLicenseFrontUploadError(errorMsg)
+          setLicenseFrontFile(null)
+          setLicenseFrontPreview(null)
+        } else {
+          setLicenseBackUploadError(errorMsg)
+          setLicenseBackFile(null)
+          setLicenseBackPreview(null)
+        }
+
         setMessage({
           type: 'error',
-          text: error.message || 'Failed to upload license image'
+          text: errorMsg
         })
       } finally {
-        setLicenseUploading(false)
+        if (side === 'front') {
+          setLicenseFrontUploading(false)
+        } else {
+          setLicenseBackUploading(false)
+        }
       }
     }
   }
