@@ -17,10 +17,18 @@ interface ProcessResult {
 // Get Chicago time for scheduling
 function getChicagoTime(): { hour: number; chicagoTime: string } {
   const now = new Date();
-  const chicagoTime = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
-  const chicagoDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
-  const hour = chicagoDate.getHours();
-  
+  const chicagoTime = now.toLocaleString("en-US", { timeZone: "America/Chicago" });
+
+  // CORRECT way to get Chicago hour: use Intl.DateTimeFormat
+  // DO NOT use new Date(chicagoTimeString) - that interprets the string in server's timezone (UTC)!
+  const hour = parseInt(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      hour: 'numeric',
+      hour12: false
+    }).format(now)
+  );
+
   return { hour, chicagoTime };
 }
 
