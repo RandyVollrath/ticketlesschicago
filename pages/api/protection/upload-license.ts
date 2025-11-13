@@ -247,6 +247,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const userId = Array.isArray(fields.userId) ? fields.userId[0] : fields.userId;
+    const side = Array.isArray(fields.side) ? fields.side[0] : fields.side; // 'front' or 'back'
     const file = Array.isArray(files.license) ? files.license[0] : files.license;
 
     if (!userId) {
@@ -255,6 +256,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    if (!side || !['front', 'back'].includes(side)) {
+      return res.status(400).json({ error: 'Side must be "front" or "back"' });
     }
 
     // Validate file type
@@ -295,9 +300,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('✓ Google Vision verification passed');
     console.log('✅ All verification checks passed!');
 
-    // Generate unique filename
+    // Generate unique filename with side indicator
     const fileExt = file.originalFilename?.split('.').pop() || 'jpg';
-    const fileName = `${userId}_${Date.now()}.${fileExt}`;
+    const fileName = `${userId}_${side}_${Date.now()}.${fileExt}`;
     const filePath = `licenses/${fileName}`;
 
     // Read file
@@ -326,14 +331,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to generate signed URL' });
     }
 
-    // Update user profile with upload info
+    // Update user profile with upload info (front or back)
+    const updateData = side === 'front'
+      ? {
+          license_image_path: filePath,
+          license_image_uploaded_at: new Date().toISOString(),
+          license_image_verified: false,
+        }
+      : {
+          license_image_path_back: filePath,
+          license_image_back_uploaded_at: new Date().toISOString(),
+          license_image_back_verified: false,
+        };
+
     const { error: updateError } = await supabase
       .from('user_profiles')
-      .update({
-        license_image_path: filePath,
-        license_image_uploaded_at: new Date().toISOString(),
-        license_image_verified: false,
-      })
+      .update(updateData)
       .eq('user_id', userId);
 
     if (updateError) {
