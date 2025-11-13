@@ -53,6 +53,16 @@ export const config = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Health check endpoint
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      status: 'ok',
+      service: 'utility-bills-webhook',
+      version: '2.0-full-processing',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   // Log the request for debugging
   console.log('🔔 Webhook received:', {
     method: req.method,
