@@ -60,9 +60,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const email = payload.data;
 
     // Extract user UUID from "to" address
-    // Format: {uuid}@bills.autopilotamerica.com
+    // Format: {uuid}@bills.autopilotamerica.com OR {uuid}@linguistic-louse.resend.app
     const toAddress = email.to[0]; // Primary recipient
-    const match = toAddress.match(/([a-f0-9\-]+)@bills\.autopilotamerica\.com/i);
+    const match = toAddress.match(/([a-f0-9\-]+)@(?:bills\.autopilotamerica\.com|linguistic-louse\.resend\.app)/i);
 
     if (!match) {
       console.error('Invalid email format:', toAddress);
