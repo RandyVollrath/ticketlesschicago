@@ -7,6 +7,8 @@ import Accordion from '../components/Accordion'
 import Tooltip from '../components/Tooltip'
 import UpgradeCard from '../components/UpgradeCard'
 import DocumentStatus from '../components/DocumentStatus'
+import StreetCleaningSettings from '../components/StreetCleaningSettings'
+import SnowBanSettings from '../components/SnowBanSettings'
 
 // Phone formatting utilities
 const formatPhoneForDisplay = (value: string | null): string => {
@@ -118,7 +120,7 @@ export default function ProfileNew() {
   // Calculate missing required fields
   const getMissingFields = () => {
     const missing = []
-    if (!formData.phone_number) missing.push('Phone number')
+    if (!formData.phone_number && !formData.phone) missing.push('Phone number')
     if (!formData.license_plate) missing.push('License plate')
     if (!formData.zip_code) missing.push('ZIP code')
     if (formData.has_protection && !formData.license_plate_type) missing.push('License plate type')
@@ -873,11 +875,11 @@ export default function ProfileNew() {
             icon="🔔"
             defaultOpen={false}
           >
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0' }}>
               Choose how you want to be notified about parking alerts and renewals
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -968,6 +970,128 @@ export default function ProfileNew() {
                 </div>
               </label>
             </div>
+
+            <div style={{
+              borderTop: '1px solid #e5e7eb',
+              paddingTop: '20px'
+            }}>
+              <h4 style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#111827',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                Reminder Timing
+              </h4>
+              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px', margin: '0 0 12px 0' }}>
+                Select when you want to be reminded before each renewal deadline:
+              </p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[60, 45, 37, 30, 21, 14, 7, 1].map(days => {
+                  const defaultDays = profile.has_protection ? [60, 45, 37, 30, 14, 7, 1] : [30, 7, 1]
+                  const currentDays = formData.notify_days_array || profile.notify_days_array || defaultDays
+                  const isMandatory = profile.has_protection && [60, 45, 37].includes(days) && !profile.profile_confirmed_at
+                  const isChecked = currentDays.includes(days) || isMandatory
+
+                  return (
+                    <label key={days} style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      backgroundColor: isChecked ? '#eff6ff' : 'white',
+                      border: `1px solid ${isChecked ? '#3b82f6' : '#d1d5db'}`,
+                      borderRadius: '6px',
+                      cursor: isMandatory ? 'not-allowed' : 'pointer',
+                      opacity: isMandatory ? 0.8 : 1,
+                      fontSize: '13px',
+                      fontWeight: isChecked ? '500' : '400',
+                      color: isChecked ? '#1e40af' : '#374151'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={isMandatory}
+                        onChange={() => {
+                          const newDays = isChecked && !isMandatory
+                            ? currentDays.filter((d: number) => d !== days)
+                            : [...currentDays, days].sort((a, b) => b - a)
+                          handleFieldChange('notify_days_array', newDays)
+                        }}
+                        style={{
+                          marginRight: '6px',
+                          accentColor: '#0052cc',
+                          cursor: isMandatory ? 'not-allowed' : 'pointer'
+                        }}
+                      />
+                      {days === 1 ? '1 day' : `${days} days`}
+                      {isMandatory && <span style={{ color: '#dc2626', fontSize: '11px', marginLeft: '4px' }}>(required)</span>}
+                    </label>
+                  )
+                })}
+              </div>
+
+              {profile.has_protection && !profile.profile_confirmed_at && (
+                <div style={{
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginTop: '16px'
+                }}>
+                  <p style={{ fontSize: '13px', color: '#92400e', margin: '0 0 8px 0', fontWeight: '600' }}>
+                    ⚠️ Profile Confirmation Required
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#78350f', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+                    Reminders at 60, 45, and 37 days are required until you confirm your profile is up-to-date.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('user_profiles')
+                          .update({ profile_confirmed_at: new Date().toISOString() })
+                          .eq('user_id', user?.id)
+                        if (error) throw error
+                        window.location.reload()
+                      } catch (error) {
+                        console.error('Error confirming profile:', error)
+                      }
+                    }}
+                    style={{
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Confirm Profile is Up-to-Date
+                  </button>
+                </div>
+              )}
+            </div>
+          </Accordion>
+
+          {/* 7. Street Cleaning Settings */}
+          <Accordion
+            title="Street Cleaning Alerts"
+            icon="🧹"
+            defaultOpen={false}
+          >
+            <StreetCleaningSettings />
+          </Accordion>
+
+          {/* 8. Snow Ban Settings */}
+          <Accordion
+            title="Snow Ban & Winter Parking"
+            icon="❄️"
+            defaultOpen={false}
+          >
+            <SnowBanSettings />
           </Accordion>
 
           {/* Back button */}
