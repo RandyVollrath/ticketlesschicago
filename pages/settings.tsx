@@ -71,7 +71,11 @@ export default function ProfileNew() {
 
     if (userProfile) {
       setProfile(userProfile)
-      setFormData(userProfile)
+      // Initialize formData with phone field populated from phone_number
+      setFormData({
+        ...userProfile,
+        phone: userProfile.phone_number ? formatPhoneForDisplay(userProfile.phone_number) : ''
+      })
 
       // Check if mailing address differs from home address
       if (userProfile.mailing_address && userProfile.home_address_full &&
@@ -197,6 +201,60 @@ export default function ProfileNew() {
           <div style={{ marginBottom: '24px' }}>
             <UpgradeCard hasProtection={profile.has_protection || false} />
           </div>
+
+          {/* Profile Confirmation Required - Protection users only */}
+          {profile.has_protection && !profile.profile_confirmed_at && (
+            <div style={{
+              backgroundColor: '#fef3c7',
+              border: '2px solid #f59e0b',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <span style={{ fontSize: '24px' }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#92400e',
+                    margin: '0 0 8px 0'
+                  }}>
+                    Profile Confirmation Required
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#78350f', margin: '0 0 16px 0', lineHeight: '1.5' }}>
+                    Before we can handle your renewals automatically, please confirm your profile information is current and accurate. Reminders at 60, 45, and 37 days will be required until confirmed.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('user_profiles')
+                          .update({ profile_confirmed_at: new Date().toISOString() })
+                          .eq('user_id', user?.id)
+                        if (error) throw error
+                        window.location.reload()
+                      } catch (error) {
+                        console.error('Error confirming profile:', error)
+                      }
+                    }}
+                    style={{
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 20px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✓ Confirm Profile is Up-to-Date
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Alert if missing critical info */}
           {missingFields.length > 0 && (
@@ -461,12 +519,56 @@ export default function ProfileNew() {
                     backgroundColor: 'white'
                   }}
                 >
+                  <option value="AL">Alabama (AL)</option>
+                  <option value="AK">Alaska (AK)</option>
+                  <option value="AZ">Arizona (AZ)</option>
+                  <option value="AR">Arkansas (AR)</option>
+                  <option value="CA">California (CA)</option>
+                  <option value="CO">Colorado (CO)</option>
+                  <option value="CT">Connecticut (CT)</option>
+                  <option value="DE">Delaware (DE)</option>
+                  <option value="FL">Florida (FL)</option>
+                  <option value="GA">Georgia (GA)</option>
+                  <option value="HI">Hawaii (HI)</option>
+                  <option value="ID">Idaho (ID)</option>
                   <option value="IL">Illinois (IL)</option>
                   <option value="IN">Indiana (IN)</option>
-                  <option value="WI">Wisconsin (WI)</option>
-                  <option value="MI">Michigan (MI)</option>
                   <option value="IA">Iowa (IA)</option>
+                  <option value="KS">Kansas (KS)</option>
+                  <option value="KY">Kentucky (KY)</option>
+                  <option value="LA">Louisiana (LA)</option>
+                  <option value="ME">Maine (ME)</option>
+                  <option value="MD">Maryland (MD)</option>
+                  <option value="MA">Massachusetts (MA)</option>
+                  <option value="MI">Michigan (MI)</option>
+                  <option value="MN">Minnesota (MN)</option>
+                  <option value="MS">Mississippi (MS)</option>
                   <option value="MO">Missouri (MO)</option>
+                  <option value="MT">Montana (MT)</option>
+                  <option value="NE">Nebraska (NE)</option>
+                  <option value="NV">Nevada (NV)</option>
+                  <option value="NH">New Hampshire (NH)</option>
+                  <option value="NJ">New Jersey (NJ)</option>
+                  <option value="NM">New Mexico (NM)</option>
+                  <option value="NY">New York (NY)</option>
+                  <option value="NC">North Carolina (NC)</option>
+                  <option value="ND">North Dakota (ND)</option>
+                  <option value="OH">Ohio (OH)</option>
+                  <option value="OK">Oklahoma (OK)</option>
+                  <option value="OR">Oregon (OR)</option>
+                  <option value="PA">Pennsylvania (PA)</option>
+                  <option value="RI">Rhode Island (RI)</option>
+                  <option value="SC">South Carolina (SC)</option>
+                  <option value="SD">South Dakota (SD)</option>
+                  <option value="TN">Tennessee (TN)</option>
+                  <option value="TX">Texas (TX)</option>
+                  <option value="UT">Utah (UT)</option>
+                  <option value="VT">Vermont (VT)</option>
+                  <option value="VA">Virginia (VA)</option>
+                  <option value="WA">Washington (WA)</option>
+                  <option value="WV">West Virginia (WV)</option>
+                  <option value="WI">Wisconsin (WI)</option>
+                  <option value="WY">Wyoming (WY)</option>
                 </select>
               </div>
 
