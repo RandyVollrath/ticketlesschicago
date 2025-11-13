@@ -152,4 +152,4 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ## Disclaimer
 
-This application is not affiliated with any state or local government. Users are responsible for ensuring compliance with all local and state requirements. The auto-renewal service is a convenience feature and does not guarantee successful renewal.
+This application is not affiliated with any state or local government. Users are responsible for ensuring compliance with all local and state requirements. The auto-renewal service is a convenience feature and does not guarantee successful renewal.# Force redeploy
