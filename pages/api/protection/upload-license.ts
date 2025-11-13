@@ -15,7 +15,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
-import sharp from 'sharp';
+// DISABLED: Sharp has compatibility issues with Vercel's serverless runtime
+// import sharp from 'sharp';
 import vision from '@google-cloud/vision';
 
 const supabase = createClient(
@@ -48,8 +49,16 @@ if (process.env.GOOGLE_CLOUD_VISION_CREDENTIALS) {
 /**
  * Verify image quality using Sharp
  * Checks for blur, brightness, and image dimensions
+ *
+ * DISABLED: Sharp has compatibility issues with Vercel's serverless runtime.
+ * Google Cloud Vision API will handle all validation instead.
  */
 async function verifyImageQuality(filePath: string): Promise<{ valid: boolean; reason?: string }> {
+  // Skip Sharp validation - rely on Google Cloud Vision API only
+  console.log('⏭️  Skipping Sharp validation (disabled due to Vercel compatibility)');
+  return { valid: true };
+
+  /* ORIGINAL CODE - DISABLED
   try {
     const buffer = fs.readFileSync(filePath);
     const metadata = await sharp(buffer).metadata();
@@ -126,6 +135,7 @@ async function verifyImageQuality(filePath: string): Promise<{ valid: boolean; r
     console.error('Image quality verification error:', error);
     return { valid: false, reason: 'Failed to analyze image quality' };
   }
+  */
 }
 
 /**
