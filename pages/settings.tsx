@@ -470,51 +470,7 @@ export default function ProfileNew() {
                 </select>
               </div>
 
-              <div>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  ZIP Code <span style={{ color: '#dc2626' }}>*</span>
-                  <Tooltip content="Where you park your car overnight">
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      backgroundColor: '#e5e7eb',
-                      color: '#6b7280',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      cursor: 'help'
-                    }}>?</span>
-                  </Tooltip>
-                </label>
-                <input
-                  type="text"
-                  value={formData.zip_code || ''}
-                  onChange={(e) => handleFieldChange('zip_code', e.target.value)}
-                  placeholder="60614"
-                  maxLength={10}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div>
+              <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{
                   display: 'block',
                   fontSize: '14px',
@@ -549,35 +505,84 @@ export default function ProfileNew() {
           <Accordion
             title="Address"
             icon="📍"
-            defaultOpen={false}
+            badge={!formData.zip_code ? '1 missing' : undefined}
+            badgeColor="red"
+            defaultOpen={!formData.zip_code}
+            required={true}
           >
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Street Address (for street cleaning alerts)
-              </label>
-              <input
-                type="text"
-                value={formData.home_address_full || ''}
-                onChange={(e) => handleFieldChange('home_address_full', e.target.value)}
-                placeholder="123 Main St"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{
+                  display: 'block',
                   fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0' }}>
-                This will be used for your mailing address unless you specify a different one below
-              </p>
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Street Address (for street cleaning alerts)
+                </label>
+                <input
+                  type="text"
+                  value={formData.home_address_full || ''}
+                  onChange={(e) => handleFieldChange('home_address_full', e.target.value)}
+                  placeholder="123 Main St"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0' }}>
+                  Used for street cleaning schedule and mailing address
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  ZIP Code <span style={{ color: '#dc2626' }}>*</span>
+                  <Tooltip content="Used to determine your street cleaning schedule">
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      backgroundColor: '#e5e7eb',
+                      color: '#6b7280',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      cursor: 'help'
+                    }}>?</span>
+                  </Tooltip>
+                </label>
+                <input
+                  type="text"
+                  value={formData.zip_code || ''}
+                  onChange={(e) => handleFieldChange('zip_code', e.target.value)}
+                  placeholder="60614"
+                  maxLength={10}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -1097,7 +1102,7 @@ export default function ProfileNew() {
           {/* Back button */}
           <div style={{ marginTop: '32px', textAlign: 'center' }}>
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/')}
               style={{
                 padding: '12px 24px',
                 backgroundColor: '#f3f4f6',
@@ -1109,7 +1114,7 @@ export default function ProfileNew() {
                 cursor: 'pointer'
               }}
             >
-              ← Back to Dashboard
+              ← Back to Home
             </button>
           </div>
         </div>
