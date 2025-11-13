@@ -1713,6 +1713,113 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Consent Checkboxes */}
+              <div style={{
+                backgroundColor: '#fefce8',
+                border: '2px solid #fde047',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#854d0e',
+                  margin: '0 0 12px 0'
+                }}>
+                  Required Consent
+                </p>
+
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  marginBottom: '12px'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={thirdPartyConsent}
+                    onChange={(e) => setThirdPartyConsent(e.target.checked)}
+                    style={{
+                      marginTop: '3px',
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  />
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#713f12',
+                    lineHeight: '1.5'
+                  }}>
+                    I consent to Google Cloud Vision API processing my driver's license image to verify image quality. The image will be immediately encrypted after verification and stored securely.
+                  </span>
+                </label>
+
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  marginBottom: '12px'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={reuseConsent}
+                    onChange={(e) => setReuseConsent(e.target.checked)}
+                    style={{
+                      marginTop: '3px',
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  />
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#713f12',
+                    lineHeight: '1.5'
+                  }}>
+                    <strong>Optional:</strong> Store my license until it expires (recommended). If unchecked, we'll delete it within 48 hours after processing your renewal, and you'll need to upload it again next year.
+                  </span>
+                </label>
+
+                {reuseConsent && (
+                  <div style={{ marginTop: '12px' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#713f12',
+                      marginBottom: '6px'
+                    }}>
+                      Driver's License Expiration Date
+                    </label>
+                    <input
+                      type="date"
+                      value={licenseExpiryDate}
+                      onChange={(e) => setLicenseExpiryDate(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                    <p style={{
+                      fontSize: '11px',
+                      color: '#92400e',
+                      margin: '4px 0 0 0'
+                    }}>
+                      We'll automatically delete your license on this date
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <input
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
