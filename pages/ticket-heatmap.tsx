@@ -203,7 +203,7 @@ export default function TicketHeatmap() {
               💰 Chicago Paid $276M in Parking Tickets Last Year
             </h2>
             <p style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af' }}>
-              Average driver loses $1,000/year to preventable tickets. Don't be a statistic.
+              Average driver could lose $1,000+/year to preventable tickets. Don't be a statistic.
             </p>
             <button
               onClick={() => router.push('/protection')}

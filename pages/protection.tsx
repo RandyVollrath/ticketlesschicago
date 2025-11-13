@@ -1107,7 +1107,7 @@ export default function Protection() {
                   fontStyle: 'italic',
                   lineHeight: '1.5'
                 }}>
-                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}. You are responsible for completing your own renewals when you receive reminders.
+                  Subscription renews {billingPlan === 'monthly' ? 'monthly' : 'annually'}.
                 </p>
               </div>
 
@@ -1158,7 +1158,7 @@ export default function Protection() {
                     required
                   />
                   <span>
-                    <strong>I authorize Autopilot America to monitor my vehicle renewal deadlines</strong> and coordinate automated renewals on my behalf. <strong>I authorize Autopilot America to charge my payment method</strong> for (1) the subscription service fee of ${billingPlan === 'monthly' ? '$12/month' : '$120/year'} (which includes ${billingPlan === 'monthly' ? '$11/month' : '$108/year'} for Ticket Protection & Guarantee and ${billingPlan === 'monthly' ? '$1/month' : '$12/year'} for the regulated sticker service fee), and (2) city sticker renewal charges approximately 30 days before expiration (including the city sticker cost, a $2.50 service fee, and payment processing fees). Autopilot America works with licensed remitter partners who execute official submissions with the City of Chicago. I agree to provide accurate information and maintain up-to-date renewal dates in my profile. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
+                    I authorize Autopilot America to monitor my vehicle renewal deadlines and coordinate automated renewals on my behalf. I authorize Autopilot America to charge my payment method for (1) the subscription service fee of $12/month (which includes $11/month for Ticket Protection & Guarantee and $1/month for the regulated sticker service fee), and (2) city sticker renewal charges approximately 30 days before expiration (including the city sticker cost, a $2.50 service fee, and payment processing fees). Autopilot America works with licensed remitter partners who execute official submissions with the City of Chicago. I agree to provide accurate information and maintain up-to-date renewal dates in my profile. I have read and agree to the <a href="/terms" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: '#0052cc', textDecoration: 'underline' }}>Privacy Policy</a>.
                   </span>
                 </label>
               </div>
@@ -1179,7 +1179,7 @@ export default function Protection() {
                   transition: 'all 0.2s'
                 }}
               >
-                {loading ? 'Processing...' : `Get Complete Protection - $${calculateTotal()}`}
+                {loading ? 'Processing...' : 'Get Complete Protection - $12'}
               </button>
 
               <p style={{
