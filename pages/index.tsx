@@ -9,19 +9,6 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
 
-  // Handle OAuth redirect only - don't redirect logged-in users
-  useEffect(() => {
-    const handleOAuth = async () => {
-      // If OAuth tokens in hash, redirect to callback immediately
-      if (window.location.hash && window.location.hash.includes('access_token')) {
-        console.log('🔗 OAuth tokens detected, redirecting to /auth/callback');
-        window.location.href = '/auth/callback' + window.location.hash;
-        return;
-      }
-    };
-    handleOAuth();
-  }, []);
-
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -58,12 +45,6 @@ export default function Home() {
       <Head>
         <title>Autopilot America - Automating Fairness</title>
         <meta name="description" content="Automating fairness. Never miss another Chicago parking deadline with free alerts for street cleaning, snow removal, city stickers, and license plates." />
-        <script dangerouslySetInnerHTML={{__html: `
-          // Instant OAuth redirect before React renders
-          if (window.location.hash && window.location.hash.includes('access_token')) {
-            window.location.href = '/auth/callback' + window.location.hash;
-          }
-        `}} />
         <style>{`
           .responsive-grid {
             display: grid;
