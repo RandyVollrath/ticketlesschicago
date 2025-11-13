@@ -191,7 +191,7 @@ export default async function handler(
       `permit-docs/${userId}/id-${timestamp}-${idDocument.filename}`,
       idDocument.data,
       {
-        access: 'public',
+        access: 'private', // SECURITY: Government IDs must be private
         contentType: idDocument.contentType,
       }
     );
@@ -200,7 +200,7 @@ export default async function handler(
       `permit-docs/${userId}/residency-${timestamp}-${proofOfResidency.filename}`,
       proofOfResidency.data,
       {
-        access: 'public',
+        access: 'private', // SECURITY: Residency documents must be private
         contentType: proofOfResidency.contentType,
       }
     );

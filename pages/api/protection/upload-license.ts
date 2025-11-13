@@ -18,6 +18,7 @@ import fs from 'fs';
 // DISABLED: Sharp has compatibility issues with Vercel's serverless runtime
 // import sharp from 'sharp';
 import vision from '@google-cloud/vision';
+import { logAuditEvent, getIpAddress, getUserAgent } from '@/lib/audit-logger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -356,6 +357,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Clean up temp file
     fs.unlinkSync(file.filepath);
+
+    // Log audit event
+    await logAuditEvent({
+      userId,
+      actionType: 'document_uploaded',
+      entityType: 'permit_document',
+      entityId: filePath,
+      actionDetails: {
+        documentType: side === 'front' ? 'license_front' : 'license_back',
+        fileName: file.originalFilename,
+        fileSize: file.size,
+        consentGiven: thirdPartyProcessingConsent,
+        reuseConsent: licenseReuseConsent,
+      },
+      status: 'success',
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req),
+    });
 
     return res.status(200).json({
       success: true,

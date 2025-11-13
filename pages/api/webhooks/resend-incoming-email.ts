@@ -126,7 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const blobPath = `permit-docs/${matchedUser.user_id}/email-${timestamp}-${filename}`;
 
           const blob = await put(blobPath, buffer, {
-            access: 'public',
+            access: 'private', // SECURITY: Utility bills must be private
             contentType: contentType,
           });
 
