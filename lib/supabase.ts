@@ -15,7 +15,7 @@ if (!supabaseAnonKey) {
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    flowType: 'pkce', // Use PKCE flow for better security
+    flowType: 'implicit', // Use implicit flow for magic links
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,

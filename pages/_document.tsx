@@ -8,7 +8,9 @@ export default function Document() {
         <script dangerouslySetInnerHTML={{
           __html: `
             if (window.location.pathname === '/' && window.location.hash && window.location.hash.includes('access_token')) {
-              window.location.href = '/auth/callback' + window.location.hash;
+              console.log('🚀 _document.tsx: Redirecting OAuth tokens to callback');
+              console.log('Hash:', window.location.hash.substring(0, 50));
+              window.location.replace('/auth/callback' + window.location.hash);
             }
           `
         }} />
