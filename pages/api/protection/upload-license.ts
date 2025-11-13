@@ -344,9 +344,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('License upload error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    console.error('Full error object:', JSON.stringify(error, null, 2));
     return res.status(500).json({
       error: 'Upload failed',
-      details: error.message
+      details: error.message,
+      errorType: error.name
     });
   }
 }
