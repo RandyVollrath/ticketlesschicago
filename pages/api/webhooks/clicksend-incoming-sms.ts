@@ -159,7 +159,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const blobPath = `permit-docs/${matchedUserId}/sms-${timestamp}-${filename}`;
 
           const blob = await put(blobPath, buffer, {
-            access: 'public',
+            access: 'private', // SECURITY: ID documents must be private
             contentType: contentType,
           });
 
