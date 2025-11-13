@@ -5,7 +5,7 @@
  * Extracts utility bill PDF attachment and stores in Supabase.
  *
  * Webhook URL: https://ticketlesschicago.com/api/email/process-residency-proof-resend
- * Email format: documents+{user_uuid}@autopilotamerica.com
+ * Email format: {user_uuid}@bills.autopilotamerica.com
  *
  * Privacy: Only keeps most recent bill, deletes previous bills immediately.
  *
@@ -60,9 +60,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const email = payload.data;
 
     // Extract user UUID from "to" address
-    // Format: documents+{uuid}@autopilotamerica.com
+    // Format: {uuid}@bills.autopilotamerica.com
     const toAddress = email.to[0]; // Primary recipient
-    const match = toAddress.match(/documents\+([a-f0-9\-]+)@/i);
+    const match = toAddress.match(/([a-f0-9\-]+)@bills\.autopilotamerica\.com/i);
 
     if (!match) {
       console.error('Invalid email format:', toAddress);
