@@ -1662,7 +1662,7 @@ export default function Dashboard() {
                 </h2>
               </div>
 
-              {!profile.license_image_path && !licenseUploadSuccess && (
+              {(!profile.license_image_path || !profile.license_image_path_back) && (
                 <div style={{
                   backgroundColor: '#fef3c7',
                   border: '2px solid #f59e0b',
@@ -1676,7 +1676,7 @@ export default function Dashboard() {
                     color: '#92400e',
                     margin: '0 0 8px 0'
                   }}>
-                    Action Required: Upload Driver's License
+                    Action Required: Upload Driver's License (Front and Back)
                   </p>
                   <p style={{
                     fontSize: '14px',
@@ -1684,12 +1684,12 @@ export default function Dashboard() {
                     margin: 0,
                     lineHeight: '1.5'
                   }}>
-                    Because your address is in a residential permit zone, we need a photo of your driver's license to process your city sticker renewal with the city clerk.
+                    Because your address is in a residential permit zone, we need photos of both sides of your driver's license to process your city sticker renewal with the city clerk.
                   </p>
                 </div>
               )}
 
-              {profile.license_image_path && (
+              {profile.license_image_path && profile.license_image_path_back && (
                 <div style={{
                   backgroundColor: '#dcfce7',
                   border: '2px solid #10b981',
@@ -1705,7 +1705,7 @@ export default function Dashboard() {
                       color: '#166534',
                       margin: 0
                     }}>
-                      Driver's license on file
+                      Driver's license (front and back) on file
                     </p>
                   </div>
                   <p style={{
@@ -1714,7 +1714,7 @@ export default function Dashboard() {
                     margin: '8px 0 0 0',
                     lineHeight: '1.5'
                   }}>
-                    Uploaded {profile.license_image_uploaded_at ? new Date(profile.license_image_uploaded_at).toLocaleDateString() : 'recently'}. You can upload a new photo if needed.
+                    Front uploaded {profile.license_image_uploaded_at ? new Date(profile.license_image_uploaded_at).toLocaleDateString() : 'recently'}. Back uploaded {profile.license_image_back_uploaded_at ? new Date(profile.license_image_back_uploaded_at).toLocaleDateString() : 'recently'}. You can upload new photos if needed.
                   </p>
                 </div>
               )}
@@ -1873,99 +1873,205 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={handleLicenseFileChange}
-                disabled={licenseUploading}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  boxSizing: 'border-box',
-                  backgroundColor: 'white',
-                  cursor: licenseUploading ? 'not-allowed' : 'pointer',
-                  marginBottom: '12px'
-                }}
-              />
+              {/* FRONT OF LICENSE */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+                  Front of License
+                </h3>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={(e) => handleLicenseFileChange(e, 'front')}
+                  disabled={licenseFrontUploading}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white',
+                    cursor: licenseFrontUploading ? 'not-allowed' : 'pointer',
+                    marginBottom: '12px'
+                  }}
+                />
 
-              {licenseUploading && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '14px',
-                  color: '#0052cc',
-                  marginBottom: '12px'
-                }}>
+                {licenseFrontUploading && (
                   <div style={{
-                    width: '16px',
-                    height: '16px',
-                    border: '2px solid #0052cc',
-                    borderTop: '2px solid transparent',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }}></div>
-                  <span>Verifying image quality...</span>
-                </div>
-              )}
-
-              {licenseUploadError && (
-                <div style={{
-                  backgroundColor: '#fee2e2',
-                  border: '1px solid #fca5a5',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  fontSize: '14px',
-                  color: '#b91c1c',
-                  marginBottom: '12px'
-                }}>
-                  <strong>⚠️ Upload failed:</strong> {licenseUploadError}
-                  <br />
-                  <span style={{ fontSize: '13px', color: '#991b1b', marginTop: '6px', display: 'block' }}>
-                    Please try again with a clearer photo.
-                  </span>
-                </div>
-              )}
-
-              {licensePreview && !licenseUploading && !licenseUploadError && (
-                <div style={{
-                  border: '2px solid #10b981',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  marginTop: '12px'
-                }}>
-                  <img
-                    src={licensePreview}
-                    alt="License preview"
-                    style={{
-                      width: '100%',
-                      maxHeight: '300px',
-                      objectFit: 'contain',
-                      display: 'block',
-                      backgroundColor: '#f9fafb'
-                    }}
-                  />
-                  {licenseUploadSuccess && (
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px',
+                    color: '#0052cc',
+                    marginBottom: '12px'
+                  }}>
                     <div style={{
-                      backgroundColor: '#dcfce7',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <p style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#166534',
-                        margin: 0
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #0052cc',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    <span>Verifying front image quality...</span>
+                  </div>
+                )}
+
+                {licenseFrontUploadError && (
+                  <div style={{
+                    backgroundColor: '#fee2e2',
+                    border: '1px solid #fca5a5',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    fontSize: '14px',
+                    color: '#b91c1c',
+                    marginBottom: '12px'
+                  }}>
+                    <strong>⚠️ Upload failed:</strong> {licenseFrontUploadError}
+                    <br />
+                    <span style={{ fontSize: '13px', color: '#991b1b', marginTop: '6px', display: 'block' }}>
+                      Please try again with a clearer photo.
+                    </span>
+                  </div>
+                )}
+
+                {licenseFrontPreview && !licenseFrontUploading && !licenseFrontUploadError && (
+                  <div style={{
+                    border: '2px solid #10b981',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    marginTop: '12px'
+                  }}>
+                    <img
+                      src={licenseFrontPreview}
+                      alt="License front preview"
+                      style={{
+                        width: '100%',
+                        maxHeight: '300px',
+                        objectFit: 'contain',
+                        display: 'block',
+                        backgroundColor: '#f9fafb'
+                      }}
+                    />
+                    {licenseFrontUploadSuccess && (
+                      <div style={{
+                        backgroundColor: '#dcfce7',
+                        padding: '12px',
+                        textAlign: 'center'
                       }}>
-                        ✓ Upload successful! Image verified and ready for processing.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+                        <p style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#166534',
+                          margin: 0
+                        }}>
+                          ✓ Front uploaded successfully! Image verified and ready for processing.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* BACK OF LICENSE */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+                  Back of License
+                </h3>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={(e) => handleLicenseFileChange(e, 'back')}
+                  disabled={licenseBackUploading}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white',
+                    cursor: licenseBackUploading ? 'not-allowed' : 'pointer',
+                    marginBottom: '12px'
+                  }}
+                />
+
+                {licenseBackUploading && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px',
+                    color: '#0052cc',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #0052cc',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    <span>Verifying back image quality...</span>
+                  </div>
+                )}
+
+                {licenseBackUploadError && (
+                  <div style={{
+                    backgroundColor: '#fee2e2',
+                    border: '1px solid #fca5a5',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    fontSize: '14px',
+                    color: '#b91c1c',
+                    marginBottom: '12px'
+                  }}>
+                    <strong>⚠️ Upload failed:</strong> {licenseBackUploadError}
+                    <br />
+                    <span style={{ fontSize: '13px', color: '#991b1b', marginTop: '6px', display: 'block' }}>
+                      Please try again with a clearer photo.
+                    </span>
+                  </div>
+                )}
+
+                {licenseBackPreview && !licenseBackUploading && !licenseBackUploadError && (
+                  <div style={{
+                    border: '2px solid #10b981',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    marginTop: '12px'
+                  }}>
+                    <img
+                      src={licenseBackPreview}
+                      alt="License back preview"
+                      style={{
+                        width: '100%',
+                        maxHeight: '300px',
+                        objectFit: 'contain',
+                        display: 'block',
+                        backgroundColor: '#f9fafb'
+                      }}
+                    />
+                    {licenseBackUploadSuccess && (
+                      <div style={{
+                        backgroundColor: '#dcfce7',
+                        padding: '12px',
+                        textAlign: 'center'
+                      }}>
+                        <p style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#166534',
+                          margin: 0
+                        }}>
+                          ✓ Back uploaded successfully! Image verified and ready for processing.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
