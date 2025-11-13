@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log('🔔 Webhook received:', {
     method: req.method,
     url: req.url,
-    headers: req.headers,
+    body: req.body,
   });
 
   if (req.method !== 'POST') {
@@ -65,15 +65,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // TEMPORARY: Return 200 immediately to test if webhook is being called
+  return res.status(200).json({ received: true, test: 'webhook is being called' });
+
   try {
     const payload: ResendInboundPayload = req.body;
 
+    console.log('📦 Received payload:', JSON.stringify(payload, null, 2));
+
     // Verify it's an email.received event
     if (payload.type !== 'email.received') {
+      console.log('❌ Invalid event type:', payload.type);
       return res.status(400).json({ error: 'Invalid event type' });
     }
 
     const email = payload.data;
+    console.log('✉️ Processing email:', {
+      from: email.from,
+      to: email.to,
+      subject: email.subject,
+      attachments: email.attachments?.length || 0,
+    });
 
     // Extract user UUID from "to" address
     // Format: {uuid}@bills.autopilotamerica.com OR {uuid}@linguistic-louse.resend.app
