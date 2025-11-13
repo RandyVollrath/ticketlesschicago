@@ -200,7 +200,7 @@ export default function TicketHeatmap() {
             textAlign: 'center'
           }}>
             <h2 style={{ margin: '0 0 12px 0', fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>
-              💰 Chicago Paid $276M in Parking Tickets Last Year
+              💰 Chicago Paid $259M in Car Tickets Last Year
             </h2>
             <p style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af' }}>
               Average driver could lose $1,000+/year to preventable tickets. Don't be a statistic.
@@ -219,7 +219,7 @@ export default function TicketHeatmap() {
                 marginRight: '12px'
               }}
             >
-              Get Protection - $120/year
+              Get Protection (Includes Alerts) - $120/year
             </button>
             <button
               onClick={() => router.push('/alerts/signup')}
@@ -234,7 +234,7 @@ export default function TicketHeatmap() {
                 cursor: 'pointer'
               }}
             >
-              Try Free Alerts First
+              Start with Free Alerts
             </button>
           </div>
 
