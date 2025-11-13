@@ -113,20 +113,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`📎 Found PDF attachment: ${pdfAttachment.filename}`);
 
     // Download attachment from Resend API
-    // https://resend.com/docs/api-reference/emails/retrieve-attachment
-    const attachmentUrl = `https://api.resend.com/emails/${payload.data.email_id}/attachments/${pdfAttachment.id}`;
-    const downloadResponse = await fetch(attachmentUrl, {
+    // https://resend.com/docs/api-reference/emails/retrieve-received-email-attachment
+    const attachmentUrl = `https://api.resend.com/emails/receiving/${payload.data.email_id}/attachments/${pdfAttachment.id}`;
+
+    console.log(`📥 Fetching attachment from: ${attachmentUrl}`);
+
+    const attachmentResponse = await fetch(attachmentUrl, {
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
     });
 
+    if (!attachmentResponse.ok) {
+      console.error('Failed to fetch attachment metadata:', await attachmentResponse.text());
+      throw new Error('Failed to fetch attachment from Resend');
+    }
+
+    const attachmentData = await attachmentResponse.json();
+    console.log(`📎 Got attachment metadata, downloading from: ${attachmentData.download_url}`);
+
+    // Download the actual file from the presigned URL
+    const downloadResponse = await fetch(attachmentData.download_url);
     if (!downloadResponse.ok) {
-      console.error('Failed to download attachment:', await downloadResponse.text());
-      throw new Error('Failed to download attachment from Resend');
+      console.error('Failed to download attachment file:', await downloadResponse.text());
+      throw new Error('Failed to download attachment file');
     }
 
     const pdfBuffer = Buffer.from(await downloadResponse.arrayBuffer());
+    console.log(`✅ Downloaded PDF: ${pdfBuffer.length} bytes`);
 
     // Delete ALL previous bills for this user (only keep most recent)
     const userFolder = `proof/${userId}`;
