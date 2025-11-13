@@ -260,4 +260,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
-// Force redeploy Thu Nov 13 12:02:34 AM CST 2025
+// Deploy with full processing logic - no test returns
