@@ -347,7 +347,7 @@ export default function Home() {
             lineHeight: '1.1',
             letterSpacing: '-2px'
           }}>
-            Avoid $1,000/Year in Fees
+            Chicago: Cancel your car tickets
           </h1>
 
           {/* Tagline */}
@@ -359,7 +359,7 @@ export default function Home() {
             fontWeight: '500',
             margin: '0 0 24px 0'
           }}>
-            Get SMS alerts before tickets happen
+            Avoid $1,000+/year in preventable parking fees
           </p>
 
           {/* Desktop version - clean paragraph */}
@@ -371,7 +371,7 @@ export default function Home() {
             fontWeight: '400',
             margin: '0 0 16px 0'
           }}>
-            Join 155+ Chicagoans getting free alerts for street cleaning, snow removal, towing, and renewals.
+            Join 160+ Chicagoans getting free alerts for street cleaning, snow removal, towing, and renewals.
           </p>
 
           <p className="hero-subtitle-desktop" style={{

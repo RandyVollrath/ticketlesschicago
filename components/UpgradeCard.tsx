@@ -60,7 +60,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               lineHeight: '1.5',
               margin: '0 0 20px 0'
             }}>
-              Your Ticket Protection is active. Get renewal reminders and 80% reimbursement on eligible tickets (up to $200/year).
+              Your Ticket Protection is active. We handle your registration renewals before they expire, plus 80% reimbursement on eligible tickets (up to $200/year).
             </p>
 
             <ul style={{
@@ -82,7 +82,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                   marginRight: '8px',
                   fontSize: '16px'
                 }}>✓</span>
-                Renewal reminders & tracking
+                Automatic renewal handling (required for guarantee)
               </li>
               <li style={{
                 display: 'flex',
@@ -195,7 +195,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             lineHeight: '1.5',
             margin: '0 0 20px 0'
           }}>
-            Get comprehensive renewal reminders so you never miss city sticker, license plate, or emissions deadlines. Plus 80% reimbursement on eligible tickets (up to $200/year).
+            Get guaranteed renewal protection — we handle your registration renewals before they expire, plus 80% reimbursement on eligible tickets (up to $200/year).
           </p>
 
           <ul style={{
@@ -217,7 +217,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                 marginRight: '8px',
                 fontSize: '16px'
               }}>✓</span>
-              Renewal reminders & tracking
+              Automatic renewal handling (required for guarantee)
             </li>
             <li style={{
               display: 'flex',
