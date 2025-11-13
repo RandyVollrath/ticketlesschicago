@@ -9,8 +9,13 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { Resend } from 'resend';
+import { createClient } from '@supabase/supabase-js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('🏥 Running utility bills webhook health check...');
@@ -25,6 +30,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const healthData = await response.json();
 
     console.log('Health check result:', JSON.stringify(healthData, null, 2));
+
+    // Store result in database
+    const { error: dbError } = await supabase
+      .from('webhook_health_checks')
+      .insert({
+        webhook_name: 'utility-bills',
+        check_time: new Date().toISOString(),
+        overall_status: healthData.overall_status,
+        check_results: healthData,
+        alert_sent: false, // Will update if we send alert
+      });
+
+    if (dbError) {
+      console.error('Failed to store health check result:', dbError);
+      // Don't fail the whole check if logging fails
+    } else {
+      console.log('✅ Health check result stored in database');
+    }
 
     // If unhealthy, send alert email
     if (healthData.overall_status !== 'healthy') {
@@ -59,6 +82,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       console.log('📧 Alert email sent to admin');
+
+      // Update database to mark alert was sent
+      await supabase
+        .from('webhook_health_checks')
+        .update({ alert_sent: true })
+        .eq('webhook_name', 'utility-bills')
+        .order('check_time', { ascending: false })
+        .limit(1);
+
     } else {
       console.log('✅ All checks passed - webhook is healthy');
     }
