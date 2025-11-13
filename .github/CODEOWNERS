@@ -1,0 +1,12 @@
+# Code Owners - Require review for critical files
+
+# Utility bills webhook - CRITICAL: Email processing for residency proofs
+/pages/api/utility-bills.ts @RandyVollrath
+/pages/api/health/utility-bills.ts @RandyVollrath
+/pages/api/cron/monitor-utility-bills-webhook.ts @RandyVollrath
+
+# Vercel configuration - CRITICAL: Domain routing and cron jobs
+/vercel.json @RandyVollrath
+
+# Environment variables - CRITICAL: API keys and credentials
+/.env* @RandyVollrath
