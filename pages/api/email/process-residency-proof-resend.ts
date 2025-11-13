@@ -22,7 +22,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const BUCKET_NAME = 'residency-proofs-temp';
+const BUCKET_NAME = 'residency-proofs-temps';
 
 interface ResendInboundPayload {
   type: 'email.received';
