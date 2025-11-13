@@ -28,6 +28,7 @@ interface ResendInboundPayload {
   type: 'email.received';
   created_at: string;
   data: {
+    email_id: string;
     from: string;
     to: string[];
     subject: string;
@@ -38,8 +39,8 @@ interface ResendInboundPayload {
       id: string;
       filename: string;
       content_type: string;
-      size: number;
-      download_url: string;
+      content_disposition?: string;
+      content_id?: string;
     }>;
   };
 }
@@ -109,11 +110,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'No PDF attachment found in email' });
     }
 
-    console.log(`📎 Found PDF attachment: ${pdfAttachment.filename} (${pdfAttachment.size} bytes)`);
+    console.log(`📎 Found PDF attachment: ${pdfAttachment.filename}`);
 
-    // Download attachment from Resend
-    const downloadResponse = await fetch(pdfAttachment.download_url);
+    // Download attachment from Resend API
+    // https://resend.com/docs/api-reference/emails/retrieve-attachment
+    const attachmentUrl = `https://api.resend.com/emails/${payload.data.email_id}/attachments/${pdfAttachment.id}`;
+    const downloadResponse = await fetch(attachmentUrl, {
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      },
+    });
+
     if (!downloadResponse.ok) {
+      console.error('Failed to download attachment:', await downloadResponse.text());
       throw new Error('Failed to download attachment from Resend');
     }
 
