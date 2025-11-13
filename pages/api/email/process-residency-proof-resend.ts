@@ -45,8 +45,23 @@ interface ResendInboundPayload {
   };
 }
 
+// Disable body parsing to handle raw webhook payload
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Log the request for debugging
+  console.log('🔔 Webhook received:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+  });
+
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
