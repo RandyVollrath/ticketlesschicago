@@ -65,9 +65,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // TEMPORARY: Return 200 immediately to test if webhook is being called
-  return res.status(200).json({ received: true, test: 'webhook is being called' });
-
   try {
     const payload: ResendInboundPayload = req.body;
 
@@ -87,14 +84,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       attachments: email.attachments?.length || 0,
     });
 
+    console.log('📎 Attachment details:', JSON.stringify(email.attachments, null, 2));
+
     // Extract user UUID from "to" address
     // Format: {uuid}@bills.autopilotamerica.com OR {uuid}@linguistic-louse.resend.app
     const toAddress = email.to[0]; // Primary recipient
+    console.log(`🔍 Parsing email address: ${toAddress}`);
+
     const match = toAddress.match(/([a-f0-9\-]+)@(?:bills\.autopilotamerica\.com|linguistic-louse\.resend\.app)/i);
 
     if (!match) {
-      console.error('Invalid email format:', toAddress);
-      return res.status(400).json({ error: 'Invalid email format' });
+      console.error('❌ Invalid email format:', toAddress);
+      console.error('Expected format: {uuid}@bills.autopilotamerica.com or {uuid}@linguistic-louse.resend.app');
+      return res.status(400).json({ error: 'Invalid email format', toAddress });
     }
 
     const userId = match[1];
@@ -105,6 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`  - Attachments: ${email.attachments?.length || 0}`);
 
     // Find user profile
+    console.log(`🔍 Looking up user profile for: ${userId}`);
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('user_id, email_forwarding_address, has_protection, has_permit_zone')
@@ -112,32 +115,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
     if (profileError || !profile) {
-      console.error('User not found:', userId);
-      return res.status(404).json({ error: 'User not found' });
+      console.error('❌ User not found:', userId, 'Error:', profileError);
+      return res.status(404).json({ error: 'User not found', userId, details: profileError?.message });
     }
+
+    console.log(`✅ Found user profile:`, {
+      has_protection: profile.has_protection,
+      has_permit_zone: profile.has_permit_zone,
+      email_forwarding_address: profile.email_forwarding_address
+    });
 
     // Verify user has protection and permit zone
     if (!profile.has_protection) {
-      console.error('User does not have protection:', userId);
-      return res.status(400).json({ error: 'User does not have protection service' });
+      console.error('❌ User does not have protection:', userId);
+      return res.status(400).json({ error: 'User does not have protection service', userId });
     }
 
     if (!profile.has_permit_zone) {
-      console.error('User does not have permit zone:', userId);
-      return res.status(400).json({ error: 'User does not require proof of residency' });
+      console.error('❌ User does not have permit zone:', userId);
+      return res.status(400).json({ error: 'User does not require proof of residency', userId });
     }
 
     // Find PDF attachment
+    console.log(`🔍 Searching for PDF attachment...`);
     const pdfAttachment = email.attachments?.find(att =>
       att.content_type === 'application/pdf' || att.filename.toLowerCase().endsWith('.pdf')
     );
 
     if (!pdfAttachment) {
-      console.error('No PDF attachment found');
-      return res.status(400).json({ error: 'No PDF attachment found in email' });
+      console.error('❌ No PDF attachment found');
+      console.error('Available attachments:', email.attachments);
+      return res.status(400).json({
+        error: 'No PDF attachment found in email',
+        attachments: email.attachments?.map(a => ({ filename: a.filename, content_type: a.content_type }))
+      });
     }
 
-    console.log(`📎 Found PDF attachment: ${pdfAttachment.filename}`);
+    console.log(`✅ Found PDF attachment: ${pdfAttachment.filename} (${pdfAttachment.content_type})`);
 
     // Download attachment from Resend API
     // https://resend.com/docs/api-reference/emails/retrieve-received-email-attachment
@@ -192,7 +206,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const dateFolder = today.toISOString().split('T')[0]; // yyyy-mm-dd
     const filePath = `${userFolder}/${dateFolder}/bill.pdf`;
 
-    const { error: uploadError } = await supabase.storage
+    console.log(`📤 Uploading to: ${BUCKET_NAME}/${filePath}`);
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, pdfBuffer, {
         contentType: 'application/pdf',
@@ -200,14 +216,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
+      console.error('❌ Upload error:', uploadError);
       throw uploadError;
     }
 
-    console.log(`✅ Uploaded new bill to: ${filePath}`);
+    console.log(`✅ Uploaded new bill to: ${filePath}`, uploadData);
 
     // Update user profile with new bill info
-    const { error: updateError } = await supabase
+    console.log(`💾 Updating database for user ${userId}...`);
+    const { data: updateData, error: updateError } = await supabase
       .from('user_profiles')
       .update({
         residency_proof_path: filePath,
@@ -215,15 +232,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         residency_proof_verified: false, // Will be verified later by cron/manual process
         residency_proof_verified_at: null,
       })
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select();
 
     if (updateError) {
-      console.error('Database update error:', updateError);
+      console.error('❌ Database update error:', updateError);
       throw updateError;
     }
 
+    console.log(`✅ Database updated:`, updateData);
     console.log(`📊 Stats: Deleted ${filesToDelete.length} old bills, stored 1 new bill`);
-    console.log(`✓ Utility bill processed successfully for user ${userId}`);
+    console.log(`🎉 Utility bill processed successfully for user ${userId}`);
 
     return res.status(200).json({
       success: true,
