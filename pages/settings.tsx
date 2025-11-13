@@ -1595,11 +1595,12 @@ export default function Dashboard() {
 
           {/* Driver's License Upload - Only for Protection users with city sticker + permit zone */}
           {profile.has_protection && profile.city_sticker_expiry && profile.has_permit_zone && (
-            <div style={{
+            <div id="license-upload" style={{
               backgroundColor: 'white',
               borderRadius: '16px',
               border: profile.license_image_path ? '1px solid #10b981' : '2px solid #f59e0b',
-              padding: '32px'
+              padding: '32px',
+              scrollMarginTop: '100px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                 <span style={{ fontSize: '28px' }}>📸</span>
