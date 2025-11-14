@@ -1,14 +1,22 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { verifyOwnership, handleAuthError } from '../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     const { userId } = req.query;
-    
+
     if (!userId) {
       return res.status(400).json({ error: 'User ID required' });
     }
-    
+
+    // SECURITY: Verify user owns this profile or is admin
+    try {
+      await verifyOwnership(req, userId as string);
+    } catch (error: any) {
+      return handleAuthError(res, error);
+    }
+
     try {
       // Get user profile (now the primary source of truth)
       const { data: user, error: userError } = await supabaseAdmin

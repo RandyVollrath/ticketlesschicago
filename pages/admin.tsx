@@ -22,50 +22,77 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState('');
   const [notificationResults, setNotificationResults] = useState<any>(null);
   const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (authenticated) {
+    checkAdminStatus();
+  }, []);
+
+  useEffect(() => {
+    if (authenticated && isAdmin) {
       fetchUsers();
     }
-  }, [authenticated]);
+  }, [authenticated, isAdmin]);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === 'ticketless2025admin') {
-      setAuthenticated(true);
-    } else {
-      setMessage('Invalid password');
+  // SECURITY: Check if user is authenticated and is admin
+  const checkAdminStatus = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      setAuthenticated(false);
+      return;
     }
+
+    // Check if user is admin
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('is_admin')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (error || !profile?.is_admin) {
+      setMessage('Admin access required. Please sign in with an admin account.');
+      setAuthenticated(false);
+      setIsAdmin(false);
+      return;
+    }
+
+    setAuthenticated(true);
+    setIsAdmin(true);
   };
 
-  if (!authenticated) {
+  const handleLogin = async () => {
+    // Redirect to sign in page
+    window.location.href = '/signin?redirect=/admin';
+  };
+
+  if (!authenticated || !isAdmin) {
     return (
       <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '400px', margin: '100px auto' }}>
         <Head>
           <title>Admin Access</title>
         </Head>
         <h2>Admin Access Required</h2>
-        <form onSubmit={handleLogin}>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter admin password"
-            style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-            required
-          />
-          <button
-            type="submit"
-            style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
-          >
-            Login
-          </button>
-        </form>
-        {message && <p style={{ color: 'red', marginTop: '10px' }}>{message}</p>}
+        {message && <p style={{ color: 'red' }}>{message}</p>}
+        <p>You must be signed in with an admin account to access this page.</p>
+        <button
+          onClick={handleLogin}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#0070f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '16px'
+          }}
+        >
+          Sign In
+        </button>
       </div>
     );
   }
+
 
   const fetchUsers = async () => {
     setLoading(true);

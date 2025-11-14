@@ -83,6 +83,7 @@ export default function Footer({ hideDonation = false }: FooterProps) {
             <a href="/support" style={{ color: '#666', textDecoration: 'none' }}>Support</a>
             <a href="/terms" style={{ color: '#666', textDecoration: 'none' }}>Terms</a>
             <a href="/privacy" style={{ color: '#666', textDecoration: 'none' }}>Privacy</a>
+            <a href="/security" style={{ color: '#666', textDecoration: 'none' }}>Security</a>
           </div>
 
           <p style={{

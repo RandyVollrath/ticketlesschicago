@@ -1,9 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { requireAdmin, handleAuthError } from '../../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Require admin authentication
+  try {
+    await requireAdmin(req);
+  } catch (error: any) {
+    return handleAuthError(res, error);
   }
 
   const { user_id, updates } = req.body;
