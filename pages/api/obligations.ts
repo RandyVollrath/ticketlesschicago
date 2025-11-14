@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { addDays, addYears, format } from 'date-fns';
+import { verifyOwnership, handleAuthError } from '../../lib/auth-middleware';
 
 interface Obligation {
   id: string;
@@ -61,15 +62,22 @@ const generateObligations = (vehicleId: string, userId: string, vehicleYear: num
   return obligations;
 };
 
-export default function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === 'GET') {
     const { userId, vehicleId } = req.query;
-    
+
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // SECURITY: Verify user owns this resource or is admin
+    try {
+      await verifyOwnership(req, userId as string);
+    } catch (error: any) {
+      return handleAuthError(res, error);
     }
 
     // TODO: Fetch from database

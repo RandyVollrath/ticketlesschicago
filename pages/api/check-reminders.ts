@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { requireAuth, handleAuthError } from '../../lib/auth-middleware';
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,11 +10,20 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // SECURITY: Require authentication
+  let user;
   try {
-    // Get all upcoming obligations using the new schema
+    user = await requireAuth(req);
+  } catch (error: any) {
+    return handleAuthError(res, error);
+  }
+
+  try {
+    // SECURITY: Only get obligations for authenticated user
     const { data: obligations, error } = await supabaseAdmin
       .from('upcoming_obligations')
       .select('*')
+      .eq('user_id', user.id) // Filter by authenticated user
       .order('due_date', { ascending: true });
 
     if (error) throw error;
