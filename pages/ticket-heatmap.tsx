@@ -234,7 +234,7 @@ export default function TicketHeatmap() {
                 cursor: 'pointer'
               }}
             >
-              Start with Free Alerts
+              Just Free Alerts
             </button>
           </div>
 
