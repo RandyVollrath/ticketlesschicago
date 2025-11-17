@@ -103,6 +103,26 @@ export class NotificationScheduler {
                 needsPermitDocs = !permitDoc || !permitDoc.customer_code || permitDoc.verification_status !== 'approved';
               }
 
+              // Check if we actually have a completed payment for this renewal
+              // IMPORTANT: Only say "already purchased" if we have confirmation from city
+              // This is used by both SMS and Email notifications
+              let actuallyPurchased = false;
+              if (hasProtection && renewal.canAutoPurchase && daysUntil < 30) {
+                // Only check if we're past the purchase date (30 days before expiry)
+                const renewalTypeDb = renewal.type === 'City Sticker' ? 'city_sticker' : 'license_plate';
+                const { data: payment } = await supabaseAdmin
+                  .from('renewal_payments')
+                  .select('city_payment_status, city_confirmation_number, paid_at')
+                  .eq('user_id', user.user_id)
+                  .eq('renewal_type', renewalTypeDb)
+                  .gte('due_date', dueDate.toISOString().split('T')[0]) // Match the due date
+                  .lte('due_date', dueDate.toISOString().split('T')[0])
+                  .eq('city_payment_status', 'paid')
+                  .maybeSingle();
+
+                actuallyPurchased = payment !== null;
+              }
+
               // Send SMS if enabled
               if (prefs.sms && user.phone_number) {
                 let message = '';
@@ -141,11 +161,21 @@ export class NotificationScheduler {
                       message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr} (30 days before expiration). Your profile is confirmed. Reply if you need to update anything!`;
                     }
                   } else if (daysUntil >= 14) {
-                    // After charge, before sticker expected
-                    message = `Autopilot: Good news! We already purchased your ${renewal.type}. Your sticker will arrive by mail within 10-14 days. No action needed from you!`;
+                    // CRITICAL FIX: Only say "already purchased" if we have city confirmation
+                    if (actuallyPurchased) {
+                      message = `Autopilot: Good news! We already purchased your ${renewal.type}. Your sticker will arrive by mail within 10-14 days. No action needed from you!`;
+                    } else {
+                      // No confirmation yet - be honest
+                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We're processing your renewal purchase and will update you when it's confirmed. Your profile is confirmed.`;
+                    }
                   } else {
-                    // Sticker should have arrived
-                    message = `Autopilot: Your ${renewal.type} sticker should arrive soon (if it hasn't already). It was purchased on ${purchaseDateStr} and typically takes 10-14 days to arrive. Contact us if you haven't received it.`;
+                    // Sticker delivery window
+                    if (actuallyPurchased) {
+                      message = `Autopilot: Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDateStr} and it typically takes 10-14 days to arrive. Contact us if you haven't received it.`;
+                    } else {
+                      // Still no confirmation - concerning
+                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`;
+                    }
                   }
 
                   // Add permit zone docs request
@@ -277,9 +307,13 @@ export class NotificationScheduler {
                                 ? `Your ${renewal.type} expires in ${daysUntil} days. We'll <strong>charge your card in 7 days</strong> (on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}). Please update your profile now if you have any changes. This is your last reminder before charge day!`
                                 : daysUntil > 37
                                 ? `We'll automatically charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> (30 days before expiration) for your ${renewal.type} renewal. You have time to update your info if needed!`
-                                : daysUntil >= 14
+                                : daysUntil >= 14 && actuallyPurchased
                                 ? `Good news! We already purchased your ${renewal.type} renewal. Your sticker is in the mail and should arrive within 10-14 days. No action needed from you!`
-                                : `Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} and it typically takes 10-14 days to arrive.`
+                                : daysUntil >= 14 && !actuallyPurchased
+                                ? `Your ${renewal.type} expires in ${daysUntil} days. We're processing your renewal purchase and will update you when it's confirmed.`
+                                : actuallyPurchased
+                                ? `Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} and it typically takes 10-14 days to arrive.`
+                                : `Your ${renewal.type} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`
                               }
                             </p>
                           </div>
