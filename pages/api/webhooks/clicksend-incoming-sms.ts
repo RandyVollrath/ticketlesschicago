@@ -304,14 +304,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify({
           from: 'Autopilot America <noreply@ticketlessamerica.com>',
-          to: 'ticketlessamerica@gmail.com',
+          to: 'autopilotamerica@gmail.com',
           subject: emailSubject,
           html: emailHtml
         })
       });
 
       if (resendResponse.ok) {
-        console.log('✅ Email notification sent to ticketlessamerica@gmail.com');
+        console.log('✅ Email notification sent to autopilotamerica@gmail.com');
 
         // Mark email as sent
         await supabaseAdmin
