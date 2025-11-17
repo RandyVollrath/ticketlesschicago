@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { verifyWebhook } from '../../../lib/webhook-verification';
 
 /**
  * Resend Incoming Email Webhook
@@ -26,7 +27,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  console.log('📧 Incoming email webhook called');
+  // SECURITY: Verify webhook signature
+  if (!verifyWebhook('resend', req)) {
+    console.error('⚠️ Resend webhook verification failed');
+    return res.status(401).json({ error: 'Unauthorized - invalid signature' });
+  }
+
+  console.log('📧 Incoming email webhook called (verified ✅)');
   console.log('Body:', JSON.stringify(req.body, null, 2));
 
   try {
