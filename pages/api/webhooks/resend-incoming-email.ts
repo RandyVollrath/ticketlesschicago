@@ -279,15 +279,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'Autopilot America <noreply@ticketlessamerica.com>',
-          to: 'autopilotamerica@gmail.com',
+          from: 'Autopilot America <noreply@autopilotamerica.com>',
+          to: 'hiautopilotamerica@gmail.com',
           subject: emailSubject,
           html: emailHtml
         })
       });
 
       if (resendResponse.ok) {
-        console.log('✅ Notification email sent to autopilotamerica@gmail.com');
+        console.log('✅ Notification email sent to hiautopilotamerica@gmail.com');
 
         // Mark notification as sent
         await supabaseAdmin
