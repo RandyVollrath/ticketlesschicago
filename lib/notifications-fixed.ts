@@ -46,12 +46,14 @@ export class NotificationScheduler {
       
       for (const user of users || []) {
         // Check each renewal type
+        // NOTE: Only City Sticker and License Plate can be auto-purchased
+        // Emissions Test is reminder-only (user must bring car to testing facility)
         const renewals = [
-          { date: user.city_sticker_expiry, type: 'City Sticker' },
-          { date: user.license_plate_expiry, type: 'License Plate' },
-          { date: user.emissions_date, type: 'Emissions Test' }
+          { date: user.city_sticker_expiry, type: 'City Sticker', canAutoPurchase: true },
+          { date: user.license_plate_expiry, type: 'License Plate', canAutoPurchase: true },
+          { date: user.emissions_date, type: 'Emissions Test', canAutoPurchase: false }
         ];
-        
+
         for (const renewal of renewals) {
           if (!renewal.date) continue;
           
@@ -105,19 +107,20 @@ export class NotificationScheduler {
               if (prefs.sms && user.phone_number) {
                 let message = '';
 
-                if (!hasProtection) {
-                  // Simple reminder for free alert users
+                if (!hasProtection || !renewal.canAutoPurchase) {
+                  // Simple reminder for free alert users OR for emissions tests (which can't be auto-purchased)
                   if (daysUntil === 0) {
-                    message = `Autopilot: Your ${renewal.type} expires TODAY. Renew now to avoid fines. Reply STOP to opt out.`;
+                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TODAY. ${renewal.type === 'Emissions Test' ? 'Schedule your test now at illinoisveip.com' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
                   } else if (daysUntil === 1) {
-                    message = `Autopilot: Your ${renewal.type} expires TOMORROW. Renew today to stay compliant. Reply STOP to opt out.`;
+                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TOMORROW. ${renewal.type === 'Emissions Test' ? 'Schedule your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
                   } else if (daysUntil <= 7) {
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. Don't forget to renew! Reply STOP to opt out.`;
+                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days. ${renewal.type === 'Emissions Test' ? 'Find test locations at illinoisveip.com' : "Don't forget to renew!"}. Reply STOP to opt out.`;
                   } else {
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days on ${dueDate.toLocaleDateString()}. Mark your calendar! Reply STOP to opt out.`;
+                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days on ${dueDate.toLocaleDateString()}. Mark your calendar! Reply STOP to opt out.`;
                   }
                 } else {
                   // Protection users - professional, clear communication about auto-registration
+                  // (Only for City Sticker and License Plate - NOT Emissions Test)
                   const daysUntilPurchase = Math.max(0, daysUntil - 30);
                   const purchaseDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000);
                   const purchaseDateStr = purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -222,22 +225,22 @@ export class NotificationScheduler {
                           </div>
                         </div>
 
-                        ${!hasProtection ? `
+                        ${!hasProtection || !renewal.canAutoPurchase ? `
                           ${daysUntil <= 1 ? `
                             <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                              <h3 style="color: #92400e; margin: 0 0 8px; font-size: 18px;">⏰ Renewal Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}</h3>
-                              <p style="color: #92400e; margin: 0;">We recommend renewing today to stay compliant and avoid any potential issues.</p>
+                              <h3 style="color: #92400e; margin: 0 0 8px; font-size: 18px;">⏰ ${renewal.type === 'Emissions Test' ? 'Test' : 'Renewal'} Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}</h3>
+                              <p style="color: #92400e; margin: 0;">We recommend ${renewal.type === 'Emissions Test' ? 'scheduling your test' : 'renewing'} today to stay compliant and avoid any potential issues.</p>
                             </div>
                           ` : ''}
 
                           <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                            <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to Renew:</h3>
+                            <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to ${renewal.type === 'Emissions Test' ? 'Schedule Your Test' : 'Renew'}:</h3>
                             <div style="color: #0369a1; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
                               ${renewal.type === 'City Sticker' ?
                                 'Renew online at chicityclerk.com or visit any Currency Exchange location. Bring your registration and proof of insurance.' :
                                 renewal.type === 'License Plate' ?
                                 'Renew at cyberdriveillinois.com or visit your local Secretary of State facility.' :
-                                'Find testing locations at illinoisveip.com. Bring your registration and $20 cash.'}
+                                'Find testing locations at illinoisveip.com. Bring your registration and $20 cash. You must bring your vehicle to a testing facility - this cannot be done remotely.'}
                             </div>
 
                             <div style="text-align: center; margin: 20px 0;">
@@ -248,7 +251,8 @@ export class NotificationScheduler {
                             </div>
                           </div>
 
-                          <!-- Upgrade to Protection -->
+                          ${renewal.canAutoPurchase ? `
+                          <!-- Upgrade to Protection (only show for things that CAN be auto-purchased) -->
                           <div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 24px 0;">
                             <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">💡 Want us to handle this for you?</h3>
                             <p style="color: #065f46; margin: 0 0 16px; line-height: 1.6;">
@@ -261,6 +265,7 @@ export class NotificationScheduler {
                               </a>
                             </div>
                           </div>
+                          ` : ''}
                         ` : `
                           <!-- Protection Plan Users -->
                           <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin-bottom: 24px; border-radius: 4px;">
