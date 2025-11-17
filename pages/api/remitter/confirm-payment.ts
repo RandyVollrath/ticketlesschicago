@@ -127,6 +127,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Update failed', details: updateError.message });
     }
 
+    // CRITICAL: Update user's profile expiry date to next year
+    // This ensures the cycle repeats automatically without manual intervention
+    const currentDueDate = new Date(due_date);
+    const nextYearDueDate = new Date(currentDueDate);
+    nextYearDueDate.setFullYear(nextYearDueDate.getFullYear() + 1);
+    const nextYearDueDateStr = nextYearDueDate.toISOString().split('T')[0];
+
+    // Determine which field to update based on renewal type
+    const expiryField = renewal_type === 'city_sticker'
+      ? 'city_sticker_expiry'
+      : 'license_plate_expiry';
+
+    const { error: profileUpdateError } = await supabaseAdmin
+      .from('user_profiles')
+      .update({
+        [expiryField]: nextYearDueDateStr
+      })
+      .eq('user_id', user_id);
+
+    if (profileUpdateError) {
+      // Log error but don't fail the request - renewal is still confirmed
+      console.error(`⚠️ Failed to update user profile ${expiryField}:`, profileUpdateError);
+      // Still continue - the renewal is confirmed, profile update is secondary
+    } else {
+      console.log(`✅ Updated user ${user_id} ${expiryField} from ${due_date} to ${nextYearDueDateStr}`);
+    }
+
     // Log audit event
     await logAuditEvent({
       userId: user_id,
@@ -159,6 +186,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         city_payment_status: updated.city_payment_status,
         city_confirmation_number: updated.city_confirmation_number,
         confirmed_at: new Date().toISOString()
+      },
+      profile_update: profileUpdateError ? {
+        success: false,
+        error: 'Failed to update user profile expiry date',
+        details: profileUpdateError.message
+      } : {
+        success: true,
+        field_updated: expiryField,
+        old_value: due_date,
+        new_value: nextYearDueDateStr,
+        message: `User's ${expiryField} automatically updated to next year`
       }
     });
 
