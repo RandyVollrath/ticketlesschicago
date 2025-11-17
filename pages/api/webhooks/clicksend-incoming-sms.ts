@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { verifyWebhook } from '../../../lib/webhook-verification';
 
 /**
  * ClickSend Incoming SMS Webhook
@@ -11,9 +12,10 @@ import { supabaseAdmin } from '../../../lib/supabase';
  * 1. Go to ClickSend Dashboard: https://dashboard.clicksend.com
  * 2. Navigate to: SMS > Settings > Inbound SMS Rules
  * 3. Add a new rule for your SMS number
- * 4. Set Webhook URL to: https://ticketlessamerica.com/api/webhooks/clicksend-incoming-sms
+ * 4. Set Webhook URL to: https://ticketlessamerica.com/api/webhooks/clicksend-incoming-sms?token=YOUR_SECRET_TOKEN
  * 5. Set Method to: POST
  * 6. Enable "Send raw data" if available
+ * 7. Add CLICKSEND_WEBHOOK_SECRET to your .env file
  */
 
 // Disable body parsing so we can handle both JSON and form data
@@ -28,7 +30,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  console.log('📱 Incoming SMS webhook called');
+  // SECURITY: Verify webhook signature/token
+  if (!verifyWebhook('clicksend', req)) {
+    console.error('⚠️ ClickSend webhook verification failed');
+    return res.status(401).json({ error: 'Unauthorized - invalid token' });
+  }
+
+  console.log('📱 Incoming SMS webhook called (verified ✅)');
   console.log('Headers:', req.headers);
   console.log('Body:', JSON.stringify(req.body, null, 2));
 
