@@ -1,6 +1,13 @@
 import { supabaseAdmin } from './supabase';
 import { sendClickSendSMS, sendClickSendVoiceCall } from './sms-service';
 import { Resend } from 'resend';
+import {
+  logMessageSent,
+  logMessageSkipped,
+  logMessageError,
+  checkRecentlySent,
+  type MessageContext
+} from './message-audit-logger';
 
 export class NotificationScheduler {
   private resend: Resend | null = null;
@@ -123,22 +130,51 @@ export class NotificationScheduler {
                 actuallyPurchased = payment !== null;
               }
 
+              // Build context data for audit logging
+              const contextData: MessageContext = {
+                plate: user.license_plate || 'unknown',
+                zone: user.permit_zone || undefined,
+                days_until: daysUntil,
+                renewal_type: renewal.type,
+                has_protection: hasProtection,
+                has_permit_zone: hasPermitZone
+              };
+
+              // Generate message key for deduplication
+              const messageKey = `renewal_${renewal.type.toLowerCase().replace(/ /g, '_')}_${daysUntil}day`;
+
               // Send SMS if enabled
               if (prefs.sms && user.phone_number) {
-                let message = '';
+                // Check if we already sent this message recently (48h deduplication)
+                const recentlySent = await checkRecentlySent(user.user_id, messageKey, 48);
 
-                if (!hasProtection || !renewal.canAutoPurchase) {
-                  // Simple reminder for free alert users OR for emissions tests (which can't be auto-purchased)
-                  if (daysUntil === 0) {
-                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TODAY. ${renewal.type === 'Emissions Test' ? 'Schedule your test now at illinoisveip.com' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
-                  } else if (daysUntil === 1) {
-                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TOMORROW. ${renewal.type === 'Emissions Test' ? 'Schedule your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
-                  } else if (daysUntil <= 7) {
-                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days. ${renewal.type === 'Emissions Test' ? 'Find test locations at illinoisveip.com' : "Don't forget to renew!"}. Reply STOP to opt out.`;
-                  } else {
-                    message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days on ${dueDate.toLocaleDateString()}. Mark your calendar! Reply STOP to opt out.`;
-                  }
+                if (recentlySent) {
+                  console.log(`⏭️  Skipping SMS - already sent within 48h: ${messageKey}`);
+                  await logMessageSkipped({
+                    userId: user.user_id,
+                    userEmail: user.email,
+                    userPhone: user.phone_number,
+                    messageKey,
+                    messageChannel: 'sms',
+                    contextData,
+                    reason: 'already_sent_48h'
+                  });
+                  // Don't send, continue to next notification type
                 } else {
+                  let message = '';
+
+                  if (!hasProtection || !renewal.canAutoPurchase) {
+                    // Simple reminder for free alert users OR for emissions tests (which can't be auto-purchased)
+                    if (daysUntil === 0) {
+                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TODAY. ${renewal.type === 'Emissions Test' ? 'Schedule your test now at illinoisveip.com' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
+                    } else if (daysUntil === 1) {
+                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TOMORROW. ${renewal.type === 'Emissions Test' ? 'Schedule your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
+                    } else if (daysUntil <= 7) {
+                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days. ${renewal.type === 'Emissions Test' ? 'Find test locations at illinoisveip.com' : "Don't forget to renew!"}. Reply STOP to opt out.`;
+                    } else {
+                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days on ${dueDate.toLocaleDateString()}. Mark your calendar! Reply STOP to opt out.`;
+                    }
+                  } else {
                   // Protection users - professional, clear communication about auto-registration
                   // (Only for City Sticker and License Plate - NOT Emissions Test)
                   const daysUntilPurchase = Math.max(0, daysUntil - 30);
@@ -186,32 +222,133 @@ export class NotificationScheduler {
                   message += ` Reply STOP to opt out.`;
                 }
 
-                console.log(`📱 Sending SMS to ${user.phone_number}: ${message}`);
-                const smsResult = await sendClickSendSMS(user.phone_number, message);
+                  console.log(`📱 Sending SMS to ${user.phone_number}: ${message}`);
+                  const smsResult = await sendClickSendSMS(user.phone_number, message);
 
-                if (smsResult.success) {
-                  console.log('✅ SMS sent successfully');
-                  results.successful++;
-                } else {
-                  console.error('❌ SMS failed:', smsResult.error);
-                  results.failed++;
+                  if (smsResult.success) {
+                    console.log('✅ SMS sent successfully');
+                    results.successful++;
+
+                    // Log successful send
+                    await logMessageSent({
+                      userId: user.user_id,
+                      userEmail: user.email,
+                      userPhone: user.phone_number,
+                      messageKey,
+                      messageChannel: 'sms',
+                      contextData,
+                      messagePreview: message,
+                      externalMessageId: smsResult.messageId,
+                      costCents: 2 // SMS typically costs ~2 cents
+                    });
+                  } else {
+                    console.error('❌ SMS failed:', smsResult.error);
+                    results.failed++;
+
+                    // Log error
+                    await logMessageError({
+                      userId: user.user_id,
+                      userEmail: user.email,
+                      userPhone: user.phone_number,
+                      messageKey,
+                      messageChannel: 'sms',
+                      contextData,
+                      reason: 'api_error',
+                      errorDetails: { error: smsResult.error }
+                    });
+                  }
                 }
+              } else if (prefs.sms && !user.phone_number) {
+                // SMS enabled but no phone number
+                await logMessageSkipped({
+                  userId: user.user_id,
+                  userEmail: user.email,
+                  userPhone: undefined,
+                  messageKey,
+                  messageChannel: 'sms',
+                  contextData,
+                  reason: 'missing_phone_number'
+                });
+              } else if (!prefs.sms && user.phone_number) {
+                // Has phone but SMS disabled in preferences
+                await logMessageSkipped({
+                  userId: user.user_id,
+                  userEmail: user.email,
+                  userPhone: user.phone_number,
+                  messageKey,
+                  messageChannel: 'sms',
+                  contextData,
+                  reason: 'user_disabled_sms'
+                });
               }
-              
+
               // Send voice call if enabled
               if (prefs.voice && user.phone_number) {
-                const voiceMessage = `Hello from Autopilot America. This is a reminder that your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Please renew promptly to avoid penalties.`;
-                
-                console.log(`📞 Sending voice call to ${user.phone_number}: ${voiceMessage.substring(0, 50)}...`);
-                const voiceResult = await sendClickSendVoiceCall(user.phone_number, voiceMessage);
-                
-                if (voiceResult.success) {
-                  console.log('✅ Voice call sent successfully');
-                  results.successful++;
+                // Check if we already sent this voice message recently
+                const voiceMessageKey = `${messageKey}_voice`;
+                const recentlyCalledVoice = await checkRecentlySent(user.user_id, voiceMessageKey, 48);
+
+                if (recentlyCalledVoice) {
+                  console.log(`⏭️  Skipping voice call - already sent within 48h: ${voiceMessageKey}`);
+                  await logMessageSkipped({
+                    userId: user.user_id,
+                    userEmail: user.email,
+                    userPhone: user.phone_number,
+                    messageKey: voiceMessageKey,
+                    messageChannel: 'voice',
+                    contextData,
+                    reason: 'already_sent_48h'
+                  });
                 } else {
-                  console.error('❌ Voice call failed:', voiceResult.error);
-                  results.failed++;
+                  const voiceMessage = `Hello from Autopilot America. This is a reminder that your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Please renew promptly to avoid penalties.`;
+
+                  console.log(`📞 Sending voice call to ${user.phone_number}: ${voiceMessage.substring(0, 50)}...`);
+                  const voiceResult = await sendClickSendVoiceCall(user.phone_number, voiceMessage);
+
+                  if (voiceResult.success) {
+                    console.log('✅ Voice call sent successfully');
+                    results.successful++;
+
+                    // Log successful voice call
+                    await logMessageSent({
+                      userId: user.user_id,
+                      userEmail: user.email,
+                      userPhone: user.phone_number,
+                      messageKey: voiceMessageKey,
+                      messageChannel: 'voice',
+                      contextData,
+                      messagePreview: voiceMessage,
+                      externalMessageId: voiceResult.messageId,
+                      costCents: 5 // Voice typically costs ~5 cents
+                    });
+                  } else {
+                    console.error('❌ Voice call failed:', voiceResult.error);
+                    results.failed++;
+
+                    // Log error
+                    await logMessageError({
+                      userId: user.user_id,
+                      userEmail: user.email,
+                      userPhone: user.phone_number,
+                      messageKey: voiceMessageKey,
+                      messageChannel: 'voice',
+                      contextData,
+                      reason: 'api_error',
+                      errorDetails: { error: voiceResult.error }
+                    });
+                  }
                 }
+              } else if (prefs.voice && !user.phone_number) {
+                // Voice enabled but no phone number
+                await logMessageSkipped({
+                  userId: user.user_id,
+                  userEmail: user.email,
+                  userPhone: undefined,
+                  messageKey: `${messageKey}_voice`,
+                  messageChannel: 'voice',
+                  contextData,
+                  reason: 'missing_phone_number'
+                });
               }
               
               // Email is always sent
@@ -451,33 +588,107 @@ Autopilot America Team
 Questions? Reply to support@autopilotamerica.com
                   `;
 
-                  console.log(`📧 Sending email to ${user.email}: ${emailSubject}`);
+                  // Check if we already sent this email recently
+                  const emailMessageKey = `${messageKey}_email`;
+                  const recentlySentEmail = await checkRecentlySent(user.user_id, emailMessageKey, 48);
 
-                  const { data, error: emailError } = await this.resend.emails.send({
-                    from: fromAddress,
-                    to: [user.email],
-                    subject: emailSubject,
-                    html: emailHtml,
-                    text: emailText,
-                    headers: {
-                      'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
-                    },
-                    reply_to: 'support@autopilotamerica.com'
-                  });
-
-                  if (emailError) {
-                    console.error('❌ Email failed:', emailError);
-                    results.failed++;
+                  if (recentlySentEmail) {
+                    console.log(`⏭️  Skipping email - already sent within 48h: ${emailMessageKey}`);
+                    await logMessageSkipped({
+                      userId: user.user_id,
+                      userEmail: user.email,
+                      userPhone: user.phone_number,
+                      messageKey: emailMessageKey,
+                      messageChannel: 'email',
+                      contextData,
+                      reason: 'already_sent_48h'
+                    });
                   } else {
-                    console.log('✅ Email sent successfully:', data);
-                    results.successful++;
+                    console.log(`📧 Sending email to ${user.email}: ${emailSubject}`);
+
+                    const { data, error: emailError } = await this.resend.emails.send({
+                      from: fromAddress,
+                      to: [user.email],
+                      subject: emailSubject,
+                      html: emailHtml,
+                      text: emailText,
+                      headers: {
+                        'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+                      },
+                      reply_to: 'support@autopilotamerica.com'
+                    });
+
+                    if (emailError) {
+                      console.error('❌ Email failed:', emailError);
+                      results.failed++;
+
+                      // Log email error
+                      await logMessageError({
+                        userId: user.user_id,
+                        userEmail: user.email,
+                        userPhone: user.phone_number,
+                        messageKey: emailMessageKey,
+                        messageChannel: 'email',
+                        contextData,
+                        reason: 'api_error',
+                        errorDetails: { error: emailError }
+                      });
+                    } else {
+                      console.log('✅ Email sent successfully:', data);
+                      results.successful++;
+
+                      // Log successful email send
+                      await logMessageSent({
+                        userId: user.user_id,
+                        userEmail: user.email,
+                        userPhone: user.phone_number,
+                        messageKey: emailMessageKey,
+                        messageChannel: 'email',
+                        contextData,
+                        messagePreview: emailSubject, // Use subject as preview
+                        externalMessageId: data?.id,
+                        costCents: 0 // Email typically costs ~0.1 cents but we'll round to 0
+                      });
+                    }
                   }
                 } catch (emailError) {
                   console.error('❌ Email exception:', emailError);
                   results.failed++;
+
+                  // Log exception
+                  await logMessageError({
+                    userId: user.user_id,
+                    userEmail: user.email,
+                    userPhone: user.phone_number,
+                    messageKey: `${messageKey}_email`,
+                    messageChannel: 'email',
+                    contextData,
+                    reason: 'exception',
+                    errorDetails: { error: emailError }
+                  });
                 }
               } else if (user.email && !this.resend) {
                 console.log(`📧 Resend not configured, skipping email for ${user.email}`);
+                await logMessageSkipped({
+                  userId: user.user_id,
+                  userEmail: user.email,
+                  userPhone: user.phone_number,
+                  messageKey: `${messageKey}_email`,
+                  messageChannel: 'email',
+                  contextData,
+                  reason: 'resend_not_configured'
+                });
+              } else if (!user.email) {
+                // User has no email address
+                await logMessageSkipped({
+                  userId: user.user_id,
+                  userEmail: undefined,
+                  userPhone: user.phone_number,
+                  messageKey: `${messageKey}_email`,
+                  messageChannel: 'email',
+                  contextData,
+                  reason: 'missing_email'
+                });
               }
               
             } catch (error) {
