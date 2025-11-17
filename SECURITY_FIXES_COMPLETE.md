@@ -188,17 +188,61 @@ Ran `check-storage-security.js` and confirmed:
 
 ---
 
-## 🚨 Issue #6: Webhook Signature Verification
+## 🚨 Issue #6: Webhook Signature Verification ✅
 
-**Note:** I didn't implement webhook signature verification because:
-1. It requires webhook secrets from Resend/ClickSend
-2. Need to check which webhooks you're actively using
-3. Implementation varies by provider
+**Status:** COMPLETE
 
-**If you want this:** Let me know and I can add it (30-60 min per webhook).
+**Files created:**
+- `lib/webhook-verification.ts` - Centralized webhook verification library
 
-**Current risk:** LOW (webhooks create records but don't process payments)
-**Recommended:** Add later when you have time
+**Files updated:**
+- `pages/api/webhooks/resend-incoming-email.ts` - Added Svix signature verification
+- `pages/api/webhooks/clicksend-incoming-sms.ts` - Added token-based verification
+
+**How it works:**
+
+### Resend Webhook Verification (Svix Standard)
+```typescript
+// Uses HMAC-SHA256 signature verification
+// Headers required: svix-signature, svix-timestamp, svix-id
+// Validates signature matches expected value
+// Rejects requests older than 5 minutes (prevents replay attacks)
+```
+
+### ClickSend Webhook Verification
+```typescript
+// Uses secret token in query parameter or header
+// Token must match CLICKSEND_WEBHOOK_SECRET environment variable
+// Supports IP whitelisting (if ClickSend provides IP ranges)
+```
+
+**What you need to do:**
+
+1. **Get webhook signing secrets:**
+   - Resend: Go to https://resend.com/settings/webhooks → Copy signing secret
+   - ClickSend: Generate a random secure token (e.g., `openssl rand -hex 32`)
+
+2. **Add to environment variables:**
+   ```bash
+   RESEND_WEBHOOK_SECRET=whsec_xxxxx  # From Resend dashboard
+   CLICKSEND_WEBHOOK_SECRET=your-random-token  # Your generated token
+   ```
+
+3. **Update webhook URLs:**
+   - Resend: Already configured correctly
+   - ClickSend: Add token to URL: `https://ticketlessamerica.com/api/webhooks/clicksend-incoming-sms?token=YOUR_SECRET_TOKEN`
+
+**Security benefits:**
+- ✅ Prevents attackers from spoofing webhook requests
+- ✅ Prevents replay attacks (timestamp validation)
+- ✅ Ensures webhooks are authentic
+- ✅ Rejects unauthorized requests with 401 Unauthorized
+
+**Current behavior without secrets:**
+- Resend: Logs warning but allows requests (for development)
+- ClickSend: Allows requests if no secret configured (optional)
+
+**Recommended:** Add secrets to production environment ASAP
 
 ---
 
@@ -206,8 +250,9 @@ Ran `check-storage-security.js` and confirmed:
 
 ### Files Created:
 1. `lib/auth-middleware.ts` - Authentication helpers
-2. `pages/security.tsx` - Security page
-3. `SECURITY_FIXES_COMPLETE.md` - This file
+2. `lib/webhook-verification.ts` - Webhook signature verification
+3. `pages/security.tsx` - Security page
+4. `SECURITY_FIXES_COMPLETE.md` - This file
 
 ### Files Modified:
 1. `pages/api/admin/update-user.ts` - Added admin auth
