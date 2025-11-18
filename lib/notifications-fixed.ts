@@ -11,11 +11,19 @@ import {
 
 export class NotificationScheduler {
   private resend: Resend | null = null;
+  private dryRun: boolean = false;
 
-  constructor() {
+  constructor(options?: { dryRun?: boolean }) {
     // Initialize Resend for email
     if (process.env.RESEND_API_KEY) {
       this.resend = new Resend(process.env.RESEND_API_KEY);
+    }
+
+    // Shadow mode / test mode
+    this.dryRun = options?.dryRun || false;
+
+    if (this.dryRun) {
+      console.log('🧪 RUNNING IN DRY RUN MODE - Messages will be logged but NOT sent');
     }
   }
 
@@ -25,6 +33,7 @@ export class NotificationScheduler {
     successful: number;
     failed: number;
     errors: string[];
+    dryRun?: boolean;
   }> {
     const results = {
       processed: 0,
@@ -222,14 +231,12 @@ export class NotificationScheduler {
                   message += ` Reply STOP to opt out.`;
                 }
 
-                  console.log(`📱 Sending SMS to ${user.phone_number}: ${message}`);
-                  const smsResult = await sendClickSendSMS(user.phone_number, message);
-
-                  if (smsResult.success) {
-                    console.log('✅ SMS sent successfully');
+                  if (this.dryRun) {
+                    // DRY RUN MODE: Log what WOULD be sent but don't actually send
+                    console.log(`🧪 [DRY RUN] Would send SMS to ${user.phone_number}: ${message}`);
                     results.successful++;
 
-                    // Log successful send
+                    // Log as "queued" in dry run mode
                     await logMessageSent({
                       userId: user.user_id,
                       userEmail: user.email,
@@ -237,25 +244,47 @@ export class NotificationScheduler {
                       messageKey,
                       messageChannel: 'sms',
                       contextData,
-                      messagePreview: message,
-                      externalMessageId: smsResult.messageId,
-                      costCents: 2 // SMS typically costs ~2 cents
+                      messagePreview: `[DRY RUN] ${message}`,
+                      externalMessageId: `dryrun-${Date.now()}`,
+                      costCents: 2
                     });
                   } else {
-                    console.error('❌ SMS failed:', smsResult.error);
-                    results.failed++;
+                    // LIVE MODE: Actually send the SMS
+                    console.log(`📱 Sending SMS to ${user.phone_number}: ${message}`);
+                    const smsResult = await sendClickSendSMS(user.phone_number, message);
 
-                    // Log error
-                    await logMessageError({
-                      userId: user.user_id,
-                      userEmail: user.email,
-                      userPhone: user.phone_number,
-                      messageKey,
-                      messageChannel: 'sms',
-                      contextData,
-                      reason: 'api_error',
-                      errorDetails: { error: smsResult.error }
-                    });
+                    if (smsResult.success) {
+                      console.log('✅ SMS sent successfully');
+                      results.successful++;
+
+                      // Log successful send
+                      await logMessageSent({
+                        userId: user.user_id,
+                        userEmail: user.email,
+                        userPhone: user.phone_number,
+                        messageKey,
+                        messageChannel: 'sms',
+                        contextData,
+                        messagePreview: message,
+                        externalMessageId: smsResult.messageId,
+                        costCents: 2 // SMS typically costs ~2 cents
+                      });
+                    } else {
+                      console.error('❌ SMS failed:', smsResult.error);
+                      results.failed++;
+
+                      // Log error
+                      await logMessageError({
+                        userId: user.user_id,
+                        userEmail: user.email,
+                        userPhone: user.phone_number,
+                        messageKey,
+                        messageChannel: 'sms',
+                        contextData,
+                        reason: 'api_error',
+                        errorDetails: { error: smsResult.error }
+                      });
+                    }
                   }
                 }
               } else if (prefs.sms && !user.phone_number) {
@@ -302,14 +331,11 @@ export class NotificationScheduler {
                 } else {
                   const voiceMessage = `Hello from Autopilot America. This is a reminder that your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Please renew promptly to avoid penalties.`;
 
-                  console.log(`📞 Sending voice call to ${user.phone_number}: ${voiceMessage.substring(0, 50)}...`);
-                  const voiceResult = await sendClickSendVoiceCall(user.phone_number, voiceMessage);
-
-                  if (voiceResult.success) {
-                    console.log('✅ Voice call sent successfully');
+                  if (this.dryRun) {
+                    // DRY RUN MODE: Log what WOULD be sent
+                    console.log(`🧪 [DRY RUN] Would send voice call to ${user.phone_number}: ${voiceMessage.substring(0, 50)}...`);
                     results.successful++;
 
-                    // Log successful voice call
                     await logMessageSent({
                       userId: user.user_id,
                       userEmail: user.email,
@@ -317,25 +343,47 @@ export class NotificationScheduler {
                       messageKey: voiceMessageKey,
                       messageChannel: 'voice',
                       contextData,
-                      messagePreview: voiceMessage,
-                      externalMessageId: voiceResult.messageId,
-                      costCents: 5 // Voice typically costs ~5 cents
+                      messagePreview: `[DRY RUN] ${voiceMessage}`,
+                      externalMessageId: `dryrun-${Date.now()}`,
+                      costCents: 5
                     });
                   } else {
-                    console.error('❌ Voice call failed:', voiceResult.error);
-                    results.failed++;
+                    // LIVE MODE: Actually send voice call
+                    console.log(`📞 Sending voice call to ${user.phone_number}: ${voiceMessage.substring(0, 50)}...`);
+                    const voiceResult = await sendClickSendVoiceCall(user.phone_number, voiceMessage);
 
-                    // Log error
-                    await logMessageError({
-                      userId: user.user_id,
-                      userEmail: user.email,
-                      userPhone: user.phone_number,
-                      messageKey: voiceMessageKey,
-                      messageChannel: 'voice',
-                      contextData,
-                      reason: 'api_error',
-                      errorDetails: { error: voiceResult.error }
-                    });
+                    if (voiceResult.success) {
+                      console.log('✅ Voice call sent successfully');
+                      results.successful++;
+
+                      // Log successful voice call
+                      await logMessageSent({
+                        userId: user.user_id,
+                        userEmail: user.email,
+                        userPhone: user.phone_number,
+                        messageKey: voiceMessageKey,
+                        messageChannel: 'voice',
+                        contextData,
+                        messagePreview: voiceMessage,
+                        externalMessageId: voiceResult.messageId,
+                        costCents: 5 // Voice typically costs ~5 cents
+                      });
+                    } else {
+                      console.error('❌ Voice call failed:', voiceResult.error);
+                      results.failed++;
+
+                      // Log error
+                      await logMessageError({
+                        userId: user.user_id,
+                        userEmail: user.email,
+                        userPhone: user.phone_number,
+                        messageKey: voiceMessageKey,
+                        messageChannel: 'voice',
+                        contextData,
+                        reason: 'api_error',
+                        errorDetails: { error: voiceResult.error }
+                      });
+                    }
                   }
                 }
               } else if (prefs.voice && !user.phone_number) {
@@ -604,40 +652,11 @@ Questions? Reply to support@autopilotamerica.com
                       reason: 'already_sent_48h'
                     });
                   } else {
-                    console.log(`📧 Sending email to ${user.email}: ${emailSubject}`);
-
-                    const { data, error: emailError } = await this.resend.emails.send({
-                      from: fromAddress,
-                      to: [user.email],
-                      subject: emailSubject,
-                      html: emailHtml,
-                      text: emailText,
-                      headers: {
-                        'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
-                      },
-                      reply_to: 'support@autopilotamerica.com'
-                    });
-
-                    if (emailError) {
-                      console.error('❌ Email failed:', emailError);
-                      results.failed++;
-
-                      // Log email error
-                      await logMessageError({
-                        userId: user.user_id,
-                        userEmail: user.email,
-                        userPhone: user.phone_number,
-                        messageKey: emailMessageKey,
-                        messageChannel: 'email',
-                        contextData,
-                        reason: 'api_error',
-                        errorDetails: { error: emailError }
-                      });
-                    } else {
-                      console.log('✅ Email sent successfully:', data);
+                    if (this.dryRun) {
+                      // DRY RUN MODE: Log what WOULD be sent
+                      console.log(`🧪 [DRY RUN] Would send email to ${user.email}: ${emailSubject}`);
                       results.successful++;
 
-                      // Log successful email send
                       await logMessageSent({
                         userId: user.user_id,
                         userEmail: user.email,
@@ -645,10 +664,58 @@ Questions? Reply to support@autopilotamerica.com
                         messageKey: emailMessageKey,
                         messageChannel: 'email',
                         contextData,
-                        messagePreview: emailSubject, // Use subject as preview
-                        externalMessageId: data?.id,
-                        costCents: 0 // Email typically costs ~0.1 cents but we'll round to 0
+                        messagePreview: `[DRY RUN] ${emailSubject}`,
+                        externalMessageId: `dryrun-${Date.now()}`,
+                        costCents: 0
                       });
+                    } else {
+                      // LIVE MODE: Actually send email
+                      console.log(`📧 Sending email to ${user.email}: ${emailSubject}`);
+
+                      const { data, error: emailError } = await this.resend.emails.send({
+                        from: fromAddress,
+                        to: [user.email],
+                        subject: emailSubject,
+                        html: emailHtml,
+                        text: emailText,
+                        headers: {
+                          'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+                        },
+                        reply_to: 'support@autopilotamerica.com'
+                      });
+
+                      if (emailError) {
+                        console.error('❌ Email failed:', emailError);
+                        results.failed++;
+
+                        // Log email error
+                        await logMessageError({
+                          userId: user.user_id,
+                          userEmail: user.email,
+                          userPhone: user.phone_number,
+                          messageKey: emailMessageKey,
+                          messageChannel: 'email',
+                          contextData,
+                          reason: 'api_error',
+                          errorDetails: { error: emailError }
+                        });
+                      } else {
+                        console.log('✅ Email sent successfully:', data);
+                        results.successful++;
+
+                        // Log successful email send
+                        await logMessageSent({
+                          userId: user.user_id,
+                          userEmail: user.email,
+                          userPhone: user.phone_number,
+                          messageKey: emailMessageKey,
+                          messageChannel: 'email',
+                          contextData,
+                          messagePreview: emailSubject, // Use subject as preview
+                          externalMessageId: data?.id,
+                          costCents: 0 // Email typically costs ~0.1 cents but we'll round to 0
+                        });
+                      }
                     }
                   }
                 } catch (emailError) {
@@ -705,9 +772,19 @@ Questions? Reply to support@autopilotamerica.com
       results.errors.push(`Fatal error: ${error}`);
     }
     
-    console.log(`📊 Notification Results: ${results.successful} sent, ${results.failed} failed, ${results.processed} processed`);
-    return results;
+    const modeLabel = this.dryRun ? '[DRY RUN]' : '';
+    console.log(`📊 ${modeLabel} Notification Results: ${results.successful} sent, ${results.failed} failed, ${results.processed} processed`);
+
+    return {
+      ...results,
+      dryRun: this.dryRun
+    };
   }
 }
 
 export const notificationScheduler = new NotificationScheduler();
+
+// Export factory function for creating scheduler with options
+export function createNotificationScheduler(options?: { dryRun?: boolean }) {
+  return new NotificationScheduler(options);
+}
