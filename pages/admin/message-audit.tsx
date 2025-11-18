@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabaseAdmin } from '../../lib/supabase';
 import { GetServerSideProps } from 'next';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 /**
  * Message Audit Log Dashboard
@@ -8,7 +9,8 @@ import { GetServerSideProps } from 'next';
  * Shows complete history of all message attempts with filtering
  * NON-NEGOTIABLE: This is how real companies prevent disasters
  *
- * Access: /admin/message-audit
+ * Access: /admin/message-audit (ADMIN ONLY)
+ * Security: Requires authentication + admin role
  */
 
 interface MessageLog {
@@ -362,8 +364,41 @@ export default function MessageAuditPage({ initialLogs, stats }: PageProps) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
+export const getServerSideProps: GetServerSideProps = async (context) => {
   try {
+    // Check authentication
+    const supabase = createPagesServerClient(context);
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return {
+        redirect: {
+          destination: '/login?redirect=/admin/message-audit',
+          permanent: false
+        }
+      };
+    }
+
+    // Check if user is admin (you can customize this check)
+    // For now, check if user email is yours
+    const adminEmails = [
+      'randy.vollrath@gmail.com',
+      process.env.ADMIN_EMAIL
+    ].filter(Boolean);
+
+    const isAdmin = adminEmails.includes(session.user.email || '');
+
+    if (!isAdmin) {
+      return {
+        redirect: {
+          destination: '/dashboard?error=unauthorized',
+          permanent: false
+        }
+      };
+    }
+
     // Fetch recent logs
     const { data: logs, error } = await supabaseAdmin
       .from('message_audit_log')
