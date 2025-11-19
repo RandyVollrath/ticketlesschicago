@@ -54,14 +54,15 @@ export default function Login() {
       setLoading(true)
       setAuthMethod('google')
 
-      // Get the redirect URL and pass it to the callback
+      // Store redirect destination in sessionStorage (survives Supabase URL modifications)
       const redirectUrl = getRedirectUrl()
-      const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl)}`
+      sessionStorage.setItem('authRedirect', redirectUrl)
+      console.log('📍 Stored redirect in sessionStorage:', redirectUrl)
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: callbackUrl
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       })
 
@@ -91,17 +92,18 @@ export default function Login() {
     setAuthMethod('magic-link')
 
     try {
-      // Use our custom API endpoint that sends via Resend for faster delivery
+      // Store redirect destination in sessionStorage (survives Supabase URL modifications)
       const redirectUrl = getRedirectUrl()
+      sessionStorage.setItem('authRedirect', redirectUrl)
+      console.log('📍 Stored redirect in sessionStorage:', redirectUrl)
+
+      // Use our custom API endpoint that sends via Resend for faster delivery
       const response = await fetch('/api/auth/send-magic-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          email,
-          redirectTo: redirectUrl
-        })
+        body: JSON.stringify({ email })
       })
 
       const data = await response.json()
