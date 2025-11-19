@@ -337,43 +337,46 @@ export default function AuthCallback() {
           console.log('Current URL:', window.location.href);
 
           let redirectPath = '/settings'; // default
+          let redirectSource = 'default fallback';
 
-          // Method 1: Check query parameter (app_redirect)
+          // Method 1: Check OAuth state parameter (most reliable - designed for this)
           const urlParams = new URLSearchParams(window.location.search);
-          const queryRedirect = urlParams.get('app_redirect');
-          console.log('Query param app_redirect:', queryRedirect);
+          const stateParam = urlParams.get('state');
+          console.log('OAuth state parameter:', stateParam);
 
-          // Method 2: Check localStorage
-          let localStorageRedirect = null;
-          try {
-            // Debug: Show ALL localStorage keys
-            console.log('🔍 ALL localStorage keys:', Object.keys(localStorage));
-            console.log('🔍 ALL localStorage:', JSON.stringify(localStorage));
-
-            localStorageRedirect = localStorage.getItem('post_auth_redirect');
-            console.log('📦 localStorage post_auth_redirect:', localStorageRedirect);
-
-            if (localStorageRedirect) {
-              console.log('✅ Found redirect in localStorage!');
-              localStorage.removeItem('post_auth_redirect'); // Clean up
-            } else {
-              console.log('❌ localStorage post_auth_redirect is NULL/EMPTY');
+          if (stateParam) {
+            try {
+              const stateData = JSON.parse(atob(stateParam));
+              console.log('✅ Decoded state data:', stateData);
+              if (stateData.redirect) {
+                redirectPath = stateData.redirect;
+                redirectSource = 'OAuth state parameter';
+                console.log('✅ Using redirect from OAuth state:', redirectPath);
+              }
+            } catch (e) {
+              console.error('Failed to decode state parameter:', e);
             }
-          } catch (e) {
-            console.error('❌ Failed to read localStorage:', e);
           }
 
-          // Use first available value - prioritize query param (now using Supabase's official queryParams option)
-          redirectPath = queryRedirect || localStorageRedirect || '/settings';
-          console.log('Final redirectPath:', redirectPath);
+          // Method 2: Fallback to localStorage (may not survive OAuth)
+          if (redirectPath === '/settings') {
+            try {
+              const localStorageRedirect = localStorage.getItem('post_auth_redirect');
+              console.log('📦 localStorage post_auth_redirect:', localStorageRedirect);
 
-          // Debug info to diagnose failures
-          console.log('🔍 REDIRECT DEBUG:', {
-            queryParamValue: queryRedirect,
-            localStorageValue: localStorageRedirect,
-            finalDecision: redirectPath,
-            source: queryRedirect ? 'query param (Supabase queryParams)' : localStorageRedirect ? 'localStorage' : 'default fallback'
-          });
+              if (localStorageRedirect) {
+                redirectPath = localStorageRedirect;
+                redirectSource = 'localStorage';
+                console.log('✅ Found redirect in localStorage!');
+                localStorage.removeItem('post_auth_redirect'); // Clean up
+              }
+            } catch (e) {
+              console.error('❌ Failed to read localStorage:', e);
+            }
+          }
+
+          console.log('Final redirectPath:', redirectPath);
+          console.log('🔍 REDIRECT SOURCE:', redirectSource);
 
           console.log('=== POST-AUTH REDIRECT ===')
           console.log('user email:', user.email)
