@@ -25,110 +25,140 @@ export default async function handler(
   }
 
   try {
-    // Get all records for this violation code
-    const { data: records, error } = await supabase
-      .from('contested_tickets_foia')
-      .select('*')
-      .eq('violation_code', violation_code);
+    // Use PostgreSQL aggregation to calculate stats on ALL records (not limited to 1000)
+    // This uses database-level computation instead of fetching all rows
+    const { data: aggregateStats, error: aggError } = await supabase
+      .rpc('get_violation_aggregate_stats', { p_violation_code: violation_code });
 
-    if (error) throw error;
+    if (aggError) {
+      // Fallback: if RPC function doesn't exist, use direct query
+      // But fetch ALL records by chunking (not just first 1000)
+      console.log('RPC function not available, using direct aggregation');
 
-    if (!records || records.length === 0) {
+      // Get count first to know if we have data
+      const { count, error: countError } = await supabase
+        .from('contested_tickets_foia')
+        .select('*', { count: 'exact', head: true })
+        .eq('violation_code', violation_code);
+
+      if (countError) throw countError;
+
+      if (!count || count === 0) {
+        return res.status(200).json({
+          has_data: false,
+          message: 'No historical contest data available for this violation code',
+          violation_code,
+        });
+      }
+
+      // Fetch ALL records in chunks of 10000 to avoid memory issues
+      let allRecords: any[] = [];
+      const chunkSize = 10000;
+      let offset = 0;
+
+      while (offset < count) {
+        const { data: chunk, error: chunkError } = await supabase
+          .from('contested_tickets_foia')
+          .select('*')
+          .eq('violation_code', violation_code)
+          .range(offset, offset + chunkSize - 1);
+
+        if (chunkError) throw chunkError;
+        if (chunk) allRecords = allRecords.concat(chunk);
+        offset += chunkSize;
+      }
+
+      const records = allRecords;
+
+      // Compute statistics
+      const total_contests = records.length;
+      const wins = records.filter(r => r.disposition === 'Not Liable').length;
+      const losses = records.filter(r => r.disposition === 'Liable').length;
+      const denied = records.filter(r => r.disposition === 'Denied').length;
+      const other = records.filter(r => ['Withdrawn', 'Stricken'].includes(r.disposition)).length;
+
+      const win_rate_percent = (wins / total_contests) * 100;
+      const win_rate_decided_percent = losses + wins > 0 ? (wins / (wins + losses)) * 100 : 0;
+
+      // Get violation description from first record
+      const violation_description = records[0].violation_description;
+
+      // Count dismissal reasons
+      const dismissalReasons: Record<string, number> = {};
+      records
+        .filter(r => r.disposition === 'Not Liable' && r.reason)
+        .forEach(r => {
+          dismissalReasons[r.reason] = (dismissalReasons[r.reason] || 0) + 1;
+        });
+
+      const top_dismissal_reasons = Object.entries(dismissalReasons)
+        .map(([reason, count]) => ({
+          reason,
+          count,
+          percentage: (count / wins) * 100,
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Contest method breakdown
+      const methodStats: Record<string, { total: number; wins: number }> = {};
+      records.forEach(r => {
+        const method = r.contest_type || 'Unknown';
+        if (!methodStats[method]) {
+          methodStats[method] = { total: 0, wins: 0 };
+        }
+        methodStats[method].total++;
+        if (r.disposition === 'Not Liable') {
+          methodStats[method].wins++;
+        }
+      });
+
+      const contest_methods = Object.entries(methodStats)
+        .map(([method, stats]) => ({
+          method,
+          total: stats.total,
+          wins: stats.wins,
+          win_rate: (stats.wins / stats.total) * 100,
+        }))
+        .sort((a, b) => b.win_rate - a.win_rate);
+
+      const best_method = contest_methods[0] || null;
+
+      // Recommendation
+      let recommendation = '';
+      let recommendation_level: 'strong' | 'moderate' | 'weak' = 'weak';
+
+      if (win_rate_percent >= 60) {
+        recommendation = 'STRONGLY RECOMMEND CONTESTING - Historical data shows high dismissal rate';
+        recommendation_level = 'strong';
+      } else if (win_rate_percent >= 40) {
+        recommendation = 'RECOMMEND CONTESTING - Good chance based on historical outcomes';
+        recommendation_level = 'moderate';
+      } else {
+        recommendation = 'CONSIDER CAREFULLY - Lower historical win rate, ensure you have strong evidence';
+        recommendation_level = 'weak';
+      }
+
       return res.status(200).json({
-        has_data: false,
-        message: 'No historical contest data available for this violation code',
+        has_data: true,
         violation_code,
+        violation_description,
+        total_contests,
+        wins,
+        losses,
+        denied,
+        other,
+        win_rate_percent: Math.round(win_rate_percent * 10) / 10,
+        win_rate_decided_percent: Math.round(win_rate_decided_percent * 10) / 10,
+        top_dismissal_reasons,
+        contest_methods,
+        best_method,
+        recommendation,
+        recommendation_level,
+        data_source: 'Chicago DOAH FOIA - 2019 to present',
+        total_records_analyzed: total_contests,
       });
     }
-
-    // Compute statistics
-    const total_contests = records.length;
-    const wins = records.filter(r => r.disposition === 'Not Liable').length;
-    const losses = records.filter(r => r.disposition === 'Liable').length;
-    const denied = records.filter(r => r.disposition === 'Denied').length;
-    const other = records.filter(r => ['Withdrawn', 'Stricken'].includes(r.disposition)).length;
-
-    const win_rate_percent = (wins / total_contests) * 100;
-    const win_rate_decided_percent = losses + wins > 0 ? (wins / (wins + losses)) * 100 : 0;
-
-    // Get violation description from first record
-    const violation_description = records[0].violation_description;
-
-    // Count dismissal reasons
-    const dismissalReasons: Record<string, number> = {};
-    records
-      .filter(r => r.disposition === 'Not Liable' && r.reason)
-      .forEach(r => {
-        dismissalReasons[r.reason] = (dismissalReasons[r.reason] || 0) + 1;
-      });
-
-    const top_dismissal_reasons = Object.entries(dismissalReasons)
-      .map(([reason, count]) => ({
-        reason,
-        count,
-        percentage: (count / wins) * 100,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    // Contest method breakdown
-    const methodStats: Record<string, { total: number; wins: number }> = {};
-    records.forEach(r => {
-      const method = r.contest_type || 'Unknown';
-      if (!methodStats[method]) {
-        methodStats[method] = { total: 0, wins: 0 };
-      }
-      methodStats[method].total++;
-      if (r.disposition === 'Not Liable') {
-        methodStats[method].wins++;
-      }
-    });
-
-    const contest_methods = Object.entries(methodStats)
-      .map(([method, stats]) => ({
-        method,
-        total: stats.total,
-        wins: stats.wins,
-        win_rate: (stats.wins / stats.total) * 100,
-      }))
-      .sort((a, b) => b.win_rate - a.win_rate);
-
-    const best_method = contest_methods[0] || null;
-
-    // Recommendation
-    let recommendation = '';
-    let recommendation_level: 'strong' | 'moderate' | 'weak' = 'weak';
-
-    if (win_rate_percent >= 60) {
-      recommendation = 'STRONGLY RECOMMEND CONTESTING - Historical data shows high dismissal rate';
-      recommendation_level = 'strong';
-    } else if (win_rate_percent >= 40) {
-      recommendation = 'RECOMMEND CONTESTING - Good chance based on historical outcomes';
-      recommendation_level = 'moderate';
-    } else {
-      recommendation = 'CONSIDER CAREFULLY - Lower historical win rate, ensure you have strong evidence';
-      recommendation_level = 'weak';
-    }
-
-    return res.status(200).json({
-      has_data: true,
-      violation_code,
-      violation_description,
-      total_contests,
-      wins,
-      losses,
-      denied,
-      other,
-      win_rate_percent: Math.round(win_rate_percent * 10) / 10,
-      win_rate_decided_percent: Math.round(win_rate_decided_percent * 10) / 10,
-      top_dismissal_reasons,
-      contest_methods,
-      best_method,
-      recommendation,
-      recommendation_level,
-      data_source: 'Chicago DOAH FOIA - 2019 to present',
-      total_records_analyzed: total_contests,
-    });
 
   } catch (error) {
     console.error('Error fetching violation stats:', error);
