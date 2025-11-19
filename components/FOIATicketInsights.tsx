@@ -51,7 +51,7 @@ export default function FOIATicketInsights({ violationCode }: FOIAInsightsProps)
 
   async function fetchStats() {
     try {
-      const res = await fetch(`/api/foia/get-violation-stats?violation_code=${encodeURIComponent(violationCode)}`);
+      const res = await fetch(`/api/foia/violation-stats-simple?violation_code=${encodeURIComponent(violationCode)}`);
       if (!res.ok) throw new Error('Failed to fetch stats');
       const data = await res.json();
       setStats(data);
