@@ -319,30 +319,45 @@ export default function AuthCallback() {
           try {
             const { data: finalCheck } = await supabaseClient.auth.getSession();
             if (finalCheck.session) {
-              const response = await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                  access_token: finalCheck.session.access_token,
-                  refresh_token: finalCheck.session.refresh_token
-                })
-              });
+              // Set a timeout for the API call
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
-              if (response.ok) {
-                console.log('✅ Server session set');
-              } else {
-                console.error('❌ Server session failed:', response.status);
+              try {
+                const response = await fetch('/api/auth/session', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    access_token: finalCheck.session.access_token,
+                    refresh_token: finalCheck.session.refresh_token
+                  }),
+                  signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                  console.log('✅ Server session set');
+                  // Wait a bit for cookie to propagate
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                } else {
+                  console.error('❌ Server session failed:', response.status);
+                }
+              } catch (fetchError: any) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                  console.warn('⚠️  Server session API timed out after 3s - proceeding anyway');
+                } else {
+                  console.error('❌ Server session fetch error:', fetchError);
+                }
               }
             }
           } catch (e) {
             console.error('Failed to establish server-side session:', e);
           }
-
-          // Wait for cookie to be written
-          await new Promise(resolve => setTimeout(resolve, 500));
 
           // Redirect to destination
           console.log('🚀 Redirecting to:', redirectPath);
