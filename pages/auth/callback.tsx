@@ -3,115 +3,83 @@ import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabase'
 import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'
 
-// IMMEDIATE LOG - runs when file loads
-console.log('🔴 CALLBACK.TSX FILE LOADED - This proves the page is being accessed')
-console.log('🔴 Current URL when file loaded:', typeof window !== 'undefined' ? window.location.href : 'server')
+// Callback page loads when OAuth completes
 
 export default function AuthCallback() {
   const router = useRouter()
   const [supabaseClient] = useState(() => createBrowserSupabaseClient())
 
-  console.log('🟡 AuthCallback component rendering')
-
   useEffect(() => {
-    console.log('🟢 useEffect starting')
     const handleAuthCallback = async () => {
       try {
-        console.log('Auth callback started')
-        console.log('Current URL:', window.location.href)
-        console.log('URL hash:', window.location.hash)
-        console.log('URL search:', window.location.search)
 
-        // CRITICAL: Parse hash IMMEDIATELY before Supabase modifies it
+        // Parse URL parameters
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const searchParams = new URLSearchParams(window.location.search);
 
-        // Extract redirect parameter NOW (before it gets lost)
-        const hashRedirect = hashParams.get('redirect');
-        console.log('🎯 Captured redirect from hash IMMEDIATELY:', hashRedirect);
-
+        // Check for auth errors
         const errorParam = hashParams.get('error') || searchParams.get('error');
         const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
 
         if (errorParam) {
-          console.error('❌ Auth error in URL:', errorParam, errorDescription);
+          console.error('Auth error:', errorParam, errorDescription);
           router.push(`/login?error=${encodeURIComponent(errorDescription || errorParam)}`);
           return;
         }
 
-        // Explicitly handle auth tokens from URL (both hash and query params)
-        // Supabase should auto-detect with detectSessionInUrl: true, but we'll do it manually for reliability
+        // Handle auth tokens from URL
         let tokensFound = false;
 
-        // Check hash first (standard for implicit flow)
+        // Check hash for tokens (standard OAuth implicit flow)
         if (window.location.hash) {
-          console.log('🔍 Checking URL hash for tokens...');
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
 
           if (accessToken) {
-            console.log('✅ Found tokens in hash, setting session explicitly...');
             try {
-              const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
+              const { error: sessionError } = await supabaseClient.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
               });
 
               if (sessionError) {
-                console.error('❌ Error setting session from hash:', sessionError);
+                console.error('Error setting session:', sessionError);
               } else {
-                console.log('✅ Session established from hash tokens');
                 tokensFound = true;
               }
             } catch (e) {
-              console.error('❌ Exception setting session:', e);
+              console.error('Exception setting session:', e);
             }
           }
         }
 
-        // Also check query params (some auth flows use this)
+        // Check query params as fallback
         if (!tokensFound && searchParams.get('access_token')) {
-          console.log('🔍 Found tokens in query params, setting session...');
           const accessToken = searchParams.get('access_token');
           const refreshToken = searchParams.get('refresh_token');
 
           if (accessToken) {
             try {
-              const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
+              const { error: sessionError } = await supabaseClient.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
               });
 
-              if (sessionError) {
-                console.error('❌ Error setting session from query:', sessionError);
-              } else {
-                console.log('✅ Session established from query params');
+              if (!sessionError) {
                 tokensFound = true;
               }
             } catch (e) {
-              console.error('❌ Exception setting session:', e);
+              console.error('Exception setting session:', e);
             }
           }
         }
 
-        // Wait briefly for session to be fully established (reduced from 1000ms to 300ms)
+        // Brief wait for session to establish
         if (tokensFound) {
-          console.log('⏳ Waiting for session to be fully established...');
           await new Promise(resolve => setTimeout(resolve, 300));
         }
 
         const { data, error } = await supabaseClient.auth.getSession()
-        console.log('Session check result:', {
-          hasSession: !!data.session,
-          userId: data.session?.user?.id,
-          email: data.session?.user?.email,
-          error,
-          fullData: data,
-          fullError: error
-        })
-
-        // Log the full URL for debugging
-        console.log('Full callback URL:', window.location.href)
 
         if (error) {
           console.error('Error during auth callback:', error)
@@ -120,56 +88,48 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
-          // Reduced wait time for faster redirect (500ms instead of 1500ms)
-          console.log('Session found, waiting for it to be fully established...')
+          // Wait for session to fully establish
           await new Promise(resolve => setTimeout(resolve, 500))
 
           // Double-check session is still valid
           const { data: recheckData } = await supabaseClient.auth.getSession()
           if (!recheckData.session) {
-            console.error('❌ Session lost after initial check, redirecting to login')
+            console.error('Session lost, redirecting to login')
             router.push('/login?error=session_lost')
             return
           }
 
           // User is authenticated
           const user = recheckData.session.user
-          console.log('User authenticated:', user.email, 'about to process profile data')
 
-          // Check if this is an email verification callback
+          // Handle email verification callback
           const isVerified = new URLSearchParams(window.location.search).get('verified') === 'true';
           if (isVerified && user.email_confirmed_at) {
-            console.log('✅ Email verified successfully');
-            // Mark email as verified in users table
             try {
               await fetch('/api/user/mark-verified', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id })
               });
-              console.log('✅ Email verification status updated in database');
             } catch (error) {
               console.error('Error updating verification status:', error);
             }
           }
 
-          // Check if this is a Google signup flow where we need to validate email
+          // Handle Google signup flow email validation
           const isGoogleSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'google-signup';
 
           if (isGoogleSignupFlow) {
             const expectedEmail = sessionStorage.getItem('expectedGoogleEmail');
-            console.log('Google signup flow - expected email:', expectedEmail, 'actual email:', user.email);
 
             if (expectedEmail && user.email !== expectedEmail) {
-              console.error('❌ Email mismatch! Form email:', expectedEmail, 'Google email:', user.email);
+              console.error('Email mismatch - expected:', expectedEmail, 'got:', user.email);
               sessionStorage.removeItem('expectedGoogleEmail');
               router.push(`/login?error=${encodeURIComponent(`You signed in with ${user.email} but created an account with ${expectedEmail}. Please check your email (${expectedEmail}) for a magic link to access your account.`)}`);
               return;
             }
 
-            // Email matches, clean up and proceed
             sessionStorage.removeItem('expectedGoogleEmail');
-            console.log('✅ Email matches, proceeding...');
           }
 
           // Check if this is a free signup flow (even if data was lost)
@@ -332,101 +292,65 @@ export default function AuthCallback() {
             }
           }
           
-          // Get redirect destination - try multiple sources
-          console.log('=== STARTING REDIRECT LOGIC ===');
-          console.log('Current URL:', window.location.href);
-
+          // Determine redirect destination
           let redirectPath = '/settings'; // default
-          let redirectSource = 'default fallback';
 
-          // Method 1: Check OAuth state parameter (most reliable - designed for this)
+          // Method 1: Check OAuth state parameter (most reliable)
           const urlParams = new URLSearchParams(window.location.search);
           const stateParam = urlParams.get('state');
-          console.log('OAuth state parameter:', stateParam);
 
           if (stateParam) {
             try {
               const stateData = JSON.parse(atob(stateParam));
-              console.log('✅ Decoded state data:', stateData);
               if (stateData.redirect) {
                 redirectPath = stateData.redirect;
-                redirectSource = 'OAuth state parameter';
-                console.log('✅ Using redirect from OAuth state:', redirectPath);
               }
             } catch (e) {
               console.error('Failed to decode state parameter:', e);
             }
           }
 
-          // Method 2: Fallback to localStorage (may not survive OAuth)
+          // Method 2: Fallback to localStorage
           if (redirectPath === '/settings') {
             try {
               const localStorageRedirect = localStorage.getItem('post_auth_redirect');
-              console.log('📦 localStorage post_auth_redirect:', localStorageRedirect);
-
               if (localStorageRedirect) {
                 redirectPath = localStorageRedirect;
-                redirectSource = 'localStorage';
-                console.log('✅ Found redirect in localStorage!');
-                localStorage.removeItem('post_auth_redirect'); // Clean up
+                localStorage.removeItem('post_auth_redirect');
               }
             } catch (e) {
-              console.error('❌ Failed to read localStorage:', e);
+              console.error('Failed to read localStorage:', e);
             }
           }
 
-          console.log('Final redirectPath:', redirectPath);
-          console.log('🔍 REDIRECT SOURCE:', redirectSource);
-
-          console.log('=== POST-AUTH REDIRECT ===')
-          console.log('user email:', user.email)
-          console.log('🍪 redirect from cookie:', redirectPath)
-          console.log('final redirect path:', redirectPath)
-          console.log('current path:', window.location.pathname)
-
-          // Use window.location for absolute redirect - bypasses Next.js router
-          const redirectUrl = window.location.origin + redirectPath;
-          console.log('Full redirect URL:', redirectUrl)
-
-          // CRITICAL: Explicitly set server-side session cookie
-          // Make API call to exchange tokens for server-side session cookies
-          console.log('🔐 Setting server-side session cookie...');
+          // Set server-side session cookie for SSR pages
           try {
             const { data: finalCheck } = await supabaseClient.auth.getSession();
             if (finalCheck.session) {
-              const response = await fetch('/api/auth/session', {
+              await fetch('/api/auth/session', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json'
                 },
-                credentials: 'include',  // Important: include cookies
+                credentials: 'include',
                 body: JSON.stringify({
                   access_token: finalCheck.session.access_token,
                   refresh_token: finalCheck.session.refresh_token
                 })
               });
-
-              const result = await response.json();
-
-              if (response.ok) {
-                console.log('✅ Server-side session established:', result.email);
-              } else {
-                console.error('❌ Server-side session call failed:', result);
-              }
             }
           } catch (e) {
-            console.error('❌ Failed to establish server-side session:', e);
+            console.error('Failed to establish server-side session:', e);
           }
 
-          // Small delay to ensure cookie is written
+          // Wait for cookie to be written
           await new Promise(resolve => setTimeout(resolve, 500));
 
-          // Perform redirect
-          console.log('🚀 REDIRECTING NOW to:', redirectUrl);
+          // Redirect to destination
+          const redirectUrl = window.location.origin + redirectPath;
           window.location.href = redirectUrl;
         } else {
-          // No session, redirect to home
-          console.log('No session found, redirecting to home')
+          // No session found
           router.push('/')
         }
       } catch (error) {

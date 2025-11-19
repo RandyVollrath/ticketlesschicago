@@ -28,7 +28,6 @@ export default function Login() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const redirectUrl = getRedirectUrl()
-        console.log('User already logged in, redirecting to:', redirectUrl, user.email)
         window.location.href = redirectUrl
         return
       }
@@ -55,27 +54,21 @@ export default function Login() {
       setAuthMethod('google')
 
       const redirectUrl = getRedirectUrl()
-      console.log('📍 Redirect destination:', redirectUrl)
 
-      // Triple approach for maximum reliability:
-
-      // 1. Store in localStorage as backup (may not survive OAuth in some browsers)
+      // Store redirect in localStorage (works most of the time)
       try {
         localStorage.setItem('post_auth_redirect', redirectUrl);
-        console.log('✅ Stored redirect in localStorage:', redirectUrl);
       } catch (e) {
         console.error('Failed to set localStorage:', e);
       }
 
-      // 2. Use OAuth state parameter (designed for this exact purpose - always preserved)
+      // Also encode in OAuth state parameter (most reliable)
       const stateData = {
         redirect: redirectUrl,
         timestamp: Date.now()
       };
-      const stateParam = btoa(JSON.stringify(stateData)); // Base64 encode
-      console.log('✅ Encoded state parameter:', stateParam);
+      const stateParam = btoa(JSON.stringify(stateData));
 
-      // 3. Supabase will redirect to this callback URL after OAuth
       const callbackUrl = `${window.location.origin}/auth/callback`;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -83,12 +76,10 @@ export default function Login() {
         options: {
           redirectTo: callbackUrl,
           queryParams: {
-            state: stateParam  // OAuth state parameter - preserved by OAuth spec
+            state: stateParam
           }
         }
       })
-
-      console.log('✅ Initiating OAuth with redirect param:', redirectUrl)
 
       if (error) throw error
     } catch (error: any) {
