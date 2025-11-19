@@ -118,27 +118,40 @@ export default function FOIATicketInsights({ violationCode }: FOIAInsightsProps)
           <svg className="w-6 h-6 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <h3 className="text-lg font-semibold text-gray-900">Historical Contest Data</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Your Chances of Winning</h3>
+            <p className="text-xs text-gray-600">Based on real contested tickets for this violation</p>
+          </div>
         </div>
         <span className="text-xs text-gray-500 italic">
-          Based on {stats.total_contests?.toLocaleString()} real cases
+          {stats.total_contests?.toLocaleString()} cases analyzed
         </span>
       </div>
 
       {/* Win Rate Highlight */}
       <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
+        <div className="mb-3 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+          <p className="text-sm font-semibold text-blue-900 mb-1">
+            What does this mean?
+          </p>
+          <p className="text-xs text-blue-800">
+            Of all people who contested this violation type, <strong>{stats.win_rate_percent?.toFixed(1)}%</strong> got their ticket dismissed ("Not Liable").
+            This is your chance of winning if you contest.
+          </p>
+        </div>
+
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-gray-600 mb-1">Contest Win Rate</div>
+            <div className="text-sm text-gray-600 mb-1">Tickets Dismissed (Win Rate)</div>
             <div className={`text-4xl font-bold ${getWinRateColor(stats.win_rate_percent || 0)}`}>
               {stats.win_rate_percent?.toFixed(1)}%
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {stats.wins?.toLocaleString()} wins out of {stats.total_contests?.toLocaleString()} contests
+              {stats.wins?.toLocaleString()} dismissed out of {stats.total_contests?.toLocaleString()} contested
             </div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-gray-600 mb-2">When decided</div>
+            <div className="text-sm text-gray-600 mb-2">When case decided</div>
             <div className={`text-2xl font-semibold ${getWinRateColor(stats.win_rate_decided_percent || 0)}`}>
               {stats.win_rate_decided_percent?.toFixed(1)}%
             </div>
