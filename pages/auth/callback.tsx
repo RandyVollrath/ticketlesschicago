@@ -325,18 +325,31 @@ export default function AuthCallback() {
           
           // Get redirect destination from server-side cookie
           // This cookie was set BEFORE OAuth and survives the redirect through Google
+          console.log('=== STARTING REDIRECT LOGIC ===');
+          console.log('RAW document.cookie:', document.cookie);
+
           let redirectPath = '/settings'; // default
 
           if (typeof document !== 'undefined') {
-            const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+            const cookieString = document.cookie;
+            console.log('Cookie string length:', cookieString.length);
+            console.log('Cookie string:', cookieString);
+
+            const cookies = cookieString.split(';').reduce((acc, cookie) => {
               const [key, value] = cookie.trim().split('=');
+              console.log('Parsing cookie:', { key, value });
               if (key && value) {
                 acc[key] = decodeURIComponent(value);
               }
               return acc;
             }, {} as Record<string, string>);
 
+            console.log('All parsed cookies:', cookies);
+            console.log('Looking for auth_redirect cookie...');
+            console.log('auth_redirect value:', cookies['auth_redirect']);
+
             redirectPath = cookies['auth_redirect'] || '/settings';
+            console.log('Final redirectPath after cookie check:', redirectPath);
           }
 
           console.log('=== POST-AUTH REDIRECT ===')
@@ -350,8 +363,10 @@ export default function AuthCallback() {
           console.log('Full redirect URL:', redirectUrl)
 
           // Perform redirect
-          console.log('REDIRECTING NOW to:', redirectUrl);
+          console.log('🚀 REDIRECTING NOW to:', redirectUrl);
+          console.log('Calling window.location.href =', redirectUrl);
           window.location.href = redirectUrl;
+          console.log('After setting window.location.href (may not print)');
         } else {
           // No session, redirect to home
           console.log('No session found, redirecting to home')
