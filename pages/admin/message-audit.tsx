@@ -497,13 +497,23 @@ export default function MessageAuditPage({ initialLogs, stats, health }: PagePro
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   try {
+    console.log('🔴 MESSAGE-AUDIT getServerSideProps RUNNING');
+    console.log('🔴 Request headers:', JSON.stringify(context.req.headers.cookie));
+
     // Check authentication
     const supabase = createPagesServerClient(context);
     const {
       data: { session }
     } = await supabase.auth.getSession();
 
+    console.log('🔴 Session check result:', {
+      hasSession: !!session,
+      email: session?.user?.email,
+      userId: session?.user?.id
+    });
+
     if (!session) {
+      console.log('❌ NO SESSION - Redirecting to login');
       return {
         redirect: {
           destination: '/login?redirect=/admin/message-audit',
