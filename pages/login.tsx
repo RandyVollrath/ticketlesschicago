@@ -54,15 +54,21 @@ export default function Login() {
       setLoading(true)
       setAuthMethod('google')
 
-      // Store redirect destination in sessionStorage (survives Supabase URL modifications)
+      // Get redirect destination
       const redirectUrl = getRedirectUrl()
+
+      // Store in sessionStorage as backup (may not survive OAuth in all browsers)
       sessionStorage.setItem('authRedirect', redirectUrl)
-      console.log('📍 Stored redirect in sessionStorage:', redirectUrl)
+
+      // Also pass via URL hash (ALWAYS survives OAuth redirect)
+      const callbackUrl = `${window.location.origin}/auth/callback#redirect=${encodeURIComponent(redirectUrl)}`
+      console.log('📍 Redirect destination:', redirectUrl)
+      console.log('📍 Callback URL with hash:', callbackUrl)
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: callbackUrl
         }
       })
 
@@ -92,18 +98,24 @@ export default function Login() {
     setAuthMethod('magic-link')
 
     try {
-      // Store redirect destination in sessionStorage (survives Supabase URL modifications)
+      // Get redirect destination
       const redirectUrl = getRedirectUrl()
+
+      // Store in sessionStorage as backup (may not survive OAuth in all browsers)
       sessionStorage.setItem('authRedirect', redirectUrl)
-      console.log('📍 Stored redirect in sessionStorage:', redirectUrl)
+      console.log('📍 Redirect destination:', redirectUrl)
 
       // Use our custom API endpoint that sends via Resend for faster delivery
+      // Pass redirect so it can be included in the magic link callback URL hash
       const response = await fetch('/api/auth/send-magic-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({
+          email,
+          redirectTo: redirectUrl
+        })
       })
 
       const data = await response.json()
