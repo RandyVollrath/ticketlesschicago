@@ -318,22 +318,22 @@ export default function AuthCallback() {
             }
           }
           
-          // ALWAYS redirect to settings after successful login
-          console.log('=== FORCING REDIRECT TO SETTINGS ===')
+          // Check for redirect parameter, default to settings
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirectPath = urlParams.get('redirect') || '/settings';
+
+          console.log('=== POST-AUTH REDIRECT ===')
           console.log('user email:', user.email)
+          console.log('redirect parameter:', redirectPath)
           console.log('current path:', window.location.pathname)
           console.log('window.location.href BEFORE:', window.location.href)
 
           // Use window.location for absolute redirect - bypasses Next.js router
-          console.log('ABOUT TO EXECUTE: window.location.href = "/settings"')
-          console.log('Stack trace:', new Error().stack)
+          const redirectUrl = window.location.origin + redirectPath;
+          console.log('Full redirect URL:', redirectUrl)
 
-          // Try multiple redirect methods
-          const settingsUrl = window.location.origin + '/settings';
-          console.log('Full settings URL:', settingsUrl)
-
-          // Method 1: Direct assignment
-          window.location.href = settingsUrl;
+          // Perform redirect
+          window.location.href = redirectUrl;
 
           // Log after (this might not execute if redirect is immediate)
           console.log('window.location.href AFTER:', window.location.href)
