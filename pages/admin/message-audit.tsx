@@ -497,23 +497,13 @@ export default function MessageAuditPage({ initialLogs, stats, health }: PagePro
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   try {
-    console.log('🔴 MESSAGE-AUDIT getServerSideProps RUNNING');
-    console.log('🔴 Request headers:', JSON.stringify(context.req.headers.cookie));
-
     // Check authentication
     const supabase = createPagesServerClient(context);
     const {
       data: { session }
     } = await supabase.auth.getSession();
 
-    console.log('🔴 Session check result:', {
-      hasSession: !!session,
-      email: session?.user?.email,
-      userId: session?.user?.id
-    });
-
     if (!session) {
-      console.log('❌ NO SESSION - Redirecting to login');
       return {
         redirect: {
           destination: '/login?redirect=/admin/message-audit',
@@ -522,34 +512,23 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       };
     }
 
-    // Check if user is admin (you can customize this check)
-    // For now, check if user email is yours
+    // Check if user is admin
     const adminEmails = [
       'randy.vollrath@gmail.com',
-      'randyvollrath@gmail.com',  // Added: your actual Google email
+      'randyvollrath@gmail.com',
       process.env.ADMIN_EMAIL
     ].filter(Boolean);
 
     const isAdmin = adminEmails.includes(session.user.email || '');
 
-    console.log('🔍 ADMIN CHECK:', {
-      userEmail: session.user.email,
-      adminEmails,
-      isAdmin,
-      willRedirect: !isAdmin
-    });
-
     if (!isAdmin) {
-      console.log('❌ ACCESS DENIED - Redirecting to /settings');
       return {
         redirect: {
-          destination: '/settings?error=unauthorized',  // Fixed: redirect to actual page
+          destination: '/settings?error=unauthorized',
           permanent: false
         }
       };
     }
-
-    console.log('✅ ACCESS GRANTED - Loading message audit page');
 
     // Fetch recent logs
     const { data: logs, error } = await supabaseAdmin
