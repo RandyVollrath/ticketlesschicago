@@ -2,10 +2,17 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabase'
 
+// IMMEDIATE LOG - runs when file loads
+console.log('🔴 CALLBACK.TSX FILE LOADED - This proves the page is being accessed')
+console.log('🔴 Current URL when file loaded:', typeof window !== 'undefined' ? window.location.href : 'server')
+
 export default function AuthCallback() {
   const router = useRouter()
 
+  console.log('🟡 AuthCallback component rendering')
+
   useEffect(() => {
+    console.log('🟢 useEffect starting')
     const handleAuthCallback = async () => {
       try {
         console.log('Auth callback started')
