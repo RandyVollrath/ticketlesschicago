@@ -318,13 +318,19 @@ export default function AuthCallback() {
             }
           }
           
-          // Check for redirect parameter, default to settings
-          const urlParams = new URLSearchParams(window.location.search);
-          const redirectPath = urlParams.get('redirect') || '/settings';
+          // Get redirect destination from sessionStorage (survives Supabase URL modifications)
+          const storedRedirect = sessionStorage.getItem('authRedirect');
+          const redirectPath = storedRedirect || '/settings';
+
+          // Clear sessionStorage after reading
+          if (storedRedirect) {
+            sessionStorage.removeItem('authRedirect');
+          }
 
           console.log('=== POST-AUTH REDIRECT ===')
           console.log('user email:', user.email)
-          console.log('redirect parameter:', redirectPath)
+          console.log('redirect from sessionStorage:', storedRedirect)
+          console.log('final redirect path:', redirectPath)
           console.log('current path:', window.location.pathname)
           console.log('window.location.href BEFORE:', window.location.href)
 
