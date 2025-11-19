@@ -302,32 +302,16 @@ export default function AuthCallback() {
           // Determine redirect destination
           let redirectPath = '/settings'; // default
 
-          // Method 1: Check OAuth state parameter (most reliable)
-          const urlParams = new URLSearchParams(window.location.search);
-          const stateParam = urlParams.get('state');
-
-          if (stateParam) {
-            try {
-              const stateData = JSON.parse(atob(stateParam));
-              if (stateData.redirect) {
-                redirectPath = stateData.redirect;
-              }
-            } catch (e) {
-              console.error('Failed to decode state parameter:', e);
+          // Check localStorage for redirect
+          try {
+            const localStorageRedirect = localStorage.getItem('post_auth_redirect');
+            console.log('📦 localStorage redirect:', localStorageRedirect);
+            if (localStorageRedirect) {
+              redirectPath = localStorageRedirect;
+              localStorage.removeItem('post_auth_redirect');
             }
-          }
-
-          // Method 2: Fallback to localStorage
-          if (redirectPath === '/settings') {
-            try {
-              const localStorageRedirect = localStorage.getItem('post_auth_redirect');
-              if (localStorageRedirect) {
-                redirectPath = localStorageRedirect;
-                localStorage.removeItem('post_auth_redirect');
-              }
-            } catch (e) {
-              console.error('Failed to read localStorage:', e);
-            }
+          } catch (e) {
+            console.error('Failed to read localStorage:', e);
           }
 
           // Set server-side session cookie for SSR pages
