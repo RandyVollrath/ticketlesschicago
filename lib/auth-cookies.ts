@@ -10,11 +10,12 @@ const MAX_AGE = 10 * 60; // 10 minutes
  */
 export function setRedirectCookie(res: NextApiResponse, redirectPath: string) {
   const cookie = serialize(REDIRECT_COOKIE_NAME, redirectPath, {
-    httpOnly: true, // Prevents XSS attacks
+    httpOnly: false, // CHANGED: Must be false so JavaScript can read it
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
     sameSite: 'lax', // CRITICAL: allows cookie to survive OAuth redirect while preventing CSRF
     maxAge: MAX_AGE, // Auto-expire after 10 minutes
-    path: '/' // Available on all paths
+    path: '/', // Available on all paths
+    domain: process.env.NODE_ENV === 'production' ? '.autopilotamerica.com' : undefined // Works for www and non-www
   });
 
   res.setHeader('Set-Cookie', cookie);
@@ -42,11 +43,12 @@ export function getRedirectCookie(cookieHeader: string | undefined): string | nu
  */
 export function clearRedirectCookie(res: NextApiResponse) {
   const cookie = serialize(REDIRECT_COOKIE_NAME, '', {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 0, // Expire immediately
-    path: '/'
+    path: '/',
+    domain: process.env.NODE_ENV === 'production' ? '.autopilotamerica.com' : undefined
   });
 
   res.setHeader('Set-Cookie', cookie);
