@@ -323,43 +323,32 @@ export default function AuthCallback() {
             }
           }
           
-          // Get redirect destination from server-side cookie
-          // This cookie was set BEFORE OAuth and survives the redirect through Google
+          // Get redirect destination - try multiple sources
           console.log('=== STARTING REDIRECT LOGIC ===');
-          console.log('RAW document.cookie:', document.cookie);
+          console.log('Current URL:', window.location.href);
 
           let redirectPath = '/settings'; // default
 
-          if (typeof document !== 'undefined') {
-            const cookieString = document.cookie;
-            console.log('Cookie string length:', cookieString.length);
-            console.log('Cookie string:', cookieString);
+          // Method 1: Check query parameter (app_redirect)
+          const urlParams = new URLSearchParams(window.location.search);
+          const queryRedirect = urlParams.get('app_redirect');
+          console.log('Query param app_redirect:', queryRedirect);
 
-            // Parse cookies manually
-            const cookiePairs = cookieString.split(';');
-            console.log('Number of cookies:', cookiePairs.length);
-
-            for (const pair of cookiePairs) {
-              const trimmed = pair.trim();
-              console.log('Examining cookie pair:', trimmed);
-
-              if (trimmed.startsWith('auth_redirect=')) {
-                const value = trimmed.substring('auth_redirect='.length);
-                console.log('🎯 FOUND auth_redirect cookie! Raw value:', value);
-
-                try {
-                  redirectPath = decodeURIComponent(value);
-                  console.log('🎯 Decoded redirect path:', redirectPath);
-                } catch (e) {
-                  console.error('Failed to decode cookie value:', e);
-                  redirectPath = value; // Use raw value if decode fails
-                }
-                break;
-              }
+          // Method 2: Check localStorage
+          let localStorageRedirect = null;
+          try {
+            localStorageRedirect = localStorage.getItem('post_auth_redirect');
+            console.log('localStorage post_auth_redirect:', localStorageRedirect);
+            if (localStorageRedirect) {
+              localStorage.removeItem('post_auth_redirect'); // Clean up
             }
-
-            console.log('Final redirectPath after cookie check:', redirectPath);
+          } catch (e) {
+            console.error('Failed to read localStorage:', e);
           }
+
+          // Use first available value
+          redirectPath = queryRedirect || localStorageRedirect || '/settings';
+          console.log('Final redirectPath:', redirectPath);
 
           console.log('=== POST-AUTH REDIRECT ===')
           console.log('user email:', user.email)
