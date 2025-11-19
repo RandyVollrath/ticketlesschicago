@@ -147,8 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `);
     }
 
-    // Show confirmation form
-    const userProfile = renewal.user_profiles;
+    // Show confirmation form (userProfile already defined at top)
     return res.status(200).send(`
       <html>
         <head>
@@ -170,7 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               <p style="margin: 0 0 8px;"><strong>User:</strong> ${userProfile.first_name} ${userProfile.last_name}</p>
               <p style="margin: 0 0 8px;"><strong>Email:</strong> ${userProfile.email}</p>
               <p style="margin: 0 0 8px;"><strong>Plate:</strong> ${userProfile.license_plate}</p>
-              <p style="margin: 0;"><strong>Due Date:</strong> ${new Date(renewal.renewal_due_date).toLocaleDateString()}</p>
+              <p style="margin: 0;"><strong>Due Date:</strong> ${new Date(renewalWithProfile.renewal_due_date).toLocaleDateString()}</p>
             </div>
 
             <form method="GET" style="margin-top: 30px;">
