@@ -516,6 +516,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     // For now, check if user email is yours
     const adminEmails = [
       'randy.vollrath@gmail.com',
+      'randyvollrath@gmail.com',  // Added: your actual Google email
       process.env.ADMIN_EMAIL
     ].filter(Boolean);
 
@@ -524,7 +525,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     if (!isAdmin) {
       return {
         redirect: {
-          destination: '/dashboard?error=unauthorized',
+          destination: '/settings?error=unauthorized',  // Fixed: redirect to actual page
           permanent: false
         }
       };

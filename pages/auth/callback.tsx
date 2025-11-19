@@ -383,16 +383,9 @@ export default function AuthCallback() {
           const redirectUrl = window.location.origin + redirectPath;
           console.log('Full redirect URL:', redirectUrl)
 
-          // TEMPORARY: Add 5 second delay so user can read console logs
-          console.log('⏳ WAITING 5 SECONDS - CHECK CONSOLE LOGS ABOVE');
-          console.log('⏳ Look for queryParamValue and localStorageValue');
-          await new Promise(resolve => setTimeout(resolve, 5000));
-
           // Perform redirect
           console.log('🚀 REDIRECTING NOW to:', redirectUrl);
-          console.log('Calling window.location.href =', redirectUrl);
           window.location.href = redirectUrl;
-          console.log('After setting window.location.href (may not print)');
         } else {
           // No session, redirect to home
           console.log('No session found, redirecting to home')
