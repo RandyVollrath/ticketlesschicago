@@ -318,18 +318,25 @@ export default function AuthCallback() {
             }
           }
           
-          // Get redirect destination from sessionStorage (survives Supabase URL modifications)
-          const storedRedirect = sessionStorage.getItem('authRedirect');
-          const redirectPath = storedRedirect || '/settings';
+          // Get redirect destination from URL hash (MOST RELIABLE - always survives OAuth)
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const hashRedirect = hashParams.get('redirect');
+
+          // Fallback to sessionStorage (may not survive in all browsers)
+          const sessionRedirect = sessionStorage.getItem('authRedirect');
+
+          // Use hash first, then sessionStorage, then default
+          const redirectPath = hashRedirect || sessionRedirect || '/settings';
 
           // Clear sessionStorage after reading
-          if (storedRedirect) {
+          if (sessionRedirect) {
             sessionStorage.removeItem('authRedirect');
           }
 
           console.log('=== POST-AUTH REDIRECT ===')
           console.log('user email:', user.email)
-          console.log('redirect from sessionStorage:', storedRedirect)
+          console.log('redirect from hash:', hashRedirect)
+          console.log('redirect from sessionStorage:', sessionRedirect)
           console.log('final redirect path:', redirectPath)
           console.log('current path:', window.location.pathname)
           console.log('window.location.href BEFORE:', window.location.href)
