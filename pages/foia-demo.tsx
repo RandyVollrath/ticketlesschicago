@@ -10,11 +10,11 @@ export default function FOIADemo() {
   const [violationCode, setViolationCode] = useState('0976160B');
 
   const testCodes = [
-    { code: '0976160B', name: 'Expired Plate', expectedWinRate: '57.2%' },
-    { code: '0964190A', name: 'Expired Meter (Non-CBD)', expectedWinRate: 'Various' },
-    { code: '0964040B', name: 'Street Cleaning', expectedWinRate: 'Various' },
-    { code: '0964125B', name: 'No City Sticker', expectedWinRate: 'Various' },
-    { code: '9101020**', name: 'Speed Violation 11+', expectedWinRate: 'Various' },
+    { code: '0976160B', name: 'Expired Plate', expectedWinRate: 'Real data' },
+    { code: '0964190A', name: 'Expired Meter (Non-CBD)', expectedWinRate: 'Real data' },
+    { code: '0964040B', name: 'Street Cleaning', expectedWinRate: 'Real data' },
+    { code: '0964125B', name: 'No City Sticker', expectedWinRate: 'Real data' },
+    { code: '9101020**', name: 'Speed Violation 11+', expectedWinRate: 'Real data' },
   ];
 
   return (
@@ -181,10 +181,10 @@ export default function FOIADemo() {
             🧪 Tests to Run
           </h4>
           <div style={{ color: '#166534', fontSize: '14px', lineHeight: '1.8' }}>
-            <p><strong>Test 1:</strong> Code 0976160B → Should show ~57% win rate</p>
-            <p><strong>Test 2:</strong> Code 0964190A → Should show different win rate</p>
+            <p><strong>Test 1:</strong> Code 0976160B → Shows win rate from ALL records for this violation</p>
+            <p><strong>Test 2:</strong> Code 0964190A → Shows different win rate (different violation)</p>
             <p><strong>Test 3:</strong> Code FAKE123 → Should show "No data available"</p>
-            <p><strong>Test 4:</strong> Switch between codes → Box should update</p>
+            <p><strong>Test 4:</strong> Switch between codes → Box should update with new data</p>
           </div>
         </div>
 
