@@ -344,13 +344,21 @@ export default function AuthCallback() {
           // Method 2: Check localStorage
           let localStorageRedirect = null;
           try {
+            // Debug: Show ALL localStorage keys
+            console.log('🔍 ALL localStorage keys:', Object.keys(localStorage));
+            console.log('🔍 ALL localStorage:', JSON.stringify(localStorage));
+
             localStorageRedirect = localStorage.getItem('post_auth_redirect');
-            console.log('localStorage post_auth_redirect:', localStorageRedirect);
+            console.log('📦 localStorage post_auth_redirect:', localStorageRedirect);
+
             if (localStorageRedirect) {
+              console.log('✅ Found redirect in localStorage!');
               localStorage.removeItem('post_auth_redirect'); // Clean up
+            } else {
+              console.log('❌ localStorage post_auth_redirect is NULL/EMPTY');
             }
           } catch (e) {
-            console.error('Failed to read localStorage:', e);
+            console.error('❌ Failed to read localStorage:', e);
           }
 
           // Use first available value - prioritize query param (now using Supabase's official queryParams option)
