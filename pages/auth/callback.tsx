@@ -345,17 +345,12 @@ export default function AuthCallback() {
           console.log('final redirect path:', redirectPath)
           console.log('current path:', window.location.pathname)
 
-          // Clear the cookie by calling API (fire and forget)
-          fetch('/api/auth/clear-redirect', {
-            method: 'POST',
-            credentials: 'include'
-          }).catch(err => console.error('Failed to clear redirect cookie:', err));
-
           // Use window.location for absolute redirect - bypasses Next.js router
           const redirectUrl = window.location.origin + redirectPath;
           console.log('Full redirect URL:', redirectUrl)
 
           // Perform redirect
+          console.log('REDIRECTING NOW to:', redirectUrl);
           window.location.href = redirectUrl;
         } else {
           // No session, redirect to home
