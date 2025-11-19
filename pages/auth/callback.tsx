@@ -81,6 +81,12 @@ export default function AuthCallback() {
 
         const { data, error } = await supabaseClient.auth.getSession()
 
+        console.log('🔍 Session check:', {
+          hasSession: !!data.session,
+          email: data.session?.user?.email,
+          error: error
+        });
+
         if (error) {
           console.error('Error during auth callback:', error)
           router.push('/?error=auth_failed')
@@ -88,6 +94,7 @@ export default function AuthCallback() {
         }
 
         if (data.session) {
+          console.log('✅ Session found, processing...');
           // Wait for session to fully establish
           await new Promise(resolve => setTimeout(resolve, 500))
 
@@ -324,10 +331,11 @@ export default function AuthCallback() {
           }
 
           // Set server-side session cookie for SSR pages
+          console.log('🔐 Setting server-side session...');
           try {
             const { data: finalCheck } = await supabaseClient.auth.getSession();
             if (finalCheck.session) {
-              await fetch('/api/auth/session', {
+              const response = await fetch('/api/auth/session', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json'
@@ -338,6 +346,12 @@ export default function AuthCallback() {
                   refresh_token: finalCheck.session.refresh_token
                 })
               });
+
+              if (response.ok) {
+                console.log('✅ Server session set');
+              } else {
+                console.error('❌ Server session failed:', response.status);
+              }
             }
           } catch (e) {
             console.error('Failed to establish server-side session:', e);
@@ -347,10 +361,12 @@ export default function AuthCallback() {
           await new Promise(resolve => setTimeout(resolve, 500));
 
           // Redirect to destination
+          console.log('🚀 Redirecting to:', redirectPath);
           const redirectUrl = window.location.origin + redirectPath;
           window.location.href = redirectUrl;
         } else {
           // No session found
+          console.error('❌ NO SESSION - redirecting to home');
           router.push('/')
         }
       } catch (error) {
