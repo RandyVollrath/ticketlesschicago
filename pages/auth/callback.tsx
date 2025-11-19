@@ -346,16 +346,16 @@ export default function AuthCallback() {
             console.error('Failed to read localStorage:', e);
           }
 
-          // Use first available value - prioritize localStorage (more reliable across OAuth navigation)
-          redirectPath = localStorageRedirect || queryRedirect || '/settings';
+          // Use first available value - prioritize query param (now using Supabase's official queryParams option)
+          redirectPath = queryRedirect || localStorageRedirect || '/settings';
           console.log('Final redirectPath:', redirectPath);
 
           // Debug info to diagnose failures
           console.log('🔍 REDIRECT DEBUG:', {
-            localStorageValue: localStorageRedirect,
             queryParamValue: queryRedirect,
+            localStorageValue: localStorageRedirect,
             finalDecision: redirectPath,
-            source: localStorageRedirect ? 'localStorage' : queryRedirect ? 'query param' : 'default fallback'
+            source: queryRedirect ? 'query param (Supabase queryParams)' : localStorageRedirect ? 'localStorage' : 'default fallback'
           });
 
           console.log('=== POST-AUTH REDIRECT ===')
