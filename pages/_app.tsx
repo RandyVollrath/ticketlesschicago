@@ -8,6 +8,30 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter()
 
   useEffect(() => {
+    // CRITICAL: Intercept OAuth redirects that land on wrong pages
+    // Supabase may redirect to homepage or /settings instead of /auth/callback
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname
+      const hash = window.location.hash
+
+      // Check if we have OAuth tokens in the URL hash
+      const hasOAuthTokens = hash.includes('access_token') || hash.includes('refresh_token')
+
+      if (hasOAuthTokens && currentPath !== '/auth/callback') {
+        console.log('🚨 INTERCEPTED: OAuth tokens detected on wrong page:', currentPath)
+        console.log('🔄 FORCING redirect to /auth/callback with tokens')
+
+        // Force redirect to callback page with tokens preserved
+        window.location.replace('/auth/callback' + hash)
+        return
+      }
+
+      // Log where user actually lands after OAuth (for debugging)
+      if (hasOAuthTokens) {
+        console.log('✅ OAuth tokens detected on correct page:', currentPath)
+      }
+    }
+
     // Initialize PostHog
     initPostHog()
 
