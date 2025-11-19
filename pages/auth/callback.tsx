@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabase'
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'
 
 // Callback page loads when OAuth completes
 
 export default function AuthCallback() {
   const router = useRouter()
-  const [supabaseClient] = useState(() => createBrowserSupabaseClient())
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -79,7 +77,7 @@ export default function AuthCallback() {
           await new Promise(resolve => setTimeout(resolve, 300));
         }
 
-        const { data, error } = await supabaseClient.auth.getSession()
+        const { data, error } = await supabase.auth.getSession()
 
         console.log('🔍 Session check:', {
           hasSession: !!data.session,
@@ -99,7 +97,7 @@ export default function AuthCallback() {
           await new Promise(resolve => setTimeout(resolve, 500))
 
           // Double-check session is still valid
-          const { data: recheckData } = await supabaseClient.auth.getSession()
+          const { data: recheckData } = await supabase.auth.getSession()
           if (!recheckData.session) {
             console.error('Session lost, redirecting to login')
             router.push('/login?error=session_lost')
@@ -317,7 +315,7 @@ export default function AuthCallback() {
           // Set server-side session cookie for SSR pages
           console.log('🔐 Setting server-side session...');
           try {
-            const { data: finalCheck } = await supabaseClient.auth.getSession();
+            const { data: finalCheck } = await supabase.auth.getSession();
             if (finalCheck.session) {
               // Set a timeout for the API call
               const controller = new AbortController();
@@ -375,7 +373,7 @@ export default function AuthCallback() {
     }
 
     handleAuthCallback()
-  }, [router, supabaseClient])
+  }, [router])
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
