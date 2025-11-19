@@ -35,7 +35,7 @@ export default function AuthCallback() {
 
           if (accessToken) {
             try {
-              const { error: sessionError } = await supabaseClient.auth.setSession({
+              const { error: sessionError } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
               });
@@ -58,7 +58,7 @@ export default function AuthCallback() {
 
           if (accessToken) {
             try {
-              const { error: sessionError } = await supabaseClient.auth.setSession({
+              const { error: sessionError } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
               });
