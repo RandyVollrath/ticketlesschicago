@@ -982,116 +982,154 @@ export default function ProfileNew() {
             icon="🔔"
             defaultOpen={false}
           >
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0' }}>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px 0' }}>
               Choose how you want to be notified about parking alerts and renewals
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '12px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={formData.notify_email || false}
-                  onChange={(e) => handleFieldChange('notify_email', e.target.checked)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    cursor: 'pointer',
-                    accentColor: '#0052cc'
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                    Email Notifications
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    Renewal reminders via email
-                  </div>
-                </div>
-              </label>
+            {/* Notification Channels Section */}
+            <div style={{ marginBottom: '32px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#111827', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📱</span> Notification Channels
+              </h4>
 
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '12px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={formData.notify_sms || false}
-                  onChange={(e) => handleFieldChange('notify_sms', e.target.checked)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    cursor: 'pointer',
-                    accentColor: '#0052cc'
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                    SMS Notifications
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Email Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827', marginBottom: '4px' }}>
+                      📧 Email
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Receive email notifications for renewals
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    Renewal reminders via text (street cleaning always uses SMS)
-                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.notify_email || false}
+                      onChange={(e) => handleFieldChange('notify_email', e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: formData.notify_email ? '#3b82f6' : '#cbd5e1',
+                      transition: '0.3s',
+                      borderRadius: '24px'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        content: '""',
+                        height: '18px',
+                        width: '18px',
+                        left: formData.notify_email ? '23px' : '3px',
+                        bottom: '3px',
+                        backgroundColor: 'white',
+                        transition: '0.3s',
+                        borderRadius: '50%'
+                      }} />
+                    </span>
+                  </label>
                 </div>
-              </label>
 
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '12px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={formData.voice_calls_enabled || false}
-                  onChange={(e) => handleFieldChange('voice_calls_enabled', e.target.checked)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    cursor: 'pointer',
-                    accentColor: '#0052cc'
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                    Voice Calls
+                {/* SMS Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827', marginBottom: '4px' }}>
+                      💬 SMS (Text Messages)
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Get text messages for renewals (street cleaning always uses SMS)
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    Phone call alerts for renewal reminders
-                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.notify_sms || false}
+                      onChange={(e) => handleFieldChange('notify_sms', e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: formData.notify_sms ? '#3b82f6' : '#cbd5e1',
+                      transition: '0.3s',
+                      borderRadius: '24px'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        content: '""',
+                        height: '18px',
+                        width: '18px',
+                        left: formData.notify_sms ? '23px' : '3px',
+                        bottom: '3px',
+                        backgroundColor: 'white',
+                        transition: '0.3s',
+                        borderRadius: '50%'
+                      }} />
+                    </span>
+                  </label>
                 </div>
-              </label>
+
+                {/* Voice Calls Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827', marginBottom: '4px' }}>
+                      📞 Voice Calls
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Emergency voice calls (critical alerts only)
+                    </div>
+                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.voice_calls_enabled || false}
+                      onChange={(e) => handleFieldChange('voice_calls_enabled', e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: formData.voice_calls_enabled ? '#3b82f6' : '#cbd5e1',
+                      transition: '0.3s',
+                      borderRadius: '24px'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        content: '""',
+                        height: '18px',
+                        width: '18px',
+                        left: formData.voice_calls_enabled ? '23px' : '3px',
+                        bottom: '3px',
+                        backgroundColor: 'white',
+                        transition: '0.3s',
+                        borderRadius: '50%'
+                      }} />
+                    </span>
+                  </label>
+                </div>
+              </div>
             </div>
 
-            <div style={{
-              borderTop: '1px solid #e5e7eb',
-              paddingTop: '20px'
-            }}>
-              <h4 style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#111827',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                Reminder Timing
+            {/* Renewal Reminders Section */}
+            <div style={{ marginBottom: '32px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#111827', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🔄</span> Renewal Reminders
               </h4>
-              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px', margin: '0 0 12px 0' }}>
+              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px', margin: '0 0 16px 0' }}>
                 Select when you want to be reminded before each renewal deadline:
               </p>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
