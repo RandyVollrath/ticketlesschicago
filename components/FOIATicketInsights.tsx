@@ -212,9 +212,12 @@ export default function FOIATicketInsights({ violationCode }: FOIAInsightsProps)
       {/* Top Dismissal Reasons */}
       {stats.top_dismissal_reasons && stats.top_dismissal_reasons.length > 0 && (
         <div className="bg-white rounded-lg p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-gray-900 mb-3">
-            Most Common Dismissal Reasons
+          <h4 className="text-sm font-semibold text-gray-900 mb-1">
+            Why Tickets Were Dismissed
           </h4>
+          <p className="text-xs text-gray-600 mb-3">
+            These are the official reasons judges gave for dismissing this violation type
+          </p>
           <div className="space-y-2">
             {stats.top_dismissal_reasons.slice(0, 3).map((reason, idx) => (
               <div key={idx} className="border-l-3 border-green-500 pl-3 py-1">
@@ -224,7 +227,7 @@ export default function FOIATicketInsights({ violationCode }: FOIAInsightsProps)
                       {idx + 1}. {reason.reason}
                     </div>
                     <div className="text-xs text-gray-500">
-                      Used in {reason.count} cases ({reason.percentage.toFixed(1)}% of wins)
+                      Judge cited this reason in {reason.count.toLocaleString()} winning cases ({reason.percentage.toFixed(1)}% of dismissals)
                     </div>
                   </div>
                 </div>
