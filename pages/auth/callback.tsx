@@ -346,9 +346,17 @@ export default function AuthCallback() {
             console.error('Failed to read localStorage:', e);
           }
 
-          // Use first available value
-          redirectPath = queryRedirect || localStorageRedirect || '/settings';
+          // Use first available value - prioritize localStorage (more reliable across OAuth navigation)
+          redirectPath = localStorageRedirect || queryRedirect || '/settings';
           console.log('Final redirectPath:', redirectPath);
+
+          // Debug info to diagnose failures
+          console.log('🔍 REDIRECT DEBUG:', {
+            localStorageValue: localStorageRedirect,
+            queryParamValue: queryRedirect,
+            finalDecision: redirectPath,
+            source: localStorageRedirect ? 'localStorage' : queryRedirect ? 'query param' : 'default fallback'
+          });
 
           console.log('=== POST-AUTH REDIRECT ===')
           console.log('user email:', user.email)
