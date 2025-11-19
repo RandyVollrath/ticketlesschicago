@@ -522,7 +522,15 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
     const isAdmin = adminEmails.includes(session.user.email || '');
 
+    console.log('🔍 ADMIN CHECK:', {
+      userEmail: session.user.email,
+      adminEmails,
+      isAdmin,
+      willRedirect: !isAdmin
+    });
+
     if (!isAdmin) {
+      console.log('❌ ACCESS DENIED - Redirecting to /settings');
       return {
         redirect: {
           destination: '/settings?error=unauthorized',  // Fixed: redirect to actual page
@@ -530,6 +538,8 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         }
       };
     }
+
+    console.log('✅ ACCESS GRANTED - Loading message audit page');
 
     // Fetch recent logs
     const { data: logs, error } = await supabaseAdmin
