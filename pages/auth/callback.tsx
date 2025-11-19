@@ -335,20 +335,29 @@ export default function AuthCallback() {
             console.log('Cookie string length:', cookieString.length);
             console.log('Cookie string:', cookieString);
 
-            const cookies = cookieString.split(';').reduce((acc, cookie) => {
-              const [key, value] = cookie.trim().split('=');
-              console.log('Parsing cookie:', { key, value });
-              if (key && value) {
-                acc[key] = decodeURIComponent(value);
+            // Parse cookies manually
+            const cookiePairs = cookieString.split(';');
+            console.log('Number of cookies:', cookiePairs.length);
+
+            for (const pair of cookiePairs) {
+              const trimmed = pair.trim();
+              console.log('Examining cookie pair:', trimmed);
+
+              if (trimmed.startsWith('auth_redirect=')) {
+                const value = trimmed.substring('auth_redirect='.length);
+                console.log('🎯 FOUND auth_redirect cookie! Raw value:', value);
+
+                try {
+                  redirectPath = decodeURIComponent(value);
+                  console.log('🎯 Decoded redirect path:', redirectPath);
+                } catch (e) {
+                  console.error('Failed to decode cookie value:', e);
+                  redirectPath = value; // Use raw value if decode fails
+                }
+                break;
               }
-              return acc;
-            }, {} as Record<string, string>);
+            }
 
-            console.log('All parsed cookies:', cookies);
-            console.log('Looking for auth_redirect cookie...');
-            console.log('auth_redirect value:', cookies['auth_redirect']);
-
-            redirectPath = cookies['auth_redirect'] || '/settings';
             console.log('Final redirectPath after cookie check:', redirectPath);
           }
 
