@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const adminEmails = ['randy.vollrath@gmail.com', process.env.ADMIN_EMAIL].filter(Boolean);
+    const adminEmails = ['randy.vollrath@gmail.com', 'randyvollrath@gmail.com', process.env.ADMIN_EMAIL].filter(Boolean);
     const isAdmin = adminEmails.includes(session.user.email || '');
 
     return res.status(200).json({
