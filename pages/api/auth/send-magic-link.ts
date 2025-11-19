@@ -6,7 +6,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, redirectTo } = req.body;
+  const { email } = req.body;
 
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' });
@@ -19,15 +19,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     console.log('📧 Generating magic link for:', email);
-    console.log('📍 Redirect destination:', redirectTo || '/settings (default)');
 
-    // Build callback URL with redirect in hash fragment (survives OAuth better than sessionStorage)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    const callbackPath = '/auth/callback';
-    const finalRedirect = redirectTo || '/settings';
-    const callbackUrl = `${baseUrl}${callbackPath}#redirect=${encodeURIComponent(finalRedirect)}`;
-
-    console.log('📍 Callback URL with hash:', callbackUrl);
+    // Simple callback URL - redirect destination is stored in cookie
+    const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
+    console.log('📍 Callback URL:', callbackUrl);
 
     // Generate magic link using admin API
     const { data: linkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
