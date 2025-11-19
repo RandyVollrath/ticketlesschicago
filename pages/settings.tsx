@@ -127,7 +127,7 @@ export default function ProfileNew() {
     if (!formData.phone_number && !formData.phone) missing.push('Phone number')
     if (!formData.license_plate) missing.push('License plate')
     if (!formData.zip_code) missing.push('ZIP code')
-    if (formData.has_protection && !formData.license_plate_type) missing.push('License plate type')
+    // Removed license_plate_type check - field doesn't exist on form
     return missing
   }
 
