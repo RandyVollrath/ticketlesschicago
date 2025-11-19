@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabase'
+import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'
 
 // IMMEDIATE LOG - runs when file loads
 console.log('🔴 CALLBACK.TSX FILE LOADED - This proves the page is being accessed')
@@ -8,6 +9,7 @@ console.log('🔴 Current URL when file loaded:', typeof window !== 'undefined' 
 
 export default function AuthCallback() {
   const router = useRouter()
+  const [supabaseClient] = useState(() => createBrowserSupabaseClient())
 
   console.log('🟡 AuthCallback component rendering')
 
@@ -50,7 +52,7 @@ export default function AuthCallback() {
           if (accessToken) {
             console.log('✅ Found tokens in hash, setting session explicitly...');
             try {
-              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
               });
@@ -75,7 +77,7 @@ export default function AuthCallback() {
 
           if (accessToken) {
             try {
-              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
               });
@@ -98,7 +100,7 @@ export default function AuthCallback() {
           await new Promise(resolve => setTimeout(resolve, 300));
         }
 
-        const { data, error } = await supabase.auth.getSession()
+        const { data, error } = await supabaseClient.auth.getSession()
         console.log('Session check result:', {
           hasSession: !!data.session,
           userId: data.session?.user?.id,
@@ -123,7 +125,7 @@ export default function AuthCallback() {
           await new Promise(resolve => setTimeout(resolve, 500))
 
           // Double-check session is still valid
-          const { data: recheckData } = await supabase.auth.getSession()
+          const { data: recheckData } = await supabaseClient.auth.getSession()
           if (!recheckData.session) {
             console.error('❌ Session lost after initial check, redirecting to login')
             router.push('/login?error=session_lost')
@@ -383,17 +385,38 @@ export default function AuthCallback() {
           const redirectUrl = window.location.origin + redirectPath;
           console.log('Full redirect URL:', redirectUrl)
 
-          // CRITICAL: Wait for session cookie to be written to server
-          // The session is established client-side but needs time to sync to server
-          console.log('⏳ Waiting 2 seconds for session to sync to server...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // CRITICAL: Explicitly set server-side session cookie
+          // Make API call to exchange tokens for server-side session cookies
+          console.log('🔐 Setting server-side session cookie...');
+          try {
+            const { data: finalCheck } = await supabaseClient.auth.getSession();
+            if (finalCheck.session) {
+              const response = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                credentials: 'include',  // Important: include cookies
+                body: JSON.stringify({
+                  access_token: finalCheck.session.access_token,
+                  refresh_token: finalCheck.session.refresh_token
+                })
+              });
 
-          // Verify session one more time before redirect
-          const { data: finalCheck } = await supabase.auth.getSession();
-          console.log('Final session check before redirect:', {
-            hasSession: !!finalCheck.session,
-            email: finalCheck.session?.user?.email
-          });
+              const result = await response.json();
+
+              if (response.ok) {
+                console.log('✅ Server-side session established:', result.email);
+              } else {
+                console.error('❌ Server-side session call failed:', result);
+              }
+            }
+          } catch (e) {
+            console.error('❌ Failed to establish server-side session:', e);
+          }
+
+          // Small delay to ensure cookie is written
+          await new Promise(resolve => setTimeout(resolve, 500));
 
           // Perform redirect
           console.log('🚀 REDIRECTING NOW to:', redirectUrl);
@@ -410,7 +433,7 @@ export default function AuthCallback() {
     }
 
     handleAuthCallback()
-  }, [router])
+  }, [router, supabaseClient])
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
