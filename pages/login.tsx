@@ -54,16 +54,26 @@ export default function Login() {
       setLoading(true)
       setAuthMethod('google')
 
-      // Get redirect destination
       const redirectUrl = getRedirectUrl()
-
-      // Store in sessionStorage as backup (may not survive OAuth in all browsers)
-      sessionStorage.setItem('authRedirect', redirectUrl)
-
-      // Also pass via URL hash (ALWAYS survives OAuth redirect)
-      const callbackUrl = `${window.location.origin}/auth/callback#redirect=${encodeURIComponent(redirectUrl)}`
       console.log('📍 Redirect destination:', redirectUrl)
-      console.log('📍 Callback URL with hash:', callbackUrl)
+
+      // CRITICAL: Set server-side cookie BEFORE initiating OAuth
+      // This cookie survives the OAuth redirect through Google
+      const cookieResponse = await fetch('/api/auth/set-redirect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect: redirectUrl }),
+        credentials: 'include' // Essential: ensures cookie is sent/received
+      });
+
+      if (!cookieResponse.ok) {
+        throw new Error('Failed to set redirect cookie');
+      }
+
+      console.log('✅ Redirect cookie set, initiating OAuth...')
+
+      // Simple callback URL - no hash or query params needed!
+      const callbackUrl = `${window.location.origin}/auth/callback`
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -98,24 +108,30 @@ export default function Login() {
     setAuthMethod('magic-link')
 
     try {
-      // Get redirect destination
       const redirectUrl = getRedirectUrl()
-
-      // Store in sessionStorage as backup (may not survive OAuth in all browsers)
-      sessionStorage.setItem('authRedirect', redirectUrl)
       console.log('📍 Redirect destination:', redirectUrl)
 
+      // CRITICAL: Set server-side cookie BEFORE requesting magic link
+      const cookieResponse = await fetch('/api/auth/set-redirect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect: redirectUrl }),
+        credentials: 'include'
+      });
+
+      if (!cookieResponse.ok) {
+        throw new Error('Failed to set redirect cookie');
+      }
+
+      console.log('✅ Redirect cookie set, requesting magic link...')
+
       // Use our custom API endpoint that sends via Resend for faster delivery
-      // Pass redirect so it can be included in the magic link callback URL hash
       const response = await fetch('/api/auth/send-magic-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          email,
-          redirectTo: redirectUrl
-        })
+        body: JSON.stringify({ email })
       })
 
       const data = await response.json()

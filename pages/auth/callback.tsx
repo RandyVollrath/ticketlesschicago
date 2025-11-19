@@ -323,25 +323,33 @@ export default function AuthCallback() {
             }
           }
           
-          // Get redirect destination (hashRedirect was captured at the top before Supabase modified the URL)
-          // Fallback to sessionStorage (may not survive in all browsers)
-          const sessionRedirect = sessionStorage.getItem('authRedirect');
+          // Get redirect destination from server-side cookie
+          // This cookie was set BEFORE OAuth and survives the redirect through Google
+          let redirectPath = '/settings'; // default
 
-          // Use hash first (captured earlier), then sessionStorage, then default
-          const redirectPath = hashRedirect || sessionRedirect || '/settings';
+          if (typeof document !== 'undefined') {
+            const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+              const [key, value] = cookie.trim().split('=');
+              if (key && value) {
+                acc[key] = decodeURIComponent(value);
+              }
+              return acc;
+            }, {} as Record<string, string>);
 
-          // Clear sessionStorage after reading
-          if (sessionRedirect) {
-            sessionStorage.removeItem('authRedirect');
+            redirectPath = cookies['auth_redirect'] || '/settings';
           }
 
           console.log('=== POST-AUTH REDIRECT ===')
           console.log('user email:', user.email)
-          console.log('redirect from hash:', hashRedirect)
-          console.log('redirect from sessionStorage:', sessionRedirect)
+          console.log('🍪 redirect from cookie:', redirectPath)
           console.log('final redirect path:', redirectPath)
           console.log('current path:', window.location.pathname)
-          console.log('window.location.href BEFORE:', window.location.href)
+
+          // Clear the cookie by calling API (fire and forget)
+          fetch('/api/auth/clear-redirect', {
+            method: 'POST',
+            credentials: 'include'
+          }).catch(err => console.error('Failed to clear redirect cookie:', err));
 
           // Use window.location for absolute redirect - bypasses Next.js router
           const redirectUrl = window.location.origin + redirectPath;
@@ -349,9 +357,6 @@ export default function AuthCallback() {
 
           // Perform redirect
           window.location.href = redirectUrl;
-
-          // Log after (this might not execute if redirect is immediate)
-          console.log('window.location.href AFTER:', window.location.href)
         } else {
           // No session, redirect to home
           console.log('No session found, redirecting to home')
