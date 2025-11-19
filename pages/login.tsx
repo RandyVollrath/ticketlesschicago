@@ -56,32 +56,19 @@ export default function Login() {
 
       const redirectUrl = getRedirectUrl()
       console.log('📍 Redirect destination:', redirectUrl)
-      console.log('📍 Full redirect URL for cookie:', redirectUrl)
 
-      // CRITICAL: Set server-side cookie BEFORE initiating OAuth
-      // This cookie survives the OAuth redirect through Google
-      console.log('🍪 Calling /api/auth/set-redirect...');
-      const cookieResponse = await fetch('/api/auth/set-redirect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redirect: redirectUrl }),
-        credentials: 'include' // Essential: ensures cookie is sent/received
-      });
-
-      console.log('🍪 Cookie API response status:', cookieResponse.status);
-      const cookieData = await cookieResponse.json();
-      console.log('🍪 Cookie API response data:', cookieData);
-
-      if (!cookieResponse.ok) {
-        throw new Error('Failed to set redirect cookie');
+      // Store in localStorage as backup (simpler than cookies)
+      try {
+        localStorage.setItem('post_auth_redirect', redirectUrl);
+        console.log('✅ Stored redirect in localStorage:', redirectUrl);
+      } catch (e) {
+        console.error('Failed to set localStorage:', e);
       }
 
-      console.log('✅ Redirect cookie set successfully!');
-      console.log('✅ Checking if cookie is readable:', document.cookie);
-      console.log('✅ Initiating OAuth now...')
-
-      // Simple callback URL - no hash or query params needed!
-      const callbackUrl = `${window.location.origin}/auth/callback`
+      // Pass redirect as query param in callback URL
+      // Supabase will preserve OUR query params if we add them AFTER the base URL
+      const callbackUrl = `${window.location.origin}/auth/callback?app_redirect=${encodeURIComponent(redirectUrl)}`
+      console.log('✅ Callback URL with redirect:', callbackUrl)
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
