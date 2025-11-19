@@ -135,10 +135,10 @@ export default function NotificationPreferencesPage({
               </p>
             </div>
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/settings')}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              ← Back to Dashboard
+              ← Back to Settings
             </button>
           </div>
         </div>
