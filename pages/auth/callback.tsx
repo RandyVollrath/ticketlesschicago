@@ -13,9 +13,14 @@ export default function AuthCallback() {
         console.log('URL hash:', window.location.hash)
         console.log('URL search:', window.location.search)
 
-        // Check for error in URL first (both hash and query params)
+        // CRITICAL: Parse hash IMMEDIATELY before Supabase modifies it
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const searchParams = new URLSearchParams(window.location.search);
+
+        // Extract redirect parameter NOW (before it gets lost)
+        const hashRedirect = hashParams.get('redirect');
+        console.log('🎯 Captured redirect from hash IMMEDIATELY:', hashRedirect);
+
         const errorParam = hashParams.get('error') || searchParams.get('error');
         const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
 
@@ -318,14 +323,11 @@ export default function AuthCallback() {
             }
           }
           
-          // Get redirect destination from URL hash (MOST RELIABLE - always survives OAuth)
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const hashRedirect = hashParams.get('redirect');
-
+          // Get redirect destination (hashRedirect was captured at the top before Supabase modified the URL)
           // Fallback to sessionStorage (may not survive in all browsers)
           const sessionRedirect = sessionStorage.getItem('authRedirect');
 
-          // Use hash first, then sessionStorage, then default
+          // Use hash first (captured earlier), then sessionStorage, then default
           const redirectPath = hashRedirect || sessionRedirect || '/settings';
 
           // Clear sessionStorage after reading
