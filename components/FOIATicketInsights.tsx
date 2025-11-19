@@ -213,10 +213,10 @@ export default function FOIATicketInsights({ violationCode }: FOIAInsightsProps)
       {stats.top_dismissal_reasons && stats.top_dismissal_reasons.length > 0 && (
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <h4 className="text-sm font-semibold text-gray-900 mb-1">
-            Why Tickets Were Dismissed
+            Why Tickets Were Dismissed (When Recorded)
           </h4>
           <p className="text-xs text-gray-600 mb-3">
-            These are the official reasons judges gave for dismissing this violation type
+            Official reasons judges gave for dismissing tickets. Note: Most dismissals don't have the specific reason recorded in public records.
           </p>
           <div className="space-y-2">
             {stats.top_dismissal_reasons.slice(0, 3).map((reason, idx) => (
