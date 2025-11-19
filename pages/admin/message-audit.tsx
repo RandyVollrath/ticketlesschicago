@@ -31,6 +31,12 @@ interface MessageLog {
   cost_cents: number | null;
 }
 
+interface HealthCheck {
+  status: 'healthy' | 'warning' | 'critical';
+  message: string;
+  details?: string;
+}
+
 interface PageProps {
   initialLogs: MessageLog[];
   stats: {
@@ -41,11 +47,21 @@ interface PageProps {
     errors: number;
     last24h: number;
   };
+  health: {
+    overall: 'healthy' | 'warning' | 'critical';
+    checks: {
+      errorRate: HealthCheck;
+      messageVolume: HealthCheck;
+      apiKeys: HealthCheck;
+      database: HealthCheck;
+    };
+  };
 }
 
-export default function MessageAuditPage({ initialLogs, stats }: PageProps) {
+export default function MessageAuditPage({ initialLogs, stats, health }: PageProps) {
   const [logs, setLogs] = useState<MessageLog[]>(initialLogs);
   const [loading, setLoading] = useState(false);
+  const [showHealthDetails, setShowHealthDetails] = useState(false);
 
   // Filters
   const [filterResult, setFilterResult] = useState<string>('all');
@@ -151,48 +167,155 @@ export default function MessageAuditPage({ initialLogs, stats }: PageProps) {
     });
   };
 
+  const getHealthBadgeColor = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'warning':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'critical':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getHealthIcon = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return '✅';
+      case 'warning':
+        return '⚠️';
+      case 'critical':
+        return '❌';
+      default:
+        return '❓';
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Message Audit Log</h1>
-          <p className="text-gray-600">
-            Complete history of all message attempts. Every message is logged for accountability.
-          </p>
+        {/* Header with System Status */}
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+              📊 Message Audit Log
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Complete history of all message attempts. Every message is logged for accountability.
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div
+              className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all hover:shadow-md ${getHealthBadgeColor(
+                health.overall
+              )}`}
+              onClick={() => setShowHealthDetails(!showHealthDetails)}
+            >
+              {getHealthIcon(health.overall)}
+              System {health.overall === 'healthy' ? 'Healthy' : health.overall === 'warning' ? 'Warning' : 'Critical'}
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              🔄 Refresh
+            </button>
+          </div>
         </div>
+
+        {/* Health Details (Expandable) */}
+        {showHealthDetails && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border-2 border-blue-100">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">System Health Checks</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.entries(health.checks).map(([key, check]) => (
+                <div
+                  key={key}
+                  className={`p-4 rounded-lg border-2 ${getHealthBadgeColor(check.status)}`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">{getHealthIcon(check.status)}</span>
+                    <span className="font-semibold capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </span>
+                  </div>
+                  <div className="text-sm">{check.message}</div>
+                  {check.details && (
+                    <div className="text-xs mt-1 opacity-75">{check.details}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Total</div>
-            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+          <div className="bg-white rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow border border-gray-100">
+            <div className="text-xs uppercase tracking-wider text-gray-500 mb-2 font-semibold">
+              Total Messages
+            </div>
+            <div className="text-3xl font-bold text-gray-900">{stats.total.toLocaleString()}</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Sent ✅</div>
-            <div className="text-2xl font-bold text-green-600">{stats.sent}</div>
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow border border-green-100">
+            <div className="text-xs uppercase tracking-wider text-green-700 mb-2 font-semibold flex items-center gap-1">
+              ✅ Sent
+            </div>
+            <div className="text-3xl font-bold text-green-700">{stats.sent.toLocaleString()}</div>
+            {stats.total > 0 && (
+              <div className="text-xs text-green-600 mt-1">
+                {((stats.sent / stats.total) * 100).toFixed(1)}%
+              </div>
+            )}
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Skipped ⏭️</div>
-            <div className="text-2xl font-bold text-yellow-600">{stats.skipped}</div>
+          <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow border border-yellow-100">
+            <div className="text-xs uppercase tracking-wider text-yellow-700 mb-2 font-semibold flex items-center gap-1">
+              ⏭️ Skipped
+            </div>
+            <div className="text-3xl font-bold text-yellow-700">{stats.skipped.toLocaleString()}</div>
+            {stats.total > 0 && (
+              <div className="text-xs text-yellow-600 mt-1">
+                {((stats.skipped / stats.total) * 100).toFixed(1)}%
+              </div>
+            )}
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Blocked 🚫</div>
-            <div className="text-2xl font-bold text-red-600">{stats.blocked}</div>
+          <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow border border-orange-100">
+            <div className="text-xs uppercase tracking-wider text-orange-700 mb-2 font-semibold flex items-center gap-1">
+              🚫 Blocked
+            </div>
+            <div className="text-3xl font-bold text-orange-700">{stats.blocked.toLocaleString()}</div>
+            {stats.total > 0 && (
+              <div className="text-xs text-orange-600 mt-1">
+                {((stats.blocked / stats.total) * 100).toFixed(1)}%
+              </div>
+            )}
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Errors ❌</div>
-            <div className="text-2xl font-bold text-red-600">{stats.errors}</div>
+          <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow border border-red-100">
+            <div className="text-xs uppercase tracking-wider text-red-700 mb-2 font-semibold flex items-center gap-1">
+              ❌ Errors
+            </div>
+            <div className="text-3xl font-bold text-red-700">{stats.errors.toLocaleString()}</div>
+            {stats.total > 0 && (
+              <div className="text-xs text-red-600 mt-1">
+                {((stats.errors / stats.total) * 100).toFixed(1)}%
+              </div>
+            )}
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Last 24h</div>
-            <div className="text-2xl font-bold text-blue-600">{stats.last24h}</div>
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow border border-blue-100">
+            <div className="text-xs uppercase tracking-wider text-blue-700 mb-2 font-semibold flex items-center gap-1">
+              📅 Last 24h
+            </div>
+            <div className="text-3xl font-bold text-blue-700">{stats.last24h.toLocaleString()}</div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            🔍 Filters
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -259,10 +382,18 @@ export default function MessageAuditPage({ initialLogs, stats }: PageProps) {
         </div>
 
         {/* Message Log Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              📋 Message History
+              <span className="text-sm font-normal opacity-90">
+                ({logs.length} {logs.length === 1 ? 'message' : 'messages'})
+              </span>
+            </h2>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-100">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Timestamp
@@ -436,10 +567,52 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       last24h: logs?.filter((l) => new Date(l.timestamp) >= yesterday).length || 0
     };
 
+    // Health checks
+    const last24hLogs = logs?.filter((l) => new Date(l.timestamp) >= yesterday) || [];
+    const errorRate = last24hLogs.length > 0
+      ? (last24hLogs.filter((l) => l.result === 'error').length / last24hLogs.length) * 100
+      : 0;
+
+    const hasResendKey = !!process.env.RESEND_API_KEY;
+    const hasClickSendKey = !!process.env.CLICKSEND_USERNAME && !!process.env.CLICKSEND_API_KEY;
+
+    const health = {
+      overall: (errorRate > 10 || (!hasResendKey && !hasClickSendKey)) ? 'critical' as const
+        : (errorRate > 5 || !hasResendKey || !hasClickSendKey) ? 'warning' as const
+        : 'healthy' as const,
+      checks: {
+        errorRate: {
+          status: errorRate > 10 ? 'critical' as const : errorRate > 5 ? 'warning' as const : 'healthy' as const,
+          message: `Error rate: ${errorRate.toFixed(1)}%`,
+          details: `${last24hLogs.filter((l) => l.result === 'error').length} errors in last 24h out of ${last24hLogs.length} messages`
+        },
+        messageVolume: {
+          status: last24hLogs.length === 0 ? 'warning' as const : 'healthy' as const,
+          message: `${last24hLogs.length} messages in last 24h`,
+          details: last24hLogs.length === 0 ? 'No messages sent recently - check cron schedule' : 'Normal activity'
+        },
+        apiKeys: {
+          status: (!hasResendKey && !hasClickSendKey) ? 'critical' as const
+            : (!hasResendKey || !hasClickSendKey) ? 'warning' as const
+            : 'healthy' as const,
+          message: hasResendKey && hasClickSendKey ? 'All API keys configured'
+            : !hasResendKey && !hasClickSendKey ? 'Missing all API keys'
+            : 'Some API keys missing',
+          details: `Resend: ${hasResendKey ? '✓' : '✗'}, ClickSend: ${hasClickSendKey ? '✓' : '✗'}`
+        },
+        database: {
+          status: 'healthy' as const,
+          message: 'Database connection OK',
+          details: `Message audit log operational`
+        }
+      }
+    };
+
     return {
       props: {
         initialLogs: logs || [],
-        stats
+        stats,
+        health
       }
     };
   } catch (error) {
@@ -454,6 +627,31 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
           blocked: 0,
           errors: 0,
           last24h: 0
+        },
+        health: {
+          overall: 'critical' as const,
+          checks: {
+            errorRate: {
+              status: 'critical' as const,
+              message: 'Unable to fetch data',
+              details: 'Database connection error'
+            },
+            messageVolume: {
+              status: 'critical' as const,
+              message: 'Unable to fetch data',
+              details: 'Database connection error'
+            },
+            apiKeys: {
+              status: 'critical' as const,
+              message: 'Unable to check',
+              details: 'System error'
+            },
+            database: {
+              status: 'critical' as const,
+              message: 'Database connection failed',
+              details: 'Check Supabase connection'
+            }
+          }
         }
       }
     };
