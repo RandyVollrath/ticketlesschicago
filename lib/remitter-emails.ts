@@ -53,34 +53,12 @@ export async function sendRemitterDailyEmail(
     }
 
     // Get pending renewals (from renewal_charges table)
-    const { data: renewals, error: fetchError } = await supabaseAdmin
+    // First, get renewal charges
+    const { data: charges, error: fetchError } = await supabaseAdmin
       .from('renewal_charges')
-      .select(`
-        id,
-        user_id,
-        renewal_type,
-        renewal_due_date,
-        amount,
-        created_at,
-        metadata,
-        user_profiles!inner (
-          email,
-          first_name,
-          last_name,
-          license_plate,
-          license_state,
-          vin,
-          home_address_full,
-          city,
-          state,
-          zip_code,
-          has_permit_zone,
-          phone_number
-        )
-      `)
+      .select('*')
       .eq('status', 'succeeded') // User paid us
       .in('charge_type', ['sticker_renewal', 'license_plate_renewal']) // Only renewals
-      .or('metadata->>city_payment_status.eq.pending,metadata->>city_payment_status.is.null') // Not yet paid to city
       .gte('renewal_due_date', new Date().toISOString().split('T')[0]) // Only current/future
       .order('renewal_due_date', { ascending: true })
       .limit(100);
@@ -93,6 +71,36 @@ export async function sendRemitterDailyEmail(
         error: fetchError.message
       };
     }
+
+    // Filter by city payment status and get user profiles
+    const pendingCharges = (charges || []).filter(
+      (charge) => !charge.metadata?.city_payment_status || charge.metadata?.city_payment_status === 'pending'
+    );
+
+    // Get user profiles for these charges
+    const userIds = pendingCharges.map((c) => c.user_id);
+    const { data: profiles, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('*')
+      .in('user_id', userIds);
+
+    if (profileError) {
+      console.error('Error fetching user profiles:', profileError);
+      return {
+        success: false,
+        renewalCount: 0,
+        error: profileError.message
+      };
+    }
+
+    // Map profiles to charges
+    const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+    const renewals = pendingCharges
+      .map((charge) => ({
+        ...charge,
+        user_profiles: profileMap.get(charge.user_id)
+      }))
+      .filter((r) => r.user_profiles); // Only include charges with valid user profiles
 
     if (!renewals || renewals.length === 0) {
       console.log('No pending renewals to send to remitter');

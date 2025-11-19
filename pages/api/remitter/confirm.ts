@@ -27,15 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get renewal details
     const { data: renewal, error } = await supabaseAdmin
       .from('renewal_charges')
-      .select(`
-        *,
-        user_profiles!inner (
-          email,
-          first_name,
-          last_name,
-          license_plate
-        )
-      `)
+      .select('*')
       .eq('id', id)
       .single();
 
@@ -50,15 +42,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `);
     }
 
+    // Get user profile
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('email, first_name, last_name, license_plate')
+      .eq('user_id', renewal.user_id)
+      .single();
+
+    if (profileError || !userProfile) {
+      return res.status(404).send(`
+        <html>
+          <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+            <h1>❌ User Profile Not Found</h1>
+            <p>User ID: ${renewal.user_id}</p>
+          </body>
+        </html>
+      `);
+    }
+
+    // Attach user profile to renewal for template compatibility
+    const renewalWithProfile = { ...renewal, user_profiles: userProfile };
+
     // If already confirmed
-    if (renewal.metadata?.city_payment_status === 'paid') {
+    if (renewalWithProfile.metadata?.city_payment_status === 'paid') {
       return res.status(200).send(`
         <html>
           <body style="font-family: sans-serif; padding: 40px; text-align: center; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #10b981;">✅ Already Confirmed</h1>
             <p>This renewal was already marked as submitted.</p>
             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 20px;">
-              <p><strong>Confirmation #:</strong> ${renewal.metadata?.city_confirmation_number || 'N/A'}</p>
+              <p><strong>Confirmation #:</strong> ${renewalWithProfile.metadata?.city_confirmation_number || 'N/A'}</p>
               <p><strong>Confirmed:</strong> ${new Date(renewal.updated_at).toLocaleString()}</p>
             </div>
           </body>
@@ -118,13 +131,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           <body style="font-family: sans-serif; padding: 40px; text-align: center; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #10b981;">✅ Successfully Confirmed!</h1>
             <p style="font-size: 18px; color: #6b7280;">
-              ${renewal.renewal_type === 'city_sticker' ? 'City Sticker' : 'License Plate'} renewal marked as submitted.
+              ${renewalWithProfile.renewal_type === 'city_sticker' ? 'City Sticker' : 'License Plate'} renewal marked as submitted.
             </p>
             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;">
-              <p><strong>User:</strong> ${renewal.user_profiles.first_name} ${renewal.user_profiles.last_name}</p>
-              <p><strong>Plate:</strong> ${renewal.user_profiles.license_plate}</p>
+              <p><strong>User:</strong> ${renewalWithProfile.user_profiles.first_name} ${renewalWithProfile.user_profiles.last_name}</p>
+              <p><strong>Plate:</strong> ${renewalWithProfile.user_profiles.license_plate}</p>
               <p><strong>Confirmation #:</strong> ${confirmation}</p>
-              <p><strong>Expiry Updated:</strong> ${renewal.renewal_due_date} → ${nextYearDueDateStr}</p>
+              <p><strong>Expiry Updated:</strong> ${renewalWithProfile.renewal_due_date} → ${nextYearDueDateStr}</p>
             </div>
             <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
               You can close this window now.
@@ -150,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 30px; margin-top: 20px;">
             <h2 style="margin: 0 0 20px; color: #1f2937;">
-              ${renewal.renewal_type === 'city_sticker' ? '🏙️ City Sticker' : '🚗 License Plate'} Renewal
+              ${renewalWithProfile.renewal_type === 'city_sticker' ? '🏙️ City Sticker' : '🚗 License Plate'} Renewal
             </h2>
 
             <div style="background: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
