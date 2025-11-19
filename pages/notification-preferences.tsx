@@ -74,9 +74,20 @@ export default function NotificationPreferencesPage({
     quiet_hours_end: '08:00'
   };
 
-  const [prefs, setPrefs] = useState<NotificationPreferences>(
-    currentPreferences || defaultPreferences
-  );
+  // Merge current preferences with defaults to ensure all fields exist
+  const [prefs, setPrefs] = useState<NotificationPreferences>(() => {
+    if (!currentPreferences) return defaultPreferences;
+
+    // Merge with defaults to ensure all fields exist
+    return {
+      ...defaultPreferences,
+      ...currentPreferences,
+      // Ensure arrays exist
+      renewal_days_before: Array.isArray(currentPreferences.renewal_days_before)
+        ? currentPreferences.renewal_days_before
+        : defaultPreferences.renewal_days_before
+    };
+  });
 
   const handleSave = async () => {
     setSaving(true);
@@ -107,6 +118,13 @@ export default function NotificationPreferencesPage({
   };
 
   const toggleRenewalDay = (day: number) => {
+    // Defensive check
+    if (!Array.isArray(prefs.renewal_days_before)) {
+      console.error('renewal_days_before is not an array:', prefs.renewal_days_before);
+      setPrefs({ ...prefs, renewal_days_before: [day] });
+      return;
+    }
+
     const days = [...prefs.renewal_days_before];
     const index = days.indexOf(day);
 
@@ -289,7 +307,7 @@ export default function NotificationPreferencesPage({
                           key={day}
                           onClick={() => toggleRenewalDay(day)}
                           className={`px-4 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
-                            prefs.renewal_days_before.includes(day)
+                            Array.isArray(prefs.renewal_days_before) && prefs.renewal_days_before.includes(day)
                               ? 'bg-blue-600 border-blue-600 text-white'
                               : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300'
                           }`}
