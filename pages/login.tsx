@@ -16,13 +16,20 @@ export default function Login() {
   // Check if user is coming from signup
   const fromSignup = router.query.from === 'signup'
 
+  // Get redirect destination from query params or default to /settings
+  const getRedirectUrl = () => {
+    const redirect = router.query.redirect as string
+    return redirect || '/settings'
+  }
+
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        console.log('User already logged in, redirecting to settings:', user.email)
-        window.location.href = '/settings'
+        const redirectUrl = getRedirectUrl()
+        console.log('User already logged in, redirecting to:', redirectUrl, user.email)
+        window.location.href = redirectUrl
         return
       }
     }
@@ -178,8 +185,9 @@ export default function Login() {
         throw signInError
       } else {
         // Successful sign in
-        console.log('Password login successful, redirecting to settings')
-        window.location.href = '/settings'
+        const redirectUrl = getRedirectUrl()
+        console.log('Password login successful, redirecting to:', redirectUrl)
+        window.location.href = redirectUrl
       }
     } catch (error: any) {
       setMessage({
@@ -242,8 +250,9 @@ export default function Login() {
           refresh_token: result.session.refresh_token
         })
 
-        console.log('Passkey login successful, redirecting to settings')
-        window.location.href = '/settings'
+        const redirectUrl = getRedirectUrl()
+        console.log('Passkey login successful, redirecting to:', redirectUrl)
+        window.location.href = redirectUrl
       }
     } catch (error: any) {
       console.error('Passkey auth error:', error)
