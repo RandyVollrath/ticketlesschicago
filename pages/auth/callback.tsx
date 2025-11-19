@@ -383,6 +383,10 @@ export default function AuthCallback() {
           const redirectUrl = window.location.origin + redirectPath;
           console.log('Full redirect URL:', redirectUrl)
 
+          // 5 second delay to copy console logs
+          console.log('⏳ WAITING 5 SECONDS - COPY CONSOLE LOGS NOW');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+
           // Perform redirect
           console.log('🚀 REDIRECTING NOW to:', redirectUrl);
           window.location.href = redirectUrl;
