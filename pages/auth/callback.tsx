@@ -383,9 +383,17 @@ export default function AuthCallback() {
           const redirectUrl = window.location.origin + redirectPath;
           console.log('Full redirect URL:', redirectUrl)
 
-          // 5 second delay to copy console logs
-          console.log('⏳ WAITING 5 SECONDS - COPY CONSOLE LOGS NOW');
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          // CRITICAL: Wait for session cookie to be written to server
+          // The session is established client-side but needs time to sync to server
+          console.log('⏳ Waiting 2 seconds for session to sync to server...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Verify session one more time before redirect
+          const { data: finalCheck } = await supabase.auth.getSession();
+          console.log('Final session check before redirect:', {
+            hasSession: !!finalCheck.session,
+            email: finalCheck.session?.user?.email
+          });
 
           // Perform redirect
           console.log('🚀 REDIRECTING NOW to:', redirectUrl);
