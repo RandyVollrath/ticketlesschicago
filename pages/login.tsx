@@ -55,29 +55,21 @@ export default function Login() {
 
       const redirectUrl = getRedirectUrl()
 
-      // Store redirect in localStorage (works most of the time)
+      // Store redirect in localStorage
       try {
         localStorage.setItem('post_auth_redirect', redirectUrl);
+        console.log('📍 Stored redirect:', redirectUrl);
       } catch (e) {
         console.error('Failed to set localStorage:', e);
       }
 
-      // Also encode in OAuth state parameter (most reliable)
-      const stateData = {
-        redirect: redirectUrl,
-        timestamp: Date.now()
-      };
-      const stateParam = btoa(JSON.stringify(stateData));
-
       const callbackUrl = `${window.location.origin}/auth/callback`;
+      console.log('🚀 Starting OAuth to:', callbackUrl);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: callbackUrl,
-          queryParams: {
-            state: stateParam
-          }
+          redirectTo: callbackUrl
         }
       })
 
