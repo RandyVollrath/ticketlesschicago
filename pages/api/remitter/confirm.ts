@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Get renewal details
     const { data: renewal, error } = await supabaseAdmin
-      .from('renewal_payments')
+      .from('renewal_charges')
       .select(`
         *,
         user_profiles!inner (
@@ -51,14 +51,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // If already confirmed
-    if (renewal.city_payment_status === 'paid') {
+    if (renewal.metadata?.city_payment_status === 'paid') {
       return res.status(200).send(`
         <html>
           <body style="font-family: sans-serif; padding: 40px; text-align: center; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #10b981;">✅ Already Confirmed</h1>
             <p>This renewal was already marked as submitted.</p>
             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 20px;">
-              <p><strong>Confirmation #:</strong> ${renewal.city_confirmation_number || 'N/A'}</p>
+              <p><strong>Confirmation #:</strong> ${renewal.metadata?.city_confirmation_number || 'N/A'}</p>
               <p><strong>Confirmed:</strong> ${new Date(renewal.updated_at).toLocaleString()}</p>
             </div>
           </body>
@@ -68,14 +68,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // If confirmation number provided, process it
     if (confirmation) {
-      // Update status
+      // Update status in metadata
       const { error: updateError } = await supabaseAdmin
-        .from('renewal_payments')
+        .from('renewal_charges')
         .update({
-          city_payment_status: 'paid',
-          city_confirmation_number: confirmation as string,
           metadata: {
             ...renewal.metadata,
+            city_payment_status: 'paid',
+            city_confirmation_number: confirmation as string,
             remitter_confirmed_at: new Date().toISOString(),
             remitter_confirmed_via: 'email_link'
           }
@@ -94,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Auto-update user's expiry date
-      const currentDueDate = new Date(renewal.due_date);
+      const currentDueDate = new Date(renewal.renewal_due_date);
       const nextYearDueDate = new Date(currentDueDate);
       nextYearDueDate.setFullYear(nextYearDueDate.getFullYear() + 1);
       const nextYearDueDateStr = nextYearDueDate.toISOString().split('T')[0];
@@ -124,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               <p><strong>User:</strong> ${renewal.user_profiles.first_name} ${renewal.user_profiles.last_name}</p>
               <p><strong>Plate:</strong> ${renewal.user_profiles.license_plate}</p>
               <p><strong>Confirmation #:</strong> ${confirmation}</p>
-              <p><strong>Expiry Updated:</strong> ${renewal.due_date} → ${nextYearDueDateStr}</p>
+              <p><strong>Expiry Updated:</strong> ${renewal.renewal_due_date} → ${nextYearDueDateStr}</p>
             </div>
             <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
               You can close this window now.
@@ -157,7 +157,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               <p style="margin: 0 0 8px;"><strong>User:</strong> ${userProfile.first_name} ${userProfile.last_name}</p>
               <p style="margin: 0 0 8px;"><strong>Email:</strong> ${userProfile.email}</p>
               <p style="margin: 0 0 8px;"><strong>Plate:</strong> ${userProfile.license_plate}</p>
-              <p style="margin: 0;"><strong>Due Date:</strong> ${new Date(renewal.due_date).toLocaleDateString()}</p>
+              <p style="margin: 0;"><strong>Due Date:</strong> ${new Date(renewal.renewal_due_date).toLocaleDateString()}</p>
             </div>
 
             <form method="GET" style="margin-top: 30px;">

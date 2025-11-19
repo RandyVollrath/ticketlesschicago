@@ -14,9 +14,10 @@ export interface PendingRenewal {
   id: string;
   user_id: string;
   renewal_type: 'city_sticker' | 'license_plate';
-  due_date: string;
-  renewal_amount: number;
-  user: {
+  renewal_due_date: string;
+  amount: number;
+  metadata?: any;
+  user_profiles: {
     email: string;
     first_name: string | null;
     last_name: string | null;
@@ -51,17 +52,17 @@ export async function sendRemitterDailyEmail(
       };
     }
 
-    // Get pending renewals
+    // Get pending renewals (from renewal_charges table)
     const { data: renewals, error: fetchError } = await supabaseAdmin
-      .from('renewal_payments')
+      .from('renewal_charges')
       .select(`
         id,
         user_id,
         renewal_type,
-        due_date,
-        renewal_amount,
+        renewal_due_date,
+        amount,
         created_at,
-        paid_at,
+        metadata,
         user_profiles!inner (
           email,
           first_name,
@@ -77,10 +78,11 @@ export async function sendRemitterDailyEmail(
           phone_number
         )
       `)
-      .eq('payment_status', 'paid') // User paid us
-      .eq('city_payment_status', 'pending') // We haven't paid city yet
-      .gte('due_date', new Date().toISOString().split('T')[0]) // Only current/future
-      .order('due_date', { ascending: true })
+      .eq('status', 'succeeded') // User paid us
+      .in('charge_type', ['sticker_renewal', 'license_plate_renewal']) // Only renewals
+      .or('metadata->>city_payment_status.eq.pending,metadata->>city_payment_status.is.null') // Not yet paid to city
+      .gte('renewal_due_date', new Date().toISOString().split('T')[0]) // Only current/future
+      .order('renewal_due_date', { ascending: true })
       .limit(100);
 
     if (fetchError) {
@@ -227,7 +229,7 @@ function generateRemitterEmailHTML(renewals: PendingRenewal[]): string {
  * Generate HTML for a single renewal
  */
 function generateRenewalHTML(renewal: PendingRenewal, index: number, baseUrl: string): string {
-  const user = renewal.user;
+  const user = renewal.user_profiles;
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Unknown';
   const address = [user.home_address_full, user.city, user.state, user.zip_code]
     .filter(Boolean)
@@ -243,7 +245,7 @@ function generateRenewalHTML(renewal: PendingRenewal, index: number, baseUrl: st
         #${index} - ${renewal.renewal_type === 'city_sticker' ? '🏙️ City Sticker' : '🚗 License Plate'}
       </h3>
       <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
-        Due: ${new Date(renewal.due_date).toLocaleDateString()}
+        Due: ${new Date(renewal.renewal_due_date).toLocaleDateString()}
       </span>
     </div>
 
@@ -279,7 +281,7 @@ function generateRenewalHTML(renewal: PendingRenewal, index: number, baseUrl: st
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Amount:</td>
         <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">
-          $${(renewal.renewal_amount / 100).toFixed(2)}
+          $${(renewal.amount).toFixed(2)}
         </td>
       </tr>
       ${user.has_permit_zone ? `
@@ -330,7 +332,7 @@ RENEWALS
 `;
 
   renewals.forEach((renewal, index) => {
-    const user = renewal.user;
+    const user = renewal.user_profiles;
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Unknown';
     const address = [user.home_address_full, user.city, user.state, user.zip_code]
       .filter(Boolean)
@@ -338,14 +340,14 @@ RENEWALS
 
     text += `
 #${index + 1} - ${renewal.renewal_type === 'city_sticker' ? 'CITY STICKER' : 'LICENSE PLATE'}
-Due Date: ${new Date(renewal.due_date).toLocaleDateString()}
+Due Date: ${new Date(renewal.renewal_due_date).toLocaleDateString()}
 Name: ${fullName}
 Email: ${user.email}
 Phone: ${user.phone_number || 'N/A'}
 Plate: ${user.license_state || 'IL'} ${user.license_plate || 'N/A'}
 VIN: ${user.vin || 'N/A'}
 Address: ${address || 'N/A'}
-Amount: $${(renewal.renewal_amount / 100).toFixed(2)}
+Amount: $${(renewal.amount).toFixed(2)}
 ${user.has_permit_zone ? 'PERMIT ZONE: YES - Documents Required\n' : ''}
 Renewal ID: ${renewal.id}
 
