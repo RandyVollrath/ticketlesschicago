@@ -82,50 +82,59 @@ export default async function handler(
         console.error('Error marking token as used:', tokenError);
       }
     }
-    // Create or get user via Supabase Auth
-    // Note: email_confirm is set to FALSE - user must verify email via link
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      email_confirm: false, // Require email verification
-      user_metadata: {
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-      }
-    });
 
     let userId: string | null = null;
 
-    if (authError) {
-      // If user already exists, try to get them
-      console.log('Auth error, checking if user exists:', authError.message);
+    // First, check if user already exists (especially for OAuth users)
+    console.log('Checking if user already exists:', email);
+    const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
 
-      // Check if error is "user already exists"
-      if (authError.message?.includes('already') || authError.message?.includes('exists')) {
-        console.log('User already exists, finding existing user...');
-        const { data: existingUser, error: existingError } = await supabase.auth.admin.listUsers();
-
-        if (existingError) {
-          throw new Error(`Failed to list users: ${existingError.message}`);
-        }
-
-        const user = existingUser?.users.find(u => u.email === email);
-
-        if (!user) {
-          throw new Error(`User exists but could not be found: ${authError.message}`);
-        }
-
-        userId = user.id;
-        console.log('✅ Found existing user:', email, userId);
-      } else {
-        // Real error, not just "already exists"
-        console.error('❌ Critical auth error:', authError);
-        console.error('Full error object:', JSON.stringify(authError, null, 2));
-        throw new Error(`Failed to create user: ${authError.message}. Please try signing up with Google instead or contact support.`);
-      }
+    if (listError) {
+      console.error('Error listing users:', listError);
     } else {
-      userId = authData?.user?.id || null;
-      console.log('✅ Created new user:', email, userId);
+      const existingUser = existingUsers?.users.find(u => u.email === email);
+      if (existingUser) {
+        console.log('✅ User already exists (likely OAuth):', email, existingUser.id);
+        userId = existingUser.id;
+      }
+    }
+
+    // Only create user if they don't exist
+    if (!userId) {
+      console.log('Creating new user via email...');
+      // Create or get user via Supabase Auth
+      // Note: email_confirm is set to FALSE - user must verify email via link
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: false, // Require email verification
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+        }
+      });
+
+      if (authError) {
+        // If user already exists, try to get them (race condition)
+        console.log('Auth error after check, re-checking if user exists:', authError.message);
+
+        // Try to find the user again
+        const { data: recheckUsers } = await supabase.auth.admin.listUsers();
+        const user = recheckUsers?.users.find(u => u.email === email);
+
+        if (user) {
+          userId = user.id;
+          console.log('✅ Found existing user on recheck:', email, userId);
+        } else {
+          // Real error, not just "already exists"
+          console.error('❌ Critical auth error:', authError);
+          console.error('Full error object:', JSON.stringify(authError, null, 2));
+          throw new Error(`Database error creating new user: ${authError.message}`);
+        }
+      } else {
+        userId = authData?.user?.id || null;
+        console.log('✅ Created new user:', email, userId);
+      }
     }
 
     if (!userId) {
