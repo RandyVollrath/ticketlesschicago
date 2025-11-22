@@ -26,6 +26,9 @@ export default function Protection() {
   const [streetAddress, setStreetAddress] = useState('');
   const { checkAddress, hasPermitZone, zones, loading: permitLoading } = usePermitZoneCheck();
 
+  // Permit opt-in (user explicitly chooses whether to get permit)
+  const [permitRequested, setPermitRequested] = useState(false);
+
   // Consent checkbox
   const [consentGiven, setConsentGiven] = useState(false);
 
@@ -150,6 +153,7 @@ export default function Protection() {
       streetAddress: streetAddress || undefined,
       hasPermitZone: hasPermitZone,
       permitZones: hasPermitZone ? zones : undefined,
+      permitRequested: permitRequested, // User's explicit choice
       vehicleType: vehicleType,
       renewals: {
         citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
@@ -749,7 +753,52 @@ export default function Protection() {
                   )}
                 </div>
 
-                {hasPermitZone && <PermitZoneWarning zones={zones} />}
+                {hasPermitZone && (
+                  <>
+                    <PermitZoneWarning zones={zones} />
+
+                    {/* Permit Opt-In Toggle */}
+                    <div style={{
+                      marginTop: '16px',
+                      padding: '16px',
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      border: '2px solid #fbbf24'
+                    }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        lineHeight: '1.6',
+                        color: '#374151'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={permitRequested}
+                          onChange={(e) => setPermitRequested(e.target.checked)}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            marginTop: '2px',
+                            accentColor: '#0052cc',
+                            cursor: 'pointer',
+                            flexShrink: 0
+                          }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                            Yes, I need a residential parking permit ($30)
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                            We'll process your permit application and charge your card $30 when it's time to renew. You'll need to upload your driver's license and proof of residency after checkout.
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Renewal Information */}
@@ -1028,16 +1077,17 @@ export default function Protection() {
                     <span style={{ fontSize: '13px', color: '#9ca3af' }}>${hasVanityPlate ? '164' : '155'}</span>
                   </div>
                 )}
-                {/* Permit zone fee also charged later if needed */}
-                {hasPermitZone && (
+                {/* Permit zone fee - only show if user opted in */}
+                {hasPermitZone && permitRequested && (
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     marginBottom: '12px',
                     fontSize: '15px',
-                    color: '#374151'
+                    color: '#374151',
+                    fontWeight: '600'
                   }}>
-                    <span>Residential parking permit <em style={{ fontSize: '13px', color: '#9ca3af' }}>(charged later if needed)</em></span>
+                    <span>Residential parking permit <em style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 'normal' }}>(charged at renewal)</em></span>
                     <span style={{ fontSize: '13px', color: '#9ca3af' }}>$30</span>
                   </div>
                 )}

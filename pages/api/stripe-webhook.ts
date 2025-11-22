@@ -155,14 +155,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             break;
           }
 
-          // Extract name and address from Stripe customer_details
+          // Extract name, phone, and address from Stripe customer_details
           const customerName = session.customer_details?.name;
           const firstName = customerName?.split(' ')[0] || null;
           const lastName = customerName?.split(' ').slice(1).join(' ') || null;
           const zipCode = session.customer_details?.address?.postal_code || null;
           const billingAddress = session.customer_details?.address?.line1 || null;
+          const stripePhone = session.customer_details?.phone || null;
 
-          console.log('📋 Extracted from Stripe:', { firstName, lastName, zipCode, billingAddress });
+          console.log('📋 Extracted from Stripe:', { firstName, lastName, zipCode, billingAddress, stripePhone });
 
           let userId = metadata.userId;
 
@@ -199,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .upsert({
                   id: userId,
                   email: email,
-                  phone: metadata.phone || null,
+                  phone: metadata.phone || stripePhone || null,
                   first_name: firstName,
                   last_name: lastName,
                   zip_code: zipCode,
@@ -226,7 +227,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   email: email,
                   first_name: firstName,
                   last_name: lastName,
-                  phone_number: metadata.phone || null,
+                  phone_number: metadata.phone || stripePhone || null,
                   zip_code: zipCode,
                   vehicle_type: metadata.vehicleType || 'P',
                   has_protection: true,
@@ -237,6 +238,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   mailing_zip: zipCode,
                   street_address: metadata.streetAddress || billingAddress,
                   home_address_full: metadata.streetAddress || billingAddress,
+                  has_permit_zone: metadata.hasPermitZone === 'true',
+                  permit_requested: metadata.permitRequested === 'true',
+                  permit_zones: metadata.permitZones ? JSON.parse(metadata.permitZones) : null,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 });
@@ -371,8 +375,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updateData.mailing_zip = zipCode;
           }
 
-          if (metadata.phone) {
-            updateData.phone_number = metadata.phone;
+          // Phone from metadata (Protection form) OR Stripe customer details
+          if (metadata.phone || stripePhone) {
+            updateData.phone_number = metadata.phone || stripePhone;
           }
           if (metadata.vehicleType) {
             updateData.vehicle_type = metadata.vehicleType;
@@ -382,6 +387,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           if (metadata.licensePlate) {
             updateData.license_plate_expiry = metadata.licensePlate;
+          }
+
+          // Save permit zone data
+          if (metadata.hasPermitZone === 'true') {
+            updateData.has_permit_zone = true;
+            updateData.permit_requested = metadata.permitRequested === 'true';
+            if (metadata.permitZones) {
+              updateData.permit_zones = JSON.parse(metadata.permitZones);
+            }
           }
 
           // Save street address as both mailing and street cleaning address (prefer metadata, fallback to billing)
