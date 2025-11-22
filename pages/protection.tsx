@@ -26,7 +26,7 @@ export default function Protection() {
   const [streetAddress, setStreetAddress] = useState('');
   const { checkAddress, hasPermitZone, zones, loading: permitLoading } = usePermitZoneCheck();
 
-  // Permit opt-in (user explicitly chooses whether to get permit)
+  // Permit opt-out (checked by default if in permit zone, user can uncheck)
   const [permitRequested, setPermitRequested] = useState(false);
 
   // Consent checkbox
@@ -79,6 +79,15 @@ export default function Protection() {
 
     return () => clearTimeout(debounceTimer);
   }, [streetAddress, checkAddress]);
+
+  // Auto-check permit box when permit zone is detected (opt-out model)
+  useEffect(() => {
+    if (hasPermitZone) {
+      setPermitRequested(true);
+    } else {
+      setPermitRequested(false);
+    }
+  }, [hasPermitZone]);
 
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -757,13 +766,13 @@ export default function Protection() {
                   <>
                     <PermitZoneWarning zones={zones} />
 
-                    {/* Permit Opt-In Toggle */}
+                    {/* Permit Opt-Out Toggle */}
                     <div style={{
                       marginTop: '16px',
                       padding: '16px',
-                      backgroundColor: 'white',
+                      backgroundColor: permitRequested ? '#eff6ff' : '#fef3f2',
                       borderRadius: '8px',
-                      border: '2px solid #fbbf24'
+                      border: permitRequested ? '2px solid #3b82f6' : '2px solid #fbbf24'
                     }}>
                       <label style={{
                         display: 'flex',
@@ -788,11 +797,14 @@ export default function Protection() {
                           }}
                         />
                         <div>
-                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                            Yes, I need a residential parking permit ($30)
+                          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1a1a1a' }}>
+                            {permitRequested ? '✅ Include residential parking permit ($30)' : '⚠️ I don\'t need a permit (uncheck to decline)'}
                           </div>
                           <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                            We'll process your permit application and charge your card $30 when it's time to renew. You'll need to upload your driver's license and proof of residency after checkout.
+                            {permitRequested
+                              ? "We'll process your permit and charge $30 at renewal. You'll upload your driver's license and proof of residency after checkout."
+                              : "Warning: Without a permit, you may receive parking tickets even when following street cleaning rules. Only uncheck if you already have a permit or don't park in this zone."
+                            }
                           </div>
                         </div>
                       </label>

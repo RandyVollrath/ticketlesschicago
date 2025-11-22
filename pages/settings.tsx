@@ -1241,19 +1241,53 @@ export default function ProfileNew() {
             </Accordion>
           )}
 
-          {/* 6. Proof of Residency - Email Forwarding (Permit Zone Users Only) */}
-          {profile.has_permit_zone && profile.has_protection && (
+          {/* 5.5 Residential Parking Permit - Email Forwarding (Permit Requested Users Only) */}
+          {profile.permit_requested && (
             <Accordion
-              title="Proof of Residency - Email Forwarding"
-              icon="📧"
-              badge={!profile.residency_proof_path ? 'Setup recommended' : 'Active'}
-              badgeColor={!profile.residency_proof_path ? 'yellow' : 'green'}
+              title="Residential Parking Permit - Proof of Residency"
+              icon="🅿️"
+              badge={!profile.residency_proof_path ? 'Setup Required' : 'Active'}
+              badgeColor={!profile.residency_proof_path ? 'red' : 'green'}
               defaultOpen={!profile.residency_proof_path}
             >
               <div style={{ marginBottom: '20px' }}>
+                {profile.permit_zone_number && (
+                  <div style={{
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <p style={{ fontSize: '13px', fontWeight: '600', color: '#1e40af', margin: '0 0 4px 0' }}>
+                      📍 Your Permit Zone: {profile.permit_zone_number}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0 }}>
+                      Address: {profile.home_address_full || profile.street_address}
+                    </p>
+                  </div>
+                )}
+
+                <div style={{
+                  backgroundColor: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '16px'
+                }}>
+                  <p style={{ fontSize: '13px', fontWeight: '600', color: '#92400e', margin: '0 0 8px 0' }}>
+                    ⚠️ Important: Proof of Residency Must Be Fresh
+                  </p>
+                  <p style={{ fontSize: '13px', color: '#78350f', margin: 0, lineHeight: '1.5' }}>
+                    Chicago requires proof of residency dated within <strong>30 days</strong> of your permit renewal.
+                    Instead of manually uploading bills each year, set up automatic email forwarding below so we always
+                    have your most recent utility bill ready for your permit application.
+                  </p>
+                </div>
+
                 <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0', lineHeight: '1.6' }}>
-                  Skip manually uploading utility bills every year. Set up automatic email forwarding from your utility provider
-                  and we'll always have your most recent proof of residency for city sticker renewals.
+                  Set up automatic email forwarding from your utility provider (ComEd, Peoples Gas, Xfinity, etc.)
+                  and we'll always have a fresh proof of residency document within the last 30 days for your parking permit.
                 </p>
 
                 {profile.residency_proof_path && profile.residency_proof_uploaded_at && (

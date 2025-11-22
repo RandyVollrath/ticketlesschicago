@@ -325,6 +325,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             <strong>Important:</strong> Your $200/year ticket guarantee requires a complete and accurate profile. Please verify all your information within 24 hours.
                           </p>
 
+                          ${metadata.permitRequested === 'true' ? `
+                          <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-top: 16px;">
+                            <p style="color: #92400e; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
+                              🅿️ Parking Permit Setup Required
+                            </p>
+                            <p style="color: #78350f; font-size: 13px; margin: 0; line-height: 1.5;">
+                              You requested a residential parking permit. Please set up automatic email forwarding in your settings
+                              so we always have fresh proof of residency (required within 30 days of permit renewal).
+                            </p>
+                          </div>
+                          ` : ''}
+
                           <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
 
                           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
