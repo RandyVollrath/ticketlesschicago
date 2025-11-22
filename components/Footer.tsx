@@ -20,34 +20,6 @@ export default function Footer({ hideDonation = false }: FooterProps) {
           margin: '0 auto',
           textAlign: 'center'
         }}>
-          {/* Donation Section */}
-          {!hideDonation && (
-            <div style={{
-              marginBottom: '40px',
-              paddingBottom: '40px',
-              borderBottom: '1px solid #e5e7eb'
-            }}>
-              <p style={{
-                fontSize: '15px',
-                color: '#666',
-                marginBottom: '16px',
-                margin: '0 0 16px 0',
-                lineHeight: '1.5'
-              }}>
-                💙 Your support helps keep the alerts free for Chicago drivers
-              </p>
-              <div dangerouslySetInnerHTML={{
-                __html: `
-                  <stripe-buy-button
-                    buy-button-id="buy_btn_1SNLupPSdzV8LIExfgCtQqHx"
-                    publishable-key="pk_live_51SHvt6PSdzV8LIEx8Zuj7dyiFzP7gqiIomXkOCbpKZ9rgXz49cWRUDRZb4zAvAQdVJXjop1MdtI2DF6ir0pa5ZIN00AKpUqIBH"
-                  >
-                  </stripe-buy-button>
-                `
-              }} />
-            </div>
-          )}
-
           <p style={{
             fontSize: '14px',
             color: '#999',
