@@ -217,12 +217,16 @@ export default function AuthCallback() {
               console.log('Creating free account with email:', user.email);
 
               // Create the free account with the form data
+              // Pass the authenticated user ID to skip auth user creation
               const response = await fetch('/api/alerts/create', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                  ...formData,
+                  authenticatedUserId: user.id // Pass the OAuth user ID
+                })
               });
 
               const result = await response.json();
