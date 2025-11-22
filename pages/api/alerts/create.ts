@@ -172,15 +172,35 @@ export default async function handler(
     }
 
     // Verify the users record was created before continuing
+    console.log('[Verify] Checking if users record exists for:', userId);
+
     const { data: usersCheck, error: checkError } = await supabase
       .from('users')
-      .select('id')
+      .select('*')
       .eq('id', userId)
       .single();
 
+    console.log('[Verify] Check result:', {
+      found: !!usersCheck,
+      error: checkError,
+      record: usersCheck
+    });
+
     if (checkError || !usersCheck) {
-      console.error('❌ Users record verification failed:', checkError);
-      throw new Error('Users record was not created successfully. Cannot proceed with vehicle creation.');
+      console.error('❌ Users record verification failed');
+      console.error('Error details:', JSON.stringify(checkError, null, 2));
+      console.error('User ID being checked:', userId);
+
+      // Try to list all users to see if any exist
+      const { data: allUsers, error: listError } = await supabase
+        .from('users')
+        .select('id, email')
+        .limit(5);
+
+      console.error('Sample of users table:', allUsers);
+      console.error('List error:', listError);
+
+      throw new Error(`Users record verification failed: ${checkError?.message || 'Record not found'}. Check server logs for details.`);
     }
 
     console.log('✅ Users record verified in database');
