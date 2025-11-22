@@ -174,20 +174,22 @@ export default async function handler(
     // Verify the users record was created before continuing
     console.log('[Verify] Checking if users record exists for:', userId);
 
-    const { data: usersCheck, error: checkError } = await supabase
+    const { data: usersCheckArray, error: checkError } = await supabase
       .from('users')
       .select('*')
-      .eq('id', userId)
-      .single();
+      .eq('id', userId);
+
+    const usersCheck = usersCheckArray?.[0];
 
     console.log('[Verify] Check result:', {
       found: !!usersCheck,
+      count: usersCheckArray?.length || 0,
       error: checkError,
       record: usersCheck
     });
 
-    if (checkError || !usersCheck) {
-      console.error('❌ Users record verification failed');
+    if (checkError) {
+      console.error('❌ Users record verification query failed');
       console.error('Error details:', JSON.stringify(checkError, null, 2));
       console.error('User ID being checked:', userId);
 
@@ -200,7 +202,28 @@ export default async function handler(
       console.error('Sample of users table:', allUsers);
       console.error('List error:', listError);
 
-      throw new Error(`Users record verification failed: ${checkError?.message || 'Record not found'}. Check server logs for details.`);
+      throw new Error(`Users record verification query failed: ${checkError.message}. Check server logs for details.`);
+    }
+
+    if (!usersCheck) {
+      console.error('❌ Users record not found after creation');
+      console.error('User ID being checked:', userId);
+
+      // Check if users table exists and has any records
+      const { data: tableCheck, error: tableError } = await supabase
+        .from('users')
+        .select('id, email')
+        .limit(5);
+
+      console.error('Users table sample (first 5):', tableCheck);
+      console.error('Table check error:', tableError);
+
+      // Maybe the table just doesn't exist?
+      if (tableError?.message?.includes('does not exist')) {
+        throw new Error('Users table does not exist! Check database schema.');
+      }
+
+      throw new Error('Users record was not created. The insert may have silently failed. Check server logs for upsert errors.');
     }
 
     console.log('✅ Users record verified in database');
