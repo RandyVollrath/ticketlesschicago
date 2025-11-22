@@ -53,7 +53,8 @@ export default async function handler(
       throw new Error(`Stripe price ID not configured for ${stripeConfig.mode} mode`);
     }
 
-    // Build line items array starting with subscription
+    // Build line items array - ONLY the subscription
+    // Renewal fees are charged separately 30 days before due date via cron job
     const lineItems: any[] = [
       {
         price: priceId,
@@ -61,56 +62,15 @@ export default async function handler(
       },
     ];
 
-    // Add renewal fees using permanent Stripe products (excluded from Rewardful via product metadata)
-    if (renewals?.citySticker) {
-      // Select price ID based on vehicle type
-      const vehicleTypeFromRenewals = renewals.citySticker.vehicleType || vehicleType || 'P'; // Default to Passenger
-      const priceIdMap: Record<string, string | undefined> = {
-        MB: stripeConfig.cityStickerMbPriceId,
-        P: stripeConfig.cityStickerPPriceId,
-        LP: stripeConfig.cityStickerLpPriceId,
-        ST: stripeConfig.cityStickerStPriceId,
-        LT: stripeConfig.cityStickerLtPriceId
-      };
-
-      const selectedPriceId = priceIdMap[vehicleTypeFromRenewals];
-
-      if (selectedPriceId) {
-        lineItems.push({
-          price: selectedPriceId,
-          quantity: 1,
-        });
-      } else {
-        console.warn(`No price ID configured for vehicle type: ${vehicleTypeFromRenewals} in ${stripeConfig.mode} mode`);
-      }
-    }
-
-    if (renewals?.licensePlate) {
-      // Check if it's a vanity plate (costs $164 instead of $155)
-      const isVanity = renewals.licensePlate.isVanity === true;
-      const priceId = isVanity
-        ? stripeConfig.licensePlateVanityPriceId
-        : stripeConfig.licensePlatePriceId;
-
-      if (priceId) {
-        lineItems.push({
-          price: priceId,
-          quantity: 1,
-        });
-      }
-    }
-
-    // Add permit fee if in a permit zone
-    if (hasPermitZone && stripeConfig.permitFeePriceId) {
-      lineItems.push({
-        price: stripeConfig.permitFeePriceId,
-        quantity: 1,
-      });
-    }
-
-    // NOTE: We do NOT charge remitter fee upfront
-    // Remitter gets paid when they perform the renewal service (30 days before expiration)
-    // Subscription ($12/mo or $99/year) goes entirely to platform for protection service
+    // NOTE: We do NOT charge renewal fees upfront at signup!
+    // - City sticker renewal fees are charged 30 days before expiration
+    // - License plate renewal fees are charged 30 days before expiration
+    // - Permit fees are charged when user submits permit zone documents
+    // - These are all one-time charges handled by /api/cron/process-all-renewals
+    //
+    // Initial checkout = ONLY the $12/month (or $99/year) subscription
+    // User gets protection service immediately
+    // Renewal charges happen automatically before due dates
 
     // Create Stripe Checkout session with mixed line items
     const session = await stripe.checkout.sessions.create({
