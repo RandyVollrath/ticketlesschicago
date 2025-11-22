@@ -15,7 +15,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType } = req.body;
+  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType, permitRequested } = req.body;
 
   console.log('Protection checkout request:', {
     billingPlan,
@@ -24,6 +24,7 @@ export default async function handler(
     rewardfulReferral,
     hasRenewals: !!renewals,
     hasPermitZone,
+    permitRequested,
     streetAddress,
     vehicleType
   });
@@ -93,6 +94,7 @@ export default async function handler(
         isVanityPlate: renewals?.licensePlate?.isVanity ? 'true' : 'false',
         streetAddress: streetAddress || '',
         hasPermitZone: hasPermitZone ? 'true' : 'false',
+        permitRequested: permitRequested ? 'true' : 'false',
         permitZones: hasPermitZone && permitZones ? JSON.stringify(permitZones) : '',
         rewardful_referral_id: rewardfulReferral || ''
       }

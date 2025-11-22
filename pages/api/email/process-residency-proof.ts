@@ -202,7 +202,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       message: 'Utility bill processed successfully. Old bills deleted, keeping most recent only.',
       userId: profile.user_id,
-      fileName,
+      fileName: pdfFile?.originalFilename || 'bill.pdf',
       deletedOldBills: filesToDelete?.length || 0,
       storedAt: filePath,
     });
