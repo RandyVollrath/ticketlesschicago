@@ -363,8 +363,13 @@ export default function AuthCallback() {
           window.location.href = redirectUrl;
         } else {
           // No session found
-          console.error('❌ NO SESSION - redirecting to home');
-          router.push('/')
+          console.error('❌ NO SESSION FOUND AFTER AUTH');
+          console.error('URL hash:', window.location.hash);
+          console.error('URL search:', window.location.search);
+          console.error('Full URL:', window.location.href);
+
+          // Show user-friendly error
+          router.push('/login?error=' + encodeURIComponent('Authentication failed. Please try again. If this persists, try using the magic link option instead.'))
         }
       } catch (error) {
         console.error('Auth callback error:', error)
