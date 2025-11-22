@@ -142,7 +142,9 @@ export default async function handler(
     const normalizedPhone = normalizePhoneNumber(phone);
 
     // Create users table record first (required for foreign key)
-    const { error: usersError } = await supabase
+    console.log('[Users Create] Creating users table record for:', userId);
+
+    const { data: usersResult, error: usersError } = await supabase
       .from('users')
       .upsert({
         id: userId,
@@ -150,20 +152,38 @@ export default async function handler(
         phone: normalizedPhone,
         first_name: firstName,
         last_name: lastName,
-        email_verified: false, // Mark as unverified initially
+        email_verified: authenticatedUserId ? true : false, // OAuth users are pre-verified
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'id'
-      });
+      })
+      .select();
 
     if (usersError) {
-      console.error('Users table error:', usersError);
+      console.error('❌ Users table error:', usersError);
+      console.error('Full error:', JSON.stringify(usersError, null, 2));
       // Don't fail on duplicate, just log it
       if (!usersError.message.includes('duplicate')) {
         throw new Error(`Failed to create users record: ${usersError.message}`);
       }
+    } else {
+      console.log('✅ Users table record created:', usersResult);
     }
+
+    // Verify the users record was created before continuing
+    const { data: usersCheck, error: checkError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (checkError || !usersCheck) {
+      console.error('❌ Users record verification failed:', checkError);
+      throw new Error('Users record was not created successfully. Cannot proceed with vehicle creation.');
+    }
+
+    console.log('✅ Users record verified in database');
 
     // Map city to timezone
     const cityTimezoneMap: { [key: string]: { timezone: string; mailingCity: string; mailingState: string } } = {
