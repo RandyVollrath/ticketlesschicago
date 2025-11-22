@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabase'
 
@@ -6,14 +6,20 @@ import { supabase } from '../../lib/supabase'
 
 export default function AuthCallback() {
   const router = useRouter()
+  const [debugInfo, setDebugInfo] = React.useState<string>('')
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        setDebugInfo('🔄 Starting OAuth callback...')
 
         // Parse URL parameters
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const searchParams = new URLSearchParams(window.location.search);
+
+        console.log('📍 Callback URL:', window.location.href);
+        console.log('🔗 Hash params:', Array.from(hashParams.entries()));
+        console.log('🔗 Search params:', Array.from(searchParams.entries()));
 
         // Check for auth errors
         const errorParam = hashParams.get('error') || searchParams.get('error');
@@ -21,6 +27,8 @@ export default function AuthCallback() {
 
         if (errorParam) {
           console.error('Auth error:', errorParam, errorDescription);
+          setDebugInfo(`❌ Auth error: ${errorDescription || errorParam}`)
+          await new Promise(r => setTimeout(r, 2000))
           router.push(`/login?error=${encodeURIComponent(errorDescription || errorParam)}`);
           return;
         }
@@ -85,6 +93,8 @@ export default function AuthCallback() {
           error: error
         });
 
+        setDebugInfo(`🔍 Session check: ${data.session ? '✅ Found' : '❌ Not found'}`);
+
         if (error) {
           console.error('Error during auth callback:', error)
           router.push('/?error=auth_failed')
@@ -117,11 +127,14 @@ export default function AuthCallback() {
           if (!userProfile) {
             // New user signed in with OAuth but hasn't completed signup
             console.log('🆕 New OAuth user detected - redirecting to free alerts signup');
+            setDebugInfo(`🆕 New user! Redirecting to signup...`);
+            await new Promise(r => setTimeout(r, 1000));
             router.push('/alerts/signup?flow=oauth&email=' + encodeURIComponent(user.email || ''));
             return;
           }
 
           console.log('✅ Existing user profile found');
+          setDebugInfo(`✅ Welcome back! Redirecting to app...`);
 
           // Handle email verification callback
           const isVerified = new URLSearchParams(window.location.search).get('verified') === 'true';
@@ -402,10 +415,15 @@ export default function AuthCallback() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+      <div className="bg-white rounded-lg shadow-md p-8 text-center max-w-md">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Completing sign up...</h2>
-        <p className="text-gray-600">Please wait while we verify your account.</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Completing sign in...</h2>
+        <p className="text-gray-600 mb-4">Please wait while we verify your account.</p>
+        {debugInfo && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-left">
+            <p className="font-mono text-xs">{debugInfo}</p>
+          </div>
+        )}
       </div>
     </div>
   )
