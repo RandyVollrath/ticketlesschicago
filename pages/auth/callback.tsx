@@ -107,6 +107,22 @@ export default function AuthCallback() {
           // User is authenticated
           const user = recheckData.session.user
 
+          // Check if this user has a profile (existing user vs new OAuth user)
+          const { data: userProfile } = await supabase
+            .from('user_profiles')
+            .select('email, has_protection')
+            .eq('user_id', user.id)
+            .single();
+
+          if (!userProfile) {
+            // New user signed in with OAuth but hasn't completed signup
+            console.log('🆕 New OAuth user detected - redirecting to free alerts signup');
+            router.push('/alerts/signup?flow=oauth&email=' + encodeURIComponent(user.email || ''));
+            return;
+          }
+
+          console.log('✅ Existing user profile found');
+
           // Handle email verification callback
           const isVerified = new URLSearchParams(window.location.search).get('verified') === 'true';
           if (isVerified && user.email_confirmed_at) {
