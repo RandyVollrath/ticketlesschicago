@@ -1,9 +1,9 @@
 /**
  * Cron Job: Clean up residency proof documents
  *
- * Simple deletion policy: Delete utility bills older than 31 days.
- * User forwards all bills monthly, we keep only recent ones.
- * 31 days ensures we always have a bill (even if forwarding delayed a day).
+ * Simple deletion policy: Delete utility bills older than 60 days.
+ * User forwards all bills monthly, we keep 2 months for safety.
+ * 60 days ensures we always have backup bills in case of issues.
  * Don't wait for remitter confirmation - just delete old bills.
  *
  * Schedule: Daily at 2 AM CT
@@ -27,22 +27,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let deletedCount = 0;
     const errors: any[] = [];
 
-    // Simple: Delete bills older than 31 days
-    const thirtyOneDaysAgo = new Date();
-    thirtyOneDaysAgo.setDate(thirtyOneDaysAgo.getDate() - 31);
+    // Simple: Delete bills older than 60 days
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
     const { data: oldBills, error: queryError } = await supabase
       .from('user_profiles')
       .select('user_id, residency_proof_path, residency_proof_uploaded_at')
       .not('residency_proof_path', 'is', null)
-      .lt('residency_proof_uploaded_at', thirtyOneDaysAgo.toISOString());
+      .lt('residency_proof_uploaded_at', sixtyDaysAgo.toISOString());
 
     if (queryError) {
       console.error('Error fetching old bills:', queryError);
       throw queryError;
     }
 
-    console.log(`Found ${oldBills?.length || 0} bills older than 31 days`);
+    console.log(`Found ${oldBills?.length || 0} bills older than 60 days`);
 
     for (const profile of oldBills || []) {
       try {
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        console.log(`✓ Deleted 31+ day old bill for user ${profile.user_id}`);
+        console.log(`✓ Deleted 60+ day old bill for user ${profile.user_id}`);
         deletedCount++;
       } catch (error: any) {
         console.error(`Error processing user ${profile.user_id}:`, error);
@@ -94,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
-      message: `Cleaned up ${deletedCount} residency proofs (31+ days old)`,
+      message: `Cleaned up ${deletedCount} residency proofs (60+ days old)`,
       deletedCount,
       errors: errors.length > 0 ? errors : undefined,
     });

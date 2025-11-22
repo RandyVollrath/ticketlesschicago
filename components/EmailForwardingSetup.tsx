@@ -210,7 +210,7 @@ export default function EmailForwardingSetup({ forwardingEmail }: EmailForwardin
           <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">
             <li>Your bills forward automatically every month</li>
             <li>We always have your most recent proof of residency</li>
-            <li>Old bills are automatically deleted after 30 days</li>
+            <li>Old bills are automatically deleted after 60 days (we keep 2 months for safety)</li>
             <li>You never have to manually upload bills again</li>
             <li>Your city sticker renewals happen automatically with up-to-date documents</li>
           </ul>
