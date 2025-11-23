@@ -1162,7 +1162,7 @@ export default function Protection() {
                         • Autopilot service fee: <strong>$2.50</strong>
                       </div>
                       <div style={{ marginBottom: '8px' }}>
-                        • Payment processing fee: <strong>~${(((vehicleTypeInfo[vehicleType].price + (hasPermitZone && permitRequested ? 30 : 0) + 2.50) * 0.029 + 0.30).toFixed(2)}</strong>
+                        • Payment processing fee: <strong>~${((vehicleTypeInfo[vehicleType].price + (hasPermitZone && permitRequested ? 30 : 0) + 2.50) * 0.029 + 0.30).toFixed(2)}</strong>
                       </div>
                       <div style={{
                         paddingTop: '8px',
@@ -1170,7 +1170,7 @@ export default function Protection() {
                         fontWeight: '600',
                         color: '#1e40af'
                       }}>
-                        Total renewal charge: <strong>${(((vehicleTypeInfo[vehicleType].price + (hasPermitZone && permitRequested ? 30 : 0) + 2.50 + 0.30) / 0.971).toFixed(2)}</strong>
+                        Total renewal charge: <strong>${((vehicleTypeInfo[vehicleType].price + (hasPermitZone && permitRequested ? 30 : 0) + 2.50 + 0.30) / 0.971).toFixed(2)}</strong>
                       </div>
                     </div>
                   </div>
