@@ -1036,6 +1036,29 @@ export default function Protection() {
                   </div>
                 )}
                 <div style={{
+                  backgroundColor: '#f0f9ff',
+                  border: '2px solid #0052cc',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '16px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '15px',
+                    color: '#1e40af',
+                    fontWeight: '700',
+                    marginBottom: '4px'
+                  }}>
+                    Due today: ${billingPlan === 'monthly' ? '12' : '99'}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#60a5fa'
+                  }}>
+                    Renewal fees billed only when due (30 days before expiration)
+                  </div>
+                </div>
+                <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   marginBottom: '8px',
@@ -1073,7 +1096,7 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>City sticker renewal - {vehicleTypeInfo[vehicleType].label} <em style={{ fontSize: '13px', color: '#9ca3af' }}>(charged later)</em></span>
+                    <span>City sticker renewal - {vehicleTypeInfo[vehicleType].label} <em style={{ fontSize: '13px', color: '#9ca3af' }}>(city fee, billed later)</em></span>
                     <span style={{ fontSize: '13px', color: '#9ca3af' }}>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</span>
                   </div>
                 )}
@@ -1085,7 +1108,7 @@ export default function Protection() {
                     fontSize: '15px',
                     color: '#374151'
                   }}>
-                    <span>License plate renewal {hasVanityPlate && '(vanity)'} <em style={{ fontSize: '13px', color: '#9ca3af' }}>(charged later)</em></span>
+                    <span>License plate renewal {hasVanityPlate && '(vanity)'} <em style={{ fontSize: '13px', color: '#9ca3af' }}>(state fee, billed later)</em></span>
                     <span style={{ fontSize: '13px', color: '#9ca3af' }}>${hasVanityPlate ? '164' : '155'}</span>
                   </div>
                 )}
@@ -1099,7 +1122,7 @@ export default function Protection() {
                     color: '#374151',
                     fontWeight: '600'
                   }}>
-                    <span>Residential parking permit <em style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 'normal' }}>(charged at renewal)</em></span>
+                    <span>Residential parking permit <em style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 'normal' }}>(city fee, billed at renewal)</em></span>
                     <span style={{ fontSize: '13px', color: '#9ca3af' }}>$30</span>
                   </div>
                 )}
@@ -1120,7 +1143,7 @@ export default function Protection() {
                       color: '#1e40af',
                       marginBottom: '8px'
                     }}>
-                      💡 At renewal time (30 days before expiration):
+                      💡 Renewal charges (billed 30 days before expiration):
                     </div>
                     <div style={{
                       fontSize: '13px',
@@ -1128,13 +1151,18 @@ export default function Protection() {
                       lineHeight: '1.6'
                     }}>
                       <div style={{ marginBottom: '4px' }}>
-                        • City sticker ({vehicleTypeInfo[vehicleType].label}): <strong>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</strong>
+                        • City sticker - {vehicleTypeInfo[vehicleType].label} <em style={{ fontSize: '12px', color: '#9ca3af' }}>(city fee)</em>: <strong>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</strong>
                       </div>
+                      {hasPermitZone && permitRequested && (
+                        <div style={{ marginBottom: '4px' }}>
+                          • Residential parking permit <em style={{ fontSize: '12px', color: '#9ca3af' }}>(city fee)</em>: <strong>$30.00</strong>
+                        </div>
+                      )}
                       <div style={{ marginBottom: '4px' }}>
-                        • Platform service fee: <strong>$2.50</strong>
+                        • Autopilot service fee: <strong>$2.50</strong>
                       </div>
                       <div style={{ marginBottom: '8px' }}>
-                        • Payment processing fee: <strong>~${((vehicleTypeInfo[vehicleType].price + 2.50) * 0.029 + 0.30).toFixed(2)}</strong>
+                        • Payment processing fee: <strong>~${(((vehicleTypeInfo[vehicleType].price + (hasPermitZone && permitRequested ? 30 : 0) + 2.50) * 0.029 + 0.30).toFixed(2)}</strong>
                       </div>
                       <div style={{
                         paddingTop: '8px',
@@ -1142,7 +1170,7 @@ export default function Protection() {
                         fontWeight: '600',
                         color: '#1e40af'
                       }}>
-                        Total renewal charge: <strong>${((vehicleTypeInfo[vehicleType].price + 2.50 + 0.30) / 0.971).toFixed(2)}</strong>
+                        Total renewal charge: <strong>${(((vehicleTypeInfo[vehicleType].price + (hasPermitZone && permitRequested ? 30 : 0) + 2.50 + 0.30) / 0.971).toFixed(2)}</strong>
                       </div>
                     </div>
                   </div>
