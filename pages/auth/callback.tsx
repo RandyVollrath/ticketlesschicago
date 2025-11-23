@@ -333,7 +333,15 @@ export default function AuthCallback() {
           // Determine redirect destination
           let redirectPath = '/settings'; // default
 
-          // Check localStorage for redirect
+          // Check for protection query param (from Protection signup)
+          const searchParams = new URLSearchParams(window.location.search);
+          const isProtectionSignup = searchParams.get('protection') === 'true';
+          if (isProtectionSignup) {
+            redirectPath = '/settings?protection=true';
+            console.log('🛡️ Protection signup detected - will poll for webhook completion');
+          }
+
+          // Check localStorage for redirect (overrides protection param)
           try {
             const localStorageRedirect = localStorage.getItem('post_auth_redirect');
             console.log('📦 localStorage redirect:', localStorageRedirect);

@@ -9,6 +9,7 @@ import { PermitZoneWarning } from '../components/PermitZoneWarning';
 export default function Protection() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [billingPlan, setBillingPlan] = useState<'monthly' | 'annual'>('monthly');
@@ -64,10 +65,29 @@ export default function Protection() {
             setStreetAddress(existingAddress);
           }
         }
+
+        // Check if returning from Google OAuth
+        const flow = router.query.flow as string;
+        if (flow === 'protection-google') {
+          console.log('Returning from Google OAuth, proceeding to checkout...');
+
+          // Retrieve stored form data
+          const storedData = sessionStorage.getItem('pendingProtectionCheckout');
+          if (storedData) {
+            const formData = JSON.parse(storedData);
+            console.log('Found pending checkout data, proceeding to Stripe...');
+
+            // Proceed directly to checkout with Google user ID
+            proceedToCheckout(formData, user.id);
+
+            // Clean up
+            sessionStorage.removeItem('pendingProtectionCheckout');
+          }
+        }
       }
     };
     checkUser();
-  }, []);
+  }, [router.query.flow]);
 
   // Auto-check permit zone when address changes
   useEffect(() => {
@@ -119,6 +139,38 @@ export default function Protection() {
     }
   };
 
+  // Shared checkout logic
+  const proceedToCheckout = async (checkoutData: any, userId?: string) => {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/protection/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...checkoutData,
+          userId: userId || checkoutData.userId
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create checkout');
+      }
+
+      // Redirect to Stripe Checkout
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      setMessage(`Error: ${error.message}`);
+      setLoading(false);
+    }
+  };
+
   const handleCheckoutClick = async () => {
     // Validate consent
     if (!consentGiven) {
@@ -147,9 +199,6 @@ export default function Protection() {
 
     // Renewal dates are now optional - we'll remind users to add them after signup
 
-    setLoading(true);
-    setMessage('');
-
     // Get Rewardful referral ID if available
     const rewardfulReferral = typeof window !== 'undefined' && (window as any).Rewardful?.referral || null;
 
@@ -172,27 +221,79 @@ export default function Protection() {
 
     console.log('protection_checkout_started', checkoutData);
 
+    await proceedToCheckout(checkoutData);
+  };
+
+  const handleGoogleCheckout = async () => {
+    // Validate consent
+    if (!consentGiven) {
+      setMessage('Please review and agree to the authorization terms');
+      return;
+    }
+
+    // Validate email for non-logged-in users
+    const userEmail = user?.email || email;
+    if (!user && (!userEmail || userEmail.trim() === '')) {
+      setMessage('Please enter your email address');
+      return;
+    }
+
+    // Validate phone number (REQUIRED for Protection)
+    if (!phone || phone.trim() === '') {
+      setMessage('Please enter your phone number - we need it to reach you about permit documents');
+      return;
+    }
+
+    // Validate billing plan
+    if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
+      setMessage('Please select a billing plan (monthly or annual)');
+      return;
+    }
+
+    setGoogleAuthLoading(true);
+    setMessage('');
+
     try {
-      const response = await fetch('/api/protection/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(checkoutData)
+      // Get Rewardful referral ID if available
+      const rewardfulReferral = typeof window !== 'undefined' && (window as any).Rewardful?.referral || null;
+
+      const checkoutData = {
+        billingPlan,
+        email: userEmail,
+        phone: phone,
+        rewardfulReferral: rewardfulReferral,
+        streetAddress: streetAddress || undefined,
+        hasPermitZone: hasPermitZone,
+        permitZones: hasPermitZone ? zones : undefined,
+        permitRequested: permitRequested,
+        vehicleType: vehicleType,
+        renewals: {
+          citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
+          licensePlate: needsLicensePlate ? { date: licensePlateDate, isVanity: hasVanityPlate } : null
+        }
+      };
+
+      // Store form data in sessionStorage
+      sessionStorage.setItem('pendingProtectionCheckout', JSON.stringify(checkoutData));
+
+      console.log('Stored checkout data, redirecting to Google...');
+
+      // Redirect to Google OAuth
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/protection?flow=protection-google`
+        }
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create checkout');
-      }
-
-      // Redirect to Stripe Checkout
-      if (result.url) {
-        window.location.href = result.url;
+      if (error) {
+        throw error;
       }
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      console.error('Google auth error:', error);
       setMessage(`Error: ${error.message}`);
-      setLoading(false);
+      setGoogleAuthLoading(false);
+      sessionStorage.removeItem('pendingProtectionCheckout');
     }
   };
 
@@ -1255,21 +1356,66 @@ export default function Protection() {
 
               <button
                 onClick={handleCheckoutClick}
-                disabled={loading}
+                disabled={loading || googleAuthLoading}
                 style={{
                   width: '100%',
-                  backgroundColor: loading ? '#9ca3af' : '#0052cc',
+                  backgroundColor: (loading || googleAuthLoading) ? '#9ca3af' : '#0052cc',
                   color: 'white',
                   border: 'none',
                   borderRadius: '12px',
                   padding: '18px',
                   fontSize: '18px',
                   fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s'
+                  cursor: (loading || googleAuthLoading) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: googleAuthLoading ? 0.5 : 1
                 }}
               >
-                {loading ? 'Processing...' : 'Get Complete Protection - $12'}
+                {loading ? 'Processing...' : '📧 Get Complete Protection - $12'}
+              </button>
+
+              {/* OR Divider */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                margin: '20px 0',
+                gap: '12px'
+              }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                <span style={{ color: '#9ca3af', fontSize: '14px', fontWeight: '500' }}>OR</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+              </div>
+
+              {/* Google Sign-In Button */}
+              <button
+                type="button"
+                onClick={handleGoogleCheckout}
+                disabled={loading || googleAuthLoading}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  padding: '14px 16px',
+                  border: '2px solid #d1d5db',
+                  borderRadius: '12px',
+                  backgroundColor: googleAuthLoading ? '#f3f4f6' : 'white',
+                  color: '#111827',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: (loading || googleAuthLoading) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: loading ? 0.5 : 1
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                {googleAuthLoading ? 'Redirecting to Google...' : '🔐 Continue with Google'}
               </button>
 
               <p style={{

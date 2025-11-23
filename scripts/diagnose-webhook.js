@@ -1,41 +1,71 @@
 #!/usr/bin/env node
 
-console.log('🔍 WEBHOOK DIAGNOSTIC');
-console.log('===================\n');
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const Stripe = require('stripe');
 
-console.log('📊 EXPECTED WEBHOOK CONFIGURATION:');
-console.log('   URL: https://ticketlessamerica.com/api/stripe-webhook');
-console.log('   Events: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted');
-console.log('   Status: Active');
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-console.log('\n❓ COMMON WEBHOOK ISSUES:');
-console.log('1. ❌ Webhook URL is wrong or unreachable');
-console.log('2. ❌ Webhook secret mismatch (we regenerated it)');
-console.log('3. ❌ Events not configured correctly');
-console.log('4. ❌ Webhook is disabled or failing');
-console.log('5. ❌ Vercel function timeout/error');
+async function diagnose() {
+  const email = 'mystreetcleaning+1@gmail.com';
 
-console.log('\n🔧 DEBUGGING STEPS:');
-console.log('1. Check Stripe Dashboard → Developers → Webhooks');
-console.log('2. Look for webhook delivery attempts around Sep 24, 5:01 PM');
-console.log('3. Check delivery status (succeeded/failed)');
-console.log('4. If failed, check error message');
-console.log('5. If succeeded, check Vercel function logs');
+  console.log('🔍 DIAGNOSING:', email);
+  console.log('');
 
-console.log('\n🎯 LIKELY CAUSES:');
-console.log('Given that payment succeeded but no data saved:');
-console.log('• Webhook was not delivered by Stripe');
-console.log('• Webhook was delivered but failed to process');
-console.log('• Form data was not included in Stripe metadata');
+  const { data: { users } } = await supabase.auth.admin.listUsers();
+  const authUser = users.find(u => u.email === email);
 
-console.log('\n💡 IMMEDIATE FIXES:');
-console.log('1. Recover this user manually with recovery script');
-console.log('2. Check webhook configuration in Stripe');
-console.log('3. Update webhook secret if needed');
-console.log('4. Test with a new signup to verify fix');
+  if (!authUser) {
+    console.log('❌ NO AUTH USER - webhook never ran!');
+    
+    const sessions = await stripe.checkout.sessions.list({ limit: 30 });
+    const session = sessions.data.find(s => s.customer_details?.email === email);
 
-console.log('\n🚀 TO RECOVER USER:');
-console.log('   npm run dev  # In another terminal');
-console.log('   node scripts/recover-paid-user.js');
+    if (session) {
+      console.log('💰 PAYMENT FOUND but NO ACCOUNT!');
+      console.log('Session:', session.id);
+      console.log('Metadata:', JSON.stringify(session.metadata, null, 2));
+    }
+    return;
+  }
 
-console.log('\n📋 NEXT: Check Stripe webhook dashboard and report findings!');
+  console.log('✅ Auth user:', authUser.id);
+  console.log('Created:', authUser.created_at);
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('has_protection, stripe_customer_id, is_paid, first_name, street_address')
+    .eq('user_id', authUser.id)
+    .single();
+
+  if (!profile) {
+    console.log('❌ NO PROFILE - webhook failed at profile creation!');
+    return;
+  }
+
+  console.log('✅ Profile exists');
+  console.log('  has_protection:', profile.has_protection);
+  console.log('  stripe_customer_id:', profile.stripe_customer_id || 'NULL');
+  console.log('  street_address:', profile.street_address || 'NULL');
+
+  const { data: consents } = await supabase
+    .from('user_consents')
+    .select('id')
+    .eq('user_id', authUser.id);
+
+  console.log('Consents:', consents?.length || 0);
+
+  if ((consents?.length || 0) > 0) {
+    console.log('');
+    console.log('✅ Webhook completed');
+    console.log('❌ BUT EMAIL NOT SENT - check webhook logs!');
+  } else {
+    console.log('❌ Webhook incomplete - consent step failed');
+  }
+}
+
+diagnose().catch(console.error);
