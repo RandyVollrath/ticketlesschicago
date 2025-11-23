@@ -1261,7 +1261,8 @@ export default function ProfileNew() {
                     alert('License uploaded successfully!')
                     window.location.reload()
                   } catch (error: any) {
-                    alert(error.message || 'Upload failed')
+                    console.error('License upload error:', error)
+                    alert(`Upload failed: ${error.message || 'Unknown error'}`)
                   } finally {
                     setLicenseUploading(false)
                   }
