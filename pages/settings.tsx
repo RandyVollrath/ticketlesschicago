@@ -1001,14 +1001,15 @@ export default function ProfileNew() {
 
           {/* 5. Driver's License Upload - Only for Protection users in permit zones who requested permit */}
           {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
-            <Accordion
-              title="Driver's License"
-              icon="📸"
-              badge={needsLicenseUpload ? 'Required' : 'Uploaded'}
-              badgeColor={needsLicenseUpload ? 'red' : 'green'}
-              defaultOpen={needsLicenseUpload}
-              required={true}
-            >
+            <div id="license-upload">
+              <Accordion
+                title="Driver's License"
+                icon="📸"
+                badge={needsLicenseUpload ? 'Required' : 'Uploaded'}
+                badgeColor={needsLicenseUpload ? 'red' : 'green'}
+                defaultOpen={needsLicenseUpload}
+                required={true}
+              >
               <div style={{
                 backgroundColor: '#eff6ff',
                 border: '1px solid #bfdbfe',
@@ -1285,12 +1286,14 @@ export default function ProfileNew() {
                 {licenseUploading ? 'Uploading...' : '📤 Upload License'}
               </button>
             </Accordion>
+            </div>
           )}
 
           {/* 5.5 Residential Parking Permit - Email Forwarding (Protection + Permit Zone + Permit Requested) */}
           {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
-            <Accordion
-              title="Residential Parking Permit - Proof of Residency"
+            <div id="email-forwarding">
+              <Accordion
+                title="Residential Parking Permit - Proof of Residency"
               icon="🅿️"
               badge={!profile.residency_proof_path ? 'Setup Required' : 'Active'}
               badgeColor={!profile.residency_proof_path ? 'red' : 'green'}
@@ -1367,6 +1370,7 @@ export default function ProfileNew() {
                 forwardingEmail={`documents+${user?.id}@autopilotamerica.com`}
               />
             </Accordion>
+            </div>
           )}
 
           {/* 7. Notification Preferences */}
