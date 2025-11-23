@@ -219,10 +219,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   console.log('✅ Created users table record');
                 }
 
-                // Create user profile
+                // Create or update user profile (use UPSERT in case trigger already created empty profile)
                 const { error: profileError } = await supabaseAdmin
                   .from('user_profiles')
-                  .insert({
+                  .upsert({
                     user_id: userId,
                     email: email,
                     first_name: firstName,
@@ -241,8 +241,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     has_permit_zone: metadata.hasPermitZone === 'true',
                     permit_requested: metadata.permitRequested === 'true',
                     // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
-                    created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'user_id'
                   });
 
                 if (profileError) {
@@ -403,10 +404,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.log('✅ Created users table record');
               }
 
-              // Create user profile
+              // Create or update user profile (use UPSERT in case trigger already created empty profile)
               const { error: profileError } = await supabaseAdmin
                 .from('user_profiles')
-                .insert({
+                .upsert({
                   user_id: userId,
                   email: email,
                   first_name: firstName,
@@ -425,8 +426,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   has_permit_zone: metadata.hasPermitZone === 'true',
                   permit_requested: metadata.permitRequested === 'true',
                   // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
-                  created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'user_id'
                 });
 
               if (profileError) {
