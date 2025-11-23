@@ -14,6 +14,11 @@ const stripe = new Stripe(stripeConfig.secretKey!, {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Helper to check if a string has meaningful content (not null, undefined, or empty)
+function hasValue(str: string | null | undefined): boolean {
+  return !!str && str.trim() !== '';
+}
+
 // Normalize phone number to E.164 format (+1XXXXXXXXXX)
 function normalizePhoneNumber(phone: string | null | undefined): string | null {
   if (!phone) return null;
@@ -178,6 +183,167 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (existingUser) {
               console.log('User already exists:', existingUser.id);
               userId = existingUser.id;
+
+              // Check if user has a profile - if not, create one (this handles cases where OAuth user signed up but didn't complete profile)
+              const { data: existingProfile } = await supabaseAdmin
+                .from('user_profiles')
+                .select('user_id')
+                .eq('user_id', existingUser.id)
+                .single();
+
+              if (!existingProfile) {
+                console.log('⚠️ Auth user exists but no profile found - creating profile now');
+
+                // Create users table record first (required for foreign key)
+                const { error: usersError } = await supabaseAdmin
+                  .from('users')
+                  .upsert({
+                    id: userId,
+                    email: email,
+                    phone: hasValue(metadata.phone) ? metadata.phone : (stripePhone || null),
+                    first_name: firstName,
+                    last_name: lastName,
+                    zip_code: zipCode,
+                    mailing_address: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
+                    mailing_zip: zipCode,
+                    home_address_full: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'id'
+                  });
+
+                if (usersError && !usersError.message.includes('duplicate')) {
+                  console.error('Users table error:', usersError);
+                } else {
+                  console.log('✅ Created users table record');
+                }
+
+                // Create user profile
+                const { error: profileError } = await supabaseAdmin
+                  .from('user_profiles')
+                  .insert({
+                    user_id: userId,
+                    email: email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone_number: hasValue(metadata.phone) ? metadata.phone : (stripePhone || null),
+                    zip_code: zipCode,
+                    vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
+                    has_protection: true,
+                    stripe_customer_id: session.customer as string,
+                    city_sticker_expiry: hasValue(metadata.citySticker) ? metadata.citySticker : null,
+                    license_plate_expiry: hasValue(metadata.licensePlate) ? metadata.licensePlate : null,
+                    mailing_address: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
+                    mailing_zip: zipCode,
+                    street_address: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
+                    home_address_full: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
+                    has_permit_zone: metadata.hasPermitZone === 'true',
+                    permit_requested: metadata.permitRequested === 'true',
+                    // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  });
+
+                if (profileError) {
+                  console.error('Error creating user profile:', profileError);
+                } else {
+                  console.log('✅ Created user profile with Protection');
+
+                  // Auto-populate ward/section for street cleaning alerts
+                  if (hasValue(metadata.streetAddress)) {
+                    try {
+                      console.log('🗺️ Geocoding address to get ward/section:', metadata.streetAddress);
+                      const geocodeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/find-section?address=${encodeURIComponent(metadata.streetAddress)}`);
+
+                      if (geocodeResponse.ok) {
+                        const geoData = await geocodeResponse.json();
+                        console.log(`✅ Found Ward ${geoData.ward}, Section ${geoData.section}`);
+
+                        // Update profile with ward/section
+                        await supabaseAdmin
+                          .from('user_profiles')
+                          .update({
+                            home_address_ward: geoData.ward,
+                            home_address_section: geoData.section,
+                            updated_at: new Date().toISOString()
+                          })
+                          .eq('user_id', userId);
+
+                        console.log('✅ Ward/section saved - street cleaning alerts are now active');
+                      } else {
+                        console.log('ℹ️ Could not geocode address - user can set up street cleaning manually');
+                      }
+                    } catch (geoError) {
+                      // Non-critical - user can set up street cleaning manually
+                      console.log('ℹ️ Geocoding failed (non-critical):', geoError);
+                    }
+                  }
+                }
+
+                // Generate and send magic link
+                console.log('📧 Generating magic link for existing auth user (no profile):', email);
+                const { data: linkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+                  type: 'magiclink',
+                  email: email,
+                  options: {
+                    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?protection=true`
+                  }
+                });
+
+                if (magicLinkError) {
+                  console.error('Error generating magic link:', magicLinkError);
+                } else if (linkData?.properties?.action_link) {
+                  const magicLink = linkData.properties.action_link;
+                  console.log('✅ Magic link generated, sending email...');
+
+                  // Send magic link email via Resend
+                  const resendResponse = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      from: 'Autopilot America <noreply@autopilotamerica.com>',
+                      to: email,
+                      subject: 'Complete Your Profile - Autopilot America',
+                      html: `
+                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                          <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Ticket Protection!</h2>
+                          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                            Thank you for signing up for Ticket Protection! Click the button below to access your account and complete your profile.
+                          </p>
+                          <div style="margin: 32px 0; text-align: center;">
+                            <a href="${magicLink}"
+                               style="background-color: #0052cc;
+                                      color: white;
+                                      padding: 14px 32px;
+                                      text-decoration: none;
+                                      border-radius: 8px;
+                                      font-weight: 600;
+                                      font-size: 16px;
+                                      display: inline-block;">
+                              Complete My Profile
+                            </a>
+                          </div>
+                          <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes.</p>
+                        </div>
+                      `
+                    })
+                  });
+
+                  if (resendResponse.ok) {
+                    const result = await resendResponse.json();
+                    console.log(`✅ Magic link email sent successfully via Resend (Email ID: ${result.id})`);
+                  } else {
+                    const errorText = await resendResponse.text();
+                    console.error(`❌ Failed to send magic link email: ${errorText}`);
+                  }
+                }
+              } else {
+                console.log('✅ Profile already exists for existing auth user');
+              }
             } else {
               // Create new user
               console.log('Creating new user account');
@@ -200,13 +366,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .upsert({
                   id: userId,
                   email: email,
-                  phone: metadata.phone || stripePhone || null,
+                  phone: hasValue(metadata.phone) ? metadata.phone : (stripePhone || null),
                   first_name: firstName,
                   last_name: lastName,
                   zip_code: zipCode,
-                  mailing_address: metadata.streetAddress || billingAddress,
+                  mailing_address: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
                   mailing_zip: zipCode,
-                  home_address_full: metadata.streetAddress || billingAddress,
+                  home_address_full: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 }, {
@@ -227,20 +393,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   email: email,
                   first_name: firstName,
                   last_name: lastName,
-                  phone_number: metadata.phone || stripePhone || null,
+                  phone_number: hasValue(metadata.phone) ? metadata.phone : (stripePhone || null),
                   zip_code: zipCode,
-                  vehicle_type: metadata.vehicleType || 'P',
+                  vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
                   has_protection: true,
                   stripe_customer_id: session.customer as string, // CRITICAL: Save for future renewals
-                  city_sticker_expiry: metadata.citySticker || null,
-                  license_plate_expiry: metadata.licensePlate || null,
-                  mailing_address: metadata.streetAddress || billingAddress,
+                  city_sticker_expiry: hasValue(metadata.citySticker) ? metadata.citySticker : null,
+                  license_plate_expiry: hasValue(metadata.licensePlate) ? metadata.licensePlate : null,
+                  mailing_address: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
                   mailing_zip: zipCode,
-                  street_address: metadata.streetAddress || billingAddress,
-                  home_address_full: metadata.streetAddress || billingAddress,
+                  street_address: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
+                  home_address_full: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
                   has_permit_zone: metadata.hasPermitZone === 'true',
                   permit_requested: metadata.permitRequested === 'true',
-                  permit_zones: metadata.permitZones ? JSON.parse(metadata.permitZones) : null,
+                  // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 });
@@ -250,15 +416,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               } else {
                 console.log('✅ Created user profile with Protection');
 
+                // Auto-populate ward/section for street cleaning alerts
+                if (hasValue(metadata.streetAddress)) {
+                  try {
+                    console.log('🗺️ Geocoding address to get ward/section:', metadata.streetAddress);
+                    const geocodeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/find-section?address=${encodeURIComponent(metadata.streetAddress)}`);
+
+                    if (geocodeResponse.ok) {
+                      const geoData = await geocodeResponse.json();
+                      console.log(`✅ Found Ward ${geoData.ward}, Section ${geoData.section}`);
+
+                      // Update profile with ward/section
+                      await supabaseAdmin
+                        .from('user_profiles')
+                        .update({
+                          home_address_ward: geoData.ward,
+                          home_address_section: geoData.section,
+                          updated_at: new Date().toISOString()
+                        })
+                        .eq('user_id', userId);
+
+                      console.log('✅ Ward/section saved - street cleaning alerts are now active');
+                    } else {
+                      console.log('ℹ️ Could not geocode address - user can set up street cleaning manually');
+                    }
+                  } catch (geoError) {
+                    // Non-critical - user can set up street cleaning manually
+                    console.log('ℹ️ Geocoding failed (non-critical):', geoError);
+                  }
+                }
+
                 // Check if user needs winter ban notification (Dec 1 - Apr 1)
-                if (metadata.streetAddress) {
+                if (hasValue(metadata.streetAddress)) {
                   try {
                     const winterBanResult = await notifyNewUserAboutWinterBan(
                       userId,
                       metadata.streetAddress,
                       email,
-                      metadata.phone || null,
-                      metadata.firstName || null
+                      hasValue(metadata.phone) ? metadata.phone : null,
+                      hasValue(metadata.firstName) ? metadata.firstName : null
                     );
                     if (winterBanResult.sent) {
                       console.log('❄️ Winter ban notification sent to new Protection user');
@@ -278,7 +474,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 type: 'magiclink',
                 email: email,
                 options: {
-                  redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+                  redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?protection=true`
                 }
               });
 
@@ -388,16 +584,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           // Phone from metadata (Protection form) OR Stripe customer details
-          if (metadata.phone || stripePhone) {
-            updateData.phone_number = metadata.phone || stripePhone;
+          if (hasValue(metadata.phone) || stripePhone) {
+            updateData.phone_number = hasValue(metadata.phone) ? metadata.phone : stripePhone;
           }
-          if (metadata.vehicleType) {
+          if (hasValue(metadata.vehicleType)) {
             updateData.vehicle_type = metadata.vehicleType;
           }
-          if (metadata.citySticker) {
+          if (hasValue(metadata.citySticker)) {
             updateData.city_sticker_expiry = metadata.citySticker;
           }
-          if (metadata.licensePlate) {
+          if (hasValue(metadata.licensePlate)) {
             updateData.license_plate_expiry = metadata.licensePlate;
           }
 
@@ -405,13 +601,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (metadata.hasPermitZone === 'true') {
             updateData.has_permit_zone = true;
             updateData.permit_requested = metadata.permitRequested === 'true';
-            if (metadata.permitZones) {
-              updateData.permit_zones = JSON.parse(metadata.permitZones);
-            }
+            // NOTE: permit_zones column does not exist in database - removed to prevent update failure
           }
 
           // Save street address as both mailing and street cleaning address (prefer metadata, fallback to billing)
-          const addressToSave = metadata.streetAddress || billingAddress;
+          const addressToSave = hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress;
           if (addressToSave) {
             updateData.mailing_address = addressToSave;
             updateData.street_address = addressToSave;
@@ -434,15 +628,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Remitter gets paid when they perform the renewal service (30 days before expiration)
             // This happens in /api/cron/process-renewals.ts
 
+            // Auto-populate ward/section for street cleaning alerts
+            if (addressToSave) {
+              try {
+                console.log('🗺️ Geocoding address to get ward/section:', addressToSave);
+                const geocodeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/find-section?address=${encodeURIComponent(addressToSave)}`);
+
+                if (geocodeResponse.ok) {
+                  const geoData = await geocodeResponse.json();
+                  console.log(`✅ Found Ward ${geoData.ward}, Section ${geoData.section}`);
+
+                  // Update profile with ward/section
+                  await supabaseAdmin
+                    .from('user_profiles')
+                    .update({
+                      home_address_ward: geoData.ward,
+                      home_address_section: geoData.section,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', userId);
+
+                  console.log('✅ Ward/section saved - street cleaning alerts are now active');
+                } else {
+                  console.log('ℹ️ Could not geocode address - user can set up street cleaning manually');
+                }
+              } catch (geoError) {
+                // Non-critical - user can set up street cleaning manually
+                console.log('ℹ️ Geocoding failed (non-critical):', geoError);
+              }
+            }
+
             // Check if user needs winter ban notification (Dec 1 - Apr 1)
-            if (metadata.streetAddress) {
+            if (hasValue(metadata.streetAddress)) {
               try {
                 const winterBanResult = await notifyNewUserAboutWinterBan(
                   userId,
                   metadata.streetAddress,
                   email,
-                  metadata.phone || null,
-                  metadata.firstName || null
+                  hasValue(metadata.phone) ? metadata.phone : null,
+                  hasValue(metadata.firstName) ? metadata.firstName : null
                 );
                 if (winterBanResult.sent) {
                   console.log('❄️ Winter ban notification sent to Protection upgrade user');
@@ -461,7 +685,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'magiclink',
               email: email,
               options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?protection=true`
               }
             });
 
