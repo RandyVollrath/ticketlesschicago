@@ -798,7 +798,7 @@ export default function Protection() {
                         />
                         <div>
                           <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1a1a1a' }}>
-                            {permitRequested ? '✅ Include residential parking permit ($30)' : '⚠️ I don\'t need a permit (uncheck to decline)'}
+                            {permitRequested ? 'Include residential parking permit ($30)' : 'I don\'t need a permit'}
                           </div>
                           <div style={{ fontSize: '13px', color: '#6b7280' }}>
                             {permitRequested

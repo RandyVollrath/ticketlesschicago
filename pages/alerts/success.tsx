@@ -741,92 +741,27 @@ export default function AlertsSuccess() {
         )}
 
         {/* What's Next Section */}
-        <div style={{
-          backgroundColor: '#f0f8ff',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '32px',
-          textAlign: 'left'
-        }}>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: 'bold',
-            color: '#0052cc',
-            marginBottom: '16px',
-            margin: '0 0 16px 0'
+        {!isExistingUser && (
+          <div style={{
+            backgroundColor: '#f0f8ff',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '32px',
+            textAlign: 'center'
           }}>
-            📋 What happens next:
-          </h3>
-          <ul style={{
-            margin: 0,
-            paddingLeft: '24px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            fontSize: '15px',
-            color: '#374151',
-            lineHeight: '1.5'
-          }}>
-            <li>You'll receive alerts via email, SMS, and phone call before any deadlines</li>
-            {isProtection && !isExistingUser && (
-              <li style={{ backgroundColor: '#dcfce7', padding: '8px', borderRadius: '6px', color: '#166534' }}>
-                <strong>✓ Login link sent to your email!</strong> Click the link to access your account and complete your profile.
-              </li>
-            )}
-            {!isProtection && !isExistingUser && (
-              <li style={{ backgroundColor: '#dcfce7', padding: '8px', borderRadius: '6px', color: '#166534' }}>
-                <strong>✓ Login link sent to your email!</strong> Click the link to access your account settings.
-              </li>
-            )}
-            {isProtection && <li><strong>Verify your profile is 100% complete and accurate</strong> to ensure your guarantee is valid</li>}
-            <li>Manage your preferences anytime in your account settings</li>
-            {!isProtection && <li>Add more vehicles or upgrade to Ticket Protection whenever you're ready</li>}
-          </ul>
-        </div>
-
-        {/* Clear Path Relief Program */}
-        <div style={{
-          backgroundColor: '#fef3c7',
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '32px',
-          textAlign: 'left',
-          border: '1px solid #fde68a'
-        }}>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: 'bold',
-            color: '#92400e',
-            marginBottom: '8px',
-            margin: '0 0 8px 0'
-          }}>
-            Already have ticket debt?
-          </h3>
-          <p style={{
-            fontSize: '14px',
-            color: '#78350f',
-            lineHeight: '1.5',
-            margin: '0 0 12px 0'
-          }}>
-            Chicago offers the <strong>Clear Path Relief Program</strong>, which can forgive old debt and reduce ticket penalties if you qualify.
-          </p>
-          <a
-            href="https://www.chicago.gov/city/en/sites/clear-path-relief-pilot-program/home.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: '#0052cc',
-              fontSize: '14px',
-              fontWeight: '600',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            Learn more and apply here →
-          </a>
-        </div>
+            <p style={{
+              fontSize: '15px',
+              color: '#374151',
+              lineHeight: '1.6',
+              margin: 0
+            }}>
+              {isProtection
+                ? "Check your email for a login link, then complete your profile to activate your guarantee. You'll receive alerts before all deadlines."
+                : "Check your email for a login link. You'll receive alerts via email, SMS, and phone before all deadlines."
+              }
+            </p>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div style={{
