@@ -6,7 +6,6 @@ import type { User } from '@supabase/supabase-js'
 import Accordion from '../components/Accordion'
 import Tooltip from '../components/Tooltip'
 import UpgradeCard from '../components/UpgradeCard'
-import DocumentStatus from '../components/DocumentStatus'
 import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import SnowBanSettings from '../components/SnowBanSettings'
 import EmailForwardingSetup from '../components/EmailForwardingSetup'
@@ -1001,15 +1000,14 @@ export default function ProfileNew() {
 
           {/* 5. Driver's License Upload - Only for Protection users in permit zones who requested permit */}
           {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
-            <div id="license-upload">
-              <Accordion
-                title="Driver's License"
-                icon="📸"
-                badge={needsLicenseUpload ? 'Required' : 'Uploaded'}
-                badgeColor={needsLicenseUpload ? 'red' : 'green'}
-                defaultOpen={needsLicenseUpload}
-                required={true}
-              >
+            <Accordion
+              title="Driver's License"
+              icon="📸"
+              badge={needsLicenseUpload ? 'Required' : 'Uploaded'}
+              badgeColor={needsLicenseUpload ? 'red' : 'green'}
+              defaultOpen={needsLicenseUpload}
+              required={true}
+            >
               <div style={{
                 backgroundColor: '#eff6ff',
                 border: '1px solid #bfdbfe',
@@ -1030,9 +1028,7 @@ export default function ProfileNew() {
                 </div>
               </div>
 
-              <DocumentStatus userId={user?.id || ''} hasPermitZone={true} />
-
-              <p style={{ fontSize: '13px', color: '#6b7280', margin: '16px 0', textAlign: 'center' }}>
+              <p style={{ fontSize: '13px', color: '#6b7280', margin: '16px 0 0 0', textAlign: 'center' }}>
                 Upload clear, well-lit photos of both sides. File size limit: 5MB per image.
               </p>
 
@@ -1286,14 +1282,12 @@ export default function ProfileNew() {
                 {licenseUploading ? 'Uploading...' : '📤 Upload License'}
               </button>
             </Accordion>
-            </div>
           )}
 
           {/* 5.5 Residential Parking Permit - Email Forwarding (Protection + Permit Zone + Permit Requested) */}
           {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
-            <div id="email-forwarding">
-              <Accordion
-                title="Residential Parking Permit - Proof of Residency"
+            <Accordion
+              title="Residential Parking Permit - Proof of Residency"
               icon="🅿️"
               badge={!profile.residency_proof_path ? 'Setup Required' : 'Active'}
               badgeColor={!profile.residency_proof_path ? 'red' : 'green'}
@@ -1370,7 +1364,6 @@ export default function ProfileNew() {
                 forwardingEmail={`documents+${user?.id}@autopilotamerica.com`}
               />
             </Accordion>
-            </div>
           )}
 
           {/* 7. Notification Preferences */}
