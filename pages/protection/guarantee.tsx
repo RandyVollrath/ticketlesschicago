@@ -90,141 +90,61 @@ export default function ProtectionGuarantee() {
           marginBottom: '16px',
           textAlign: 'center'
         }}>
-          Protection Service Guarantee
+          $200/Year Ticket Guarantee
         </h1>
         <p style={{
-          fontSize: '18px',
+          fontSize: '20px',
           color: '#666',
           marginBottom: '48px',
           textAlign: 'center',
           maxWidth: '700px',
-          margin: '0 auto 48px auto'
+          margin: '0 auto 48px auto',
+          lineHeight: '1.5'
         }}>
-          Complete details about what's covered, how it works, and eligibility requirements
+          We reimburse 80% of covered tickets up to $200/year. This is a service guarantee, not insurance.
         </p>
 
-        {/* FAQ Section */}
+        {/* What's Covered */}
         <div style={{
-          marginBottom: '60px'
+          backgroundColor: 'white',
+          padding: '32px',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          marginBottom: '32px'
         }}>
           <h2 style={{
-            fontSize: '32px',
+            fontSize: '24px',
             fontWeight: 'bold',
             color: '#1a1a1a',
-            marginBottom: '32px',
-            textAlign: 'center'
+            marginBottom: '16px',
+            margin: '0 0 16px 0'
           }}>
-            Frequently Asked Questions
+            What's Covered
           </h2>
-
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px'
+          <ul style={{
+            fontSize: '16px',
+            color: '#666',
+            lineHeight: '1.8',
+            paddingLeft: '24px',
+            margin: 0
           }}>
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                What tickets are covered?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered. We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. See guarantee conditions below for full details.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                How do renewals work?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                We monitor your renewal dates and send you reminders before your city sticker and license plate renewals expire. You'll receive email and SMS alerts so you can complete your renewals on time.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                What happens if my city sticker expires?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Vehicles can be ticketed $200 per ticket starting 15 days after your city sticker expires. Tickets can be issued daily until a new unexpired sticker is displayed. With Ticket Protection, we handle your renewal before it expires so you never have to worry about these costly tickets.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1a1a1a',
-                marginBottom: '8px',
-                margin: '0 0 8px 0'
-              }}>
-                Can I cancel anytime?
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#666',
-                lineHeight: '1.6',
-                margin: 0
-              }}>
-                Yes, you can cancel your Ticket Protection subscription at any time. You'll continue to have access until the end of your current billing period.
-              </p>
-            </div>
-          </div>
+            <li>Street cleaning tickets</li>
+            <li>Snow removal tickets</li>
+            <li>Expired city sticker tickets</li>
+            <li>Expired license plate tickets</li>
+          </ul>
+          <p style={{
+            fontSize: '14px',
+            color: '#9ca3af',
+            marginTop: '16px',
+            margin: '16px 0 0 0',
+            fontStyle: 'italic'
+          }}>
+            Not covered: Moving violations, towing fees, parking meter violations
+          </p>
         </div>
 
-        {/* Service Guarantee Conditions */}
+        {/* Eligibility Requirements */}
         <div style={{
           backgroundColor: '#fef3c7',
           padding: '32px',
@@ -233,80 +153,26 @@ export default function ProtectionGuarantee() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
         }}>
           <h2 style={{
-            fontSize: '28px',
+            fontSize: '24px',
             fontWeight: 'bold',
             color: '#92400e',
-            marginBottom: '24px',
-            margin: '0 0 24px 0'
+            marginBottom: '16px',
+            margin: '0 0 16px 0'
           }}>
-            Service Guarantee Conditions
+            To Qualify for Reimbursement
           </h2>
-
-          <h3 style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#92400e',
-            marginBottom: '12px',
-            margin: '0 0 12px 0'
-          }}>
-            Renewal Reminder Service
-          </h3>
-          <p style={{
-            fontSize: '16px',
-            color: '#78350f',
-            lineHeight: '1.6',
-            marginBottom: '12px',
-            margin: '0 0 12px 0'
-          }}>
-            Our renewal reminder service keeps you on track:
-          </p>
           <ul style={{
             fontSize: '16px',
             color: '#78350f',
-            lineHeight: '1.6',
-            paddingLeft: '24px',
-            marginBottom: '32px',
-            margin: '0 0 32px 0'
-          }}>
-            <li style={{ marginBottom: '8px' }}>We send you reminders before your city sticker and license plate renewals expire so you can complete them on time</li>
-            <li style={{ marginBottom: '8px' }}>You'll receive advance notifications about upcoming renewal deadlines</li>
-            <li>If you receive a late renewal ticket despite our reminders, we reimburse 80% up to $200/year as part of our service guarantee</li>
-          </ul>
-
-          <h3 style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#92400e',
-            marginBottom: '12px',
-            margin: '0 0 12px 0'
-          }}>
-            Ticket Reimbursement Eligibility
-          </h3>
-          <p style={{
-            fontSize: '16px',
-            color: '#78350f',
-            lineHeight: '1.6',
-            marginBottom: '12px',
-            margin: '0 0 12px 0'
-          }}>
-            We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance. To be eligible, you must:
-          </p>
-          <ul style={{
-            fontSize: '16px',
-            color: '#78350f',
-            lineHeight: '1.6',
+            lineHeight: '1.8',
             paddingLeft: '24px',
             margin: 0
           }}>
-            <li style={{ marginBottom: '10px' }}><strong>Have an active Protection subscription</strong> at the time the ticket was issued</li>
-            <li style={{ marginBottom: '10px' }}><strong>30-day waiting period</strong> after signup before coverage begins</li>
-            <li style={{ marginBottom: '10px' }}><strong>Ticket must be for the address and vehicle</strong> listed in your profile at the time the ticket was issued - coverage only applies to your tracked address and vehicle</li>
-            <li style={{ marginBottom: '10px' }}><strong>Vehicle changes limited to once per year</strong> - changing your vehicle more than once per year voids coverage for any new vehicles</li>
-            <li style={{ marginBottom: '10px' }}><strong>Maintain a complete and accurate profile</strong> with all vehicle information, renewal dates, contact information, and street cleaning address - the guarantee is void if your profile is incomplete or inaccurate</li>
-            <li style={{ marginBottom: '10px' }}>Respond to alerts confirming you moved your vehicle (e.g., reply "Moved" to SMS)</li>
-            <li style={{ marginBottom: '10px' }}>Submit ticket photos within 7 days of receiving the ticket</li>
-            <li style={{ marginBottom: '10px' }}>Street cleaning, snow removal, city sticker, and license plate renewal tickets are covered (not towing fees or moving violations)</li>
-            <li>Maximum reimbursement: 80% of eligible tickets up to $200 per year total</li>
+            <li style={{ marginBottom: '8px' }}>Active subscription when ticket was issued (30-day waiting period after signup)</li>
+            <li style={{ marginBottom: '8px' }}>Complete and accurate profile (vehicle info, renewal dates, address)</li>
+            <li style={{ marginBottom: '8px' }}>Ticket matches the vehicle and address in your profile</li>
+            <li style={{ marginBottom: '8px' }}>Submit ticket photo within 7 days</li>
+            <li style={{ marginBottom: '8px' }}>Vehicle changes limited to once per year</li>
           </ul>
         </div>
 
