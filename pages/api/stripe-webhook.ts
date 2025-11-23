@@ -598,6 +598,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
               }
 
+              // Log audit event for payment processing (new user)
+              await logAuditEvent({
+                userId: userId,
+                actionType: 'payment_processed',
+                entityType: 'payment',
+                entityId: session.id,
+                actionDetails: {
+                  product: 'ticket_protection',
+                  plan: metadata.plan,
+                  amount: session.amount_total,
+                  currency: session.currency,
+                  email: email,
+                  renewals: {
+                    citySticker: metadata.citySticker || null,
+                    licensePlate: metadata.licensePlate || null,
+                    isVanity: metadata.isVanityPlate === 'true',
+                  },
+                  hasPermitZone: metadata.hasPermitZone === 'true',
+                  streetAddress: metadata.streetAddress,
+                  stripeCustomerId: session.customer,
+                  rewardfulReferral: metadata.rewardful_referral_id,
+                },
+                status: 'success',
+              });
+
+              // Log user consent for legal compliance (new user)
+              const consentTextNewUser = 'I authorize Autopilot America to act as my concierge service to monitor my vehicle renewal deadlines and coordinate renewals on my behalf. Autopilot America is not a government agency or licensed remitter. I authorize Autopilot America to charge my payment method for the subscription service fee plus government renewal fees (city sticker, license plate, parking permits) 30 days before my deadlines. Autopilot America will forward the government fees to our licensed remitter partner who will execute the official submission with the City of Chicago and State of Illinois. I understand that final acceptance is subject to approval by the issuing authority. I agree to provide accurate information and required documentation when requested.';
+
+              const { error: consentErrorNewUser } = await supabaseAdmin
+                .from('user_consents')
+                .insert({
+                  user_id: userId,
+                  consent_type: 'protection_purchase',
+                  consent_text: consentTextNewUser,
+                  consent_granted: true,
+                  stripe_session_id: session.id,
+                  ip_address: session.customer_details?.address?.country || null,
+                  metadata: {
+                    plan: metadata.plan,
+                    city_sticker: metadata.citySticker,
+                    license_plate: metadata.licensePlate,
+                    has_permit_zone: metadata.hasPermitZone === 'true',
+                    street_address: metadata.streetAddress
+                  }
+                });
+
+              if (consentErrorNewUser) {
+                console.error('Error logging consent for new user:', consentErrorNewUser);
+              } else {
+                console.log('✅ User consent logged for legal compliance (new user)');
+              }
+
               break; // Exit after creating new user
             }
           }
