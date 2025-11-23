@@ -246,7 +246,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   });
 
                 if (profileError) {
-                  console.error('Error creating user profile:', profileError);
+                  console.error('❌ CRITICAL ERROR creating user profile (existing auth user path):', profileError);
+                  console.error('Session ID:', session.id);
+                  console.error('Email:', email);
+                  console.error('User ID:', userId);
+
+                  // Send immediate alert
+                  try {
+                    await resend.emails.send({
+                      from: 'Alerts <alerts@autopilotamerica.com>',
+                      to: 'randyvollrath@gmail.com',
+                      subject: '🚨 CRITICAL: Protection Purchase Failed - Profile Creation Error (Existing Auth User)',
+                      text: `Profile creation failed for existing auth user!\n\nSession: ${session.id}\nEmail: ${email}\nUser ID: ${userId}\nError: ${profileError.message}\n\nUser paid but got no account!`
+                    });
+                  } catch (e) {
+                    console.error('Failed to send alert email:', e);
+                  }
+
+                  // Return error so Stripe will retry
+                  return res.status(500).json({ error: 'Profile creation failed', details: profileError.message });
                 } else {
                   console.log('✅ Created user profile with Protection');
 
@@ -412,7 +430,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
 
               if (profileError) {
-                console.error('Error creating user profile:', profileError);
+                console.error('❌ CRITICAL ERROR creating user profile:', profileError);
+                console.error('Session ID:', session.id);
+                console.error('Email:', email);
+                console.error('User ID:', userId);
+
+                // Send immediate alert to admin
+                try {
+                  await resend.emails.send({
+                    from: 'Alerts <alerts@autopilotamerica.com>',
+                    to: 'randyvollrath@gmail.com',
+                    subject: '🚨 CRITICAL: Protection Purchase Failed - Profile Creation Error',
+                    text: `Profile creation failed for Protection purchase!\n\nSession: ${session.id}\nEmail: ${email}\nUser ID: ${userId}\nError: ${profileError.message}\n\nUser paid but got no account!`
+                  });
+                } catch (e) {
+                  console.error('Failed to send alert email:', e);
+                }
+
+                // Return error so Stripe will retry
+                return res.status(500).json({ error: 'Profile creation failed', details: profileError.message });
               } else {
                 console.log('✅ Created user profile with Protection');
 
