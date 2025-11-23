@@ -850,7 +850,7 @@ export default function AlertsSuccess() {
               {/* For existing users, show account button */}
               {isExistingUser && (
                 <button
-                  onClick={() => router.push('/settings')}
+                  onClick={() => router.push(isProtection ? '/settings?protection=true' : '/settings')}
                   style={{
                     backgroundColor: '#0052cc',
                     color: 'white',

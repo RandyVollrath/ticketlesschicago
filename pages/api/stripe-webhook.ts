@@ -530,7 +530,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                       'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                      from: 'Autopilot America <noreply@ticketlessamerica.com>',
+                      from: 'Autopilot America <noreply@autopilotamerica.com>',
                       to: email,
                       subject: 'Welcome to Autopilot America - Complete Your Profile',
                       html: `
@@ -576,7 +576,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
                           <p style="color: #9ca3af; font-size: 13px;">
-                            Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
+                            Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
                           </p>
 
                           <p style="color: #9ca3af; font-size: 12px;">
@@ -740,7 +740,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    from: 'Autopilot America <noreply@ticketlessamerica.com>',
+                    from: 'Autopilot America <noreply@autopilotamerica.com>',
                     to: email,
                     subject: 'Welcome to Autopilot Protection - Access Your Account',
                     html: `
@@ -774,7 +774,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
                         <p style="color: #9ca3af; font-size: 13px;">
-                          Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
+                          Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
                         </p>
 
                         <p style="color: #9ca3af; font-size: 12px;">
@@ -940,7 +940,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Send email notification
           try {
             await resend.emails.send({
-              from: 'Ticketless Alerts <noreply@ticketlessamerica.com>',
+              from: 'Ticketless Alerts <noreply@autopilotamerica.com>',
               to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
               subject: '🎉 Affiliate Sale - Manual Commission Adjustment Needed',
               html: `
