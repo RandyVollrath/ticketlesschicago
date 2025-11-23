@@ -37,9 +37,54 @@ if (process.env.GOOGLE_CLOUD_VISION_CREDENTIALS) {
 }
 
 /**
+ * Extract expiry date from license text
+ * Looks for patterns like: EXP 03/15/2027, EXPIRES 03-15-27, etc.
+ */
+function extractExpiryDate(text: string): string | null {
+  const lines = text.split('\n');
+
+  // Common patterns on driver's licenses
+  const patterns = [
+    /(?:EXP|EXPIRES?|EXPIRATION)[:\s]*(\d{2})[\/\-](\d{2})[\/\-](\d{2,4})/i,
+    /(\d{2})[\/\-](\d{2})[\/\-](\d{2,4})/g, // Generic date pattern
+  ];
+
+  for (const line of lines) {
+    for (const pattern of patterns) {
+      const match = line.match(pattern);
+      if (match) {
+        let month = match[1];
+        let day = match[2];
+        let year = match[3];
+
+        // Handle 2-digit years
+        if (year.length === 2) {
+          const currentYear = new Date().getFullYear();
+          const currentCentury = Math.floor(currentYear / 100) * 100;
+          year = String(currentCentury + parseInt(year));
+        }
+
+        // Basic validation
+        const monthNum = parseInt(month);
+        const dayNum = parseInt(day);
+        const yearNum = parseInt(year);
+
+        if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31 && yearNum >= 2024 && yearNum <= 2050) {
+          const expiryDate = new Date(yearNum, monthNum - 1, dayNum);
+          // Return in YYYY-MM-DD format for HTML date input
+          return expiryDate.toISOString().split('T')[0];
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Validate image with Google Cloud Vision
  */
-async function validateWithGoogleVision(filePath: string): Promise<{ valid: boolean; reason?: string }> {
+async function validateWithGoogleVision(filePath: string): Promise<{ valid: boolean; reason?: string; detectedExpiryDate?: string }> {
   if (!visionClient) {
     console.warn('Google Vision client not initialized, skipping validation');
     return { valid: true };
@@ -56,6 +101,12 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
     }
 
     console.log('✓ Text detected:', fullText.substring(0, 100) + '...');
+
+    // Try to extract expiry date
+    const detectedExpiryDate = extractExpiryDate(fullText);
+    if (detectedExpiryDate) {
+      console.log('✓ Detected expiry date:', detectedExpiryDate);
+    }
 
     // Check 2: Safe search (must be appropriate content)
     const safeSearch = result.safeSearchAnnotation;
@@ -98,7 +149,10 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
     }
 
     console.log('✓ Google Vision validation passed');
-    return { valid: true };
+    return {
+      valid: true,
+      detectedExpiryDate: detectedExpiryDate || undefined
+    };
 
   } catch (error: any) {
     console.error('Google Vision validation error:', error);
@@ -161,7 +215,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('✅ Validation passed!');
     return res.status(200).json({
       valid: true,
-      message: 'Image looks good!'
+      message: 'Image looks good!',
+      detectedExpiryDate: visionCheck.detectedExpiryDate
     });
 
   } catch (error: any) {

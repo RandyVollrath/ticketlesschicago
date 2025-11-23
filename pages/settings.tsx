@@ -58,6 +58,10 @@ export default function ProfileNew() {
   const [licenseBackValid, setLicenseBackValid] = useState(false)
   const [licenseBackError, setLicenseBackError] = useState('')
 
+  // Date detection state
+  const [detectedExpiryDate, setDetectedExpiryDate] = useState('')
+  const [dateConfirmed, setDateConfirmed] = useState(false)
+
   useEffect(() => {
     loadUserData()
   }, [])
@@ -68,11 +72,12 @@ export default function ProfileNew() {
       licenseFrontFile && licenseBackFile &&
       licenseFrontValid && licenseBackValid &&
       licenseExpiryDate && licenseConsent &&
+      (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
       !licenseUploading
     ) {
       autoUploadLicense()
     }
-  }, [licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent])
+  }, [licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent, dateConfirmed])
 
   // Poll for Protection webhook completion
   useEffect(() => {
@@ -242,6 +247,12 @@ export default function ProfileNew() {
         setValid(false)
       } else {
         setValid(true)
+        // Auto-fill detected expiry date (only from front of license)
+        if (side === 'front' && data.detectedExpiryDate) {
+          setDetectedExpiryDate(data.detectedExpiryDate)
+          setLicenseExpiryDate(data.detectedExpiryDate)
+          setDateConfirmed(false) // Require user to confirm
+        }
       }
     } catch (error: any) {
       setError(error.message || 'Validation failed')
@@ -258,6 +269,9 @@ export default function ProfileNew() {
     }
     if (!licenseExpiryDate || !licenseConsent) {
       return // Missing required fields
+    }
+    if (detectedExpiryDate && !dateConfirmed) {
+      return // Need to confirm auto-detected date
     }
     if (licenseUploading) {
       return // Already uploading
@@ -1284,17 +1298,84 @@ export default function ProfileNew() {
                 }}>
                   License Expiry Date <span style={{ color: '#dc2626' }}>*</span>
                 </label>
+                {detectedExpiryDate && !dateConfirmed && (
+                  <div style={{
+                    backgroundColor: '#fef3c7',
+                    border: '2px solid #f59e0b',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginBottom: '12px'
+                  }}>
+                    <p style={{ fontSize: '14px', color: '#92400e', fontWeight: '600', margin: '0 0 8px 0' }}>
+                      📅 We detected from your license:
+                    </p>
+                    <p style={{ fontSize: '16px', color: '#78350f', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+                      {new Date(detectedExpiryDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    <p style={{ fontSize: '13px', color: '#92400e', margin: '0 0 12px 0' }}>
+                      ⚠️ Please verify this is correct before continuing
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => setDateConfirmed(true)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 16px',
+                          backgroundColor: '#059669',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✓ Correct
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDetectedExpiryDate('')
+                          setLicenseExpiryDate('')
+                          setDateConfirmed(false)
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px 16px',
+                          backgroundColor: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✗ Edit
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <input
                   type="date"
                   value={licenseExpiryDate}
-                  onChange={(e) => setLicenseExpiryDate(e.target.value)}
+                  onChange={(e) => {
+                    setLicenseExpiryDate(e.target.value)
+                    if (detectedExpiryDate && e.target.value !== detectedExpiryDate) {
+                      // User manually edited - clear detection and auto-confirm
+                      setDetectedExpiryDate('')
+                      setDateConfirmed(true)
+                    }
+                  }}
+                  disabled={detectedExpiryDate && !dateConfirmed}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #d1d5db',
+                    border: detectedExpiryDate && !dateConfirmed ? '2px solid #f59e0b' : '1px solid #d1d5db',
                     borderRadius: '6px',
                     fontSize: '14px',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    backgroundColor: detectedExpiryDate && !dateConfirmed ? '#fef3c7' : '#fff',
+                    opacity: detectedExpiryDate && !dateConfirmed ? 0.6 : 1
                   }}
                 />
               </div>
@@ -1370,7 +1451,7 @@ export default function ProfileNew() {
                   </p>
                 </div>
               )}
-              {!licenseUploading && licenseFrontValid && licenseBackValid && licenseExpiryDate && licenseConsent && (
+              {!licenseUploading && licenseFrontValid && licenseBackValid && licenseExpiryDate && licenseConsent && (!detectedExpiryDate || dateConfirmed) && (
                 <div style={{
                   padding: '16px',
                   backgroundColor: '#f0fdf4',
