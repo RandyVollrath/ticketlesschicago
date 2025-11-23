@@ -55,6 +55,49 @@ export default function ProfileNew() {
     loadUserData()
   }, [])
 
+  // Poll for Protection webhook completion
+  useEffect(() => {
+    if (!user || !profile.user_id) return
+
+    const justUpgraded = router.query.protection === 'true'
+    if (!justUpgraded || profile.has_protection) return
+
+    console.log('⏳ Waiting for Protection webhook to complete...')
+    let attempts = 0
+    const maxAttempts = 15 // 30 seconds (2 sec intervals)
+
+    const pollInterval = setInterval(async () => {
+      attempts++
+      console.log(`🔄 Polling for protection status (${attempts}/${maxAttempts})...`)
+
+      const { data: updatedProfile } = await supabase
+        .from('user_profiles')
+        .select('has_protection')
+        .eq('user_id', user.id)
+        .single()
+
+      if (updatedProfile?.has_protection) {
+        console.log('✅ Protection activated! Reloading profile...')
+        clearInterval(pollInterval)
+        // Reload the full profile data
+        await loadUserData()
+        // Remove query param to stop polling
+        router.replace('/settings', undefined, { shallow: true })
+      } else if (attempts >= maxAttempts) {
+        console.log('⏱️ Polling timeout - webhook may still be processing')
+        clearInterval(pollInterval)
+        // Remove query param anyway
+        router.replace('/settings', undefined, { shallow: true })
+      }
+    }, 2000)
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🧹 Cleaning up protection polling interval')
+      clearInterval(pollInterval)
+    }
+  }, [user, profile.user_id, profile.has_protection, router.query.protection])
+
   const loadUserData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -165,7 +208,10 @@ export default function ProfileNew() {
   }
 
   const missingFields = getMissingFields()
-  const needsLicenseUpload = profile.has_permit_zone && profile.has_protection &&
+
+  // Section-specific missing fields
+  const missingEssentialInfo = !formData.phone_number && !formData.phone
+  const needsLicenseUpload = profile.has_permit_zone && profile.has_protection && profile.permit_requested &&
                              (!profile.license_image_path || !profile.license_image_path_back)
 
   if (loading) {
@@ -345,7 +391,7 @@ export default function ProfileNew() {
           <Accordion
             title="Essential Information"
             icon="👤"
-            badge={missingFields.length > 0 ? `${missingFields.length} missing` : undefined}
+            badge={missingEssentialInfo ? '1 missing' : undefined}
             badgeColor="red"
             defaultOpen={true}
             required={true}
@@ -953,8 +999,8 @@ export default function ProfileNew() {
             </div>
           </Accordion>
 
-          {/* 5. Driver's License Upload - Only for Protection users in permit zones */}
-          {profile.has_permit_zone && profile.has_protection && (
+          {/* 5. Driver's License Upload - Only for Protection users in permit zones who requested permit */}
+          {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
             <Accordion
               title="Driver's License"
               icon="📸"
@@ -1241,8 +1287,8 @@ export default function ProfileNew() {
             </Accordion>
           )}
 
-          {/* 5.5 Residential Parking Permit - Email Forwarding (Permit Requested Users Only) */}
-          {profile.permit_requested && (
+          {/* 5.5 Residential Parking Permit - Email Forwarding (Protection + Permit Zone + Permit Requested) */}
+          {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
             <Accordion
               title="Residential Parking Permit - Proof of Residency"
               icon="🅿️"
