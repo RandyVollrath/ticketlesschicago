@@ -912,7 +912,7 @@ export default function Protection() {
                         color: '#374151',
                         marginBottom: '6px'
                       }}>
-                        Current expiration date
+                        Current expiration date (can add later)
                       </label>
                       <input
                         type="date"
@@ -992,7 +992,7 @@ export default function Protection() {
                         color: '#374151',
                         marginBottom: '6px'
                       }}>
-                        Current expiration date
+                        Current expiration date (can add later)
                       </label>
                       <input
                         type="date"
