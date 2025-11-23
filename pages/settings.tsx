@@ -50,9 +50,29 @@ export default function ProfileNew() {
   const [licenseReuseConsent, setLicenseReuseConsent] = useState(false)
   const [licenseExpiryDate, setLicenseExpiryDate] = useState('')
 
+  // Validation state
+  const [licenseFrontValidating, setLicenseFrontValidating] = useState(false)
+  const [licenseFrontValid, setLicenseFrontValid] = useState(false)
+  const [licenseFrontError, setLicenseFrontError] = useState('')
+  const [licenseBackValidating, setLicenseBackValidating] = useState(false)
+  const [licenseBackValid, setLicenseBackValid] = useState(false)
+  const [licenseBackError, setLicenseBackError] = useState('')
+
   useEffect(() => {
     loadUserData()
   }, [])
+
+  // Auto-upload when all conditions are met
+  useEffect(() => {
+    if (
+      licenseFrontFile && licenseBackFile &&
+      licenseFrontValid && licenseBackValid &&
+      licenseExpiryDate && licenseConsent &&
+      !licenseUploading
+    ) {
+      autoUploadLicense()
+    }
+  }, [licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent])
 
   // Poll for Protection webhook completion
   useEffect(() => {
@@ -193,6 +213,107 @@ export default function ProfileNew() {
     } catch (error) {
       console.error('Error confirming profile:', error)
       setMessage({ type: 'error', text: 'Failed to confirm profile. Please try again.' })
+    }
+  }
+
+  // Validate license image instantly
+  const validateLicenseImage = async (file: File, side: 'front' | 'back') => {
+    const setValidating = side === 'front' ? setLicenseFrontValidating : setLicenseBackValidating
+    const setValid = side === 'front' ? setLicenseFrontValid : setLicenseBackValid
+    const setError = side === 'front' ? setLicenseFrontError : setLicenseBackError
+
+    setValidating(true)
+    setError('')
+    setValid(false)
+
+    try {
+      const formData = new FormData()
+      formData.append('license', file)
+
+      const res = await fetch('/api/protection/validate-license', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.valid) {
+        setError(data.error || 'Validation failed')
+        setValid(false)
+      } else {
+        setValid(true)
+      }
+    } catch (error: any) {
+      setError(error.message || 'Validation failed')
+      setValid(false)
+    } finally {
+      setValidating(false)
+    }
+  }
+
+  // Auto-upload when all conditions are met
+  const autoUploadLicense = async () => {
+    if (!licenseFrontFile || !licenseBackFile || !licenseFrontValid || !licenseBackValid) {
+      return // Not ready yet
+    }
+    if (!licenseExpiryDate || !licenseConsent) {
+      return // Missing required fields
+    }
+    if (licenseUploading) {
+      return // Already uploading
+    }
+
+    console.log('🚀 Auto-uploading license...')
+    setLicenseUploading(true)
+
+    try {
+      // Upload front
+      const frontFormData = new FormData()
+      frontFormData.append('license', licenseFrontFile)
+      frontFormData.append('userId', user!.id)
+      frontFormData.append('side', 'front')
+
+      const frontRes = await fetch('/api/protection/upload-license', {
+        method: 'POST',
+        body: frontFormData,
+      })
+
+      if (!frontRes.ok) {
+        const error = await frontRes.json()
+        throw new Error(error.error || 'Failed to upload front image')
+      }
+
+      // Upload back
+      const backFormData = new FormData()
+      backFormData.append('license', licenseBackFile)
+      backFormData.append('userId', user!.id)
+      backFormData.append('side', 'back')
+
+      const backRes = await fetch('/api/protection/upload-license', {
+        method: 'POST',
+        body: backFormData,
+      })
+
+      if (!backRes.ok) {
+        const error = await backRes.json()
+        throw new Error(error.error || 'Failed to upload back image')
+      }
+
+      // Update license expiry and consent in profile
+      await supabase
+        .from('user_profiles')
+        .update({
+          license_valid_until: licenseExpiryDate,
+          license_reuse_consent_given: licenseReuseConsent,
+        })
+        .eq('user_id', user!.id)
+
+      alert('✅ License uploaded successfully!')
+      window.location.reload()
+    } catch (error: any) {
+      console.error('License upload error:', error)
+      alert(`Upload failed: ${error.message || 'Unknown error'}`)
+      setLicenseUploading(false)
     }
   }
 
@@ -1055,6 +1176,7 @@ export default function ProfileNew() {
                         return
                       }
                       setLicenseFrontFile(file)
+                      validateLicenseImage(file, 'front')
                     }
                   }}
                   style={{
@@ -1068,9 +1190,26 @@ export default function ProfileNew() {
                   }}
                 />
                 {licenseFrontFile && (
-                  <p style={{ fontSize: '12px', color: '#059669', marginTop: '4px' }}>
-                    ✓ {licenseFrontFile.name} selected
-                  </p>
+                  <div style={{ marginTop: '8px' }}>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>
+                      {licenseFrontFile.name}
+                    </p>
+                    {licenseFrontValidating && (
+                      <p style={{ fontSize: '13px', color: '#3b82f6', margin: 0 }}>
+                        🔍 Validating image quality...
+                      </p>
+                    )}
+                    {!licenseFrontValidating && licenseFrontValid && (
+                      <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
+                        ✅ Image looks good!
+                      </p>
+                    )}
+                    {!licenseFrontValidating && licenseFrontError && (
+                      <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>
+                        ❌ {licenseFrontError}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1097,6 +1236,7 @@ export default function ProfileNew() {
                         return
                       }
                       setLicenseBackFile(file)
+                      validateLicenseImage(file, 'back')
                     }
                   }}
                   style={{
@@ -1110,9 +1250,26 @@ export default function ProfileNew() {
                   }}
                 />
                 {licenseBackFile && (
-                  <p style={{ fontSize: '12px', color: '#059669', marginTop: '4px' }}>
-                    ✓ {licenseBackFile.name} selected
-                  </p>
+                  <div style={{ marginTop: '8px' }}>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>
+                      {licenseBackFile.name}
+                    </p>
+                    {licenseBackValidating && (
+                      <p style={{ fontSize: '13px', color: '#3b82f6', margin: 0 }}>
+                        🔍 Validating image quality...
+                      </p>
+                    )}
+                    {!licenseBackValidating && licenseBackValid && (
+                      <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
+                        ✅ Image looks good!
+                      </p>
+                    )}
+                    {!licenseBackValidating && licenseBackError && (
+                      <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>
+                        ❌ {licenseBackError}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1199,89 +1356,33 @@ export default function ProfileNew() {
                 </label>
               </div>
 
-              {/* Upload Button */}
-              <button
-                onClick={async () => {
-                  if (!licenseFrontFile || !licenseBackFile) {
-                    alert('Please select both front and back images')
-                    return
-                  }
-                  if (!licenseExpiryDate) {
-                    alert('Please enter your license expiry date')
-                    return
-                  }
-                  if (!licenseConsent) {
-                    alert('Please consent to license processing')
-                    return
-                  }
-
-                  setLicenseUploading(true)
-                  try {
-                    // Upload front
-                    const frontFormData = new FormData()
-                    frontFormData.append('license', licenseFrontFile)
-                    frontFormData.append('userId', user!.id)
-                    frontFormData.append('side', 'front')
-
-                    const frontRes = await fetch('/api/protection/upload-license', {
-                      method: 'POST',
-                      body: frontFormData,
-                    })
-
-                    if (!frontRes.ok) {
-                      const error = await frontRes.json()
-                      throw new Error(error.error || 'Failed to upload front image')
-                    }
-
-                    // Upload back
-                    const backFormData = new FormData()
-                    backFormData.append('license', licenseBackFile)
-                    backFormData.append('userId', user!.id)
-                    backFormData.append('side', 'back')
-
-                    const backRes = await fetch('/api/protection/upload-license', {
-                      method: 'POST',
-                      body: backFormData,
-                    })
-
-                    if (!backRes.ok) {
-                      const error = await backRes.json()
-                      throw new Error(error.error || 'Failed to upload back image')
-                    }
-
-                    // Update license expiry and consent in profile
-                    await supabase
-                      .from('user_profiles')
-                      .update({
-                        license_expiry: licenseExpiryDate,
-                        license_reuse_consent: licenseReuseConsent,
-                      })
-                      .eq('user_id', user!.id)
-
-                    alert('License uploaded successfully!')
-                    window.location.reload()
-                  } catch (error: any) {
-                    console.error('License upload error:', error)
-                    alert(`Upload failed: ${error.message || 'Unknown error'}`)
-                  } finally {
-                    setLicenseUploading(false)
-                  }
-                }}
-                disabled={licenseUploading || !licenseFrontFile || !licenseBackFile || !licenseExpiryDate || !licenseConsent}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  backgroundColor: licenseUploading || !licenseFrontFile || !licenseBackFile || !licenseExpiryDate || !licenseConsent ? '#d1d5db' : '#0052cc',
-                  color: 'white',
-                  border: 'none',
+              {/* Auto-Upload Status */}
+              {licenseUploading && (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#eff6ff',
+                  border: '2px solid #3b82f6',
                   borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: licenseUploading || !licenseFrontFile || !licenseBackFile || !licenseExpiryDate || !licenseConsent ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {licenseUploading ? 'Uploading...' : '📤 Upload License'}
-              </button>
+                  textAlign: 'center'
+                }}>
+                  <p style={{ fontSize: '14px', color: '#1e40af', fontWeight: '600', margin: 0 }}>
+                    ⏳ Uploading your license...
+                  </p>
+                </div>
+              )}
+              {!licenseUploading && licenseFrontValid && licenseBackValid && licenseExpiryDate && licenseConsent && (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#f0fdf4',
+                  border: '2px solid #059669',
+                  borderRadius: '8px',
+                  textAlign: 'center'
+                }}>
+                  <p style={{ fontSize: '14px', color: '#059669', fontWeight: '600', margin: 0 }}>
+                    ✅ All set! Your license will be saved automatically.
+                  </p>
+                </div>
+              )}
             </Accordion>
           )}
 

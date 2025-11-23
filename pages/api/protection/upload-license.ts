@@ -368,8 +368,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         documentType: side === 'front' ? 'license_front' : 'license_back',
         fileName: file.originalFilename,
         fileSize: file.size,
-        consentGiven: thirdPartyProcessingConsent,
-        reuseConsent: licenseReuseConsent,
       },
       status: 'success',
       ipAddress: getIpAddress(req),
