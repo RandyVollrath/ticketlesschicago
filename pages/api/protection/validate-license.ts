@@ -41,27 +41,44 @@ if (process.env.GOOGLE_CLOUD_VISION_CREDENTIALS) {
  * Looks for patterns like: EXP 03/15/2027, EXPIRES 03-15-27, etc.
  */
 function extractExpiryDate(text: string): string | null {
+  console.log('🔍 Attempting to extract expiry date from text...');
+  console.log('Full text length:', text.length);
+  console.log('First 500 chars:', text.substring(0, 500));
+
   const lines = text.split('\n');
 
-  // Common patterns on driver's licenses
+  // Illinois and other state-specific patterns
   const patterns = [
-    /(?:EXP|EXPIRES?|EXPIRATION)[:\s]*(\d{2})[\/\-](\d{2})[\/\-](\d{2,4})/i,
-    /(\d{2})[\/\-](\d{2})[\/\-](\d{2,4})/g, // Generic date pattern
+    // Pattern 1: EXP, EXPIRES, EXPIRATION with date
+    /(?:EXP|EXPIRES?|EXPIRATION|EXP\s*DATE)[:\s]*(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})/i,
+
+    // Pattern 2: Date after specific keywords
+    /(?:4[ab]|4d)[:\s]+(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})/i, // Illinois uses "4b" or "4d" for expiry
+
+    // Pattern 3: Look for future dates (must be after today and before 2050)
+    /\b(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})\b/g,
   ];
 
-  for (const line of lines) {
+  const today = new Date();
+  const maxDate = new Date('2050-01-01');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
     for (const pattern of patterns) {
-      const match = line.match(pattern);
-      if (match) {
+      pattern.lastIndex = 0; // Reset regex
+      const matches = line.matchAll(pattern);
+
+      for (const match of matches) {
         let month = match[1];
         let day = match[2];
         let year = match[3];
 
         // Handle 2-digit years
         if (year.length === 2) {
-          const currentYear = new Date().getFullYear();
-          const currentCentury = Math.floor(currentYear / 100) * 100;
-          year = String(currentCentury + parseInt(year));
+          const yearNum = parseInt(year);
+          // If year is 00-50, assume 2000s, otherwise 1900s
+          year = yearNum <= 50 ? String(2000 + yearNum) : String(1900 + yearNum);
         }
 
         // Basic validation
@@ -69,15 +86,24 @@ function extractExpiryDate(text: string): string | null {
         const dayNum = parseInt(day);
         const yearNum = parseInt(year);
 
-        if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31 && yearNum >= 2024 && yearNum <= 2050) {
+        if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
           const expiryDate = new Date(yearNum, monthNum - 1, dayNum);
-          // Return in YYYY-MM-DD format for HTML date input
-          return expiryDate.toISOString().split('T')[0];
+
+          // Must be a future date and before 2050
+          if (expiryDate > today && expiryDate < maxDate) {
+            const isoDate = expiryDate.toISOString().split('T')[0];
+            console.log(`✅ Found valid expiry date on line ${i}: ${line.trim()}`);
+            console.log(`   Parsed as: ${isoDate}`);
+            return isoDate;
+          } else {
+            console.log(`   Rejected date (not in valid range): ${expiryDate.toISOString().split('T')[0]}`);
+          }
         }
       }
     }
   }
 
+  console.log('❌ No valid expiry date found');
   return null;
 }
 
