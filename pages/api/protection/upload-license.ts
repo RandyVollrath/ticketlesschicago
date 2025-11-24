@@ -240,9 +240,12 @@ async function verifyWithGoogleVision(filePath: string): Promise<{ valid: boolea
 
   } catch (error: any) {
     console.error('Google Vision verification error:', error);
-    // Don't fail the upload if Google Vision has an error - Sharp already passed
-    console.warn('Skipping Google Vision check due to error, continuing with Sharp verification only');
-    return { valid: true };
+    // Fail closed - reject if Vision API has errors
+    // Note: This shouldn't happen during normal flow since we pass skipValidation=true
+    return {
+      valid: false,
+      reason: 'Unable to verify image quality. Please try again or contact support if the problem persists.'
+    };
   }
 }
 

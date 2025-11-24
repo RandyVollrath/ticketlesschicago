@@ -131,92 +131,159 @@ function extractExpiryDate(text: string): string | null {
 }
 
 /**
- * Validate image with Google Cloud Vision
+ * Fallback validation without Vision API
+ * Basic checks to catch obviously bad images
+ */
+async function fallbackValidation(filePath: string): Promise<{ valid: boolean; reason?: string }> {
+  try {
+    const stats = fs.statSync(filePath);
+    const fileSize = stats.size;
+
+    // Check minimum file size (real license photos are usually > 50KB)
+    if (fileSize < 50 * 1024) {
+      return { valid: false, reason: 'Image file too small. Please upload a clear photo of your license.' };
+    }
+
+    // Try to read basic image metadata
+    // Note: Sharp is disabled for Vercel compatibility, so we skip dimension checks
+    console.log('✓ Fallback validation: File size OK');
+    return { valid: true };
+
+  } catch (error: any) {
+    console.error('Fallback validation error:', error);
+    return { valid: false, reason: 'Unable to process image file' };
+  }
+}
+
+/**
+ * Validate image with Google Cloud Vision (with retry logic)
  */
 async function validateWithGoogleVision(filePath: string): Promise<{ valid: boolean; reason?: string; detectedExpiryDate?: string }> {
   if (!visionClient) {
-    console.warn('Google Vision client not initialized, skipping validation');
+    console.warn('⚠️  Google Vision client not initialized - using fallback validation');
+    const fallback = await fallbackValidation(filePath);
+    if (!fallback.valid) {
+      return fallback;
+    }
+    // If fallback passes, allow but warn
+    console.warn('⚠️  Proceeding without AI validation - manual review may be needed');
     return { valid: true };
   }
 
-  try {
-    // Use annotateImage to get multiple features at once
-    const [result] = await visionClient.annotateImage({
-      image: { source: { filename: filePath } },
-      features: [
-        { type: 'DOCUMENT_TEXT_DETECTION' }, // OCR for text readability
-        { type: 'IMAGE_PROPERTIES' }, // Quality analysis
-        { type: 'LABEL_DETECTION' }, // Identify document type
-        { type: 'SAFE_SEARCH_DETECTION' }, // Content safety
-      ],
-    });
+  // Retry logic: try up to 3 times with exponential backoff
+  const maxRetries = 3;
+  let lastError: any = null;
 
-    // Check 1: Text detection (must have readable text)
-    const fullText = result.fullTextAnnotation?.text || '';
-
-    if (!fullText || fullText.trim().length < 20) {
-      return { valid: false, reason: 'Unable to read text from image. Please ensure the license is clearly visible and in focus.' };
-    }
-
-    console.log('✓ Text detected:', fullText.substring(0, 100) + '...');
-
-    // Try to extract expiry date
-    const detectedExpiryDate = extractExpiryDate(fullText);
-    if (detectedExpiryDate) {
-      console.log('✓ Detected expiry date:', detectedExpiryDate);
-    }
-
-    // Check 2: Safe search (must be appropriate content)
-    const safeSearch = result.safeSearchAnnotation;
-    if (safeSearch && (
-      safeSearch.adult === 'VERY_LIKELY' ||
-      safeSearch.violence === 'VERY_LIKELY'
-    )) {
-      return { valid: false, reason: 'Invalid image content detected. Please upload a photo of your driver\'s license.' };
-    }
-
-    // Check 3: Brightness check (must not be too dark or too bright)
-    const imageProps = result.imagePropertiesAnnotation;
-    if (imageProps?.dominantColors?.colors && imageProps.dominantColors.colors.length > 0) {
-      const colors = imageProps.dominantColors.colors;
-      const avgBrightness = colors.reduce((sum, color) => {
-        const r = color.color?.red || 0;
-        const g = color.color?.green || 0;
-        const b = color.color?.blue || 0;
-        return sum + (r + g + b) / 3;
-      }, 0) / colors.length;
-
-      if (avgBrightness > 240) {
-        return { valid: false, reason: 'Image is overexposed or has glare. Please retake without flash or direct light.' };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 1) {
+        const backoffMs = Math.pow(2, attempt - 1) * 1000; // 2s, 4s, 8s
+        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${backoffMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
 
-      if (avgBrightness < 30) {
-        return { valid: false, reason: 'Image is too dark. Please retake in better lighting.' };
+      // Use annotateImage to get multiple features at once
+      const [result] = await visionClient.annotateImage({
+        image: { source: { filename: filePath } },
+        features: [
+          { type: 'DOCUMENT_TEXT_DETECTION' }, // OCR for text readability
+          { type: 'IMAGE_PROPERTIES' }, // Quality analysis
+          { type: 'LABEL_DETECTION' }, // Identify document type
+          { type: 'SAFE_SEARCH_DETECTION' }, // Content safety
+        ],
+      });
+
+      // Check 1: Text detection (must have readable text)
+      const fullText = result.fullTextAnnotation?.text || '';
+
+      if (!fullText || fullText.trim().length < 20) {
+        return { valid: false, reason: 'Unable to read text from image. Please ensure the license is clearly visible and in focus.' };
       }
+
+      console.log('✓ Text detected:', fullText.substring(0, 100) + '...');
+
+      // Try to extract expiry date
+      const detectedExpiryDate = extractExpiryDate(fullText);
+      if (detectedExpiryDate) {
+        console.log('✓ Detected expiry date:', detectedExpiryDate);
+      }
+
+      // Check 2: Safe search (must be appropriate content)
+      const safeSearch = result.safeSearchAnnotation;
+      if (safeSearch && (
+        safeSearch.adult === 'VERY_LIKELY' ||
+        safeSearch.violence === 'VERY_LIKELY'
+      )) {
+        return { valid: false, reason: 'Invalid image content detected. Please upload a photo of your driver\'s license.' };
+      }
+
+      // Check 3: Brightness check (must not be too dark or too bright)
+      const imageProps = result.imagePropertiesAnnotation;
+      if (imageProps?.dominantColors?.colors && imageProps.dominantColors.colors.length > 0) {
+        const colors = imageProps.dominantColors.colors;
+        const avgBrightness = colors.reduce((sum, color) => {
+          const r = color.color?.red || 0;
+          const g = color.color?.green || 0;
+          const b = color.color?.blue || 0;
+          return sum + (r + g + b) / 3;
+        }, 0) / colors.length;
+
+        if (avgBrightness > 240) {
+          return { valid: false, reason: 'Image is overexposed or has glare. Please retake without flash or direct light.' };
+        }
+
+        if (avgBrightness < 30) {
+          return { valid: false, reason: 'Image is too dark. Please retake in better lighting.' };
+        }
+      }
+
+      // Check 4: Label detection (should detect "document", "id card", "text", etc.)
+      const labels = result.labelAnnotations || [];
+      const documentLabels = ['document', 'id', 'card', 'text', 'paper', 'license', 'identification'];
+      const hasDocumentLabels = labels.some(label =>
+        documentLabels.some(dl => label.description?.toLowerCase().includes(dl))
+      );
+
+      if (!hasDocumentLabels) {
+        return { valid: false, reason: 'Unable to identify this as a document. Please ensure the entire license is visible and in focus.' };
+      }
+
+      console.log('✓ Google Vision validation passed');
+      return {
+        valid: true,
+        detectedExpiryDate: detectedExpiryDate || undefined
+      };
+
+    } catch (error: any) {
+      lastError = error;
+      console.error(`❌ Vision API attempt ${attempt}/${maxRetries} failed:`, error.message);
+
+      // If this was the last retry, continue to fallback
+      if (attempt === maxRetries) {
+        break;
+      }
+      // Otherwise, continue loop to retry
     }
+  }
 
-    // Check 4: Label detection (should detect "document", "id card", "text", etc.)
-    const labels = result.labelAnnotations || [];
-    const documentLabels = ['document', 'id', 'card', 'text', 'paper', 'license', 'identification'];
-    const hasDocumentLabels = labels.some(label =>
-      documentLabels.some(dl => label.description?.toLowerCase().includes(dl))
-    );
+  // All Vision API retries failed - use fallback validation
+  console.error('❌ Vision API failed after all retries:', lastError?.message);
+  console.log('🔄 Falling back to basic validation...');
 
-    if (!hasDocumentLabels) {
-      return { valid: false, reason: 'Unable to identify this as a document. Please ensure the entire license is visible and in focus.' };
-    }
+  const fallback = await fallbackValidation(filePath);
+  if (!fallback.valid) {
+    // Fallback also failed - reject the image
+    return fallback;
+  }
 
-    console.log('✓ Google Vision validation passed');
-    return {
-      valid: true,
-      detectedExpiryDate: detectedExpiryDate || undefined
-    };
+  // Fallback passed but we couldn't run full AI validation
+  // This is a concerning state - accept but log prominently
+  console.warn('⚠️  WARNING: Accepted image without AI validation! Manual review recommended.');
+  console.warn('⚠️  Vision API error:', lastError?.message);
 
-  } catch (error: any) {
-    console.error('Google Vision validation error:', error);
-    // Don't fail validation if Vision API has an error
-    console.warn('Skipping Google Vision check due to error');
-    return { valid: true };
+  return {
+    valid: true,
+    // Don't return detected date since we couldn't run OCR
   }
 }
 
