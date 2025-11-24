@@ -1912,11 +1912,12 @@ export default function ProfileNew() {
           )}
 
           {/* 7. Proof of Residency Upload */}
-          <Accordion
-            title="Proof of Residency"
-            icon="🏠"
-            defaultOpen={false}
-          >
+          {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
+            <Accordion
+              title="Proof of Residency"
+              icon="🏠"
+              defaultOpen={false}
+            >
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px 0' }}>
               Upload proof of residency for your parking permit application. Documents must be current and match your street address.
             </p>
@@ -2014,6 +2015,7 @@ export default function ProfileNew() {
               </p>
             </div>
           </Accordion>
+          )}
 
           {/* 8. Notification Preferences */}
           <Accordion
