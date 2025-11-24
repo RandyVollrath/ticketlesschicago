@@ -21,10 +21,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Configure formidable to NOT parse by default
+// Configure to accept both JSON (Cloudflare Worker) and multipart (SendGrid)
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
   },
 };
 
@@ -46,29 +48,137 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Parse multipart form data from SendGrid Inbound Parse
-    const form = formidable({
-      maxFileSize: 10 * 1024 * 1024, // 10MB max for utility bills
-      keepExtensions: true,
-    });
+    let to: string | undefined;
+    let from: string | undefined;
+    let subject: string | undefined;
+    let text: string | undefined;
+    let html: string | undefined;
+    let attachmentsData: Array<{ filename: string; contentType: string; content: string }> = [];
+    let filesToCleanup: string[] = [];
 
-    const [fields, files] = await new Promise<[formidable.Fields, formidable.Files]>(
-      (resolve, reject) => {
-        form.parse(req, (err, fields, files) => {
-          if (err) reject(err);
-          else resolve([fields, files]);
-        });
+    // Check if this is JSON (Cloudflare Worker) or multipart form data (SendGrid)
+    const contentType = req.headers['content-type'] || '';
+
+    if (contentType.includes('application/json')) {
+      // ========================================
+      // CLOUDFLARE WORKER FORMAT (JSON)
+      // ========================================
+      const body = req.body as any;
+      to = body.to;
+      from = body.from;
+      subject = body.subject;
+      text = body.text;
+      html = body.html;
+      attachmentsData = body.attachments || [];
+
+      console.log(`📧 Received email (Cloudflare): From=${from}, To=${to}, Subject=${subject}`);
+    } else {
+      // ========================================
+      // SENDGRID INBOUND PARSE FORMAT (Multipart)
+      // ========================================
+      const form = formidable({
+        maxFileSize: 10 * 1024 * 1024, // 10MB max for utility bills
+        keepExtensions: true,
+      });
+
+      const [fields, files] = await new Promise<[formidable.Fields, formidable.Files]>(
+        (resolve, reject) => {
+          form.parse(req, (err, fields, files) => {
+            if (err) reject(err);
+            else resolve([fields, files]);
+          });
+        }
+      );
+
+      // Extract email metadata
+      to = Array.isArray(fields.to) ? fields.to[0] : fields.to;
+      from = Array.isArray(fields.from) ? fields.from[0] : fields.from;
+      subject = Array.isArray(fields.subject) ? fields.subject[0] : fields.subject;
+      text = Array.isArray(fields.text) ? fields.text[0] : fields.text;
+      html = Array.isArray(fields.html) ? fields.html[0] : fields.html;
+
+      // Convert files to attachments format
+      for (const [fieldName, file] of Object.entries(files)) {
+        const fileObj = Array.isArray(file) ? file[0] : file;
+        if (fileObj) {
+          const fileBuffer = fs.readFileSync(fileObj.filepath);
+          attachmentsData.push({
+            filename: fileObj.originalFilename || 'attachment',
+            contentType: fileObj.mimetype || 'application/octet-stream',
+            content: fileBuffer.toString('base64'),
+          });
+          filesToCleanup.push(fileObj.filepath);
+        }
       }
-    );
 
-    // Extract email metadata
-    const to = Array.isArray(fields.to) ? fields.to[0] : fields.to;
-    const from = Array.isArray(fields.from) ? fields.from[0] : fields.from;
-    const subject = Array.isArray(fields.subject) ? fields.subject[0] : fields.subject;
-    const text = Array.isArray(fields.text) ? fields.text[0] : fields.text;
-    const html = Array.isArray(fields.html) ? fields.html[0] : fields.html;
+      console.log(`📧 Received email (SendGrid): From=${from}, To=${to}, Subject=${subject}`);
+    }
 
     console.log(`📧 Received email: From=${from}, To=${to}, Subject=${subject}`);
+
+    // ========================================
+    // HANDLE GMAIL VERIFICATION EMAILS
+    // ========================================
+    // When users set up Gmail forwarding, Gmail sends a confirmation email
+    // We automatically "click" the verification link to complete setup
+    if (from?.includes('mail-noreply@google.com') || from?.includes('forwarding-noreply@google.com')) {
+      if (subject?.toLowerCase().includes('confirmation') ||
+          subject?.toLowerCase().includes('forwarding confirmation request')) {
+
+        console.log('🔐 Detected Gmail verification email, processing...');
+
+        // Extract confirmation URL from email body (text or html)
+        const emailBody = html || text || '';
+        const urlMatch = emailBody.match(/(https:\/\/mail\.google\.com\/mail\/vf[^\s<>"']+)/i);
+
+        if (urlMatch && urlMatch[1]) {
+          const confirmationUrl = urlMatch[1]
+            .replace(/&amp;/g, '&')  // Fix HTML entities
+            .replace(/=3D/g, '=')     // Fix quoted-printable encoding
+            .trim();
+
+          console.log('✓ Found confirmation URL, verifying...');
+
+          try {
+            // Make GET request to confirmation URL to verify the forwarding address
+            const response = await fetch(confirmationUrl, {
+              method: 'GET',
+              redirect: 'follow',
+            });
+
+            if (response.ok || response.status === 302) {
+              console.log('✅ Gmail forwarding address verified automatically!');
+              return res.status(200).json({
+                success: true,
+                message: 'Gmail forwarding verification completed automatically',
+                verified: true,
+              });
+            } else {
+              console.error('❌ Verification request failed:', response.status);
+              return res.status(500).json({
+                error: 'Verification request failed',
+                status: response.status,
+              });
+            }
+          } catch (error: any) {
+            console.error('❌ Error verifying Gmail forwarding:', error.message);
+            return res.status(500).json({
+              error: 'Failed to verify forwarding address',
+              details: error.message,
+            });
+          }
+        } else {
+          console.warn('⚠️  Could not find confirmation URL in Gmail verification email');
+          return res.status(400).json({
+            error: 'No confirmation URL found in verification email',
+          });
+        }
+      }
+    }
+
+    // ========================================
+    // PROCESS UTILITY BILLS (Normal Flow)
+    // ========================================
 
     // Extract user UUID from email address
     // Format: documents+049f3b4a-32d4-4d09-87de-eb0cfe33c04e@autopilotamerica.com
@@ -102,16 +212,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Find PDF attachment
-    let pdfFile = null;
     let pdfBuffer: Buffer | null = null;
+    let pdfFileName: string | null = null;
 
-    // Check for attachments (SendGrid sends attachments as separate files)
-    for (const [fieldName, file] of Object.entries(files)) {
-      const fileObj = Array.isArray(file) ? file[0] : file;
-      if (fileObj && fileObj.mimetype === 'application/pdf') {
-        console.log(`📎 Found PDF attachment: ${fileObj.originalFilename}`);
-        pdfFile = fileObj;
-        pdfBuffer = fs.readFileSync(fileObj.filepath);
+    // Check for PDF attachments in unified format
+    for (const attachment of attachmentsData) {
+      if (attachment.contentType === 'application/pdf' || attachment.filename.toLowerCase().endsWith('.pdf')) {
+        console.log(`📎 Found PDF attachment: ${attachment.filename}`);
+        pdfBuffer = Buffer.from(attachment.content, 'base64');
+        pdfFileName = attachment.filename;
         break;
       }
     }
@@ -119,6 +228,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // If no PDF found, log and reject (for now - could implement HTML-to-PDF later)
     if (!pdfBuffer) {
       console.warn('No PDF attachment found in email');
+      // Clean up temp files if any
+      for (const file of filesToCleanup) {
+        try {
+          fs.unlinkSync(file);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
       return res.status(400).json({
         error: 'No PDF attachment found. Please ensure your utility bill is attached as a PDF.',
       });
@@ -193,16 +310,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`✅ Successfully processed utility bill for user ${profile.user_id}`);
     console.log(`📊 Stats: Deleted ${filesToDelete?.length || 0} old bills, stored 1 new bill`);
 
-    // Clean up temp file
-    if (pdfFile) {
-      fs.unlinkSync(pdfFile.filepath);
+    // Clean up temp files (only for SendGrid multipart format)
+    for (const file of filesToCleanup) {
+      try {
+        fs.unlinkSync(file);
+      } catch (e) {
+        console.error('Error cleaning up temp file:', e);
+      }
     }
 
     return res.status(200).json({
       success: true,
       message: 'Utility bill processed successfully. Old bills deleted, keeping most recent only.',
       userId: profile.user_id,
-      fileName: pdfFile?.originalFilename || 'bill.pdf',
+      fileName: pdfFileName || 'bill.pdf',
       deletedOldBills: filesToDelete?.length || 0,
       storedAt: filePath,
     });
