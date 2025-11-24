@@ -1773,6 +1773,47 @@ export default function ProfileNew() {
               <EmailForwardingSetup
                 forwardingEmail={`documents+${profile.user_id || user?.id}@autopilotamerica.com`}
               />
+
+              {/* Revoke Consent Option */}
+              {profile.residency_forwarding_consent_given && (
+                <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b', margin: '0 0 8px 0' }}>
+                    Stop Email Forwarding
+                  </h4>
+                  <p style={{ fontSize: '13px', color: '#7f1d1d', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+                    If you want to stop forwarding utility bills, you can revoke consent. This will disable automatic proof of residency updates, and you'll need to manually upload documents when required.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Are you sure you want to stop email forwarding for proof of residency? You will need to manually upload documents when required.')) {
+                        const { error } = await supabase
+                          .from('user_profiles')
+                          .update({ residency_forwarding_consent_given: false })
+                          .eq('user_id', profile.user_id);
+
+                        if (!error) {
+                          alert('Email forwarding consent revoked. You can re-enable it anytime by checking the permit box during signup.');
+                          loadUserData();
+                        } else {
+                          alert('Failed to revoke consent. Please try again.');
+                        }
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Revoke Consent
+                  </button>
+                </div>
+              )}
             </Accordion>
           )}
 

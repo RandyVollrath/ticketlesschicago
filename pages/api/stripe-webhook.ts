@@ -240,6 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     home_address_full: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
                     has_permit_zone: metadata.hasPermitZone === 'true',
                     permit_requested: metadata.permitRequested === 'true',
+                    residency_forwarding_consent_given: metadata.permitRequested === 'true', // Auto-consent if permit requested
                     // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
                     updated_at: new Date().toISOString()
                   }, {
@@ -425,6 +426,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   home_address_full: hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress,
                   has_permit_zone: metadata.hasPermitZone === 'true',
                   permit_requested: metadata.permitRequested === 'true',
+                  residency_forwarding_consent_given: metadata.permitRequested === 'true', // Auto-consent if permit requested
                   // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
                   updated_at: new Date().toISOString()
                 }, {
@@ -691,6 +693,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (metadata.hasPermitZone === 'true') {
             updateData.has_permit_zone = true;
             updateData.permit_requested = metadata.permitRequested === 'true';
+            updateData.residency_forwarding_consent_given = metadata.permitRequested === 'true'; // Auto-consent if permit requested
             // NOTE: permit_zones column does not exist in database - removed to prevent update failure
           }
 
