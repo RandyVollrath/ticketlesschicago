@@ -73,21 +73,33 @@ export default function ProfileNew() {
     loadUserData()
   }, [])
 
-  // Show consent popup when both images validated
+  // Show consent popup IMMEDIATELY after both images validated (before expiry date)
   useEffect(() => {
     if (
       licenseFrontFile && licenseBackFile &&
       licenseFrontValid && licenseBackValid &&
-      licenseExpiryDate &&
-      (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
-      !licenseUploading &&
+      !licenseConsent && // Only show if not already consented
       !showConsentPopup
     ) {
-      // Both images validated, expiry date filled → show consent popup
-      console.log('🔔 Triggering consent popup')
+      // Both images validated → show consent popup IMMEDIATELY
+      console.log('🔔 Both images validated - triggering consent popup')
       setShowConsentPopup(true)
     }
-  }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseExpiryDate, detectedExpiryDate, dateConfirmed, licenseUploading, showConsentPopup])
+  }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseConsent])
+
+  // Auto-upload when consent given AND expiry date filled
+  useEffect(() => {
+    if (
+      licenseFrontFile && licenseBackFile &&
+      licenseFrontValid && licenseBackValid &&
+      licenseExpiryDate && licenseConsent &&
+      (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
+      !licenseUploading
+    ) {
+      console.log('🚀 All conditions met - auto-uploading')
+      autoUploadLicense()
+    }
+  }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent, detectedExpiryDate, dateConfirmed, licenseUploading])
 
   // Poll for Protection webhook completion
   useEffect(() => {
@@ -272,12 +284,13 @@ export default function ProfileNew() {
     }
   }
 
-  // Handle consent confirmation - proceed with upload
-  const handleConsentConfirm = async () => {
+  // Handle consent confirmation - set consent flag (upload happens via useEffect)
+  const handleConsentConfirm = () => {
     setShowConsentPopup(false)
     setLicenseConsent(true) // Set consent flag
     setLicenseReuseConsent(true) // Default to multi-year reuse
-    await autoUploadLicense()
+    console.log('✅ User consented - waiting for expiry date to auto-upload')
+    // Note: Upload will happen automatically via useEffect when expiry date is filled
   }
 
   // Handle consent popup close - drop images
@@ -293,6 +306,8 @@ export default function ProfileNew() {
     setLicenseExpiryDate('')
     setDetectedExpiryDate('')
     setDateConfirmed(false)
+    setLicenseConsent(false) // Reset consent so popup shows again on re-upload
+    setLicenseReuseConsent(false)
     // Clear file input elements
     if (licenseFrontInputRef.current) {
       licenseFrontInputRef.current.value = ''
@@ -300,7 +315,7 @@ export default function ProfileNew() {
     if (licenseBackInputRef.current) {
       licenseBackInputRef.current.value = ''
     }
-    console.log('⚠️ User closed consent popup - images dropped')
+    console.log('⚠️ User closed consent popup - images dropped, consent reset')
   }
 
   // Auto-upload when all conditions are met
