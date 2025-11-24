@@ -31,7 +31,7 @@ export const config = {
   },
 };
 
-const BUCKET_NAME = 'residency-proofs-temp';
+const BUCKET_NAME = 'residency-proofs-temps';
 
 interface EmailPayload {
   to: string;
