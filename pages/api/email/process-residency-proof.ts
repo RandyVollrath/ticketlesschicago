@@ -15,6 +15,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
+import { simpleParser } from 'mailparser';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,14 +65,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // CLOUDFLARE WORKER FORMAT (JSON)
       // ========================================
       const body = req.body as any;
-      to = body.to;
-      from = body.from;
-      subject = body.subject;
-      text = body.text;
-      html = body.html;
-      attachmentsData = body.attachments || [];
 
-      console.log(`📧 Received email (Cloudflare): From=${from}, To=${to}, Subject=${subject}`);
+      // Check if this is raw MIME email format
+      if (body.rawEmail) {
+        console.log('📧 Parsing raw MIME email...');
+
+        const parsed = await simpleParser(body.rawEmail);
+
+        to = body.to;
+        from = body.from;
+        subject = parsed.subject || body.subject;
+        text = parsed.text || '';
+        html = parsed.html || '';
+
+        // Extract attachments from parsed email
+        if (parsed.attachments && parsed.attachments.length > 0) {
+          console.log(`📎 Found ${parsed.attachments.length} attachments in raw email`);
+
+          for (const attachment of parsed.attachments) {
+            attachmentsData.push({
+              filename: attachment.filename || 'attachment',
+              contentType: attachment.contentType || 'application/octet-stream',
+              content: attachment.content.toString('base64'),
+            });
+          }
+        }
+      } else {
+        // Original format with pre-parsed attachments
+        to = body.to;
+        from = body.from;
+        subject = body.subject;
+        text = body.text;
+        html = body.html;
+        attachmentsData = body.attachments || [];
+      }
+
+      console.log(`📧 Received email (Cloudflare): From=${from}, To=${to}, Subject=${subject}, Attachments=${attachmentsData.length}`);
     } else {
       // ========================================
       // SENDGRID INBOUND PARSE FORMAT (Multipart)
