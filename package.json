@@ -44,6 +44,7 @@
     "next-auth": "^4.24.0",
     "node-fetch": "^2.7.0",
     "openai": "^6.7.0",
+    "pdfkit": "^0.17.2",
     "playwright": "^1.56.1",
     "posthog-js": "^1.273.1",
     "react": "^18.3.1",
