@@ -47,16 +47,19 @@ function extractExpiryDate(text: string): string | null {
 
   const lines = text.split('\n');
 
-  // Illinois and other state-specific patterns
+  // Illinois and other state-specific patterns (ordered by specificity)
   const patterns = [
-    // Pattern 1: EXP, EXPIRES, EXPIRATION with date
-    /(?:EXP|EXPIRES?|EXPIRATION|EXP\s*DATE)[:\s]*(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})/i,
+    // Pattern 1: Illinois-specific "4b" or "4d" followed by date (with optional EXP/EXPIRES)
+    /(?:4[abd]\s*\.?\s*(?:EXP|EXPIRES?|EXPIRATION)?[\s:]*)?(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
 
-    // Pattern 2: Date after specific keywords
-    /(?:4[ab]|4d)[:\s]+(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})/i, // Illinois uses "4b" or "4d" for expiry
+    // Pattern 2: EXP, EXPIRES, EXPIRATION with date (various separators)
+    /(?:EXP|EXPIRES?|EXPIRATION|EXP\s*DATE)[\s:\.]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
 
-    // Pattern 3: Look for future dates (must be after today and before 2050)
-    /\b(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})\b/g,
+    // Pattern 3: "VALID UNTIL" or similar
+    /(?:VALID\s*(?:UNTIL|THRU|THROUGH)|GOOD\s*(?:UNTIL|THRU))[\s:\.]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+
+    // Pattern 4: Look for future dates (must be after today and before 2050) - last resort
+    /\b(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})\b/g,
   ];
 
   const today = new Date();
@@ -64,12 +67,17 @@ function extractExpiryDate(text: string): string | null {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (line.trim().length === 0) continue; // Skip empty lines
 
-    for (const pattern of patterns) {
+    for (let p = 0; p < patterns.length; p++) {
+      const pattern = patterns[p];
       pattern.lastIndex = 0; // Reset regex
       const matches = line.matchAll(pattern);
 
       for (const match of matches) {
+        console.log(`   Pattern ${p + 1} matched on line ${i}: "${line.trim()}"`);
+        console.log(`   Captured groups:`, match.slice(1, 4));
+
         let month = match[1];
         let day = match[2];
         let year = match[3];
