@@ -57,17 +57,20 @@ function extractExpiryDate(text: string): string | null {
 
   // Illinois and other state-specific patterns (ordered by specificity)
   const patterns = [
-    // Pattern 1: Illinois-specific "4b" or "4d" followed by date (with optional EXP/EXPIRES)
-    /(?:4[abd]\s*\.?\s*(?:EXP|EXPIRES?|EXPIRATION)?[\s:]*)?(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+    // Pattern 1: EXP with colon and slash (EXP: 06/30/2027)
+    /EXP\s*:\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/i,
 
-    // Pattern 2: EXP, EXPIRES, EXPIRATION with date (various separators)
-    /(?:EXP|EXPIRES?|EXPIRATION|EXP\s*DATE)[\s:\.]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+    // Pattern 2: Illinois-specific "4b" or "4d" followed by date
+    /(?:4[abd])\s*\.?\s*(?:EXP|EXPIRES?)?[\s:]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
 
-    // Pattern 3: "VALID UNTIL" or similar
+    // Pattern 3: EXP, EXPIRES, EXPIRATION with date (various separators, very flexible)
+    /(?:EXP|EXPIRES?|EXPIRATION|EXP\s*DATE)[\s:\.]*(\d{1,2})[\s\-\/\.]*(\d{1,2})[\s\-\/\.]*(\d{2,4})/i,
+
+    // Pattern 4: "VALID UNTIL" or similar
     /(?:VALID\s*(?:UNTIL|THRU|THROUGH)|GOOD\s*(?:UNTIL|THRU))[\s:\.]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
 
-    // Pattern 4: Look for future dates (must be after today and before 2050) - last resort
-    /\b(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})\b/g,
+    // Pattern 5: Just digits with separators (very permissive - any future date)
+    /(\d{1,2})[\s\-\/\.]+(\d{1,2})[\s\-\/\.]+(\d{2,4})/g,
   ];
 
   const today = new Date();
@@ -77,14 +80,17 @@ function extractExpiryDate(text: string): string | null {
     const line = lines[i];
     if (line.trim().length === 0) continue; // Skip empty lines
 
+    // Log every line for debugging
+    console.log(`📋 Line ${i}: "${line.trim()}"`);
+
     for (let p = 0; p < patterns.length; p++) {
       const pattern = patterns[p];
       pattern.lastIndex = 0; // Reset regex
       const matches = line.matchAll(pattern);
 
       for (const match of matches) {
-        console.log(`   Pattern ${p + 1} matched on line ${i}: "${line.trim()}"`);
-        console.log(`   Captured groups:`, match.slice(1, 4));
+        console.log(`   ✅ Pattern ${p + 1} matched on line ${i}: "${line.trim()}"`);
+        console.log(`   📅 Captured groups:`, match.slice(1, 4));
 
         let month = match[1];
         let day = match[2];
