@@ -903,7 +903,7 @@ export default function Protection() {
                           </div>
                           <div style={{ fontSize: '13px', color: '#6b7280' }}>
                             {permitRequested
-                              ? "We'll process your permit and charge $30 at renewal. You'll upload your driver's license and proof of residency after checkout."
+                              ? "We'll process your permit and charge $30 at renewal. You consent to forwarding utility bills via email for proof of residency (required by Chicago). Bills are auto-deleted after 60 days."
                               : "Warning: Without a permit, you may receive parking tickets even when following street cleaning rules. Only uncheck if you already have a permit or don't park in this zone."
                             }
                           </div>
