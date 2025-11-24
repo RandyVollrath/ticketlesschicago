@@ -1591,15 +1591,45 @@ export default function ProfileNew() {
                 <input
                   type="date"
                   value={licenseExpiryDate}
+                  min={new Date().toISOString().split('T')[0]} // Must be today or future
+                  max="2050-12-31" // Reasonable upper limit
                   onChange={(e) => {
-                    setLicenseExpiryDate(e.target.value)
+                    const dateValue = e.target.value
+
+                    // Validate date format (YYYY-MM-DD) and ensure year is 4 digits
+                    if (dateValue) {
+                      const dateRegex = /^(\d{4})-(\d{2})-(\d{2})$/
+                      const match = dateValue.match(dateRegex)
+
+                      if (match) {
+                        const year = parseInt(match[1])
+                        const month = parseInt(match[2])
+                        const day = parseInt(match[3])
+
+                        // Validate year is reasonable (between current year and 2050)
+                        const currentYear = new Date().getFullYear()
+                        if (year >= currentYear && year <= 2050 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                          setLicenseExpiryDate(dateValue)
+                          console.log('✅ Valid date entered:', dateValue)
+                        } else {
+                          console.warn('⚠️ Invalid date range:', dateValue)
+                          return // Don't set invalid dates
+                        }
+                      } else {
+                        console.warn('⚠️ Invalid date format:', dateValue)
+                        return // Don't set malformed dates
+                      }
+                    } else {
+                      setLicenseExpiryDate(dateValue) // Allow clearing
+                    }
+
                     // If OCR detected a date and user is editing it
-                    if (detectedExpiryDate && e.target.value !== detectedExpiryDate) {
+                    if (detectedExpiryDate && dateValue !== detectedExpiryDate) {
                       setDetectedExpiryDate('')
                       setDateConfirmed(true)
                     }
                     // If NO date was detected and user is manually entering
-                    if (!detectedExpiryDate && e.target.value) {
+                    if (!detectedExpiryDate && dateValue) {
                       setDateConfirmed(true) // Auto-confirm manual entry
                     }
                   }}
