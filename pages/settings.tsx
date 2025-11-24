@@ -1773,7 +1773,7 @@ export default function ProfileNew() {
               </div>
 
               <EmailForwardingSetup
-                forwardingEmail={`documents+${user?.id}@autopilotamerica.com`}
+                forwardingEmail={`documents+${profile.user_id || user?.id}@autopilotamerica.com`}
               />
             </Accordion>
           )}

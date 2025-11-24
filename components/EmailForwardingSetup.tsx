@@ -96,14 +96,15 @@ export default function EmailForwardingSetup({ forwardingEmail }: EmailForwardin
                 <ol className="list-decimal list-inside space-y-1 ml-2">
                   <li>Check "Forward it to"</li>
                   <li>Add forwarding address: <code className="bg-gray-100 px-2 py-0.5 rounded text-xs break-all">{forwardingEmail}</code></li>
-                  <li>Gmail will send a verification email - click the confirmation link</li>
+                  <li>Gmail will send a verification email - <strong>we'll handle this automatically!</strong></li>
                   <li>Click "Create filter"</li>
                 </ol>
 
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                  <p className="text-xs text-yellow-800">
-                    <strong>Note:</strong> You'll receive a one-time verification email at your forwarding address.
-                    Just click the link to confirm. After that, all your ComEd bills will forward automatically.
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-xs text-green-800">
+                    <strong>Good news:</strong> Gmail verification is handled automatically. Just create the filter
+                    and we'll confirm the forwarding address for you behind the scenes. Your bills will start
+                    forwarding within a few seconds!
                   </p>
                 </div>
               </div>
@@ -130,9 +131,16 @@ export default function EmailForwardingSetup({ forwardingEmail }: EmailForwardin
                 <ol className="list-decimal list-inside space-y-1 ml-2">
                   <li>Check "Forward it to"</li>
                   <li>Add forwarding address: <code className="bg-gray-100 px-2 py-0.5 rounded text-xs break-all">{forwardingEmail}</code></li>
-                  <li>Gmail will send a verification email - click the confirmation link</li>
+                  <li>Gmail will send a verification email - <strong>we'll handle this automatically!</strong></li>
                   <li>Click "Create filter"</li>
                 </ol>
+
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-xs text-green-800">
+                    <strong>Good news:</strong> Gmail verification is handled automatically. Just create the filter
+                    and we'll confirm the forwarding address for you behind the scenes!
+                  </p>
+                </div>
               </div>
             </details>
 
@@ -157,9 +165,16 @@ export default function EmailForwardingSetup({ forwardingEmail }: EmailForwardin
                 <ol className="list-decimal list-inside space-y-1 ml-2">
                   <li>Check "Forward it to"</li>
                   <li>Add forwarding address: <code className="bg-gray-100 px-2 py-0.5 rounded text-xs break-all">{forwardingEmail}</code></li>
-                  <li>Gmail will send a verification email - click the confirmation link</li>
+                  <li>Gmail will send a verification email - <strong>we'll handle this automatically!</strong></li>
                   <li>Click "Create filter"</li>
                 </ol>
+
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-xs text-green-800">
+                    <strong>Good news:</strong> Gmail verification is handled automatically. Just create the filter
+                    and we'll confirm the forwarding address for you behind the scenes!
+                  </p>
+                </div>
               </div>
             </details>
 
@@ -178,9 +193,16 @@ export default function EmailForwardingSetup({ forwardingEmail }: EmailForwardin
                   <li>Enter <code className="bg-gray-100 px-2 py-0.5 rounded">bill OR statement</code> in "Has the words"</li>
                   <li>Click "Create filter"</li>
                   <li>Check "Forward it to" and add: <code className="bg-gray-100 px-2 py-0.5 rounded text-xs break-all">{forwardingEmail}</code></li>
-                  <li>Verify the forwarding address when Gmail sends confirmation</li>
+                  <li>Gmail will send a verification email - <strong>we'll handle this automatically!</strong></li>
                   <li>Click "Create filter"</li>
                 </ol>
+
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-xs text-green-800">
+                    <strong>Good news:</strong> Gmail verification is handled automatically. Just create the filter
+                    and we'll confirm the forwarding address for you behind the scenes!
+                  </p>
+                </div>
 
                 <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
                   <p className="text-xs text-blue-800">
