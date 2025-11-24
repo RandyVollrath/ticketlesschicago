@@ -419,7 +419,7 @@ export class NotificationScheduler {
                     ? `${renewal.type} Renewal Reminder - Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}`
                     : (hasProtection && renewal.canAutoPurchase)
                     ? `${renewal.type} Renewal - ${daysUntil === 30 ? "Charging your card today!" : daysUntil === 37 ? "Charging in 7 days - confirm your info" : daysUntil > 37 ? "Confirm your info" : "Sticker arriving soon"}`
-                    : `${renewal.type} coming up in ${daysUntil} days`;
+                    : `${renewal.type} - Due in ${daysUntil} days`;
 
                   const daysUntilPurchase = Math.max(0, daysUntil - 30);
                   const purchaseDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000);
