@@ -56,18 +56,19 @@ function extractExpiryDate(text: string): string | null {
   const lines = text.split('\n');
 
   // Illinois and other state-specific patterns (ordered by specificity)
+  // ALL patterns need 'g' flag for matchAll() to work
   const patterns = [
     // Pattern 1: EXP with colon and slash (EXP: 06/30/2027)
-    /EXP\s*:\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/i,
+    /EXP\s*:\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/gi,
 
-    // Pattern 2: Illinois-specific "4b" or "4d" followed by date
-    /(?:4[abd])\s*\.?\s*(?:EXP|EXPIRES?)?[\s:]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+    // Pattern 2: Illinois-specific "4b" or "4d" followed by date (matches "4b EXP: 06/30/2027")
+    /(?:4[abd])\s*\.?\s*(?:EXP|EXPIRES?)?[\s:]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/gi,
 
     // Pattern 3: EXP, EXPIRES, EXPIRATION with date (various separators, very flexible)
-    /(?:EXP|EXPIRES?|EXPIRATION|EXP\s*DATE)[\s:\.]*(\d{1,2})[\s\-\/\.]*(\d{1,2})[\s\-\/\.]*(\d{2,4})/i,
+    /(?:EXP|EXPIRES?|EXPIRATION|EXP\s*DATE)[\s:\.]*(\d{1,2})[\s\-\/\.]*(\d{1,2})[\s\-\/\.]*(\d{2,4})/gi,
 
     // Pattern 4: "VALID UNTIL" or similar
-    /(?:VALID\s*(?:UNTIL|THRU|THROUGH)|GOOD\s*(?:UNTIL|THRU))[\s:\.]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/i,
+    /(?:VALID\s*(?:UNTIL|THRU|THROUGH)|GOOD\s*(?:UNTIL|THRU))[\s:\.]*(\d{1,2})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})/gi,
 
     // Pattern 5: Just digits with separators (very permissive - any future date)
     /(\d{1,2})[\s\-\/\.]+(\d{1,2})[\s\-\/\.]+(\d{2,4})/g,
