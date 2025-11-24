@@ -223,9 +223,15 @@ export default function ProfileNew() {
         setLicenseBackPath(userProfile.license_image_path_back)
         console.log('✅ Back license already uploaded:', userProfile.license_image_path_back)
       }
-      if (userProfile.license_valid_until) {
+
+      // Only load expiry date from DB if images are verified
+      // (Don't load stale dates when user is re-uploading for OCR detection)
+      const imagesVerified = userProfile.license_image_verified && userProfile.license_image_back_verified
+      if (userProfile.license_valid_until && imagesVerified) {
         setLicenseExpiryDate(userProfile.license_valid_until)
-        console.log('✅ License expiry date:', userProfile.license_valid_until)
+        console.log('✅ License expiry date (verified):', userProfile.license_valid_until)
+      } else if (userProfile.license_valid_until) {
+        console.log('⏭️  Skipping unverified date from DB:', userProfile.license_valid_until)
       }
     }
 

@@ -66,16 +66,17 @@ async function fixLicenseDate(email, newDate) {
 const email = process.argv[2];
 const date = process.argv[3];
 
-if (!email || !date) {
+if (!email) {
   console.log('Usage: node scripts/fix-license-date.js <email> <date>');
   console.log('Example: node scripts/fix-license-date.js user@example.com 2027-06-30');
+  console.log('To clear: node scripts/fix-license-date.js user@example.com null');
   process.exit(1);
 }
 
-// Validate date format
-if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-  console.log('❌ Date must be in YYYY-MM-DD format (e.g., 2027-06-30)');
+// Validate date format (allow 'null' to clear)
+if (date && date !== 'null' && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  console.log('❌ Date must be in YYYY-MM-DD format (e.g., 2027-06-30) or "null" to clear');
   process.exit(1);
 }
 
-fixLicenseDate(email, date);
+fixLicenseDate(email, date === 'null' ? null : date);
