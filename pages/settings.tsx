@@ -1284,53 +1284,113 @@ export default function ProfileNew() {
                 }}>
                   Front of License <span style={{ color: '#dc2626' }}>*</span>
                 </label>
-                <input
-                  ref={licenseFrontInputRef}
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      if (file.size > 5 * 1024 * 1024) {
-                        alert('File too large. Maximum size is 5MB.')
-                        e.target.value = ''
-                        return
-                      }
-                      setLicenseFrontFile(file)
-                      // Validation happens after consent via useEffect
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px dashed #d1d5db',
+
+                {licenseFrontUploaded && !licenseFrontFile ? (
+                  // Already uploaded - show view/delete options
+                  <div style={{
+                    backgroundColor: '#f0fdf4',
+                    border: '2px solid #86efac',
                     borderRadius: '8px',
-                    fontSize: '14px',
-                    backgroundColor: '#f9fafb',
-                    cursor: 'pointer'
-                  }}
-                />
-                {licenseFrontFile && (
-                  <div style={{ marginTop: '8px' }}>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>
-                      {licenseFrontFile.name}
+                    padding: '12px'
+                  }}>
+                    <p style={{ fontSize: '13px', color: '#059669', fontWeight: '600', margin: '0 0 8px 0' }}>
+                      ✅ License uploaded successfully
                     </p>
-                    {licenseFrontValidating && (
-                      <p style={{ fontSize: '13px', color: '#3b82f6', margin: 0 }}>
-                        🔍 Validating image quality...
-                      </p>
-                    )}
-                    {!licenseFrontValidating && licenseFrontValid && (
-                      <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
-                        ✅ Image quality verified - text readable
-                      </p>
-                    )}
-                    {!licenseFrontValidating && licenseFrontError && (
-                      <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>
-                        ❌ {licenseFrontError}
-                      </p>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={async () => {
+                          const { data, error } = await supabase.storage
+                            .from('license-images-temp')
+                            .createSignedUrl(licenseFrontPath, 3600)
+                          if (data) window.open(data.signedUrl, '_blank')
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#0052cc',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        👁️ View Image
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this image and upload a new one?')) {
+                            setLicenseFrontUploaded(false)
+                            setLicenseFrontPath('')
+                          }
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗑️ Delete & Re-upload
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  // Not uploaded yet - show file input
+                  <>
+                    <input
+                      ref={licenseFrontInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert('File too large. Maximum size is 5MB.')
+                            e.target.value = ''
+                            return
+                          }
+                          setLicenseFrontFile(file)
+                          // Validation happens after consent via useEffect
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '2px dashed #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: '#f9fafb',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    {licenseFrontFile && (
+                      <div style={{ marginTop: '8px' }}>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>
+                          {licenseFrontFile.name}
+                        </p>
+                        {licenseFrontValidating && (
+                          <p style={{ fontSize: '13px', color: '#3b82f6', margin: 0 }}>
+                            🔍 Validating image quality...
+                          </p>
+                        )}
+                        {!licenseFrontValidating && licenseFrontValid && (
+                          <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
+                            ✅ Image quality verified - text readable
+                          </p>
+                        )}
+                        {!licenseFrontValidating && licenseFrontError && (
+                          <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>
+                            ❌ {licenseFrontError}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1345,53 +1405,113 @@ export default function ProfileNew() {
                 }}>
                   Back of License <span style={{ color: '#dc2626' }}>*</span>
                 </label>
-                <input
-                  ref={licenseBackInputRef}
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      if (file.size > 5 * 1024 * 1024) {
-                        alert('File too large. Maximum size is 5MB.')
-                        e.target.value = ''
-                        return
-                      }
-                      setLicenseBackFile(file)
-                      // Validation happens after consent via useEffect
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '2px dashed #d1d5db',
+
+                {licenseBackUploaded && !licenseBackFile ? (
+                  // Already uploaded - show view/delete options
+                  <div style={{
+                    backgroundColor: '#f0fdf4',
+                    border: '2px solid #86efac',
                     borderRadius: '8px',
-                    fontSize: '14px',
-                    backgroundColor: '#f9fafb',
-                    cursor: 'pointer'
-                  }}
-                />
-                {licenseBackFile && (
-                  <div style={{ marginTop: '8px' }}>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>
-                      {licenseBackFile.name}
+                    padding: '12px'
+                  }}>
+                    <p style={{ fontSize: '13px', color: '#059669', fontWeight: '600', margin: '0 0 8px 0' }}>
+                      ✅ License uploaded successfully
                     </p>
-                    {licenseBackValidating && (
-                      <p style={{ fontSize: '13px', color: '#3b82f6', margin: 0 }}>
-                        🔍 Validating image quality...
-                      </p>
-                    )}
-                    {!licenseBackValidating && licenseBackValid && (
-                      <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
-                        ✅ Image quality verified - text readable
-                      </p>
-                    )}
-                    {!licenseBackValidating && licenseBackError && (
-                      <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>
-                        ❌ {licenseBackError}
-                      </p>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={async () => {
+                          const { data, error } = await supabase.storage
+                            .from('license-images-temp')
+                            .createSignedUrl(licenseBackPath, 3600)
+                          if (data) window.open(data.signedUrl, '_blank')
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#0052cc',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        👁️ View Image
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this image and upload a new one?')) {
+                            setLicenseBackUploaded(false)
+                            setLicenseBackPath('')
+                          }
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗑️ Delete & Re-upload
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  // Not uploaded yet - show file input
+                  <>
+                    <input
+                      ref={licenseBackInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert('File too large. Maximum size is 5MB.')
+                            e.target.value = ''
+                            return
+                          }
+                          setLicenseBackFile(file)
+                          // Validation happens after consent via useEffect
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '2px dashed #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: '#f9fafb',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    {licenseBackFile && (
+                      <div style={{ marginTop: '8px' }}>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>
+                          {licenseBackFile.name}
+                        </p>
+                        {licenseBackValidating && (
+                          <p style={{ fontSize: '13px', color: '#3b82f6', margin: 0 }}>
+                            🔍 Validating image quality...
+                          </p>
+                        )}
+                        {!licenseBackValidating && licenseBackValid && (
+                          <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
+                            ✅ Image quality verified - text readable
+                          </p>
+                        )}
+                        {!licenseBackValidating && licenseBackError && (
+                          <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>
+                            ❌ {licenseBackError}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
