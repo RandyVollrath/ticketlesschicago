@@ -140,7 +140,16 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
   }
 
   try {
-    const [result] = await visionClient.documentTextDetection(filePath);
+    // Use annotateImage to get multiple features at once
+    const [result] = await visionClient.annotateImage({
+      image: { source: { filename: filePath } },
+      features: [
+        { type: 'DOCUMENT_TEXT_DETECTION' }, // OCR for text readability
+        { type: 'IMAGE_PROPERTIES' }, // Quality analysis
+        { type: 'LABEL_DETECTION' }, // Identify document type
+        { type: 'SAFE_SEARCH_DETECTION' }, // Content safety
+      ],
+    });
 
     // Check 1: Text detection (must have readable text)
     const fullText = result.fullTextAnnotation?.text || '';
