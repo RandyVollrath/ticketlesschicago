@@ -267,6 +267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const userId = Array.isArray(fields.userId) ? fields.userId[0] : fields.userId;
     const side = Array.isArray(fields.side) ? fields.side[0] : fields.side; // 'front' or 'back'
+    const skipValidation = Array.isArray(fields.skipValidation) ? fields.skipValidation[0] === 'true' : fields.skipValidation === 'true';
     const file = Array.isArray(files.license) ? files.license[0] : files.license;
 
     if (!userId) {
@@ -288,36 +289,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Layer 1: Verify image quality with Sharp (blur, brightness, dimensions)
-    console.log('🔍 Layer 1: Verifying image quality with Sharp...');
-    const qualityCheck = await verifyImageQuality(file.filepath);
+    // Skip validation if already validated (for faster uploads)
+    if (skipValidation) {
+      console.log('⏭️  Skipping validation - already validated during pre-check');
+    } else {
+      // Layer 1: Verify image quality with Sharp (blur, brightness, dimensions)
+      console.log('🔍 Layer 1: Verifying image quality with Sharp...');
+      const qualityCheck = await verifyImageQuality(file.filepath);
 
-    if (!qualityCheck.valid) {
-      console.log('❌ Sharp quality check failed:', qualityCheck.reason);
-      // Clean up temp file
-      fs.unlinkSync(file.filepath);
-      return res.status(400).json({
-        error: qualityCheck.reason || 'Image quality check failed'
-      });
+      if (!qualityCheck.valid) {
+        console.log('❌ Sharp quality check failed:', qualityCheck.reason);
+        // Clean up temp file
+        fs.unlinkSync(file.filepath);
+        return res.status(400).json({
+          error: qualityCheck.reason || 'Image quality check failed'
+        });
+      }
+
+      console.log('✓ Sharp verification passed');
+
+      // Layer 2: Verify with Google Cloud Vision (text readability, document type, quality)
+      console.log('🔍 Layer 2: Verifying with Google Cloud Vision API...');
+      const visionCheck = await verifyWithGoogleVision(file.filepath);
+
+      if (!visionCheck.valid) {
+        console.log('❌ Google Vision check failed:', visionCheck.reason);
+        // Clean up temp file
+        fs.unlinkSync(file.filepath);
+        return res.status(400).json({
+          error: visionCheck.reason || 'Driver\'s license verification failed'
+        });
+      }
+
+      console.log('✓ Google Vision verification passed');
+      console.log('✅ All verification checks passed!');
     }
-
-    console.log('✓ Sharp verification passed');
-
-    // Layer 2: Verify with Google Cloud Vision (text readability, document type, quality)
-    console.log('🔍 Layer 2: Verifying with Google Cloud Vision API...');
-    const visionCheck = await verifyWithGoogleVision(file.filepath);
-
-    if (!visionCheck.valid) {
-      console.log('❌ Google Vision check failed:', visionCheck.reason);
-      // Clean up temp file
-      fs.unlinkSync(file.filepath);
-      return res.status(400).json({
-        error: visionCheck.reason || 'Driver\'s license verification failed'
-      });
-    }
-
-    console.log('✓ Google Vision verification passed');
-    console.log('✅ All verification checks passed!');
 
     // Generate unique filename with side indicator
     const fileExt = file.originalFilename?.split('.').pop() || 'jpg';
