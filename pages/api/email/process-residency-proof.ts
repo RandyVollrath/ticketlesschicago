@@ -273,6 +273,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Delete ALL previous bills for this user (only keep most recent)
     // User forwards all bills year-round, we auto-delete old ones
     const userFolder = `proof/${profile.user_id}`;
+    let filesToDelete: string[] = [];
 
     console.log(`🗑️  Deleting all previous bills in: ${userFolder}/`);
 
@@ -283,7 +284,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!listError && existingFolders && existingFolders.length > 0) {
       // Delete all existing date folders and their contents
-      const filesToDelete = existingFolders
+      filesToDelete = existingFolders
         .filter(item => item.name.match(/^\d{4}-\d{2}-\d{2}$/)) // Match yyyy-mm-dd folders
         .map(folder => `${userFolder}/${folder.name}/bill.pdf`);
 
