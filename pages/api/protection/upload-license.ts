@@ -176,20 +176,31 @@ async function verifyWithGoogleVision(filePath: string): Promise<{ valid: boolea
     }
 
     const fullText = textAnnotations[0]?.description || '';
-    console.log('Detected text length:', fullText.length);
+    console.log('📝 Detected text length:', fullText.length);
+    console.log('📝 First 500 chars:', fullText.substring(0, 500));
+    console.log('📝 Full text:', fullText);
 
     // Check for minimum text (driver's license should have substantial text)
     if (fullText.length < 50) {
       return { valid: false, reason: 'Insufficient text detected. Image may be too blurry or cut off. Please retake with better lighting.' };
     }
 
-    // Check 2: Look for license-related keywords
-    const licenseKeywords = ['license', 'driver', 'DL', 'DOB', 'expires', 'issued'];
-    const hasLicenseKeywords = licenseKeywords.some(keyword =>
+    // Check 2: Look for license-related keywords (expanded list, less strict)
+    const licenseKeywords = [
+      'license', 'licence', 'driver', 'drivers', 'DL', 'DOB', 'expires', 'issued',
+      'illinois', 'state', 'birth', 'sex', 'class', 'endorsement', 'restriction',
+      'donor', 'veteran', 'organ', 'height', 'weight', 'eyes', 'hair'
+    ];
+
+    const foundKeywords = licenseKeywords.filter(keyword =>
       fullText.toLowerCase().includes(keyword.toLowerCase())
     );
 
-    if (!hasLicenseKeywords) {
+    console.log('🔍 Found keywords:', foundKeywords);
+
+    // Require at least 2 matches to be more lenient
+    if (foundKeywords.length < 2) {
+      console.log('❌ Not enough keywords found. Detected text:', fullText);
       return { valid: false, reason: 'This doesn\'t appear to be a driver\'s license. Please upload your driver\'s license, not a passport or other ID.' };
     }
 

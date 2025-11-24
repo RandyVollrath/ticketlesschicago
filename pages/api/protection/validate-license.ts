@@ -50,6 +50,7 @@ if (process.env.GOOGLE_CLOUD_VISION_CREDENTIALS) {
 function extractExpiryDate(text: string): string | null {
   console.log('🔍 Attempting to extract expiry date from text...');
   console.log('Full text length:', text.length);
+  console.log('📝 FULL OCR TEXT:', text);
   console.log('First 500 chars:', text.substring(0, 500));
 
   const lines = text.split('\n');
