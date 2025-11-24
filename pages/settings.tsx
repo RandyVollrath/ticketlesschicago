@@ -314,6 +314,8 @@ export default function ProfileNew() {
 
       const data = await res.json()
 
+      console.log(`📋 Validation response for ${side}:`, data)
+
       if (!res.ok || !data.valid) {
         setError(data.error || 'Validation failed')
         setValid(false)
@@ -321,9 +323,12 @@ export default function ProfileNew() {
         setValid(true)
         // Auto-fill detected expiry date (only from front of license)
         if (side === 'front' && data.detectedExpiryDate) {
+          console.log(`📅 OCR detected expiry date: ${data.detectedExpiryDate}`)
           setDetectedExpiryDate(data.detectedExpiryDate)
           setLicenseExpiryDate(data.detectedExpiryDate)
           setDateConfirmed(false) // Require user to confirm
+        } else if (side === 'front') {
+          console.log(`⚠️ No expiry date detected from OCR`)
         }
       }
     } catch (error: any) {
