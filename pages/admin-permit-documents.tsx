@@ -33,8 +33,24 @@ interface Document {
   user_name?: string;
 }
 
+interface ResidencyProofDoc {
+  id: string;
+  user_id: string;
+  document_url: string;
+  document_type: string;
+  document_source: string;
+  address: string;
+  verification_status: string;
+  uploaded_at: string;
+  user_email: string;
+  user_phone: string;
+  user_name: string;
+  is_residency_proof: boolean;
+}
+
 export default function AdminPermitDocuments() {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [residencyProofDocs, setResidencyProofDocs] = useState<ResidencyProofDoc[]>([]);
   const [loading, setLoading] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -86,7 +102,10 @@ export default function AdminPermitDocuments() {
 
       if (result.success) {
         setDocuments(result.documents || []);
-        setMessage(`Found ${result.documents?.length || 0} documents`);
+        setResidencyProofDocs(result.residencyProofDocuments || []);
+        const permitDocs = result.documents?.length || 0;
+        const proofDocs = result.residencyProofDocuments?.length || 0;
+        setMessage(`Found ${permitDocs} permit documents, ${proofDocs} residency proof documents`);
       } else {
         setMessage(`Error: ${result.error}`);
       }
@@ -270,8 +289,130 @@ export default function AdminPermitDocuments() {
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-          {documents.map((doc) => (
+        <>
+          {/* Residency Proof Documents Section */}
+          {residencyProofDocs.length > 0 && (
+            <div style={{ marginBottom: '40px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>
+                🏠 Residency Proof Documents (Lease/Mortgage/Property Tax)
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+                {residencyProofDocs.map((doc) => (
+                  <div
+                    key={doc.id}
+                    style={{
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      backgroundColor: 'white',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: 'white',
+                        backgroundColor: doc.verification_status === 'approved' ? '#10b981' : '#f59e0b',
+                        padding: '4px 12px',
+                        borderRadius: '12px'
+                      }}>
+                        {doc.verification_status === 'approved' ? 'VERIFIED' : 'NEEDS REVIEW'}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        {new Date(doc.uploaded_at).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>
+                        {doc.user_name}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>
+                        📧 {doc.user_email}
+                      </div>
+                      {doc.user_phone && (
+                        <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>
+                          📱 {doc.user_phone}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '13px', color: '#111827', fontWeight: '500', marginTop: '8px' }}>
+                        📍 {doc.address}
+                      </div>
+                    </div>
+
+                    <div style={{
+                      backgroundColor: '#f3f4f6',
+                      padding: '8px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      marginBottom: '12px'
+                    }}>
+                      <strong>Document Type:</strong> {doc.document_type === 'lease' ? 'Lease Agreement' : doc.document_type === 'mortgage' ? 'Mortgage Statement' : doc.document_type === 'property_tax' ? 'Property Tax Bill' : doc.document_type}
+                      <br />
+                      <strong>Source:</strong> {doc.document_source === 'email_attachment' ? '📎 Email Attachment (Trusted)' : doc.document_source === 'email_html' ? '📧 HTML Email (Review Needed)' : '⬆️ Manual Upload'}
+                    </div>
+
+                    <a
+                      href={doc.document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'block',
+                        padding: '10px',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        borderRadius: '6px',
+                        textDecoration: 'none',
+                        textAlign: 'center',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      📄 View Document
+                    </a>
+
+                    {doc.verification_status !== 'approved' && (
+                      <button
+                        onClick={async () => {
+                          if (confirm('Mark this document as verified?')) {
+                            // TODO: Add API endpoint to verify residency proof
+                            alert('Verification API coming soon');
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          backgroundColor: '#10b981',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        ✅ Mark as Verified
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Permit Zone Documents Section */}
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>
+            🅿️ Permit Zone Documents (ID + Proof of Residency)
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+            {documents.map((doc) => (
             <div
               key={doc.id}
               style={{
@@ -552,12 +693,13 @@ export default function AdminPermitDocuments() {
               )}
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
-      {documents.length === 0 && !loading && (
+      {documents.length === 0 && residencyProofDocs.length === 0 && !loading && (
         <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
-          No documents found with status: {filterStatus}
+          No documents found
         </p>
       )}
     </div>
