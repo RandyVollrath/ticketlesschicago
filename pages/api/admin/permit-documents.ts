@@ -119,9 +119,53 @@ export default async function handler(
       };
     });
 
+    // ALSO fetch residency proof documents from user_profiles (lease/mortgage/property tax)
+    let residencyProofDocs: any[] = [];
+    try {
+      const { data: profiles, error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('user_id, street_address, residency_proof_type, residency_proof_path, residency_proof_source, residency_proof_uploaded_at, residency_proof_verified')
+        .not('residency_proof_path', 'is', null)
+        .order('residency_proof_uploaded_at', { ascending: false });
+
+      if (!profileError && profiles) {
+        // Fetch user data for these profiles
+        const profileUserIds = profiles.map(p => p.user_id);
+        const { data: profileUsers } = await supabaseAdmin
+          .from('users')
+          .select('id, email, phone, full_name')
+          .in('id', profileUserIds);
+
+        const profileUserMap = new Map();
+        profileUsers?.forEach(u => profileUserMap.set(u.id, u));
+
+        residencyProofDocs = profiles.map((profile: any) => {
+          const user = profileUserMap.get(profile.user_id);
+          return {
+            id: `profile-${profile.user_id}`,
+            user_id: profile.user_id,
+            document_url: profile.residency_proof_path,
+            document_type: profile.residency_proof_type || 'unknown',
+            document_source: profile.residency_proof_source || 'manual_upload',
+            address: profile.street_address || 'Unknown',
+            verification_status: profile.residency_proof_verified ? 'approved' : 'pending',
+            uploaded_at: profile.residency_proof_uploaded_at,
+            user_email: user?.email || 'Unknown',
+            user_phone: user?.phone || 'Unknown',
+            user_name: user?.full_name || 'Unknown User',
+            is_residency_proof: true // Flag to distinguish from permit docs
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching residency proof documents:', error);
+      // Continue without residency proof docs
+    }
+
     return res.status(200).json({
       success: true,
-      documents: formattedDocuments
+      documents: formattedDocuments,
+      residencyProofDocuments: residencyProofDocs
     });
 
   } catch (error: any) {

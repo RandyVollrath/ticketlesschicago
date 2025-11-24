@@ -320,9 +320,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Priority 2: Convert HTML email body to PDF if no PDF attachment
-    if (!pdfBuffer && html && html.length > 500) {
+    // Works for both full bills AND notification emails (ComEd/Peoples Gas notifications contain address, amount, due date)
+    if (!pdfBuffer && html && html.trim().length > 50) {
       console.log('📧 No PDF attachment found, attempting HTML to PDF conversion...');
       console.log(`HTML length: ${html.length} characters`);
+      console.log('HTML preview:', html.substring(0, 200));
 
       try {
         pdfBuffer = await convertHTMLToPDF(html);
