@@ -399,32 +399,35 @@ export default function ProfileNew() {
     setLicenseUploading(true)
 
     try {
-      // Upload front
+      // Upload BOTH images in parallel for speed
       const frontFormData = new FormData()
       frontFormData.append('license', licenseFrontFile)
       frontFormData.append('userId', user!.id)
       frontFormData.append('side', 'front')
+      frontFormData.append('skipValidation', 'true') // Already validated
 
-      const frontRes = await fetch('/api/protection/upload-license', {
-        method: 'POST',
-        body: frontFormData,
-      })
+      const backFormData = new FormData()
+      backFormData.append('license', licenseBackFile)
+      backFormData.append('userId', user!.id)
+      backFormData.append('side', 'back')
+      backFormData.append('skipValidation', 'true') // Already validated
+
+      // Upload both in parallel (much faster!)
+      const [frontRes, backRes] = await Promise.all([
+        fetch('/api/protection/upload-license', {
+          method: 'POST',
+          body: frontFormData,
+        }),
+        fetch('/api/protection/upload-license', {
+          method: 'POST',
+          body: backFormData,
+        })
+      ])
 
       if (!frontRes.ok) {
         const error = await frontRes.json()
         throw new Error(error.error || 'Failed to upload front image')
       }
-
-      // Upload back
-      const backFormData = new FormData()
-      backFormData.append('license', licenseBackFile)
-      backFormData.append('userId', user!.id)
-      backFormData.append('side', 'back')
-
-      const backRes = await fetch('/api/protection/upload-license', {
-        method: 'POST',
-        body: backFormData,
-      })
 
       if (!backRes.ok) {
         const error = await backRes.json()
