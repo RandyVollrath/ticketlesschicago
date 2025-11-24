@@ -118,7 +118,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               lineHeight: '1.5',
               margin: 0
             }}>
-              Make sure your profile is complete and accurate to maintain your coverage guarantee. Questions? Contact support@ticketlessamerica.com
+              Make sure your profile is complete and accurate to maintain your coverage guarantee. Questions? Contact support@autopilotamerica.com
             </p>
           </div>
 
