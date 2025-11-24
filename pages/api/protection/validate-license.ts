@@ -140,6 +140,12 @@ async function fallbackValidation(filePath: string): Promise<{ valid: boolean; r
     const fileSize = stats.size;
 
     // Check minimum file size (real license photos are usually > 50KB)
+    // This threshold balances security and usability:
+    // - Modern phone photos: 1-5MB ✅
+    // - Compressed photos: 200-500KB ✅
+    // - Heavy compression: 100KB+ ✅
+    // - Suspicious tiny images: <50KB ❌
+    // Even heavily compressed legitimate photos are >50KB
     if (fileSize < 50 * 1024) {
       return { valid: false, reason: 'Image file too small. Please upload a clear photo of your license.' };
     }
