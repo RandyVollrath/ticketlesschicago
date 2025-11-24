@@ -16,6 +16,8 @@ import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 import { simpleParser } from 'mailparser';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,6 +34,67 @@ export const config = {
 };
 
 const BUCKET_NAME = 'residency-proofs-temps';
+
+/**
+ * Convert HTML email body to PDF
+ * Uses Puppeteer with Chromium to render HTML exactly as it appears
+ */
+async function convertHTMLToPDF(html: string): Promise<Buffer> {
+  console.log('🔄 Converting HTML to PDF...');
+
+  let browser;
+  try {
+    // Launch Chromium (optimized for serverless)
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+
+    const page = await browser.newPage();
+
+    // Set content with base HTML structure if missing
+    const fullHTML = html.includes('<!DOCTYPE') || html.includes('<html')
+      ? html
+      : `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+
+    await page.setContent(fullHTML, { waitUntil: 'networkidle0' });
+
+    // Generate PDF with Letter size (standard for utility bills)
+    const pdfBuffer = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: {
+        top: '0.5in',
+        right: '0.5in',
+        bottom: '0.5in',
+        left: '0.5in',
+      },
+    });
+
+    console.log('✅ HTML converted to PDF successfully');
+    return Buffer.from(pdfBuffer);
+  } catch (error: any) {
+    console.error('❌ HTML to PDF conversion failed:', error);
+    throw new Error(`HTML to PDF conversion failed: ${error.message}`);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
 
 interface EmailPayload {
   to: string;
@@ -243,20 +306,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Find PDF attachment
     let pdfBuffer: Buffer | null = null;
     let pdfFileName: string | null = null;
+    let documentSource: 'email_attachment' | 'email_html' = 'email_attachment';
 
-    // Check for PDF attachments in unified format
+    // Priority 1: Check for PDF attachments in unified format
     for (const attachment of attachmentsData) {
       if (attachment.contentType === 'application/pdf' || attachment.filename.toLowerCase().endsWith('.pdf')) {
         console.log(`📎 Found PDF attachment: ${attachment.filename}`);
         pdfBuffer = Buffer.from(attachment.content, 'base64');
         pdfFileName = attachment.filename;
+        documentSource = 'email_attachment';
         break;
       }
     }
 
-    // If no PDF found, log and reject (for now - could implement HTML-to-PDF later)
+    // Priority 2: Convert HTML email body to PDF if no PDF attachment
+    if (!pdfBuffer && html && html.length > 500) {
+      console.log('📧 No PDF attachment found, attempting HTML to PDF conversion...');
+      console.log(`HTML length: ${html.length} characters`);
+
+      try {
+        pdfBuffer = await convertHTMLToPDF(html);
+        pdfFileName = 'utility-bill-from-email.pdf';
+        documentSource = 'email_html';
+        console.log('✅ Successfully converted HTML email to PDF');
+      } catch (error: any) {
+        console.error('❌ HTML to PDF conversion failed:', error.message);
+        // Fall through to error below
+      }
+    }
+
+    // Priority 3: No usable content found
     if (!pdfBuffer) {
-      console.warn('No PDF attachment found in email');
+      console.warn('No PDF attachment or HTML content found in email');
       // Clean up temp files if any
       for (const file of filesToCleanup) {
         try {
@@ -266,7 +347,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       return res.status(400).json({
-        error: 'No PDF attachment found. Please ensure your utility bill is attached as a PDF.',
+        error: 'No utility bill found. Please forward an email with a PDF attachment or full bill details.',
+        hint: 'Emails with just "Your bill is ready" notifications won\'t work. You need to attach the actual bill PDF or forward an email containing the full bill details.',
       });
     }
 
@@ -321,14 +403,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('✓ Bill uploaded successfully');
 
-    // Update user profile
+    // Update user profile with document source metadata
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({
         residency_proof_path: filePath,
         residency_proof_uploaded_at: new Date().toISOString(),
-        residency_proof_verified: true, // Auto-verified (could add validation later)
-        residency_proof_verified_at: new Date().toISOString(),
+        residency_proof_source: documentSource,
+        residency_proof_verified: documentSource === 'email_attachment', // Auto-verify attachments, flag HTML for review
+        residency_proof_verified_at: documentSource === 'email_attachment' ? new Date().toISOString() : null,
       })
       .eq('user_id', profile.user_id);
 
@@ -339,6 +422,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`✅ Successfully processed utility bill for user ${profile.user_id}`);
     console.log(`📊 Stats: Deleted ${filesToDelete?.length || 0} old bills, stored 1 new bill`);
+    console.log(`📄 Source: ${documentSource}`);
 
     // Clean up temp files (only for SendGrid multipart format)
     for (const file of filesToCleanup) {
@@ -349,11 +433,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    const message = documentSource === 'email_html'
+      ? 'Utility bill converted from HTML and stored successfully. Flagged for manual review.'
+      : 'Utility bill processed successfully. Old bills deleted, keeping most recent only.';
+
     return res.status(200).json({
       success: true,
-      message: 'Utility bill processed successfully. Old bills deleted, keeping most recent only.',
+      message,
       userId: profile.user_id,
       fileName: pdfFileName || 'bill.pdf',
+      source: documentSource,
+      needsReview: documentSource === 'email_html',
       deletedOldBills: filesToDelete?.length || 0,
       storedAt: filePath,
     });
