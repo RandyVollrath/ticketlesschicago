@@ -220,14 +220,14 @@ export default function ProfileNew() {
         console.log('✅ Back license already uploaded:', userProfile.license_image_path_back)
       }
 
-      // Only load expiry date from DB if images are verified
-      // (Don't load stale dates when user is re-uploading for OCR detection)
-      const imagesVerified = userProfile.license_image_verified && userProfile.license_image_back_verified
-      if (userProfile.license_valid_until && imagesVerified) {
+      // Load expiry date from DB if images exist
+      // Only skip if date exists but NO images (stale data from previous upload)
+      const imagesExist = userProfile.license_image_path && userProfile.license_image_path_back
+      if (userProfile.license_valid_until && imagesExist) {
         setLicenseExpiryDate(userProfile.license_valid_until)
-        console.log('✅ License expiry date (verified):', userProfile.license_valid_until)
-      } else if (userProfile.license_valid_until) {
-        console.log('⏭️  Skipping unverified date from DB:', userProfile.license_valid_until)
+        console.log('✅ License expiry date:', userProfile.license_valid_until)
+      } else if (userProfile.license_valid_until && !imagesExist) {
+        console.log('⏭️  Skipping stale date (no images):', userProfile.license_valid_until)
       }
     }
 
