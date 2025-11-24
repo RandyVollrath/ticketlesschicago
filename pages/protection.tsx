@@ -36,12 +36,6 @@ export default function Protection() {
   // Phone number (REQUIRED for Protection)
   const [phone, setPhone] = useState('');
 
-  // Proof of residency upload
-  const [residencyProofType, setResidencyProofType] = useState<'lease' | 'mortgage' | 'property_tax' | ''>('');
-  const [residencyProofFile, setResidencyProofFile] = useState<File | null>(null);
-  const [residencyProofUploading, setResidencyProofUploading] = useState(false);
-  const [residencyProofUrl, setResidencyProofUrl] = useState<string | null>(null);
-
   // Check feature flags
   const isWaitlistMode = false; // Protection is now enabled
 
@@ -197,12 +191,6 @@ export default function Protection() {
       return;
     }
 
-    // Validate proof of residency if permit requested
-    if (permitRequested && !residencyProofUrl) {
-      setMessage('Please upload proof of residency (lease, mortgage, or property tax bill) for your parking permit');
-      return;
-    }
-
     // Validate billing plan
     if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
       setMessage('Please select a billing plan (monthly or annual)');
@@ -236,48 +224,6 @@ export default function Protection() {
     await proceedToCheckout(checkoutData);
   };
 
-  const handleResidencyProofUpload = async (file: File) => {
-    if (!user) {
-      setMessage('Please sign in before uploading documents');
-      return;
-    }
-
-    setResidencyProofUploading(true);
-    setMessage('');
-
-    try {
-      // Upload to Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}_${Date.now()}.${fileExt}`;
-      const filePath = `residency-proofs/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('residency-proofs-temps')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('residency-proofs-temps')
-        .getPublicUrl(filePath);
-
-      setResidencyProofUrl(publicUrl);
-      setMessage('Document uploaded successfully!');
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      setMessage(`Upload failed: ${error.message}`);
-      setResidencyProofUrl(null);
-    } finally {
-      setResidencyProofUploading(false);
-    }
-  };
-
   const handleGoogleCheckout = async () => {
     // Validate consent
     if (!consentGiven) {
@@ -295,12 +241,6 @@ export default function Protection() {
     // Validate phone number (REQUIRED for Protection)
     if (!phone || phone.trim() === '') {
       setMessage('Please enter your phone number - we need it to reach you about permit documents');
-      return;
-    }
-
-    // Validate proof of residency if permit requested
-    if (permitRequested && !residencyProofUrl) {
-      setMessage('Please upload proof of residency (lease, mortgage, or property tax bill) for your parking permit');
       return;
     }
 
@@ -963,180 +903,13 @@ export default function Protection() {
                           </div>
                           <div style={{ fontSize: '13px', color: '#6b7280' }}>
                             {permitRequested
-                              ? "We'll process your permit and charge $30 at renewal. You'll need to upload proof of residency below (lease, mortgage, or property tax bill)."
+                              ? "We'll process your permit and charge $30 at renewal. You'll need to provide proof of residency in your account settings after signup."
                               : "Warning: Without a permit, you may receive parking tickets even when following street cleaning rules. Only uncheck if you already have a permit or don't park in this zone."
                             }
                           </div>
                         </div>
                       </label>
                     </div>
-
-                    {/* Proof of Residency Upload (only show if permit requested) */}
-                    {permitRequested && (
-                      <div style={{
-                        marginTop: '16px',
-                        padding: '20px',
-                        backgroundColor: '#f9fafb',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb'
-                      }}>
-                        <h4 style={{
-                          fontSize: '15px',
-                          fontWeight: '600',
-                          color: '#1a1a1a',
-                          marginBottom: '8px',
-                          margin: '0 0 8px 0'
-                        }}>
-                          Proof of Residency (Required)
-                        </h4>
-                        <p style={{
-                          fontSize: '13px',
-                          color: '#666',
-                          marginBottom: '16px',
-                          margin: '0 0 16px 0',
-                          lineHeight: '1.5'
-                        }}>
-                          Chicago requires proof of residency for parking permits. Upload ONE of the following:
-                        </p>
-
-                        {/* Document Type Selection */}
-                        <div style={{ marginBottom: '16px' }}>
-                          <label style={{
-                            display: 'block',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: '#374151',
-                            marginBottom: '8px'
-                          }}>
-                            Document Type *
-                          </label>
-                          <select
-                            value={residencyProofType}
-                            onChange={(e) => setResidencyProofType(e.target.value as 'lease' | 'mortgage' | 'property_tax' | '')}
-                            required
-                            style={{
-                              width: '100%',
-                              padding: '10px 12px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              fontSize: '14px',
-                              boxSizing: 'border-box',
-                              backgroundColor: 'white'
-                            }}
-                          >
-                            <option value="">Select document type...</option>
-                            <option value="lease">Lease Agreement (Renters)</option>
-                            <option value="mortgage">Mortgage Statement (Homeowners)</option>
-                            <option value="property_tax">Property Tax Bill (Homeowners)</option>
-                          </select>
-                        </div>
-
-                        {/* Info about selected document type */}
-                        {residencyProofType && (
-                          <div style={{
-                            padding: '12px',
-                            backgroundColor: '#eff6ff',
-                            borderRadius: '6px',
-                            marginBottom: '16px',
-                            fontSize: '13px',
-                            color: '#1e40af',
-                            lineHeight: '1.5'
-                          }}>
-                            {residencyProofType === 'lease' && (
-                              <>
-                                <strong>Lease Agreement:</strong> Your current rental agreement showing your name and address. Valid for the duration of your lease (typically 12 months).
-                              </>
-                            )}
-                            {residencyProofType === 'mortgage' && (
-                              <>
-                                <strong>Mortgage Statement:</strong> Recent mortgage statement showing your name and property address. Valid for 12 months.
-                              </>
-                            )}
-                            {residencyProofType === 'property_tax' && (
-                              <>
-                                <strong>Property Tax Bill:</strong> Current property tax bill showing your name and address. Valid for 12 months.
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* File Upload */}
-                        {residencyProofType && (
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              color: '#374151',
-                              marginBottom: '8px'
-                            }}>
-                              Upload Document (PDF or Image) *
-                            </label>
-                            <input
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  setResidencyProofFile(file);
-                                  handleResidencyProofUpload(file);
-                                }
-                              }}
-                              disabled={residencyProofUploading}
-                              style={{
-                                width: '100%',
-                                padding: '10px',
-                                border: '2px dashed #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                boxSizing: 'border-box',
-                                backgroundColor: 'white',
-                                cursor: residencyProofUploading ? 'not-allowed' : 'pointer'
-                              }}
-                            />
-                            {residencyProofUploading && (
-                              <p style={{
-                                fontSize: '13px',
-                                color: '#666',
-                                marginTop: '8px',
-                                margin: '8px 0 0 0'
-                              }}>
-                                Uploading...
-                              </p>
-                            )}
-                            {residencyProofUrl && (
-                              <div style={{
-                                marginTop: '12px',
-                                padding: '12px',
-                                backgroundColor: '#f0fdf4',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                              }}>
-                                <span style={{ fontSize: '18px' }}>✓</span>
-                                <span style={{ fontSize: '13px', color: '#166534', fontWeight: '500' }}>
-                                  Document uploaded successfully
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Note about validation */}
-                        <div style={{
-                          marginTop: '16px',
-                          padding: '12px',
-                          backgroundColor: '#fef9c3',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          color: '#854d0e',
-                          lineHeight: '1.5'
-                        }}>
-                          <strong>Note:</strong> We'll review your document and may contact you if additional verification is needed before processing your permit.
-                        </div>
-                      </div>
-                    )}
                   </>
                 )}
               </div>

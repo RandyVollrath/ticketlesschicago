@@ -452,6 +452,54 @@ export default function ProfileNew() {
     }
   }
 
+  // Handle residency proof upload
+  const handleResidencyProofUpload = async (file: File) => {
+    if (!user) {
+      setMessage({ type: 'error', text: 'Please sign in before uploading documents' })
+      return
+    }
+
+    if (!formData.residency_proof_type) {
+      setMessage({ type: 'error', text: 'Please select a document type first' })
+      return
+    }
+
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}_${Date.now()}.${fileExt}`
+      const filePath = `residency-proofs/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('residency-proofs-temps')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('residency-proofs-temps')
+        .getPublicUrl(filePath)
+
+      // Save to database
+      await saveField('residency_proof_path', publicUrl)
+      await saveField('residency_proof_uploaded_at', new Date().toISOString())
+
+      setMessage({ type: 'success', text: 'Document uploaded successfully!' })
+
+      // Reload to show updated data
+      setTimeout(() => {
+        loadUserData()
+      }, 1000)
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      setMessage({ type: 'error', text: `Upload failed: ${error.message}` })
+    }
+  }
+
   // Calculate missing required fields
   const getMissingFields = () => {
     const missing = []
@@ -1863,7 +1911,111 @@ export default function ProfileNew() {
             </Accordion>
           )}
 
-          {/* 7. Notification Preferences */}
+          {/* 7. Proof of Residency Upload */}
+          <Accordion
+            title="Proof of Residency"
+            icon="🏠"
+            defaultOpen={false}
+          >
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px 0' }}>
+              Upload proof of residency for your parking permit application. Documents must be current and match your street address.
+            </p>
+
+            {/* Document Type Selection */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Select Document Type
+              </label>
+              <select
+                value={formData.residency_proof_type || ''}
+                onChange={(e) => handleFieldChange('residency_proof_type', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">-- Select Document Type --</option>
+                <option value="lease">Lease Agreement (Renters)</option>
+                <option value="mortgage">Mortgage Statement (Homeowners)</option>
+                <option value="property_tax">Property Tax Bill (Homeowners)</option>
+              </select>
+            </div>
+
+            {/* Document Info */}
+            {formData.residency_proof_type && (
+              <div style={{ padding: '12px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '24px' }}>
+                <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
+                  {formData.residency_proof_type === 'lease' && (
+                    <>
+                      <strong>Lease Agreement:</strong> Upload your signed lease or rental agreement. Must show your name, address, and lease dates. Valid for 12 months from lease start date.
+                    </>
+                  )}
+                  {formData.residency_proof_type === 'mortgage' && (
+                    <>
+                      <strong>Mortgage Statement:</strong> Upload a recent mortgage statement from your lender. Must show your name, property address, and statement date. Valid for 12 months from statement date.
+                    </>
+                  )}
+                  {formData.residency_proof_type === 'property_tax' && (
+                    <>
+                      <strong>Property Tax Bill:</strong> Upload your Cook County property tax bill. Must show your name, property address, and tax year. Valid for 12 months from bill date.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* File Upload */}
+            {formData.residency_proof_type && (
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                  Upload Document (PDF or Image)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      handleResidencyProofUpload(file)
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                />
+                {formData.residency_proof_path && (
+                  <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px' }}>
+                    <p style={{ fontSize: '13px', color: '#15803d', margin: 0 }}>
+                      ✅ Document uploaded successfully!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Alternative: API Integrations (Coming Soon) */}
+            <div style={{ marginTop: '32px', padding: '16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
+                🔌 Coming Soon: Automatic Integration
+              </h4>
+              <p style={{ fontSize: '13px', color: '#6b7280', margin: '0', lineHeight: '1.5' }}>
+                We're working on integrations with lease management platforms (RentRedi, TenantCloud, AppFolio) and mortgage lenders (Plaid) to automatically verify your residency without manual uploads.
+              </p>
+            </div>
+          </Accordion>
+
+          {/* 8. Notification Preferences */}
           <Accordion
             title="Notification Preferences"
             icon="🔔"
