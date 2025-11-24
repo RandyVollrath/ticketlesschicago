@@ -121,23 +121,19 @@ export default function ProfileNew() {
       dateCheckPasses: (!detectedExpiryDate || dateConfirmed)
     })
 
-    // TEMPORARILY DISABLED FOR DEBUGGING OCR DATE DETECTION
-    // Need to see what OCR detects without auto-uploading wrong date
-    console.log('⏸️  Auto-upload TEMPORARILY DISABLED for debugging')
-    return // Skip auto-upload
-
-    // if (
-    //   licenseFrontFile && licenseBackFile &&
-    //   licenseFrontValid && licenseBackValid &&
-    //   licenseExpiryDate && licenseConsent &&
-    //   (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
-    //   !licenseUploading
-    // ) {
-    //   console.log('🚀 All conditions met - auto-uploading')
-    //   autoUploadLicense()
-    // } else {
-    //   console.log('⏸️  Auto-upload blocked - not all conditions met')
-    // }
+    // Auto-upload when all conditions are met
+    if (
+      licenseFrontFile && licenseBackFile &&
+      licenseFrontValid && licenseBackValid &&
+      licenseExpiryDate && licenseConsent &&
+      (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
+      !licenseUploading
+    ) {
+      console.log('🚀 All conditions met - auto-uploading')
+      autoUploadLicense()
+    } else {
+      console.log('⏸️  Auto-upload blocked - not all conditions met')
+    }
   }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent, detectedExpiryDate, dateConfirmed, licenseUploading])
 
   // Poll for Protection webhook completion
@@ -1342,15 +1338,33 @@ export default function ProfileNew() {
                         👁️ View Image
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (confirm('Delete this image? You can upload a new one after deleting.')) {
-                            setLicenseFrontUploaded(false)
-                            setLicenseFrontPath('')
-                            // Clear date so OCR can detect fresh
-                            setLicenseExpiryDate('')
-                            setDetectedExpiryDate('')
-                            setDateConfirmed(false)
-                            console.log('🗑️ Cleared front image and date')
+                            try {
+                              // Delete from database
+                              const { error } = await supabase
+                                .from('user_profiles')
+                                .update({
+                                  license_image_path: null,
+                                  license_image_uploaded_at: null,
+                                  license_image_verified: false
+                                })
+                                .eq('user_id', user!.id)
+
+                              if (error) throw error
+
+                              // Clear local state
+                              setLicenseFrontUploaded(false)
+                              setLicenseFrontPath('')
+                              // Clear date so OCR can detect fresh
+                              setLicenseExpiryDate('')
+                              setDetectedExpiryDate('')
+                              setDateConfirmed(false)
+                              console.log('🗑️ Deleted front image from database')
+                            } catch (error) {
+                              console.error('Delete error:', error)
+                              alert('Failed to delete image')
+                            }
                           }
                         }}
                         style={{
@@ -1476,15 +1490,33 @@ export default function ProfileNew() {
                         👁️ View Image
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (confirm('Delete this image? You can upload a new one after deleting.')) {
-                            setLicenseBackUploaded(false)
-                            setLicenseBackPath('')
-                            // Clear date so OCR can detect fresh
-                            setLicenseExpiryDate('')
-                            setDetectedExpiryDate('')
-                            setDateConfirmed(false)
-                            console.log('🗑️ Cleared back image and date')
+                            try {
+                              // Delete from database
+                              const { error } = await supabase
+                                .from('user_profiles')
+                                .update({
+                                  license_image_path_back: null,
+                                  license_image_back_uploaded_at: null,
+                                  license_image_back_verified: false
+                                })
+                                .eq('user_id', user!.id)
+
+                              if (error) throw error
+
+                              // Clear local state
+                              setLicenseBackUploaded(false)
+                              setLicenseBackPath('')
+                              // Clear date so OCR can detect fresh
+                              setLicenseExpiryDate('')
+                              setDetectedExpiryDate('')
+                              setDateConfirmed(false)
+                              console.log('🗑️ Deleted back image from database')
+                            } catch (error) {
+                              console.error('Delete error:', error)
+                              alert('Failed to delete image')
+                            }
                           }
                         }}
                         style={{
