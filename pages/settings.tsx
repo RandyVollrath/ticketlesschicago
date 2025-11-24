@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { supabase } from '../lib/supabase'
@@ -65,6 +65,10 @@ export default function ProfileNew() {
   // Consent popup state
   const [showConsentPopup, setShowConsentPopup] = useState(false)
 
+  // File input refs for clearing on cancel
+  const licenseFrontInputRef = useRef<HTMLInputElement>(null)
+  const licenseBackInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     loadUserData()
   }, [])
@@ -80,9 +84,10 @@ export default function ProfileNew() {
       !showConsentPopup
     ) {
       // Both images validated, expiry date filled → show consent popup
+      console.log('🔔 Triggering consent popup')
       setShowConsentPopup(true)
     }
-  }, [licenseFrontValid, licenseBackValid, licenseExpiryDate, dateConfirmed])
+  }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseExpiryDate, detectedExpiryDate, dateConfirmed, licenseUploading, showConsentPopup])
 
   // Poll for Protection webhook completion
   useEffect(() => {
@@ -288,6 +293,13 @@ export default function ProfileNew() {
     setLicenseExpiryDate('')
     setDetectedExpiryDate('')
     setDateConfirmed(false)
+    // Clear file input elements
+    if (licenseFrontInputRef.current) {
+      licenseFrontInputRef.current.value = ''
+    }
+    if (licenseBackInputRef.current) {
+      licenseBackInputRef.current.value = ''
+    }
     console.log('⚠️ User closed consent popup - images dropped')
   }
 
@@ -1208,6 +1220,7 @@ export default function ProfileNew() {
                   Front of License <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
+                  ref={licenseFrontInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   onChange={(e) => {
@@ -1268,6 +1281,7 @@ export default function ProfileNew() {
                   Back of License <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
+                  ref={licenseBackInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   onChange={(e) => {
