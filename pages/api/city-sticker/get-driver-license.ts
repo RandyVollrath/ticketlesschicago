@@ -61,10 +61,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Generate signed URL for secure download (24-hour expiration)
+    // Generate signed URL for secure download (48-hour expiration for weekend coverage)
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from(BUCKET_NAME)
-      .createSignedUrl(profile.license_image_path, 86400); // 24 hours
+      .createSignedUrl(profile.license_image_path, 172800); // 48 hours
 
     if (signedUrlError) {
       console.error('Signed URL error:', signedUrlError);
@@ -109,14 +109,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       signedUrl: signedUrlData.signedUrl,
       uploadedAt: profile.license_image_uploaded_at,
-      expiresAt: new Date(Date.now() + 86400 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 172800 * 1000).toISOString(),
       filePath: profile.license_image_path,
       licenseValidUntil: profile.license_valid_until,
       multiYearConsent: profile.license_reuse_consent_given,
       warning: profile.license_reuse_consent_given
         ? 'License kept until expiration date'
         : '⚠️ License will be deleted 48 hours after this access',
-      message: 'Download URL valid for 24 hours. ONLY access when submitting to city!',
+      message: 'Download URL valid for 48 hours. ONLY access when submitting to city!',
     });
   } catch (error: any) {
     console.error('Get driver license error:', error);
