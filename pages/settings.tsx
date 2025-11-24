@@ -1272,7 +1272,7 @@ export default function ProfileNew() {
                     )}
                     {!licenseFrontValidating && licenseFrontValid && (
                       <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
-                        ✅ Validated - ready to upload
+                        ✅ Image quality verified - text readable
                       </p>
                     )}
                     {!licenseFrontValidating && licenseFrontError && (
@@ -1333,7 +1333,7 @@ export default function ProfileNew() {
                     )}
                     {!licenseBackValidating && licenseBackValid && (
                       <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
-                        ✅ Validated - ready to upload
+                        ✅ Image quality verified - text readable
                       </p>
                     )}
                     {!licenseBackValidating && licenseBackError && (
@@ -1356,6 +1356,11 @@ export default function ProfileNew() {
                 }}>
                   License Expiry Date <span style={{ color: '#dc2626' }}>*</span>
                 </label>
+                {licenseFrontValid && licenseBackValid && !detectedExpiryDate && !licenseExpiryDate && (
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 8px 0', fontStyle: 'italic' }}>
+                    💡 Couldn't auto-detect from image - please enter manually
+                  </p>
+                )}
                 {detectedExpiryDate && !dateConfirmed && (
                   <div style={{
                     backgroundColor: '#fef3c7',
@@ -1418,10 +1423,14 @@ export default function ProfileNew() {
                   value={licenseExpiryDate}
                   onChange={(e) => {
                     setLicenseExpiryDate(e.target.value)
+                    // If OCR detected a date and user is editing it
                     if (detectedExpiryDate && e.target.value !== detectedExpiryDate) {
-                      // User manually edited - clear detection and auto-confirm
                       setDetectedExpiryDate('')
                       setDateConfirmed(true)
+                    }
+                    // If NO date was detected and user is manually entering
+                    if (!detectedExpiryDate && e.target.value) {
+                      setDateConfirmed(true) // Auto-confirm manual entry
                     }
                   }}
                   disabled={detectedExpiryDate && !dateConfirmed}
