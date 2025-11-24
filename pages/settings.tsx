@@ -62,22 +62,27 @@ export default function ProfileNew() {
   const [detectedExpiryDate, setDetectedExpiryDate] = useState('')
   const [dateConfirmed, setDateConfirmed] = useState(false)
 
+  // Consent popup state
+  const [showConsentPopup, setShowConsentPopup] = useState(false)
+
   useEffect(() => {
     loadUserData()
   }, [])
 
-  // Auto-upload when all conditions are met
+  // Show consent popup when both images validated
   useEffect(() => {
     if (
       licenseFrontFile && licenseBackFile &&
       licenseFrontValid && licenseBackValid &&
-      licenseExpiryDate && licenseConsent &&
+      licenseExpiryDate &&
       (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
-      !licenseUploading
+      !licenseUploading &&
+      !showConsentPopup
     ) {
-      autoUploadLicense()
+      // Both images validated, expiry date filled → show consent popup
+      setShowConsentPopup(true)
     }
-  }, [licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent, dateConfirmed])
+  }, [licenseFrontValid, licenseBackValid, licenseExpiryDate, dateConfirmed])
 
   // Poll for Protection webhook completion
   useEffect(() => {
@@ -262,13 +267,37 @@ export default function ProfileNew() {
     }
   }
 
+  // Handle consent confirmation - proceed with upload
+  const handleConsentConfirm = async () => {
+    setShowConsentPopup(false)
+    setLicenseConsent(true) // Set consent flag
+    setLicenseReuseConsent(true) // Default to multi-year reuse
+    await autoUploadLicense()
+  }
+
+  // Handle consent popup close - drop images
+  const handleConsentClose = () => {
+    setShowConsentPopup(false)
+    // Drop images and reset state
+    setLicenseFrontFile(null)
+    setLicenseBackFile(null)
+    setLicenseFrontValid(false)
+    setLicenseBackValid(false)
+    setLicenseFrontError('')
+    setLicenseBackError('')
+    setLicenseExpiryDate('')
+    setDetectedExpiryDate('')
+    setDateConfirmed(false)
+    console.log('⚠️ User closed consent popup - images dropped')
+  }
+
   // Auto-upload when all conditions are met
   const autoUploadLicense = async () => {
     if (!licenseFrontFile || !licenseBackFile || !licenseFrontValid || !licenseBackValid) {
       return // Not ready yet
     }
-    if (!licenseExpiryDate || !licenseConsent) {
-      return // Missing required fields
+    if (!licenseExpiryDate) {
+      return // Missing required field
     }
     if (detectedExpiryDate && !dateConfirmed) {
       return // Need to confirm auto-detected date
@@ -1215,7 +1244,7 @@ export default function ProfileNew() {
                     )}
                     {!licenseFrontValidating && licenseFrontValid && (
                       <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
-                        ✅ Image looks good!
+                        ✅ Validated - ready to upload
                       </p>
                     )}
                     {!licenseFrontValidating && licenseFrontError && (
@@ -1275,7 +1304,7 @@ export default function ProfileNew() {
                     )}
                     {!licenseBackValidating && licenseBackValid && (
                       <p style={{ fontSize: '13px', color: '#059669', margin: 0 }}>
-                        ✅ Image looks good!
+                        ✅ Validated - ready to upload
                       </p>
                     )}
                     {!licenseBackValidating && licenseBackError && (
@@ -1380,63 +1409,6 @@ export default function ProfileNew() {
                 />
               </div>
 
-              {/* Consent Checkboxes */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  fontSize: '13px',
-                  color: '#374151',
-                  marginBottom: '12px',
-                  cursor: 'pointer'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={licenseConsent}
-                    onChange={(e) => setLicenseConsent(e.target.checked)}
-                    style={{
-                      marginTop: '2px',
-                      width: '16px',
-                      height: '16px',
-                      cursor: 'pointer',
-                      accentColor: '#0052cc'
-                    }}
-                  />
-                  <span style={{ lineHeight: '1.5' }}>
-                    I consent to Autopilot America sharing my driver's license with third-party remitter services
-                    for the purpose of processing my city sticker renewal. My license will be encrypted and deleted
-                    after verification. <span style={{ color: '#dc2626' }}>*</span>
-                  </span>
-                </label>
-
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  fontSize: '13px',
-                  color: '#374151',
-                  cursor: 'pointer'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={licenseReuseConsent}
-                    onChange={(e) => setLicenseReuseConsent(e.target.checked)}
-                    style={{
-                      marginTop: '2px',
-                      width: '16px',
-                      height: '16px',
-                      cursor: 'pointer',
-                      accentColor: '#0052cc'
-                    }}
-                  />
-                  <span style={{ lineHeight: '1.5' }}>
-                    I consent to reusing my driver's license for future renewals (optional). You can revoke this
-                    anytime by re-uploading a new license.
-                  </span>
-                </label>
-              </div>
-
               {/* Auto-Upload Status */}
               {licenseUploading && (
                 <div style={{
@@ -1508,6 +1480,9 @@ export default function ProfileNew() {
                     Chicago requires proof of residency dated within <strong>30 days</strong> of your permit renewal.
                     Instead of manually uploading bills each year, set up automatic email forwarding below so we always
                     have your most recent utility bill ready for your permit application.
+                  </p>
+                  <p style={{ fontSize: '13px', color: '#78350f', margin: '8px 0 0 0', lineHeight: '1.5' }}>
+                    Old bills are automatically deleted after 60 days (we keep 2 months for safety).
                   </p>
                 </div>
 
@@ -1821,6 +1796,111 @@ export default function ProfileNew() {
           </div>
         </div>
       </div>
+
+      {/* Consent Popup Modal */}
+      {showConsentPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <h3 style={{
+              fontSize: '22px',
+              fontWeight: 'bold',
+              color: '#1a1a1a',
+              marginBottom: '16px',
+              margin: '0 0 16px 0'
+            }}>
+              📋 Consent Required
+            </h3>
+
+            <p style={{
+              fontSize: '15px',
+              color: '#4b5563',
+              lineHeight: '1.6',
+              marginBottom: '20px',
+              margin: '0 0 20px 0'
+            }}>
+              Before we can store and process your driver's license, we need your explicit consent:
+            </p>
+
+            <div style={{
+              backgroundColor: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '24px',
+              margin: '0 0 24px 0'
+            }}>
+              <p style={{
+                fontSize: '14px',
+                color: '#374151',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                <strong>✓</strong> Your license will be encrypted and securely stored<br/>
+                <strong>✓</strong> Only accessed when processing your city sticker renewal<br/>
+                <strong>✓</strong> Shared with third-party remitter services for renewal processing<br/>
+                <strong>✓</strong> Kept until your license expires (you can revoke consent anytime)
+              </p>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={handleConsentClose}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConsentConfirm}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#0052cc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0, 82, 204, 0.3)'
+                }}
+              >
+                I Consent - Upload License
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
