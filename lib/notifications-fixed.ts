@@ -208,7 +208,7 @@ export class NotificationScheduler {
                   } else if (daysUntil >= 14) {
                     // CRITICAL FIX: Only say "already purchased" if we have city confirmation
                     if (actuallyPurchased) {
-                      message = `Autopilot: Good news! We already purchased your ${renewal.type}. Your sticker will arrive by mail within 10-14 days. No action needed from you!`;
+                      message = `Autopilot: Good news! We already purchased your ${renewal.type}. ${renewal.type === 'Emissions Test' ? 'Your test has been scheduled.' : 'Your sticker will arrive by mail within 10-14 days.'} No action needed from you!`;
                     } else {
                       // No confirmation yet - be honest
                       message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We're processing your renewal purchase and will update you when it's confirmed. Your profile is confirmed.`;
@@ -216,7 +216,7 @@ export class NotificationScheduler {
                   } else {
                     // Sticker delivery window
                     if (actuallyPurchased) {
-                      message = `Autopilot: Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDateStr} and it typically takes 10-14 days to arrive. Contact us if you haven't received it.`;
+                      message = `Autopilot: ${renewal.type === 'Emissions Test' ? `Your ${renewal.type} has been scheduled` : `Your ${renewal.type} sticker should arrive soon (if it hasn't already)`}. We purchased it on ${purchaseDateStr}${renewal.type !== 'Emissions Test' ? ' and it typically takes 10-14 days to arrive' : ''}. Contact us if you have${renewal.type === 'Emissions Test' ? ' questions' : 'n\'t received it'}.`;
                     } else {
                       // Still no confirmation - concerning
                       message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`;
@@ -418,7 +418,7 @@ export class NotificationScheduler {
                   const emailSubject = daysUntil <= 1
                     ? `${renewal.type} Renewal Reminder - Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}`
                     : hasProtection
-                    ? `${renewal.type} Renewal - ${daysUntil === 30 ? "Charging your card today!" : daysUntil === 37 ? "Charging in 7 days - confirm your info" : daysUntil > 37 ? "Confirm your info" : "Sticker arriving soon"}`
+                    ? `${renewal.type} Renewal - ${daysUntil === 30 ? "Charging your card today!" : daysUntil === 37 ? "Charging in 7 days - confirm your info" : daysUntil > 37 ? "Confirm your info" : renewal.type === 'Emissions Test' ? "Test coming up soon" : "Sticker arriving soon"}`
                     : `${renewal.type} coming up in ${daysUntil} days`;
 
                   const daysUntilPurchase = Math.max(0, daysUntil - 30);
@@ -487,17 +487,17 @@ export class NotificationScheduler {
                             <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">✅ We're Handling This For You</h3>
                             <p style="color: #065f46; margin: 0; line-height: 1.6;">
                               ${daysUntil === 30
-                                ? `We're <strong>charging your card today</strong> for your ${renewal.type} renewal (expires in 30 days). The sticker will be mailed to you and should arrive within 10-14 days!`
+                                ? `We're <strong>charging your card today</strong> for your ${renewal.type} renewal (expires in 30 days). ${renewal.type === 'Emissions Test' ? 'We will schedule your test for you.' : 'The sticker will be mailed to you and should arrive within 10-14 days!'}`
                                 : daysUntil === 37
                                 ? `Your ${renewal.type} expires in ${daysUntil} days. We'll <strong>charge your card in 7 days</strong> (on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}). Please update your profile now if you have any changes. This is your last reminder before charge day!`
                                 : daysUntil > 37
                                 ? `We'll automatically charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> (30 days before expiration) for your ${renewal.type} renewal. You have time to update your info if needed!`
                                 : daysUntil >= 14 && actuallyPurchased
-                                ? `Good news! We already purchased your ${renewal.type} renewal. Your sticker is in the mail and should arrive within 10-14 days. No action needed from you!`
+                                ? `Good news! We already purchased your ${renewal.type} renewal. ${renewal.type === 'Emissions Test' ? 'Your test has been scheduled.' : 'Your sticker is in the mail and should arrive within 10-14 days.'} No action needed from you!`
                                 : daysUntil >= 14 && !actuallyPurchased
                                 ? `Your ${renewal.type} expires in ${daysUntil} days. We're processing your renewal purchase and will update you when it's confirmed.`
                                 : actuallyPurchased
-                                ? `Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} and it typically takes 10-14 days to arrive.`
+                                ? `${renewal.type === 'Emissions Test' ? 'Your test has been scheduled' : `Your ${renewal.type} sticker should arrive soon (if it hasn't already)`}. We purchased it on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${renewal.type !== 'Emissions Test' ? 'and it typically takes 10-14 days to arrive' : ''}.`
                                 : `Your ${renewal.type} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`
                               }
                             </p>
@@ -513,7 +513,7 @@ export class NotificationScheduler {
                             <ul style="color: #0369a1; margin: 0 0 16px; padding-left: 20px; line-height: 1.8;">
                               <li>VIN (if you got a new vehicle)</li>
                               <li>License plate number</li>
-                              <li>Mailing address (where we'll send your sticker)</li>
+                              <li>Mailing address${renewal.type === 'Emissions Test' ? '' : ' (where we\'ll send your sticker)'}</li>
                             </ul>
                             <div style="text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                               <a href="https://autopilotamerica.com/settings"
@@ -606,7 +606,7 @@ ${daysUntil === 14
   : daysUntil > 14
   ? `We'll automatically purchase your ${renewal.type} in ${daysUntilPurchase} days (on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, when there are 30 days left). You don't need to do anything!`
   : daysUntil < 14
-  ? `We already purchased your ${renewal.type} - your sticker is in the mail and should arrive within 7-10 business days!`
+  ? `We already purchased your ${renewal.type}${renewal.type === 'Emissions Test' ? '. Your test has been scheduled' : ' - your sticker is in the mail and should arrive within 7-10 business days'}!`
   : `We'll automatically purchase your ${renewal.type} on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (when there are 30 days left). You have plenty of time!`
 }
 
