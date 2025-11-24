@@ -73,19 +73,32 @@ export default function ProfileNew() {
     loadUserData()
   }, [])
 
-  // Show consent popup IMMEDIATELY after both images validated (before expiry date)
+  // Show consent popup IMMEDIATELY after first image uploaded (before validation)
   useEffect(() => {
     if (
-      licenseFrontFile && licenseBackFile &&
-      licenseFrontValid && licenseBackValid &&
+      licenseFrontFile &&
       !licenseConsent && // Only show if not already consented
       !showConsentPopup
     ) {
-      // Both images validated → show consent popup IMMEDIATELY
-      console.log('🔔 Both images validated - triggering consent popup')
+      // First image uploaded → show consent popup IMMEDIATELY
+      console.log('🔔 First image uploaded - triggering consent popup')
       setShowConsentPopup(true)
     }
-  }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseConsent])
+  }, [licenseFrontFile, licenseConsent])
+
+  // Validate images AFTER consent is given
+  useEffect(() => {
+    // Validate front image after consent
+    if (licenseFrontFile && licenseConsent && !licenseFrontValid && !licenseFrontValidating && !licenseFrontError) {
+      console.log('✅ Consent given - validating front image')
+      validateLicenseImage(licenseFrontFile, 'front')
+    }
+    // Validate back image after consent
+    if (licenseBackFile && licenseConsent && !licenseBackValid && !licenseBackValidating && !licenseBackError) {
+      console.log('✅ Consent given - validating back image')
+      validateLicenseImage(licenseBackFile, 'back')
+    }
+  }, [licenseFrontFile, licenseBackFile, licenseConsent, licenseFrontValid, licenseBackValid, licenseFrontValidating, licenseBackValidating])
 
   // Auto-upload when consent given AND expiry date filled
   useEffect(() => {
@@ -1247,7 +1260,7 @@ export default function ProfileNew() {
                         return
                       }
                       setLicenseFrontFile(file)
-                      validateLicenseImage(file, 'front')
+                      // Validation happens after consent via useEffect
                     }
                   }}
                   style={{
@@ -1308,7 +1321,7 @@ export default function ProfileNew() {
                         return
                       }
                       setLicenseBackFile(file)
-                      validateLicenseImage(file, 'back')
+                      // Validation happens after consent via useEffect
                     }
                   }}
                   style={{
@@ -1875,7 +1888,7 @@ export default function ProfileNew() {
               marginBottom: '20px',
               margin: '0 0 20px 0'
             }}>
-              Before we can store and process your driver's license, we need your explicit consent:
+              Before we can validate and process your driver's license, we need your explicit consent:
             </p>
 
             <div style={{
@@ -1892,7 +1905,9 @@ export default function ProfileNew() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                <strong>✓</strong> Your license will be encrypted and securely stored<br/>
+                <strong>✓</strong> Validated using Google Cloud Vision (third-party service) to check image quality<br/>
+                <strong>✓</strong> OCR extracts expiry date automatically from your license<br/>
+                <strong>✓</strong> Encrypted and securely stored in our system<br/>
                 <strong>✓</strong> Only accessed when processing your city sticker renewal<br/>
                 <strong>✓</strong> Shared with third-party remitter services for renewal processing<br/>
                 <strong>✓</strong> Kept until your license expires (you can revoke consent anytime)
