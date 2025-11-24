@@ -50,6 +50,12 @@ export default function ProfileNew() {
   const [licenseReuseConsent, setLicenseReuseConsent] = useState(false)
   const [licenseExpiryDate, setLicenseExpiryDate] = useState('')
 
+  // Already uploaded license images (from database)
+  const [licenseFrontUploaded, setLicenseFrontUploaded] = useState(false)
+  const [licenseBackUploaded, setLicenseBackUploaded] = useState(false)
+  const [licenseFrontPath, setLicenseFrontPath] = useState('')
+  const [licenseBackPath, setLicenseBackPath] = useState('')
+
   // Validation state
   const [licenseFrontValidating, setLicenseFrontValidating] = useState(false)
   const [licenseFrontValid, setLicenseFrontValid] = useState(false)
@@ -102,6 +108,19 @@ export default function ProfileNew() {
 
   // Auto-upload when consent given AND expiry date filled
   useEffect(() => {
+    console.log('📊 Auto-upload check:', {
+      licenseFrontFile: !!licenseFrontFile,
+      licenseBackFile: !!licenseBackFile,
+      licenseFrontValid,
+      licenseBackValid,
+      licenseExpiryDate,
+      licenseConsent,
+      detectedExpiryDate,
+      dateConfirmed,
+      licenseUploading,
+      dateCheckPasses: (!detectedExpiryDate || dateConfirmed)
+    })
+
     if (
       licenseFrontFile && licenseBackFile &&
       licenseFrontValid && licenseBackValid &&
@@ -111,6 +130,8 @@ export default function ProfileNew() {
     ) {
       console.log('🚀 All conditions met - auto-uploading')
       autoUploadLicense()
+    } else {
+      console.log('⏸️  Auto-upload blocked - not all conditions met')
     }
   }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent, detectedExpiryDate, dateConfirmed, licenseUploading])
 
@@ -184,6 +205,22 @@ export default function ProfileNew() {
       if (userProfile.mailing_address && userProfile.home_address_full &&
           userProfile.mailing_address !== userProfile.home_address_full) {
         setHasSeparateMailingAddress(true)
+      }
+
+      // Check if license images already uploaded
+      if (userProfile.license_image_path) {
+        setLicenseFrontUploaded(true)
+        setLicenseFrontPath(userProfile.license_image_path)
+        console.log('✅ Front license already uploaded:', userProfile.license_image_path)
+      }
+      if (userProfile.license_image_path_back) {
+        setLicenseBackUploaded(true)
+        setLicenseBackPath(userProfile.license_image_path_back)
+        console.log('✅ Back license already uploaded:', userProfile.license_image_path_back)
+      }
+      if (userProfile.license_valid_until) {
+        setLicenseExpiryDate(userProfile.license_valid_until)
+        console.log('✅ License expiry date:', userProfile.license_valid_until)
       }
     }
 
