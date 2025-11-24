@@ -29,10 +29,17 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 let visionClient: vision.ImageAnnotatorClient | null = null;
 if (process.env.GOOGLE_CLOUD_VISION_CREDENTIALS) {
   try {
-    const credentials = JSON.parse(process.env.GOOGLE_CLOUD_VISION_CREDENTIALS);
+    // Fix credentials: Replace literal newlines in private_key with \n escape sequences
+    const rawCreds = process.env.GOOGLE_CLOUD_VISION_CREDENTIALS;
+    const fixedCreds = rawCreds.replace(/"private_key":\s*"([^"]*?)"/gs, (match, key) => {
+      const escaped = key.replace(/\n/g, '\\n');
+      return `"private_key": "${escaped}"`;
+    });
+    const credentials = JSON.parse(fixedCreds);
     visionClient = new vision.ImageAnnotatorClient({ credentials });
+    console.log('✅ Google Cloud Vision initialized successfully');
   } catch (error) {
-    console.warn('Failed to initialize Google Cloud Vision:', error);
+    console.error('❌ Failed to initialize Google Cloud Vision:', error);
   }
 }
 
