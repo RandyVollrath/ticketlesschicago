@@ -1579,7 +1579,12 @@ export default function ProfileNew() {
                       📅 We detected from your license:
                     </p>
                     <p style={{ fontSize: '16px', color: '#78350f', fontWeight: 'bold', margin: '0 0 8px 0' }}>
-                      {new Date(detectedExpiryDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      {(() => {
+                        // Parse date as local, not UTC (avoid timezone shift)
+                        const [year, month, day] = detectedExpiryDate.split('-').map(Number);
+                        const date = new Date(year, month - 1, day); // month is 0-indexed
+                        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                      })()}
                     </p>
                     <p style={{ fontSize: '13px', color: '#92400e', margin: '0 0 12px 0' }}>
                       ⚠️ Please verify this is correct before continuing
