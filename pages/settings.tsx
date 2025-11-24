@@ -121,18 +121,23 @@ export default function ProfileNew() {
       dateCheckPasses: (!detectedExpiryDate || dateConfirmed)
     })
 
-    if (
-      licenseFrontFile && licenseBackFile &&
-      licenseFrontValid && licenseBackValid &&
-      licenseExpiryDate && licenseConsent &&
-      (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
-      !licenseUploading
-    ) {
-      console.log('🚀 All conditions met - auto-uploading')
-      autoUploadLicense()
-    } else {
-      console.log('⏸️  Auto-upload blocked - not all conditions met')
-    }
+    // TEMPORARILY DISABLED FOR DEBUGGING OCR DATE DETECTION
+    // Need to see what OCR detects without auto-uploading wrong date
+    console.log('⏸️  Auto-upload TEMPORARILY DISABLED for debugging')
+    return // Skip auto-upload
+
+    // if (
+    //   licenseFrontFile && licenseBackFile &&
+    //   licenseFrontValid && licenseBackValid &&
+    //   licenseExpiryDate && licenseConsent &&
+    //   (!detectedExpiryDate || dateConfirmed) && // If date was detected, must be confirmed
+    //   !licenseUploading
+    // ) {
+    //   console.log('🚀 All conditions met - auto-uploading')
+    //   autoUploadLicense()
+    // } else {
+    //   console.log('⏸️  Auto-upload blocked - not all conditions met')
+    // }
   }, [licenseFrontFile, licenseBackFile, licenseFrontValid, licenseBackValid, licenseExpiryDate, licenseConsent, detectedExpiryDate, dateConfirmed, licenseUploading])
 
   // Poll for Protection webhook completion
@@ -1335,6 +1340,11 @@ export default function ProfileNew() {
                           if (confirm('Delete this image? You can upload a new one after deleting.')) {
                             setLicenseFrontUploaded(false)
                             setLicenseFrontPath('')
+                            // Clear date so OCR can detect fresh
+                            setLicenseExpiryDate('')
+                            setDetectedExpiryDate('')
+                            setDateConfirmed(false)
+                            console.log('🗑️ Cleared front image and date')
                           }
                         }}
                         style={{
@@ -1464,6 +1474,11 @@ export default function ProfileNew() {
                           if (confirm('Delete this image? You can upload a new one after deleting.')) {
                             setLicenseBackUploaded(false)
                             setLicenseBackPath('')
+                            // Clear date so OCR can detect fresh
+                            setLicenseExpiryDate('')
+                            setDetectedExpiryDate('')
+                            setDateConfirmed(false)
+                            console.log('🗑️ Cleared back image and date')
                           }
                         }}
                         style={{
