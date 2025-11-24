@@ -1612,32 +1612,10 @@ export default function ProfileNew() {
                   onChange={(e) => {
                     const dateValue = e.target.value
 
-                    // Validate date format (YYYY-MM-DD) and ensure year is 4 digits
-                    if (dateValue) {
-                      const dateRegex = /^(\d{4})-(\d{2})-(\d{2})$/
-                      const match = dateValue.match(dateRegex)
-
-                      if (match) {
-                        const year = parseInt(match[1])
-                        const month = parseInt(match[2])
-                        const day = parseInt(match[3])
-
-                        // Validate year is reasonable (between current year and 2050)
-                        const currentYear = new Date().getFullYear()
-                        if (year >= currentYear && year <= 2050 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-                          setLicenseExpiryDate(dateValue)
-                          console.log('✅ Valid date entered:', dateValue)
-                        } else {
-                          console.warn('⚠️ Invalid date range:', dateValue)
-                          return // Don't set invalid dates
-                        }
-                      } else {
-                        console.warn('⚠️ Invalid date format:', dateValue)
-                        return // Don't set malformed dates
-                      }
-                    } else {
-                      setLicenseExpiryDate(dateValue) // Allow clearing
-                    }
+                    // Just accept whatever the native date picker gives us
+                    // The min/max attributes handle validation
+                    setLicenseExpiryDate(dateValue)
+                    console.log('📅 Date changed:', dateValue)
 
                     // If OCR detected a date and user is editing it
                     if (detectedExpiryDate && dateValue !== detectedExpiryDate) {
