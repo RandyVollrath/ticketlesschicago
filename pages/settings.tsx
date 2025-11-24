@@ -452,7 +452,7 @@ export default function ProfileNew() {
   // Section-specific missing fields
   const missingEssentialInfo = !formData.phone_number && !formData.phone
   const needsLicenseUpload = profile.has_permit_zone && profile.has_protection && profile.permit_requested &&
-                             (!profile.license_image_path || !profile.license_image_path_back)
+                             (!licenseFrontUploaded || !licenseBackUploaded)
 
   if (loading) {
     return (
@@ -1299,10 +1299,18 @@ export default function ProfileNew() {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         onClick={async () => {
-                          const { data, error } = await supabase.storage
-                            .from('license-images-temp')
-                            .createSignedUrl(licenseFrontPath, 3600)
-                          if (data) window.open(data.signedUrl, '_blank')
+                          try {
+                            const response = await fetch(`/api/protection/view-license?userId=${user!.id}&side=front`)
+                            const data = await response.json()
+                            if (data.signedUrl) {
+                              window.open(data.signedUrl, '_blank')
+                            } else {
+                              alert('Failed to load image')
+                            }
+                          } catch (error) {
+                            console.error('Failed to view image:', error)
+                            alert('Failed to load image')
+                          }
                         }}
                         style={{
                           padding: '8px 16px',
@@ -1319,7 +1327,7 @@ export default function ProfileNew() {
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm('Delete this image and upload a new one?')) {
+                          if (confirm('Delete this image? You can upload a new one after deleting.')) {
                             setLicenseFrontUploaded(false)
                             setLicenseFrontPath('')
                           }
@@ -1335,7 +1343,7 @@ export default function ProfileNew() {
                           cursor: 'pointer'
                         }}
                       >
-                        🗑️ Delete & Re-upload
+                        🗑️ Delete
                       </button>
                     </div>
                   </div>
@@ -1420,10 +1428,18 @@ export default function ProfileNew() {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         onClick={async () => {
-                          const { data, error } = await supabase.storage
-                            .from('license-images-temp')
-                            .createSignedUrl(licenseBackPath, 3600)
-                          if (data) window.open(data.signedUrl, '_blank')
+                          try {
+                            const response = await fetch(`/api/protection/view-license?userId=${user!.id}&side=back`)
+                            const data = await response.json()
+                            if (data.signedUrl) {
+                              window.open(data.signedUrl, '_blank')
+                            } else {
+                              alert('Failed to load image')
+                            }
+                          } catch (error) {
+                            console.error('Failed to view image:', error)
+                            alert('Failed to load image')
+                          }
                         }}
                         style={{
                           padding: '8px 16px',
@@ -1440,7 +1456,7 @@ export default function ProfileNew() {
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm('Delete this image and upload a new one?')) {
+                          if (confirm('Delete this image? You can upload a new one after deleting.')) {
                             setLicenseBackUploaded(false)
                             setLicenseBackPath('')
                           }
@@ -1456,7 +1472,7 @@ export default function ProfileNew() {
                           cursor: 'pointer'
                         }}
                       >
-                        🗑️ Delete & Re-upload
+                        🗑️ Delete
                       </button>
                     </div>
                   </div>
