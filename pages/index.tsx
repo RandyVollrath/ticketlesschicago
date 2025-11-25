@@ -569,10 +569,10 @@ export default function Home() {
               margin: '0 0 16px 0',
               letterSpacing: '-1px'
             }}>
-              Simple Pricing
+              Stop Worrying About Chicago Parking Tickets
             </h2>
             <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
-              One ticket costs more than a full year of Protection.
+              Get essential alerts for free, or let us handle everything for complete peace of mind.
             </p>
           </div>
 
@@ -596,13 +596,13 @@ export default function Home() {
                 letterSpacing: '1px',
                 marginBottom: '8px'
               }}>
-                Free Forever
+                Free
               </div>
               <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark, marginBottom: '8px' }}>
                 $0
               </div>
               <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '32px' }}>
-                For one vehicle
+                Avoid surprises with essential alerts
               </div>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
@@ -652,7 +652,7 @@ export default function Home() {
                   e.currentTarget.style.color = COLORS.primary;
                 }}
               >
-                Get Started Free
+                Get Free Alerts
               </button>
             </div>
 
@@ -690,20 +690,57 @@ export default function Home() {
                 Protection
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark }}>$120</span>
-                <span style={{ fontSize: '18px', color: COLORS.gray }}>/year</span>
+                <span style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark }}>$10</span>
+                <span style={{ fontSize: '18px', color: COLORS.gray }}>/month</span>
               </div>
-              <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '32px' }}>
-                or $12/month
+              <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '24px' }}>
+                Billed annually at $120
+              </div>
+
+              {/* Highlighted Auto-Renewal Feature */}
+              <div style={{
+                backgroundColor: `${COLORS.accent}15`,
+                border: `1px solid ${COLORS.accent}`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ fontSize: '20px' }}>🔄</span>
+                  <span style={{
+                    fontWeight: '700',
+                    fontSize: '14px',
+                    color: COLORS.dark,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Auto-Renewal Guarantee
+                  </span>
+                </div>
+                <p style={{
+                  margin: 0,
+                  fontSize: '14px',
+                  color: '#444',
+                  lineHeight: '1.5'
+                }}>
+                  We automatically purchase your city sticker and license plate sticker before they expire. You just approve the charge. <strong>Never get a $200 sticker ticket again.</strong>
+                </p>
+              </div>
+
+              <div style={{ fontSize: '14px', color: COLORS.gray, marginBottom: '12px', fontWeight: '600' }}>
+                Set it and forget it:
               </div>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
                 {[
-                  'Everything in Free',
-                  'City sticker purchased for you',
-                  'License plate sticker purchased for you',
-                  'Up to $200/yr ticket reimbursement',
-                  'Zero effort - we handle it all'
+                  'Everything in Free tier',
+                  'Ticket Protection — we pay if you get ticketed',
+                  'Priority support'
                 ].map((item, i) => (
                   <li key={i} style={{
                     padding: '12px 0',
@@ -742,7 +779,7 @@ export default function Home() {
                   e.currentTarget.style.backgroundColor = COLORS.primary;
                 }}
               >
-                Get Protected
+                Start My Protection
               </button>
             </div>
           </div>
