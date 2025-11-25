@@ -703,7 +703,6 @@ export default function Home() {
                   'City sticker purchased for you',
                   'License plate sticker purchased for you',
                   'Up to $200/yr ticket reimbursement',
-                  'Multiple vehicles',
                   'Zero effort - we handle it all'
                 ].map((item, i) => (
                   <li key={i} style={{
