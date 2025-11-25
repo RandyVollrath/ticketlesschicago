@@ -587,21 +587,22 @@ export default function ProfileNew() {
         throw new Error(result.error || 'Upload failed')
       }
 
-      // Update local state
-      setFormData(prev => ({ ...prev, residency_proof_path: result.publicUrl }))
+      // Update local state (don't reload page - it resets the dropdown)
+      setFormData(prev => ({
+        ...prev,
+        residency_proof_path: result.publicUrl,
+        residency_proof_uploaded_at: new Date().toISOString()
+      }))
       setProfile(prev => ({
         ...prev,
         residency_proof_path: result.publicUrl,
+        residency_proof_type: formData.residency_proof_type,
         residency_proof_verified: false,
-        residency_proof_rejection_reason: null
+        residency_proof_rejection_reason: null,
+        residency_proof_uploaded_at: new Date().toISOString()
       }))
 
       setMessage({ type: 'success', text: 'Document uploaded successfully! It will be reviewed shortly.' })
-
-      // Reload to show updated data
-      setTimeout(() => {
-        loadUserData()
-      }, 1000)
     } catch (error: any) {
       console.error('Upload error:', error)
       alert(`Upload failed: ${error.message}`)
