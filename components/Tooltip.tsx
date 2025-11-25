@@ -79,28 +79,28 @@ export default function Tooltip({ content, children, position = 'top' }: Tooltip
                 left: '50%',
                 transform: 'translateX(-50%)',
                 borderWidth: '6px 6px 0 6px',
-                borderColor: '#1f2937 transparent transparent transparent'
+                borderColor: `${GRAPHITE} transparent transparent transparent`
               }),
               ...(position === 'bottom' && {
                 bottom: '100%',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 borderWidth: '0 6px 6px 6px',
-                borderColor: 'transparent transparent #1f2937 transparent'
+                borderColor: `transparent transparent ${GRAPHITE} transparent`
               }),
               ...(position === 'left' && {
                 left: '100%',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 borderWidth: '6px 0 6px 6px',
-                borderColor: 'transparent transparent transparent #1f2937'
+                borderColor: `transparent transparent transparent ${GRAPHITE}`
               }),
               ...(position === 'right' && {
                 right: '100%',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 borderWidth: '6px 6px 6px 0',
-                borderColor: 'transparent #1f2937 transparent transparent'
+                borderColor: `transparent ${GRAPHITE} transparent transparent`
               })
             }}
           />
