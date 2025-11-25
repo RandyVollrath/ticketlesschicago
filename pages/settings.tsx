@@ -2367,7 +2367,29 @@ export default function ProfileNew() {
                 </label>
 
                 {/* Drag and Drop Upload Area */}
-                <label
+                <div
+                  onClick={() => {
+                    if (!residencyProofUploading) {
+                      document.getElementById('residency-proof-input')?.click()
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (residencyProofUploading) return
+                    const file = e.dataTransfer.files?.[0]
+                    if (file) {
+                      handleResidencyProofUpload(file)
+                    }
+                  }}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -2382,6 +2404,7 @@ export default function ProfileNew() {
                   }}
                 >
                   <input
+                    id="residency-proof-input"
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     disabled={residencyProofUploading}
@@ -2420,7 +2443,7 @@ export default function ProfileNew() {
                       <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>PDF, JPG, or PNG (max 10MB)</span>
                     </>
                   )}
-                </label>
+                </div>
 
                 {/* Verification Status Display */}
                 {formData.residency_proof_path && (
