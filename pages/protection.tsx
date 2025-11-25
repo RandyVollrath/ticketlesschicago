@@ -294,7 +294,7 @@ export default function Protection() {
             .feature-grid { grid-template-columns: 1fr !important; }
           }
           .nav-mobile { display: none; }
-          ::selection { background: #2563EB; color: white; }
+          ::selection { background: #10B981; color: white; }
         `}</style>
       </Head>
 
