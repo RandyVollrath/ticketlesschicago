@@ -16,8 +16,8 @@ export default function PropertyTaxHelper({
   const [fetching, setFetching] = useState(false)
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'searching' | 'downloading' | 'uploading' | 'success' | 'error'>('idle')
 
-  // Build the Cook County Treasurer search URL
-  const cookCountySearchUrl = 'https://www.cookcountytreasurer.com/setsearchparameters.aspx'
+  // Build the Cook County Property Info Portal URL (better than treasurer site)
+  const cookCountySearchUrl = 'https://www.cookcountypropertyinfo.com'
 
   const handleAutoFetch = async () => {
     if (!userAddress) {
@@ -257,10 +257,10 @@ export default function PropertyTaxHelper({
           color: '#475569',
           lineHeight: '1.8'
         }}>
-          <li>Click the link below to open Cook County Treasurer</li>
-          <li>Enter your address in the search box</li>
-          <li>Click "Get a Copy of Your Tax Bill"</li>
-          <li>Download the PDF and upload it below</li>
+          <li>Click the link below to open Cook County Property Info</li>
+          <li>Click "Search by Property Address"</li>
+          <li>Enter your address and click Search</li>
+          <li>Click "View/Print Tax Bill" and download the PDF</li>
         </ol>
 
         <a
@@ -287,7 +287,7 @@ export default function PropertyTaxHelper({
             <polyline points="15,3 21,3 21,9" strokeLinecap="round" strokeLinejoin="round"/>
             <line x1="10" y1="14" x2="21" y2="3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Open Cook County Treasurer Website
+          Open Cook County Property Info Portal
         </a>
       </div>
 
