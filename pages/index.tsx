@@ -57,10 +57,11 @@ export default function Home() {
         <meta name="description" content="The operating system for Chicago vehicle compliance. Auto-renewal of city stickers, document verification, and ticket protection." />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
+          ::selection { background: #10B981; color: white; }
           @media (max-width: 768px) {
-            .hero-title { font-size: 36px !important; }
-            .hero-subtitle { font-size: 18px !important; }
-            .section-title { font-size: 28px !important; }
+            .hero-title { font-size: 32px !important; line-height: 1.1 !important; }
+            .hero-subtitle { font-size: 16px !important; }
+            .section-title { font-size: 26px !important; }
             .nav-desktop { display: none !important; }
             .nav-mobile { display: flex !important; }
             .hero-buttons { flex-direction: column !important; }
@@ -69,6 +70,11 @@ export default function Home() {
             .pricing-grid { grid-template-columns: 1fr !important; }
             .testimonial-grid { grid-template-columns: 1fr !important; }
             .stats-row { flex-direction: column !important; gap: 24px !important; }
+            .footer-grid { grid-template-columns: 1fr 1fr !important; }
+          }
+          @media (max-width: 480px) {
+            .hero-title { font-size: 28px !important; }
+            .footer-grid { grid-template-columns: 1fr !important; }
           }
           .nav-mobile { display: none; }
         `}</style>
