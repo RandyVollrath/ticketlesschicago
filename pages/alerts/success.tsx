@@ -5,6 +5,18 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 import { posthog } from '../../lib/posthog';
 
+// Brand Colors - Municipal Fintech
+const COLORS = {
+  deepHarbor: '#0F172A',
+  regulatory: '#2563EB',
+  regulatoryDark: '#1d4ed8',
+  concrete: '#F8FAFC',
+  signal: '#10B981',
+  graphite: '#1E293B',
+  slate: '#64748B',
+  border: '#E2E8F0',
+};
+
 export default function AlertsSuccess() {
   const router = useRouter();
   const isProtection = router.query.protection === 'true';
@@ -91,13 +103,6 @@ export default function AlertsSuccess() {
 
     checkLicenseUploadNeed();
   }, [isProtection]);
-
-  // Magic link is now sent from webhook - this effect is no longer needed
-  // useEffect(() => {
-  //   if (isProtection && !isExistingUser && router.query.email) {
-  //     sendMagicLink(router.query.email as string);
-  //   }
-  // }, [isProtection, isExistingUser, router.query.email]);
 
   const sendMagicLink = async (email: string) => {
     try {
@@ -201,8 +206,8 @@ export default function AlertsSuccess() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#f9fafb',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      backgroundColor: COLORS.concrete,
+      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -210,7 +215,12 @@ export default function AlertsSuccess() {
     }}>
       <Head>
         <title>You're All Set! - Autopilot America</title>
-        <meta name="description" content="Your free alerts are now active" />
+        <meta name="description" content="Your alerts are now active" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          ::selection { background: #10B981; color: white; }
+        `}</style>
       </Head>
       <Script src="https://js.stripe.com/v3/buy-button.js" strategy="lazyOnload" />
 
@@ -221,42 +231,46 @@ export default function AlertsSuccess() {
         borderRadius: '16px',
         padding: '48px',
         textAlign: 'center',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+        border: `1px solid ${COLORS.border}`,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.04)'
       }}>
         {/* Success Icon */}
         <div style={{
-          width: '80px',
-          height: '80px',
-          backgroundColor: '#dcfce7',
+          width: '72px',
+          height: '72px',
+          backgroundColor: `${COLORS.signal}15`,
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          margin: '0 auto 24px auto',
-          fontSize: '40px'
+          margin: '0 auto 24px auto'
         }}>
-          ✓
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
         </div>
 
         <h1 style={{
-          fontSize: '36px',
-          fontWeight: 'bold',
-          color: '#1a1a1a',
+          fontSize: '32px',
+          fontWeight: '700',
+          color: COLORS.graphite,
           marginBottom: '16px',
-          margin: '0 0 16px 0'
+          margin: '0 0 16px 0',
+          fontFamily: '"Space Grotesk", sans-serif',
+          letterSpacing: '-1px'
         }}>
           You're All Set!
         </h1>
 
         <p style={{
-          fontSize: '18px',
-          color: '#374151',
+          fontSize: '17px',
+          color: COLORS.slate,
           marginBottom: '32px',
           lineHeight: '1.6',
           margin: '0 0 32px 0'
         }}>
           {isProtection
-            ? "Your Ticket Protection is now active! We'll handle your renewals and you're covered up to $200/year in tickets."
+            ? "Your Autopilot Protection is now active. We'll handle your renewals and you're covered up to $200/year in tickets."
             : "We'll text, email, and call you before tickets happen. Your alerts are now active for street cleaning, snow removal, city stickers, and license plates."
           }
         </p>
@@ -264,69 +278,16 @@ export default function AlertsSuccess() {
         {/* Profile Completion Warning for Protection */}
         {isProtection && (
           <div style={{
-            backgroundColor: '#fff7ed',
-            border: '2px solid #fb923c',
+            backgroundColor: '#fffbeb',
+            border: `1px solid #fbbf24`,
             borderRadius: '12px',
             padding: '24px',
-            marginBottom: '32px',
+            marginBottom: '24px',
             textAlign: 'left'
           }}>
             <h3 style={{
-              fontSize: '16px',
-              fontWeight: 'bold',
-              color: '#9a3412',
-              marginBottom: '12px',
-              margin: '0 0 12px 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              ⚠️ Important: Complete Your Profile
-            </h3>
-            <p style={{
               fontSize: '15px',
-              color: '#7c2d12',
-              lineHeight: '1.6',
-              margin: '0 0 16px 0'
-            }}>
-              <strong>Your $200/year ticket guarantee requires a complete and accurate profile.</strong> Please ensure all information in your account settings is correct:
-            </p>
-            <ul style={{
-              margin: '0 0 16px 0',
-              paddingLeft: '24px',
-              fontSize: '14px',
-              color: '#7c2d12',
-              lineHeight: '1.6'
-            }}>
-              <li>Vehicle information (license plate, VIN, make, model)</li>
-              <li>Renewal dates (city sticker, license plate, emissions)</li>
-              <li>Contact information (phone, email, mailing address)</li>
-              <li>Street cleaning address (ward and section)</li>
-            </ul>
-            <p style={{
-              fontSize: '13px',
-              color: '#78350f',
-              margin: 0,
-              fontStyle: 'italic'
-            }}>
-              The guarantee is void if your profile is incomplete or inaccurate. Take 2 minutes now to verify everything is correct.
-            </p>
-          </div>
-        )}
-
-        {/* License Upload for Permit Zone Users */}
-        {needsLicenseUpload && !licenseUploadSuccess && (
-          <div style={{
-            backgroundColor: '#fef3c7',
-            border: '3px solid #f59e0b',
-            borderRadius: '12px',
-            padding: '24px',
-            marginBottom: '32px',
-            textAlign: 'left'
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
+              fontWeight: '600',
               color: '#92400e',
               marginBottom: '12px',
               margin: '0 0 12px 0',
@@ -334,26 +295,89 @@ export default function AlertsSuccess() {
               alignItems: 'center',
               gap: '8px'
             }}>
-              📸 Action Required: Upload Driver's License
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Important: Complete Your Profile
             </h3>
             <p style={{
-              fontSize: '15px',
+              fontSize: '14px',
+              color: '#78350f',
+              lineHeight: '1.6',
+              margin: '0 0 12px 0'
+            }}>
+              <strong>Your $200/year ticket guarantee requires a complete and accurate profile.</strong> Please verify:
+            </p>
+            <ul style={{
+              margin: '0 0 12px 0',
+              paddingLeft: '20px',
+              fontSize: '13px',
+              color: '#78350f',
+              lineHeight: '1.7'
+            }}>
+              <li>Vehicle information (license plate, make, model)</li>
+              <li>Renewal dates (city sticker, license plate)</li>
+              <li>Contact info and street cleaning address</li>
+            </ul>
+            <p style={{
+              fontSize: '12px',
+              color: '#92400e',
+              margin: 0,
+              fontStyle: 'italic'
+            }}>
+              The guarantee is void if your profile is incomplete or inaccurate.
+            </p>
+          </div>
+        )}
+
+        {/* License Upload for Permit Zone Users */}
+        {needsLicenseUpload && !licenseUploadSuccess && (
+          <div style={{
+            backgroundColor: '#fffbeb',
+            border: `2px solid #f59e0b`,
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '24px',
+            textAlign: 'left'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#92400e',
+              marginBottom: '12px',
+              margin: '0 0 12px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              Action Required: Upload Driver's License
+            </h3>
+            <p style={{
+              fontSize: '14px',
               color: '#78350f',
               lineHeight: '1.6',
               margin: '0 0 16px 0'
             }}>
-              Because your address is in a <strong>residential permit zone</strong>, we need a photo of your driver's license to process your city sticker renewal with the city clerk.
+              Because your address is in a <strong>residential permit zone</strong>, we need a photo of your driver's license to process your city sticker renewal.
             </p>
+
             <div style={{
-              backgroundColor: '#fffbeb',
-              border: '1px solid #fde047',
+              backgroundColor: 'white',
+              border: `1px solid ${COLORS.border}`,
               borderRadius: '8px',
               padding: '12px',
               marginBottom: '16px'
             }}>
               <p style={{
-                fontSize: '13px',
-                color: '#92400e',
+                fontSize: '12px',
+                color: COLORS.slate,
                 margin: 0,
                 lineHeight: '1.5'
               }}>
@@ -362,30 +386,33 @@ export default function AlertsSuccess() {
             </div>
 
             <div style={{
-              backgroundColor: '#f0f9ff',
-              border: '1px solid #bae6fd',
+              backgroundColor: `${COLORS.regulatory}08`,
+              border: `1px solid ${COLORS.regulatory}30`,
               borderRadius: '8px',
               padding: '12px',
               marginBottom: '16px'
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ fontSize: '16px', flexShrink: 0 }}>🔒</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2" style={{ flexShrink: 0, marginTop: '2px' }}>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
                 <div>
                   <p style={{
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: '600',
-                    color: '#0c4a6e',
-                    margin: '0 0 6px 0'
+                    color: COLORS.regulatory,
+                    margin: '0 0 4px 0'
                   }}>
                     Privacy & Security
                   </p>
                   <p style={{
-                    fontSize: '12px',
-                    color: '#0c4a6e',
+                    fontSize: '11px',
+                    color: COLORS.slate,
                     margin: 0,
-                    lineHeight: '1.6'
+                    lineHeight: '1.5'
                   }}>
-                    Your license is encrypted with bank-level security. We access it <strong>only once per year</strong>, 30 days before your city sticker renewal. If you opt out of multi-year storage, it's deleted within 48 hours. If you opt in, it's stored until your license expires and then automatically deleted.
+                    Your license is encrypted with bank-level security. We access it <strong>only once per year</strong>, 30 days before your city sticker renewal.
                   </p>
                 </div>
               </div>
@@ -402,7 +429,7 @@ export default function AlertsSuccess() {
               <label style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '8px',
+                gap: '10px',
                 cursor: 'pointer'
               }}>
                 <input
@@ -412,9 +439,10 @@ export default function AlertsSuccess() {
                   style={{
                     width: '18px',
                     height: '18px',
-                    marginTop: '2px',
+                    marginTop: '1px',
                     accentColor: '#f59e0b',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    flexShrink: 0
                   }}
                 />
                 <span style={{
@@ -422,15 +450,15 @@ export default function AlertsSuccess() {
                   color: '#92400e',
                   lineHeight: '1.5'
                 }}>
-                  <strong>Required:</strong> I consent to Google Cloud Vision processing my driver's license image for automated quality verification (blur detection, text readability). Google's processing is used solely to ensure your image is clear for city clerk processing. <a href="https://cloud.google.com/vision/docs/data-usage" target="_blank" rel="noopener noreferrer" style={{ color: '#0052cc', textDecoration: 'underline' }}>Learn more</a>
+                  <strong>Required:</strong> I consent to Google Cloud Vision processing my driver's license image for automated quality verification.
                 </span>
               </label>
             </div>
 
             {/* Optional Multi-Year Consent */}
             <div style={{
-              backgroundColor: '#f0fdf4',
-              border: '1px solid #bbf7d0',
+              backgroundColor: `${COLORS.signal}08`,
+              border: `1px solid ${COLORS.signal}30`,
               borderRadius: '8px',
               padding: '12px',
               marginBottom: '16px'
@@ -438,9 +466,9 @@ export default function AlertsSuccess() {
               <label style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '8px',
+                gap: '10px',
                 cursor: 'pointer',
-                marginBottom: '12px'
+                marginBottom: reuseConsent ? '12px' : '0'
               }}>
                 <input
                   type="checkbox"
@@ -449,9 +477,10 @@ export default function AlertsSuccess() {
                   style={{
                     width: '18px',
                     height: '18px',
-                    marginTop: '2px',
-                    accentColor: '#10b981',
-                    cursor: 'pointer'
+                    marginTop: '1px',
+                    accentColor: COLORS.signal,
+                    cursor: 'pointer',
+                    flexShrink: 0
                   }}
                 />
                 <span style={{
@@ -459,16 +488,12 @@ export default function AlertsSuccess() {
                   color: '#166534',
                   lineHeight: '1.5'
                 }}>
-                  <strong>Optional:</strong> Store my license until it expires (up to 4 years) for automatic city sticker renewals.
-                  <br />
-                  <span style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                    Your license will ONLY be accessed once per year, 30 days before your city sticker renewal. We never access it otherwise. This saves you from uploading every year.
-                  </span>
+                  <strong>Optional:</strong> Store my license until it expires for automatic renewals (saves you from uploading every year).
                 </span>
               </label>
 
               {reuseConsent && (
-                <div style={{ paddingLeft: '26px' }}>
+                <div style={{ paddingLeft: '28px' }}>
                   <label style={{
                     display: 'block',
                     fontSize: '12px',
@@ -485,20 +510,12 @@ export default function AlertsSuccess() {
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      border: '1px solid #bbf7d0',
+                      border: `1px solid ${COLORS.signal}50`,
                       borderRadius: '6px',
                       fontSize: '14px',
                       boxSizing: 'border-box'
                     }}
                   />
-                  <p style={{
-                    fontSize: '11px',
-                    color: '#166534',
-                    margin: '6px 0 0 0',
-                    fontStyle: 'italic'
-                  }}>
-                    We'll automatically request a new upload ~30 days before this date
-                  </p>
                 </div>
               )}
             </div>
@@ -511,9 +528,9 @@ export default function AlertsSuccess() {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '2px solid #f59e0b',
+                border: `2px solid #f59e0b`,
                 borderRadius: '8px',
-                fontSize: '15px',
+                fontSize: '14px',
                 boxSizing: 'border-box',
                 backgroundColor: 'white',
                 cursor: licenseUploading ? 'not-allowed' : 'pointer',
@@ -527,13 +544,13 @@ export default function AlertsSuccess() {
                 alignItems: 'center',
                 gap: '8px',
                 fontSize: '14px',
-                color: '#0052cc',
+                color: COLORS.regulatory,
                 marginBottom: '12px'
               }}>
                 <div style={{
                   width: '16px',
                   height: '16px',
-                  border: '2px solid #0052cc',
+                  border: `2px solid ${COLORS.regulatory}`,
                   borderTop: '2px solid transparent',
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite'
@@ -544,25 +561,21 @@ export default function AlertsSuccess() {
 
             {licenseUploadError && (
               <div style={{
-                backgroundColor: '#fee2e2',
-                border: '1px solid #fca5a5',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
                 borderRadius: '8px',
                 padding: '12px',
-                fontSize: '14px',
-                color: '#b91c1c',
+                fontSize: '13px',
+                color: '#dc2626',
                 marginBottom: '12px'
               }}>
-                <strong>⚠️ Upload failed:</strong> {licenseUploadError}
-                <br />
-                <span style={{ fontSize: '13px', color: '#991b1b', marginTop: '6px', display: 'block' }}>
-                  Please try again with a clearer photo.
-                </span>
+                <strong>Upload failed:</strong> {licenseUploadError}
               </div>
             )}
 
             {licensePreview && !licenseUploading && !licenseUploadError && (
               <div style={{
-                border: '2px solid #16a34a',
+                border: `2px solid ${COLORS.signal}`,
                 borderRadius: '8px',
                 overflow: 'hidden',
                 marginTop: '12px'
@@ -572,10 +585,10 @@ export default function AlertsSuccess() {
                   alt="License preview"
                   style={{
                     width: '100%',
-                    maxHeight: '300px',
+                    maxHeight: '200px',
                     objectFit: 'contain',
                     display: 'block',
-                    backgroundColor: '#f9fafb'
+                    backgroundColor: COLORS.concrete
                   }}
                 />
               </div>
@@ -586,17 +599,19 @@ export default function AlertsSuccess() {
         {/* License Upload Success */}
         {licenseUploadSuccess && (
           <div style={{
-            backgroundColor: '#dcfce7',
-            border: '2px solid #16a34a',
+            backgroundColor: `${COLORS.signal}10`,
+            border: `2px solid ${COLORS.signal}`,
             borderRadius: '12px',
             padding: '24px',
-            marginBottom: '32px',
+            marginBottom: '24px',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>✓</div>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2" style={{ marginBottom: '12px' }}>
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
             <h3 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
+              fontSize: '16px',
+              fontWeight: '600',
               color: '#166534',
               margin: '0 0 8px 0'
             }}>
@@ -608,7 +623,7 @@ export default function AlertsSuccess() {
               margin: 0,
               lineHeight: '1.5'
             }}>
-              Your driver's license has been verified and uploaded. We'll use this to process your city sticker renewal.
+              Your driver's license has been verified. We'll use this to process your city sticker renewal.
             </p>
           </div>
         )}
@@ -616,27 +631,31 @@ export default function AlertsSuccess() {
         {/* Proof of Residency Upload - For permit zone users */}
         {isProtection && hasPermitZone && (
           <div style={{
-            backgroundColor: '#eff6ff',
-            border: '2px solid #3b82f6',
+            backgroundColor: `${COLORS.regulatory}08`,
+            border: `1px solid ${COLORS.regulatory}30`,
             borderRadius: '12px',
             padding: '24px',
-            marginBottom: '32px',
+            marginBottom: '24px',
             textAlign: 'left'
           }}>
             <h3 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              color: '#1e40af',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: COLORS.regulatory,
               margin: '0 0 12px 0',
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
             }}>
-              🏠 Next Step: Upload Proof of Residency
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              Next Step: Upload Proof of Residency
             </h3>
             <p style={{
-              fontSize: '15px',
-              color: '#1e3a8a',
+              fontSize: '14px',
+              color: COLORS.slate,
               lineHeight: '1.6',
               margin: '0 0 16px 0'
             }}>
@@ -644,30 +663,30 @@ export default function AlertsSuccess() {
             </p>
 
             <div style={{
-              backgroundColor: '#dbeafe',
+              backgroundColor: 'white',
               borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '16px'
+              padding: '12px',
+              marginBottom: '16px',
+              border: `1px solid ${COLORS.border}`
             }}>
               <p style={{
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: '600',
-                color: '#1e40af',
-                margin: '0 0 8px 0'
+                color: COLORS.graphite,
+                margin: '0 0 6px 0'
               }}>
                 Accepted Documents:
               </p>
               <ul style={{
                 margin: 0,
-                paddingLeft: '20px',
-                fontSize: '14px',
-                color: '#1e40af',
+                paddingLeft: '16px',
+                fontSize: '13px',
+                color: COLORS.slate,
                 lineHeight: '1.6'
               }}>
-                <li>Utility Bill (ComEd, Peoples Gas, etc.) - valid 60 days</li>
+                <li>Utility Bill (ComEd, Peoples Gas) - valid 60 days</li>
                 <li>Lease Agreement - valid 12 months</li>
                 <li>Mortgage Statement - valid 12 months</li>
-                <li>Property Tax Bill - valid 12 months</li>
               </ul>
             </div>
 
@@ -675,22 +694,21 @@ export default function AlertsSuccess() {
               href="/settings#proof-of-residency"
               style={{
                 display: 'inline-block',
-                backgroundColor: '#3b82f6',
+                backgroundColor: COLORS.regulatory,
                 color: 'white',
-                padding: '12px 20px',
+                padding: '10px 20px',
                 borderRadius: '8px',
                 textDecoration: 'none',
                 fontWeight: '600',
-                fontSize: '14px',
-                textAlign: 'center'
+                fontSize: '14px'
               }}
             >
-              Upload Document →
+              Upload Document
             </a>
 
             <p style={{
               fontSize: '12px',
-              color: '#60a5fa',
+              color: COLORS.slate,
               marginTop: '12px',
               margin: '12px 0 0 0',
               fontStyle: 'italic'
@@ -703,20 +721,20 @@ export default function AlertsSuccess() {
         {/* What's Next Section */}
         {!isExistingUser && (
           <div style={{
-            backgroundColor: '#f0f8ff',
+            backgroundColor: COLORS.concrete,
             borderRadius: '12px',
-            padding: '24px',
-            marginBottom: '32px',
+            padding: '20px',
+            marginBottom: '24px',
             textAlign: 'center'
           }}>
             <p style={{
-              fontSize: '15px',
-              color: '#374151',
+              fontSize: '14px',
+              color: COLORS.slate,
               lineHeight: '1.6',
               margin: 0
             }}>
               {isProtection
-                ? "Check your email for a login link, then complete your profile to activate your guarantee. You'll receive alerts before all deadlines."
+                ? "Check your email for a login link, then complete your profile to activate your guarantee."
                 : "Check your email for a login link. You'll receive alerts via email, SMS, and phone before all deadlines."
               }
             </p>
@@ -729,41 +747,45 @@ export default function AlertsSuccess() {
           flexDirection: 'column',
           gap: '12px'
         }}>
-          {/* For new Protection users, only show email check reminder - don't redirect them to login */}
+          {/* For new Protection users, show email check reminder */}
           {isProtection && !isExistingUser ? (
             <div style={{
-              backgroundColor: '#eff6ff',
-              border: '2px solid #3b82f6',
+              backgroundColor: `${COLORS.regulatory}08`,
+              border: `1px solid ${COLORS.regulatory}30`,
               borderRadius: '12px',
-              padding: '20px',
+              padding: '24px',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '48px', marginBottom: '12px' }}>📧</div>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="1.5" style={{ marginBottom: '12px' }}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
               <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#1e40af',
-                margin: '0 0 12px 0'
+                fontSize: '16px',
+                fontWeight: '600',
+                color: COLORS.regulatory,
+                margin: '0 0 8px 0',
+                fontFamily: '"Space Grotesk", sans-serif'
               }}>
                 Check Your Email to Login
               </h3>
               <p style={{
-                fontSize: '15px',
-                color: '#1e40af',
+                fontSize: '14px',
+                color: COLORS.slate,
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We've sent a secure login link to <strong>{router.query.email}</strong>.
-                Click the "Complete My Profile" button in the email to access your account and verify your information.
+                We've sent a secure login link to <strong style={{ color: COLORS.graphite }}>{router.query.email}</strong>.
+                Click the link to access your account and verify your information.
               </p>
               <p style={{
-                fontSize: '13px',
-                color: '#60a5fa',
+                fontSize: '12px',
+                color: COLORS.slate,
                 marginTop: '12px',
                 margin: '12px 0 0 0',
                 fontStyle: 'italic'
               }}>
-                Tip: Check your spam folder if you don't see it within 2 minutes
+                Check your spam folder if you don't see it within 2 minutes
               </p>
             </div>
           ) : (
@@ -771,38 +793,42 @@ export default function AlertsSuccess() {
               {/* Check email reminder for free alerts users */}
               {!isProtection && !isExistingUser && (
                 <div style={{
-                  backgroundColor: '#eff6ff',
-                  border: '2px solid #3b82f6',
+                  backgroundColor: `${COLORS.regulatory}08`,
+                  border: `1px solid ${COLORS.regulatory}30`,
                   borderRadius: '12px',
-                  padding: '20px',
+                  padding: '24px',
                   textAlign: 'center',
-                  marginBottom: '16px'
+                  marginBottom: '8px'
                 }}>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>📧</div>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="1.5" style={{ marginBottom: '12px' }}>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
                   <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    color: '#1e40af',
-                    margin: '0 0 12px 0'
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: COLORS.regulatory,
+                    margin: '0 0 8px 0',
+                    fontFamily: '"Space Grotesk", sans-serif'
                   }}>
                     Check Your Email to Login
                   </h3>
                   <p style={{
-                    fontSize: '15px',
-                    color: '#1e40af',
+                    fontSize: '14px',
+                    color: COLORS.slate,
                     lineHeight: '1.6',
                     margin: 0
                   }}>
                     We've sent a secure login link to your email. Click the link to access your account settings.
                   </p>
                   <p style={{
-                    fontSize: '13px',
-                    color: '#60a5fa',
+                    fontSize: '12px',
+                    color: COLORS.slate,
                     marginTop: '12px',
                     margin: '12px 0 0 0',
                     fontStyle: 'italic'
                   }}>
-                    Tip: Check your spam folder if you don't see it within 2 minutes
+                    Check your spam folder if you don't see it within 2 minutes
                   </p>
                 </div>
               )}
@@ -812,21 +838,21 @@ export default function AlertsSuccess() {
                 <button
                   onClick={() => router.push(isProtection ? '/settings?protection=true' : '/settings')}
                   style={{
-                    backgroundColor: '#0052cc',
+                    backgroundColor: COLORS.regulatory,
                     color: 'white',
                     border: 'none',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    fontSize: '16px',
+                    borderRadius: '10px',
+                    padding: '14px',
+                    fontSize: '15px',
                     fontWeight: '600',
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#003d99';
+                    e.currentTarget.style.backgroundColor = COLORS.regulatoryDark;
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0052cc';
+                    e.currentTarget.style.backgroundColor = COLORS.regulatory;
                   }}
                 >
                   Go to My Account
@@ -838,23 +864,23 @@ export default function AlertsSuccess() {
                   onClick={() => router.push('/protection')}
                   style={{
                     backgroundColor: 'transparent',
-                    color: '#0052cc',
-                    border: '2px solid #0052cc',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    fontSize: '16px',
+                    color: COLORS.regulatory,
+                    border: `2px solid ${COLORS.regulatory}`,
+                    borderRadius: '10px',
+                    padding: '12px',
+                    fontSize: '15px',
                     fontWeight: '600',
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f0f8ff';
+                    e.currentTarget.style.backgroundColor = `${COLORS.regulatory}08`;
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
-                  Learn About Ticket Protection
+                  Learn About Autopilot Protection
                 </button>
               )}
             </>
@@ -864,7 +890,7 @@ export default function AlertsSuccess() {
             onClick={() => router.push('/')}
             style={{
               backgroundColor: 'transparent',
-              color: '#6b7280',
+              color: COLORS.slate,
               border: 'none',
               padding: '12px',
               fontSize: '14px',
@@ -877,12 +903,12 @@ export default function AlertsSuccess() {
 
         {/* Support */}
         <p style={{
-          fontSize: '14px',
-          color: '#9ca3af',
-          marginTop: '32px',
-          margin: '32px 0 0 0'
+          fontSize: '13px',
+          color: COLORS.slate,
+          marginTop: '24px',
+          margin: '24px 0 0 0'
         }}>
-          Questions? Email us at <a href="mailto:support@autopilotamerica.com" style={{ color: '#0052cc', textDecoration: 'none' }}>support@autopilotamerica.com</a>
+          Questions? Email us at <a href="mailto:support@autopilotamerica.com" style={{ color: COLORS.regulatory, textDecoration: 'none', fontWeight: '500' }}>support@autopilotamerica.com</a>
         </p>
       </div>
     </div>
