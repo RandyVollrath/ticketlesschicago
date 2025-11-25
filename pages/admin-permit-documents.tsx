@@ -60,6 +60,35 @@ interface ResidencyProofDoc {
   user_phone: string;
   user_name: string;
   is_residency_proof: boolean;
+  // OCR Validation results
+  validation?: {
+    isValid: boolean;
+    confidence: number;
+    documentType: string | null;
+    extractedAddress: string | null;
+    addressMatch: {
+      matches: boolean;
+      confidence: number;
+      userAddress: string;
+      extractedAddress: string;
+      explanation: string;
+    } | null;
+    dates: {
+      statementDate: string | null;
+      dueDate: string | null;
+      servicePeriodStart: string | null;
+      servicePeriodEnd: string | null;
+      documentValidUntil: string | null;
+    };
+    cityStickerCheck: {
+      stickerExpiry: string | null;
+      documentValidForRenewal: boolean;
+      explanation: string;
+    } | null;
+    issues: string[];
+  } | null;
+  validated_at?: string;
+  city_sticker_expiry?: string;
 }
 
 export default function AdminPermitDocuments() {
@@ -472,10 +501,97 @@ export default function AdminPermitDocuments() {
                       fontSize: '12px',
                       marginBottom: '12px'
                     }}>
-                      <strong>Document Type:</strong> {doc.document_type === 'lease' ? 'Lease Agreement' : doc.document_type === 'mortgage' ? 'Mortgage Statement' : doc.document_type === 'property_tax' ? 'Property Tax Bill' : doc.document_type}
+                      <strong>Document Type:</strong> {doc.document_type === 'lease' ? 'Lease Agreement' : doc.document_type === 'mortgage' ? 'Mortgage Statement' : doc.document_type === 'property_tax' ? 'Property Tax Bill' : doc.document_type === 'utility_bill' ? 'Utility Bill' : doc.document_type}
                       <br />
-                      <strong>Source:</strong> {doc.document_source === 'email_attachment' ? '📎 Email Attachment (Trusted)' : doc.document_source === 'email_html' ? '📧 HTML Email (Review Needed)' : '⬆️ Manual Upload'}
+                      <strong>Source:</strong> {doc.document_source === 'email_attachment' ? '📎 Email Attachment' : doc.document_source === 'email_html' ? '📧 HTML Email' : '⬆️ Manual Upload'}
                     </div>
+
+                    {/* OCR Validation Results */}
+                    {doc.validation && (
+                      <div style={{
+                        backgroundColor: doc.validation.isValid ? '#ecfdf5' : '#fef2f2',
+                        border: `1px solid ${doc.validation.isValid ? '#a7f3d0' : '#fecaca'}`,
+                        padding: '10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{
+                          fontWeight: 'bold',
+                          color: doc.validation.isValid ? '#059669' : '#dc2626',
+                          marginBottom: '8px'
+                        }}>
+                          {doc.validation.isValid ? '✅ OCR Validation Passed' : '⚠️ OCR Validation Issues'}
+                        </div>
+
+                        {/* Address Match */}
+                        {doc.validation.addressMatch && (
+                          <div style={{ marginBottom: '6px' }}>
+                            <span style={{ color: doc.validation.addressMatch.matches ? '#059669' : '#dc2626' }}>
+                              {doc.validation.addressMatch.matches ? '✓' : '✗'}
+                            </span>
+                            {' '}Address: {doc.validation.addressMatch.explanation}
+                            {doc.validation.extractedAddress && (
+                              <div style={{ fontSize: '11px', color: '#6b7280', marginLeft: '16px' }}>
+                                Extracted: "{doc.validation.extractedAddress}"
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Dates */}
+                        {doc.validation.dates.documentValidUntil && (
+                          <div style={{ marginBottom: '6px' }}>
+                            📅 Valid Until: <strong>{doc.validation.dates.documentValidUntil}</strong>
+                            {doc.validation.dates.statementDate && (
+                              <span style={{ color: '#6b7280' }}> (Statement: {doc.validation.dates.statementDate})</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* City Sticker Check */}
+                        {doc.validation.cityStickerCheck && (
+                          <div style={{ marginBottom: '6px' }}>
+                            <span style={{ color: doc.validation.cityStickerCheck.documentValidForRenewal ? '#059669' : '#dc2626' }}>
+                              {doc.validation.cityStickerCheck.documentValidForRenewal ? '✓' : '✗'}
+                            </span>
+                            {' '}Sticker Renewal: {doc.validation.cityStickerCheck.explanation}
+                          </div>
+                        )}
+
+                        {/* Issues */}
+                        {doc.validation.issues.length > 0 && (
+                          <div style={{ color: '#dc2626', marginTop: '8px' }}>
+                            <strong>Issues:</strong>
+                            <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                              {doc.validation.issues.map((issue, i) => (
+                                <li key={i}>{issue}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '6px' }}>
+                          Confidence: {Math.round(doc.validation.confidence * 100)}%
+                          {doc.validated_at && ` | Validated: ${new Date(doc.validated_at).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No validation available */}
+                    {!doc.validation && (
+                      <div style={{
+                        backgroundColor: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        marginBottom: '12px',
+                        color: '#6b7280'
+                      }}>
+                        ⏳ No OCR validation available - manual review required
+                      </div>
+                    )}
 
                     <a
                       href={doc.document_url}
