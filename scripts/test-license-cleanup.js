@@ -16,7 +16,7 @@ const supabase = createClient(
 );
 
 // Test user who opted OUT of multi-year storage
-const TEST_USER_ID = 'e6db4d28-177d-4ecf-9247-a272729202e5'; // mystreetcleaning+6
+const TEST_USER_ID = '6bf5cc2c-ca08-4206-87b5-416fb4466101'; // mystreetcleaning+12
 
 async function main() {
   const args = process.argv.slice(2);

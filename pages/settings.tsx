@@ -325,6 +325,7 @@ export default function ProfileNew() {
     try {
       const formData = new FormData()
       formData.append('license', file)
+      formData.append('side', side)
 
       const res = await fetch('/api/protection/validate-license', {
         method: 'POST',
