@@ -590,12 +590,12 @@ export default function ProfileNew() {
       // Update local state (don't reload page - it resets the dropdown)
       setFormData(prev => ({
         ...prev,
-        residency_proof_path: result.publicUrl,
+        residency_proof_path: result.filePath,
         residency_proof_uploaded_at: new Date().toISOString()
       }))
       setProfile(prev => ({
         ...prev,
-        residency_proof_path: result.publicUrl,
+        residency_proof_path: result.filePath,
         residency_proof_type: formData.residency_proof_type,
         residency_proof_verified: false,
         residency_proof_rejection_reason: null,
@@ -2639,17 +2639,31 @@ export default function ProfileNew() {
 
                     {/* View uploaded document link */}
                     <div style={{ marginTop: '12px' }}>
-                      <a
-                        href={formData.residency_proof_path}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/api/protection/view-residency-proof?userId=${user?.id}`)
+                            const data = await response.json()
+                            if (data.signedUrl) {
+                              window.open(data.signedUrl, '_blank')
+                            } else {
+                              alert(data.error || 'Failed to load document')
+                            }
+                          } catch (err) {
+                            alert('Failed to load document')
+                          }
+                        }}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '6px',
                           fontSize: '13px',
                           color: '#3b82f6',
-                          textDecoration: 'none'
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
                         }}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2657,7 +2671,7 @@ export default function ProfileNew() {
                           <polyline points="14,2 14,8 20,8" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                         View uploaded document
-                      </a>
+                      </button>
                     </div>
                   </div>
                 )}

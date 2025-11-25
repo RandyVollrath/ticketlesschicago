@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
+import { Loading } from '../components/Loading';
 
 interface Contest {
   id: string;
@@ -155,11 +156,7 @@ export default function MyContests() {
   }
 
   if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#6b7280' }}>Loading...</p>
-      </div>
-    );
+    return <Loading fullPage text="Loading your contests..." />;
   }
 
   if (!user) {

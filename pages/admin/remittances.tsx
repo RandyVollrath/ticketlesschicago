@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
+import { Loading } from '../../components/Loading';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -150,7 +151,7 @@ export default function RemittanceDashboard() {
   };
 
   if (!isAdmin) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+    return <Loading text="Verifying access..." />;
   }
 
   return (
