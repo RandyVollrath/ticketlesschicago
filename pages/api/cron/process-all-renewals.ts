@@ -47,6 +47,139 @@ const SERVICE_FEE = 2.50;
 const REMITTER_SERVICE_FEE = 12.00;
 
 /**
+ * Send email via Resend
+ */
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not configured, skipping email');
+    return false;
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <noreply@autopilotamerica.com>',
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Email send failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Send charge success email to customer
+ */
+async function sendChargeSuccessEmail(customer: any, amount: number, renewalType: string): Promise<void> {
+  const email = customer.email;
+  if (!email) return;
+
+  const typeName = renewalType === 'city_sticker' ? 'city sticker' : 'license plate';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 24px;">Your ${typeName} renewal has been processed</h1>
+      </div>
+      <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+        <p>Hi ${customer.first_name || 'there'},</p>
+        <p>Great news! We've successfully charged your card for your ${typeName} renewal.</p>
+
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: #6b7280;">Amount charged:</span>
+            <strong>$${amount.toFixed(2)}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: #6b7280;">License plate:</span>
+            <strong>${customer.license_plate}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #6b7280;">Expiration date:</span>
+            <strong>${customer.city_sticker_expiry || customer.license_plate_expiry}</strong>
+          </div>
+        </div>
+
+        <p><strong>What's next?</strong></p>
+        <ol>
+          <li>We'll submit your renewal to the city within 1-2 business days</li>
+          <li>Your new sticker will be mailed to your address on file</li>
+          <li>You'll receive a confirmation email when it's complete</li>
+        </ol>
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+          Questions? Reply to this email or contact support@autopilotamerica.com
+        </p>
+      </div>
+    </div>
+  `;
+
+  await sendEmail(email, `Your ${typeName} renewal has been processed - $${amount.toFixed(2)}`, html);
+  console.log(`📧 Sent charge success email to ${email}`);
+}
+
+/**
+ * Send new order alert to remitter
+ */
+async function sendRemitterAlert(remitter: any, customer: any, stickerPrice: number, serviceFee: number): Promise<void> {
+  const email = remitter.email;
+  if (!email) return;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 24px;">New City Sticker Order!</h1>
+      </div>
+      <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+        <p>Hi ${remitter.name},</p>
+        <p>You have a new city sticker order ready for processing.</p>
+
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <h3 style="margin-top: 0; color: #111827;">Customer Details</h3>
+          <div style="line-height: 1.8;">
+            <div><strong>Name:</strong> ${customer.first_name} ${customer.last_name}</div>
+            <div><strong>License Plate:</strong> ${customer.license_plate}</div>
+            <div><strong>Address:</strong> ${customer.street_address}</div>
+            <div><strong>Due Date:</strong> ${customer.city_sticker_expiry}</div>
+          </div>
+        </div>
+
+        <div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <h3 style="margin-top: 0; color: #065f46;">Payment Details</h3>
+          <div style="line-height: 1.8;">
+            <div><strong>Sticker Price:</strong> $${stickerPrice.toFixed(2)}</div>
+            <div><strong>Processing Fee:</strong> $${serviceFee.toFixed(2)}</div>
+            <div><strong>Total You Receive:</strong> $${(stickerPrice + serviceFee).toFixed(2)}</div>
+          </div>
+        </div>
+
+        <p><strong>Action Required:</strong></p>
+        <ol>
+          <li>Submit renewal to city portal</li>
+          <li>Record confirmation number</li>
+          <li>Confirm payment via API or admin dashboard</li>
+        </ol>
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+          View all pending orders at your dashboard.
+        </p>
+      </div>
+    </div>
+  `;
+
+  await sendEmail(email, `New City Sticker Order - ${customer.license_plate}`, html);
+  console.log(`📧 Sent new order alert to remitter ${email}`);
+}
+
+/**
  * Fetch sticker price from Stripe
  */
 async function getStickerPrice(vehicleType: string): Promise<number> {
@@ -268,6 +401,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           stripe_payment_intent_id: paymentIntent.id,
         });
 
+        // Send email notifications
+        try {
+          // Email to customer
+          await sendChargeSuccessEmail(customer, totalAmount, 'city_sticker');
+
+          // Email to remitter
+          await sendRemitterAlert(remitter, customer, stickerPrice, REMITTER_SERVICE_FEE);
+        } catch (emailError) {
+          console.error('Failed to send notification emails:', emailError);
+          // Don't fail the whole process for email errors
+        }
+
         results.cityStickerSucceeded++;
         console.log(`✅ Renewal complete for ${customer.user_id}:
           - Customer charged: $${totalAmount}
@@ -288,6 +433,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           renewal_due_date: customer.city_sticker_expiry,
           failed_at: new Date().toISOString(),
         });
+
+        // Send failed payment notification to customer
+        if (customer.email) {
+          const failedHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+                <h1 style="margin: 0; font-size: 24px;">Payment Issue - Action Required</h1>
+              </div>
+              <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+                <p>Hi ${customer.first_name || 'there'},</p>
+                <p>We tried to process your city sticker renewal, but there was an issue with your payment method.</p>
+
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                  <strong>License Plate:</strong> ${customer.license_plate}<br>
+                  <strong>Due Date:</strong> ${customer.city_sticker_expiry}
+                </div>
+
+                <p><strong>To fix this:</strong></p>
+                <ol>
+                  <li>Log in at <a href="https://ticketlesschicago.com/settings">ticketlesschicago.com/settings</a></li>
+                  <li>Update your payment method</li>
+                  <li>We'll automatically retry your renewal</li>
+                </ol>
+
+                <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                  Need help? Reply to this email or contact support@autopilotamerica.com
+                </p>
+              </div>
+            </div>
+          `;
+          await sendEmail(customer.email, 'Action Required: Update Your Payment Method', failedHtml);
+          console.log(`📧 Sent payment failure email to ${customer.email}`);
+        }
 
         results.cityStickerFailed++;
         results.errors.push({
