@@ -124,7 +124,7 @@ export default async function handler(
     try {
       const { data: profiles, error: profileError } = await supabaseAdmin
         .from('user_profiles')
-        .select('user_id, street_address, residency_proof_type, residency_proof_path, residency_proof_source, residency_proof_uploaded_at, residency_proof_verified')
+        .select('user_id, street_address, home_address_full, city_sticker_expiry, residency_proof_type, residency_proof_path, residency_proof_source, residency_proof_uploaded_at, residency_proof_verified, residency_proof_validation, residency_proof_validated_at')
         .not('residency_proof_path', 'is', null)
         .order('residency_proof_uploaded_at', { ascending: false });
 
@@ -141,19 +141,33 @@ export default async function handler(
 
         residencyProofDocs = profiles.map((profile: any) => {
           const user = profileUserMap.get(profile.user_id);
+          const validation = profile.residency_proof_validation || null;
           return {
             id: `profile-${profile.user_id}`,
             user_id: profile.user_id,
             document_url: profile.residency_proof_path,
-            document_type: profile.residency_proof_type || 'unknown',
+            document_type: profile.residency_proof_type || validation?.documentType || 'unknown',
             document_source: profile.residency_proof_source || 'manual_upload',
-            address: profile.street_address || 'Unknown',
+            address: profile.street_address || profile.home_address_full || 'Unknown',
             verification_status: profile.residency_proof_verified ? 'approved' : 'pending',
             uploaded_at: profile.residency_proof_uploaded_at,
             user_email: user?.email || 'Unknown',
             user_phone: user?.phone || 'Unknown',
             user_name: user?.full_name || 'Unknown User',
-            is_residency_proof: true // Flag to distinguish from permit docs
+            is_residency_proof: true, // Flag to distinguish from permit docs
+            // OCR Validation results
+            validation: validation ? {
+              isValid: validation.isValid,
+              confidence: validation.confidence,
+              documentType: validation.documentType,
+              extractedAddress: validation.extractedAddress,
+              addressMatch: validation.addressMatch,
+              dates: validation.dates,
+              cityStickerCheck: validation.cityStrickerCheck,
+              issues: validation.issues,
+            } : null,
+            validated_at: profile.residency_proof_validated_at,
+            city_sticker_expiry: profile.city_sticker_expiry,
           };
         });
       }

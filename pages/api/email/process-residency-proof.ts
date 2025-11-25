@@ -18,6 +18,7 @@ import fs from 'fs';
 import { simpleParser } from 'mailparser';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
+import { validateResidencyProof } from '../protection/validate-residency-proof';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -604,18 +605,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('✓ Bill uploaded successfully');
 
-    // Update user profile with document source metadata and extracted info
+    // Run OCR validation on the uploaded document
+    console.log('🔍 Running OCR validation on residency proof...');
+    let validationResult = null;
+    let autoApproved = false;
+
+    try {
+      validationResult = await validateResidencyProof(
+        pdfBuffer,
+        profile.home_address_full || '',
+        profile.city_sticker_expiry
+      );
+
+      autoApproved = validationResult.isValid;
+      console.log(`📊 Validation result: ${autoApproved ? 'AUTO-APPROVED' : 'NEEDS REVIEW'}`);
+      console.log(`   Document type: ${validationResult.documentType || 'unknown'}`);
+      console.log(`   Address match: ${validationResult.addressMatch?.matches ? 'YES' : 'NO'}`);
+      console.log(`   Valid until: ${validationResult.dates.documentValidUntil || 'unknown'}`);
+      if (validationResult.issues.length > 0) {
+        console.log(`   Issues: ${validationResult.issues.join(', ')}`);
+      }
+    } catch (validationError: any) {
+      console.error('❌ Validation failed:', validationError.message);
+      // Continue without validation - will need manual review
+    }
+
+    // Update user profile with document metadata and validation results
     const updateData: any = {
       residency_proof_path: filePath,
       residency_proof_uploaded_at: new Date().toISOString(),
       residency_proof_source: documentSource,
-      residency_proof_type: 'utility_bill', // Mark as utility bill from email
-      residency_proof_verified: documentSource === 'email_attachment', // Auto-verify attachments, flag HTML for review
-      residency_proof_verified_at: documentSource === 'email_attachment' ? new Date().toISOString() : null,
+      residency_proof_type: validationResult?.documentType || 'utility_bill',
+      residency_proof_verified: autoApproved,
+      residency_proof_verified_at: autoApproved ? new Date().toISOString() : null,
+      residency_proof_validation: validationResult ? {
+        ...validationResult,
+        rawText: undefined, // Don't store raw OCR text (too large, PII)
+      } : null,
+      residency_proof_validated_at: validationResult ? new Date().toISOString() : null,
     };
 
-    // Store extracted info for admin review (if extracted from HTML)
-    if (extractedBillInfo && documentSource === 'email_html') {
+    // Store extracted info for admin review
+    if (extractedBillInfo) {
       updateData.residency_proof_extracted_info = extractedBillInfo;
     }
 
@@ -631,7 +662,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`✅ Successfully processed utility bill for user ${profile.user_id}`);
     console.log(`📊 Stats: Deleted ${filesToDelete?.length || 0} old bills, stored 1 new bill`);
-    console.log(`📄 Source: ${documentSource}`);
+    console.log(`📄 Source: ${documentSource}, Auto-approved: ${autoApproved}`);
 
     // Clean up temp files (only for SendGrid multipart format)
     for (const file of filesToCleanup) {
@@ -642,9 +673,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const message = documentSource === 'email_html'
-      ? 'Utility bill converted from HTML and stored successfully. Flagged for manual review.'
-      : 'Utility bill processed successfully. Old bills deleted, keeping most recent only.';
+    const message = autoApproved
+      ? 'Utility bill verified automatically! Address matches and document is valid.'
+      : 'Utility bill received. Pending verification - address or dates could not be confirmed automatically.';
 
     return res.status(200).json({
       success: true,
@@ -652,7 +683,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId: profile.user_id,
       fileName: pdfFileName || 'bill.pdf',
       source: documentSource,
-      needsReview: documentSource === 'email_html',
+      autoApproved,
+      needsReview: !autoApproved,
+      validation: validationResult ? {
+        documentType: validationResult.documentType,
+        addressMatch: validationResult.addressMatch?.matches,
+        validUntil: validationResult.dates.documentValidUntil,
+        issues: validationResult.issues,
+      } : null,
       deletedOldBills: filesToDelete?.length || 0,
       storedAt: filePath,
     });
