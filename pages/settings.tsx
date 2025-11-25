@@ -553,16 +553,21 @@ export default function ProfileNew() {
 
   // Handle residency proof upload
   const handleResidencyProofUpload = async (file: File) => {
+    console.log('📄 Upload started for file:', file.name, file.size, file.type)
+
     if (!user) {
+      alert('Please sign in before uploading documents')
       setMessage({ type: 'error', text: 'Please sign in before uploading documents' })
       return
     }
 
     if (!formData.residency_proof_type) {
+      alert('Please select a document type first')
       setMessage({ type: 'error', text: 'Please select a document type first' })
       return
     }
 
+    console.log('📄 Uploading to bucket for user:', user.id)
     setResidencyProofUploading(true)
     setMessage(null)
 
@@ -571,12 +576,16 @@ export default function ProfileNew() {
       const fileName = `${user.id}_${Date.now()}.${fileExt}`
       const filePath = `residency-proofs/${fileName}`
 
-      const { error: uploadError } = await supabase.storage
+      console.log('📄 File path:', filePath)
+
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('residency-proofs-temps')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
         })
+
+      console.log('📄 Upload result:', { uploadError, uploadData })
 
       if (uploadError) {
         throw uploadError
@@ -586,6 +595,8 @@ export default function ProfileNew() {
         .from('residency-proofs-temps')
         .getPublicUrl(filePath)
 
+      console.log('📄 Public URL:', publicUrl)
+
       // Save to database with source and reset verification status
       await saveField('residency_proof_path', publicUrl)
       await saveField('residency_proof_uploaded_at', new Date().toISOString())
@@ -593,6 +604,7 @@ export default function ProfileNew() {
       await saveField('residency_proof_verified', false) // Reset - needs review
       await saveField('residency_proof_rejection_reason', null) // Clear any previous rejection
 
+      alert('✅ Document uploaded successfully!')
       setMessage({ type: 'success', text: 'Document uploaded successfully! It will be reviewed within 24 hours.' })
 
       // Reload to show updated data
@@ -601,6 +613,7 @@ export default function ProfileNew() {
       }, 1000)
     } catch (error: any) {
       console.error('Upload error:', error)
+      alert(`Upload failed: ${error.message}`)
       setMessage({ type: 'error', text: `Upload failed: ${error.message}` })
     } finally {
       setResidencyProofUploading(false)
