@@ -11,6 +11,18 @@ import SnowBanSettings from '../components/SnowBanSettings'
 // import EmailForwardingSetup from '../components/EmailForwardingSetup' // Disabled - keeping code for future use
 import PropertyTaxHelper from '../components/PropertyTaxHelper'
 
+// Brand Colors - Municipal Fintech
+const COLORS = {
+  deepHarbor: '#0F172A',
+  regulatory: '#2563EB',
+  regulatoryDark: '#1d4ed8',
+  concrete: '#F8FAFC',
+  signal: '#10B981',
+  graphite: '#1E293B',
+  slate: '#64748B',
+  border: '#E2E8F0',
+}
+
 // Phone formatting utilities
 const formatPhoneForDisplay = (value: string | null): string => {
   if (!value) return ''
@@ -614,8 +626,23 @@ export default function ProfileNew() {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <p>Loading...</p>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: COLORS.concrete,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: `3px solid ${COLORS.border}`,
+          borderTopColor: COLORS.regulatory,
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
@@ -623,38 +650,117 @@ export default function ProfileNew() {
   return (
     <>
       <Head>
-        <title>Profile - Autopilot America</title>
+        <title>Profile Settings - Autopilot America</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
       </Head>
+
+      {/* Navigation */}
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '72px',
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: `1px solid ${COLORS.border}`,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 32px',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}>
+        <div
+          onClick={() => router.push('/')}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+        >
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
+            background: COLORS.regulatory,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <span style={{
+            fontSize: '18px',
+            fontWeight: '700',
+            color: COLORS.graphite,
+            fontFamily: '"Space Grotesk", sans-serif',
+            letterSpacing: '-0.5px'
+          }}>
+            Autopilot America
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <span style={{ fontSize: '14px', color: COLORS.slate }}>{user?.email}</span>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut()
+              router.push('/')
+            }}
+            style={{
+              backgroundColor: 'transparent',
+              color: COLORS.slate,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </nav>
 
       <div style={{
         minHeight: '100vh',
-        backgroundColor: '#f9fafb',
-        padding: '40px 20px'
+        backgroundColor: COLORS.concrete,
+        paddingTop: '104px',
+        paddingBottom: '40px',
+        paddingLeft: '20px',
+        paddingRight: '20px',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           {/* Header */}
           <div style={{ marginBottom: '32px' }}>
             <h1 style={{
               fontSize: '32px',
-              fontWeight: 'bold',
-              color: '#111827',
+              fontWeight: '700',
+              color: COLORS.graphite,
               marginBottom: '8px',
-              margin: '0 0 8px 0'
+              margin: '0 0 8px 0',
+              fontFamily: '"Space Grotesk", sans-serif',
+              letterSpacing: '-1px'
             }}>
-              Your Profile
+              Profile Settings
             </h1>
-            <p style={{ fontSize: '16px', color: '#6b7280', margin: '0 0 8px 0' }}>
+            <p style={{ fontSize: '16px', color: COLORS.slate, margin: '0 0 8px 0' }}>
               Keep your information up to date to ensure reliable alerts
             </p>
             <p style={{
               fontSize: '13px',
-              color: '#9ca3af',
+              color: COLORS.slate,
               margin: 0,
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
             }}>
-              <span style={{ fontSize: '16px' }}>💾</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
               Changes save automatically
             </p>
           </div>

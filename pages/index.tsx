@@ -221,28 +221,6 @@ export default function Home() {
 
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 32px', position: 'relative' }}>
           <div style={{ maxWidth: '720px' }}>
-            {/* Badge */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'rgba(37, 99, 235, 0.15)',
-              border: '1px solid rgba(37, 99, 235, 0.3)',
-              borderRadius: '100px',
-              padding: '8px 16px',
-              marginBottom: '32px'
-            }}>
-              <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: COLORS.signal
-              }} />
-              <span style={{ fontSize: '13px', fontWeight: '500', color: COLORS.signal }}>
-                Powered by Google Cloud Vision AI
-              </span>
-            </div>
-
             {/* Headline */}
             <h1 className="hero-title" style={{
               fontSize: '56px',
@@ -721,9 +699,9 @@ export default function Home() {
             backgroundColor: 'rgba(255,255,255,0.1)'
           }}>
             {[
-              { text: "Solving a very specific, clear problem. Love the simplicity.", author: "Mitchell", title: "Chicago Resident" },
-              { text: "It's solid and a very needed service. Super dope.", author: "Nasir", title: "Early Adopter" },
-              { text: "You're doing the lord's work.", author: "Kathleen", title: "Autopilot Member" }
+              { text: "Solving a very specific, clear problem. Love the simplicity.", author: "Mitchell", title: "Autopilot Member" },
+              { text: "It's solid and a very needed service. Super dope.", author: "Nasir", title: "Beta Tester" },
+              { text: "You're doing the lord's work.", author: "Kathleen", title: "Chicago Resident" }
             ].map((t, i) => (
               <div key={i} style={{
                 backgroundColor: COLORS.deepHarbor,
