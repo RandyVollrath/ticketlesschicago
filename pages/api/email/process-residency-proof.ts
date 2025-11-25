@@ -39,8 +39,8 @@ const BUCKET_NAME = 'residency-proofs-temps';
 /**
  * Extract key information from utility bill HTML for verification
  */
-function extractBillInfo(html: string, subject: string): { serviceAddress?: string; accountNumber?: string; amountDue?: string; dueDate?: string } {
-  const info: { serviceAddress?: string; accountNumber?: string; amountDue?: string; dueDate?: string } = {};
+function extractBillInfo(html: string, subject: string): { serviceAddress?: string; amountDue?: string; dueDate?: string; statementDate?: string } {
+  const info: { serviceAddress?: string; amountDue?: string; dueDate?: string; statementDate?: string } = {};
 
   // Common patterns for service address
   const addressPatterns = [
@@ -85,16 +85,16 @@ function extractBillInfo(html: string, subject: string): { serviceAddress?: stri
     }
   }
 
-  // Common patterns for account number
-  const accountPatterns = [
-    /(?:account\s*(?:number|#|no\.?))[:\s]*([A-Za-z0-9-]+)/i,
-    /(?:customer\s*(?:number|#|no\.?))[:\s]*([A-Za-z0-9-]+)/i,
+  // Common patterns for statement date (when the bill was generated)
+  const statementDatePatterns = [
+    /(?:statement\s+date|bill\s+date|invoice\s+date)[:\s]*([A-Za-z]+\s+\d{1,2},?\s*\d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+    /(?:dated?|issued)[:\s]*([A-Za-z]+\s+\d{1,2},?\s*\d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i,
   ];
 
-  for (const pattern of accountPatterns) {
+  for (const pattern of statementDatePatterns) {
     const match = html.match(pattern);
     if (match) {
-      info.accountNumber = match[1];
+      info.statementDate = match[1];
       break;
     }
   }
@@ -241,9 +241,9 @@ async function convertHTMLToPDF(html: string, metadata: { from?: string; subject
     <h3>✅ Extracted Verification Details</h3>
     <div class="grid">
       ${extractedInfo.serviceAddress ? `<div class="field"><span class="field-label">Service Address:</span><br><span class="field-value">${extractedInfo.serviceAddress}</span></div>` : ''}
+      ${extractedInfo.statementDate ? `<div class="field"><span class="field-label">Statement Date:</span><br><span class="field-value">${extractedInfo.statementDate}</span></div>` : ''}
       ${extractedInfo.amountDue ? `<div class="field"><span class="field-label">Amount Due:</span><br><span class="field-value">${extractedInfo.amountDue}</span></div>` : ''}
       ${extractedInfo.dueDate ? `<div class="field"><span class="field-label">Due Date:</span><br><span class="field-value">${extractedInfo.dueDate}</span></div>` : ''}
-      ${extractedInfo.accountNumber ? `<div class="field"><span class="field-label">Account #:</span><br><span class="field-value">${extractedInfo.accountNumber}</span></div>` : ''}
     </div>
   </div>
   ` : ''}

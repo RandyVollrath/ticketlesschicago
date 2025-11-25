@@ -2454,37 +2454,147 @@ export default function ProfileNew() {
 
                     {/* Show verification status */}
                     {!profile.residency_proof_rejection_reason && (
-                      <div style={{
-                        padding: '12px 16px',
-                        backgroundColor: profile.residency_proof_verified ? '#f0fdf4' : '#fffbeb',
-                        border: `1px solid ${profile.residency_proof_verified ? '#86efac' : '#fde68a'}`,
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px'
-                      }}>
-                        <span style={{ fontSize: '20px' }}>
-                          {profile.residency_proof_verified ? '✅' : '⏳'}
-                        </span>
-                        <div>
-                          <div style={{
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: profile.residency_proof_verified ? '#15803d' : '#92400e'
-                          }}>
-                            {profile.residency_proof_verified ? 'Document Verified' : 'Pending Review'}
-                          </div>
-                          <div style={{
-                            fontSize: '12px',
-                            color: profile.residency_proof_verified ? '#166534' : '#a16207',
-                            marginTop: '2px'
-                          }}>
-                            {profile.residency_proof_verified
-                              ? 'Your proof of residency has been approved.'
-                              : 'Your document is being reviewed. This typically takes 24 hours.'}
+                      <>
+                        <div style={{
+                          padding: '12px 16px',
+                          backgroundColor: profile.residency_proof_verified ? '#f0fdf4' : '#fffbeb',
+                          border: `1px solid ${profile.residency_proof_verified ? '#86efac' : '#fde68a'}`,
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <span style={{ fontSize: '20px' }}>
+                            {profile.residency_proof_verified ? '✅' : '⏳'}
+                          </span>
+                          <div>
+                            <div style={{
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              color: profile.residency_proof_verified ? '#15803d' : '#92400e'
+                            }}>
+                              {profile.residency_proof_verified ? 'Document Verified' : 'Pending Review'}
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: profile.residency_proof_verified ? '#166534' : '#a16207',
+                              marginTop: '2px'
+                            }}>
+                              {profile.residency_proof_verified
+                                ? 'Your proof of residency has been approved.'
+                                : 'Your document is being reviewed. This typically takes 24 hours.'}
+                            </div>
                           </div>
                         </div>
-                      </div>
+
+                        {/* OCR Validation Details */}
+                        {profile.residency_proof_validation && (
+                          <div style={{
+                            marginTop: '12px',
+                            padding: '12px 16px',
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            fontSize: '13px'
+                          }}>
+                            <div style={{ fontWeight: '600', color: '#334155', marginBottom: '8px' }}>
+                              Document Analysis
+                            </div>
+
+                            {/* Document Type */}
+                            {profile.residency_proof_validation.documentType && (
+                              <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#64748b' }}>Type:</span>
+                                <span style={{ color: '#1e293b', fontWeight: '500' }}>
+                                  {profile.residency_proof_validation.documentType === 'utility_bill' ? 'Utility Bill' :
+                                   profile.residency_proof_validation.documentType === 'lease' ? 'Lease Agreement' :
+                                   profile.residency_proof_validation.documentType === 'mortgage' ? 'Mortgage Statement' :
+                                   profile.residency_proof_validation.documentType === 'property_tax' ? 'Property Tax Bill' :
+                                   profile.residency_proof_validation.documentType}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Address Match */}
+                            {profile.residency_proof_validation.addressMatch && (
+                              <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#64748b' }}>Address:</span>
+                                <span style={{
+                                  color: profile.residency_proof_validation.addressMatch.matches ? '#16a34a' : '#dc2626',
+                                  fontWeight: '500'
+                                }}>
+                                  {profile.residency_proof_validation.addressMatch.matches ? '✓ Matches your profile' : '✗ Does not match'}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Document Valid Until */}
+                            {profile.residency_proof_validation.dates?.documentValidUntil && (
+                              <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#64748b' }}>Valid Until:</span>
+                                <span style={{
+                                  color: new Date(profile.residency_proof_validation.dates.documentValidUntil) > new Date() ? '#1e293b' : '#dc2626',
+                                  fontWeight: '500'
+                                }}>
+                                  {new Date(profile.residency_proof_validation.dates.documentValidUntil).toLocaleDateString('en-US', {
+                                    month: 'long',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                  {new Date(profile.residency_proof_validation.dates.documentValidUntil) <= new Date() && (
+                                    <span style={{ color: '#dc2626', marginLeft: '4px' }}>(Expired)</span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* City Sticker Renewal Eligibility */}
+                            {profile.residency_proof_validation.cityStickerCheck && (
+                              <div style={{
+                                marginTop: '8px',
+                                padding: '8px 12px',
+                                backgroundColor: profile.residency_proof_validation.cityStickerCheck.documentValidForRenewal ? '#f0fdf4' : '#fef2f2',
+                                border: `1px solid ${profile.residency_proof_validation.cityStickerCheck.documentValidForRenewal ? '#bbf7d0' : '#fecaca'}`,
+                                borderRadius: '6px'
+                              }}>
+                                <div style={{
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  color: profile.residency_proof_validation.cityStickerCheck.documentValidForRenewal ? '#15803d' : '#b91c1c',
+                                  marginBottom: '4px'
+                                }}>
+                                  {profile.residency_proof_validation.cityStickerCheck.documentValidForRenewal
+                                    ? '✓ Valid for Your City Sticker Renewal'
+                                    : '⚠️ May Not Be Valid for Renewal'}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                  {profile.residency_proof_validation.cityStickerCheck.explanation}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Issues */}
+                            {profile.residency_proof_validation.issues && profile.residency_proof_validation.issues.length > 0 && (
+                              <div style={{
+                                marginTop: '8px',
+                                padding: '8px 12px',
+                                backgroundColor: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: '6px'
+                              }}>
+                                <div style={{ fontSize: '12px', fontWeight: '600', color: '#b91c1c', marginBottom: '4px' }}>
+                                  Issues Detected:
+                                </div>
+                                <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '11px', color: '#991b1b' }}>
+                                  {profile.residency_proof_validation.issues.map((issue: string, i: number) => (
+                                    <li key={i}>{issue}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* View uploaded document link */}
