@@ -8,7 +8,7 @@ export default function PropertyTaxHelper({
   userAddress
 }: PropertyTaxHelperProps) {
   // Cook County Treasurer - has actual downloadable tax bills
-  const treasurerSearchUrl = 'https://www.cookcountytreasurer.com/yourpropertytaxoverview.aspx'
+  const treasurerSearchUrl = 'https://www.cookcountytreasurer.com/yourpropertytaxoverviewsearch.aspx'
 
   return (
     <div style={{
