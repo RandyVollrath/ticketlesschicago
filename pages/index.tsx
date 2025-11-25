@@ -342,8 +342,10 @@ export default function Home() {
 
           <div className="stats-grid" style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '40px'
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '40px',
+            maxWidth: '600px',
+            margin: '0 auto'
           }}>
             <div>
               <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.primary, marginBottom: '8px' }}>
@@ -351,14 +353,6 @@ export default function Home() {
               </div>
               <div style={{ fontSize: '16px', color: COLORS.gray }}>
                 in tickets issued by Chicago last year
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: '#dc2626', marginBottom: '8px' }}>
-                $1,000+
-              </div>
-              <div style={{ fontSize: '16px', color: COLORS.gray }}>
-                average preventable tickets per driver/year
               </div>
             </div>
             <div>
