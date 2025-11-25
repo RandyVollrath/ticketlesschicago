@@ -4,6 +4,18 @@ import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import ReimbursementRequest from '../components/ReimbursementRequest';
 
+// Brand Colors - Municipal Fintech
+const COLORS = {
+  deepHarbor: '#0F172A',
+  regulatory: '#2563EB',
+  regulatoryDark: '#1d4ed8',
+  concrete: '#F8FAFC',
+  signal: '#10B981',
+  graphite: '#1E293B',
+  slate: '#64748B',
+  border: '#E2E8F0',
+};
+
 export default function SubmitTicket() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -48,8 +60,23 @@ export default function SubmitTicket() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#6b7280' }}>Loading...</p>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: COLORS.concrete,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: `3px solid ${COLORS.border}`,
+          borderTopColor: COLORS.regulatory,
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -59,126 +86,158 @@ export default function SubmitTicket() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: COLORS.concrete,
+      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
       <Head>
         <title>Submit Ticket for Reimbursement - Autopilot America</title>
+        <meta name="description" content="Submit a parking ticket for reimbursement under your Autopilot Protection" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          ::selection { background: #10B981; color: white; }
           @media (max-width: 768px) {
-            header {
-              height: 70px !important;
-              padding: 0 12px !important;
-            }
-            header > div:first-child {
-              margin-right: 8px !important;
-            }
-            header > div:first-child > div:first-child {
-              width: 42px !important;
-              height: 42px !important;
-              font-size: 22px !important;
-            }
-            header > div:first-child > div:last-child > span:first-child {
-              font-size: 20px !important;
-            }
-            header > div:first-child > div:last-child > span:last-child {
-              font-size: 10px !important;
-            }
-            header > div:last-child {
-              gap: 8px !important;
-            }
-            header > div:last-child button {
-              font-size: 13px !important;
-            }
+            .nav-desktop { display: none !important; }
+            .nav-mobile { display: flex !important; }
           }
+          .nav-mobile { display: none; }
         `}</style>
       </Head>
 
-      {/* Header */}
-      <header style={{
+      {/* Navigation */}
+      <nav style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
-        height: '90px',
-        backgroundColor: 'rgba(255,255,255,0.98)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
+        height: '72px',
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: `1px solid ${COLORS.border}`,
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 48px'
+        padding: '0 32px'
       }}>
-        <div
-          onClick={() => router.push('/')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            cursor: 'pointer',
-            flexShrink: 0,
-            marginRight: '24px'
-          }}
-        >
+        <div onClick={() => router.push('/')} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
           <div style={{
-            width: '52px',
-            height: '52px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
+            background: COLORS.regulatory,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '28px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
+            justifyContent: 'center'
           }}>
-            🛡️
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-            <span style={{ fontSize: '28px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
-              Ticketless
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: '#666', letterSpacing: '2px' }}>
-              AMERICA
-            </span>
-          </div>
+          <span style={{
+            fontSize: '18px',
+            fontWeight: '700',
+            color: COLORS.graphite,
+            fontFamily: '"Space Grotesk", sans-serif',
+            letterSpacing: '-0.5px'
+          }}>
+            Autopilot America
+          </span>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+
+        <div className="nav-desktop" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
           <button
             onClick={() => router.push('/settings')}
             style={{
-              color: '#666',
+              color: COLORS.slate,
               background: 'none',
               border: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Settings
+          </button>
+        </div>
+
+        <div className="nav-mobile" style={{ display: 'none', gap: '12px', alignItems: 'center' }}>
+          <button
+            onClick={() => router.push('/settings')}
+            style={{
+              color: COLORS.slate,
+              background: 'none',
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: '8px',
+              padding: '8px 12px',
               fontSize: '14px',
               fontWeight: '500',
               cursor: 'pointer'
             }}
           >
-            ← Back to Settings
+            Back
           </button>
         </div>
-      </header>
+      </nav>
 
       {/* Main Content */}
       <main style={{
         maxWidth: '800px',
         margin: '0 auto',
-        padding: '120px 16px 60px 16px'
+        padding: '104px 32px 60px 32px'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <h1 style={{
             fontSize: '32px',
-            fontWeight: 'bold',
-            color: '#111827',
-            margin: '0 0 12px 0'
+            fontWeight: '700',
+            color: COLORS.graphite,
+            margin: '0 0 16px 0',
+            fontFamily: '"Space Grotesk", sans-serif',
+            letterSpacing: '-1px'
           }}>
             Submit Ticket for Reimbursement
           </h1>
           <p style={{
             fontSize: '16px',
-            color: '#6b7280',
-            margin: 0
+            color: COLORS.slate,
+            margin: 0,
+            lineHeight: '1.6',
+            maxWidth: '600px',
+            marginLeft: 'auto',
+            marginRight: 'auto'
           }}>
-            We reimburse 80% of eligible tickets up to $200 per year for your tracked address and vehicle. Tickets must be for the address and vehicle in your profile at the time the ticket was issued. Submit your ticket photos and details below.
+            We reimburse 80% of eligible tickets up to $200/year. Submit your ticket photos and details below.
+            Tickets must match the address and vehicle in your profile at the time of issue.
+          </p>
+        </div>
+
+        {/* Info Banner */}
+        <div style={{
+          backgroundColor: `${COLORS.regulatory}08`,
+          border: `1px solid ${COLORS.regulatory}30`,
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '32px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px'
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}>
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: 0, lineHeight: '1.5' }}>
+            <strong style={{ color: COLORS.graphite }}>Covered tickets:</strong> Street cleaning, snow ban, expired city sticker, expired license plate.
+            Submit within 7 days of receiving the ticket.
           </p>
         </div>
 
