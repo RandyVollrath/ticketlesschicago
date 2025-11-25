@@ -2323,7 +2323,6 @@ export default function ProfileNew() {
                 }}
               >
                 <option value="">-- Select Document Type --</option>
-                <option value="utility_bill">Utility Bill (ComEd, Peoples Gas, etc.)</option>
                 <option value="lease">Lease Agreement (Renters)</option>
                 <option value="mortgage">Mortgage Statement (Homeowners)</option>
                 <option value="property_tax">Property Tax Bill (Homeowners)</option>
@@ -2334,11 +2333,6 @@ export default function ProfileNew() {
             {formData.residency_proof_type && (
               <div style={{ padding: '12px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '24px' }}>
                 <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
-                  {formData.residency_proof_type === 'utility_bill' && (
-                    <>
-                      <strong>Utility Bill:</strong> Upload a recent utility bill (electric, gas, water, internet). Must show your name, service address, and be dated within the last 60 days. Valid for 60 days from statement date.
-                    </>
-                  )}
                   {formData.residency_proof_type === 'lease' && (
                     <>
                       <strong>Lease Agreement:</strong> Upload your signed lease or rental agreement. Must show your name, address, and lease dates. Valid for 12 months from lease start date.
