@@ -2678,15 +2678,6 @@ export default function ProfileNew() {
               </div>
             )}
 
-            {/* Alternative: API Integrations (Coming Soon) */}
-            <div style={{ marginTop: '32px', padding: '16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
-                🔌 Coming Soon: Automatic Integration
-              </h4>
-              <p style={{ fontSize: '13px', color: '#6b7280', margin: '0', lineHeight: '1.5' }}>
-                We're working on integrations with lease management platforms (RentRedi, TenantCloud, AppFolio) and mortgage lenders (Plaid) to automatically verify your residency without manual uploads.
-              </p>
-            </div>
           </Accordion>
           )}
 
