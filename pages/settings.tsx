@@ -1391,6 +1391,193 @@ export default function ProfileNew() {
                 <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0' }}>
                   We'll send you reminders {profile.has_protection ? '(not automatically handled)' : 'when this is due'}
                 </p>
+
+                {/* Emissions Completion Status - Only show if emissions date is set */}
+                {formData.emissions_date && (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: formData.emissions_completed
+                      ? '2px solid #10b981'
+                      : '2px solid #f59e0b',
+                    backgroundColor: formData.emissions_completed
+                      ? '#f0fdf4'
+                      : '#fffbeb'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>
+                        {formData.emissions_completed ? '✅' : '🚗'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          color: formData.emissions_completed ? '#065f46' : '#92400e',
+                          margin: '0 0 8px 0'
+                        }}>
+                          {formData.emissions_completed
+                            ? 'Emissions Test Complete'
+                            : 'Emissions Test Not Yet Complete'
+                          }
+                        </p>
+                        <p style={{
+                          fontSize: '13px',
+                          color: formData.emissions_completed ? '#047857' : '#78350f',
+                          margin: '0 0 12px 0',
+                          lineHeight: '1.5'
+                        }}>
+                          {formData.emissions_completed
+                            ? `Marked complete on ${new Date(formData.emissions_completed_at).toLocaleDateString()}. Your license plate renewal can proceed without any blocks.`
+                            : 'Illinois requires a valid emissions test to renew your license plate. Once you complete your test, mark it here so we know your renewal can proceed.'
+                          }
+                        </p>
+
+                        {!formData.emissions_completed && (
+                          <div style={{
+                            backgroundColor: '#fef3c7',
+                            borderRadius: '6px',
+                            padding: '10px 12px',
+                            marginBottom: '12px'
+                          }}>
+                            <p style={{ fontSize: '12px', color: '#92400e', margin: 0 }}>
+                              <strong>How to complete your test:</strong> Visit <a
+                                href="https://illinoisveip.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#2563eb' }}
+                              >illinoisveip.com</a> to find a testing location. Bring your vehicle, registration, and $20 cash. The test takes about 10-15 minutes.
+                            </p>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {!formData.emissions_completed ? (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch('/api/user/mark-emissions-complete', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: user?.id, completed: true })
+                                  })
+                                  const data = await response.json()
+                                  if (response.ok) {
+                                    setFormData((prev: any) => ({
+                                      ...prev,
+                                      emissions_completed: true,
+                                      emissions_completed_at: data.emissions_completed_at
+                                    }))
+                                    setProfile((prev: any) => ({
+                                      ...prev,
+                                      emissions_completed: true,
+                                      emissions_completed_at: data.emissions_completed_at
+                                    }))
+                                    setMessage({ type: 'success', text: 'Emissions test marked as complete!' })
+                                    setTimeout(() => setMessage(null), 3000)
+                                  } else {
+                                    setMessage({ type: 'error', text: data.error || 'Failed to update' })
+                                  }
+                                } catch (error) {
+                                  console.error('Error marking emissions complete:', error)
+                                  setMessage({ type: 'error', text: 'Failed to update emissions status' })
+                                }
+                              }}
+                              style={{
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '10px 16px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              I've Completed My Emissions Test
+                            </button>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Are you sure you want to mark your emissions test as incomplete?')) return
+                                try {
+                                  const response = await fetch('/api/user/mark-emissions-complete', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: user?.id, completed: false })
+                                  })
+                                  const data = await response.json()
+                                  if (response.ok) {
+                                    setFormData((prev: any) => ({
+                                      ...prev,
+                                      emissions_completed: false,
+                                      emissions_completed_at: null
+                                    }))
+                                    setProfile((prev: any) => ({
+                                      ...prev,
+                                      emissions_completed: false,
+                                      emissions_completed_at: null
+                                    }))
+                                    setMessage({ type: 'success', text: 'Emissions status reset' })
+                                    setTimeout(() => setMessage(null), 3000)
+                                  } else {
+                                    setMessage({ type: 'error', text: data.error || 'Failed to update' })
+                                  }
+                                } catch (error) {
+                                  console.error('Error resetting emissions:', error)
+                                  setMessage({ type: 'error', text: 'Failed to reset emissions status' })
+                                }
+                              }}
+                              style={{
+                                backgroundColor: '#f3f4f6',
+                                color: '#6b7280',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                padding: '8px 14px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Mark as Not Complete
+                            </button>
+                          )}
+
+                          <a
+                            href="https://illinoisveip.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              backgroundColor: formData.emissions_completed ? '#f3f4f6' : '#2563eb',
+                              color: formData.emissions_completed ? '#374151' : 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '10px 16px',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            Find Testing Locations
+                            <span style={{ fontSize: '12px' }}>↗</span>
+                          </a>
+                        </div>
+
+                        <p style={{
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          margin: '12px 0 0 0',
+                          fontStyle: 'italic'
+                        }}>
+                          You can also reply "DONE" or "EMISSIONS" to any SMS reminder to mark this complete.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </Accordion>
