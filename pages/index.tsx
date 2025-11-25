@@ -637,8 +637,8 @@ export default function Home() {
                 </li>
                 {[
                   { text: 'Auto-Renewal Service — we buy the stickers for you', highlight: true },
-                  { text: 'Document Management — secure OCR verification & storage', highlight: true },
                   { text: '$200 Ticket Reimbursement Guarantee', highlight: true },
+                  { text: 'Document Management — secure OCR verification & storage', highlight: true },
                   { text: 'Concierge Support — we deal with the city', highlight: false },
                 ].map((item, i) => (
                   <li key={i} style={{
