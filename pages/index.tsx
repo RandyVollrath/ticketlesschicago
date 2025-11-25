@@ -491,10 +491,10 @@ export default function Home() {
                 🔄
               </div>
               <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
-                Auto-Renewal
+                Auto-Renewal + Protection
               </h3>
               <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
-                City stickers and license plates <strong>purchased for you automatically</strong>. Zero effort required.
+                City stickers and plates <strong>purchased for you automatically</strong>. Plus up to <strong>$200/yr reimbursement</strong> if you still get a ticket.
               </p>
             </div>
           </div>
