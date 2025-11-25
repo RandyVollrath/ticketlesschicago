@@ -363,10 +363,10 @@ export default function Home() {
             </div>
             <div>
               <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.success, marginBottom: '8px' }}>
-                50%
+                160+
               </div>
               <div style={{ fontSize: '16px', color: COLORS.gray }}>
-                of tickets are completely avoidable
+                Chicago drivers already protected
               </div>
             </div>
           </div>
