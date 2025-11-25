@@ -2,6 +2,18 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
+// Brand Colors - Municipal Fintech
+const COLORS = {
+  deepHarbor: '#0F172A',
+  regulatory: '#2563EB',
+  regulatoryDark: '#1d4ed8',
+  concrete: '#F8FAFC',
+  signal: '#10B981',
+  graphite: '#1E293B',
+  slate: '#64748B',
+  border: '#E2E8F0',
+};
+
 export default function Unsubscribe() {
   const router = useRouter();
   const { email } = router.query;
@@ -45,147 +57,199 @@ export default function Unsubscribe() {
     <>
       <Head>
         <title>Unsubscribe - Autopilot America</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+        <style>{`::selection { background: #10B981; color: white; }`}</style>
       </Head>
 
       <div style={{
         minHeight: '100vh',
-        backgroundColor: '#f9fafb',
+        backgroundColor: COLORS.concrete,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px'
+        padding: '24px',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
         <div style={{
           backgroundColor: 'white',
           borderRadius: '16px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          padding: '40px',
-          maxWidth: '500px',
-          width: '100%'
+          border: `1px solid ${COLORS.border}`,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+          padding: '48px',
+          maxWidth: '480px',
+          width: '100%',
+          textAlign: 'center'
         }}>
           {success ? (
             <>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                color: '#111827',
-                marginBottom: '16px',
-                textAlign: 'center'
+              {/* Success Icon */}
+              <div style={{
+                width: '64px',
+                height: '64px',
+                backgroundColor: `${COLORS.signal}15`,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px auto'
               }}>
-                ✅ You're unsubscribed
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+
+              <h1 style={{
+                fontSize: '26px',
+                fontWeight: '700',
+                color: COLORS.graphite,
+                marginBottom: '12px',
+                fontFamily: '"Space Grotesk", sans-serif',
+                letterSpacing: '-0.5px'
+              }}>
+                You're Unsubscribed
               </h1>
 
               <p style={{
-                fontSize: '16px',
-                color: '#6b7280',
+                fontSize: '15px',
+                color: COLORS.slate,
                 lineHeight: '1.6',
-                textAlign: 'center',
-                marginBottom: '24px'
+                marginBottom: '16px'
               }}>
                 You won't receive marketing emails from us anymore.
               </p>
 
-              <p style={{
-                fontSize: '14px',
-                color: '#9ca3af',
-                lineHeight: '1.6',
-                textAlign: 'center',
-                marginBottom: '24px'
+              <div style={{
+                backgroundColor: `${COLORS.regulatory}08`,
+                border: `1px solid ${COLORS.regulatory}20`,
+                borderRadius: '10px',
+                padding: '14px 18px',
+                marginBottom: '28px'
               }}>
-                (You'll still receive important alerts about street cleaning and snow bans if you have an active account.)
-              </p>
-
-              <div style={{ textAlign: 'center' }}>
-                <a
-                  href="/"
-                  style={{
-                    display: 'inline-block',
-                    backgroundColor: '#0052cc',
-                    color: 'white',
-                    padding: '12px 24px',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    fontWeight: '600'
-                  }}
-                >
-                  Return to Homepage
-                </a>
+                <p style={{
+                  fontSize: '13px',
+                  color: COLORS.slate,
+                  lineHeight: '1.5',
+                  margin: 0
+                }}>
+                  You'll still receive important alerts about street cleaning and parking bans if you have an active account.
+                </p>
               </div>
+
+              <a
+                href="/"
+                style={{
+                  display: 'inline-block',
+                  backgroundColor: COLORS.regulatory,
+                  color: 'white',
+                  padding: '14px 28px',
+                  borderRadius: '10px',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  fontSize: '15px',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                Return to Homepage
+              </a>
             </>
           ) : (
             <>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                color: '#111827',
-                marginBottom: '16px',
-                textAlign: 'center'
+              {/* Mail Icon */}
+              <div style={{
+                width: '64px',
+                height: '64px',
+                backgroundColor: COLORS.concrete,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px auto'
               }}>
-                Unsubscribe from marketing emails
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="1.5">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                  <line x1="2" y1="20" x2="8" y2="14"/>
+                  <line x1="22" y1="20" x2="16" y2="14"/>
+                </svg>
+              </div>
+
+              <h1 style={{
+                fontSize: '26px',
+                fontWeight: '700',
+                color: COLORS.graphite,
+                marginBottom: '12px',
+                fontFamily: '"Space Grotesk", sans-serif',
+                letterSpacing: '-0.5px'
+              }}>
+                Unsubscribe
               </h1>
 
               <p style={{
-                fontSize: '16px',
-                color: '#6b7280',
+                fontSize: '15px',
+                color: COLORS.slate,
                 lineHeight: '1.6',
-                textAlign: 'center',
                 marginBottom: '24px'
               }}>
-                We're sorry to see you go. Click below to stop receiving marketing emails from Autopilot America.
+                Click below to stop receiving marketing emails from Autopilot America.
               </p>
 
               {email && (
-                <p style={{
-                  fontSize: '14px',
-                  color: '#9ca3af',
-                  textAlign: 'center',
+                <div style={{
+                  backgroundColor: COLORS.concrete,
+                  borderRadius: '8px',
+                  padding: '12px 16px',
                   marginBottom: '24px'
                 }}>
-                  Email: <strong>{email}</strong>
-                </p>
+                  <p style={{
+                    fontSize: '14px',
+                    color: COLORS.slate,
+                    margin: 0
+                  }}>
+                    Email: <strong style={{ color: COLORS.graphite }}>{email}</strong>
+                  </p>
+                </div>
               )}
 
               {error && (
                 <div style={{
                   backgroundColor: '#fef2f2',
-                  border: '1px solid #fca5a5',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '16px',
-                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  marginBottom: '20px',
+                  color: '#dc2626',
                   fontSize: '14px'
                 }}>
                   {error}
                 </div>
               )}
 
-              <div style={{ textAlign: 'center' }}>
-                <button
-                  onClick={handleUnsubscribe}
-                  disabled={loading || !email}
-                  style={{
-                    backgroundColor: loading ? '#9ca3af' : '#dc2626',
-                    color: 'white',
-                    padding: '12px 32px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontWeight: '600',
-                    fontSize: '16px',
-                    cursor: loading || !email ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {loading ? 'Unsubscribing...' : 'Unsubscribe'}
-                </button>
-              </div>
+              <button
+                onClick={handleUnsubscribe}
+                disabled={loading || !email}
+                style={{
+                  backgroundColor: loading ? COLORS.slate : '#dc2626',
+                  color: 'white',
+                  padding: '14px 32px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  fontWeight: '600',
+                  fontSize: '15px',
+                  cursor: loading || !email ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  transition: 'all 0.2s',
+                  marginBottom: '24px'
+                }}
+              >
+                {loading ? 'Processing...' : 'Unsubscribe from Marketing'}
+              </button>
 
               <p style={{
                 fontSize: '13px',
-                color: '#9ca3af',
-                lineHeight: '1.6',
-                textAlign: 'center',
-                marginTop: '24px'
+                color: COLORS.slate,
+                lineHeight: '1.6'
               }}>
-                You'll continue to receive important account alerts (street cleaning, snow bans, etc.) unless you delete your account.
+                You'll continue to receive important account alerts (street cleaning, parking bans, etc.) unless you delete your account.
               </p>
             </>
           )}
