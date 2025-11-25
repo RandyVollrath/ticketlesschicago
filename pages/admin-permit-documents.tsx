@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 
-// Common rejection reasons
+// Common rejection reasons for permit documents
 const REJECTION_REASONS = {
   ID_NOT_CLEAR: 'ID document is not clear or readable',
   ID_EXPIRED: 'ID document has expired',
@@ -13,6 +13,20 @@ const REJECTION_REASONS = {
   NAME_MISMATCH: 'Name on documents does not match between ID and proof of residency',
   MISSING_INFO: 'Document is missing required information',
   CELL_PHONE_BILL: 'Cell phone bills are not accepted - please provide a landline phone, utility, or other acceptable document',
+  OTHER: 'Other issue (see details below)',
+};
+
+// Rejection reasons for residency proof documents (lease/mortgage/property tax/utility)
+const RESIDENCY_REJECTION_REASONS = {
+  DOCUMENT_UNREADABLE: 'Document is not clear or readable',
+  DOCUMENT_EXPIRED: 'Document has expired or is too old',
+  WRONG_DOCUMENT_TYPE: 'This document type is not acceptable for proof of residency',
+  ADDRESS_MISMATCH: 'Address on document does not match the address in your profile',
+  NAME_MISMATCH: 'Name on document does not match your account name',
+  MISSING_INFO: 'Document is missing required information (name, address, or date)',
+  NOTIFICATION_ONLY: 'This appears to be a notification email, not an actual bill. Please forward an email with full bill details or attach a PDF.',
+  CELL_PHONE_BILL: 'Cell phone bills are not accepted. Please provide a landline phone, utility bill, lease, mortgage, or property tax document.',
+  SCREENSHOT: 'Screenshots are not acceptable. Please provide the original document or PDF.',
   OTHER: 'Other issue (see details below)',
 };
 
@@ -61,6 +75,12 @@ export default function AdminPermitDocuments() {
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [customReason, setCustomReason] = useState('');
   const [customerCode, setCustomerCode] = useState('');
+
+  // State for residency proof review
+  const [reviewingResidencyId, setReviewingResidencyId] = useState<string | null>(null);
+  const [residencyReasons, setResidencyReasons] = useState<string[]>([]);
+  const [residencyCustomReason, setResidencyCustomReason] = useState('');
+  const [residencyFilterStatus, setResidencyFilterStatus] = useState<'all' | 'pending' | 'approved'>('pending');
 
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
@@ -154,6 +174,49 @@ export default function AdminPermitDocuments() {
         setSelectedReasons([]);
         setCustomReason('');
         setCustomerCode('');
+        fetchDocuments();
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Review error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle residency proof document review (lease/mortgage/property tax/utility)
+  const handleResidencyReview = async (userId: string, action: 'approve' | 'reject') => {
+    if (action === 'reject' && residencyReasons.length === 0) {
+      alert('Please select at least one rejection reason');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/verify-residency-proof', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId,
+          action,
+          rejectionReasons: residencyReasons,
+          customReason: residencyCustomReason
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const emailStatus = result.emailSent ? ' Email sent to user.' : '';
+        setMessage(`Residency proof ${action}ed successfully!${emailStatus}`);
+        setReviewingResidencyId(null);
+        setResidencyReasons([]);
+        setResidencyCustomReason('');
         fetchDocuments();
       } else {
         setMessage(`Error: ${result.error}`);
@@ -294,10 +357,66 @@ export default function AdminPermitDocuments() {
           {residencyProofDocs.length > 0 && (
             <div style={{ marginBottom: '40px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>
-                🏠 Residency Proof Documents (Lease/Mortgage/Property Tax)
+                🏠 Residency Proof Documents (Lease/Mortgage/Property Tax/Utility)
               </h2>
+
+              {/* Residency filter buttons */}
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setResidencyFilterStatus('pending')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: residencyFilterStatus === 'pending' ? '#f59e0b' : '#e5e7eb',
+                    color: residencyFilterStatus === 'pending' ? 'white' : '#111827',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: residencyFilterStatus === 'pending' ? 'bold' : 'normal',
+                    fontSize: '13px'
+                  }}
+                >
+                  Needs Review ({residencyProofDocs.filter(d => d.verification_status !== 'approved').length})
+                </button>
+                <button
+                  onClick={() => setResidencyFilterStatus('approved')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: residencyFilterStatus === 'approved' ? '#10b981' : '#e5e7eb',
+                    color: residencyFilterStatus === 'approved' ? 'white' : '#111827',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: residencyFilterStatus === 'approved' ? 'bold' : 'normal',
+                    fontSize: '13px'
+                  }}
+                >
+                  Verified ({residencyProofDocs.filter(d => d.verification_status === 'approved').length})
+                </button>
+                <button
+                  onClick={() => setResidencyFilterStatus('all')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: residencyFilterStatus === 'all' ? '#6b7280' : '#e5e7eb',
+                    color: residencyFilterStatus === 'all' ? 'white' : '#111827',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: residencyFilterStatus === 'all' ? 'bold' : 'normal',
+                    fontSize: '13px'
+                  }}
+                >
+                  All ({residencyProofDocs.length})
+                </button>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-                {residencyProofDocs.map((doc) => (
+                {residencyProofDocs
+                  .filter(doc => {
+                    if (residencyFilterStatus === 'all') return true;
+                    if (residencyFilterStatus === 'approved') return doc.verification_status === 'approved';
+                    return doc.verification_status !== 'approved'; // pending
+                  })
+                  .map((doc) => (
                   <div
                     key={doc.id}
                     style={{
@@ -379,27 +498,140 @@ export default function AdminPermitDocuments() {
                     </a>
 
                     {doc.verification_status !== 'approved' && (
-                      <button
-                        onClick={async () => {
-                          if (confirm('Mark this document as verified?')) {
-                            // TODO: Add API endpoint to verify residency proof
-                            alert('Verification API coming soon');
-                          }
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          backgroundColor: '#10b981',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        ✅ Mark as Verified
-                      </button>
+                      <>
+                        {reviewingResidencyId === doc.user_id ? (
+                          <div style={{
+                            backgroundColor: '#f9fafb',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                            marginTop: '8px'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              gap: '8px',
+                              marginBottom: '12px'
+                            }}>
+                              <button
+                                onClick={() => {
+                                  setReviewingResidencyId(null);
+                                  setResidencyReasons([]);
+                                  setResidencyCustomReason('');
+                                }}
+                                style={{
+                                  flex: 1,
+                                  padding: '8px',
+                                  backgroundColor: '#6b7280',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '13px'
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                                Rejection Reasons:
+                              </label>
+                              {Object.entries(RESIDENCY_REJECTION_REASONS).map(([key, value]) => (
+                                <label key={key} style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={residencyReasons.includes(key)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setResidencyReasons([...residencyReasons, key]);
+                                      } else {
+                                        setResidencyReasons(residencyReasons.filter(r => r !== key));
+                                      }
+                                    }}
+                                    style={{ marginRight: '6px' }}
+                                  />
+                                  {value}
+                                </label>
+                              ))}
+                            </div>
+
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                                Custom Reason (optional):
+                              </label>
+                              <textarea
+                                value={residencyCustomReason}
+                                onChange={(e) => setResidencyCustomReason(e.target.value)}
+                                placeholder="Add any additional details..."
+                                style={{
+                                  width: '100%',
+                                  padding: '8px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  minHeight: '60px',
+                                  fontFamily: 'Arial, sans-serif'
+                                }}
+                              />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => handleResidencyReview(doc.user_id, 'approve')}
+                                disabled={loading}
+                                style={{
+                                  flex: 1,
+                                  padding: '10px',
+                                  backgroundColor: loading ? '#9ca3af' : '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: loading ? 'not-allowed' : 'pointer',
+                                  fontSize: '13px',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                ✅ Approve
+                              </button>
+                              <button
+                                onClick={() => handleResidencyReview(doc.user_id, 'reject')}
+                                disabled={residencyReasons.length === 0 || loading}
+                                style={{
+                                  flex: 1,
+                                  padding: '10px',
+                                  backgroundColor: residencyReasons.length > 0 && !loading ? '#ef4444' : '#9ca3af',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: residencyReasons.length > 0 && !loading ? 'pointer' : 'not-allowed',
+                                  fontSize: '13px',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                ❌ Reject
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setReviewingResidencyId(doc.user_id)}
+                            style={{
+                              width: '100%',
+                              padding: '10px',
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            🔍 Review Document
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 ))}

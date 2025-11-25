@@ -36,11 +36,82 @@ export const config = {
 const BUCKET_NAME = 'residency-proofs-temps';
 
 /**
+ * Extract key information from utility bill HTML for verification
+ */
+function extractBillInfo(html: string, subject: string): { serviceAddress?: string; accountNumber?: string; amountDue?: string; dueDate?: string } {
+  const info: { serviceAddress?: string; accountNumber?: string; amountDue?: string; dueDate?: string } = {};
+
+  // Common patterns for service address
+  const addressPatterns = [
+    /service\s+address[:\s]*([^<\n]+)/i,
+    /property\s+address[:\s]*([^<\n]+)/i,
+    /(\d+\s+[A-Za-z\s]+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place)[^<,\n]*(?:,?\s*(?:Chicago|IL|Illinois)[^<\n]*)?)/i,
+  ];
+
+  for (const pattern of addressPatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      info.serviceAddress = match[1]?.trim().replace(/\s+/g, ' ');
+      break;
+    }
+  }
+
+  // Common patterns for amount due
+  const amountPatterns = [
+    /(?:amount\s+due|total\s+due|balance\s+due|current\s+balance)[:\s]*\$?([\d,]+\.?\d*)/i,
+    /\$\s*([\d,]+\.\d{2})\s*(?:due|total|balance)/i,
+  ];
+
+  for (const pattern of amountPatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      info.amountDue = '$' + match[1];
+      break;
+    }
+  }
+
+  // Common patterns for due date
+  const dueDatePatterns = [
+    /(?:due\s+date|payment\s+due)[:\s]*([A-Za-z]+\s+\d{1,2},?\s*\d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+    /due\s+(?:by|on)\s+([A-Za-z]+\s+\d{1,2},?\s*\d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+  ];
+
+  for (const pattern of dueDatePatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      info.dueDate = match[1];
+      break;
+    }
+  }
+
+  // Common patterns for account number
+  const accountPatterns = [
+    /(?:account\s*(?:number|#|no\.?))[:\s]*([A-Za-z0-9-]+)/i,
+    /(?:customer\s*(?:number|#|no\.?))[:\s]*([A-Za-z0-9-]+)/i,
+  ];
+
+  for (const pattern of accountPatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      info.accountNumber = match[1];
+      break;
+    }
+  }
+
+  return info;
+}
+
+/**
  * Convert HTML email body to PDF
  * Uses Puppeteer with Chromium to render HTML exactly as it appears
+ * Adds verification header and extracts key billing information
  */
-async function convertHTMLToPDF(html: string): Promise<Buffer> {
+async function convertHTMLToPDF(html: string, metadata: { from?: string; subject?: string; receivedAt?: Date } = {}): Promise<{ buffer: Buffer; extractedInfo: ReturnType<typeof extractBillInfo> }> {
   console.log('🔄 Converting HTML to PDF...');
+
+  // Extract bill info for logging and verification
+  const extractedInfo = extractBillInfo(html, metadata.subject || '');
+  console.log('📊 Extracted bill info:', extractedInfo);
 
   let browser;
   try {
@@ -54,38 +125,155 @@ async function convertHTMLToPDF(html: string): Promise<Buffer> {
 
     const page = await browser.newPage();
 
-    // Set content with base HTML structure if missing
-    const fullHTML = html.includes('<!DOCTYPE') || html.includes('<html')
-      ? html
-      : `<!DOCTYPE html>
+    const receivedDate = (metadata.receivedAt || new Date()).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // Create a professional wrapper around the email content
+    const wrappedHTML = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+    .verification-header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+      color: white;
+      padding: 20px 24px;
+      margin-bottom: 0;
+    }
+    .verification-header h1 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .verification-header .subtitle {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    .metadata-bar {
+      background: #e8f4fc;
+      border-bottom: 1px solid #c9e0f0;
+      padding: 12px 24px;
+      font-size: 12px;
+      color: #1e3a5f;
+    }
+    .metadata-bar .item {
+      display: inline-block;
+      margin-right: 24px;
+    }
+    .metadata-bar .label {
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .extracted-info {
+      background: #f0f9f0;
+      border: 1px solid #c3e6c3;
+      border-radius: 8px;
+      margin: 16px 24px;
+      padding: 16px;
+    }
+    .extracted-info h3 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      color: #2d5a2d;
+    }
+    .extracted-info .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .extracted-info .field {
+      font-size: 12px;
+    }
+    .extracted-info .field-label {
+      color: #666;
+      font-weight: 500;
+    }
+    .extracted-info .field-value {
+      color: #1a1a1a;
+      font-weight: 600;
+    }
+    .email-content {
+      background: white;
+      margin: 16px 24px;
+      padding: 24px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .email-content img { max-width: 100%; height: auto; }
+    .footer {
+      text-align: center;
+      padding: 16px 24px;
+      font-size: 11px;
+      color: #888;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
-${html}
+  <div class="verification-header">
+    <h1>📧 Utility Bill - Proof of Residency</h1>
+    <div class="subtitle">Document captured via email forwarding for address verification</div>
+  </div>
+
+  <div class="metadata-bar">
+    <span class="item"><span class="label">From:</span> ${metadata.from || 'Unknown'}</span>
+    <span class="item"><span class="label">Subject:</span> ${metadata.subject || 'Utility Bill'}</span>
+    <span class="item"><span class="label">Received:</span> ${receivedDate}</span>
+  </div>
+
+  ${extractedInfo.serviceAddress || extractedInfo.amountDue || extractedInfo.dueDate ? `
+  <div class="extracted-info">
+    <h3>✅ Extracted Verification Details</h3>
+    <div class="grid">
+      ${extractedInfo.serviceAddress ? `<div class="field"><span class="field-label">Service Address:</span><br><span class="field-value">${extractedInfo.serviceAddress}</span></div>` : ''}
+      ${extractedInfo.amountDue ? `<div class="field"><span class="field-label">Amount Due:</span><br><span class="field-value">${extractedInfo.amountDue}</span></div>` : ''}
+      ${extractedInfo.dueDate ? `<div class="field"><span class="field-label">Due Date:</span><br><span class="field-value">${extractedInfo.dueDate}</span></div>` : ''}
+      ${extractedInfo.accountNumber ? `<div class="field"><span class="field-label">Account #:</span><br><span class="field-value">${extractedInfo.accountNumber}</span></div>` : ''}
+    </div>
+  </div>
+  ` : ''}
+
+  <div class="email-content">
+    ${html}
+  </div>
+
+  <div class="footer">
+    This document was automatically generated from a forwarded email on ${receivedDate}.<br>
+    Autopilot America - Proof of Residency Verification System
+  </div>
 </body>
 </html>`;
 
-    await page.setContent(fullHTML, { waitUntil: 'networkidle0' });
+    await page.setContent(wrappedHTML, { waitUntil: 'networkidle0', timeout: 30000 });
 
     // Generate PDF with Letter size (standard for utility bills)
     const pdfBuffer = await page.pdf({
       format: 'Letter',
       printBackground: true,
       margin: {
-        top: '0.5in',
-        right: '0.5in',
-        bottom: '0.5in',
-        left: '0.5in',
+        top: '0.25in',
+        right: '0.25in',
+        bottom: '0.25in',
+        left: '0.25in',
       },
     });
 
     console.log('✅ HTML converted to PDF successfully');
-    return Buffer.from(pdfBuffer);
+    return { buffer: Buffer.from(pdfBuffer), extractedInfo };
   } catch (error: any) {
     console.error('❌ HTML to PDF conversion failed:', error);
     throw new Error(`HTML to PDF conversion failed: ${error.message}`);
@@ -321,16 +509,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Priority 2: Convert HTML email body to PDF if no PDF attachment
     // Works for both full bills AND notification emails (ComEd/Peoples Gas notifications contain address, amount, due date)
+    let extractedBillInfo: { serviceAddress?: string; accountNumber?: string; amountDue?: string; dueDate?: string } | null = null;
+
     if (!pdfBuffer && html && html.trim().length > 50) {
       console.log('📧 No PDF attachment found, attempting HTML to PDF conversion...');
       console.log(`HTML length: ${html.length} characters`);
-      console.log('HTML preview:', html.substring(0, 200));
+      console.log('HTML preview:', html.substring(0, 300));
 
       try {
-        pdfBuffer = await convertHTMLToPDF(html);
+        const result = await convertHTMLToPDF(html, {
+          from: from || undefined,
+          subject: subject || undefined,
+          receivedAt: new Date()
+        });
+        pdfBuffer = result.buffer;
+        extractedBillInfo = result.extractedInfo;
         pdfFileName = 'utility-bill-from-email.pdf';
         documentSource = 'email_html';
         console.log('✅ Successfully converted HTML email to PDF');
+        if (extractedBillInfo.serviceAddress) {
+          console.log(`📍 Extracted service address: ${extractedBillInfo.serviceAddress}`);
+        }
       } catch (error: any) {
         console.error('❌ HTML to PDF conversion failed:', error.message);
         // Fall through to error below
@@ -405,16 +604,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('✓ Bill uploaded successfully');
 
-    // Update user profile with document source metadata
+    // Update user profile with document source metadata and extracted info
+    const updateData: any = {
+      residency_proof_path: filePath,
+      residency_proof_uploaded_at: new Date().toISOString(),
+      residency_proof_source: documentSource,
+      residency_proof_type: 'utility_bill', // Mark as utility bill from email
+      residency_proof_verified: documentSource === 'email_attachment', // Auto-verify attachments, flag HTML for review
+      residency_proof_verified_at: documentSource === 'email_attachment' ? new Date().toISOString() : null,
+    };
+
+    // Store extracted info for admin review (if extracted from HTML)
+    if (extractedBillInfo && documentSource === 'email_html') {
+      updateData.residency_proof_extracted_info = extractedBillInfo;
+    }
+
     const { error: updateError } = await supabase
       .from('user_profiles')
-      .update({
-        residency_proof_path: filePath,
-        residency_proof_uploaded_at: new Date().toISOString(),
-        residency_proof_source: documentSource,
-        residency_proof_verified: documentSource === 'email_attachment', // Auto-verify attachments, flag HTML for review
-        residency_proof_verified_at: documentSource === 'email_attachment' ? new Date().toISOString() : null,
-      })
+      .update(updateData)
       .eq('user_id', profile.user_id);
 
     if (updateError) {
