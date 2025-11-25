@@ -61,13 +61,38 @@ export class NotificationScheduler {
       console.log(`Found ${users?.length || 0} users with renewal dates`);
       
       for (const user of users || []) {
+        // Check if emissions test could block license plate renewal
+        // This is CRITICAL: IL SOS won't process license plate renewal without completed emissions
+        let emissionsBlocksRenewal = false;
+        let daysUntilEmissions = 999;
+        let daysUntilPlateExpiry = 999;
+
+        if (user.emissions_date && user.license_plate_expiry) {
+          const emissionsDate = new Date(user.emissions_date);
+          const plateDate = new Date(user.license_plate_expiry);
+          emissionsDate.setUTCHours(0, 0, 0, 0);
+          plateDate.setUTCHours(0, 0, 0, 0);
+
+          daysUntilEmissions = Math.floor((emissionsDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          daysUntilPlateExpiry = Math.floor((plateDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+          // Emissions blocks renewal if:
+          // 1. Emissions is NOT completed
+          // 2. Both emissions and license plate are due within 60 days
+          const emissionsCompleted = user.emissions_completed || false;
+          if (!emissionsCompleted && daysUntilPlateExpiry <= 60 && daysUntilEmissions <= 60) {
+            emissionsBlocksRenewal = true;
+            console.log(`⚠️ EMISSIONS BLOCKS RENEWAL for ${user.email}: Emissions due in ${daysUntilEmissions} days, Plate due in ${daysUntilPlateExpiry} days`);
+          }
+        }
+
         // Check each renewal type
         // NOTE: Only City Sticker and License Plate can be auto-purchased
         // Emissions Test is reminder-only (user must bring car to testing facility)
         const renewals = [
           { date: user.city_sticker_expiry, type: 'City Sticker', canAutoPurchase: true },
           { date: user.license_plate_expiry, type: 'License Plate', canAutoPurchase: true },
-          { date: user.emissions_date, type: 'Emissions Test', canAutoPurchase: false }
+          { date: user.emissions_date, type: 'Emissions Test', canAutoPurchase: false, blocksLicensePlate: emissionsBlocksRenewal }
         ];
 
         for (const renewal of renewals) {
@@ -174,14 +199,18 @@ export class NotificationScheduler {
 
                   if (!hasProtection || !renewal.canAutoPurchase) {
                     // Simple reminder for free alert users OR for emissions tests (which can't be auto-purchased)
+                    const blocksPlate = renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate;
+                    const urgentPrefix = blocksPlate ? 'URGENT: ' : '';
+                    const plateWarning = blocksPlate ? ' Required for license plate renewal!' : '';
+
                     if (daysUntil === 0) {
-                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TODAY. ${renewal.type === 'Emissions Test' ? 'Schedule your test now at illinoisveip.com' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
+                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due TODAY.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Complete your test now at illinoisveip.com' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
                     } else if (daysUntil === 1) {
-                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due TOMORROW. ${renewal.type === 'Emissions Test' ? 'Schedule your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
+                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due TOMORROW.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Complete your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
                     } else if (daysUntil <= 7) {
-                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days. ${renewal.type === 'Emissions Test' ? 'Find test locations at illinoisveip.com' : "Don't forget to renew!"}. Reply STOP to opt out.`;
+                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due in ${daysUntil} days.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Find test locations at illinoisveip.com' : "Don't forget to renew!"}. Reply STOP to opt out.`;
                     } else {
-                      message = `Autopilot: Your ${renewal.type} ${renewal.type === 'Emissions Test' ? 'is' : 'expires'} due in ${daysUntil} days on ${dueDate.toLocaleDateString()}. Mark your calendar! Reply STOP to opt out.`;
+                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due in ${daysUntil} days (${dueDate.toLocaleDateString()}).${plateWarning}${renewal.type === 'Emissions Test' ? ' You must complete this test to renew your license plate.' : ''} Reply STOP to opt out.`;
                     }
                   } else {
                   // Protection users - professional, clear communication about auto-registration
@@ -444,23 +473,54 @@ export class NotificationScheduler {
                           ${daysUntil <= 1 ? `
                             <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
                               <h3 style="color: #92400e; margin: 0 0 8px; font-size: 18px;">⏰ ${renewal.type === 'Emissions Test' ? 'Test' : 'Renewal'} Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}</h3>
-                              <p style="color: #92400e; margin: 0;">We recommend ${renewal.type === 'Emissions Test' ? 'scheduling your test' : 'renewing'} today to stay compliant and avoid any potential issues.</p>
+                              <p style="color: #92400e; margin: 0;">We recommend ${renewal.type === 'Emissions Test' ? 'completing your test' : 'renewing'} today to stay compliant and avoid any potential issues.</p>
+                            </div>
+                          ` : ''}
+
+                          ${renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate ? `
+                            <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                              <h3 style="color: #991b1b; margin: 0 0 12px; font-size: 18px;">🚨 URGENT: Required for License Plate Renewal</h3>
+                              <p style="color: #7f1d1d; margin: 0 0 12px; line-height: 1.6;">
+                                <strong>Illinois requires a valid emissions test to renew your license plate.</strong> Your license plate renewal is also coming up, and you won't be able to complete it until your emissions test is done.
+                              </p>
+                              <p style="color: #7f1d1d; margin: 0; line-height: 1.6;">
+                                The test results are sent electronically to the Secretary of State. Once you pass, you can proceed with your license plate renewal.
+                              </p>
+                            </div>
+                          ` : ''}
+
+                          ${renewal.type === 'Emissions Test' ? `
+                            <div style="background: #fef9c3; border: 1px solid #eab308; border-radius: 8px; padding: 20px; margin: 24px 0;">
+                              <h3 style="color: #854d0e; margin: 0 0 12px; font-size: 18px;">📋 Why This Matters</h3>
+                              <p style="color: #713f12; margin: 0; line-height: 1.6;">
+                                Illinois requires emissions testing every 2 years to register your vehicle. <strong>You cannot renew your license plate without a valid emissions test.</strong> Test results are sent electronically to the state.
+                              </p>
                             </div>
                           ` : ''}
 
                           <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                            <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to ${renewal.type === 'Emissions Test' ? 'Schedule Your Test' : 'Renew'}:</h3>
+                            <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to ${renewal.type === 'Emissions Test' ? 'Complete Your Test' : 'Renew'}:</h3>
                             <div style="color: #0369a1; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
                               ${renewal.type === 'City Sticker' ?
                                 'Renew online at chicityclerk.com or visit any Currency Exchange location. Bring your registration and proof of insurance.' :
                                 renewal.type === 'License Plate' ?
                                 'Renew at cyberdriveillinois.com or visit your local Secretary of State facility.' :
-                                'Find testing locations at illinoisveip.com. Bring your registration and $20 cash. You must bring your vehicle to a testing facility - this cannot be done remotely.'}
+                                `<strong>Step 1:</strong> Find a testing location at <a href="https://illinoisveip.com" style="color: #2563eb;">illinoisveip.com</a><br>
+                                <strong>Step 2:</strong> Bring your vehicle, registration, and $20 cash<br>
+                                <strong>Step 3:</strong> Complete the test (takes about 10-15 minutes)<br>
+                                <strong>Step 4:</strong> Results are sent electronically to the state<br><br>
+                                <em>Note: You must bring your vehicle in person - this cannot be done remotely.</em>`}
                             </div>
 
                             <div style="text-align: center; margin: 20px 0;">
+                              ${renewal.type === 'Emissions Test' ? `
+                                <a href="https://illinoisveip.com"
+                                   style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
+                                  Find Testing Locations
+                                </a>
+                              ` : ''}
                               <a href="https://autopilotamerica.com/dashboard"
-                                 style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
+                                 style="background: ${renewal.type === 'Emissions Test' ? '#6b7280' : '#2563eb'}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
                                 View Dashboard
                               </a>
                             </div>
