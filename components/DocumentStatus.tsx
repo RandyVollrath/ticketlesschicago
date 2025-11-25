@@ -13,7 +13,6 @@ interface DocumentInfo {
   hasBill: boolean;
   billUploadedAt: string | null;
   billVerified: boolean;
-  emailForwardingAddress: string | null;
 }
 
 export default function DocumentStatus({ userId, hasPermitZone }: DocumentStatusProps) {
@@ -31,8 +30,7 @@ export default function DocumentStatus({ userId, hasPermitZone }: DocumentStatus
             license_valid_until,
             residency_proof_path,
             residency_proof_uploaded_at,
-            residency_proof_verified,
-            email_forwarding_address
+            residency_proof_verified
           `)
           .eq('user_id', userId)
           .single();
@@ -46,7 +44,6 @@ export default function DocumentStatus({ userId, hasPermitZone }: DocumentStatus
           hasBill: !!data?.residency_proof_path,
           billUploadedAt: data?.residency_proof_uploaded_at || null,
           billVerified: data?.residency_proof_verified || false,
-          emailForwardingAddress: data?.email_forwarding_address || null,
         });
       } catch (error) {
         console.error('Error fetching document status:', error);
@@ -183,23 +180,21 @@ export default function DocumentStatus({ userId, hasPermitZone }: DocumentStatus
               </div>
               {docs?.hasBill ? (
                 <div style={{ marginTop: '8px', fontSize: '14px', color: '#059669' }}>
-                  <div>✓ Most recent bill: {formatDate(docs.billUploadedAt)}</div>
-                  <div>✓ {docs.billVerified ? 'Verified and ready' : 'Processing...'}</div>
+                  <div>✓ Document uploaded: {formatDate(docs.billUploadedAt)}</div>
+                  <div>✓ {docs.billVerified ? 'Verified and ready' : 'Pending review'}</div>
                 </div>
               ) : (
                 <div style={{ marginTop: '8px', fontSize: '14px', color: '#d97706' }}>
-                  <div>No bill received yet</div>
-                  {docs?.emailForwardingAddress && (
-                    <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
-                      Forward bills to: <code style={{ backgroundColor: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{docs.emailForwardingAddress}</code>
-                    </div>
-                  )}
+                  <div>No document uploaded yet</div>
+                  <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
+                    Go to Settings to upload your proof of residency
+                  </div>
                 </div>
               )}
             </div>
             {!docs?.hasBill && (
               <a
-                href="#email-forwarding"
+                href="/settings#proof-of-residency"
                 style={{
                   padding: '8px 16px',
                   backgroundColor: '#f59e0b',
@@ -210,7 +205,7 @@ export default function DocumentStatus({ userId, hasPermitZone }: DocumentStatus
                   fontWeight: '600'
                 }}
               >
-                Set Up
+                Upload Now
               </a>
             )}
           </div>
