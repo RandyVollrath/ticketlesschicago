@@ -502,9 +502,9 @@ export default function Home() {
             gap: '24px'
           }}>
             {[
-              { text: "Love the simplicity. Solving a very specific, clear problem.", author: "Mitchell", saved: "$240" },
-              { text: "I haven't gotten a ticket in months. This actually works.", author: "Kathleen", saved: "$180" },
-              { text: "It's solid and it's a very needed service. Super dope.", author: "Nasir", saved: "$320" }
+              { text: "Love the simplicity. Solving a very specific, clear problem.", author: "Mitchell" },
+              { text: "You're doing the lord's work.", author: "Kathleen" },
+              { text: "It's solid and it's a very needed service. Super dope.", author: "Nasir" }
             ].map((t, i) => (
               <div key={i} style={{
                 backgroundColor: 'white',
@@ -513,9 +513,8 @@ export default function Home() {
                 boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
                 border: '1px solid #eee'
               }}>
-                <div style={{ fontSize: '24px', marginBottom: '16px' }}>⭐⭐⭐⭐⭐</div>
                 <p style={{
-                  fontSize: '16px',
+                  fontSize: '18px',
                   color: '#333',
                   lineHeight: '1.6',
                   margin: '0 0 20px 0',
@@ -523,19 +522,7 @@ export default function Home() {
                 }}>
                   "{t.text}"
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: '600', color: '#000' }}>— {t.author}</span>
-                  <span style={{
-                    backgroundColor: '#dcfce7',
-                    color: '#166534',
-                    padding: '4px 12px',
-                    borderRadius: '100px',
-                    fontSize: '13px',
-                    fontWeight: '600'
-                  }}>
-                    Saved {t.saved}
-                  </span>
-                </div>
+                <span style={{ fontWeight: '600', color: '#000' }}>— {t.author}</span>
               </div>
             ))}
           </div>
