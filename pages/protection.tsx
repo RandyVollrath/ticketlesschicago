@@ -440,7 +440,7 @@ export default function Protection() {
               lineHeight: '1.6',
               margin: '0 0 32px 0'
             }}>
-              $12/month or $120/year (2 months free) - Automated renewal reminders - 80% ticket reimbursement
+              $12/month or $120/year (2 months free). We handle your city sticker and plate renewals automatically, plus reimburse 80% of covered tickets.
             </p>
           </div>
         </div>
@@ -483,10 +483,10 @@ export default function Protection() {
                 margin: '0 0 12px 0',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                Renewal Reminders
+                Automated Renewals
               </h3>
               <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                Get timely reminders before your city sticker and license plate renewal deadlines. Never miss a deadline with our proactive alerts.
+                We handle your city sticker and license plate renewals end-to-end. Just approve, and we'll purchase and mail them before your deadlines.
               </p>
             </div>
 
