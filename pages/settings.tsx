@@ -2395,9 +2395,13 @@ export default function ProfileNew() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: '32px 16px',
-                    border: `2px dashed ${residencyProofUploading ? '#3b82f6' : '#d1d5db'}`,
+                    border: `2px ${formData.residency_proof_path ? 'solid' : 'dashed'} ${
+                      residencyProofUploading ? '#3b82f6' :
+                      formData.residency_proof_path ? '#86efac' : '#d1d5db'
+                    }`,
                     borderRadius: '8px',
-                    backgroundColor: residencyProofUploading ? '#eff6ff' : '#f9fafb',
+                    backgroundColor: residencyProofUploading ? '#eff6ff' :
+                      formData.residency_proof_path ? '#f0fdf4' : '#f9fafb',
                     cursor: residencyProofUploading ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s ease'
                   }}
@@ -2432,6 +2436,25 @@ export default function ProfileNew() {
                           to { transform: rotate(360deg); }
                         }
                       `}</style>
+                    </>
+                  ) : formData.residency_proof_path ? (
+                    <>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        backgroundColor: '#dcfce7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '12px'
+                      }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#16a34a' }}>Document Uploaded</span>
+                      <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Click to replace with a different file</span>
                     </>
                   ) : (
                     <>
