@@ -71,6 +71,9 @@ export default function ProfileNew() {
   // Consent popup state
   const [showConsentPopup, setShowConsentPopup] = useState(false)
 
+  // Residency proof upload state
+  const [residencyProofUploading, setResidencyProofUploading] = useState(false)
+
   // File input refs for clearing on cancel
   const licenseFrontInputRef = useRef<HTMLInputElement>(null)
   const licenseBackInputRef = useRef<HTMLInputElement>(null)
@@ -229,6 +232,14 @@ export default function ProfileNew() {
       } else if (userProfile.license_valid_until && !imagesExist) {
         console.log('⏭️  Skipping stale date (no images):', userProfile.license_valid_until)
       }
+
+      // Load retention preference from DB
+      // If user has already uploaded and consented, restore their preference
+      if (imagesExist) {
+        setLicenseConsent(true) // They already consented if images exist
+        setLicenseReuseConsent(userProfile.license_reuse_consent_given === true)
+        console.log('✅ License retention preference:', userProfile.license_reuse_consent_given ? 'keep' : 'delete')
+      }
     }
 
     setLoading(false)
@@ -347,11 +358,11 @@ export default function ProfileNew() {
   }
 
   // Handle consent confirmation - set consent flag (upload happens via useEffect)
-  const handleConsentConfirm = () => {
+  const handleConsentConfirm = (keepForFuture: boolean) => {
     setShowConsentPopup(false)
     setLicenseConsent(true) // Set consent flag
-    setLicenseReuseConsent(true) // Default to multi-year reuse
-    console.log('✅ User consented - waiting for expiry date to auto-upload')
+    setLicenseReuseConsent(keepForFuture) // User's choice for multi-year storage
+    console.log(`✅ User consented - retention: ${keepForFuture ? 'keep until expiry' : 'delete after 48h'}`)
     // Note: Upload will happen automatically via useEffect when expiry date is filled
   }
 
@@ -378,6 +389,80 @@ export default function ProfileNew() {
       licenseBackInputRef.current.value = ''
     }
     console.log('⚠️ User closed consent popup - images dropped, consent reset')
+  }
+
+  // Delete all license images immediately
+  const deleteAllLicenseImages = async () => {
+    if (!user) return
+
+    try {
+      // Delete actual files from Supabase storage
+      const filesToDelete: string[] = []
+      if (licenseFrontPath) filesToDelete.push(licenseFrontPath)
+      if (licenseBackPath) filesToDelete.push(licenseBackPath)
+
+      if (filesToDelete.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from('license-images-temp')
+          .remove(filesToDelete)
+
+        if (storageError) {
+          console.error('Storage deletion error:', storageError)
+          // Continue anyway - file might already be deleted by retention job
+        } else {
+          console.log('🗑️ Deleted files from storage:', filesToDelete)
+        }
+      }
+
+      // Clear database references
+      await supabase
+        .from('user_profiles')
+        .update({
+          license_image_path: null,
+          license_image_uploaded_at: null,
+          license_image_verified: false,
+          license_image_path_back: null,
+          license_image_back_uploaded_at: null,
+          license_image_back_verified: false,
+          license_valid_until: null,
+          license_reuse_consent_given: false
+        })
+        .eq('user_id', user.id)
+
+      // Reset local state
+      setLicenseFrontUploaded(false)
+      setLicenseFrontPath('')
+      setLicenseBackUploaded(false)
+      setLicenseBackPath('')
+      setLicenseExpiryDate('')
+      setLicenseReuseConsent(false)
+      setLicenseConsent(false)
+
+      console.log('🗑️ All license images deleted')
+      alert('Your license has been deleted from our servers.')
+
+    } catch (error) {
+      console.error('Failed to delete license images:', error)
+      alert('Failed to delete license. Please try again.')
+    }
+  }
+
+  // Update retention preference
+  const updateRetentionPreference = async (keepForFuture: boolean) => {
+    if (!user) return
+
+    try {
+      await supabase
+        .from('user_profiles')
+        .update({ license_reuse_consent_given: keepForFuture })
+        .eq('user_id', user.id)
+
+      setLicenseReuseConsent(keepForFuture)
+      console.log(`📝 Retention preference updated: ${keepForFuture ? 'keep' : 'delete after 48h'}`)
+
+    } catch (error) {
+      console.error('Failed to update retention preference:', error)
+    }
   }
 
   // Auto-upload when all conditions are met
@@ -464,6 +549,9 @@ export default function ProfileNew() {
       return
     }
 
+    setResidencyProofUploading(true)
+    setMessage(null)
+
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${user.id}_${Date.now()}.${fileExt}`
@@ -484,11 +572,14 @@ export default function ProfileNew() {
         .from('residency-proofs-temps')
         .getPublicUrl(filePath)
 
-      // Save to database
+      // Save to database with source and reset verification status
       await saveField('residency_proof_path', publicUrl)
       await saveField('residency_proof_uploaded_at', new Date().toISOString())
+      await saveField('residency_proof_source', 'manual_upload')
+      await saveField('residency_proof_verified', false) // Reset - needs review
+      await saveField('residency_proof_rejection_reason', null) // Clear any previous rejection
 
-      setMessage({ type: 'success', text: 'Document uploaded successfully!' })
+      setMessage({ type: 'success', text: 'Document uploaded successfully! It will be reviewed within 24 hours.' })
 
       // Reload to show updated data
       setTimeout(() => {
@@ -497,6 +588,8 @@ export default function ProfileNew() {
     } catch (error: any) {
       console.error('Upload error:', error)
       setMessage({ type: 'error', text: `Upload failed: ${error.message}` })
+    } finally {
+      setResidencyProofUploading(false)
     }
   }
 
@@ -1782,6 +1875,120 @@ export default function ProfileNew() {
                   </p>
                 </div>
               )}
+
+              {/* License Management Panel - shows after upload is complete */}
+              {licenseFrontUploaded && licenseBackUploaded && licenseExpiryDate && (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '20px',
+                  backgroundColor: '#f9fafb',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px'
+                }}>
+                  <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#1f2937', margin: '0 0 16px 0' }}>
+                    🔒 License Privacy Settings
+                  </h4>
+
+                  {/* Current Status */}
+                  <div style={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#6b7280' }}>Status:</span>
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#059669' }}>✅ Uploaded & Ready</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#6b7280' }}>Expires:</span>
+                      <span style={{ fontSize: '13px', fontWeight: '500', color: '#1f2937' }}>
+                        {(() => {
+                          const [year, month, day] = licenseExpiryDate.split('-').map(Number);
+                          const date = new Date(year, month - 1, day);
+                          return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                        })()}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#6b7280' }}>Retention:</span>
+                      <span style={{ fontSize: '13px', fontWeight: '500', color: licenseReuseConsent ? '#0369a1' : '#dc2626' }}>
+                        {licenseReuseConsent ? '📁 Keeping until expiry' : '🗑️ Delete after processing'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Change Retention Preference */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 8px 0' }}>Change retention preference:</p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => updateRetentionPreference(false)}
+                        disabled={!licenseReuseConsent}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          backgroundColor: !licenseReuseConsent ? '#fee2e2' : '#f3f4f6',
+                          color: !licenseReuseConsent ? '#dc2626' : '#6b7280',
+                          border: !licenseReuseConsent ? '2px solid #dc2626' : '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: licenseReuseConsent ? 'pointer' : 'default',
+                          opacity: licenseReuseConsent ? 1 : 0.7
+                        }}
+                      >
+                        🗑️ Delete after 48h
+                      </button>
+                      <button
+                        onClick={() => updateRetentionPreference(true)}
+                        disabled={licenseReuseConsent}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          backgroundColor: licenseReuseConsent ? '#dbeafe' : '#f3f4f6',
+                          color: licenseReuseConsent ? '#0369a1' : '#6b7280',
+                          border: licenseReuseConsent ? '2px solid #0369a1' : '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: !licenseReuseConsent ? 'pointer' : 'default',
+                          opacity: !licenseReuseConsent ? 1 : 0.7
+                        }}
+                      >
+                        📁 Keep until expiry
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Delete Now Button */}
+                  <button
+                    onClick={() => {
+                      if (confirm('⚠️ Delete your license?\n\nThis will permanently delete both front and back images from our servers. You will need to re-upload if you want to use our renewal service again.\n\nThis action cannot be undone.')) {
+                        deleteAllLicenseImages()
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🗑️ Delete My License Now
+                  </button>
+
+                  <p style={{ fontSize: '11px', color: '#9ca3af', margin: '12px 0 0 0', textAlign: 'center' }}>
+                    Your license is encrypted and only accessible by our authorized renewal service.
+                  </p>
+                </div>
+              )}
             </Accordion>
           )}
 
@@ -1976,30 +2183,145 @@ export default function ProfileNew() {
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
                   Upload Document (PDF or Image)
                 </label>
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      handleResidencyProofUpload(file)
-                    }
-                  }}
+
+                {/* Drag and Drop Upload Area */}
+                <label
                   style={{
-                    width: '100%',
-                    padding: '10px',
-                    fontSize: '14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    backgroundColor: 'white',
-                    cursor: 'pointer'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '32px 16px',
+                    border: `2px dashed ${residencyProofUploading ? '#3b82f6' : '#d1d5db'}`,
+                    borderRadius: '8px',
+                    backgroundColor: residencyProofUploading ? '#eff6ff' : '#f9fafb',
+                    cursor: residencyProofUploading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease'
                   }}
-                />
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    disabled={residencyProofUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        handleResidencyProofUpload(file)
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                  {residencyProofUploading ? (
+                    <>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        border: '3px solid #3b82f6',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        marginBottom: '12px'
+                      }} />
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#3b82f6' }}>Uploading...</span>
+                      <style jsx>{`
+                        @keyframes spin {
+                          to { transform: rotate(360deg); }
+                        }
+                      `}</style>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" style={{ marginBottom: '12px' }}>
+                        <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Click to upload or drag and drop</span>
+                      <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>PDF, JPG, or PNG (max 10MB)</span>
+                    </>
+                  )}
+                </label>
+
+                {/* Verification Status Display */}
                 {formData.residency_proof_path && (
-                  <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px' }}>
-                    <p style={{ fontSize: '13px', color: '#15803d', margin: 0 }}>
-                      ✅ Document uploaded successfully!
-                    </p>
+                  <div style={{ marginTop: '16px' }}>
+                    {/* Show rejection reason if rejected */}
+                    {profile.residency_proof_rejection_reason && (
+                      <div style={{
+                        padding: '16px',
+                        backgroundColor: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '16px' }}>❌</span>
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>Document Rejected</span>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 12px 0', whiteSpace: 'pre-wrap' }}>
+                          {profile.residency_proof_rejection_reason}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#7f1d1d', margin: 0, fontStyle: 'italic' }}>
+                          Please upload a new document addressing the issues above.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Show verification status */}
+                    {!profile.residency_proof_rejection_reason && (
+                      <div style={{
+                        padding: '12px 16px',
+                        backgroundColor: profile.residency_proof_verified ? '#f0fdf4' : '#fffbeb',
+                        border: `1px solid ${profile.residency_proof_verified ? '#86efac' : '#fde68a'}`,
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
+                      }}>
+                        <span style={{ fontSize: '20px' }}>
+                          {profile.residency_proof_verified ? '✅' : '⏳'}
+                        </span>
+                        <div>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: profile.residency_proof_verified ? '#15803d' : '#92400e'
+                          }}>
+                            {profile.residency_proof_verified ? 'Document Verified' : 'Pending Review'}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: profile.residency_proof_verified ? '#166534' : '#a16207',
+                            marginTop: '2px'
+                          }}>
+                            {profile.residency_proof_verified
+                              ? 'Your proof of residency has been approved.'
+                              : 'Your document is being reviewed. This typically takes 24 hours.'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* View uploaded document link */}
+                    <div style={{ marginTop: '12px' }}>
+                      <a
+                        href={formData.residency_proof_path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '13px',
+                          color: '#3b82f6',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+                          <polyline points="14,2 14,8 20,8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        View uploaded document
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2317,45 +2639,129 @@ export default function ProfileNew() {
               fontSize: '22px',
               fontWeight: 'bold',
               color: '#1a1a1a',
-              marginBottom: '16px',
-              margin: '0 0 16px 0'
+              marginBottom: '8px',
+              margin: '0 0 8px 0'
             }}>
-              📋 Consent Required
+              🔒 License Privacy & Consent
             </h3>
 
             <p style={{
-              fontSize: '15px',
-              color: '#4b5563',
-              lineHeight: '1.6',
-              marginBottom: '20px',
+              fontSize: '14px',
+              color: '#6b7280',
               margin: '0 0 20px 0'
             }}>
-              Before we can validate and process your driver's license, we need your explicit consent:
+              Your privacy matters. Please review how we handle your license.
             </p>
 
+            {/* What we do with your license */}
             <div style={{
-              backgroundColor: '#f9fafb',
-              border: '1px solid #e5e7eb',
+              backgroundColor: '#f0f9ff',
+              border: '1px solid #bae6fd',
               borderRadius: '8px',
               padding: '16px',
-              marginBottom: '24px',
-              margin: '0 0 24px 0'
+              marginBottom: '16px'
             }}>
               <p style={{
-                fontSize: '14px',
-                color: '#374151',
-                lineHeight: '1.6',
-                margin: 0
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#0369a1',
+                margin: '0 0 8px 0'
               }}>
-                <strong>✓</strong> Validated using Google Cloud Vision (third-party service) to check image quality<br/>
-                <strong>✓</strong> OCR extracts expiry date automatically from your license<br/>
-                <strong>✓</strong> Encrypted and securely stored in our system<br/>
-                <strong>✓</strong> Only accessed when processing your city sticker renewal<br/>
-                <strong>✓</strong> Shared with third-party remitter services for renewal processing<br/>
-                <strong>✓</strong> Kept until your license expires (you can revoke consent anytime)
+                How we process your license:
               </p>
+              <ul style={{
+                fontSize: '13px',
+                color: '#0c4a6e',
+                margin: 0,
+                paddingLeft: '20px',
+                lineHeight: '1.6'
+              }}>
+                <li>Validated by Google Cloud Vision (third-party) for image quality</li>
+                <li>Expiry date extracted automatically via OCR</li>
+                <li>Encrypted with bank-level security (AES-256)</li>
+                <li>Shared with authorized remitter for city sticker processing</li>
+              </ul>
             </div>
 
+            {/* Retention choice */}
+            <div style={{
+              backgroundColor: '#fefce8',
+              border: '1px solid #fef08a',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px'
+            }}>
+              <p style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#854d0e',
+                margin: '0 0 12px 0'
+              }}>
+                Choose how long we keep your license:
+              </p>
+
+              {/* Option 1: Delete after processing */}
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '12px',
+                backgroundColor: 'white',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                marginBottom: '8px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="radio"
+                  name="retention"
+                  value="delete"
+                  defaultChecked
+                  style={{ marginTop: '3px' }}
+                />
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 4px 0' }}>
+                    🗑️ Delete after processing (recommended for privacy)
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                    License deleted 48 hours after your renewal is processed. You'll need to re-upload next year.
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 2: Keep for future renewals */}
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '12px',
+                backgroundColor: 'white',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="radio"
+                  name="retention"
+                  value="keep"
+                  style={{ marginTop: '3px' }}
+                />
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 4px 0' }}>
+                    📁 Keep for future renewals (convenient)
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                    License kept until it expires ({licenseExpiryDate ? new Date(licenseExpiryDate.split('-').map(Number).reduce((acc, val, i) => {
+                      if (i === 0) return new Date(val, 0, 1);
+                      if (i === 1) { acc.setMonth(val - 1); return acc; }
+                      acc.setDate(val); return acc;
+                    }, new Date() as any)).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'your expiry date'}). No re-upload needed. You can delete anytime.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {/* Buttons */}
             <div style={{
               display: 'flex',
               gap: '12px',
@@ -2377,20 +2783,23 @@ export default function ProfileNew() {
                 Cancel
               </button>
               <button
-                onClick={handleConsentConfirm}
+                onClick={() => {
+                  const keepForFuture = (document.querySelector('input[name="retention"]:checked') as HTMLInputElement)?.value === 'keep'
+                  handleConsentConfirm(keepForFuture)
+                }}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#0052cc',
+                  backgroundColor: '#059669',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0, 82, 204, 0.3)'
+                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)'
                 }}
               >
-                I Consent - Upload License
+                ✓ I Consent & Continue
               </button>
             </div>
           </div>
