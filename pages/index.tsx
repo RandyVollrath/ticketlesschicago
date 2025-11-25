@@ -453,15 +453,30 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Protection Card */}
+            {/* Auto-Renewal Card */}
             <div style={{
               backgroundColor: '#fff',
               borderRadius: '20px',
               padding: '40px 32px',
               textAlign: 'center',
-              border: `1px solid ${COLORS.border}`,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+              border: `2px solid ${COLORS.accent}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              position: 'relative'
             }}>
+              <div style={{
+                position: 'absolute',
+                top: '-12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: COLORS.accent,
+                color: 'white',
+                padding: '4px 12px',
+                borderRadius: '100px',
+                fontSize: '11px',
+                fontWeight: '700'
+              }}>
+                PREMIUM
+              </div>
               <div style={{
                 width: '72px',
                 height: '72px',
@@ -473,13 +488,13 @@ export default function Home() {
                 margin: '0 auto 24px auto',
                 fontSize: '36px'
               }}>
-                🛡️
+                🔄
               </div>
               <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
-                Ticket Protection
+                Auto-Renewal
               </h3>
               <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
-                If you still get a ticket, we reimburse up to <strong>$200/year</strong>. Peace of mind.
+                City stickers and license plates <strong>purchased for you automatically</strong>. Zero effort required.
               </p>
             </div>
           </div>
@@ -685,11 +700,11 @@ export default function Home() {
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
                 {[
                   'Everything in Free',
+                  'City sticker purchased for you',
+                  'License plate sticker purchased for you',
                   'Up to $200/yr ticket reimbursement',
-                  'Priority support',
-                  'Done-for-you city sticker renewal',
                   'Multiple vehicles',
-                  'Peace of mind guarantee'
+                  'Zero effort - we handle it all'
                 ].map((item, i) => (
                   <li key={i} style={{
                     padding: '12px 0',
