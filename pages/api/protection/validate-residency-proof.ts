@@ -49,12 +49,14 @@ const DOCUMENT_TYPE_PATTERNS = {
     /(?:kwh|therms|ccf|gallons)/i,
   ],
   lease: [
-    /(?:lease\s*agreement|rental\s*agreement)/i,
+    /(?:lease\s*agreement|rental\s*agreement|lease\s*contract)/i,
     /(?:landlord|tenant|lessee|lessor)/i,
     /(?:term\s*of\s*lease|lease\s*term)/i,
-    /(?:monthly\s*rent|rent\s*amount)/i,
+    /(?:monthly\s*rent|rent\s*(?:amount|payment))/i,
     /(?:security\s*deposit)/i,
-    /(?:premises|leased\s*property)/i,
+    /(?:premises|leased\s*property|apartment\s*address)/i,
+    /(?:lessee|tenant)[:\s]+[A-Za-z\s]+/i,
+    /(?:lessor|landlord|owner)[:\s]+[A-Za-z\s]+/i,
   ],
   mortgage: [
     /(?:mortgage\s*statement|loan\s*statement)/i,
@@ -81,11 +83,13 @@ const DOCUMENT_TYPE_PATTERNS = {
 // Address extraction patterns
 const ADDRESS_PATTERNS = [
   // Full address with city/state
-  /(\d+\s+[A-Za-z0-9\s]+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle)[.,]?\s*(?:#|Apt|Unit|Suite|Ste|Floor|Fl)?[.,]?\s*[A-Za-z0-9]*[.,]?\s*Chicago[.,]?\s*(?:IL|Illinois)?[.,]?\s*\d{5}(?:-\d{4})?)/gi,
+  /(\d+\s+[A-Za-z0-9\s\.]+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle)[.,]?\s*(?:#|Apt|Unit|Suite|Ste|Floor|Fl)?[.,]?\s*[A-Za-z0-9]*[.,]?\s*Chicago[.,]?\s*(?:IL|Illinois)?[.,]?\s*\d{5}(?:-\d{4})?)/gi,
   // Address without zip
-  /(\d+\s+[A-Za-z0-9\s]+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle)[.,]?\s*(?:#|Apt|Unit|Suite|Ste|Floor|Fl)?[.,]?\s*[A-Za-z0-9]*[.,]?\s*Chicago)/gi,
-  // Service address label
-  /(?:service\s*address|property\s*address|premises|location)[:\s]*([^\n]+(?:Chicago|IL)[^\n]*)/gi,
+  /(\d+\s+[A-Za-z0-9\s\.]+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle)[.,]?\s*(?:#|Apt|Unit|Suite|Ste|Floor|Fl)?[.,]?\s*[A-Za-z0-9]*[.,]?\s*Chicago)/gi,
+  // Labeled address patterns (lease, property documents)
+  /(?:apartment\s*address|service\s*address|property\s*address|premises|location)[:\s]*([^\n]+(?:Chicago|IL)[^\n]*)/gi,
+  // Property securing mortgage (Form 1098)
+  /(?:address\s*(?:of|or\s*description\s*of)\s*property)[:\s]*([^\n]+(?:Chicago|IL)[^\n]*)/gi,
 ];
 
 // Date extraction patterns
