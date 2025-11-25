@@ -569,7 +569,7 @@ export default function Home() {
               margin: '0 0 16px 0',
               letterSpacing: '-1px'
             }}>
-              Stop Worrying About Chicago Parking Tickets
+              Never Fear the Orange Envelope Again
             </h2>
             <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
               Get essential alerts for free, or let us handle everything for complete peace of mind.
@@ -690,14 +690,14 @@ export default function Home() {
                 Protection
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark }}>$10</span>
+                <span style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark }}>$12</span>
                 <span style={{ fontSize: '18px', color: COLORS.gray }}>/month</span>
               </div>
               <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '24px' }}>
                 Billed annually at $120
               </div>
 
-              {/* Highlighted Auto-Renewal Feature */}
+              {/* Highlighted Total Protection Feature */}
               <div style={{
                 backgroundColor: `${COLORS.accent}15`,
                 border: `1px solid ${COLORS.accent}`,
@@ -711,7 +711,7 @@ export default function Home() {
                   gap: '8px',
                   marginBottom: '8px'
                 }}>
-                  <span style={{ fontSize: '20px' }}>🔄</span>
+                  <span style={{ fontSize: '20px' }}>🛡️</span>
                   <span style={{
                     fontWeight: '700',
                     fontSize: '14px',
@@ -719,7 +719,7 @@ export default function Home() {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px'
                   }}>
-                    Auto-Renewal Guarantee
+                    Total Protection
                   </span>
                 </div>
                 <p style={{
@@ -728,7 +728,7 @@ export default function Home() {
                   color: '#444',
                   lineHeight: '1.5'
                 }}>
-                  We automatically purchase your city sticker and license plate sticker before they expire. You just approve the charge. <strong>Never get a $200 sticker ticket again.</strong>
+                  We automatically renew your city and plate stickers before they expire. Plus, if you get a ticket our alerts should have prevented, <strong>we reimburse you up to $200/year.</strong>
                 </p>
               </div>
 
@@ -739,7 +739,6 @@ export default function Home() {
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
                 {[
                   'Everything in Free tier',
-                  'Ticket Protection — we pay if you get ticketed',
                   'Priority support'
                 ].map((item, i) => (
                   <li key={i} style={{
