@@ -4,6 +4,18 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
 
+// Brand Colors
+const COLORS = {
+  primary: '#2E86AB',      // Steel Blue - trust + friendly
+  primaryDark: '#1d6a8a',  // Darker blue for hover
+  accent: '#F0AB00',       // Goldenrod - Chicago pride
+  dark: '#1a1a1a',         // Near black for text
+  gray: '#666666',         // Body text
+  lightGray: '#F7F7F7',    // Section backgrounds
+  border: '#E5E7EB',       // Borders
+  success: '#16a34a',      // Green for checkmarks
+};
+
 export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -52,7 +64,7 @@ export default function Home() {
             .nav-mobile { display: flex !important; }
             .hero-buttons { flex-direction: column !important; }
             .hero-buttons button { width: 100% !important; }
-            .stats-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+            .stats-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
             .value-grid { grid-template-columns: 1fr !important; }
             .pricing-grid { grid-template-columns: 1fr !important; }
             .testimonial-grid { grid-template-columns: 1fr !important; }
@@ -61,7 +73,7 @@ export default function Home() {
         `}</style>
       </Head>
 
-      {/* Navigation - Simplified */}
+      {/* Navigation */}
       <nav style={{
         position: 'fixed',
         top: 0,
@@ -85,7 +97,7 @@ export default function Home() {
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            background: 'linear-gradient(135deg, #1a1a1a 0%, #333 100%)',
+            background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryDark} 100%)`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -93,23 +105,23 @@ export default function Home() {
           }}>
             🛡️
           </div>
-          <span style={{ fontSize: '20px', fontWeight: '700', color: '#000' }}>
+          <span style={{ fontSize: '20px', fontWeight: '700', color: COLORS.dark }}>
             Autopilot America
           </span>
         </div>
 
         {/* Desktop Nav */}
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          <a href="#how-it-works" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
+          <a href="#how-it-works" style={{ color: COLORS.gray, textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
             How It Works
           </a>
-          <a href="#pricing" style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
+          <a href="#pricing" style={{ color: COLORS.gray, textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}>
             Pricing
           </a>
           <a
             href="/protection"
             onClick={(e) => { e.preventDefault(); router.push('/protection'); }}
-            style={{ color: '#666', textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}
+            style={{ color: COLORS.gray, textDecoration: 'none', fontSize: '15px', fontWeight: '500' }}
           >
             Protection
           </a>
@@ -117,7 +129,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/settings')}
               style={{
-                backgroundColor: '#000',
+                backgroundColor: COLORS.primary,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -133,7 +145,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/login')}
               style={{
-                backgroundColor: '#000',
+                backgroundColor: COLORS.primary,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -154,7 +166,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/settings')}
               style={{
-                backgroundColor: '#000',
+                backgroundColor: COLORS.primary,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -170,7 +182,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/login')}
               style={{
-                backgroundColor: '#000',
+                backgroundColor: COLORS.primary,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -190,15 +202,15 @@ export default function Home() {
       <section style={{
         paddingTop: '140px',
         paddingBottom: '80px',
-        background: 'linear-gradient(180deg, #fafafa 0%, #fff 100%)',
+        background: 'linear-gradient(180deg, #fff 0%, #F7F9FC 100%)',
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 24px' }}>
           {/* Badge */}
           <div style={{
             display: 'inline-block',
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fcd34d',
+            backgroundColor: '#FEF9E7',
+            border: `1px solid ${COLORS.accent}`,
             borderRadius: '100px',
             padding: '8px 16px',
             marginBottom: '24px',
@@ -213,7 +225,7 @@ export default function Home() {
           <h1 className="hero-title" style={{
             fontSize: '56px',
             fontWeight: '800',
-            color: '#000',
+            color: COLORS.dark,
             lineHeight: '1.1',
             letterSpacing: '-2px',
             margin: '0 0 20px 0'
@@ -224,14 +236,14 @@ export default function Home() {
           {/* Subheadline */}
           <p className="hero-subtitle" style={{
             fontSize: '22px',
-            color: '#555',
+            color: COLORS.gray,
             lineHeight: '1.5',
             margin: '0 0 40px 0',
             fontWeight: '400'
           }}>
             Free alerts for street cleaning, snow bans, and renewal deadlines.
             <br />
-            <span style={{ color: '#000', fontWeight: '600' }}>Stop paying $1,000+/year in preventable Chicago tickets.</span>
+            <span style={{ color: COLORS.dark, fontWeight: '600' }}>Stop paying $1,000+/year in preventable Chicago tickets.</span>
           </p>
 
           {/* CTA Buttons */}
@@ -244,7 +256,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/alerts/signup')}
               style={{
-                backgroundColor: '#000',
+                backgroundColor: COLORS.primary,
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
@@ -252,16 +264,16 @@ export default function Home() {
                 fontSize: '18px',
                 fontWeight: '700',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+                boxShadow: '0 4px 14px rgba(46, 134, 171, 0.35)',
                 transition: 'transform 0.2s, box-shadow 0.2s'
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(46, 134, 171, 0.45)';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.25)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(46, 134, 171, 0.35)';
               }}
             >
               Get Free Alerts
@@ -270,8 +282,8 @@ export default function Home() {
               onClick={() => router.push('/protection')}
               style={{
                 backgroundColor: 'white',
-                color: '#000',
-                border: '2px solid #e5e7eb',
+                color: COLORS.dark,
+                border: `2px solid ${COLORS.border}`,
                 borderRadius: '12px',
                 padding: '16px 32px',
                 fontSize: '18px',
@@ -280,10 +292,12 @@ export default function Home() {
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = '#000';
+                e.currentTarget.style.borderColor = COLORS.primary;
+                e.currentTarget.style.color = COLORS.primary;
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.borderColor = COLORS.border;
+                e.currentTarget.style.color = COLORS.dark;
               }}
             >
               Learn About Protection
@@ -304,26 +318,26 @@ export default function Home() {
       {/* ===== SECTION 2: PROBLEM / STATS ===== */}
       <section style={{
         padding: '80px 24px',
-        backgroundColor: '#000',
-        color: 'white',
+        backgroundColor: '#E8F4F8',
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <h2 className="section-title" style={{
             fontSize: '36px',
             fontWeight: '700',
+            color: COLORS.dark,
             marginBottom: '16px',
             margin: '0 0 16px 0'
           }}>
-            Chicago profits from your mistakes.
+            Chicago profits from your confusion.
           </h2>
           <p style={{
             fontSize: '18px',
-            color: '#999',
+            color: COLORS.gray,
             marginBottom: '48px',
             margin: '0 0 48px 0'
           }}>
-            We profit from preventing them.
+            We help you keep more money in your pocket.
           </p>
 
           <div className="stats-grid" style={{
@@ -332,26 +346,26 @@ export default function Home() {
             gap: '40px'
           }}>
             <div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: '#f59e0b', marginBottom: '8px' }}>
+              <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.primary, marginBottom: '8px' }}>
                 $269M
               </div>
-              <div style={{ fontSize: '16px', color: '#888' }}>
+              <div style={{ fontSize: '16px', color: COLORS.gray }}>
                 in tickets issued by Chicago last year
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: '#ef4444', marginBottom: '8px' }}>
+              <div style={{ fontSize: '48px', fontWeight: '800', color: '#dc2626', marginBottom: '8px' }}>
                 $1,000+
               </div>
-              <div style={{ fontSize: '16px', color: '#888' }}>
+              <div style={{ fontSize: '16px', color: COLORS.gray }}>
                 average preventable tickets per driver/year
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: '#22c55e', marginBottom: '8px' }}>
+              <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.success, marginBottom: '8px' }}>
                 50%
               </div>
-              <div style={{ fontSize: '16px', color: '#888' }}>
+              <div style={{ fontSize: '16px', color: COLORS.gray }}>
                 of tickets are completely avoidable
               </div>
             </div>
@@ -369,13 +383,13 @@ export default function Home() {
             <h2 className="section-title" style={{
               fontSize: '40px',
               fontWeight: '800',
-              color: '#000',
+              color: COLORS.dark,
               margin: '0 0 16px 0',
               letterSpacing: '-1px'
             }}>
               How We Protect You
             </h2>
-            <p style={{ fontSize: '18px', color: '#666', margin: 0 }}>
+            <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
               Set it up once. Never think about tickets again.
             </p>
           </div>
@@ -383,20 +397,21 @@ export default function Home() {
           <div className="value-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '40px'
+            gap: '32px'
           }}>
             {/* Alert Card */}
             <div style={{
-              backgroundColor: '#fafafa',
+              backgroundColor: '#fff',
               borderRadius: '20px',
               padding: '40px 32px',
               textAlign: 'center',
-              border: '1px solid #eee'
+              border: `1px solid ${COLORS.border}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
             }}>
               <div style={{
                 width: '72px',
                 height: '72px',
-                backgroundColor: '#fef3c7',
+                backgroundColor: '#FEF3C7',
                 borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
@@ -406,26 +421,27 @@ export default function Home() {
               }}>
                 🚨
               </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '700', color: '#000', margin: '0 0 12px 0' }}>
+              <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
                 Parking Alerts
               </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6', margin: 0 }}>
-                Get notified <strong>before</strong> street cleaning, snow bans, and towing zones hit your block. Never wake up to a ticket.
+              <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
+                Get notified <strong>before</strong> street cleaning, snow bans, and towing zones hit your block.
               </p>
             </div>
 
             {/* Reminders Card */}
             <div style={{
-              backgroundColor: '#fafafa',
+              backgroundColor: '#fff',
               borderRadius: '20px',
               padding: '40px 32px',
               textAlign: 'center',
-              border: '1px solid #eee'
+              border: `1px solid ${COLORS.border}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
             }}>
               <div style={{
                 width: '72px',
                 height: '72px',
-                backgroundColor: '#dbeafe',
+                backgroundColor: '#DBEAFE',
                 borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
@@ -435,26 +451,27 @@ export default function Home() {
               }}>
                 🗓️
               </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '700', color: '#000', margin: '0 0 12px 0' }}>
+              <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
                 Renewal Reminders
               </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6', margin: 0 }}>
-                City stickers, license plates, emissions testing. We'll remind you <strong>before</strong> deadlines so you never pay late fees.
+              <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
+                City stickers, license plates, emissions. We remind you <strong>before</strong> deadlines hit.
               </p>
             </div>
 
             {/* Protection Card */}
             <div style={{
-              backgroundColor: '#fafafa',
+              backgroundColor: '#fff',
               borderRadius: '20px',
               padding: '40px 32px',
               textAlign: 'center',
-              border: '1px solid #eee'
+              border: `1px solid ${COLORS.border}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
             }}>
               <div style={{
                 width: '72px',
                 height: '72px',
-                backgroundColor: '#dcfce7',
+                backgroundColor: '#DCFCE7',
                 borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
@@ -464,11 +481,11 @@ export default function Home() {
               }}>
                 🛡️
               </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '700', color: '#000', margin: '0 0 12px 0' }}>
+              <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
                 Ticket Protection
               </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6', margin: 0 }}>
-                If you still get a ticket, we reimburse up to <strong>$200/year</strong>. Because sometimes life happens.
+              <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
+                If you still get a ticket, we reimburse up to <strong>$200/year</strong>. Peace of mind.
               </p>
             </div>
           </div>
@@ -478,20 +495,20 @@ export default function Home() {
       {/* ===== SECTION 4: SOCIAL PROOF ===== */}
       <section style={{
         padding: '80px 24px',
-        backgroundColor: '#fafafa'
+        backgroundColor: COLORS.lightGray
       }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
             <h2 className="section-title" style={{
               fontSize: '36px',
               fontWeight: '800',
-              color: '#000',
+              color: COLORS.dark,
               margin: '0 0 16px 0',
               letterSpacing: '-1px'
             }}>
               Chicago Drivers Love Us
             </h2>
-            <p style={{ fontSize: '18px', color: '#666', margin: 0 }}>
+            <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
               Join 160+ drivers who stopped worrying about parking tickets
             </p>
           </div>
@@ -511,7 +528,7 @@ export default function Home() {
                 borderRadius: '16px',
                 padding: '32px',
                 boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                border: '1px solid #eee'
+                border: `1px solid ${COLORS.border}`
               }}>
                 <p style={{
                   fontSize: '18px',
@@ -522,7 +539,7 @@ export default function Home() {
                 }}>
                   "{t.text}"
                 </p>
-                <span style={{ fontWeight: '600', color: '#000' }}>— {t.author}</span>
+                <span style={{ fontWeight: '600', color: COLORS.primary }}>— {t.author}</span>
               </div>
             ))}
           </div>
@@ -539,13 +556,13 @@ export default function Home() {
             <h2 className="section-title" style={{
               fontSize: '40px',
               fontWeight: '800',
-              color: '#000',
+              color: COLORS.dark,
               margin: '0 0 16px 0',
               letterSpacing: '-1px'
             }}>
               Simple Pricing
             </h2>
-            <p style={{ fontSize: '18px', color: '#666', margin: 0 }}>
+            <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
               One ticket costs more than a full year of Protection.
             </p>
           </div>
@@ -557,25 +574,25 @@ export default function Home() {
           }}>
             {/* Free Tier */}
             <div style={{
-              backgroundColor: '#fafafa',
+              backgroundColor: '#fff',
               borderRadius: '24px',
               padding: '48px 40px',
-              border: '2px solid #eee'
+              border: `1px solid ${COLORS.border}`
             }}>
               <div style={{
                 fontSize: '14px',
                 fontWeight: '600',
-                color: '#666',
+                color: COLORS.gray,
                 textTransform: 'uppercase',
                 letterSpacing: '1px',
                 marginBottom: '8px'
               }}>
                 Free Forever
               </div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: '#000', marginBottom: '8px' }}>
+              <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark, marginBottom: '8px' }}>
                 $0
               </div>
-              <div style={{ fontSize: '16px', color: '#666', marginBottom: '32px' }}>
+              <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '32px' }}>
                 For one vehicle
               </div>
 
@@ -590,14 +607,14 @@ export default function Home() {
                 ].map((item, i) => (
                   <li key={i} style={{
                     padding: '12px 0',
-                    borderBottom: '1px solid #eee',
+                    borderBottom: `1px solid ${COLORS.border}`,
                     fontSize: '15px',
                     color: '#333',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px'
                   }}>
-                    <span style={{ color: '#22c55e' }}>✓</span>
+                    <span style={{ color: COLORS.success }}>✓</span>
                     {item}
                   </li>
                 ))}
@@ -608,13 +625,22 @@ export default function Home() {
                 style={{
                   width: '100%',
                   backgroundColor: 'white',
-                  color: '#000',
-                  border: '2px solid #000',
+                  color: COLORS.primary,
+                  border: `2px solid ${COLORS.primary}`,
                   borderRadius: '12px',
                   padding: '16px',
                   fontSize: '16px',
                   fontWeight: '700',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.primary;
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.color = COLORS.primary;
                 }}
               >
                 Get Started Free
@@ -623,30 +649,31 @@ export default function Home() {
 
             {/* Protection Tier */}
             <div style={{
-              backgroundColor: '#000',
+              backgroundColor: '#fff',
               borderRadius: '24px',
               padding: '48px 40px',
-              color: 'white',
-              position: 'relative',
-              overflow: 'hidden'
+              border: `3px solid ${COLORS.accent}`,
+              position: 'relative'
             }}>
               <div style={{
                 position: 'absolute',
-                top: '20px',
-                right: '20px',
-                backgroundColor: '#22c55e',
+                top: '-14px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: COLORS.accent,
                 color: 'white',
-                padding: '6px 14px',
+                padding: '6px 20px',
                 borderRadius: '100px',
                 fontSize: '12px',
-                fontWeight: '700'
+                fontWeight: '700',
+                letterSpacing: '0.5px'
               }}>
-                POPULAR
+                MOST POPULAR
               </div>
               <div style={{
                 fontSize: '14px',
                 fontWeight: '600',
-                color: '#888',
+                color: COLORS.accent,
                 textTransform: 'uppercase',
                 letterSpacing: '1px',
                 marginBottom: '8px'
@@ -654,10 +681,10 @@ export default function Home() {
                 Protection
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800' }}>$120</span>
-                <span style={{ fontSize: '18px', color: '#888' }}>/year</span>
+                <span style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark }}>$120</span>
+                <span style={{ fontSize: '18px', color: COLORS.gray }}>/year</span>
               </div>
-              <div style={{ fontSize: '16px', color: '#888', marginBottom: '32px' }}>
+              <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '32px' }}>
                 or $12/month
               </div>
 
@@ -672,14 +699,14 @@ export default function Home() {
                 ].map((item, i) => (
                   <li key={i} style={{
                     padding: '12px 0',
-                    borderBottom: '1px solid #333',
+                    borderBottom: `1px solid ${COLORS.border}`,
                     fontSize: '15px',
-                    color: '#ccc',
+                    color: '#333',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px'
                   }}>
-                    <span style={{ color: '#22c55e' }}>✓</span>
+                    <span style={{ color: COLORS.success }}>✓</span>
                     {item}
                   </li>
                 ))}
@@ -689,7 +716,7 @@ export default function Home() {
                 onClick={() => router.push('/protection')}
                 style={{
                   width: '100%',
-                  backgroundColor: '#22c55e',
+                  backgroundColor: COLORS.primary,
                   color: 'white',
                   border: 'none',
                   borderRadius: '12px',
@@ -697,7 +724,14 @@ export default function Home() {
                   fontSize: '16px',
                   fontWeight: '700',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(34, 197, 94, 0.4)'
+                  boxShadow: `0 4px 14px rgba(46, 134, 171, 0.35)`,
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.primaryDark;
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.primary;
                 }}
               >
                 Get Protected
@@ -710,7 +744,7 @@ export default function Home() {
       {/* ===== SECTION 6: FINAL CTA ===== */}
       <section style={{
         padding: '100px 24px',
-        background: 'linear-gradient(135deg, #1a1a1a 0%, #000 100%)',
+        background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryDark} 100%)`,
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
@@ -721,28 +755,29 @@ export default function Home() {
             margin: '0 0 20px 0',
             letterSpacing: '-1px'
           }}>
-            Stop throwing money away on parking tickets.
+            Stop throwing money at parking tickets.
           </h2>
           <p style={{
             fontSize: '20px',
-            color: '#888',
+            color: 'rgba(255,255,255,0.8)',
             margin: '0 0 40px 0',
             lineHeight: '1.6'
           }}>
-            Join 160+ Chicago drivers who outsmarted the city.
+            Join 160+ Chicago drivers who outsmarted the system.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => router.push('/alerts/signup')}
               style={{
                 backgroundColor: 'white',
-                color: '#000',
+                color: COLORS.primary,
                 border: 'none',
                 borderRadius: '12px',
                 padding: '18px 40px',
                 fontSize: '18px',
                 fontWeight: '700',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
               }}
             >
               Get Free Alerts
@@ -752,7 +787,7 @@ export default function Home() {
               style={{
                 backgroundColor: 'transparent',
                 color: 'white',
-                border: '2px solid #444',
+                border: '2px solid rgba(255,255,255,0.4)',
                 borderRadius: '12px',
                 padding: '16px 32px',
                 fontSize: '18px',
