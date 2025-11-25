@@ -551,7 +551,7 @@ export default function ProfileNew() {
     }
   }
 
-  // Handle residency proof upload
+  // Handle residency proof upload via API (uses service role key to bypass RLS)
   const handleResidencyProofUpload = async (file: File) => {
     console.log('📄 Upload started for file:', file.name, file.size, file.type)
 
@@ -567,45 +567,36 @@ export default function ProfileNew() {
       return
     }
 
-    console.log('📄 Uploading to bucket for user:', user.id)
     setResidencyProofUploading(true)
     setMessage(null)
 
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}_${Date.now()}.${fileExt}`
-      const filePath = `residency-proofs/${fileName}`
+      const uploadFormData = new FormData()
+      uploadFormData.append('document', file)
+      uploadFormData.append('userId', user.id)
+      uploadFormData.append('documentType', formData.residency_proof_type)
 
-      console.log('📄 File path:', filePath)
+      const response = await fetch('/api/protection/upload-residency-proof', {
+        method: 'POST',
+        body: uploadFormData
+      })
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('residency-proofs-temps')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
+      const result = await response.json()
 
-      console.log('📄 Upload result:', { uploadError, uploadData })
-
-      if (uploadError) {
-        throw uploadError
+      if (!response.ok) {
+        throw new Error(result.error || 'Upload failed')
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('residency-proofs-temps')
-        .getPublicUrl(filePath)
+      // Update local state
+      setFormData(prev => ({ ...prev, residency_proof_path: result.publicUrl }))
+      setProfile(prev => ({
+        ...prev,
+        residency_proof_path: result.publicUrl,
+        residency_proof_verified: false,
+        residency_proof_rejection_reason: null
+      }))
 
-      console.log('📄 Public URL:', publicUrl)
-
-      // Save to database with source and reset verification status
-      await saveField('residency_proof_path', publicUrl)
-      await saveField('residency_proof_uploaded_at', new Date().toISOString())
-      await saveField('residency_proof_source', 'manual_upload')
-      await saveField('residency_proof_verified', false) // Reset - needs review
-      await saveField('residency_proof_rejection_reason', null) // Clear any previous rejection
-
-      alert('✅ Document uploaded successfully!')
-      setMessage({ type: 'success', text: 'Document uploaded successfully! It will be reviewed within 24 hours.' })
+      setMessage({ type: 'success', text: 'Document uploaded successfully! It will be reviewed shortly.' })
 
       // Reload to show updated data
       setTimeout(() => {

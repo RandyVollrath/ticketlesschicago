@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 
+// Brand Colors
+const GRAPHITE = '#1E293B';
+
 interface TooltipProps {
   content: string;
   children: React.ReactNode;
@@ -52,7 +55,7 @@ export default function Tooltip({ content, children, position = 'top' }: Tooltip
             position: 'absolute',
             zIndex: 1000,
             ...positionStyles[position],
-            backgroundColor: '#1f2937',
+            backgroundColor: GRAPHITE,
             color: 'white',
             padding: '8px 12px',
             borderRadius: '6px',
