@@ -29,7 +29,6 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 let visionClient: vision.ImageAnnotatorClient | null = null;
 if (process.env.GOOGLE_CLOUD_VISION_CREDENTIALS) {
   try {
-    // Fix credentials: Replace literal newlines in private_key with \n escape sequences
     const rawCreds = process.env.GOOGLE_CLOUD_VISION_CREDENTIALS;
     const fixedCreds = rawCreds.replace(/"private_key":\s*"([^"]*?)"/gs, (match, key) => {
       const escaped = key.replace(/\n/g, '\\n');
@@ -171,35 +170,31 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
     if (!fallback.valid) {
       return fallback;
     }
-    // If fallback passes, allow but warn
     console.warn('⚠️  Proceeding without AI validation - manual review may be needed');
     return { valid: true };
   }
 
-  // Retry logic: try up to 3 times with exponential backoff
   const maxRetries = 3;
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       if (attempt > 1) {
-        const backoffMs = Math.pow(2, attempt - 1) * 1000; // 2s, 4s, 8s
+        const backoffMs = Math.pow(2, attempt - 1) * 1000;
         console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${backoffMs}ms...`);
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
 
-      // Use annotateImage to get multiple features at once
       const [result] = await visionClient.annotateImage({
         image: { source: { filename: filePath } },
         features: [
-          { type: 'DOCUMENT_TEXT_DETECTION' }, // OCR for text readability
-          { type: 'IMAGE_PROPERTIES' }, // Quality analysis
-          { type: 'LABEL_DETECTION' }, // Identify document type
-          { type: 'SAFE_SEARCH_DETECTION' }, // Content safety
+          { type: 'DOCUMENT_TEXT_DETECTION' },
+          { type: 'IMAGE_PROPERTIES' },
+          { type: 'LABEL_DETECTION' },
+          { type: 'SAFE_SEARCH_DETECTION' },
         ],
       });
 
-      // Check 1: Text detection (must have readable text)
       const fullText = result.fullTextAnnotation?.text || '';
 
       if (!fullText || fullText.trim().length < 20) {
@@ -208,13 +203,11 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
 
       console.log('✓ Text detected:', fullText.substring(0, 100) + '...');
 
-      // Try to extract expiry date
       const detectedExpiryDate = extractExpiryDate(fullText);
       if (detectedExpiryDate) {
         console.log('✓ Detected expiry date:', detectedExpiryDate);
       }
 
-      // Check 2: Safe search (must be appropriate content)
       const safeSearch = result.safeSearchAnnotation;
       if (safeSearch && (
         safeSearch.adult === 'VERY_LIKELY' ||
@@ -223,7 +216,6 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
         return { valid: false, reason: 'Invalid image content detected. Please upload a photo of your driver\'s license.' };
       }
 
-      // Check 3: Brightness check (must not be too dark or too bright)
       const imageProps = result.imagePropertiesAnnotation;
       if (imageProps?.dominantColors?.colors && imageProps.dominantColors.colors.length > 0) {
         const colors = imageProps.dominantColors.colors;
@@ -243,7 +235,6 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
         }
       }
 
-      // Check 4: Label detection (should detect "document", "id card", "text", etc.)
       const labels = result.labelAnnotations || [];
       const documentLabels = ['document', 'id', 'card', 'text', 'paper', 'license', 'identification'];
       const hasDocumentLabels = labels.some(label =>
@@ -264,33 +255,22 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
       lastError = error;
       console.error(`❌ Vision API attempt ${attempt}/${maxRetries} failed:`, error.message);
 
-      // If this was the last retry, continue to fallback
       if (attempt === maxRetries) {
         break;
       }
-      // Otherwise, continue loop to retry
     }
   }
 
-  // All Vision API retries failed - use fallback validation
   console.error('❌ Vision API failed after all retries:', lastError?.message);
   console.log('🔄 Falling back to basic validation...');
 
   const fallback = await fallbackValidation(filePath);
   if (!fallback.valid) {
-    // Fallback also failed - reject the image
     return fallback;
   }
 
-  // Fallback passed but we couldn't run full AI validation
-  // This is a concerning state - accept but log prominently
   console.warn('⚠️  WARNING: Accepted image without AI validation! Manual review recommended.');
-  console.warn('⚠️  Vision API error:', lastError?.message);
-
-  return {
-    valid: true,
-    // Don't return detected date since we couldn't run OCR
-  }
+  return { valid: true };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
