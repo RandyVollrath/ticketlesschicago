@@ -51,7 +51,7 @@ export default async function handler(
     return res.status(400).json({
       success: false,
       error: 'Could not parse address. Please ensure it\'s a valid Chicago address.',
-      fallbackUrl: 'https://www.cookcountytreasurer.com/setsearchparameters.aspx'
+      fallbackUrl: 'https://www.cookcountypropertyinfo.com'
     })
   }
 
@@ -70,9 +70,9 @@ export default async function handler(
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     })
 
-    // Navigate to Cook County Treasurer search page
-    console.log('📄 Navigating to Cook County Treasurer...')
-    await page.goto('https://www.cookcountytreasurer.com/setsearchparameters.aspx', {
+    // Navigate to Cook County Property Info Portal (better than treasurer site)
+    console.log('📄 Navigating to Cook County Property Info Portal...')
+    await page.goto('https://www.cookcountypropertyinfo.com', {
       waitUntil: 'networkidle',
       timeout: 30000
     })
@@ -252,7 +252,7 @@ export default async function handler(
     return res.status(400).json({
       success: false,
       error: error.message || 'Failed to fetch tax bill',
-      fallbackUrl: 'https://www.cookcountytreasurer.com/setsearchparameters.aspx'
+      fallbackUrl: 'https://www.cookcountypropertyinfo.com'
     })
   }
 }
