@@ -8,7 +8,7 @@ import Tooltip from '../components/Tooltip'
 import UpgradeCard from '../components/UpgradeCard'
 import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import SnowBanSettings from '../components/SnowBanSettings'
-import EmailForwardingSetup from '../components/EmailForwardingSetup'
+// import EmailForwardingSetup from '../components/EmailForwardingSetup' // Disabled - keeping code for future use
 import PropertyTaxHelper from '../components/PropertyTaxHelper'
 
 // Phone formatting utilities
@@ -2180,138 +2180,14 @@ export default function ProfileNew() {
             </Accordion>
           )}
 
-          {/* 5.5 Residential Parking Permit - Email Forwarding (Protection + Permit Zone + Permit Requested) */}
-          {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
-            <Accordion
-              title="Residential Parking Permit - Proof of Residency"
-              icon="🅿️"
-              badge={!profile.residency_proof_path ? 'Setup Required' : 'Active'}
-              badgeColor={!profile.residency_proof_path ? 'red' : 'green'}
-              defaultOpen={!profile.residency_proof_path}
-            >
-              <div style={{ marginBottom: '20px' }}>
-                {profile.permit_zone_number && (
-                  <div style={{
-                    backgroundColor: '#eff6ff',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    marginBottom: '16px'
-                  }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', color: '#1e40af', margin: '0 0 4px 0' }}>
-                      📍 Your Permit Zone: {profile.permit_zone_number}
-                    </p>
-                    <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0 }}>
-                      Address: {profile.home_address_full || profile.street_address}
-                    </p>
-                  </div>
-                )}
-
-                <div style={{
-                  backgroundColor: '#fffbeb',
-                  border: '1px solid #fde68a',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '16px'
-                }}>
-                  <p style={{ fontSize: '13px', fontWeight: '600', color: '#92400e', margin: '0 0 8px 0' }}>
-                    ⚠️ Important: Proof of Residency Must Be Fresh
-                  </p>
-                  <p style={{ fontSize: '13px', color: '#78350f', margin: 0, lineHeight: '1.5' }}>
-                    Chicago requires proof of residency dated within <strong>30 days</strong> of your permit renewal.
-                    Instead of manually uploading bills each year, set up automatic email forwarding below so we always
-                    have your most recent utility bill ready for your permit application.
-                  </p>
-                  <p style={{ fontSize: '13px', color: '#78350f', margin: '8px 0 0 0', lineHeight: '1.5' }}>
-                    Old bills are automatically deleted after 60 days (we keep 2 months for safety).
-                  </p>
-                </div>
-
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0', lineHeight: '1.6' }}>
-                  Set up automatic email forwarding from your utility provider (ComEd, Peoples Gas, Xfinity, etc.)
-                  and we'll always have a fresh proof of residency document within the last 30 days for your parking permit.
-                </p>
-
-                {profile.residency_proof_path && profile.residency_proof_uploaded_at && (
-                  <div style={{
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #86efac',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    marginBottom: '16px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '16px' }}>✅</span>
-                      <div>
-                        <p style={{ fontSize: '13px', fontWeight: '600', color: '#166534', margin: '0 0 4px 0' }}>
-                          Proof of Residency on File
-                        </p>
-                        <p style={{ fontSize: '12px', color: '#22c55e', margin: 0 }}>
-                          Last received: {new Date(profile.residency_proof_uploaded_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <EmailForwardingSetup
-                forwardingEmail={`documents+${profile.user_id || user?.id}@autopilotamerica.com`}
-              />
-
-              {/* Revoke Consent Option */}
-              {profile.residency_forwarding_consent_given && (
-                <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b', margin: '0 0 8px 0' }}>
-                    Stop Email Forwarding
-                  </h4>
-                  <p style={{ fontSize: '13px', color: '#7f1d1d', margin: '0 0 12px 0', lineHeight: '1.5' }}>
-                    If you want to stop forwarding utility bills, you can revoke consent. This will disable automatic proof of residency updates, and you'll need to manually upload documents when required.
-                  </p>
-                  <button
-                    onClick={async () => {
-                      if (confirm('Are you sure you want to stop email forwarding for proof of residency? You will need to manually upload documents when required.')) {
-                        const { error } = await supabase
-                          .from('user_profiles')
-                          .update({ residency_forwarding_consent_given: false })
-                          .eq('user_id', profile.user_id);
-
-                        if (!error) {
-                          alert('Email forwarding consent revoked. You can re-enable it anytime by checking the permit box during signup.');
-                          loadUserData();
-                        } else {
-                          alert('Failed to revoke consent. Please try again.');
-                        }
-                      }
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Revoke Consent
-                  </button>
-                </div>
-              )}
-            </Accordion>
-          )}
-
           {/* 7. Proof of Residency Upload */}
           {profile.has_permit_zone && profile.has_protection && profile.permit_requested && (
             <Accordion
               title="Proof of Residency"
               icon="🏠"
-              defaultOpen={false}
+              badge={!profile.residency_proof_path ? 'Required' : profile.residency_proof_verified ? 'Verified' : 'Pending'}
+              badgeColor={!profile.residency_proof_path ? 'red' : profile.residency_proof_verified ? 'green' : 'yellow'}
+              defaultOpen={!profile.residency_proof_path}
             >
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px 0' }}>
               Upload proof of residency for your parking permit application. Documents must be current and match your street address.
@@ -2336,6 +2212,7 @@ export default function ProfileNew() {
                 }}
               >
                 <option value="">-- Select Document Type --</option>
+                <option value="utility_bill">Utility Bill (ComEd, Peoples Gas, etc.)</option>
                 <option value="lease">Lease Agreement (Renters)</option>
                 <option value="mortgage">Mortgage Statement (Homeowners)</option>
                 <option value="property_tax">Property Tax Bill (Homeowners)</option>
@@ -2346,6 +2223,11 @@ export default function ProfileNew() {
             {formData.residency_proof_type && (
               <div style={{ padding: '12px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', marginBottom: '24px' }}>
                 <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
+                  {formData.residency_proof_type === 'utility_bill' && (
+                    <>
+                      <strong>Utility Bill:</strong> Upload a recent utility bill (electric, gas, water, internet). Must show your name, service address, and be dated within the last 60 days. Valid for 60 days from statement date.
+                    </>
+                  )}
                   {formData.residency_proof_type === 'lease' && (
                     <>
                       <strong>Lease Agreement:</strong> Upload your signed lease or rental agreement. Must show your name, address, and lease dates. Valid for 12 months from lease start date.

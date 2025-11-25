@@ -69,6 +69,12 @@ const DOCUMENT_TYPE_PATTERNS = {
     /(?:assessed\s*value|tax\s*rate)/i,
     /(?:PIN|parcel|property\s*index)/i,
     /(?:installment|first\s*installment|second\s*installment)/i,
+    // IRS Form 1098 - Mortgage Interest Statement (shows property taxes paid)
+    /form\s*1098/i,
+    /mortgage\s*interest\s*statement/i,
+    /real\s*estate\s*taxes\s*paid/i,
+    /property\s*securing\s*(?:the\s*)?mortgage/i,
+    /address\s*(?:of|or\s*description\s*of)\s*property\s*securing/i,
   ],
 };
 
@@ -89,6 +95,9 @@ const DATE_PATTERNS = {
     /(?:statement\s*date|bill\s*date|invoice\s*date)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/gi,
     /(?:statement\s*date|bill\s*date)[:\s]*([A-Za-z]+\s+\d{1,2},?\s*\d{4})/gi,
     /(?:dated?|issued)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/gi,
+    // Form 1098 calendar year format
+    /(?:for\s*)?calendar\s*year[:\s]*(\d{4})/gi,
+    /(?:tax\s*year|for\s*year)[:\s]*(\d{4})/gi,
   ],
   // Due date patterns
   due_date: [
@@ -141,6 +150,14 @@ interface ValidationResult {
  */
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
+
+  // Try year-only format (for Form 1098 "calendar year 2024")
+  // Treat as end of that year for validity purposes
+  const yearOnlyMatch = dateStr.match(/^(\d{4})$/);
+  if (yearOnlyMatch) {
+    const year = parseInt(yearOnlyMatch[1]);
+    return new Date(year, 11, 31); // December 31 of that year
+  }
 
   // Try MM/DD/YYYY or MM-DD-YYYY
   let match = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
@@ -416,20 +433,21 @@ function calculateValidityPeriod(
     }
   }
 
-  // Property tax bills are valid for 6 months from statement date
+  // Property tax bills/Form 1098 are valid for 12 months from statement date
+  // This covers the full tax year plus buffer for renewals
   if (documentType === 'property_tax') {
     if (dates.statementDate) {
       const statementDate = new Date(dates.statementDate);
-      statementDate.setMonth(statementDate.getMonth() + 6);
+      statementDate.setMonth(statementDate.getMonth() + 12);
       return statementDate.toISOString().split('T')[0];
     }
   }
 
-  // Mortgage statements are valid for 60 days
+  // Mortgage statements are valid for 12 months (proves ongoing homeownership)
   if (documentType === 'mortgage') {
     if (dates.statementDate) {
       const statementDate = new Date(dates.statementDate);
-      statementDate.setDate(statementDate.getDate() + 60);
+      statementDate.setMonth(statementDate.getMonth() + 12);
       return statementDate.toISOString().split('T')[0];
     }
   }

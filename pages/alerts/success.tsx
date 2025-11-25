@@ -26,8 +26,7 @@ export default function AlertsSuccess() {
   const [reuseConsent, setReuseConsent] = useState(false);
   const [licenseExpiryDate, setLicenseExpiryDate] = useState('');
 
-  // Email forwarding address for bill forwarding
-  const [emailForwardingAddress, setEmailForwardingAddress] = useState<string | null>(null);
+  // Permit zone for proof of residency
   const [hasPermitZone, setHasPermitZone] = useState(false);
 
   // Track activation_complete event and capture UTM parameters
@@ -74,7 +73,7 @@ export default function AlertsSuccess() {
         // Fetch user profile to check if they have city sticker AND permit zone
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('city_sticker_expiry, has_permit_zone, license_image_path, email_forwarding_address')
+          .select('city_sticker_expiry, has_permit_zone, license_image_path')
           .eq('user_id', authUser.id)
           .single();
 
@@ -85,7 +84,6 @@ export default function AlertsSuccess() {
 
         setNeedsLicenseUpload(hasCitySticker && hasPermitZone && !hasLicense);
         setHasPermitZone(hasPermitZone);
-        setEmailForwardingAddress(profile?.email_forwarding_address || null);
       } catch (error) {
         console.error('Error checking license upload need:', error);
       }
@@ -615,8 +613,8 @@ export default function AlertsSuccess() {
           </div>
         )}
 
-        {/* Email Forwarding Setup - For permit zone users */}
-        {isProtection && hasPermitZone && emailForwardingAddress && (
+        {/* Proof of Residency Upload - For permit zone users */}
+        {isProtection && hasPermitZone && (
           <div style={{
             backgroundColor: '#eff6ff',
             border: '2px solid #3b82f6',
@@ -634,7 +632,7 @@ export default function AlertsSuccess() {
               alignItems: 'center',
               gap: '8px'
             }}>
-              📬 Next Step: Auto-Forward Your Utility Bills
+              🏠 Next Step: Upload Proof of Residency
             </h3>
             <p style={{
               fontSize: '15px',
@@ -642,7 +640,7 @@ export default function AlertsSuccess() {
               lineHeight: '1.6',
               margin: '0 0 16px 0'
             }}>
-              Set up automatic bill forwarding so we always have your most recent proof of residency for city sticker renewals.
+              Upload a document proving you live at your address for city sticker renewals in permit zones.
             </p>
 
             <div style={{
@@ -657,62 +655,24 @@ export default function AlertsSuccess() {
                 color: '#1e40af',
                 margin: '0 0 8px 0'
               }}>
-                Your Forwarding Address:
+                Accepted Documents:
               </p>
-              <div style={{
-                backgroundColor: 'white',
-                border: '1px solid #93c5fd',
-                borderRadius: '6px',
-                padding: '12px',
-                fontFamily: 'monospace',
-                fontSize: '13px',
-                color: '#1e40af',
-                wordBreak: 'break-all'
-              }}>
-                {emailForwardingAddress}
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: '#fef3c7',
-              border: '1px solid #fde68a',
-              borderRadius: '8px',
-              padding: '12px',
-              marginBottom: '16px'
-            }}>
-              <p style={{
-                fontSize: '13px',
-                color: '#92400e',
+              <ul style={{
                 margin: 0,
+                paddingLeft: '20px',
+                fontSize: '14px',
+                color: '#1e40af',
                 lineHeight: '1.6'
               }}>
-                <strong>Why this matters:</strong> The city requires proof of residency (utility bill) for city sticker renewals in permit zones. Set up forwarding once, and your bills are always up-to-date automatically.
-              </p>
+                <li>Utility Bill (ComEd, Peoples Gas, etc.) - valid 60 days</li>
+                <li>Lease Agreement - valid 12 months</li>
+                <li>Mortgage Statement - valid 12 months</li>
+                <li>Property Tax Bill - valid 12 months</li>
+              </ul>
             </div>
 
-            <p style={{
-              fontSize: '14px',
-              color: '#1e3a8a',
-              margin: '0 0 12px 0',
-              fontWeight: '600'
-            }}>
-              Quick Setup (2 minutes):
-            </p>
-            <ol style={{
-              margin: '0 0 16px 0',
-              paddingLeft: '24px',
-              fontSize: '14px',
-              color: '#1e40af',
-              lineHeight: '1.8'
-            }}>
-              <li>Open Gmail and search for your utility provider (ComEd, Peoples Gas, or Xfinity)</li>
-              <li>Click "Show search options" and create a filter</li>
-              <li>Forward to: <code style={{ backgroundColor: '#dbeafe', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{emailForwardingAddress}</code></li>
-              <li>Verify the forwarding address when Gmail sends confirmation</li>
-            </ol>
-
             <a
-              href="/settings#email-forwarding"
+              href="/settings#proof-of-residency"
               style={{
                 display: 'inline-block',
                 backgroundColor: '#3b82f6',
@@ -725,7 +685,7 @@ export default function AlertsSuccess() {
                 textAlign: 'center'
               }}
             >
-              View Full Setup Guide →
+              Upload Document →
             </a>
 
             <p style={{
@@ -735,7 +695,7 @@ export default function AlertsSuccess() {
               margin: '12px 0 0 0',
               fontStyle: 'italic'
             }}>
-              Don't worry - you can also set this up later in your account settings
+              You can also do this later in your account settings
             </p>
           </div>
         )}
