@@ -4,6 +4,18 @@ import Head from 'next/head'
 import { supabase } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
+// Brand Colors - Municipal Fintech
+const COLORS = {
+  deepHarbor: '#0F172A',
+  regulatory: '#2563EB',
+  regulatoryDark: '#1d4ed8',
+  concrete: '#F8FAFC',
+  signal: '#10B981',
+  graphite: '#1E293B',
+  slate: '#64748B',
+  border: '#E2E8F0',
+}
+
 interface UserProfile {
   id: string
   email: string
@@ -31,14 +43,14 @@ export default function Profile() {
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       if (!user) {
         router.push('/')
         return
       }
-      
+
       setUser(user)
-      
+
       // Fetch user profile from new users table
       const { data: userProfile, error } = await supabase
         .from('users')
@@ -52,7 +64,7 @@ export default function Profile() {
       } else if (userProfile) {
         setProfile(userProfile)
       }
-      
+
       setLoading(false)
     }
 
@@ -118,21 +130,69 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: COLORS.concrete,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: `3px solid ${COLORS.border}`,
+          borderTopColor: COLORS.regulatory,
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile not found</h2>
-          <p className="text-gray-600 mb-4">Unable to load your profile information.</p>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: COLORS.concrete,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}>
+        <div style={{
+          textAlign: 'center',
+          backgroundColor: 'white',
+          padding: '48px',
+          borderRadius: '16px',
+          border: `1px solid ${COLORS.border}`
+        }}>
+          <h2 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: COLORS.graphite,
+            marginBottom: '12px',
+            margin: '0 0 12px 0',
+            fontFamily: '"Space Grotesk", sans-serif'
+          }}>
+            Profile not found
+          </h2>
+          <p style={{ color: COLORS.slate, marginBottom: '24px', margin: '0 0 24px 0' }}>
+            Unable to load your profile information.
+          </p>
           <button
             onClick={() => router.push('/dashboard')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            style={{
+              backgroundColor: COLORS.regulatory,
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
           >
             Back to Dashboard
           </button>
@@ -142,59 +202,162 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: COLORS.concrete,
+      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
       <Head>
         <title>Profile Settings - Autopilot America</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
       </Head>
 
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Autopilot America</h1>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm"
-              >
-                Dashboard
-              </button>
-              <span className="text-sm text-gray-600">{user?.email}</span>
-              <button
-                onClick={signOut}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm"
-              >
-                Sign Out
-              </button>
-            </div>
+      {/* Navigation */}
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '72px',
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: `1px solid ${COLORS.border}`,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 32px'
+      }}>
+        <div
+          onClick={() => router.push('/')}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+        >
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
+            background: COLORS.regulatory,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
           </div>
+          <span style={{
+            fontSize: '18px',
+            fontWeight: '700',
+            color: COLORS.graphite,
+            fontFamily: '"Space Grotesk", sans-serif',
+            letterSpacing: '-0.5px'
+          }}>
+            Autopilot America
+          </span>
         </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Profile Settings</h2>
-          <p className="text-gray-600">Manage your account information and notification preferences.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button
+            onClick={() => router.push('/dashboard')}
+            style={{
+              color: COLORS.slate,
+              backgroundColor: 'transparent',
+              border: 'none',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            Dashboard
+          </button>
+          <span style={{ fontSize: '14px', color: COLORS.slate }}>{user?.email}</span>
+          <button
+            onClick={signOut}
+            style={{
+              backgroundColor: 'transparent',
+              color: COLORS.slate,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </nav>
+
+      <main style={{
+        maxWidth: '900px',
+        margin: '0 auto',
+        padding: '104px 32px 60px 32px'
+      }}>
+        <div style={{ marginBottom: '32px' }}>
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: '700',
+            color: COLORS.graphite,
+            marginBottom: '8px',
+            margin: '0 0 8px 0',
+            fontFamily: '"Space Grotesk", sans-serif',
+            letterSpacing: '-1px'
+          }}>
+            Profile Settings
+          </h1>
+          <p style={{ color: COLORS.slate, margin: 0 }}>
+            Manage your account information and notification preferences.
+          </p>
         </div>
 
         {message && (
-          <div className={`mb-6 p-4 rounded-lg ${
-            message.type === 'success' 
-              ? 'bg-green-50 text-green-800 border border-green-200' 
-              : 'bg-red-50 text-red-800 border border-red-200'
-          }`}>
+          <div style={{
+            marginBottom: '24px',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            backgroundColor: message.type === 'success' ? `${COLORS.signal}10` : '#fef2f2',
+            color: message.type === 'success' ? COLORS.signal : '#dc2626',
+            border: `1px solid ${message.type === 'success' ? `${COLORS.signal}30` : '#fecaca'}`,
+            fontSize: '14px'
+          }}>
             {message.text}
           </div>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div style={{
+          display: 'grid',
+          gap: '24px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))'
+        }}>
           {/* Personal Information */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
-            
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            border: `1px solid ${COLORS.border}`
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: COLORS.graphite,
+              marginBottom: '24px',
+              margin: '0 0 24px 0',
+              fontFamily: '"Space Grotesk", sans-serif'
+            }}>
+              Personal Information
+            </h3>
+
+            <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="email" style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: COLORS.graphite,
+                  marginBottom: '6px'
+                }}>
                   Email Address
                 </label>
                 <input
@@ -202,14 +365,31 @@ export default function Profile() {
                   id="email"
                   value={profile.email}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: '8px',
+                    backgroundColor: COLORS.concrete,
+                    color: COLORS.slate,
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
                 />
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px', margin: '4px 0 0 0' }}>
+                  Email cannot be changed
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="first_name" style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: COLORS.graphite,
+                    marginBottom: '6px'
+                  }}>
                     First Name
                   </label>
                   <input
@@ -217,12 +397,25 @@ export default function Profile() {
                     id="first_name"
                     name="first_name"
                     defaultValue={profile.first_name || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="last_name" style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: COLORS.graphite,
+                    marginBottom: '6px'
+                  }}>
                     Last Name
                   </label>
                   <input
@@ -230,13 +423,26 @@ export default function Profile() {
                     id="last_name"
                     name="last_name"
                     defaultValue={profile.last_name || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="phone" style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: COLORS.graphite,
+                  marginBottom: '6px'
+                }}>
                   Phone Number
                 </label>
                 <input
@@ -244,15 +450,32 @@ export default function Profile() {
                   id="phone"
                   name="phone"
                   defaultValue={profile.phone || ''}
-                  placeholder="+1 (555) 123-4567"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="(555) 123-4567"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2 px-4 rounded-lg font-medium"
+                style={{
+                  width: '100%',
+                  backgroundColor: saving ? COLORS.slate : COLORS.regulatory,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: saving ? 'not-allowed' : 'pointer'
+                }}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -260,14 +483,45 @@ export default function Profile() {
           </div>
 
           {/* Notification Preferences */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
-            
-            <div className="space-y-4">
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            border: `1px solid ${COLORS.border}`
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: COLORS.graphite,
+              marginBottom: '24px',
+              margin: '0 0 24px 0',
+              fontFamily: '"Space Grotesk", sans-serif'
+            }}>
+              Notification Preferences
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Notification Methods</h4>
-                <div className="space-y-3">
-                  <label className="flex items-center">
+                <h4 style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: COLORS.graphite,
+                  marginBottom: '12px',
+                  margin: '0 0 12px 0'
+                }}>
+                  Notification Methods
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    padding: '12px 16px',
+                    backgroundColor: COLORS.concrete,
+                    borderRadius: '8px',
+                    border: `1px solid ${COLORS.border}`
+                  }}>
                     <input
                       type="checkbox"
                       checked={profile.notification_preferences.email}
@@ -275,12 +529,26 @@ export default function Profile() {
                         ...profile.notification_preferences,
                         email: e.target.checked
                       })}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
-                    <span className="ml-3 text-sm text-gray-900">Email notifications</span>
+                    <div>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>Email notifications</span>
+                      <p style={{ fontSize: '12px', color: COLORS.slate, margin: '2px 0 0 0' }}>
+                        Receive alerts via email
+                      </p>
+                    </div>
                   </label>
 
-                  <label className="flex items-center">
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    padding: '12px 16px',
+                    backgroundColor: COLORS.concrete,
+                    borderRadius: '8px',
+                    border: `1px solid ${COLORS.border}`
+                  }}>
                     <input
                       type="checkbox"
                       checked={profile.notification_preferences.sms}
@@ -288,12 +556,26 @@ export default function Profile() {
                         ...profile.notification_preferences,
                         sms: e.target.checked
                       })}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
-                    <span className="ml-3 text-sm text-gray-900">SMS notifications</span>
+                    <div>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>SMS notifications</span>
+                      <p style={{ fontSize: '12px', color: COLORS.slate, margin: '2px 0 0 0' }}>
+                        Receive text message alerts
+                      </p>
+                    </div>
                   </label>
 
-                  <label className="flex items-center">
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    padding: '12px 16px',
+                    backgroundColor: COLORS.concrete,
+                    borderRadius: '8px',
+                    border: `1px solid ${COLORS.border}`
+                  }}>
                     <input
                       type="checkbox"
                       checked={profile.notification_preferences.voice}
@@ -301,20 +583,52 @@ export default function Profile() {
                         ...profile.notification_preferences,
                         voice: e.target.checked
                       })}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
-                    <span className="ml-3 text-sm text-gray-900">Voice call notifications</span>
+                    <div>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>Voice call notifications</span>
+                      <p style={{ fontSize: '12px', color: COLORS.slate, margin: '2px 0 0 0' }}>
+                        Receive phone call alerts
+                      </p>
+                    </div>
                   </label>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Reminder Schedule</h4>
-                <p className="text-xs text-gray-500 mb-3">Choose when you want to be reminded before your deadlines</p>
-                
-                <div className="grid grid-cols-2 gap-2">
+                <h4 style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: COLORS.graphite,
+                  marginBottom: '8px',
+                  margin: '0 0 8px 0'
+                }}>
+                  Reminder Schedule
+                </h4>
+                <p style={{ fontSize: '13px', color: COLORS.slate, marginBottom: '12px', margin: '0 0 12px 0' }}>
+                  Choose when you want to be reminded before your deadlines
+                </p>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '8px'
+                }}>
                   {[60, 30, 14, 7, 3, 1, 0].map((days) => (
-                    <label key={days} className="flex items-center">
+                    <label key={days} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      padding: '10px 12px',
+                      backgroundColor: profile.notification_preferences.reminder_days.includes(days)
+                        ? `${COLORS.regulatory}08`
+                        : COLORS.concrete,
+                      borderRadius: '6px',
+                      border: `1px solid ${profile.notification_preferences.reminder_days.includes(days)
+                        ? COLORS.regulatory
+                        : COLORS.border}`
+                    }}>
                       <input
                         type="checkbox"
                         checked={profile.notification_preferences.reminder_days.includes(days)}
@@ -323,15 +637,15 @@ export default function Profile() {
                           const newDays = e.target.checked
                             ? [...currentDays, days].sort((a, b) => b - a)
                             : currentDays.filter(d => d !== days)
-                          
+
                           updateNotificationPreferences({
                             ...profile.notification_preferences,
                             reminder_days: newDays
                           })
                         }}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                       />
-                      <span className="ml-2 text-sm text-gray-900">
+                      <span style={{ fontSize: '13px', color: COLORS.graphite }}>
                         {days === 0 ? 'Day of deadline' : `${days} days before`}
                       </span>
                     </label>
@@ -339,12 +653,17 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-xs text-blue-800">
+              <div style={{
+                backgroundColor: `${COLORS.regulatory}08`,
+                border: `1px solid ${COLORS.regulatory}20`,
+                padding: '16px',
+                borderRadius: '8px'
+              }}>
+                <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0, lineHeight: '1.6' }}>
                   <strong>Note:</strong> You need at least one notification method enabled to receive reminders.
                   {!profile.phone && profile.notification_preferences.sms && (
-                    <span className="block mt-1 text-amber-700">
-                      ⚠️ Add your phone number above to receive SMS notifications.
+                    <span style={{ display: 'block', marginTop: '8px', color: '#f59e0b' }}>
+                      Add your phone number to receive SMS notifications.
                     </span>
                   )}
                 </p>
@@ -354,28 +673,69 @@ export default function Profile() {
         </div>
 
         {/* Account Status */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-700">Email Verification</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                profile.email_verified 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
+        <div style={{
+          marginTop: '24px',
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '32px',
+          border: `1px solid ${COLORS.border}`
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: COLORS.graphite,
+            marginBottom: '20px',
+            margin: '0 0 20px 0',
+            fontFamily: '"Space Grotesk", sans-serif'
+          }}>
+            Account Status
+          </h3>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              backgroundColor: COLORS.concrete,
+              borderRadius: '10px',
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <span style={{ fontSize: '14px', color: COLORS.graphite }}>Email Verification</span>
+              <span style={{
+                padding: '4px 12px',
+                borderRadius: '100px',
+                fontSize: '12px',
+                fontWeight: '600',
+                backgroundColor: profile.email_verified ? `${COLORS.signal}15` : '#fef3c7',
+                color: profile.email_verified ? COLORS.signal : '#92400e'
+              }}>
                 {profile.email_verified ? 'Verified' : 'Pending'}
               </span>
             </div>
-            
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-700">Phone Verification</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                profile.phone_verified 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              backgroundColor: COLORS.concrete,
+              borderRadius: '10px',
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <span style={{ fontSize: '14px', color: COLORS.graphite }}>Phone Verification</span>
+              <span style={{
+                padding: '4px 12px',
+                borderRadius: '100px',
+                fontSize: '12px',
+                fontWeight: '600',
+                backgroundColor: profile.phone_verified ? `${COLORS.signal}15` : '#fef3c7',
+                color: profile.phone_verified ? COLORS.signal : '#92400e'
+              }}>
                 {profile.phone_verified ? 'Verified' : 'Pending'}
               </span>
             </div>
