@@ -50,13 +50,17 @@ const DOCUMENT_TYPE_PATTERNS = {
   ],
   lease: [
     /(?:lease\s*agreement|rental\s*agreement|lease\s*contract)/i,
+    /(?:apartment\s*lease|chicago\s*apartment\s*lease)/i,
     /(?:landlord|tenant|lessee|lessor)/i,
     /(?:term\s*of\s*lease|lease\s*term)/i,
+    /(?:date\s*of\s*lease|lease\s*date)/i,
     /(?:monthly\s*rent|rent\s*(?:amount|payment))/i,
     /(?:security\s*deposit)/i,
-    /(?:premises|leased\s*property|apartment\s*address)/i,
+    /(?:premises|leased\s*property|apartment\s*address|leased\s*premises)/i,
+    /(?:address\s*of\s*leased\s*apartment)/i,
     /(?:lessee|tenant)[:\s]+[A-Za-z\s]+/i,
     /(?:lessor|landlord|owner)[:\s]+[A-Za-z\s]+/i,
+    /(?:beginning|ending|start|end)[:\s]*\d/i,
   ],
   mortgage: [
     /(?:mortgage\s*statement|loan\s*statement)/i,
