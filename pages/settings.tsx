@@ -2356,18 +2356,7 @@ export default function ProfileNew() {
 
             {/* Property Tax Helper Panel - Only show for property_tax type */}
             {formData.residency_proof_type === 'property_tax' && (
-              <PropertyTaxHelper
-                userAddress={formData.street_address}
-                userId={user?.id}
-                onBillFetched={(url) => {
-                  setFormData({ ...formData, residency_proof_path: url })
-                  setProfile({ ...profile, residency_proof_path: url })
-                  setMessage({ type: 'success', text: 'Property tax bill fetched successfully!' })
-                }}
-                onError={(error) => {
-                  setMessage({ type: 'error', text: error })
-                }}
-              />
+              <PropertyTaxHelper userAddress={formData.street_address} />
             )}
 
             {/* File Upload */}
