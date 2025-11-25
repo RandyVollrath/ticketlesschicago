@@ -4,16 +4,18 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
 
-// Brand Colors
+// Brand Colors - Gemini 3 Pro Design
 const COLORS = {
-  primary: '#2E86AB',      // Steel Blue - trust + friendly
-  primaryDark: '#1d6a8a',  // Darker blue for hover
-  accent: '#F0AB00',       // Goldenrod - Chicago pride
-  dark: '#1a1a1a',         // Near black for text
-  gray: '#666666',         // Body text
-  lightGray: '#F7F7F7',    // Section backgrounds
-  border: '#E5E7EB',       // Borders
-  success: '#16a34a',      // Green for checkmarks
+  navy: '#0f172a',         // Deep Navy - backgrounds, trust
+  navyLight: '#1e293b',    // Lighter navy for cards
+  electric: '#3b82f6',     // Electric Blue - primary buttons
+  electricDark: '#2563eb', // Darker blue for hover
+  ticketOrange: '#f97316', // Ticket Orange - problem recognition
+  white: '#ffffff',
+  lightGray: '#f1f5f9',    // Light backgrounds
+  gray: '#64748b',         // Body text
+  border: '#e2e8f0',       // Borders
+  success: '#22c55e',      // Green for checkmarks
 };
 
 export default function Home() {
@@ -97,15 +99,15 @@ export default function Home() {
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryDark} 100%)`,
+            background: `linear-gradient(135deg, ${COLORS.electric} 0%, ${COLORS.electricDark} 100%)`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '20px'
           }}>
-            🛡️
+            🚗
           </div>
-          <span style={{ fontSize: '20px', fontWeight: '700', color: COLORS.dark }}>
+          <span style={{ fontSize: '20px', fontWeight: '700', color: COLORS.navy }}>
             Autopilot America
           </span>
         </div>
@@ -129,7 +131,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/settings')}
               style={{
-                backgroundColor: COLORS.primary,
+                backgroundColor: COLORS.electric,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -145,7 +147,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/login')}
               style={{
-                backgroundColor: COLORS.primary,
+                backgroundColor: COLORS.electric,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -166,7 +168,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/settings')}
               style={{
-                backgroundColor: COLORS.primary,
+                backgroundColor: COLORS.electric,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -182,7 +184,7 @@ export default function Home() {
             <button
               onClick={() => router.push('/login')}
               style={{
-                backgroundColor: COLORS.primary,
+                backgroundColor: COLORS.electric,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -201,389 +203,234 @@ export default function Home() {
       {/* ===== SECTION 1: HERO ===== */}
       <section style={{
         paddingTop: '140px',
-        paddingBottom: '80px',
-        background: 'linear-gradient(180deg, #fff 0%, #F7F9FC 100%)',
+        paddingBottom: '100px',
+        background: COLORS.navy,
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 24px' }}>
-          {/* Badge */}
-          <div style={{
-            display: 'inline-block',
-            backgroundColor: '#FEF9E7',
-            border: `1px solid ${COLORS.accent}`,
-            borderRadius: '100px',
-            padding: '8px 16px',
-            marginBottom: '24px',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#92400e'
-          }}>
-            160+ Chicago drivers protected
-          </div>
-
           {/* Headline */}
           <h1 className="hero-title" style={{
             fontSize: '56px',
             fontWeight: '800',
-            color: COLORS.dark,
+            color: COLORS.white,
             lineHeight: '1.1',
             letterSpacing: '-2px',
-            margin: '0 0 20px 0'
+            margin: '0 0 24px 0'
           }}>
-            Never Fear the Orange Envelope Again.
+            Say Goodbye to{' '}
+            <span style={{ color: COLORS.ticketOrange }}>Orange Envelopes</span>.
           </h1>
 
           {/* Subheadline */}
           <p className="hero-subtitle" style={{
-            fontSize: '22px',
-            color: COLORS.gray,
-            lineHeight: '1.5',
+            fontSize: '20px',
+            color: '#94a3b8',
+            lineHeight: '1.6',
             margin: '0 0 40px 0',
             fontWeight: '400'
           }}>
-            Free alerts for street cleaning, snow bans, and renewal deadlines.
+            We text you before street cleaning happens so you can move your car.
             <br />
-            <span style={{ color: COLORS.dark, fontWeight: '600' }}>Stop paying $1,000+/year in preventable Chicago tickets.</span>
+            We even handle your city stickers. <span style={{ color: COLORS.white, fontWeight: '600' }}>Never get a Chicago parking ticket again.</span>
           </p>
 
-          {/* CTA Buttons */}
+          {/* CTA Button */}
           <div className="hero-buttons" style={{
             display: 'flex',
             gap: '16px',
             justifyContent: 'center',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            marginBottom: '16px'
           }}>
             <button
               onClick={() => router.push('/alerts/signup')}
               style={{
-                backgroundColor: COLORS.primary,
+                backgroundColor: COLORS.electric,
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
-                padding: '18px 40px',
+                padding: '18px 48px',
                 fontSize: '18px',
                 fontWeight: '700',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(46, 134, 171, 0.35)',
+                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
                 transition: 'transform 0.2s, box-shadow 0.2s'
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(46, 134, 171, 0.45)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.5)';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(46, 134, 171, 0.35)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(59, 130, 246, 0.4)';
               }}
             >
-              Get Free Alerts
-            </button>
-            <button
-              onClick={() => router.push('/protection')}
-              style={{
-                backgroundColor: 'white',
-                color: COLORS.dark,
-                border: `2px solid ${COLORS.border}`,
-                borderRadius: '12px',
-                padding: '16px 32px',
-                fontSize: '18px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = COLORS.primary;
-                e.currentTarget.style.color = COLORS.primary;
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = COLORS.border;
-                e.currentTarget.style.color = COLORS.dark;
-              }}
-            >
-              Learn About Protection
+              Start for Free
             </button>
           </div>
-
-          {/* Trust indicator */}
-          <p style={{
-            marginTop: '24px',
-            fontSize: '14px',
-            color: '#888'
-          }}>
-            Free forever for basic alerts. No credit card required.
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+            No credit card required for free alerts.
           </p>
         </div>
       </section>
 
-      {/* ===== SECTION 2: PROBLEM / STATS ===== */}
-      <section style={{
-        padding: '80px 24px',
-        backgroundColor: '#E8F4F8',
-        textAlign: 'center'
+      {/* ===== SECTION 2: HOW IT WORKS ===== */}
+      <section id="how-it-works" style={{
+        padding: '100px 24px',
+        backgroundColor: COLORS.white
       }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <h2 className="section-title" style={{
             fontSize: '36px',
-            fontWeight: '700',
-            color: COLORS.dark,
-            marginBottom: '16px',
-            margin: '0 0 16px 0'
+            fontWeight: '800',
+            color: COLORS.navy,
+            textAlign: 'center',
+            margin: '0 0 64px 0',
+            letterSpacing: '-1px'
           }}>
-            Chicago profits from your confusion.
+            How It Works
+          </h2>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '48px'
+          }} className="stats-grid">
+            {/* Step 1 */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '20px',
+                backgroundColor: COLORS.lightGray,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px',
+                fontSize: '36px'
+              }}>
+                🚗
+              </div>
+              <h3 style={{
+                fontSize: '24px',
+                fontWeight: '700',
+                color: COLORS.navy,
+                margin: '0 0 12px 0'
+              }}>
+                1. Add your car
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: COLORS.gray,
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Enter your license plate number. That's it. We find your street rules automatically.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '20px',
+                backgroundColor: COLORS.lightGray,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px',
+                fontSize: '36px'
+              }}>
+                💬
+              </div>
+              <h3 style={{
+                fontSize: '24px',
+                fontWeight: '700',
+                color: COLORS.navy,
+                margin: '0 0 12px 0'
+              }}>
+                2. Get a text
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: COLORS.gray,
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                We text or call you the night before street cleaning or snow bans start.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '20px',
+                backgroundColor: COLORS.lightGray,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px',
+                fontSize: '36px'
+              }}>
+                💰
+              </div>
+              <h3 style={{
+                fontSize: '24px',
+                fontWeight: '700',
+                color: COLORS.navy,
+                margin: '0 0 12px 0'
+              }}>
+                3. Save money
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: COLORS.gray,
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                You move your car. You keep your money. No more $60 or $100 fines.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== SECTION 3: PRICING ===== */}
+      <section id="pricing" style={{
+        padding: '100px 24px',
+        backgroundColor: COLORS.lightGray
+      }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h2 className="section-title" style={{
+            fontSize: '36px',
+            fontWeight: '800',
+            color: COLORS.navy,
+            textAlign: 'center',
+            margin: '0 0 16px 0',
+            letterSpacing: '-1px'
+          }}>
+            Simple Pricing
           </h2>
           <p style={{
             fontSize: '18px',
             color: COLORS.gray,
-            marginBottom: '48px',
-            margin: '0 0 48px 0'
+            textAlign: 'center',
+            margin: '0 0 64px 0'
           }}>
-            We help you keep more money in your pocket.
+            One ticket costs more than a full year of protection.
           </p>
-
-          <div className="stats-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '40px',
-            maxWidth: '600px',
-            margin: '0 auto'
-          }}>
-            <div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.primary, marginBottom: '8px' }}>
-                $269M
-              </div>
-              <div style={{ fontSize: '16px', color: COLORS.gray }}>
-                in tickets issued by Chicago last year
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.success, marginBottom: '8px' }}>
-                160+
-              </div>
-              <div style={{ fontSize: '16px', color: COLORS.gray }}>
-                Chicago drivers already protected
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== SECTION 3: VALUE PROPS ===== */}
-      <section id="how-it-works" style={{
-        padding: '100px 24px',
-        backgroundColor: '#fff'
-      }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <h2 className="section-title" style={{
-              fontSize: '40px',
-              fontWeight: '800',
-              color: COLORS.dark,
-              margin: '0 0 16px 0',
-              letterSpacing: '-1px'
-            }}>
-              How We Protect You
-            </h2>
-            <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
-              Set it up once. Never think about tickets again.
-            </p>
-          </div>
-
-          <div className="value-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '32px'
-          }}>
-            {/* Alert Card */}
-            <div style={{
-              backgroundColor: '#fff',
-              borderRadius: '20px',
-              padding: '40px 32px',
-              textAlign: 'center',
-              border: `1px solid ${COLORS.border}`,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-            }}>
-              <div style={{
-                width: '72px',
-                height: '72px',
-                backgroundColor: '#FEF3C7',
-                borderRadius: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px auto',
-                fontSize: '36px'
-              }}>
-                🚨
-              </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
-                Parking Alerts
-              </h3>
-              <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
-                Get notified <strong>before</strong> street cleaning, snow bans, and towing zones hit your block.
-              </p>
-            </div>
-
-            {/* Reminders Card */}
-            <div style={{
-              backgroundColor: '#fff',
-              borderRadius: '20px',
-              padding: '40px 32px',
-              textAlign: 'center',
-              border: `1px solid ${COLORS.border}`,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-            }}>
-              <div style={{
-                width: '72px',
-                height: '72px',
-                backgroundColor: '#DBEAFE',
-                borderRadius: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px auto',
-                fontSize: '36px'
-              }}>
-                🗓️
-              </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
-                Renewal Reminders
-              </h3>
-              <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
-                City stickers, license plates, emissions. We remind you <strong>before</strong> deadlines hit.
-              </p>
-            </div>
-
-            {/* Auto-Renewal Card */}
-            <div style={{
-              backgroundColor: '#fff',
-              borderRadius: '20px',
-              padding: '40px 32px',
-              textAlign: 'center',
-              border: `2px solid ${COLORS.accent}`,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              position: 'relative'
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: '-12px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: COLORS.accent,
-                color: 'white',
-                padding: '4px 12px',
-                borderRadius: '100px',
-                fontSize: '11px',
-                fontWeight: '700'
-              }}>
-                PREMIUM
-              </div>
-              <div style={{
-                width: '72px',
-                height: '72px',
-                backgroundColor: '#DCFCE7',
-                borderRadius: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px auto',
-                fontSize: '36px'
-              }}>
-                🔄
-              </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '700', color: COLORS.dark, margin: '0 0 12px 0' }}>
-                Auto-Renewal + Protection
-              </h3>
-              <p style={{ fontSize: '16px', color: COLORS.gray, lineHeight: '1.6', margin: 0 }}>
-                City stickers and plates <strong>purchased for you automatically</strong>. Plus up to <strong>$200/yr reimbursement</strong> if you still get a ticket.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== SECTION 4: SOCIAL PROOF ===== */}
-      <section style={{
-        padding: '80px 24px',
-        backgroundColor: COLORS.lightGray
-      }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h2 className="section-title" style={{
-              fontSize: '36px',
-              fontWeight: '800',
-              color: COLORS.dark,
-              margin: '0 0 16px 0',
-              letterSpacing: '-1px'
-            }}>
-              Chicago Drivers Love Us
-            </h2>
-            <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
-              Join 160+ drivers who stopped worrying about parking tickets
-            </p>
-          </div>
-
-          <div className="testimonial-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '24px'
-          }}>
-            {[
-              { text: "Love the simplicity. Solving a very specific, clear problem.", author: "Mitchell" },
-              { text: "You're doing the lord's work.", author: "Kathleen" },
-              { text: "It's solid and it's a very needed service. Super dope.", author: "Nasir" }
-            ].map((t, i) => (
-              <div key={i} style={{
-                backgroundColor: 'white',
-                borderRadius: '16px',
-                padding: '32px',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                border: `1px solid ${COLORS.border}`
-              }}>
-                <p style={{
-                  fontSize: '18px',
-                  color: '#333',
-                  lineHeight: '1.6',
-                  margin: '0 0 20px 0',
-                  fontStyle: 'italic'
-                }}>
-                  "{t.text}"
-                </p>
-                <span style={{ fontWeight: '600', color: COLORS.primary }}>— {t.author}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== SECTION 5: PRICING ===== */}
-      <section id="pricing" style={{
-        padding: '100px 24px',
-        backgroundColor: '#fff'
-      }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <h2 className="section-title" style={{
-              fontSize: '40px',
-              fontWeight: '800',
-              color: COLORS.dark,
-              margin: '0 0 16px 0',
-              letterSpacing: '-1px'
-            }}>
-              Never Fear the Orange Envelope Again
-            </h2>
-            <p style={{ fontSize: '18px', color: COLORS.gray, margin: 0 }}>
-              Get essential alerts for free, or let us handle everything for complete peace of mind.
-            </p>
-          </div>
 
           <div className="pricing-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
             gap: '32px'
           }}>
-            {/* Free Tier */}
+            {/* Free Tier - The Watchdog */}
             <div style={{
-              backgroundColor: '#fff',
+              backgroundColor: COLORS.white,
               borderRadius: '24px',
               padding: '48px 40px',
               border: `1px solid ${COLORS.border}`
@@ -596,22 +443,20 @@ export default function Home() {
                 letterSpacing: '1px',
                 marginBottom: '8px'
               }}>
-                Free
+                The Watchdog
               </div>
-              <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark, marginBottom: '8px' }}>
+              <div style={{ fontSize: '48px', fontWeight: '800', color: COLORS.navy, marginBottom: '8px' }}>
                 $0
               </div>
               <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '32px' }}>
-                Avoid surprises with essential alerts
+                Free forever
               </div>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
                 {[
-                  'Street cleaning alerts',
-                  'Snow ban alerts',
-                  'Tow zone warnings',
-                  'City sticker reminders',
-                  'License plate reminders',
+                  'Text alerts for street cleaning',
+                  'Text alerts for snow bans',
+                  'Reminders when stickers expire',
                   'Email, SMS, or phone call'
                 ].map((item, i) => (
                   <li key={i} style={{
@@ -634,8 +479,8 @@ export default function Home() {
                 style={{
                   width: '100%',
                   backgroundColor: 'white',
-                  color: COLORS.primary,
-                  border: `2px solid ${COLORS.primary}`,
+                  color: COLORS.electric,
+                  border: `2px solid ${COLORS.electric}`,
                   borderRadius: '12px',
                   padding: '16px',
                   fontSize: '16px',
@@ -644,24 +489,24 @@ export default function Home() {
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.primary;
+                  e.currentTarget.style.backgroundColor = COLORS.electric;
                   e.currentTarget.style.color = 'white';
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.color = COLORS.primary;
+                  e.currentTarget.style.color = COLORS.electric;
                 }}
               >
-                Get Free Alerts
+                Sign Up Free
               </button>
             </div>
 
-            {/* Protection Tier */}
+            {/* Paid Tier - Total Autopilot */}
             <div style={{
-              backgroundColor: '#fff',
+              backgroundColor: COLORS.navy,
               borderRadius: '24px',
               padding: '48px 40px',
-              border: `3px solid ${COLORS.accent}`,
+              border: `2px solid ${COLORS.electric}`,
               position: 'relative'
             }}>
               <div style={{
@@ -669,7 +514,7 @@ export default function Home() {
                 top: '-14px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                backgroundColor: COLORS.accent,
+                backgroundColor: COLORS.electric,
                 color: 'white',
                 padding: '6px 20px',
                 borderRadius: '100px',
@@ -677,81 +522,44 @@ export default function Home() {
                 fontWeight: '700',
                 letterSpacing: '0.5px'
               }}>
-                MOST POPULAR
+                RECOMMENDED
               </div>
               <div style={{
                 fontSize: '14px',
                 fontWeight: '600',
-                color: COLORS.accent,
+                color: COLORS.electric,
                 textTransform: 'uppercase',
                 letterSpacing: '1px',
                 marginBottom: '8px'
               }}>
-                Protection
+                Total Autopilot
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800', color: COLORS.dark }}>$12</span>
-                <span style={{ fontSize: '18px', color: COLORS.gray }}>/month</span>
+                <span style={{ fontSize: '48px', fontWeight: '800', color: COLORS.white }}>$12</span>
+                <span style={{ fontSize: '18px', color: '#94a3b8' }}>/month</span>
               </div>
-              <div style={{ fontSize: '16px', color: COLORS.gray, marginBottom: '24px' }}>
-                Billed annually at $120
-              </div>
-
-              {/* Highlighted Total Protection Feature */}
-              <div style={{
-                backgroundColor: `${COLORS.accent}15`,
-                border: `1px solid ${COLORS.accent}`,
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '24px'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '8px'
-                }}>
-                  <span style={{ fontSize: '20px' }}>🛡️</span>
-                  <span style={{
-                    fontWeight: '700',
-                    fontSize: '14px',
-                    color: COLORS.dark,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Total Protection
-                  </span>
-                </div>
-                <p style={{
-                  margin: 0,
-                  fontSize: '14px',
-                  color: '#444',
-                  lineHeight: '1.5'
-                }}>
-                  We automatically renew your city and plate stickers before they expire. Plus, if you get a ticket our alerts should have prevented, <strong>we reimburse you up to $200/year.</strong>
-                </p>
-              </div>
-
-              <div style={{ fontSize: '14px', color: COLORS.gray, marginBottom: '12px', fontWeight: '600' }}>
-                Set it and forget it:
+              <div style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '32px' }}>
+                or $120/year
               </div>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
                 {[
-                  'Everything in Free tier',
-                  'Priority support'
+                  { text: 'Everything in Free', highlight: false },
+                  { text: 'We buy your stickers for you', highlight: true },
+                  { text: 'Ticket guarantee — we pay you back', highlight: true },
                 ].map((item, i) => (
                   <li key={i} style={{
                     padding: '12px 0',
-                    borderBottom: `1px solid ${COLORS.border}`,
+                    borderBottom: `1px solid ${COLORS.navyLight}`,
                     fontSize: '15px',
-                    color: '#333',
+                    color: item.highlight ? COLORS.white : '#94a3b8',
+                    fontWeight: item.highlight ? '600' : '400',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px'
                   }}>
                     <span style={{ color: COLORS.success }}>✓</span>
-                    {item}
+                    {item.text}
                   </li>
                 ))}
               </ul>
@@ -760,7 +568,7 @@ export default function Home() {
                 onClick={() => router.push('/protection')}
                 style={{
                   width: '100%',
-                  backgroundColor: COLORS.primary,
+                  backgroundColor: COLORS.electric,
                   color: 'white',
                   border: 'none',
                   borderRadius: '12px',
@@ -768,27 +576,87 @@ export default function Home() {
                   fontSize: '16px',
                   fontWeight: '700',
                   cursor: 'pointer',
-                  boxShadow: `0 4px 14px rgba(46, 134, 171, 0.35)`,
+                  boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.primaryDark;
+                  e.currentTarget.style.backgroundColor = COLORS.electricDark;
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.primary;
+                  e.currentTarget.style.backgroundColor = COLORS.electric;
                 }}
               >
-                Start My Protection
+                Go Autopilot
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===== SECTION 6: FINAL CTA ===== */}
+      {/* ===== SECTION 4: SOCIAL PROOF ===== */}
       <section style={{
         padding: '100px 24px',
-        background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryDark} 100%)`,
+        backgroundColor: COLORS.white
+      }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h2 className="section-title" style={{
+            fontSize: '36px',
+            fontWeight: '800',
+            color: COLORS.navy,
+            textAlign: 'center',
+            margin: '0 0 64px 0',
+            letterSpacing: '-1px'
+          }}>
+            Chicago Drivers Love Us
+          </h2>
+
+          <div className="testimonial-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '32px'
+          }}>
+            <div style={{
+              backgroundColor: COLORS.lightGray,
+              borderRadius: '20px',
+              padding: '32px',
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <p style={{
+                fontSize: '18px',
+                color: '#333',
+                lineHeight: '1.6',
+                margin: '0 0 20px 0',
+                fontStyle: 'italic'
+              }}>
+                "Simple and easy. Saved me $60 in the first week."
+              </p>
+              <span style={{ fontWeight: '600', color: COLORS.navy }}>— David R., West Loop</span>
+            </div>
+            <div style={{
+              backgroundColor: COLORS.lightGray,
+              borderRadius: '20px',
+              padding: '32px',
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <p style={{
+                fontSize: '18px',
+                color: '#333',
+                lineHeight: '1.6',
+                margin: '0 0 20px 0',
+                fontStyle: 'italic'
+              }}>
+                "The sticker renewal is magic. I didn't have to go to the DMV or a currency exchange."
+              </p>
+              <span style={{ fontWeight: '600', color: COLORS.navy }}>— Mike T., Lincoln Park</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== SECTION 5: FINAL CTA ===== */}
+      <section style={{
+        padding: '100px 24px',
+        background: COLORS.navy,
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
@@ -799,53 +667,44 @@ export default function Home() {
             margin: '0 0 20px 0',
             letterSpacing: '-1px'
           }}>
-            Stop throwing money at parking tickets.
+            Stop feeding the city your hard-earned money.
           </h2>
           <p style={{
             fontSize: '20px',
-            color: 'rgba(255,255,255,0.8)',
+            color: '#94a3b8',
             margin: '0 0 40px 0',
             lineHeight: '1.6'
           }}>
-            Join 160+ Chicago drivers who outsmarted the system.
+            Join thousands of Chicago drivers who are already on Autopilot.
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => router.push('/alerts/signup')}
-              style={{
-                backgroundColor: 'white',
-                color: COLORS.primary,
-                border: 'none',
-                borderRadius: '12px',
-                padding: '18px 40px',
-                fontSize: '18px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
-              }}
-            >
-              Get Free Alerts
-            </button>
-            <button
-              onClick={() => router.push('/protection')}
-              style={{
-                backgroundColor: 'transparent',
-                color: 'white',
-                border: '2px solid rgba(255,255,255,0.4)',
-                borderRadius: '12px',
-                padding: '16px 32px',
-                fontSize: '18px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              Learn About Protection
-            </button>
-          </div>
+          <button
+            onClick={() => router.push('/alerts/signup')}
+            style={{
+              backgroundColor: COLORS.electric,
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '18px 48px',
+              fontSize: '18px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.5)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 14px rgba(59, 130, 246, 0.4)';
+            }}
+          >
+            Protect My Car Now
+          </button>
         </div>
       </section>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
