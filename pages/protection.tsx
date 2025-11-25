@@ -294,6 +294,7 @@ export default function Protection() {
             .feature-grid { grid-template-columns: 1fr !important; }
           }
           .nav-mobile { display: none; }
+          ::selection { background: #2563EB; color: white; }
         `}</style>
       </Head>
 
@@ -440,7 +441,7 @@ export default function Protection() {
               lineHeight: '1.6',
               margin: '0 0 32px 0'
             }}>
-              $12/month or $120/year (2 months free). We handle your city sticker and plate renewals automatically, plus reimburse 80% of covered tickets.
+              $12/month or $120/year (2 months free). We handle your city sticker and plate renewals automatically, plus up to $200/year in ticket reimbursement.
             </p>
           </div>
         </div>
