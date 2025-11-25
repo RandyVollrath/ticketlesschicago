@@ -1133,7 +1133,7 @@ export default function Protection() {
                     marginBottom: '16px',
                     textAlign: 'center'
                   }}>
-                    💰 Save $45/year with annual billing
+                    💰 Save $24/year with annual billing
                   </div>
                 )}
                 <div style={{
@@ -1150,7 +1150,7 @@ export default function Protection() {
                     fontWeight: '700',
                     marginBottom: '4px'
                   }}>
-                    Due today: ${billingPlan === 'monthly' ? '12' : '99'}
+                    Due today: ${billingPlan === 'monthly' ? '12' : '120'}
                   </div>
                   <div style={{
                     fontSize: '12px',
@@ -1168,7 +1168,7 @@ export default function Protection() {
                   fontWeight: '600'
                 }}>
                   <span>Protection subscription ({billingPlan})</span>
-                  <span>${billingPlan === 'monthly' ? '12' : '99'}</span>
+                  <span>${billingPlan === 'monthly' ? '12' : '120'}</span>
                 </div>
                 <div style={{
                   paddingLeft: '16px',
