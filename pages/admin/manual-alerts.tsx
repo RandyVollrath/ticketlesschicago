@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
+import { Loading } from '../../components/Loading';
 
 export default function ManualAlerts() {
   const router = useRouter();
@@ -116,11 +117,7 @@ export default function ManualAlerts() {
   };
 
   if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div>Loading...</div>
-      </div>
-    );
+    return <Loading fullPage text="Verifying access..." />;
   }
 
   if (!isAdmin) {

@@ -86,18 +86,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: `Upload failed: ${uploadError.message}` });
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filePath);
+    console.log(`✅ Uploaded successfully: ${filePath}`);
 
-    console.log(`✅ Uploaded successfully: ${publicUrl}`);
-
-    // Update user profile
+    // Update user profile with file path (not public URL - bucket is private)
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({
-        residency_proof_path: publicUrl,
+        residency_proof_path: filePath, // Store path, not URL - view API generates signed URLs
         residency_proof_type: documentType,
         residency_proof_uploaded_at: new Date().toISOString(),
         residency_proof_source: 'manual_upload',
@@ -120,7 +115,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
-      publicUrl,
       filePath
     });
 
