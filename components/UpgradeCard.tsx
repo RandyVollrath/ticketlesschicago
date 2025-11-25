@@ -1,6 +1,18 @@
 import React from 'react';
 import { useRouter } from 'next/router';
 
+// Brand Colors - Municipal Fintech
+const COLORS = {
+  deepHarbor: '#0F172A',
+  regulatory: '#2563EB',
+  regulatoryDark: '#1d4ed8',
+  concrete: '#F8FAFC',
+  signal: '#10B981',
+  graphite: '#1E293B',
+  slate: '#64748B',
+  border: '#E2E8F0',
+};
+
 interface UpgradeCardProps {
   hasProtection?: boolean;
 }
@@ -19,127 +31,149 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
       <div style={{
         backgroundColor: 'white',
         borderRadius: '16px',
-        border: '2px solid #10b981',
-        padding: '24px',
-        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.1)'
+        border: `2px solid ${COLORS.signal}`,
+        padding: '28px',
+        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.08)'
       }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          gap: '24px'
+          gap: '24px',
+          flexWrap: 'wrap'
         }}>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: '280px' }}>
             <div style={{
-              display: 'inline-block',
-              backgroundColor: '#dcfce7',
-              color: '#166534',
-              padding: '4px 12px',
-              borderRadius: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: `${COLORS.signal}15`,
+              color: '#059669',
+              padding: '6px 14px',
+              borderRadius: '100px',
               fontSize: '12px',
               fontWeight: '600',
-              marginBottom: '12px',
+              marginBottom: '16px',
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
               Active
             </div>
             <h3 style={{
               fontSize: '24px',
-              fontWeight: 'bold',
-              color: '#1a1a1a',
-              marginBottom: '12px',
-              margin: '0 0 12px 0'
+              fontWeight: '700',
+              color: COLORS.graphite,
+              margin: '0 0 12px 0',
+              fontFamily: '"Space Grotesk", -apple-system, sans-serif',
+              letterSpacing: '-0.5px'
             }}>
-              🎉 You're Protected!
+              Autopilot Protection
             </h3>
             <p style={{
-              fontSize: '16px',
-              color: '#666',
-              marginBottom: '20px',
-              lineHeight: '1.5',
-              margin: '0 0 20px 0'
+              fontSize: '15px',
+              color: COLORS.slate,
+              margin: '0 0 20px 0',
+              lineHeight: '1.6'
             }}>
-              Your Ticket Protection is active. We handle your registration renewals before they expire, plus 80% reimbursement on eligible tickets (up to $200/year).
+              We handle your sticker renewals automatically. You're covered for up to $200/year in ticket reimbursement.
             </p>
 
-            <ul style={{
-              margin: '0 0 24px 0',
-              paddingLeft: '0',
-              listStyle: 'none',
+            <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px'
+              gap: '10px',
+              marginBottom: '20px'
             }}>
-              <li style={{
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '14px',
-                color: '#374151'
-              }}>
-                <span style={{
-                  color: '#10b981',
-                  marginRight: '8px',
-                  fontSize: '16px'
-                }}>✓</span>
-                Automatic renewal handling (required for guarantee)
-              </li>
-              <li style={{
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '14px',
-                color: '#374151'
-              }}>
-                <span style={{
-                  color: '#10b981',
-                  marginRight: '8px',
-                  fontSize: '16px'
-                }}>✓</span>
-                80% ticket reimbursement (up to $200/year)
-              </li>
-              <li style={{
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '14px',
-                color: '#374151'
-              }}>
-                <span style={{
-                  color: '#10b981',
-                  marginRight: '8px',
-                  fontSize: '16px'
-                }}>✓</span>
-                Priority customer support
-              </li>
-            </ul>
+              {[
+                'Auto-renewal for city sticker & plates',
+                '$200/year ticket reimbursement',
+                'Concierge support'
+              ].map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: '14px',
+                  color: COLORS.graphite
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2.5" style={{ marginRight: '10px', flexShrink: 0 }}>
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  {item}
+                </div>
+              ))}
+            </div>
 
-            <p style={{
-              fontSize: '14px',
-              color: '#666',
-              lineHeight: '1.5',
-              margin: 0
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
-              Make sure your profile is complete and accurate to maintain your coverage guarantee. Questions? Contact support@autopilotamerica.com
-            </p>
+              <button
+                onClick={() => router.push('/submit-ticket')}
+                style={{
+                  backgroundColor: COLORS.signal,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '12px 20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.signal;
+                }}
+              >
+                Submit a Ticket
+              </button>
+              <button
+                onClick={() => router.push('/protection/guarantee')}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: COLORS.slate,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: '10px',
+                  padding: '12px 20px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.slate;
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.border;
+                }}
+              >
+                View Guarantee
+              </button>
+            </div>
           </div>
 
           <div style={{
-            backgroundColor: '#f0fdf4',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            minWidth: '140px',
+            backgroundColor: `${COLORS.signal}08`,
+            borderRadius: '14px',
+            padding: '20px 24px',
+            minWidth: '120px',
             textAlign: 'center',
-            border: '1px solid #bbf7d0'
+            border: `1px solid ${COLORS.signal}20`
           }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="1.5" style={{ marginBottom: '10px' }}>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <polyline points="9 12 11 14 15 10" strokeWidth="2"/>
+            </svg>
             <div style={{
-              fontSize: '48px',
-              marginBottom: '8px'
-            }}>
-              🛡️
-            </div>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: 'bold',
-              color: '#166534'
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#059669'
             }}>
               Protected
             </div>
@@ -152,156 +186,134 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
   // Default: show upgrade card for free users
   return (
     <div style={{
-      backgroundColor: 'white',
+      background: `linear-gradient(135deg, ${COLORS.deepHarbor} 0%, ${COLORS.graphite} 100%)`,
       borderRadius: '16px',
-      border: '2px solid #0052cc',
-      padding: '24px',
-      boxShadow: '0 4px 12px rgba(0, 82, 204, 0.1)'
+      padding: '28px',
+      boxShadow: '0 8px 24px rgba(15, 23, 42, 0.15)'
     }}>
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        gap: '24px'
+        gap: '24px',
+        flexWrap: 'wrap'
       }}>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: '280px' }}>
           <div style={{
             display: 'inline-block',
-            backgroundColor: '#eff6ff',
-            color: '#0052cc',
-            padding: '4px 12px',
-            borderRadius: '12px',
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            color: 'white',
+            padding: '6px 14px',
+            borderRadius: '100px',
             fontSize: '12px',
             fontWeight: '600',
-            marginBottom: '12px',
+            marginBottom: '16px',
             textTransform: 'uppercase',
-            letterSpacing: '0.5px'
+            letterSpacing: '0.5px',
+            backdropFilter: 'blur(4px)'
           }}>
-            Premium
+            Upgrade Available
           </div>
           <h3 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#1a1a1a',
-            marginBottom: '12px',
-            margin: '0 0 12px 0'
+            fontSize: '26px',
+            fontWeight: '700',
+            color: 'white',
+            margin: '0 0 12px 0',
+            fontFamily: '"Space Grotesk", -apple-system, sans-serif',
+            letterSpacing: '-0.5px'
           }}>
-            Upgrade to Ticket Protection
+            Go on Autopilot
           </h3>
           <p style={{
-            fontSize: '16px',
-            color: '#666',
-            marginBottom: '20px',
-            lineHeight: '1.5',
-            margin: '0 0 20px 0'
+            fontSize: '15px',
+            color: 'rgba(255,255,255,0.7)',
+            margin: '0 0 24px 0',
+            lineHeight: '1.6'
           }}>
-            Get guaranteed renewal protection — we handle your registration renewals before they expire, plus 80% reimbursement on eligible tickets (up to $200/year).
+            We handle your city sticker and plate renewals automatically, plus reimburse up to $200/year in covered tickets.
           </p>
 
-          <ul style={{
-            margin: '0 0 24px 0',
-            paddingLeft: '0',
-            listStyle: 'none',
+          <div style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px'
+            gap: '10px',
+            marginBottom: '24px'
           }}>
-            <li style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#374151'
-            }}>
-              <span style={{
-                color: '#10b981',
-                marginRight: '8px',
-                fontSize: '16px'
-              }}>✓</span>
-              Automatic renewal handling (required for guarantee)
-            </li>
-            <li style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#374151'
-            }}>
-              <span style={{
-                color: '#10b981',
-                marginRight: '8px',
-                fontSize: '16px'
-              }}>✓</span>
-              80% ticket reimbursement (up to $200/year)
-            </li>
-            <li style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#374151'
-            }}>
-              <span style={{
-                color: '#10b981',
-                marginRight: '8px',
-                fontSize: '16px'
-              }}>✓</span>
-              Priority customer support
-            </li>
-          </ul>
+            {[
+              'Auto-renewal — we buy stickers for you',
+              '$200/year ticket reimbursement',
+              'Concierge support'
+            ].map((item, i) => (
+              <div key={i} style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '14px',
+                color: 'rgba(255,255,255,0.85)'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2.5" style={{ marginRight: '10px', flexShrink: 0 }}>
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                {item}
+              </div>
+            ))}
+          </div>
 
           <button
             onClick={handleUpgradeClick}
             style={{
-              backgroundColor: '#0052cc',
+              backgroundColor: COLORS.regulatory,
               color: 'white',
               border: 'none',
-              borderRadius: '12px',
+              borderRadius: '10px',
               padding: '14px 28px',
-              fontSize: '16px',
+              fontSize: '15px',
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(0, 82, 204, 0.2)'
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#003d99';
+              e.currentTarget.style.backgroundColor = '#1d4ed8';
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 82, 204, 0.3)';
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#0052cc';
+              e.currentTarget.style.backgroundColor = COLORS.regulatory;
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 82, 204, 0.2)';
             }}
           >
-            Get Protected →
+            Activate Autopilot
           </button>
         </div>
 
         <div style={{
-          backgroundColor: '#f0f8ff',
-          borderRadius: '12px',
-          padding: '16px 20px',
-          minWidth: '140px',
-          textAlign: 'center'
+          backgroundColor: 'rgba(255,255,255,0.08)',
+          borderRadius: '14px',
+          padding: '20px 24px',
+          minWidth: '120px',
+          textAlign: 'center',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.1)'
         }}>
           <div style={{
-            fontSize: '14px',
-            color: '#666',
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.6)',
             marginBottom: '4px'
           }}>
             Starting at
           </div>
           <div style={{
-            fontSize: '32px',
-            fontWeight: 'bold',
-            color: '#0052cc',
+            fontSize: '36px',
+            fontWeight: '700',
+            color: 'white',
             lineHeight: '1',
-            marginBottom: '4px'
+            marginBottom: '4px',
+            fontFamily: '"Space Grotesk", sans-serif'
           }}>
             $12
           </div>
           <div style={{
-            fontSize: '14px',
-            color: '#666'
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.6)'
           }}>
             per month
           </div>
