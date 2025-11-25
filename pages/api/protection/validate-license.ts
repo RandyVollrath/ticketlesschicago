@@ -206,6 +206,10 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
       const detectedExpiryDate = extractExpiryDate(fullText);
       if (detectedExpiryDate) {
         console.log('✓ Detected expiry date:', detectedExpiryDate);
+      } else {
+        // If we can't read the expiry date, the image isn't clear enough
+        console.log('❌ Could not read expiry date - image too blurry');
+        return { valid: false, reason: 'Image is too blurry to read. Please retake with better lighting and focus.' };
       }
 
       const safeSearch = result.safeSearchAnnotation;
