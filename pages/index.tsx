@@ -127,7 +127,7 @@ export default function Home() {
             Pricing
           </a>
           <a href="#security" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-            Security
+            Privacy
           </a>
           {checkingAuth ? null : user ? (
             <button
@@ -385,11 +385,11 @@ export default function Home() {
                 margin: '0 0 12px 0',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                Bureaucracy, Outsourced
+                Renewals on Autopilot
               </h3>
               <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                Upload your driver's license and residency proofs once. We use OCR technology to verify documents,
-                fill out city forms, and auto-purchase your City Stickers and Plate Renewals before deadlines.
+                We track your renewal deadlines and handle everything — City Stickers, Plate Renewals, and residential parking permits.
+                Just approve, and we'll purchase and mail your stickers before deadlines.
               </p>
             </div>
 
@@ -425,7 +425,7 @@ export default function Home() {
                 Ticket Indemnification
               </h3>
               <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                Our systems track street cleaning, snow bans, and tow zones in real-time.
+                Our systems track street cleaning, snow bans, and winter parking bans in real-time.
                 If our alerts fail and you receive a ticket, we reimburse you up to $200/year.
               </p>
             </div>
@@ -462,8 +462,8 @@ export default function Home() {
                 Direct Municipal Integration
               </h3>
               <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                We don't crowdsource. We sync directly with Chicago's open data portal for
-                real-time winter bans, emissions requirements, and court data for contestation.
+                We don't crowdsource. We use official city data sources for street cleaning schedules,
+                snow ban routes, and 1.2M+ FOIA ticket records to power our contestation analysis.
               </p>
             </div>
           </div>
@@ -699,7 +699,7 @@ export default function Home() {
             backgroundColor: 'rgba(255,255,255,0.1)'
           }}>
             {[
-              { text: "Solving a very specific, clear problem. Love the simplicity.", author: "Mitchell", title: "Autopilot Member" },
+              { text: "Solving a very specific, clear problem. Love the simplicity.", author: "Mitchell", title: "Product Designer" },
               { text: "It's solid and a very needed service. Super dope.", author: "Nasir", title: "Beta Tester" },
               { text: "You're doing the lord's work.", author: "Kathleen", title: "Chicago Resident" }
             ].map((t, i) => (
@@ -740,7 +740,7 @@ export default function Home() {
             letterSpacing: '1px',
             margin: '0 0 16px 0'
           }}>
-            Security
+            Privacy First
           </p>
           <h2 style={{
             fontSize: '32px',
@@ -750,12 +750,11 @@ export default function Home() {
             letterSpacing: '-0.5px',
             fontFamily: '"Space Grotesk", sans-serif'
           }}>
-            Bank-Grade Document Security
+            Your Data, Your Business
           </h2>
           <p style={{ fontSize: '16px', color: COLORS.slate, margin: '0 0 48px 0', lineHeight: '1.7' }}>
-            We use Google Cloud Vision for secure document parsing and Stripe for payment processing.
-            Your personal data is encrypted at rest and in transit. We never sell your information —
-            it's only used for municipal compliance.
+            We only collect what's necessary to keep your vehicle compliant. All data is encrypted in transit and at rest.
+            Payments processed securely through Stripe. We never sell, share, or monetize your information.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '48px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: COLORS.slate, fontSize: '14px' }}>
@@ -763,20 +762,20 @@ export default function Home() {
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
-              Encrypted Storage
+              End-to-End Encryption
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: COLORS.slate, fontSize: '14px' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
-              SOC 2 Compliant Infrastructure
+              Minimal Data Collection
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: COLORS.slate, fontSize: '14px' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
               </svg>
-              <span style={{ textDecoration: 'line-through' }}>No Data Sales</span>
+              Zero Data Sales
             </div>
           </div>
         </div>
