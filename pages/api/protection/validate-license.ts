@@ -162,8 +162,9 @@ async function fallbackValidation(filePath: string): Promise<{ valid: boolean; r
 
 /**
  * Validate image with Google Cloud Vision (with retry logic)
+ * @param requireExpiryDate - If true, reject images where expiry date can't be read (front only)
  */
-async function validateWithGoogleVision(filePath: string): Promise<{ valid: boolean; reason?: string; detectedExpiryDate?: string }> {
+async function validateWithGoogleVision(filePath: string, requireExpiryDate: boolean = true): Promise<{ valid: boolean; reason?: string; detectedExpiryDate?: string }> {
   if (!visionClient) {
     console.warn('⚠️  Google Vision client not initialized - using fallback validation');
     const fallback = await fallbackValidation(filePath);
@@ -206,10 +207,13 @@ async function validateWithGoogleVision(filePath: string): Promise<{ valid: bool
       const detectedExpiryDate = extractExpiryDate(fullText);
       if (detectedExpiryDate) {
         console.log('✓ Detected expiry date:', detectedExpiryDate);
-      } else {
-        // If we can't read the expiry date, the image isn't clear enough
+      } else if (requireExpiryDate) {
+        // Front of license must have readable expiry date
         console.log('❌ Could not read expiry date - image too blurry');
         return { valid: false, reason: 'Image is too blurry to read. Please retake with better lighting and focus.' };
+      } else {
+        // Back of license - expiry date not expected
+        console.log('✓ Back of license - expiry date not required');
       }
 
       const safeSearch = result.safeSearchAnnotation;
@@ -297,10 +301,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const file = Array.isArray(files.license) ? files.license[0] : files.license;
+    const side = Array.isArray(fields.side) ? fields.side[0] : fields.side || 'front';
 
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    console.log(`📋 Validating ${side} of license...`);
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.mimetype || '')) {
@@ -313,8 +320,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Validate with Google Cloud Vision
+    // Back of license doesn't have expiry date, so don't require it
+    const requireExpiryDate = side === 'front';
     console.log('🔍 Validating image with Google Cloud Vision...');
-    const visionCheck = await validateWithGoogleVision(file.filepath);
+    const visionCheck = await validateWithGoogleVision(file.filepath, requireExpiryDate);
 
     // Clean up temp file
     fs.unlinkSync(file.filepath);
