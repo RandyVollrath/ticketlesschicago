@@ -2100,9 +2100,9 @@ export default function ProfileNew() {
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#6b7280' }}>Retention:</span>
-                      <span style={{ fontSize: '13px', fontWeight: '500', color: licenseReuseConsent ? '#0369a1' : '#dc2626' }}>
-                        {licenseReuseConsent ? '📁 Keeping until expiry' : '🗑️ Delete after processing'}
+                      <span style={{ fontSize: '13px', color: '#6b7280' }}>Storage:</span>
+                      <span style={{ fontSize: '13px', fontWeight: '500', color: licenseReuseConsent ? '#059669' : '#6b7280' }}>
+                        {licenseReuseConsent ? 'Saved for renewals' : 'Delete after use'}
                       </span>
                     </div>
                   </div>
@@ -2825,85 +2825,31 @@ export default function ProfileNew() {
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '520px',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '360px',
             width: '100%',
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
           }}>
             <h3 style={{
-              fontSize: '22px',
+              fontSize: '20px',
               fontWeight: 'bold',
               color: '#1a1a1a',
-              marginBottom: '8px',
-              margin: '0 0 8px 0'
+              margin: '0 0 16px 0'
             }}>
-              🔒 License Privacy & Consent
+              Save License for Future Renewals?
             </h3>
 
-            <p style={{
-              fontSize: '14px',
-              color: '#6b7280',
-              margin: '0 0 20px 0'
-            }}>
-              Your privacy matters. Please review how we handle your license.
-            </p>
-
-            {/* What we do with your license */}
-            <div style={{
-              backgroundColor: '#f0f9ff',
-              border: '1px solid #bae6fd',
-              borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '16px'
-            }}>
-              <p style={{
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#0369a1',
-                margin: '0 0 8px 0'
-              }}>
-                How we process your license:
-              </p>
-              <ul style={{
-                fontSize: '13px',
-                color: '#0c4a6e',
-                margin: 0,
-                paddingLeft: '20px',
-                lineHeight: '1.6'
-              }}>
-                <li>Validated by Google Cloud Vision (third-party) for image quality</li>
-                <li>Expiry date extracted automatically via OCR</li>
-                <li>Encrypted with bank-level security (AES-256)</li>
-                <li>Shared with authorized remitter for city sticker processing</li>
-              </ul>
-            </div>
-
             {/* Retention choice */}
-            <div style={{
-              backgroundColor: '#fefce8',
-              border: '1px solid #fef08a',
-              borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '20px'
-            }}>
-              <p style={{
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#854d0e',
-                margin: '0 0 12px 0'
-              }}>
-                Choose how long we keep your license:
-              </p>
-
-              {/* Option 1: Delete after processing */}
+            <div style={{ marginBottom: '20px' }}>
+              {/* Option 1: Keep (default) */}
               <label style={{
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '12px',
                 padding: '12px',
-                backgroundColor: 'white',
-                border: '2px solid #e5e7eb',
+                backgroundColor: '#f0fdf4',
+                border: '2px solid #bbf7d0',
                 borderRadius: '8px',
                 marginBottom: '8px',
                 cursor: 'pointer'
@@ -2911,47 +2857,43 @@ export default function ProfileNew() {
                 <input
                   type="radio"
                   name="retention"
-                  value="delete"
+                  value="keep"
                   defaultChecked
                   style={{ marginTop: '3px' }}
                 />
                 <div>
-                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 4px 0' }}>
-                    🗑️ Delete after processing (recommended for privacy)
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 2px 0' }}>
+                    Keep until it expires
                   </p>
                   <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                    License deleted 48 hours after your renewal is processed. You'll need to re-upload next year.
+                    No re-upload needed for future renewals
                   </p>
                 </div>
               </label>
 
-              {/* Option 2: Keep for future renewals */}
+              {/* Option 2: Delete after processing */}
               <label style={{
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '12px',
                 padding: '12px',
                 backgroundColor: 'white',
-                border: '2px solid #e5e7eb',
+                border: '1px solid #e5e7eb',
                 borderRadius: '8px',
                 cursor: 'pointer'
               }}>
                 <input
                   type="radio"
                   name="retention"
-                  value="keep"
+                  value="delete"
                   style={{ marginTop: '3px' }}
                 />
                 <div>
-                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 4px 0' }}>
-                    📁 Keep for future renewals (convenient)
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', margin: '0 0 2px 0' }}>
+                    Delete after processing
                   </p>
                   <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                    License kept until it expires ({licenseExpiryDate ? new Date(licenseExpiryDate.split('-').map(Number).reduce((acc, val, i) => {
-                      if (i === 0) return new Date(val, 0, 1);
-                      if (i === 1) { acc.setMonth(val - 1); return acc; }
-                      acc.setDate(val); return acc;
-                    }, new Date() as any)).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'your expiry date'}). No re-upload needed. You can delete anytime.
+                    Removed 48 hours after renewal
                   </p>
                 </div>
               </label>
@@ -2995,7 +2937,7 @@ export default function ProfileNew() {
                   boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)'
                 }}
               >
-                ✓ I Consent & Continue
+                Continue
               </button>
             </div>
           </div>
