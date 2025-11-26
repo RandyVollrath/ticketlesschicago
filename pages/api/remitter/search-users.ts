@@ -43,27 +43,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Build search query - only search Protection users
+    // Note: Using * to avoid errors from missing columns - Supabase handles gracefully
     let dbQuery = supabase
       .from('user_profiles')
-      .select(`
-        user_id,
-        email,
-        first_name,
-        last_name,
-        phone,
-        license_plate,
-        vehicle_make,
-        vehicle_model,
-        vehicle_year,
-        has_protection,
-        renewal_status,
-        license_image_path,
-        license_image_path_back,
-        license_image_uploaded_at,
-        license_reuse_consent_given,
-        profile_confirmed_at,
-        profile_confirmed_for_year
-      `)
+      .select('*')
       .eq('has_protection', true);
 
     // Apply search filter
