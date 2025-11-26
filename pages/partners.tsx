@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Footer from '../components/Footer';
+import MobileNav from '../components/MobileNav';
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -138,21 +139,8 @@ export default function Partners() {
           </button>
         </div>
 
-        <div className="nav-mobile" style={{ display: 'none' }}>
-          <button
-            onClick={() => router.push('/')}
-            style={{
-              backgroundColor: COLORS.graphite,
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            Home
-          </button>
+        <div className="nav-mobile" style={{ display: 'none', alignItems: 'center' }}>
+          <MobileNav />
         </div>
       </nav>
 

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import ReimbursementRequest from '../components/ReimbursementRequest';
+import MobileNav from '../components/MobileNav';
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -169,22 +170,8 @@ export default function SubmitTicket() {
           </button>
         </div>
 
-        <div className="nav-mobile" style={{ display: 'none', gap: '12px', alignItems: 'center' }}>
-          <button
-            onClick={() => router.push('/settings')}
-            style={{
-              color: COLORS.slate,
-              background: 'none',
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: '8px',
-              padding: '8px 12px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            Back
-          </button>
+        <div className="nav-mobile" style={{ display: 'none', alignItems: 'center' }}>
+          <MobileNav user={user} protectionStatus="active" />
         </div>
       </nav>
 

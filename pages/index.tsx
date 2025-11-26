@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
+import MobileNav from '../components/MobileNav';
 
 // Brand Colors - Municipal Fintech (Gemini 3 Pro)
 const COLORS = {
@@ -171,40 +172,8 @@ export default function Home() {
         </div>
 
         {/* Mobile Nav */}
-        <div className="nav-mobile" style={{ display: 'none', gap: '12px', alignItems: 'center' }}>
-          {checkingAuth ? null : user ? (
-            <button
-              onClick={() => router.push('/settings')}
-              style={{
-                backgroundColor: COLORS.regulatory,
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              Dashboard
-            </button>
-          ) : (
-            <button
-              onClick={() => router.push('/login')}
-              style={{
-                backgroundColor: COLORS.regulatory,
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              Sign In
-            </button>
-          )}
+        <div className="nav-mobile" style={{ display: 'none', alignItems: 'center' }}>
+          <MobileNav user={user} />
         </div>
       </nav>
 

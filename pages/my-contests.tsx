@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import { Loading } from '../components/Loading';
+import { useToast } from '../components/Toast';
 
 interface Contest {
   id: string;
@@ -18,6 +19,7 @@ interface Contest {
 
 export default function MyContests() {
   const router = useRouter();
+  const toast = useToast();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [contests, setContests] = useState<Contest[]>([]);
@@ -100,7 +102,7 @@ export default function MyContests() {
     if (!selectedContest) return;
 
     if (!outcomeData.outcome || !outcomeData.decisionDate) {
-      alert('Please fill in required fields: outcome and decision date');
+      toast.warning('Please fill in required fields: outcome and decision date');
       return;
     }
 
@@ -109,7 +111,7 @@ export default function MyContests() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('Please log in to report outcome');
+        toast.warning('Please log in to report outcome');
         return;
       }
 
@@ -133,7 +135,7 @@ export default function MyContests() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        alert(result.message || 'Outcome reported successfully!');
+        toast.success(result.message || 'Outcome reported successfully!');
         setShowOutcomeForm(false);
         setOutcomeData({
           outcome: '',
@@ -145,11 +147,11 @@ export default function MyContests() {
         });
         await loadContests(user);
       } else {
-        alert('Failed to report outcome: ' + (result.error || 'Unknown error'));
+        toast.error('Failed to report outcome: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error reporting outcome:', error);
-      alert('Failed to report outcome');
+      toast.error('Failed to report outcome');
     } finally {
       setReportingOutcome(false);
     }
@@ -423,7 +425,7 @@ export default function MyContests() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(selectedContest.contest_letter!);
-                      alert('Letter copied to clipboard!');
+                      toast.success('Letter copied to clipboard!');
                     }}
                     style={{
                       marginTop: '12px',
