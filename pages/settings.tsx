@@ -10,6 +10,7 @@ import StreetCleaningSettings from '../components/StreetCleaningSettings'
 import SnowBanSettings from '../components/SnowBanSettings'
 // import EmailForwardingSetup from '../components/EmailForwardingSetup' // Disabled - keeping code for future use
 import PropertyTaxHelper from '../components/PropertyTaxHelper'
+import { useToast } from '../components/Toast'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -48,6 +49,7 @@ export default function ProfileNew() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const toast = useToast()
 
   // Form state
   const [formData, setFormData] = useState<any>({})
@@ -453,11 +455,11 @@ export default function ProfileNew() {
       setLicenseConsent(false)
 
       console.log('🗑️ All license images deleted')
-      alert('Your license has been deleted from our servers.')
+      toast.success('Your license has been deleted from our servers.')
 
     } catch (error) {
       console.error('Failed to delete license images:', error)
-      alert('Failed to delete license. Please try again.')
+      toast.error('Failed to delete license. Please try again.')
     }
   }
 
@@ -542,11 +544,11 @@ export default function ProfileNew() {
         })
         .eq('user_id', user!.id)
 
-      alert('✅ License uploaded successfully!')
+      toast.success('License uploaded successfully!', 'Documents Updated')
       window.location.reload()
     } catch (error: any) {
       console.error('License upload error:', error)
-      alert(`Upload failed: ${error.message || 'Unknown error'}`)
+      toast.error(error.message || 'Unknown error', 'Upload Failed')
       setLicenseUploading(false)
     }
   }
@@ -556,13 +558,13 @@ export default function ProfileNew() {
     console.log('📄 Upload started for file:', file.name, file.size, file.type)
 
     if (!user) {
-      alert('Please sign in before uploading documents')
+      toast.warning('Please sign in before uploading documents')
       setMessage({ type: 'error', text: 'Please sign in before uploading documents' })
       return
     }
 
     if (!formData.residency_proof_type) {
-      alert('Please select a document type first')
+      toast.warning('Please select a document type first')
       setMessage({ type: 'error', text: 'Please select a document type first' })
       return
     }
@@ -605,7 +607,7 @@ export default function ProfileNew() {
       setMessage({ type: 'success', text: 'Document uploaded successfully! It will be reviewed shortly.' })
     } catch (error: any) {
       console.error('Upload error:', error)
-      alert(`Upload failed: ${error.message}`)
+      toast.error(error.message, 'Upload Failed')
       setMessage({ type: 'error', text: `Upload failed: ${error.message}` })
     } finally {
       setResidencyProofUploading(false)

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { supabase } from '../lib/supabase'
+import MobileNav from '../components/MobileNav'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -344,7 +345,9 @@ export default function Login() {
           <a href="/protection" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Protection</a>
         </div>
 
-        <div className="nav-mobile" style={{ display: 'none' }} />
+        <div className="nav-mobile" style={{ display: 'none', alignItems: 'center' }}>
+          <MobileNav />
+        </div>
       </nav>
 
       <main style={{

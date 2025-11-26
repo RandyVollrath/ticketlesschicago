@@ -38,6 +38,9 @@
     },
     "pages/api/cron/cleanup-residency-proofs.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/flag-property-tax-refresh.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -116,6 +119,10 @@
     {
       "path": "/api/admin/send-daily-digest",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/flag-property-tax-refresh",
+      "schedule": "0 9 15 7 *"
     }
   ],
   "github": {
