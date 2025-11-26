@@ -106,12 +106,12 @@ export default function AdminRenewals() {
     }
   }, []);
 
-  // Fetch data when authenticated
+  // Fetch data when authenticated and token is set
   useEffect(() => {
-    if (authenticated) {
+    if (authenticated && token) {
       fetchData();
     }
-  }, [authenticated, statusFilter, typeFilter, daysFilter]);
+  }, [authenticated, token, statusFilter, typeFilter, daysFilter]);
 
   const handleLogin = () => {
     localStorage.setItem('adminToken', token);
