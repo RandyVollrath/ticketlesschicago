@@ -11,6 +11,9 @@ import SnowBanSettings from '../components/SnowBanSettings'
 // import EmailForwardingSetup from '../components/EmailForwardingSetup' // Disabled - keeping code for future use
 import PropertyTaxHelper from '../components/PropertyTaxHelper'
 import { useToast } from '../components/Toast'
+import Dashboard from '../components/Dashboard'
+import NotificationPreferences from '../components/NotificationPreferences'
+import ReferralProgram from '../components/ReferralProgram'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -786,6 +789,9 @@ export default function ProfileNew() {
               {message.text}
             </div>
           )}
+
+          {/* Dashboard */}
+          <Dashboard user={user} profile={profile} />
 
           {/* Protection status card */}
           <div style={{ marginBottom: '24px' }}>
@@ -2442,21 +2448,30 @@ export default function ProfileNew() {
                   ) : formData.residency_proof_path ? (
                     <>
                       <div style={{
-                        width: '48px',
-                        height: '48px',
+                        width: '40px',
+                        height: '40px',
                         borderRadius: '50%',
-                        backgroundColor: '#dcfce7',
+                        backgroundColor: profile.residency_proof_verified ? '#dcfce7' : '#fef9c3',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginBottom: '12px'
+                        marginBottom: '8px'
                       }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                        {profile.residency_proof_verified ? (
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
+                            <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                        )}
                       </div>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#16a34a' }}>Document Uploaded</span>
-                      <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Click to replace with a different file</span>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: profile.residency_proof_verified ? '#16a34a' : '#ca8a04' }}>
+                        {profile.residency_proof_verified ? 'Verified' : 'Pending Review'}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>Click to replace</span>
                     </>
                   ) : (
                     <>
@@ -2469,65 +2484,30 @@ export default function ProfileNew() {
                   )}
                 </div>
 
-                {/* Verification Status Display */}
+                {/* Status & Actions */}
                 {formData.residency_proof_path && (
                   <div style={{ marginTop: '16px' }}>
                     {/* Show rejection reason if rejected */}
                     {profile.residency_proof_rejection_reason && (
                       <div style={{
-                        padding: '16px',
+                        padding: '12px 16px',
                         backgroundColor: '#fef2f2',
                         border: '1px solid #fecaca',
                         borderRadius: '8px',
                         marginBottom: '12px'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '16px' }}>❌</span>
-                          <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>Document Rejected</span>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#991b1b', marginBottom: '4px' }}>
+                          Rejected: {profile.residency_proof_rejection_reason}
                         </div>
-                        <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 12px 0', whiteSpace: 'pre-wrap' }}>
-                          {profile.residency_proof_rejection_reason}
-                        </p>
-                        <p style={{ fontSize: '12px', color: '#7f1d1d', margin: 0, fontStyle: 'italic' }}>
-                          Please upload a new document addressing the issues above.
-                        </p>
+                        <div style={{ fontSize: '12px', color: '#7f1d1d' }}>
+                          Please upload a new document.
+                        </div>
                       </div>
                     )}
 
-                    {/* Show verification status */}
+                    {/* Show additional details only if not rejected */}
                     {!profile.residency_proof_rejection_reason && (
                       <>
-                        <div style={{
-                          padding: '12px 16px',
-                          backgroundColor: profile.residency_proof_verified ? '#f0fdf4' : '#fffbeb',
-                          border: `1px solid ${profile.residency_proof_verified ? '#86efac' : '#fde68a'}`,
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px'
-                        }}>
-                          <span style={{ fontSize: '20px' }}>
-                            {profile.residency_proof_verified ? '✅' : '⏳'}
-                          </span>
-                          <div>
-                            <div style={{
-                              fontSize: '14px',
-                              fontWeight: '600',
-                              color: profile.residency_proof_verified ? '#15803d' : '#92400e'
-                            }}>
-                              {profile.residency_proof_verified ? 'Document Verified' : 'Pending Review'}
-                            </div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: profile.residency_proof_verified ? '#166534' : '#a16207',
-                              marginTop: '2px'
-                            }}>
-                              {profile.residency_proof_verified
-                                ? 'Your proof of residency has been approved.'
-                                : 'Your document is being reviewed. This typically takes 24 hours.'}
-                            </div>
-                          </div>
-                        </div>
 
                         {/* OCR Validation Details */}
                         {profile.residency_proof_validation && (
@@ -2639,42 +2619,61 @@ export default function ProfileNew() {
                       </>
                     )}
 
-                    {/* View uploaded document link */}
-                    <div style={{ marginTop: '12px' }}>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`/api/protection/view-residency-proof?userId=${user?.id}`)
-                            const data = await response.json()
-                            if (data.signedUrl) {
-                              window.open(data.signedUrl, '_blank')
-                            } else {
-                              alert(data.error || 'Failed to load document')
-                            }
-                          } catch (err) {
-                            alert('Failed to load document')
+                    {/* View uploaded document button */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          // Use the path we have locally, or fetch from API
+                          const pathToView = formData.residency_proof_path || profile.residency_proof_path
+                          if (!pathToView) {
+                            alert('No document found. Please try refreshing the page.')
+                            return
                           }
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          fontSize: '13px',
-                          color: '#3b82f6',
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          cursor: 'pointer',
-                          textDecoration: 'underline'
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
-                          <polyline points="14,2 14,8 20,8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        View uploaded document
-                      </button>
-                    </div>
+                          const response = await fetch(`/api/protection/view-residency-proof?userId=${user?.id}`)
+                          const data = await response.json()
+                          if (data.signedUrl) {
+                            window.open(data.signedUrl, '_blank')
+                          } else {
+                            console.error('View document error:', data.error)
+                            alert(data.error || 'Failed to load document. Please refresh and try again.')
+                          }
+                        } catch (err) {
+                          console.error('View document error:', err)
+                          alert('Failed to load document. Please refresh and try again.')
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '10px 16px',
+                        marginTop: '12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#1e40af',
+                        backgroundColor: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = '#dbeafe'
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = '#eff6ff'
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+                        <polyline points="14,2 14,8 20,8" strokeLinecap="round" strokeLinejoin="round"/>
+                        <line x1="16" y1="13" x2="8" y2="13" strokeLinecap="round"/>
+                        <line x1="16" y1="17" x2="8" y2="17" strokeLinecap="round"/>
+                      </svg>
+                      View Uploaded Document
+                    </button>
                   </div>
                 )}
               </div>
@@ -2933,6 +2932,20 @@ export default function ProfileNew() {
             defaultOpen={false}
           >
             <SnowBanSettings />
+          </Accordion>
+
+          {/* 10. Referral Program */}
+          <Accordion
+            title="Refer Friends & Earn"
+            icon="🎁"
+            defaultOpen={false}
+          >
+            {user && (
+              <ReferralProgram
+                userId={user.id}
+                userEmail={user.email || ''}
+              />
+            )}
           </Accordion>
 
           {/* Back button */}

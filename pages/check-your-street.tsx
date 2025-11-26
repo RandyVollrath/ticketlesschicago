@@ -579,10 +579,10 @@ export default function CheckYourStreet() {
               />
               <div>
                 <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Show Safe Parking During Snow Ban
+                  Show Snow Ban Routes
                 </div>
                 <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
-                  Highlight streets near you that are <strong style={{ color: COLORS.signal }}>NOT affected</strong> by the 2-inch snow parking ban.
+                  Highlight streets near you that are <strong style={{ color: '#ff1493' }}>affected</strong> by the 2-inch snow parking ban. Avoid parking on these streets when 2+ inches of snow falls.
                 </div>
               </div>
             </label>
