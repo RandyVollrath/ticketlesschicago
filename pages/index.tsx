@@ -547,7 +547,7 @@ export default function Home() {
                 One late city sticker = <strong>$260+</strong> <span style={{ fontSize: '14px', color: '#b91c1c' }}>(late fee + compliance ticket)</span>
               </p>
               <p style={{ fontSize: '18px', color: '#991b1b', margin: '0', fontWeight: '500' }}>
-                One tow = <strong>$350+</strong> <span style={{ fontSize: '14px', color: '#b91c1c' }}>($150 tow + $60/day storage + $60 ticket)</span>
+                One tow = <strong>$275+</strong> <span style={{ fontSize: '14px', color: '#b91c1c' }}>($150 tow + $25/day storage + $60 ticket)</span>
               </p>
             </div>
             <p style={{ fontSize: '24px', color: COLORS.signal, margin: '0', fontWeight: '700' }}>
