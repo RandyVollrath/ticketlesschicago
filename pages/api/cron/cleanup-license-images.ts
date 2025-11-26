@@ -21,8 +21,17 @@ const BUCKET_NAME = 'license-images-temp';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify this is a cron request
+  // Vercel cron jobs include a special header, or we check our CRON_SECRET
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!isVercelCron && !isAuthorized) {
+    console.log('Unauthorized attempt. Headers:', {
+      auth: authHeader?.substring(0, 20) + '...',
+      vercelCron: req.headers['x-vercel-cron'],
+      cronSecretSet: !!process.env.CRON_SECRET
+    });
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
