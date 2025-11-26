@@ -14,6 +14,9 @@ import { useToast } from '../components/Toast'
 import Dashboard from '../components/Dashboard'
 import NotificationPreferences from '../components/NotificationPreferences'
 import ReferralProgram from '../components/ReferralProgram'
+import OnboardingProgress from '../components/OnboardingProgress'
+import SavingsCalculator from '../components/SavingsCalculator'
+import QuickActions, { QuickActionsInline } from '../components/QuickActions'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -790,8 +793,32 @@ export default function ProfileNew() {
             </div>
           )}
 
+          {/* Onboarding Progress */}
+          <OnboardingProgress profile={profile} />
+
           {/* Dashboard */}
           <Dashboard user={user} profile={profile} />
+
+          {/* Savings Calculator */}
+          {user && (
+            <div style={{ marginBottom: '24px' }}>
+              <SavingsCalculator userId={user.id} profile={profile} />
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{
+              color: COLORS.graphite,
+              fontSize: '16px',
+              fontWeight: 600,
+              marginBottom: '12px',
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}>
+              Quick Actions
+            </h3>
+            <QuickActionsInline hasProtection={profile.has_protection || false} />
+          </div>
 
           {/* Protection status card */}
           <div style={{ marginBottom: '24px' }}>
@@ -3104,6 +3131,9 @@ export default function ProfileNew() {
           </div>
         </div>
       )}
+
+      {/* Floating Quick Actions Button */}
+      <QuickActions hasProtection={profile.has_protection || false} />
     </>
   )
 }

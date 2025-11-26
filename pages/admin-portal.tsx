@@ -105,6 +105,24 @@ interface RenewalCharge {
   city_confirmation_number: string | null;
 }
 
+interface MissingDocUser {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  street_address: string;
+  zip_code: string;
+  permit_zone: string;
+  residency_proof_path: string | null;
+  residency_proof_type: string | null;
+  residency_proof_verified: boolean;
+  residency_proof_rejection_reason: string | null;
+  city_sticker_expiry: string | null;
+  created_at: string;
+  status: 'no_upload' | 'rejected' | 'pending_review';
+}
+
 // ============ Constants ============
 
 const RESIDENCY_REJECTION_REASONS = {
@@ -135,7 +153,7 @@ export default function AdminPortal() {
   const [message, setMessage] = useState('');
 
   // Active section
-  const [activeSection, setActiveSection] = useState<'documents' | 'property-tax' | 'renewals'>('documents');
+  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals'>('documents');
 
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
@@ -162,6 +180,11 @@ export default function AdminPortal() {
   const [confirmingCharge, setConfirmingCharge] = useState<RenewalCharge | null>(null);
   const [confirmationNumber, setConfirmationNumber] = useState('');
 
+  // Missing docs state
+  const [missingDocUsers, setMissingDocUsers] = useState<MissingDocUser[]>([]);
+  const [missingDocCounts, setMissingDocCounts] = useState({ total: 0, noUpload: 0, rejected: 0, pendingReview: 0 });
+  const [missingDocFilter, setMissingDocFilter] = useState<'all' | 'no_upload' | 'rejected'>('no_upload');
+
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
   useEffect(() => {
@@ -173,6 +196,7 @@ export default function AdminPortal() {
   useEffect(() => {
     if (authenticated) {
       if (activeSection === 'documents') fetchDocuments();
+      if (activeSection === 'missing-docs') fetchMissingDocs();
       if (activeSection === 'property-tax') fetchPropertyTaxQueue();
       if (activeSection === 'renewals') fetchRenewals();
     }
@@ -272,6 +296,50 @@ export default function AdminPortal() {
         setCustomReason('');
         setCustomerCode('');
         fetchDocuments();
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============ Missing Docs Functions ============
+
+  const fetchMissingDocs = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/users-missing-docs', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMissingDocUsers(result.users || []);
+        setMissingDocCounts(result.counts || { total: 0, noUpload: 0, rejected: 0, pendingReview: 0 });
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendDocReminder = async (userId: string, email: string) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      // Use Resend to send reminder email
+      const response = await fetch('/api/admin/send-doc-reminder', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage(`Reminder sent to ${email}`);
       } else {
         setMessage(`Error: ${result.error}`);
       }
@@ -416,6 +484,7 @@ export default function AdminPortal() {
   const pendingResidencyCount = residencyDocs.filter(d => d.verification_status !== 'approved').length;
   const pendingPermitCount = permitDocs.filter(d => d.verification_status === 'pending').length;
   const pendingCityPaymentCount = charges.filter(c => c.status === 'succeeded' && c.city_payment_status === 'pending').length;
+  const missingDocsCount = missingDocCounts.noUpload + missingDocCounts.rejected;
 
   // ============ Render ============
 
@@ -451,7 +520,7 @@ export default function AdminPortal() {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Admin Portal</h1>
           <button
-            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'renewals') fetchRenewals(); }, 0); }}
+            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'renewals') fetchRenewals(); }, 0); }}
             style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
           >
             Refresh
@@ -482,6 +551,29 @@ export default function AdminPortal() {
             {(pendingResidencyCount + pendingPermitCount) > 0 && (
               <span style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
                 {pendingResidencyCount + pendingPermitCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveSection('missing-docs')}
+            style={{
+              padding: '16px 24px',
+              border: 'none',
+              background: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: activeSection === 'missing-docs' ? '#3b82f6' : '#6b7280',
+              borderBottom: activeSection === 'missing-docs' ? '2px solid #3b82f6' : '2px solid transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            Missing Docs
+            {missingDocsCount > 0 && (
+              <span style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
+                {missingDocsCount}
               </span>
             )}
           </button>
@@ -685,6 +777,78 @@ export default function AdminPortal() {
 
             {residencyDocs.length === 0 && permitDocs.length === 0 && (
               <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px' }}>No documents to review</p>
+            )}
+          </div>
+        )}
+
+        {/* ============ Missing Docs Section ============ */}
+        {activeSection === 'missing-docs' && !loading && (
+          <div>
+            {/* Info */}
+            <div style={{ padding: '16px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#92400e' }}>Users Needing Residency Proof</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#78350f' }}>
+                These users have Protection + permit parking but haven't uploaded a residency proof document yet.
+                Send them a reminder or check if they need help.
+              </p>
+            </div>
+
+            {/* Filter buttons */}
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button onClick={() => setMissingDocFilter('no_upload')} style={{ padding: '8px 16px', backgroundColor: missingDocFilter === 'no_upload' ? '#ef4444' : '#e5e7eb', color: missingDocFilter === 'no_upload' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                No Upload ({missingDocCounts.noUpload})
+              </button>
+              <button onClick={() => setMissingDocFilter('rejected')} style={{ padding: '8px 16px', backgroundColor: missingDocFilter === 'rejected' ? '#f59e0b' : '#e5e7eb', color: missingDocFilter === 'rejected' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                Rejected ({missingDocCounts.rejected})
+              </button>
+              <button onClick={() => setMissingDocFilter('all')} style={{ padding: '8px 16px', backgroundColor: missingDocFilter === 'all' ? '#6b7280' : '#e5e7eb', color: missingDocFilter === 'all' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                All ({missingDocCounts.total})
+              </button>
+            </div>
+
+            {/* User list */}
+            {missingDocUsers.filter(u => missingDocFilter === 'all' || u.status === missingDocFilter).length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px', backgroundColor: 'white', borderRadius: '8px' }}>No users in this category</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {missingDocUsers.filter(u => missingDocFilter === 'all' || u.status === missingDocFilter).map((user) => (
+                  <div key={user.user_id} style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ fontWeight: '500' }}>{user.first_name} {user.last_name}</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{user.email}</div>
+                        {user.phone && <div style={{ fontSize: '12px', color: '#9ca3af' }}>{user.phone}</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {user.status === 'no_upload' && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '4px' }}>NO UPLOAD</span>}
+                        {user.status === 'rejected' && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px' }}>REJECTED</span>}
+                        {user.status === 'pending_review' && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px' }}>PENDING REVIEW</span>}
+                      </div>
+                    </div>
+                    <div style={{ backgroundColor: '#f9fafb', padding: '12px', borderRadius: '6px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '14px' }}><strong>Address:</strong> {user.street_address}, {user.zip_code}</div>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}><strong>Permit Zone:</strong> {user.permit_zone}</div>
+                      {user.city_sticker_expiry && <div style={{ fontSize: '13px', color: '#6b7280' }}><strong>City Sticker Expiry:</strong> {user.city_sticker_expiry}</div>}
+                      {user.residency_proof_rejection_reason && (
+                        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fef3c7', borderRadius: '4px', fontSize: '12px', color: '#92400e' }}>
+                          <strong>Rejection Reason:</strong> {user.residency_proof_rejection_reason}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px' }}>
+                      Signed up: {new Date(user.created_at).toLocaleDateString()}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <a href={`mailto:${user.email}?subject=Complete%20Your%20Residency%20Proof%20Upload&body=Hi%20${user.first_name}%2C%0A%0AWe%20noticed%20you%20haven't%20uploaded%20your%20proof%20of%20residency%20yet.%20Please%20log%20in%20to%20complete%20your%20setup%3A%0A%0Ahttps%3A%2F%2Fticketlesschicago.com%2Fsettings%0A%0AYou%20can%20upload%20a%20lease%2C%20mortgage%20statement%2C%20or%20property%20tax%20bill.%0A%0AThanks!`} style={{ flex: 1, padding: '10px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', textDecoration: 'none', textAlign: 'center', fontSize: '13px' }}>
+                        Email User
+                      </a>
+                      <a href={`https://ticketlesschicago.com/settings`} target="_blank" rel="noopener noreferrer" style={{ padding: '10px 16px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', textDecoration: 'none', fontSize: '13px' }}>
+                        Settings Page
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
