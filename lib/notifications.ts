@@ -631,20 +631,38 @@ Questions? Reply to support@autopilotamerica.com
               continue;
             }
 
-            // Fetch user protection status and permit zone info from user_profiles
+            // Fetch user protection status, permit zone info, and profile confirmation from user_profiles
             let hasProtection = false;
             let hasPermitZone = false;
+            let profileConfirmedForYear: number | null = null;
 
             try {
               const { data: userProfile } = await supabaseAdmin
                 .from('user_profiles')
-                .select('has_protection, has_permit_zone')
+                .select('has_protection, has_permit_zone, profile_confirmed_for_year, city_sticker_expiry, license_plate_expiry')
                 .eq('user_id', obligation.user_id)
                 .single();
 
               if (userProfile) {
                 hasProtection = userProfile.has_protection || false;
                 hasPermitZone = userProfile.has_permit_zone || false;
+                profileConfirmedForYear = userProfile.profile_confirmed_for_year || null;
+
+                // Check if profile is confirmed for the current renewal year
+                // Get renewal year from the nearest expiry date
+                const stickerExpiry = userProfile.city_sticker_expiry ? new Date(userProfile.city_sticker_expiry) : null;
+                const plateExpiry = userProfile.license_plate_expiry ? new Date(userProfile.license_plate_expiry) : null;
+                const nextExpiry = stickerExpiry && plateExpiry
+                  ? (stickerExpiry < plateExpiry ? stickerExpiry : plateExpiry)
+                  : stickerExpiry || plateExpiry;
+                const currentRenewalYear = nextExpiry ? nextExpiry.getFullYear() : new Date().getFullYear();
+
+                // If Protection user has confirmed their profile for this renewal year,
+                // skip "confirm your info" reminders (but still send post-purchase notifications)
+                if (hasProtection && profileConfirmedForYear === currentRenewalYear && days > 14) {
+                  console.log(`Skipping ${days}-day reminder for ${obligation.email} - profile already confirmed for ${currentRenewalYear}`);
+                  continue;
+                }
               }
             } catch (profileError) {
               console.error(`Error fetching user profile for ${obligation.email}:`, profileError);

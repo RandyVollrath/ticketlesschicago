@@ -15,6 +15,7 @@ import Dashboard from '../components/Dashboard'
 import NotificationPreferences from '../components/NotificationPreferences'
 import ReferralProgram from '../components/ReferralProgram'
 import OnboardingProgress from '../components/OnboardingProgress'
+import ProfileConfirmation from '../components/ProfileConfirmation'
 import SavingsCalculator from '../components/SavingsCalculator'
 import QuickActions, { QuickActionsInline } from '../components/QuickActions'
 
@@ -795,6 +796,15 @@ export default function ProfileNew() {
 
           {/* Onboarding Progress */}
           <OnboardingProgress profile={profile} />
+
+          {/* Profile Confirmation for Renewals (Protection users only) */}
+          {user && profile.has_protection && (
+            <ProfileConfirmation
+              userId={user.id}
+              profile={profile}
+              onConfirm={() => loadUserData()}
+            />
+          )}
 
           {/* Dashboard */}
           <Dashboard user={user} profile={profile} />

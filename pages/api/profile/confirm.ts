@@ -14,7 +14,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, token } = req.body;
+  const { userId, token, renewalYear } = req.body;
 
   // Validate input
   if (!userId && !token) {
@@ -31,22 +31,52 @@ export default async function handler(
       return res.status(400).json({ error: 'Token-based confirmation not yet implemented' });
     }
 
+    // Build update object
+    const updateData: Record<string, any> = {
+      profile_confirmed_at: new Date().toISOString()
+    };
+
+    // Include renewal year if provided
+    if (renewalYear) {
+      updateData.profile_confirmed_for_year = renewalYear;
+    }
+
     // Update profile_confirmed_at timestamp
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('user_profiles')
-      .update({ profile_confirmed_at: new Date().toISOString() })
-      .eq('user_id', targetUserId);
+      .update(updateData)
+      .eq('user_id', targetUserId)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error confirming profile:', error);
       return res.status(500).json({ error: 'Failed to confirm profile' });
     }
 
-    console.log(`✅ Profile confirmed for user ${targetUserId}`);
+    // Log the confirmation event (don't fail if this errors)
+    try {
+      await supabase.from('notification_log').insert({
+        user_id: targetUserId,
+        notification_type: 'profile_confirmation',
+        channel: 'web',
+        message_key: renewalYear ? `profile_confirmed_${renewalYear}` : 'profile_confirmed',
+        metadata: {
+          renewal_year: renewalYear || null,
+          confirmed_at: new Date().toISOString(),
+        }
+      });
+    } catch (logError) {
+      // Don't fail if logging fails - table might not exist yet
+      console.log('Note: Could not log confirmation (notification_log table may not exist)');
+    }
+
+    console.log(`✅ Profile confirmed for user ${targetUserId}${renewalYear ? ` for year ${renewalYear}` : ''}`);
 
     return res.status(200).json({
       success: true,
-      message: 'Profile confirmed successfully'
+      message: 'Profile confirmed successfully',
+      data
     });
 
   } catch (error: any) {
