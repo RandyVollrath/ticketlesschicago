@@ -54,8 +54,8 @@ export default function Home() {
   return (
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
       <Head>
-        <title>Autopilot America - Chicago Vehicle Compliance Infrastructure</title>
-        <meta name="description" content="The operating system for Chicago vehicle compliance. Auto-renewal of city stickers, document verification, and ticket protection." />
+        <title>Autopilot America - Stop Getting Blindsided by Chicago Tickets</title>
+        <meta name="description" content="We automate your city sticker, plate renewal, and street cleaning alerts. If our system fails, we pay the ticket. $120/year - pays for itself in one prevented fine." />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
           ::selection { background: #10B981; color: white; }
@@ -180,7 +180,7 @@ export default function Home() {
       {/* ===== HERO SECTION ===== */}
       <section style={{
         paddingTop: '160px',
-        paddingBottom: '120px',
+        paddingBottom: '100px',
         background: COLORS.deepHarbor,
         position: 'relative',
         overflow: 'hidden'
@@ -196,7 +196,7 @@ export default function Home() {
 
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 32px', position: 'relative' }}>
           <div style={{ maxWidth: '720px' }}>
-            {/* Headline */}
+            {/* Pain-focused Headline */}
             <h1 className="hero-title" style={{
               fontSize: '56px',
               fontWeight: '700',
@@ -206,19 +206,28 @@ export default function Home() {
               margin: '0 0 24px 0',
               fontFamily: '"Space Grotesk", sans-serif'
             }}>
-              The Operating System for Chicago Vehicle Compliance.
+              Stop Getting Blindsided by Chicago Tickets.
             </h1>
 
-            {/* Subheadline */}
+            {/* Value prop with guarantee */}
             <p className="hero-subtitle" style={{
               fontSize: '20px',
-              color: COLORS.slate,
+              color: '#E2E8F0',
               lineHeight: '1.6',
-              margin: '0 0 40px 0',
+              margin: '0 0 16px 0',
               fontWeight: '400'
             }}>
-              Don't just get alerted. Get handled. We automate city sticker renewals,
-              manage document verification, and provide financial protection against municipal fines.
+              We automate your city sticker, plate renewal, and street cleaning alerts.
+            </p>
+            {/* Guarantee callout */}
+            <p style={{
+              fontSize: '18px',
+              color: COLORS.signal,
+              lineHeight: '1.6',
+              margin: '0 0 40px 0',
+              fontWeight: '600'
+            }}>
+              If our system fails, we pay the ticket.
             </p>
 
             {/* CTA Buttons */}
@@ -230,7 +239,7 @@ export default function Home() {
               <button
                 onClick={() => router.push('/protection')}
                 style={{
-                  backgroundColor: COLORS.regulatory,
+                  backgroundColor: COLORS.signal,
                   color: 'white',
                   border: 'none',
                   borderRadius: '10px',
@@ -241,13 +250,13 @@ export default function Home() {
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.regulatoryDark;
+                  e.currentTarget.style.backgroundColor = '#059669';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.regulatory;
+                  e.currentTarget.style.backgroundColor = COLORS.signal;
                 }}
               >
-                Activate Autopilot
+                Enable Autopilot — $120/yr
               </button>
               <button
                 onClick={() => router.push('/alerts/signup')}
@@ -273,7 +282,7 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Stats row */}
+            {/* Stats row - emphasizing the problem */}
             <div className="stats-row" style={{
               display: 'flex',
               gap: '48px',
@@ -281,35 +290,68 @@ export default function Home() {
               paddingTop: '32px'
             }}>
               <div>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: 'white', fontFamily: '"Space Grotesk", sans-serif' }}>$269M</div>
-                <div style={{ fontSize: '14px', color: COLORS.slate }}>in tickets issued by Chicago annually</div>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f87171', fontFamily: '"Space Grotesk", sans-serif' }}>$269M</div>
+                <div style={{ fontSize: '14px', color: COLORS.slate }}>in tickets issued by Chicago last year</div>
               </div>
               <div>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>160+</div>
-                <div style={{ fontSize: '14px', color: COLORS.slate }}>vehicles under active protection</div>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f87171', fontFamily: '"Space Grotesk", sans-serif' }}>$260+</div>
+                <div style={{ fontSize: '14px', color: COLORS.slate }}>cost of one late city sticker</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>$0</div>
+                <div style={{ fontSize: '14px', color: COLORS.slate }}>what you'll pay with Autopilot</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===== FEATURES SECTION ===== */}
+      {/* ===== PROBLEM AGITATION SECTION ===== */}
+      <section style={{
+        padding: '80px 32px',
+        backgroundColor: '#fef2f2',
+        borderBottom: '1px solid #fecaca'
+      }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{
+            fontSize: '28px',
+            fontWeight: '700',
+            color: '#991b1b',
+            margin: '0 0 16px 0',
+            fontFamily: '"Space Grotesk", sans-serif'
+          }}>
+            Chicago Issued 2.8 Million Vehicle Tickets Last Year
+          </h2>
+          <p style={{ fontSize: '18px', color: '#b91c1c', margin: '0 0 32px 0', lineHeight: '1.6' }}>
+            Most of them were <strong>completely avoidable</strong>. One missed street cleaning sign.
+            One late sticker renewal. One "I forgot." And suddenly you're out $200+.
+          </p>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 24px',
+            backgroundColor: 'white',
+            borderRadius: '100px',
+            border: '1px solid #fecaca'
+          }}>
+            <span style={{ fontSize: '14px', color: '#991b1b', fontWeight: '500' }}>
+              Autopilot prevents all of it.
+            </span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#991b1b" strokeWidth="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== WHAT WE ACTUALLY DO SECTION ===== */}
       <section id="features" style={{
-        padding: '120px 32px',
+        padding: '100px 32px',
         backgroundColor: COLORS.concrete
       }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ marginBottom: '64px' }}>
-            <p style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: COLORS.regulatory,
-              textTransform: 'uppercase',
-              letterSpacing: '1px',
-              margin: '0 0 16px 0'
-            }}>
-              Platform
-            </p>
+          <div style={{ marginBottom: '64px', textAlign: 'center' }}>
             <h2 className="section-title" style={{
               fontSize: '40px',
               fontWeight: '700',
@@ -318,10 +360,10 @@ export default function Home() {
               letterSpacing: '-1px',
               fontFamily: '"Space Grotesk", sans-serif'
             }}>
-              Civic Automation Infrastructure
+              What Autopilot Actually Does for You
             </h2>
-            <p style={{ fontSize: '18px', color: COLORS.slate, margin: 0, maxWidth: '600px' }}>
-              A layer of technology between you and the city. We handle the complexity so you don't have to.
+            <p style={{ fontSize: '18px', color: COLORS.slate, margin: '0 auto', maxWidth: '600px' }}>
+              We handle the bureaucracy so you can just drive.
             </p>
           </div>
 
@@ -330,7 +372,7 @@ export default function Home() {
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '24px'
           }}>
-            {/* Feature 1: The Concierge */}
+            {/* Feature 1: No More Late Fees */}
             <div style={{
               backgroundColor: 'white',
               borderRadius: '16px',
@@ -338,74 +380,99 @@ export default function Home() {
               border: `1px solid ${COLORS.border}`
             }}>
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: `${COLORS.regulatory}10`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '24px'
+                fontSize: '14px',
+                fontWeight: '700',
+                color: COLORS.regulatory,
+                marginBottom: '16px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
               }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <path d="M9 15l2 2 4-4"/>
-                </svg>
+                No More "I Forgot"
               </div>
               <h3 style={{
-                fontSize: '20px',
+                fontSize: '22px',
                 fontWeight: '600',
                 color: COLORS.graphite,
-                margin: '0 0 12px 0',
+                margin: '0 0 16px 0',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                Renewals on Autopilot
+                We Handle Your Renewals
               </h3>
-              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                We track your renewal deadlines and handle everything — City Stickers, Plate Renewals, and residential parking permits.
-                Just approve, and we'll purchase and mail your stickers before deadlines.
+              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.7', margin: '0 0 20px 0' }}>
+                City Sticker. Plate Renewal. Residential Permit.
+                Just approve the purchase — we buy it, verify it, and mail it to you <strong>before</strong> deadlines.
               </p>
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#166534',
+                fontWeight: '500'
+              }}>
+                No more late fees. No more "I forgot."
+              </div>
             </div>
 
-            {/* Feature 2: The Insurance */}
+            {/* Feature 2: We Pay If We Fail */}
             <div style={{
               backgroundColor: 'white',
               borderRadius: '16px',
               padding: '40px 32px',
-              border: `1px solid ${COLORS.border}`
+              border: `2px solid ${COLORS.signal}`,
+              position: 'relative'
             }}>
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: `${COLORS.signal}10`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '24px'
+                position: 'absolute',
+                top: '-12px',
+                left: '24px',
+                backgroundColor: COLORS.signal,
+                color: 'white',
+                padding: '4px 12px',
+                borderRadius: '100px',
+                fontSize: '11px',
+                fontWeight: '700',
+                textTransform: 'uppercase'
               }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="M9 12l2 2 4-4"/>
-                </svg>
+                Our Guarantee
+              </div>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '700',
+                color: COLORS.signal,
+                marginBottom: '16px',
+                marginTop: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                If We Fail, We Pay
               </div>
               <h3 style={{
-                fontSize: '20px',
+                fontSize: '22px',
                 fontWeight: '600',
                 color: COLORS.graphite,
-                margin: '0 0 12px 0',
+                margin: '0 0 16px 0',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                Ticket Indemnification
+                $200/Year Ticket Protection
               </h3>
-              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                Our systems track street cleaning, snow bans, and winter parking bans in real-time.
-                If our alerts fail and you receive a ticket, we reimburse you up to $200/year.
+              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.7', margin: '0 0 20px 0' }}>
+                We track street cleaning, snow bans, and winter parking in real-time.
+                If our alerts fail and you get a ticket, <strong>we reimburse you</strong>.
               </p>
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#166534',
+                fontWeight: '500'
+              }}>
+                Not a promise. A guarantee.
+              </div>
             </div>
 
-            {/* Feature 3: The Intelligence */}
+            {/* Feature 3: We Deal With The City */}
             <div style={{
               backgroundColor: 'white',
               borderRadius: '16px',
@@ -413,33 +480,39 @@ export default function Home() {
               border: `1px solid ${COLORS.border}`
             }}>
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: `${COLORS.graphite}10`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '24px'
+                fontSize: '14px',
+                fontWeight: '700',
+                color: COLORS.graphite,
+                marginBottom: '16px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
               }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.graphite} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                </svg>
+                Zero Hassle
               </div>
               <h3 style={{
-                fontSize: '20px',
+                fontSize: '22px',
                 fontWeight: '600',
                 color: COLORS.graphite,
-                margin: '0 0 12px 0',
+                margin: '0 0 16px 0',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                Direct Municipal Integration
+                We Deal With the City
               </h3>
-              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                We don't crowdsource. We use official city data sources for street cleaning schedules,
-                snow ban routes, and 1.2M+ FOIA ticket records to power our contestation analysis.
+              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.7', margin: '0 0 20px 0' }}>
+                Document uploads, OCR verification, plate lookups, form errors — all handled.
+                You get one text:
               </p>
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: COLORS.graphite,
+                fontStyle: 'italic',
+                border: `1px solid ${COLORS.border}`
+              }}>
+                "Autopilot renewed your sticker. You're good."
+              </div>
             </div>
           </div>
         </div>
@@ -447,33 +520,41 @@ export default function Home() {
 
       {/* ===== PRICING SECTION ===== */}
       <section id="pricing" style={{
-        padding: '120px 32px',
+        padding: '100px 32px',
         backgroundColor: 'white'
       }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <p style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: COLORS.regulatory,
-              textTransform: 'uppercase',
-              letterSpacing: '1px',
-              margin: '0 0 16px 0'
-            }}>
-              Pricing
-            </p>
             <h2 className="section-title" style={{
               fontSize: '40px',
               fontWeight: '700',
               color: COLORS.graphite,
-              margin: '0 0 16px 0',
+              margin: '0 0 24px 0',
               letterSpacing: '-1px',
               fontFamily: '"Space Grotesk", sans-serif'
             }}>
-              Choose Your Coverage
+              You Do The Math
             </h2>
-            <p style={{ fontSize: '18px', color: COLORS.slate, margin: 0 }}>
-              One tow costs more than a year of full protection.
+            <div style={{
+              display: 'inline-block',
+              textAlign: 'left',
+              padding: '24px 32px',
+              backgroundColor: '#fef2f2',
+              borderRadius: '12px',
+              marginBottom: '24px'
+            }}>
+              <p style={{ fontSize: '18px', color: '#991b1b', margin: '0 0 8px 0', fontWeight: '500' }}>
+                One late city sticker = <strong>$260+</strong> <span style={{ fontSize: '14px', color: '#b91c1c' }}>(late fee + compliance ticket)</span>
+              </p>
+              <p style={{ fontSize: '18px', color: '#991b1b', margin: '0', fontWeight: '500' }}>
+                One tow = <strong>$350+</strong> <span style={{ fontSize: '14px', color: '#b91c1c' }}>($150 tow + $60/day storage + $60 ticket)</span>
+              </p>
+            </div>
+            <p style={{ fontSize: '24px', color: COLORS.signal, margin: '0', fontWeight: '700' }}>
+              Autopilot = $120/year
+            </p>
+            <p style={{ fontSize: '15px', color: COLORS.slate, margin: '8px 0 0 0' }}>
+              One saved ticket pays for itself. One saved tow pays for 3 years.
             </p>
           </div>
 
@@ -482,7 +563,7 @@ export default function Home() {
             gridTemplateColumns: 'repeat(2, 1fr)',
             gap: '24px'
           }}>
-            {/* Free Tier: Monitoring */}
+            {/* Free Tier: Monitoring Only */}
             <div style={{
               backgroundColor: COLORS.concrete,
               borderRadius: '16px',
@@ -497,13 +578,16 @@ export default function Home() {
                 letterSpacing: '1px',
                 marginBottom: '16px'
               }}>
-                Passive Monitoring
+                Monitoring Only
               </div>
               <div style={{ fontSize: '48px', fontWeight: '700', color: COLORS.graphite, marginBottom: '8px', fontFamily: '"Space Grotesk", sans-serif' }}>
                 $0
               </div>
-              <div style={{ fontSize: '15px', color: COLORS.slate, marginBottom: '32px' }}>
+              <div style={{ fontSize: '15px', color: COLORS.slate, marginBottom: '8px' }}>
                 Free forever
+              </div>
+              <div style={{ fontSize: '14px', color: COLORS.graphite, marginBottom: '32px', fontWeight: '500' }}>
+                You get alerted.
               </div>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
@@ -555,19 +639,19 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Paid Tier: Autopilot */}
+            {/* Paid Tier: Full Autopilot */}
             <div style={{
               backgroundColor: COLORS.deepHarbor,
               borderRadius: '16px',
               padding: '40px 32px',
-              border: `2px solid ${COLORS.regulatory}`,
+              border: `2px solid ${COLORS.signal}`,
               position: 'relative'
             }}>
               <div style={{
                 position: 'absolute',
                 top: '-12px',
                 left: '24px',
-                backgroundColor: COLORS.regulatory,
+                backgroundColor: COLORS.signal,
                 color: 'white',
                 padding: '6px 16px',
                 borderRadius: '100px',
@@ -576,24 +660,27 @@ export default function Home() {
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase'
               }}>
-                Full Coverage
+                Most Popular
               </div>
               <div style={{
                 fontSize: '13px',
                 fontWeight: '600',
-                color: COLORS.regulatory,
+                color: COLORS.signal,
                 textTransform: 'uppercase',
                 letterSpacing: '1px',
                 marginBottom: '16px'
               }}>
-                Active Compliance
+                Full Autopilot
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                 <span style={{ fontSize: '48px', fontWeight: '700', color: 'white', fontFamily: '"Space Grotesk", sans-serif' }}>$120</span>
                 <span style={{ fontSize: '16px', color: COLORS.slate }}>/year</span>
               </div>
-              <div style={{ fontSize: '15px', color: COLORS.slate, marginBottom: '32px' }}>
-                Pays for itself in one prevented tow.
+              <div style={{ fontSize: '14px', color: 'white', marginBottom: '8px', fontWeight: '500' }}>
+                We handle it.
+              </div>
+              <div style={{ fontSize: '14px', color: COLORS.signal, marginBottom: '32px', fontWeight: '500' }}>
+                = $10/month. One saved tow pays for 3 years.
               </div>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
@@ -608,13 +695,13 @@ export default function Home() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2" style={{ marginTop: '2px', flexShrink: 0 }}>
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                  Everything in Monitoring, plus:
+                  Everything in Free, plus:
                 </li>
                 {[
-                  { text: 'Auto-Renewal Service — we buy the stickers for you', highlight: true },
-                  { text: '$200 Ticket Reimbursement Guarantee', highlight: true },
-                  { text: 'Document Management — secure OCR verification & storage', highlight: true },
-                  { text: 'Concierge Support — we deal with the city', highlight: false },
+                  { text: 'We buy & mail your stickers before deadlines', highlight: true },
+                  { text: '$200/year ticket reimbursement if we fail', highlight: true },
+                  { text: 'Document verification & secure storage', highlight: true },
+                  { text: 'We talk to the city so you never have to', highlight: false },
                 ].map((item, i) => (
                   <li key={i} style={{
                     padding: '10px 0',
@@ -637,7 +724,7 @@ export default function Home() {
                 onClick={() => router.push('/protection')}
                 style={{
                   width: '100%',
-                  backgroundColor: COLORS.regulatory,
+                  backgroundColor: COLORS.signal,
                   color: 'white',
                   border: 'none',
                   borderRadius: '10px',
@@ -648,13 +735,13 @@ export default function Home() {
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.regulatoryDark;
+                  e.currentTarget.style.backgroundColor = '#059669';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.regulatory;
+                  e.currentTarget.style.backgroundColor = COLORS.signal;
                 }}
               >
-                Enable Autopilot
+                Enable Autopilot — $120/yr
               </button>
             </div>
           </div>
@@ -758,75 +845,91 @@ export default function Home() {
 
       {/* ===== FINAL CTA SECTION ===== */}
       <section style={{
-        padding: '120px 32px',
-        backgroundColor: 'white',
+        padding: '100px 32px',
+        backgroundColor: COLORS.deepHarbor,
         textAlign: 'center'
       }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           <h2 style={{
             fontSize: '40px',
             fontWeight: '700',
-            color: COLORS.graphite,
+            color: 'white',
             margin: '0 0 16px 0',
             letterSpacing: '-1px',
             fontFamily: '"Space Grotesk", sans-serif'
           }}>
-            Stop Managing. Start Driving.
+            Never Get Blindsided Again.
           </h2>
           <p style={{
             fontSize: '18px',
             color: COLORS.slate,
-            margin: '0 0 40px 0',
+            margin: '0 0 12px 0',
             lineHeight: '1.6'
           }}>
-            Let us handle your car's legal existence in Chicago.
+            Stop tracking deadlines. Stop checking street signs. Stop dealing with the city.
+          </p>
+          <p style={{
+            fontSize: '18px',
+            color: COLORS.signal,
+            margin: '0 0 40px 0',
+            lineHeight: '1.6',
+            fontWeight: '500'
+          }}>
+            Let Autopilot handle it.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => router.push('/protection')}
               style={{
-                backgroundColor: COLORS.regulatory,
+                backgroundColor: COLORS.signal,
                 color: 'white',
                 border: 'none',
                 borderRadius: '10px',
-                padding: '16px 32px',
-                fontSize: '16px',
+                padding: '18px 40px',
+                fontSize: '17px',
                 fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = COLORS.regulatoryDark;
+                e.currentTarget.style.backgroundColor = '#059669';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = COLORS.regulatory;
+                e.currentTarget.style.backgroundColor = COLORS.signal;
               }}
             >
-              Activate Autopilot
+              Enable Autopilot — $120/yr
             </button>
             <button
               onClick={() => router.push('/alerts/signup')}
               style={{
                 backgroundColor: 'transparent',
-                color: COLORS.graphite,
-                border: `1px solid ${COLORS.border}`,
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
                 borderRadius: '10px',
-                padding: '16px 32px',
-                fontSize: '16px',
+                padding: '18px 40px',
+                fontSize: '17px',
                 fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = COLORS.graphite;
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.6)';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = COLORS.border;
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
               }}
             >
               Start Free
             </button>
           </div>
+          <p style={{
+            fontSize: '13px',
+            color: COLORS.slate,
+            marginTop: '24px'
+          }}>
+            No credit card required for free monitoring. Cancel anytime.
+          </p>
         </div>
       </section>
 
