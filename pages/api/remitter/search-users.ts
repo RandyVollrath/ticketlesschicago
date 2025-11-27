@@ -94,16 +94,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }).filter(Boolean);
 
-    // Log the search for audit purposes
-    await supabase.from('remitter_activity_log').insert({
-      partner_id: partner.id,
-      action: 'user_search',
-      metadata: {
-        query: searchTerm,
-        filter: filter || 'all',
-        results_count: results.length,
-      },
-    }).catch(() => {}); // Don't fail if log table doesn't exist
+    // Log the search for audit purposes (ignore errors if table doesn't exist)
+    try {
+      await supabase.from('remitter_activity_log').insert({
+        partner_id: partner.id,
+        action: 'user_search',
+        metadata: {
+          query: searchTerm,
+          filter: filter || 'all',
+          results_count: results.length,
+        },
+      });
+    } catch (logError) {
+      // Ignore - table might not exist
+    }
 
     return res.status(200).json({
       success: true,
