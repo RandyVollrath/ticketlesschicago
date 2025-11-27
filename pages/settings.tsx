@@ -14,9 +14,9 @@ import { useToast } from '../components/Toast'
 import Dashboard from '../components/Dashboard'
 import NotificationPreferences from '../components/NotificationPreferences'
 import ReferralProgram from '../components/ReferralProgram'
-import OnboardingProgress from '../components/OnboardingProgress'
+// import OnboardingProgress from '../components/OnboardingProgress' // Removed - too cluttered
 import ProfileConfirmation from '../components/ProfileConfirmation'
-import SavingsCalculator from '../components/SavingsCalculator'
+// import SavingsCalculator from '../components/SavingsCalculator' // Removed - speculative numbers were confusing
 import QuickActions, { QuickActionsInline } from '../components/QuickActions'
 
 // Brand Colors - Municipal Fintech
@@ -794,11 +794,8 @@ export default function ProfileNew() {
             </div>
           )}
 
-          {/* Onboarding Progress */}
-          <OnboardingProgress profile={profile} />
-
           {/* Profile Confirmation for Renewals (Protection users only) */}
-          {user && profile.has_protection && (
+          {user && profile.has_protection && !profile.profile_confirmed_at && (
             <ProfileConfirmation
               userId={user.id}
               profile={profile}
@@ -806,75 +803,18 @@ export default function ProfileNew() {
             />
           )}
 
-          {/* Dashboard */}
+          {/* Dashboard - shows vehicles, upcoming cleaning, key stats */}
           <Dashboard user={user} profile={profile} />
-
-          {/* Savings Calculator */}
-          {user && (
-            <div style={{ marginBottom: '24px' }}>
-              <SavingsCalculator userId={user.id} profile={profile} />
-            </div>
-          )}
 
           {/* Quick Actions */}
           <div style={{ marginBottom: '24px' }}>
-            <h3 style={{
-              color: COLORS.graphite,
-              fontSize: '16px',
-              fontWeight: 600,
-              marginBottom: '12px',
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}>
-              Quick Actions
-            </h3>
             <QuickActionsInline hasProtection={profile.has_protection || false} />
           </div>
 
-          {/* Protection status card */}
-          <div style={{ marginBottom: '24px' }}>
-            <UpgradeCard hasProtection={profile.has_protection || false} />
-          </div>
-
-          {/* Profile Confirmation Required - Protection users only */}
-          {profile.has_protection && !profile.profile_confirmed_at && (
-            <div style={{
-              backgroundColor: '#fef3c7',
-              border: '2px solid #f59e0b',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <span style={{ fontSize: '24px' }}>⚠️</span>
-                <div style={{ flex: 1 }}>
-                  <p style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#92400e',
-                    margin: '0 0 8px 0'
-                  }}>
-                    Profile Confirmation Required
-                  </p>
-                  <p style={{ fontSize: '14px', color: '#78350f', margin: '0 0 16px 0', lineHeight: '1.5' }}>
-                    Before we can handle your renewals automatically, please confirm your profile information is current and accurate. Reminders at 60, 45, and 37 days will be required until confirmed.
-                  </p>
-                  <button
-                    onClick={handleConfirmProfile}
-                    style={{
-                      backgroundColor: '#f59e0b',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '10px 20px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✓ Confirm Profile is Up-to-Date
-                  </button>
-                </div>
-              </div>
+          {/* Protection status card - only show if not protected */}
+          {!profile.has_protection && (
+            <div style={{ marginBottom: '24px' }}>
+              <UpgradeCard hasProtection={false} />
             </div>
           )}
 

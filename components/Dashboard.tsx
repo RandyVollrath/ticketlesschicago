@@ -150,14 +150,17 @@ export default function Dashboard({ user, profile }: DashboardProps) {
   // Fetch upcoming cleaning dates
   useEffect(() => {
     async function fetchCleaningDates() {
-      if (!profile?.ward || !profile?.section) {
+      const ward = profile?.home_address_ward || profile?.ward;
+      const section = profile?.home_address_section || profile?.section;
+
+      if (!ward || !section) {
         setLoadingCleanings(false);
         return;
       }
 
       try {
         const response = await fetch(
-          `/api/get-cleaning-schedule?ward=${profile.ward}&section=${profile.section}`
+          `/api/get-cleaning-schedule?ward=${ward}&section=${section}`
         );
         if (response.ok) {
           const data = await response.json();
@@ -166,8 +169,8 @@ export default function Dashboard({ user, profile }: DashboardProps) {
             const upcoming = data.dates
               .map((d: any) => ({
                 date: d.date,
-                ward: profile.ward,
-                section: profile.section,
+                ward: ward,
+                section: section,
                 time: d.time || '9:00 AM - 3:00 PM',
                 daysUntil: Math.ceil((new Date(d.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
               }))
@@ -184,7 +187,7 @@ export default function Dashboard({ user, profile }: DashboardProps) {
     }
 
     fetchCleaningDates();
-  }, [profile?.ward, profile?.section]);
+  }, [profile?.home_address_ward, profile?.home_address_section, profile?.ward, profile?.section]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -442,7 +445,7 @@ export default function Dashboard({ user, profile }: DashboardProps) {
               </div>
             ))}
           </div>
-        ) : profile?.ward && profile?.section ? (
+        ) : (profile?.home_address_ward || profile?.ward) && (profile?.home_address_section || profile?.section) ? (
           <div style={{
             padding: '20px',
             textAlign: 'center',
