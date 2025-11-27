@@ -245,11 +245,12 @@ export default function RemitterPortal() {
         { headers: { 'X-API-Key': apiKey } }
       );
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Search failed');
+        throw new Error(data.details || data.error || 'Search failed');
       }
 
-      const data = await response.json();
       setSearchResults(data.results || []);
     } catch (err: any) {
       setError(err.message || 'Search failed');
