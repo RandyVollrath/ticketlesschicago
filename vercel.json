@@ -41,6 +41,15 @@
     },
     "pages/api/cron/flag-property-tax-refresh.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/notify-remitter-daily.ts": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/notify-emissions-test.ts": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/notify-sticker-purchased.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -123,6 +132,18 @@
     {
       "path": "/api/cron/flag-property-tax-refresh",
       "schedule": "0 9 15 7 *"
+    },
+    {
+      "path": "/api/cron/notify-remitter-daily",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/notify-emissions-test",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/notify-sticker-purchased",
+      "schedule": "0 15 * * *"
     }
   ],
   "github": {
