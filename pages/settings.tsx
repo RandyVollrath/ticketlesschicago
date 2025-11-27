@@ -13,7 +13,7 @@ import PropertyTaxHelper from '../components/PropertyTaxHelper'
 import { useToast } from '../components/Toast'
 import Dashboard from '../components/Dashboard'
 import NotificationPreferences from '../components/NotificationPreferences'
-import ReferralProgram from '../components/ReferralProgram'
+import ReferralLink from '../components/ReferralLink'
 // import OnboardingProgress from '../components/OnboardingProgress' // Removed - too cluttered
 import ProfileConfirmation from '../components/ProfileConfirmation'
 // import SavingsCalculator from '../components/SavingsCalculator' // Removed - speculative numbers were confusing
@@ -2911,17 +2911,14 @@ export default function ProfileNew() {
             <SnowBanSettings />
           </Accordion>
 
-          {/* 10. Referral Program */}
+          {/* 10. Referral Program - Uses Rewardful */}
           <Accordion
             title="Refer Friends & Earn"
             icon="🎁"
             defaultOpen={false}
           >
             {user && (
-              <ReferralProgram
-                userId={user.id}
-                userEmail={user.email || ''}
-              />
+              <ReferralLink userId={user.id} />
             )}
           </Accordion>
 
