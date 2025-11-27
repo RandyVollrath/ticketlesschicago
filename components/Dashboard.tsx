@@ -232,7 +232,7 @@ export default function Dashboard({ user, profile }: DashboardProps) {
         gap: '16px',
         marginBottom: '24px',
       }}>
-        {/* Vehicles Stat */}
+        {/* Vehicle Info */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -252,10 +252,10 @@ export default function Dashboard({ user, profile }: DashboardProps) {
             }}>
               {Icons.car}
             </div>
-            <span style={{ fontSize: '13px', color: COLORS.slate, fontWeight: '500' }}>Vehicles</span>
+            <span style={{ fontSize: '13px', color: COLORS.slate, fontWeight: '500' }}>Vehicle</span>
           </div>
-          <p style={{ fontSize: '28px', fontWeight: '700', color: COLORS.graphite, margin: 0 }}>
-            {vehicles.length}
+          <p style={{ fontSize: '16px', fontWeight: '600', color: COLORS.graphite, margin: 0 }}>
+            {vehicles.length > 0 ? vehicles[0].license_plate : 'Not set'}
           </p>
         </div>
 
@@ -380,7 +380,15 @@ export default function Dashboard({ user, profile }: DashboardProps) {
             </span>
           </div>
           <button
-            onClick={() => router.push('/check-your-street')}
+            onClick={() => {
+              const ward = profile?.home_address_ward || profile?.ward;
+              const section = profile?.home_address_section || profile?.section;
+              if (ward && section) {
+                router.push(`/check-your-street?ward=${ward}&section=${section}`);
+              } else {
+                router.push('/check-your-street');
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -489,39 +497,6 @@ export default function Dashboard({ user, profile }: DashboardProps) {
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: '12px',
-      }}>
-        <QuickAction
-          icon={Icons.car}
-          label="Add Vehicle"
-          onClick={() => document.getElementById('vehicles-section')?.scrollIntoView({ behavior: 'smooth' })}
-        />
-        <QuickAction
-          icon={Icons.calendar}
-          label="Check Street"
-          onClick={() => router.push('/check-your-street')}
-        />
-        {hasProtection && (
-          <QuickAction
-            icon={Icons.ticket}
-            label="Submit Ticket"
-            onClick={() => router.push('/submit-ticket')}
-            highlight
-          />
-        )}
-        {!hasProtection && (
-          <QuickAction
-            icon={Icons.shield}
-            label="Get Protection"
-            onClick={() => router.push('/protection')}
-            highlight
-          />
-        )}
-      </div>
     </div>
   );
 }
