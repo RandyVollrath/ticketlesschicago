@@ -43,15 +43,17 @@ export default function Accordion({
   const colors = badgeColors[badgeColor];
 
   return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '16px',
-      border: `1px solid ${COLORS.border}`,
-      marginBottom: '16px',
-      overflow: 'hidden',
-      transition: 'all 0.2s',
-      boxShadow: isOpen ? '0 4px 12px rgba(0,0,0,0.04)' : 'none'
-    }}>
+    <div
+      data-accordion-title={title}
+      style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        border: `1px solid ${COLORS.border}`,
+        marginBottom: '16px',
+        overflow: 'hidden',
+        transition: 'all 0.2s',
+        boxShadow: isOpen ? '0 4px 12px rgba(0,0,0,0.04)' : 'none'
+      }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
