@@ -152,13 +152,9 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             marginBottom: '20px'
           }}>
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>$2/month</div>
-                <div style={{ fontSize: '13px', color: '#3b82f6' }}>for monthly subscribers</div>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>$20</div>
-                <div style={{ fontSize: '13px', color: '#3b82f6' }}>for annual subscribers</div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>$24</div>
+                <div style={{ fontSize: '13px', color: '#3b82f6' }}>per referral (20% of $120)</div>
               </div>
             </div>
             <p style={{ fontSize: '14px', color: '#1e40af', margin: 0 }}>
@@ -179,8 +175,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             <ul style={{ fontSize: '13px', color: '#78350f', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
               <li>Share your link with friends who might benefit from Autopilot</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
-              <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
-              <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
+              <li>Earn <strong>$24</strong> for each annual subscriber you refer (20% of $120)</li>
               <li>Rewards are paid out monthly via PayPal or bank transfer</li>
               <li>If a referred customer cancels, monthly payments will stop</li>
               <li>Program terms may be modified with notice to participants</li>
@@ -226,22 +221,12 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             <p style={{ fontSize: '14px', color: '#15803d', margin: '0 0 12px 0' }}>
               We've also sent this link to your email for safekeeping.
             </p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#166534' }}>
-                  ${referralData.earnings.monthly}/mo
-                </div>
-                <div style={{ fontSize: '13px', color: '#15803d' }}>
-                  per monthly subscriber
-                </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#166534' }}>
+                $24
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#166534' }}>
-                  ${referralData.earnings.annual}
-                </div>
-                <div style={{ fontSize: '13px', color: '#15803d' }}>
-                  per annual subscriber
-                </div>
+              <div style={{ fontSize: '13px', color: '#15803d' }}>
+                per referral (20% of $120)
               </div>
             </div>
           </div>
@@ -304,8 +289,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
               <li>Share your link with friends who might benefit from Autopilot</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
-              <li>You earn <strong>${referralData.earnings.monthly}/month</strong> for each monthly subscriber, as long as they remain subscribed</li>
-              <li>You earn <strong>${referralData.earnings.annual} one-time</strong> for annual subscribers</li>
+              <li>You earn <strong>$24</strong> for each annual subscriber (20% of $120)</li>
               <li>Rewards are paid out monthly via PayPal or bank transfer</li>
               <li>If a referred customer cancels, monthly payments will stop</li>
               <li>Program terms may be modified with notice to participants</li>
