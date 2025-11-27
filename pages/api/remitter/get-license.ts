@@ -149,23 +149,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('user_id', userId);
     }
 
-    // Audit log
-    await supabase.from('license_access_log').insert({
-      user_id: userId,
-      accessed_at: now,
-      accessed_by: `remitter:${partner.id}`,
-      reason: 'city_sticker_renewal',
-      ip_address: req.headers['x-forwarded-for'] as string || null,
-      user_agent: req.headers['user-agent'] as string || null,
-      license_image_path: profile.license_image_path,
-      metadata: {
-        partner_name: partner.name,
-        side_requested: side,
-        front_accessed: !!response.front,
-        back_accessed: !!response.back,
-        multi_year_consent: profile.license_reuse_consent_given,
-      },
-    }).catch(err => console.log('Audit log note:', err.message));
+    // Audit log (ignore errors if table doesn't exist)
+    try {
+      await supabase.from('license_access_log').insert({
+        user_id: userId,
+        accessed_at: now,
+        accessed_by: `remitter:${partner.id}`,
+        reason: 'city_sticker_renewal',
+        ip_address: req.headers['x-forwarded-for'] as string || null,
+        user_agent: req.headers['user-agent'] as string || null,
+        license_image_path: profile.license_image_path,
+        metadata: {
+          partner_name: partner.name,
+          side_requested: side,
+          front_accessed: !!response.front,
+          back_accessed: !!response.back,
+          multi_year_consent: profile.license_reuse_consent_given,
+        },
+      });
+    } catch (logErr) {
+      console.log('Audit log note: table may not exist');
+    }
 
     console.log(`🔑 REMITTER ACCESS by ${partner.name}:`);
     console.log(`   User: ${profile.email} (${profile.license_plate})`);
@@ -175,6 +179,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Get license error:', error);
-    return res.status(500).json({ error: 'Failed to retrieve license' });
+    return res.status(500).json({ error: 'Failed to retrieve license', details: error.message });
   }
 }
