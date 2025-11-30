@@ -229,15 +229,30 @@ function generateEmailContent(user: any, daysUntil: number, emissionsDate: Date)
  */
 function generateSMSContent(user: any, daysUntil: number): string {
   const timeText = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `in ${daysUntil} days`;
+  const hasProtection = user.has_protection;
 
-  if (daysUntil <= 1) {
-    return `🚨 URGENT: Emissions test for ${user.license_plate} is due ${timeText}! Without it, you can't renew your plate. Find a location: airteam.app - Autopilot America`;
-  } else if (daysUntil <= 7) {
-    return `⚠️ Emissions test for ${user.license_plate} due ${timeText}. Schedule now: airteam.app. Required for plate renewal. - Autopilot America`;
-  } else if (daysUntil <= 30) {
-    return `📋 Reminder: Emissions test for ${user.license_plate} due ${timeText}. Plan ahead: airteam.app - Autopilot America`;
+  if (hasProtection) {
+    // Protection users - emphasize we need this done so we can register them
+    if (daysUntil <= 1) {
+      return `🚨 URGENT: Emissions test due ${timeText}! We can't renew your plate until this is done. Complete it now: airteam.app - Autopilot America`;
+    } else if (daysUntil <= 7) {
+      return `⚠️ Emissions test due ${timeText}. Complete this soon so we can process your plate renewal! Find locations: airteam.app - Autopilot America`;
+    } else if (daysUntil <= 30) {
+      return `📋 Emissions test due ${timeText}. Get this done so we can handle your plate renewal on time. Locations: airteam.app - Autopilot America`;
+    } else {
+      return `🔔 Emissions test due ${timeText}. Plan ahead - we'll renew your plate once this is complete. Locations: airteam.app - Autopilot America`;
+    }
   } else {
-    return `🔔 FYI: Emissions test for ${user.license_plate} due ${timeText}. Find locations: airteam.app - Autopilot America`;
+    // Free users - standard reminders
+    if (daysUntil <= 1) {
+      return `🚨 URGENT: Emissions test for ${user.license_plate} is due ${timeText}! Without it, you can't renew your plate. Find a location: airteam.app - Autopilot America`;
+    } else if (daysUntil <= 7) {
+      return `⚠️ Emissions test for ${user.license_plate} due ${timeText}. Schedule now: airteam.app. Required for plate renewal. - Autopilot America`;
+    } else if (daysUntil <= 30) {
+      return `📋 Reminder: Emissions test for ${user.license_plate} due ${timeText}. Plan ahead: airteam.app - Autopilot America`;
+    } else {
+      return `🔔 FYI: Emissions test for ${user.license_plate} due ${timeText}. Find locations: airteam.app - Autopilot America`;
+    }
   }
 }
 
