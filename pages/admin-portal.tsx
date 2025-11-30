@@ -888,7 +888,7 @@ export default function AdminPortal() {
                               <div>
                                 <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Address</h4>
                                 <div style={{ fontSize: '13px' }}>{user.address || 'N/A'}</div>
-                                <div style={{ fontSize: '13px' }}>{user.city} {user.zipCode}</div>
+                                <div style={{ fontSize: '13px' }}>{[user.city, user.zipCode].filter(Boolean).join(' ') || ''}</div>
                                 {user.permitZone && <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500', marginTop: '4px' }}>Zone: {user.permitZone}</div>}
                               </div>
                               {/* Vehicle */}
@@ -901,7 +901,7 @@ export default function AdminPortal() {
                               <div>
                                 <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Dates</h4>
                                 <div style={{ fontSize: '13px' }}>Expiry: {user.stickerExpiry || 'Not set'}</div>
-                                <div style={{ fontSize: '13px' }}>Signed up: {new Date(user.createdAt).toLocaleDateString()}</div>
+                                <div style={{ fontSize: '13px' }}>Signed up: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</div>
                                 {user.confirmedAt && <div style={{ fontSize: '13px' }}>Confirmed: {new Date(user.confirmedAt).toLocaleDateString()}</div>}
                               </div>
                               {/* Emissions */}
