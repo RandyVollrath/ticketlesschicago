@@ -779,8 +779,13 @@ export default function AdminPortal() {
                         style={{ borderTop: '1px solid #e5e7eb', cursor: 'pointer', backgroundColor: expandedUserId === user.userId ? '#f0f9ff' : 'transparent' }}
                       >
                         <td style={{ padding: '12px' }}>
-                          <div style={{ fontWeight: '500' }}>{user.name}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.email}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: '#9ca3af', fontSize: '10px', transition: 'transform 0.2s', transform: expandedUserId === user.userId ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                            <div>
+                              <div style={{ fontWeight: '500' }}>{user.name}</div>
+                              <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.email}</div>
+                            </div>
+                          </div>
                         </td>
                         <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: '600' }}>{user.licensePlate || 'N/A'}</td>
                         <td style={{ padding: '12px' }}>
