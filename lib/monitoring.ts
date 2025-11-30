@@ -324,3 +324,271 @@ function getEmptyStats(): MessageStats {
     costTotal: 0
   };
 }
+
+// =============================================================================
+// CONSOLIDATED ADMIN DATA (from removed cron jobs)
+// =============================================================================
+
+export interface UpcomingRenewal {
+  email: string;
+  firstName: string;
+  lastName: string;
+  licensePlate: string | null;
+  phone: string | null;
+  cityStickerExpiry: string | null;
+  licensePlateExpiry: string | null;
+  daysUntilExpiry: number;
+  renewalType: 'city_sticker' | 'license_plate' | 'both';
+}
+
+export interface MissingPermitDoc {
+  email: string;
+  phone: string | null;
+  address: string | null;
+  renewalDate: string;
+  daysRemaining: number;
+  documentStatus: string;
+  urgency: 'critical' | 'urgent' | 'reminder';
+}
+
+export interface AdminActionItems {
+  upcomingRenewals: UpcomingRenewal[];
+  missingPermitDocs: MissingPermitDoc[];
+  systemHealth: {
+    notificationsWorking: boolean;
+    lastNotificationRun: string | null;
+    webhooksHealthy: boolean;
+    issues: string[];
+  };
+}
+
+/**
+ * Get upcoming renewals that need admin action (sticker purchases)
+ * Replaces: /api/admin/notify-renewals
+ */
+export async function getUpcomingRenewals(daysAhead: number = 30): Promise<UpcomingRenewal[]> {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+    const futureDateStr = futureDate.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Get users with renewals in the next N days
+    const { data: users, error } = await supabaseAdmin
+      .from('user_profiles')
+      .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, phone')
+      .eq('has_protection', true)
+      .or(`city_sticker_expiry.gte.${todayStr},license_plate_expiry.gte.${todayStr}`)
+      .order('city_sticker_expiry', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching upcoming renewals:', error);
+      return [];
+    }
+
+    const renewals: UpcomingRenewal[] = [];
+
+    for (const user of users || []) {
+      const cityStickerDate = user.city_sticker_expiry ? new Date(user.city_sticker_expiry) : null;
+      const licensePlateDate = user.license_plate_expiry ? new Date(user.license_plate_expiry) : null;
+
+      const cityStickerDays = cityStickerDate
+        ? Math.floor((cityStickerDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        : 999;
+      const licensePlateDays = licensePlateDate
+        ? Math.floor((licensePlateDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        : 999;
+
+      // Only include if within the window
+      const hasCitySticker = cityStickerDays >= 0 && cityStickerDays <= daysAhead;
+      const hasLicensePlate = licensePlateDays >= 0 && licensePlateDays <= daysAhead;
+
+      if (hasCitySticker || hasLicensePlate) {
+        let renewalType: 'city_sticker' | 'license_plate' | 'both' = 'city_sticker';
+        if (hasCitySticker && hasLicensePlate) renewalType = 'both';
+        else if (hasLicensePlate) renewalType = 'license_plate';
+
+        renewals.push({
+          email: user.email,
+          firstName: user.first_name || '',
+          lastName: user.last_name || '',
+          licensePlate: user.license_plate,
+          phone: user.phone,
+          cityStickerExpiry: user.city_sticker_expiry,
+          licensePlateExpiry: user.license_plate_expiry,
+          daysUntilExpiry: Math.min(cityStickerDays, licensePlateDays),
+          renewalType
+        });
+      }
+    }
+
+    // Sort by urgency (soonest first)
+    return renewals.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+  } catch (error) {
+    console.error('Error in getUpcomingRenewals:', error);
+    return [];
+  }
+}
+
+/**
+ * Get users in permit zones missing required documents
+ * Replaces: /api/cron/check-missing-permit-docs
+ */
+export async function getMissingPermitDocs(): Promise<MissingPermitDoc[]> {
+  try {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+    // Get Protection users with permit zones and upcoming renewals
+    const { data: users, error } = await supabaseAdmin
+      .from('user_profiles')
+      .select('user_id, email, phone, mailing_address, city_sticker_expiry, has_permit_zone')
+      .eq('has_protection', true)
+      .eq('has_permit_zone', true)
+      .not('city_sticker_expiry', 'is', null)
+      .lte('city_sticker_expiry', thirtyDaysFromNow.toISOString().split('T')[0]);
+
+    if (error) {
+      console.error('Error fetching permit zone users:', error);
+      return [];
+    }
+
+    const missingDocs: MissingPermitDoc[] = [];
+
+    for (const user of users || []) {
+      // Check if they have approved documents OR a customer code
+      const { data: permitDoc } = await supabaseAdmin
+        .from('permit_zone_documents')
+        .select('id, customer_code, verification_status, created_at')
+        .eq('user_id', user.user_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      const hasApprovedDocs = permitDoc &&
+        permitDoc.verification_status === 'approved' &&
+        permitDoc.customer_code;
+
+      if (!hasApprovedDocs) {
+        const daysRemaining = Math.floor(
+          (new Date(user.city_sticker_expiry).getTime() - today.getTime()) /
+          (1000 * 60 * 60 * 24)
+        );
+
+        let urgency: 'critical' | 'urgent' | 'reminder' = 'reminder';
+        if (daysRemaining <= 14) urgency = 'critical';
+        else if (daysRemaining <= 21) urgency = 'urgent';
+
+        missingDocs.push({
+          email: user.email,
+          phone: user.phone,
+          address: user.mailing_address,
+          renewalDate: user.city_sticker_expiry,
+          daysRemaining,
+          documentStatus: permitDoc?.verification_status || 'not_submitted',
+          urgency
+        });
+      }
+    }
+
+    // Sort by urgency (most urgent first)
+    return missingDocs.sort((a, b) => a.daysRemaining - b.daysRemaining);
+  } catch (error) {
+    console.error('Error in getMissingPermitDocs:', error);
+    return [];
+  }
+}
+
+/**
+ * Get system health status
+ * Replaces: /api/cron/monitor-utility-bills-webhook
+ */
+export async function getSystemHealth(): Promise<AdminActionItems['systemHealth']> {
+  const issues: string[] = [];
+  let notificationsWorking = true;
+  let lastNotificationRun: string | null = null;
+  let webhooksHealthy = true;
+
+  try {
+    // Check last notification processing
+    const { data: lastAudit } = await supabaseAdmin
+      .from('message_audit_log')
+      .select('timestamp')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (lastAudit) {
+      lastNotificationRun = lastAudit.timestamp;
+      const lastRunDate = new Date(lastAudit.timestamp);
+      const hoursSinceRun = (Date.now() - lastRunDate.getTime()) / (1000 * 60 * 60);
+
+      if (hoursSinceRun > 48) {
+        notificationsWorking = false;
+        issues.push(`No notifications sent in ${Math.floor(hoursSinceRun)} hours`);
+      }
+    } else {
+      issues.push('No notification history found');
+    }
+
+    // Check webhook health (if table exists)
+    const { data: webhookHealth } = await supabaseAdmin
+      .from('webhook_health_checks')
+      .select('overall_status, check_time')
+      .eq('webhook_name', 'utility-bills')
+      .order('check_time', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (webhookHealth) {
+      if (webhookHealth.overall_status !== 'healthy') {
+        webhooksHealthy = false;
+        issues.push('Utility bills webhook unhealthy');
+      }
+    }
+
+    // Check for recent errors (last 24h)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const { count: errorCount } = await supabaseAdmin
+      .from('message_audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('result', 'error')
+      .gte('timestamp', yesterday.toISOString());
+
+    if (errorCount && errorCount > 10) {
+      issues.push(`${errorCount} message errors in last 24h`);
+    }
+
+  } catch (error) {
+    console.error('Error checking system health:', error);
+    issues.push('Could not check system health');
+  }
+
+  return {
+    notificationsWorking,
+    lastNotificationRun,
+    webhooksHealthy,
+    issues
+  };
+}
+
+/**
+ * Get all admin action items (consolidated)
+ */
+export async function getAdminActionItems(): Promise<AdminActionItems> {
+  const [upcomingRenewals, missingPermitDocs, systemHealth] = await Promise.all([
+    getUpcomingRenewals(30),
+    getMissingPermitDocs(),
+    getSystemHealth()
+  ]);
+
+  return {
+    upcomingRenewals,
+    missingPermitDocs,
+    systemHealth
+  };
+}

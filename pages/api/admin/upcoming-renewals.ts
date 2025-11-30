@@ -113,18 +113,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         issues.push('Profile not confirmed for ' + currentYear);
       }
 
-      // Check emissions (if date is set and not completed)
-      if (user.emissions_date && !user.emissions_completed) {
-        const emissionsDate = new Date(user.emissions_date);
-        const today = new Date();
-        if (emissionsDate <= today) {
-          issues.push('Emissions test overdue');
-        } else {
-          const daysUntil = Math.ceil((emissionsDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysUntil <= 30) {
-            issues.push(`Emissions test due in ${daysUntil} days`);
-          }
-        }
+      // Check emissions - city requires completed emissions test before registration
+      if (!user.emissions_completed) {
+        issues.push('Emissions test not completed');
       }
 
       // Calculate days until expiration
@@ -142,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status = 'purchased';
       } else if (issues.length === 0) {
         status = 'ready';
-      } else if (issues.some(i => i.includes('Missing') || i.includes('No driver') || i.includes('No proof of residency') || i.includes('Emissions test overdue'))) {
+      } else if (issues.some(i => i.includes('Missing') || i.includes('No driver') || i.includes('No proof of residency') || i.includes('Emissions test not completed'))) {
         status = 'blocked';
       }
 
