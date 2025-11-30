@@ -25,5 +25,14 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "TicketlessChicagoMobile",
+    "backup-from-ticketlesschicago",
+    "src/services",
+    "scripts",
+    "*.backup.*",
+    "*-backup-*",
+    "*-original.*"
+  ]
 }

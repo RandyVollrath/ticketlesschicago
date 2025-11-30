@@ -96,6 +96,9 @@ export default function ProfileNew() {
   // Residency proof upload state
   const [residencyProofUploading, setResidencyProofUploading] = useState(false)
 
+  // Emissions test update state
+  const [emissionsUpdating, setEmissionsUpdating] = useState(false)
+
   // File input refs for clearing on cancel
   const licenseFrontInputRef = useRef<HTMLInputElement>(null)
   const licenseBackInputRef = useRef<HTMLInputElement>(null)
@@ -1540,11 +1543,11 @@ export default function ProfileNew() {
                           }}>
                             <p style={{ fontSize: '12px', color: '#92400e', margin: 0 }}>
                               <strong>How to complete your test:</strong> Visit <a
-                                href="https://illinoisveip.com"
+                                href="https://airteam.app/forms/locator.cfm"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{ color: '#2563eb' }}
-                              >illinoisveip.com</a> to find a testing location. Bring your vehicle, registration, and $20 cash. The test takes about 10-15 minutes.
+                              >airteam.app</a> to find a testing location. Bring your vehicle, registration, and $20 cash. The test takes about 10-15 minutes.
                             </p>
                           </div>
                         )}
@@ -1552,14 +1555,18 @@ export default function ProfileNew() {
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {!formData.emissions_completed ? (
                             <button
+                              disabled={emissionsUpdating}
                               onClick={async () => {
+                                setEmissionsUpdating(true)
                                 try {
+                                  console.log('Marking emissions complete for user:', user?.id)
                                   const response = await fetch('/api/user/mark-emissions-complete', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ userId: user?.id, completed: true })
                                   })
                                   const data = await response.json()
+                                  console.log('Emissions API response:', response.status, data)
                                   if (response.ok) {
                                     setFormData((prev: any) => ({
                                       ...prev,
@@ -1572,27 +1579,34 @@ export default function ProfileNew() {
                                       emissions_completed_at: data.emissions_completed_at
                                     }))
                                     setMessage({ type: 'success', text: 'Emissions test marked as complete!' })
-                                    setTimeout(() => setMessage(null), 3000)
+                                    setTimeout(() => setMessage(null), 5000)
                                   } else {
+                                    console.error('Emissions API error:', data)
                                     setMessage({ type: 'error', text: data.error || 'Failed to update' })
+                                    setTimeout(() => setMessage(null), 5000)
                                   }
                                 } catch (error) {
                                   console.error('Error marking emissions complete:', error)
                                   setMessage({ type: 'error', text: 'Failed to update emissions status' })
+                                  setTimeout(() => setMessage(null), 5000)
+                                } finally {
+                                  setEmissionsUpdating(false)
                                 }
                               }}
                               style={{
-                                backgroundColor: '#10b981',
+                                backgroundColor: emissionsUpdating ? '#9ca3af' : '#10b981',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '6px',
                                 padding: '10px 16px',
                                 fontSize: '14px',
                                 fontWeight: '600',
-                                cursor: 'pointer'
+                                cursor: emissionsUpdating ? 'not-allowed' : 'pointer',
+                                opacity: emissionsUpdating ? 0.7 : 1,
+                                transition: 'all 0.2s'
                               }}
                             >
-                              I've Completed My Emissions Test
+                              {emissionsUpdating ? 'Updating...' : "I've Completed My Emissions Test"}
                             </button>
                           ) : (
                             <button
@@ -1642,7 +1656,7 @@ export default function ProfileNew() {
                           )}
 
                           <a
-                            href="https://illinoisveip.com"
+                            href="https://airteam.app/forms/locator.cfm"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{

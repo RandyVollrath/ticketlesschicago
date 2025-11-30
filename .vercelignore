@@ -1,0 +1,17 @@
+# Exclude mobile app
+TicketlessChicagoMobile/
+
+# Exclude backup folders
+backup-from-ticketlesschicago/
+
+# Exclude React Native services
+src/services/
+
+# Exclude scripts
+scripts/
+
+# Exclude backup files
+*.backup.*
+*-backup-*
+*-original.*
+parking-map-original.tsx

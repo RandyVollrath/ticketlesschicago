@@ -204,11 +204,11 @@ export class NotificationScheduler {
                     const plateWarning = blocksPlate ? ' Required for license plate renewal!' : '';
 
                     if (daysUntil === 0) {
-                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due TODAY.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Complete your test now at illinoisveip.com' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
+                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due TODAY.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Complete your test now at airteam.app' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
                     } else if (daysUntil === 1) {
                       message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due TOMORROW.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Complete your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
                     } else if (daysUntil <= 7) {
-                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due in ${daysUntil} days.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Find test locations at illinoisveip.com' : "Don't forget to renew!"}. Reply STOP to opt out.`;
+                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due in ${daysUntil} days.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Find test locations at airteam.app' : "Don't forget to renew!"}. Reply STOP to opt out.`;
                     } else {
                       message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due in ${daysUntil} days (${dueDate.toLocaleDateString()}).${plateWarning}${renewal.type === 'Emissions Test' ? ' You must complete this test to renew your license plate.' : ''} Reply STOP to opt out.`;
                     }
@@ -505,7 +505,7 @@ export class NotificationScheduler {
                                 'Renew online at chicityclerk.com or visit any Currency Exchange location. Bring your registration and proof of insurance.' :
                                 renewal.type === 'License Plate' ?
                                 'Renew at cyberdriveillinois.com or visit your local Secretary of State facility.' :
-                                `<strong>Step 1:</strong> Find a testing location at <a href="https://illinoisveip.com" style="color: #2563eb;">illinoisveip.com</a><br>
+                                `<strong>Step 1:</strong> Find a testing location at <a href="https://airteam.app/forms/locator.cfm" style="color: #2563eb;">airteam.app</a><br>
                                 <strong>Step 2:</strong> Bring your vehicle, registration, and $20 cash<br>
                                 <strong>Step 3:</strong> Complete the test (takes about 10-15 minutes)<br>
                                 <strong>Step 4:</strong> Results are sent electronically to the state<br><br>
@@ -514,7 +514,7 @@ export class NotificationScheduler {
 
                             <div style="text-align: center; margin: 20px 0;">
                               ${renewal.type === 'Emissions Test' ? `
-                                <a href="https://illinoisveip.com"
+                                <a href="https://airteam.app/forms/locator.cfm"
                                    style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
                                   Find Testing Locations
                                 </a>
