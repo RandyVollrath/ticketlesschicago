@@ -292,7 +292,7 @@ export class NotificationScheduler {
         dueDate = obligation.due_date;
         fineAmount = '$50-300 in fines';
         renewalUrl = 'https://www2.illinoisepa.gov/topics/air-quality/mobile-sources/vehicle-emissions/Pages/default.aspx';
-        tipText = '💡 Find testing locations at illinoisveip.com. Bring your registration and $20 cash.';
+        tipText = '💡 Find testing locations at airteam.app. Bring your registration and $20 cash.';
         break;
     }
 

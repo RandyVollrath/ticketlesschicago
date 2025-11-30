@@ -191,7 +191,7 @@ function generateEmailContent(user: any, daysUntil: number, emissionsDate: Date)
 
         <h3 style="color: #374151; margin-bottom: 12px;">How to Get Your Emissions Test:</h3>
         <ol style="color: #4b5563; line-height: 1.8; padding-left: 20px;">
-          <li>Find a testing location at <a href="https://www.illinoisveip.com/" style="color: #2563eb;">illinoisveip.com</a></li>
+          <li>Find a testing location at <a href="https://airteam.app/forms/locator.cfm" style="color: #2563eb;">airteam.app</a></li>
           <li>Bring your vehicle registration</li>
           <li>Bring $20 cash (test fee)</li>
           <li>The test takes about 10-15 minutes</li>
@@ -208,7 +208,7 @@ function generateEmailContent(user: any, daysUntil: number, emissionsDate: Date)
         ` : ''}
 
         <div style="margin-top: 24px; text-align: center;">
-          <a href="https://www.illinoisveip.com/Station/StationSearch"
+          <a href="https://airteam.app/forms/locator.cfm"
              style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">
             Find Testing Locations
           </a>
@@ -231,13 +231,13 @@ function generateSMSContent(user: any, daysUntil: number): string {
   const timeText = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `in ${daysUntil} days`;
 
   if (daysUntil <= 1) {
-    return `🚨 URGENT: Emissions test for ${user.license_plate} is due ${timeText}! Without it, you can't renew your plate. Find a location: illinoisveip.com - Autopilot America`;
+    return `🚨 URGENT: Emissions test for ${user.license_plate} is due ${timeText}! Without it, you can't renew your plate. Find a location: airteam.app - Autopilot America`;
   } else if (daysUntil <= 7) {
-    return `⚠️ Emissions test for ${user.license_plate} due ${timeText}. Schedule now: illinoisveip.com. Required for plate renewal. - Autopilot America`;
+    return `⚠️ Emissions test for ${user.license_plate} due ${timeText}. Schedule now: airteam.app. Required for plate renewal. - Autopilot America`;
   } else if (daysUntil <= 30) {
-    return `📋 Reminder: Emissions test for ${user.license_plate} due ${timeText}. Plan ahead: illinoisveip.com - Autopilot America`;
+    return `📋 Reminder: Emissions test for ${user.license_plate} due ${timeText}. Plan ahead: airteam.app - Autopilot America`;
   } else {
-    return `🔔 FYI: Emissions test for ${user.license_plate} due ${timeText}. Find locations: illinoisveip.com - Autopilot America`;
+    return `🔔 FYI: Emissions test for ${user.license_plate} due ${timeText}. Find locations: airteam.app - Autopilot America`;
   }
 }
 
