@@ -48,10 +48,12 @@ export class NotificationScheduler {
       console.log(`🔔 Checking for reminders on ${today.toISOString()}`);
       
       // Get ALL users with renewal dates from user_profiles table
+      // Query for users with city sticker OR license plate expiry set
+      // (emissions_date is handled separately - we don't charge for emissions, just remind)
       const { data: users, error } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
-        .not('city_sticker_expiry', 'is', null);
+        .or('city_sticker_expiry.not.is.null,license_plate_expiry.not.is.null');
         
       if (error) {
         console.error('Error fetching users:', error);
