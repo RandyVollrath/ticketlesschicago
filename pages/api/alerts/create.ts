@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-// import { notifyNewUserAboutWinterBan } from '../../lib/winter-ban-notifications';
+import { notifyNewUserAboutWinterBan } from '../../../lib/winter-ban-notifications';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -261,24 +261,23 @@ export default async function handler(
     }
 
     // Check if user needs winter ban notification (Dec 1 - Apr 1)
-    // TODO: Re-enable when winter-ban-notifications type errors are fixed
-    // try {
-    //   const winterBanResult = await notifyNewUserAboutWinterBan(
-    //     userId,
-    //     address,
-    //     email,
-    //     normalizedPhone,
-    //     firstName
-    //   );
-    //   if (winterBanResult.sent) {
-    //     console.log('❄️ Winter ban notification sent to new user');
-    //   } else if (winterBanResult.reason) {
-    //     console.log(`ℹ️ Winter ban not sent: ${winterBanResult.reason}`);
-    //   }
-    // } catch (winterError) {
-    //   // Don't fail signup if winter ban notification fails
-    //   console.error('Winter ban notification failed (non-critical):', winterError);
-    // }
+    try {
+      const winterBanResult = await notifyNewUserAboutWinterBan(
+        userId,
+        address,
+        email,
+        normalizedPhone,
+        firstName
+      );
+      if (winterBanResult.sent) {
+        console.log('❄️ Winter ban notification sent to new user');
+      } else if (winterBanResult.reason) {
+        console.log(`ℹ️ Winter ban not sent: ${winterBanResult.reason}`);
+      }
+    } catch (winterError) {
+      // Don't fail signup if winter ban notification fails
+      console.error('Winter ban notification failed (non-critical):', winterError);
+    }
 
     // Generate TWO links:
     // 1. Immediate login (for instant access)
