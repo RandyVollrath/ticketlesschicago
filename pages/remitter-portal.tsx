@@ -113,7 +113,7 @@ export default function RemitterPortal() {
 
   const handleLogin = () => {
     if (!apiKey) {
-      setError('Please enter your API key');
+      setError('Please enter your access code');
       return;
     }
 
@@ -142,7 +142,7 @@ export default function RemitterPortal() {
       });
 
       if (!response.ok) {
-        throw new Error('Invalid API key');
+        throw new Error('Invalid access code');
       }
 
       const data = await response.json();
@@ -311,7 +311,7 @@ export default function RemitterPortal() {
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              API Key
+              Access Code
             </label>
             <input
               type="password"
@@ -319,7 +319,7 @@ export default function RemitterPortal() {
               onChange={(e) => setApiKey(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="Enter your API key"
+              placeholder="Enter your access code"
             />
           </div>
 
@@ -331,7 +331,7 @@ export default function RemitterPortal() {
           </button>
 
           <p className="mt-4 text-sm text-gray-600 text-center">
-            Contact support for your API key
+            Contact support for your access code
           </p>
         </div>
       </div>

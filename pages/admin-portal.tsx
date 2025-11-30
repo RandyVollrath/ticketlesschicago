@@ -153,7 +153,7 @@ export default function AdminPortal() {
   const [message, setMessage] = useState('');
 
   // Active section
-  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals'>('documents');
+  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals'>('upcoming-renewals');
 
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
@@ -185,6 +185,11 @@ export default function AdminPortal() {
   const [missingDocCounts, setMissingDocCounts] = useState({ total: 0, noUpload: 0, rejected: 0, pendingReview: 0 });
   const [missingDocFilter, setMissingDocFilter] = useState<'all' | 'no_upload' | 'rejected'>('no_upload');
 
+  // Upcoming renewals state
+  const [upcomingRenewals, setUpcomingRenewals] = useState<any[]>([]);
+  const [upcomingStats, setUpcomingStats] = useState<any>(null);
+  const [upcomingFilter, setUpcomingFilter] = useState<'all' | 'ready' | 'needs_action' | 'blocked' | 'purchased'>('all');
+
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
   useEffect(() => {
@@ -199,6 +204,7 @@ export default function AdminPortal() {
       if (activeSection === 'missing-docs') fetchMissingDocs();
       if (activeSection === 'property-tax') fetchPropertyTaxQueue();
       if (activeSection === 'renewals') fetchRenewals();
+      if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals();
     }
   }, [authenticated, activeSection, docFilter, propertyTaxFilter]);
 
@@ -340,6 +346,29 @@ export default function AdminPortal() {
       const result = await response.json();
       if (result.success) {
         setMessage(`Reminder sent to ${email}`);
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============ Upcoming Renewals Functions ============
+
+  const fetchUpcomingRenewals = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/upcoming-renewals', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setUpcomingRenewals(result.users || []);
+        setUpcomingStats(result.stats || null);
       } else {
         setMessage(`Error: ${result.error}`);
       }
@@ -520,7 +549,7 @@ export default function AdminPortal() {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Admin Portal</h1>
           <button
-            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'renewals') fetchRenewals(); }, 0); }}
+            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'renewals') fetchRenewals(); if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals(); }, 0); }}
             style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
           >
             Refresh
@@ -530,7 +559,31 @@ export default function AdminPortal() {
 
       {/* Navigation Tabs */}
       <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '4px', padding: '0 24px' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '4px', padding: '0 24px', overflowX: 'auto' }}>
+          <button
+            onClick={() => setActiveSection('upcoming-renewals')}
+            style={{
+              padding: '16px 24px',
+              border: 'none',
+              background: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: activeSection === 'upcoming-renewals' ? '#3b82f6' : '#6b7280',
+              borderBottom: activeSection === 'upcoming-renewals' ? '2px solid #3b82f6' : '2px solid transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Upcoming Renewals
+            {upcomingStats && upcomingStats.expiringIn7Days > 0 && (
+              <span style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
+                {upcomingStats.expiringIn7Days}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setActiveSection('documents')}
             style={{
@@ -644,6 +697,150 @@ export default function AdminPortal() {
       {/* Content */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
         {loading && <p>Loading...</p>}
+
+        {/* ============ Upcoming Renewals Section ============ */}
+        {activeSection === 'upcoming-renewals' && !loading && (
+          <div>
+            {/* Stats */}
+            {upcomingStats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #3b82f6' }}>
+                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Total</div>
+                  <div style={{ fontSize: '28px', fontWeight: '700' }}>{upcomingStats.total}</div>
+                </div>
+                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Ready</div>
+                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#10b981' }}>{upcomingStats.ready}</div>
+                </div>
+                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Needs Action</div>
+                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#f59e0b' }}>{upcomingStats.needsAction}</div>
+                </div>
+                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
+                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Blocked</div>
+                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#ef4444' }}>{upcomingStats.blocked}</div>
+                </div>
+                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #6b7280' }}>
+                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Purchased</div>
+                  <div style={{ fontSize: '28px', fontWeight: '700' }}>{upcomingStats.purchased}</div>
+                </div>
+                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #dc2626' }}>
+                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Expiring in 7 Days</div>
+                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#dc2626' }}>{upcomingStats.expiringIn7Days}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Filter buttons */}
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button onClick={() => setUpcomingFilter('all')} style={{ padding: '8px 16px', backgroundColor: upcomingFilter === 'all' ? '#3b82f6' : '#e5e7eb', color: upcomingFilter === 'all' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                All ({upcomingStats?.total || 0})
+              </button>
+              <button onClick={() => setUpcomingFilter('ready')} style={{ padding: '8px 16px', backgroundColor: upcomingFilter === 'ready' ? '#10b981' : '#e5e7eb', color: upcomingFilter === 'ready' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                Ready ({upcomingStats?.ready || 0})
+              </button>
+              <button onClick={() => setUpcomingFilter('needs_action')} style={{ padding: '8px 16px', backgroundColor: upcomingFilter === 'needs_action' ? '#f59e0b' : '#e5e7eb', color: upcomingFilter === 'needs_action' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                Needs Action ({upcomingStats?.needsAction || 0})
+              </button>
+              <button onClick={() => setUpcomingFilter('blocked')} style={{ padding: '8px 16px', backgroundColor: upcomingFilter === 'blocked' ? '#ef4444' : '#e5e7eb', color: upcomingFilter === 'blocked' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                Blocked ({upcomingStats?.blocked || 0})
+              </button>
+              <button onClick={() => setUpcomingFilter('purchased')} style={{ padding: '8px 16px', backgroundColor: upcomingFilter === 'purchased' ? '#6b7280' : '#e5e7eb', color: upcomingFilter === 'purchased' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                Purchased ({upcomingStats?.purchased || 0})
+              </button>
+            </div>
+
+            {/* User list */}
+            {upcomingRenewals.filter(u => upcomingFilter === 'all' || u.status === upcomingFilter).length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px', backgroundColor: 'white', borderRadius: '8px' }}>No users in this category</p>
+            ) : (
+              <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f9fafb' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>User</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Plate</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Expiry</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Profile</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>License</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Residency</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Issues</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {upcomingRenewals.filter(u => upcomingFilter === 'all' || u.status === upcomingFilter).map((user) => (
+                      <tr key={user.userId} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: '500' }}>{user.name}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.email}</div>
+                        </td>
+                        <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: '600' }}>{user.licensePlate || 'N/A'}</td>
+                        <td style={{ padding: '12px' }}>
+                          <div>{user.stickerExpiry || 'Not set'}</div>
+                          {user.daysUntilExpiry !== null && (
+                            <div style={{ fontSize: '11px', color: user.daysUntilExpiry <= 7 ? '#dc2626' : user.daysUntilExpiry <= 30 ? '#f59e0b' : '#6b7280' }}>
+                              {user.daysUntilExpiry < 0 ? `${Math.abs(user.daysUntilExpiry)} days ago` : `${user.daysUntilExpiry} days`}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            backgroundColor: user.status === 'ready' ? '#dcfce7' : user.status === 'purchased' ? '#dbeafe' : user.status === 'blocked' ? '#fee2e2' : '#fef3c7',
+                            color: user.status === 'ready' ? '#166534' : user.status === 'purchased' ? '#1e40af' : user.status === 'blocked' ? '#991b1b' : '#92400e'
+                          }}>
+                            {user.status.toUpperCase().replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {user.profileConfirmed ? (
+                            <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
+                          ) : (
+                            <span style={{ color: '#ef4444', fontSize: '16px' }}>✗</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {user.documents.hasLicenseFront ? (
+                            <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
+                          ) : (
+                            <span style={{ color: '#ef4444', fontSize: '16px' }}>✗</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {!user.documents.needsDocuments ? (
+                            <span style={{ color: '#9ca3af', fontSize: '11px' }}>N/A</span>
+                          ) : user.documents.residencyVerified ? (
+                            <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
+                          ) : user.documents.hasResidencyProof ? (
+                            <span style={{ color: '#f59e0b', fontSize: '11px' }}>Pending</span>
+                          ) : (
+                            <span style={{ color: '#ef4444', fontSize: '16px' }}>✗</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {user.issues.length > 0 ? (
+                            <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '11px', color: '#991b1b' }}>
+                              {user.issues.slice(0, 3).map((issue: string, i: number) => (
+                                <li key={i}>{issue}</li>
+                              ))}
+                              {user.issues.length > 3 && <li>+{user.issues.length - 3} more</li>}
+                            </ul>
+                          ) : (
+                            <span style={{ color: '#10b981', fontSize: '11px' }}>No issues</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ============ Document Review Section ============ */}
         {activeSection === 'documents' && !loading && (

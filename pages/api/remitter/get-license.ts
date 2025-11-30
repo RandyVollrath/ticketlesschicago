@@ -143,10 +143,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Update last accessed timestamps (triggers 48hr deletion for opted-out users)
     if (Object.keys(updateData).length > 0) {
-      await supabase
+      console.log('Updating license_last_accessed_at for user:', userId, updateData);
+      const { error: updateError } = await supabase
         .from('user_profiles')
         .update(updateData)
         .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('Failed to update license_last_accessed_at:', updateError);
+      } else {
+        console.log('Successfully updated license_last_accessed_at');
+      }
     }
 
     // Audit log (ignore errors if table doesn't exist)
