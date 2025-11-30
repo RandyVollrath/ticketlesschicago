@@ -50,6 +50,9 @@
     },
     "pages/api/cron/notify-sticker-purchased.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/send-winter-ban-reminder.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -144,6 +147,10 @@
     {
       "path": "/api/cron/notify-sticker-purchased",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/send-winter-ban-reminder",
+      "schedule": "0 15 30 11 *"
     }
   ],
   "github": {
