@@ -189,6 +189,7 @@ export default function AdminPortal() {
   const [upcomingRenewals, setUpcomingRenewals] = useState<any[]>([]);
   const [upcomingStats, setUpcomingStats] = useState<any>(null);
   const [upcomingFilter, setUpcomingFilter] = useState<'all' | 'ready' | 'needs_action' | 'blocked' | 'purchased'>('all');
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
@@ -762,15 +763,21 @@ export default function AdminPortal() {
                       <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Plate</th>
                       <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Expiry</th>
                       <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Status</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Profile</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>License</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Residency</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#6b7280' }} title="Profile completeness">Complete</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#6b7280' }} title="Confirmed for current year">Confirmed</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>License</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>Residency</th>
                       <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#6b7280' }}>Issues</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600', color: '#6b7280' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {upcomingRenewals.filter(u => upcomingFilter === 'all' || u.status === upcomingFilter).map((user) => (
-                      <tr key={user.userId} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <React.Fragment key={user.userId}>
+                      <tr
+                        onClick={() => setExpandedUserId(expandedUserId === user.userId ? null : user.userId)}
+                        style={{ borderTop: '1px solid #e5e7eb', cursor: 'pointer', backgroundColor: expandedUserId === user.userId ? '#f0f9ff' : 'transparent' }}
+                      >
                         <td style={{ padding: '12px' }}>
                           <div style={{ fontWeight: '500' }}>{user.name}</div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.email}</div>
@@ -795,6 +802,13 @@ export default function AdminPortal() {
                           }}>
                             {user.status.toUpperCase().replace('_', ' ')}
                           </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {user.profileComplete ? (
+                            <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
+                          ) : (
+                            <span style={{ color: '#ef4444', fontSize: '16px' }}>✗</span>
+                          )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                           {user.profileConfirmed ? (
@@ -833,7 +847,84 @@ export default function AdminPortal() {
                             <span style={{ color: '#10b981', fontSize: '11px' }}>No issues</span>
                           )}
                         </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => copyToClipboard(user.email)}
+                              style={{ padding: '4px 8px', fontSize: '10px', backgroundColor: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              title="Copy email"
+                            >
+                              Email
+                            </button>
+                            {user.phone && (
+                              <button
+                                onClick={() => copyToClipboard(user.phone)}
+                                style={{ padding: '4px 8px', fontSize: '10px', backgroundColor: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                title="Copy phone"
+                              >
+                                Phone
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
+                      {/* Expanded details row */}
+                      {expandedUserId === user.userId && (
+                        <tr style={{ backgroundColor: '#f8fafc' }}>
+                          <td colSpan={10} style={{ padding: '16px 24px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                              {/* User Info */}
+                              <div>
+                                <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Contact</h4>
+                                <div style={{ fontSize: '13px' }}>{user.email}</div>
+                                <div style={{ fontSize: '13px' }}>{user.phone || 'No phone'}</div>
+                              </div>
+                              {/* Address */}
+                              <div>
+                                <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Address</h4>
+                                <div style={{ fontSize: '13px' }}>{user.address || 'N/A'}</div>
+                                <div style={{ fontSize: '13px' }}>{user.city} {user.zipCode}</div>
+                                {user.permitZone && <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500', marginTop: '4px' }}>Zone: {user.permitZone}</div>}
+                              </div>
+                              {/* Vehicle */}
+                              <div>
+                                <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Vehicle</h4>
+                                <div style={{ fontSize: '13px', fontFamily: 'monospace', fontWeight: '600' }}>{user.licensePlate || 'N/A'}</div>
+                                <div style={{ fontSize: '13px' }}>{user.vehicle}</div>
+                              </div>
+                              {/* Dates */}
+                              <div>
+                                <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Dates</h4>
+                                <div style={{ fontSize: '13px' }}>Expiry: {user.stickerExpiry || 'Not set'}</div>
+                                <div style={{ fontSize: '13px' }}>Signed up: {new Date(user.createdAt).toLocaleDateString()}</div>
+                                {user.confirmedAt && <div style={{ fontSize: '13px' }}>Confirmed: {new Date(user.confirmedAt).toLocaleDateString()}</div>}
+                              </div>
+                              {/* Emissions */}
+                              {user.emissions?.date && (
+                                <div>
+                                  <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Emissions</h4>
+                                  <div style={{ fontSize: '13px' }}>Due: {user.emissions.date}</div>
+                                  <div style={{ fontSize: '13px', color: user.emissions.completed ? '#10b981' : '#f59e0b' }}>
+                                    {user.emissions.completed ? 'Completed' : 'Pending'}
+                                  </div>
+                                </div>
+                              )}
+                              {/* All Issues */}
+                              {user.issues.length > 0 && (
+                                <div style={{ gridColumn: 'span 2' }}>
+                                  <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>All Issues</h4>
+                                  <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '13px', color: '#991b1b' }}>
+                                    {user.issues.map((issue: string, i: number) => (
+                                      <li key={i}>{issue}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
