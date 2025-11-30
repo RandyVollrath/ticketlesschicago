@@ -142,7 +142,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status = 'purchased';
       } else if (issues.length === 0) {
         status = 'ready';
-      } else if (issues.some(i => i.includes('Missing') || i.includes('No driver'))) {
+      } else if (issues.some(i => i.includes('Missing') || i.includes('No driver') || i.includes('No proof of residency'))) {
         status = 'blocked';
       }
 
