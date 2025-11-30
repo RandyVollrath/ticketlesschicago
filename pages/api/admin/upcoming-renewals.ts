@@ -34,6 +34,7 @@ interface RenewalUser {
   city_sticker_expiry: string | null;
   has_protection: boolean;
   permit_zone: string | null;
+  has_permit_zone: boolean;
   profile_confirmed_for_year: number | null;
   profile_confirmed_at: string | null;
   renewal_status: string | null;
@@ -86,15 +87,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Check if documents are needed (permit zone user)
-      const needsDocuments = !!user.permit_zone;
+      const needsDocuments = user.has_permit_zone === true;
 
-      // Check license status
+      // Check license status (only required for permit zone users)
       const hasLicenseFront = !!user.license_image_path;
       const hasLicenseBack = !!user.license_image_path_back;
       const licenseVerified = user.license_image_verified;
 
-      if (!hasLicenseFront) {
-        issues.push('No driver\'s license uploaded');
+      if (needsDocuments && !hasLicenseFront) {
+        issues.push('No driver\'s license uploaded (permit zone)');
       }
 
       // Check residency proof (only if in permit zone)
@@ -133,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status = 'purchased';
       } else if (issues.length === 0) {
         status = 'ready';
-      } else if (issues.some(i => i.includes('Missing') || i.includes('No driver') || i.includes('No proof of residency') || i.includes('Emissions test not completed'))) {
+      } else if (issues.some(i => i.includes('Missing') || i.includes('No driver\'s license uploaded') || i.includes('No proof of residency') || i.includes('Emissions test not completed'))) {
         status = 'blocked';
       }
 
