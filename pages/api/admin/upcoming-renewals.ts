@@ -31,7 +31,7 @@ interface RenewalUser {
   vehicle_make: string;
   vehicle_model: string;
   vehicle_year: string;
-  sticker_expiration_date: string | null;
+  city_sticker_expiry: string | null;
   has_protection: boolean;
   permit_zone: string | null;
   profile_confirmed_for_year: number | null;
@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('*')
       .eq('has_protection', true)
-      .order('sticker_expiration_date', { ascending: true, nullsFirst: false });
+      .order('city_sticker_expiry', { ascending: true, nullsFirst: false });
 
     if (error) {
       throw error;
@@ -120,8 +120,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Calculate days until expiration
       let daysUntilExpiry: number | null = null;
-      if (user.sticker_expiration_date) {
-        const expiryDate = new Date(user.sticker_expiration_date);
+      if (user.city_sticker_expiry) {
+        const expiryDate = new Date(user.city_sticker_expiry);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -147,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         zipCode: user.zip_code,
         licensePlate: user.license_plate,
         vehicle: [user.vehicle_year, user.vehicle_make, user.vehicle_model].filter(Boolean).join(' ') || 'N/A',
-        stickerExpiry: user.sticker_expiration_date,
+        stickerExpiry: user.city_sticker_expiry,
         daysUntilExpiry,
         permitZone: user.permit_zone,
         renewalStatus: user.renewal_status,
