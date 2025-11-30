@@ -61,10 +61,6 @@
       "schedule": "0 13 * * *"
     },
     {
-      "path": "/api/admin/notify-renewals",
-      "schedule": "0 13 * * *"
-    },
-    {
       "path": "/api/street-cleaning/process",
       "schedule": "0 12,13,20,21,0,1 * * *"
     },
@@ -79,14 +75,6 @@
     {
       "path": "/api/cron/cleanup-permit-documents",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/check-zone-changes",
-      "schedule": "0 2 * * 0"
-    },
-    {
-      "path": "/api/cron/check-missing-permit-docs",
-      "schedule": "0 13 * * *"
     },
     {
       "path": "/api/cron/process-all-renewals",
@@ -121,20 +109,8 @@
       "schedule": "0 3 * * *"
     },
     {
-      "path": "/api/cron/cleanup-residency-proofs",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/monitor-utility-bills-webhook",
-      "schedule": "0 14 * * *"
-    },
-    {
       "path": "/api/admin/send-daily-digest",
       "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/flag-property-tax-refresh",
-      "schedule": "0 9 15 7 *"
     },
     {
       "path": "/api/cron/notify-remitter-daily",
