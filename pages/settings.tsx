@@ -1194,10 +1194,10 @@ export default function ProfileNew() {
             </div>
           </Accordion>
 
-          {/* 3. Address - Consolidated with checkbox */}
+          {/* 3. Home Address - Consolidated with mailing address option */}
           <Accordion
-            title="Address"
-            icon="📍"
+            title="Home Address"
+            icon="🏠"
             badge={!formData.zip_code ? '1 missing' : undefined}
             badgeColor="red"
             defaultOpen={!formData.zip_code}
