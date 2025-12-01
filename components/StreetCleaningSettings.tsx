@@ -549,44 +549,27 @@ export default function StreetCleaningSettings() {
 
   return (
     <div className={styles.settingsSection}>
-      <h2>🧹 Street Cleaning Alerts</h2>
-      
       {message && <div className={styles.success}>{message}</div>}
       {error && <div className={styles.error}>{error}</div>}
 
-      <div className={styles.formGroup}>
-        <label>Home Address</label>
-        {homeAddress ? (
+      {/* Show ward/section info or prompt to add address */}
+      {ward && section ? (
+        <div className={styles.formGroup}>
           <div style={{
             padding: '12px',
-            backgroundColor: '#f9fafb',
+            backgroundColor: '#f0fdf4',
             borderRadius: '8px',
-            border: '1px solid #e5e7eb'
+            border: '1px solid #bbf7d0',
+            marginBottom: '16px'
           }}>
-            <div style={{ fontWeight: '500', color: '#111827' }}>{homeAddress}</div>
-            {ward && section && (
-              <div style={{ fontSize: '13px', color: '#10b981', marginTop: '4px' }}>
-                ✓ Ward {ward}, Section {section}
-              </div>
-            )}
-            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-              To change your address, edit it in the <strong>Home Address</strong> section at the top of Settings.
+            <div style={{ fontSize: '14px', color: '#166534', fontWeight: '500' }}>
+              ✓ Ward {ward}, Section {section}
+            </div>
+            <div style={{ fontSize: '12px', color: '#15803d', marginTop: '4px' }}>
+              Based on your Home Address
             </div>
           </div>
-        ) : (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fef3c7',
-            borderRadius: '8px',
-            border: '1px solid #f59e0b',
-            color: '#92400e',
-            fontSize: '14px'
-          }}>
-            Please add your home address in the <strong>Home Address</strong> section at the top of Settings to enable street cleaning alerts.
-          </div>
-        )}
-        {renderCleaningStatus()}
-        {ward && section && (
+          {renderCleaningStatus()}
           <div style={{ marginTop: '12px' }}>
             <button
               type="button"
@@ -622,8 +605,20 @@ export default function StreetCleaningSettings() {
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div style={{
+          padding: '16px',
+          backgroundColor: '#fef3c7',
+          borderRadius: '8px',
+          border: '1px solid #f59e0b',
+          color: '#92400e',
+          fontSize: '14px',
+          marginBottom: '16px'
+        }}>
+          Add your address in the <strong>Home Address</strong> section above to enable street cleaning alerts.
+        </div>
+      )}
 
       {/* Park Here Instead Feature - MSC Style */}
       {ward && section && (
