@@ -11,13 +11,14 @@ interface CreateAffiliateParams {
 
 interface RewardfulAffiliate {
   id: string;
-  token: string;
   email: string;
   first_name: string;
   last_name: string;
   links: Array<{
+    id: string;
     url: string;
-    campaign_id: string;
+    token: string;
+    campaign_id?: string;
   }>;
 }
 
