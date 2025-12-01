@@ -207,6 +207,28 @@ export default function ProfileNew() {
     }
   }, [user, profile.user_id, profile.has_protection, router.query.protection])
 
+  // Handle hash navigation (e.g., #referral from "Earn $24 credit" button)
+  useEffect(() => {
+    if (typeof window === 'undefined' || loading) return
+
+    const hash = window.location.hash
+    if (hash === '#referral') {
+      // Small delay to ensure the DOM is ready
+      setTimeout(() => {
+        const referralElement = document.getElementById('referral')
+        if (referralElement) {
+          // Scroll to the element
+          referralElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          // Click the accordion header to open it
+          const accordionButton = referralElement.querySelector('button')
+          if (accordionButton) {
+            accordionButton.click()
+          }
+        }
+      }, 100)
+    }
+  }, [loading])
+
   const loadUserData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -2929,6 +2951,7 @@ export default function ProfileNew() {
           <Accordion
             title="Refer Friends & Earn"
             icon="🎁"
+            id="referral"
             defaultOpen={false}
           >
             {user && (
