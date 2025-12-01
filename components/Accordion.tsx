@@ -20,6 +20,7 @@ interface AccordionProps {
   children: React.ReactNode;
   defaultOpen?: boolean;
   required?: boolean;
+  id?: string;
 }
 
 export default function Accordion({
@@ -29,7 +30,8 @@ export default function Accordion({
   badgeColor = 'red',
   children,
   defaultOpen = false,
-  required = false
+  required = false,
+  id
 }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -44,6 +46,7 @@ export default function Accordion({
 
   return (
     <div
+      id={id}
       data-accordion-title={title}
       style={{
         backgroundColor: 'white',
