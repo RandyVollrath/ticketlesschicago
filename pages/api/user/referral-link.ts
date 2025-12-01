@@ -45,10 +45,11 @@ export default async function handler(
       const affiliateData = await getRewardfulAffiliate(profile.affiliate_id);
 
       if (affiliateData) {
+        const token = affiliateData.links[0]?.token;
         return res.status(200).json({
           success: true,
-          referral_link: affiliateData.links[0]?.url || `https://ticketlessamerica.com?via=${affiliateData.token}`,
-          token: affiliateData.token,
+          referral_link: affiliateData.links[0]?.url || `https://autopilotamerica.com?via=${token}`,
+          token: token,
           affiliate_id: affiliateData.id,
           earnings: {
             monthly: 2,
@@ -112,7 +113,8 @@ export default async function handler(
       }
 
       // Send notification emails
-      const referralLink = affiliateData.links[0]?.url || `https://ticketlessamerica.com?via=${affiliateData.token}`;
+      const affiliateToken = affiliateData.links[0]?.token;
+      const referralLink = affiliateData.links[0]?.url || `https://autopilotamerica.com?via=${affiliateToken}`;
 
       try {
         // Email to admin
@@ -181,7 +183,7 @@ export default async function handler(
       return res.status(200).json({
         success: true,
         referral_link: referralLink,
-        token: affiliateData.token,
+        token: affiliateToken,
         affiliate_id: affiliateData.id,
         earnings: {
           monthly: 2,

@@ -141,11 +141,12 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${COLORS.blue}10 0%, ${COLORS.navyLight} 100%)`,
+      background: '#ffffff',
       border: `2px solid ${COLORS.blue}`,
       borderRadius: '16px',
       padding: '24px',
       marginBottom: '24px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
     }}>
       {/* Header */}
       <div style={{
@@ -158,7 +159,7 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
           width: '48px',
           height: '48px',
           borderRadius: '12px',
-          background: `${COLORS.blue}20`,
+          background: `${COLORS.blue}15`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -171,16 +172,15 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
         </div>
         <div style={{ flex: 1 }}>
           <h3 style={{
-            color: COLORS.white,
+            color: '#111827',
             fontSize: '18px',
             fontWeight: 600,
             margin: '0 0 4px 0',
-            fontFamily: "'Space Grotesk', sans-serif",
           }}>
             Confirm Your Information
           </h3>
           <p style={{
-            color: COLORS.gray400,
+            color: '#6b7280',
             fontSize: '14px',
             margin: 0,
           }}>
@@ -193,11 +193,12 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
       {/* Info Summary */}
       <div
         style={{
-          background: COLORS.navy,
+          background: '#f9fafb',
           borderRadius: '12px',
           padding: '16px',
           marginBottom: '20px',
           cursor: 'pointer',
+          border: '1px solid #e5e7eb',
         }}
         onClick={() => setShowDetails(!showDetails)}
       >
@@ -207,7 +208,7 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
           justifyContent: 'space-between',
           marginBottom: showDetails ? '16px' : 0,
         }}>
-          <span style={{ color: COLORS.gray400, fontSize: '14px' }}>
+          <span style={{ color: '#6b7280', fontSize: '14px' }}>
             Click to {showDetails ? 'hide' : 'review'} your information
           </span>
           <svg
@@ -215,7 +216,7 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
             height="16"
             viewBox="0 0 24 24"
             fill="none"
-            stroke={COLORS.gray400}
+            stroke="#6b7280"
             strokeWidth="2"
             style={{
               transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -233,34 +234,34 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
             gap: '16px',
           }}>
             <div>
-              <div style={{ color: COLORS.gray500, fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
+              <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
                 Name
               </div>
-              <div style={{ color: COLORS.white, fontSize: '14px' }}>
+              <div style={{ color: '#111827', fontSize: '14px' }}>
                 {profile.first_name} {profile.last_name}
               </div>
             </div>
             <div>
-              <div style={{ color: COLORS.gray500, fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
+              <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
                 Vehicle
               </div>
-              <div style={{ color: COLORS.white, fontSize: '14px' }}>
+              <div style={{ color: '#111827', fontSize: '14px' }}>
                 {profile.vehicle_year} {profile.vehicle_make} {profile.vehicle_model}
               </div>
             </div>
             <div>
-              <div style={{ color: COLORS.gray500, fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
+              <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
                 License Plate
               </div>
-              <div style={{ color: COLORS.white, fontSize: '14px' }}>
+              <div style={{ color: '#111827', fontSize: '14px' }}>
                 {profile.license_plate}
               </div>
             </div>
             <div>
-              <div style={{ color: COLORS.gray500, fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
+              <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
                 Mailing Address
               </div>
-              <div style={{ color: COLORS.white, fontSize: '14px' }}>
+              <div style={{ color: '#111827', fontSize: '14px' }}>
                 {profile.street_address}<br />
                 {profile.mailing_city}, {profile.mailing_state} {profile.zip_code}
               </div>
@@ -271,8 +272,8 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
 
       {/* Warning about what needs to be correct */}
       <div style={{
-        background: `${COLORS.warning}15`,
-        border: `1px solid ${COLORS.warning}30`,
+        background: '#fef3c7',
+        border: '1px solid #f59e0b',
         borderRadius: '8px',
         padding: '12px 16px',
         marginBottom: '20px',
@@ -280,11 +281,11 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
         alignItems: 'flex-start',
         gap: '12px',
       }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill={COLORS.warning} stroke="none" style={{ flexShrink: 0, marginTop: '2px' }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style={{ flexShrink: 0, marginTop: '2px' }}>
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
         </svg>
-        <div style={{ color: COLORS.gray300, fontSize: '13px', lineHeight: 1.5 }}>
-          <strong style={{ color: COLORS.warning }}>Before confirming, make sure:</strong>
+        <div style={{ color: '#92400e', fontSize: '13px', lineHeight: 1.5 }}>
+          <strong>Before confirming, make sure:</strong>
           <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px' }}>
             <li>You haven't gotten a new vehicle (different VIN)</li>
             <li>Your license plate number is still the same</li>
@@ -343,9 +344,9 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
           style={{
             flex: 1,
             minWidth: '150px',
-            background: 'transparent',
-            color: COLORS.gray400,
-            border: `1px solid ${COLORS.gray600}`,
+            background: '#f9fafb',
+            color: '#374151',
+            border: '1px solid #d1d5db',
             borderRadius: '8px',
             padding: '14px 24px',
             fontSize: '15px',
@@ -364,7 +365,7 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
       {lastConfirmed && (
         <div style={{
           marginTop: '16px',
-          color: COLORS.gray500,
+          color: '#6b7280',
           fontSize: '12px',
           textAlign: 'center',
         }}>

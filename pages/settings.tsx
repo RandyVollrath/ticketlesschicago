@@ -213,19 +213,29 @@ export default function ProfileNew() {
 
     const hash = window.location.hash
     if (hash === '#referral') {
-      // Small delay to ensure the DOM is ready
-      setTimeout(() => {
+      // Use a longer delay and retry to ensure the accordion is ready
+      const openReferralSection = () => {
         const referralElement = document.getElementById('referral')
         if (referralElement) {
-          // Scroll to the element
+          // Scroll to the element first
           referralElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          // Click the accordion header to open it
-          const accordionButton = referralElement.querySelector('button')
-          if (accordionButton) {
-            accordionButton.click()
-          }
+
+          // Click the accordion header to open it after scroll starts
+          setTimeout(() => {
+            const accordionButton = referralElement.querySelector('button')
+            if (accordionButton) {
+              // Check if accordion is already open by looking for expanded content
+              const accordionContent = referralElement.querySelector('div[style*="max-height: 5000px"]')
+              if (!accordionContent) {
+                accordionButton.click()
+              }
+            }
+          }, 300)
         }
-      }, 100)
+      }
+
+      // Try after a longer delay to ensure DOM is fully ready
+      setTimeout(openReferralSection, 500)
     }
   }, [loading])
 
@@ -808,16 +818,20 @@ export default function ProfileNew() {
             </p>
           </div>
 
-          {/* Status message */}
+          {/* Status message - fixed position toast to prevent layout shift */}
           {message && (
             <div style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '24px',
               backgroundColor: message.type === 'success' ? '#f0fdf4' : '#fef2f2',
               border: `1px solid ${message.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
               color: message.type === 'success' ? '#166534' : '#dc2626',
               padding: '12px 16px',
               borderRadius: '8px',
-              marginBottom: '24px',
-              fontSize: '14px'
+              fontSize: '14px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              zIndex: 1000
             }}>
               {message.text}
             </div>
