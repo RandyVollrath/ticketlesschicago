@@ -253,8 +253,8 @@ export default function ProfileNew() {
       })
 
       // Check if mailing address differs from home address
-      if (userProfile.mailing_address && userProfile.home_address_full &&
-          userProfile.mailing_address !== userProfile.home_address_full) {
+      if (userProfile.mailing_address && userProfile.street_address &&
+          userProfile.mailing_address !== userProfile.street_address) {
         setHasSeparateMailingAddress(true)
       }
 
@@ -315,6 +315,10 @@ export default function ProfileNew() {
     // Debounce auto-save
     const timeoutId = setTimeout(() => {
       saveField(field, value)
+      // Keep home_address_full in sync with street_address for backwards compatibility
+      if (field === 'street_address') {
+        saveField('home_address_full', value)
+      }
     }, 500)
     return () => clearTimeout(timeoutId)
   }
@@ -1208,12 +1212,12 @@ export default function ProfileNew() {
                   color: '#374151',
                   marginBottom: '6px'
                 }}>
-                  Street Address (for street cleaning alerts)
+                  Home Address
                 </label>
                 <input
                   type="text"
-                  value={formData.home_address_full || ''}
-                  onChange={(e) => handleFieldChange('home_address_full', e.target.value)}
+                  value={formData.street_address || ''}
+                  onChange={(e) => handleFieldChange('street_address', e.target.value)}
                   placeholder="123 Main St"
                   style={{
                     width: '100%',
@@ -1225,7 +1229,7 @@ export default function ProfileNew() {
                   }}
                 />
                 <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0' }}>
-                  Used for street cleaning schedule and mailing address
+                  Used for street cleaning alerts, permit zone detection, and renewals
                 </p>
               </div>
 

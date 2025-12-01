@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import styles from '../styles/Settings.module.css';
 
 interface StreetCleaningProfile {
+  street_address?: string;
   home_address_full?: string;
   home_address_ward?: string;
   home_address_section?: string;
@@ -80,8 +81,6 @@ export default function StreetCleaningSettings() {
   const [cleaningStatus, setCleaningStatus] = useState<'today' | 'next-3-days' | 'later' | 'unknown'>('unknown');
   const [loadingCleaningInfo, setLoadingCleaningInfo] = useState(false);
   
-  // Mailing address for auto-fill
-  const [mailingAddress, setMailingAddress] = useState('');
 
   // Calendar download
   const [calendarDownloading, setCalendarDownloading] = useState(false);
@@ -145,13 +144,9 @@ export default function StreetCleaningSettings() {
       }
 
       if (profile) {
-        // Auto-fill from mailing address if street cleaning address is empty
-        const mailingAddr = profile.mailing_address ? 
-          `${profile.mailing_address}${profile.mailing_city ? ', ' + profile.mailing_city : ''}${profile.mailing_state ? ', ' + profile.mailing_state : ''}${profile.mailing_zip ? ' ' + profile.mailing_zip : ''}` : '';
-        setMailingAddress(mailingAddr);
-        
-        // Use existing home address or auto-fill from mailing address
-        const addressToUse = profile.home_address_full || mailingAddr;
+        // Use street_address as primary source (consolidated address field)
+        // Fall back to home_address_full for backwards compatibility
+        const addressToUse = profile.street_address || profile.home_address_full || '';
         setHomeAddress(addressToUse);
         setWard(profile.home_address_ward || '');
         setSection(profile.home_address_section || '');
@@ -384,9 +379,10 @@ export default function StreetCleaningSettings() {
       if (notify3Days) notifyDays.push(3);
 
       const updates = {
-        home_address_full: homeAddress,
+        // Ward/section are derived from street_address via lookup
         home_address_ward: ward,
         home_address_section: section,
+        // Notification preferences
         notify_days_array: notifyDays,
         notify_evening_before: notifyEveningBefore,
         phone_call_enabled: phoneCallEnabled,
@@ -412,13 +408,6 @@ export default function StreetCleaningSettings() {
     setTripEndDate(oneWeekFromNow.toISOString().split('T')[0]);
     setTripMode(true);
     setMessage('Notifications snoozed for 1 week');
-  };
-
-  const handleUseMailingAddress = () => {
-    if (mailingAddress) {
-      setHomeAddress(mailingAddress);
-      setMessage('Address updated from mailing address');
-    }
   };
 
   const handleCalendarDownload = async () => {
@@ -567,15 +556,33 @@ export default function StreetCleaningSettings() {
 
       <div className={styles.formGroup}>
         <label>Home Address</label>
-        <input
-          type="text"
-          value={homeAddress}
-          onChange={(e) => setHomeAddress(e.target.value)}
-          placeholder="123 N State St, Chicago, IL"
-        />
-        {ward && section && (
-          <div className={styles.addressInfo}>
-            ✓ Ward {ward}, Section {section}
+        {homeAddress ? (
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ fontWeight: '500', color: '#111827' }}>{homeAddress}</div>
+            {ward && section && (
+              <div style={{ fontSize: '13px', color: '#10b981', marginTop: '4px' }}>
+                ✓ Ward {ward}, Section {section}
+              </div>
+            )}
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+              To change your address, edit it in the <strong>Home Address</strong> section at the top of Settings.
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#fef3c7',
+            borderRadius: '8px',
+            border: '1px solid #f59e0b',
+            color: '#92400e',
+            fontSize: '14px'
+          }}>
+            Please add your home address in the <strong>Home Address</strong> section at the top of Settings to enable street cleaning alerts.
           </div>
         )}
         {renderCleaningStatus()}
