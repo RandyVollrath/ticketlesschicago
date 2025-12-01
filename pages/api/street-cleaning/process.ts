@@ -346,8 +346,8 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
   let message = '';
   let subject = '';
   
-  // Get user's full address for messaging
-  const addressText = user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`;
+  // Get user's full address for messaging (use street_address, fall back to home_address_full for backwards compat)
+  const addressText = user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`;
 
   switch (type) {
     case 'morning_reminder':
@@ -392,14 +392,14 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
             <p>${message}</p>
             <p style="margin-top: 20px;">
               <strong>Your Address:</strong><br>
-              ${user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}
+              ${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}
             </p>
             <p style="margin-top: 20px; font-size: 12px; color: #666;">
               Manage your preferences at <a href="https://ticketlessamerica.com/settings">ticketlessamerica.com/settings</a>
             </p>
           </div>
         `,
-        text: `${subject}\n\n${message}\n\nYour Address:\n${user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://ticketlessamerica.com/settings`
+        text: `${subject}\n\n${message}\n\nYour Address:\n${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://ticketlessamerica.com/settings`
       });
       console.log(`✅ Email sent successfully to ${user.email}`);
     } else {
