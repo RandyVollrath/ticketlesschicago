@@ -240,7 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get user profile for name/address
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('full_name, address, email, phone')
+      .select('first_name, last_name, address, email, phone')
       .eq('user_id', user.id)
       .single();
 
@@ -336,7 +336,7 @@ ${!userEvidence.hasPhotos && courtData.evidenceGuidance.find(e => e.type === 'ph
 ` : ''}
 
 Sender Information:
-- Name: ${profile?.full_name || '[YOUR NAME]'}
+- Name: ${profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : '[YOUR NAME]'}
 - Address: ${profile?.address || '[YOUR ADDRESS]'}
 - Email: ${profile?.email || user.email}
 - Phone: ${profile?.phone || '[YOUR PHONE]'}
@@ -470,7 +470,7 @@ Thank you for your time and consideration.
 
 Sincerely,
 
-${profile?.full_name || '[YOUR NAME]'}
+${profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : '[YOUR NAME]'}
 ${profile?.address || '[YOUR ADDRESS]'}
 Email: ${profile?.email || '[YOUR EMAIL]'}
 Phone: ${profile?.phone || '[YOUR PHONE]'}`;

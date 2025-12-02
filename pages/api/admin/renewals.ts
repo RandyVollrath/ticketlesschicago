@@ -313,9 +313,9 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
 
       // Send confirmation email to user
       const { data: userData } = await supabaseAdmin!
-        .from('users')
-        .select('email, full_name')
-        .eq('id', userId)
+        .from('user_profiles')
+        .select('email, first_name')
+        .eq('user_id', userId)
         .single();
 
       if (userData?.email && process.env.RESEND_API_KEY) {
@@ -336,7 +336,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
                     <h1 style="margin: 0; font-size: 24px;">Renewal Complete!</h1>
                   </div>
                   <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
-                    <p>Hi ${userData.full_name || 'there'},</p>
+                    <p>Hi ${userData.first_name || 'there'},</p>
                     <p>Great news! Your ${renewalType === 'city_sticker' ? 'Chicago city sticker' : 'license plate'} renewal has been submitted to the city.</p>
                     ${confirmationNumber ? `<p><strong>Confirmation Number:</strong> ${confirmationNumber}</p>` : ''}
                     <p><strong>New Expiration:</strong> ${nextYearStr}</p>
@@ -374,9 +374,9 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       const { userId: remindUserId } = req.body;
 
       const { data: userData } = await supabaseAdmin!
-        .from('users')
-        .select('email, full_name')
-        .eq('id', remindUserId)
+        .from('user_profiles')
+        .select('email, first_name')
+        .eq('user_id', remindUserId)
         .single();
 
       if (!userData?.email) {
@@ -400,7 +400,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
                   <h1 style="margin: 0; font-size: 24px;">Payment Update Needed</h1>
                 </div>
                 <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
-                  <p>Hi ${userData.full_name || 'there'},</p>
+                  <p>Hi ${userData.first_name || 'there'},</p>
                   <p>We tried to process your automatic renewal, but there was an issue with your payment method.</p>
                   <p>To ensure your renewal is completed on time, please:</p>
                   <ol>

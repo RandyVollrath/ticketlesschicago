@@ -61,7 +61,7 @@ export default async function handler(
     // Get current user profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .select('*, users!inner(email, full_name)')
+      .select('*')
       .eq('user_id', userId)
       .single();
 
@@ -69,8 +69,8 @@ export default async function handler(
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    const userEmail = (profile.users as any)?.email;
-    const userName = (profile.users as any)?.full_name || 'User';
+    const userEmail = profile.email;
+    const userName = profile.first_name || 'User';
 
     if (action === 'approve') {
       // Mark as verified

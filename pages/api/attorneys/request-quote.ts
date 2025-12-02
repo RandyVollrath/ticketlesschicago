@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get user profile
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('full_name, email, phone')
+      .select('first_name, last_name, email, phone')
       .eq('user_id', user.id)
       .single();
 
@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             <h3>Client Details</h3>
             <ul>
-              <li><strong>Name:</strong> ${profile?.full_name || 'Not provided'}</li>
+              <li><strong>Name:</strong> ${profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : 'Not provided'}</li>
               <li><strong>Email:</strong> ${profile?.email || user.email}</li>
               <li><strong>Phone:</strong> ${profile?.phone || 'Not provided'}</li>
               <li><strong>Preferred Contact:</strong> ${preferredContact}</li>
