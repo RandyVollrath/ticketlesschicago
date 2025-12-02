@@ -28,13 +28,33 @@ export async function sendClickSendSMS(to: string, message: string): Promise<{su
     });
 
     const result = await response.json();
-    
-    if (response.ok && result.data?.messages?.[0]?.status === 'SUCCESS') {
+
+    // Log the full response for debugging
+    console.log('📱 ClickSend response:', JSON.stringify(result, null, 2));
+
+    // Check for success - ClickSend returns status in messages array
+    const messageStatus = result.data?.messages?.[0]?.status;
+    if (response.ok && messageStatus === 'SUCCESS') {
       console.log('✅ SMS sent successfully via ClickSend to', to);
       return { success: true };
     } else {
-      console.error('❌ ClickSend SMS failed:', result);
-      return { success: false, error: result.data?.messages?.[0]?.status || 'Unknown error' };
+      // Extract the actual error from ClickSend's response structure
+      // ClickSend errors can be in: response_msg, data.messages[0].status, or http_code
+      const errorMsg = result.response_msg
+        || result.data?.messages?.[0]?.status
+        || result.data?.messages?.[0]?._api_message
+        || (result.http_code ? `HTTP ${result.http_code}` : null)
+        || `Unknown error (HTTP ${response.status})`;
+
+      console.error('❌ ClickSend SMS failed:', {
+        httpStatus: response.status,
+        responseCode: result.response_code,
+        responseMsg: result.response_msg,
+        httpCode: result.http_code,
+        messageStatus: messageStatus,
+        fullResponse: result
+      });
+      return { success: false, error: errorMsg };
     }
   } catch (error) {
     console.error('❌ Error sending SMS via ClickSend:', error);
@@ -73,13 +93,32 @@ export async function sendClickSendVoiceCall(to: string, message: string): Promi
     });
 
     const result = await response.json();
-    
-    if (response.ok && result.data?.messages?.[0]?.status === 'SUCCESS') {
+
+    // Log the full response for debugging
+    console.log('📞 ClickSend voice response:', JSON.stringify(result, null, 2));
+
+    // Check for success - ClickSend returns status in messages array
+    const messageStatus = result.data?.messages?.[0]?.status;
+    if (response.ok && messageStatus === 'SUCCESS') {
       console.log('✅ Voice call sent successfully via ClickSend to', to);
       return { success: true };
     } else {
-      console.error('❌ ClickSend voice call failed:', result);
-      return { success: false, error: result.data?.messages?.[0]?.status || 'Unknown error' };
+      // Extract the actual error from ClickSend's response structure
+      const errorMsg = result.response_msg
+        || result.data?.messages?.[0]?.status
+        || result.data?.messages?.[0]?._api_message
+        || (result.http_code ? `HTTP ${result.http_code}` : null)
+        || `Unknown error (HTTP ${response.status})`;
+
+      console.error('❌ ClickSend voice call failed:', {
+        httpStatus: response.status,
+        responseCode: result.response_code,
+        responseMsg: result.response_msg,
+        httpCode: result.http_code,
+        messageStatus: messageStatus,
+        fullResponse: result
+      });
+      return { success: false, error: errorMsg };
     }
   } catch (error) {
     console.error('❌ Error sending voice call via ClickSend:', error);
