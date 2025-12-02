@@ -289,14 +289,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         results.cityStickerProcessed++;
 
-        // Get remitter
+        // Get remitter with a valid Stripe connected account
         const { data: remitter } = await supabase
           .from('renewal_partners')
           .select('*')
           .eq('status', 'active')
+          .not('stripe_connected_account_id', 'is', null)
+          .limit(1)
           .single();
 
-        if (!remitter || !remitter.stripe_connected_account_id) {
+        if (!remitter) {
           throw new Error('No active remitter available');
         }
 
