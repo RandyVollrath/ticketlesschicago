@@ -552,73 +552,79 @@ export default function StreetCleaningSettings() {
       {message && <div className={styles.success}>{message}</div>}
       {error && <div className={styles.error}>{error}</div>}
 
-      {/* Show ward/section info or prompt to add address */}
-      {ward && section ? (
-        <div className={styles.formGroup}>
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#f0fdf4',
-            borderRadius: '8px',
-            border: '1px solid #bbf7d0',
-            marginBottom: '16px'
-          }}>
-            <div style={{ fontSize: '14px', color: '#166534', fontWeight: '500' }}>
-              ✓ Ward {ward}, Section {section}
+      {/* Show address and ward/section info */}
+      <div className={styles.formGroup}>
+        <label>Your Address</label>
+        {homeAddress ? (
+          <>
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+              marginBottom: '12px'
+            }}>
+              <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500' }}>
+                {homeAddress}
+              </div>
+              {ward && section && (
+                <div style={{ fontSize: '13px', color: '#10b981', marginTop: '6px' }}>
+                  ✓ Ward {ward}, Section {section}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: '12px', color: '#15803d', marginTop: '4px' }}>
-              Based on your Home Address
-            </div>
-          </div>
-          {renderCleaningStatus()}
-          <div style={{ marginTop: '12px' }}>
-            <button
-              type="button"
-              onClick={handleCalendarDownload}
-              disabled={calendarDownloading}
-              className={styles.calendarButton}
-              style={{
-                padding: '10px 16px',
-                backgroundColor: calendarDownloading ? '#9ca3af' : '#0052cc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: calendarDownloading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              📅 {calendarDownloading ? 'Generating Calendar...' : 'Download Calendar (.ics)'}
-            </button>
-            {calendarMessage && (
-              <div style={{
-                marginTop: '8px',
-                padding: '8px 12px',
-                backgroundColor: '#dcfce7',
-                color: '#166534',
-                borderRadius: '6px',
-                fontSize: '13px'
-              }}>
-                {calendarMessage}
+            {renderCleaningStatus()}
+            {ward && section && (
+              <div style={{ marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={handleCalendarDownload}
+                  disabled={calendarDownloading}
+                  className={styles.calendarButton}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: calendarDownloading ? '#9ca3af' : '#0052cc',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: calendarDownloading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  📅 {calendarDownloading ? 'Generating Calendar...' : 'Download Calendar (.ics)'}
+                </button>
+                {calendarMessage && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    backgroundColor: '#dcfce7',
+                    color: '#166534',
+                    borderRadius: '6px',
+                    fontSize: '13px'
+                  }}>
+                    {calendarMessage}
+                  </div>
+                )}
               </div>
             )}
+          </>
+        ) : (
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#fef3c7',
+            borderRadius: '8px',
+            border: '1px solid #f59e0b',
+            color: '#92400e',
+            fontSize: '14px'
+          }}>
+            Add your address in the <strong>Home Address</strong> section above to enable street cleaning alerts.
           </div>
-        </div>
-      ) : (
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#fef3c7',
-          borderRadius: '8px',
-          border: '1px solid #f59e0b',
-          color: '#92400e',
-          fontSize: '14px',
-          marginBottom: '16px'
-        }}>
-          Add your address in the <strong>Home Address</strong> section above to enable street cleaning alerts.
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Park Here Instead Feature - MSC Style */}
       {ward && section && (

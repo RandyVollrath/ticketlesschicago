@@ -1226,13 +1226,13 @@ export default function ProfileNew() {
                   color: '#374151',
                   marginBottom: '6px'
                 }}>
-                  Home Address
+                  Street Address
                 </label>
                 <input
                   type="text"
                   value={formData.street_address || ''}
                   onChange={(e) => handleFieldChange('street_address', e.target.value)}
-                  placeholder="123 Main St"
+                  placeholder="123 N Main St, Chicago, IL"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -1242,9 +1242,6 @@ export default function ProfileNew() {
                     boxSizing: 'border-box'
                   }}
                 />
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0' }}>
-                  Used for street cleaning alerts, permit zone detection, and renewals
-                </p>
               </div>
 
               <div>
@@ -2887,8 +2884,10 @@ export default function ProfileNew() {
                       cursor: isMandatory ? 'not-allowed' : 'pointer',
                       opacity: isMandatory ? 0.8 : 1,
                       fontSize: '13px',
-                      fontWeight: isChecked ? '500' : '400',
-                      color: isChecked ? '#1e40af' : '#374151'
+                      fontWeight: '500',
+                      color: isChecked ? '#1e40af' : '#374151',
+                      minWidth: '85px',
+                      justifyContent: 'center'
                     }}>
                       <input
                         type="checkbox"
