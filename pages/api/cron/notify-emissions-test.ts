@@ -277,12 +277,12 @@ export default async function handler(
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get users with emissions dates set who haven't completed the test
+    // Get users with emissions dates set
+    // Note: emissions_completed column doesn't exist - we just check emissions_date
     const { data: users, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .not('emissions_date', 'is', null)
-      .or('emissions_completed.is.null,emissions_completed.eq.false');
+      .not('emissions_date', 'is', null);
 
     if (error) {
       throw error;
