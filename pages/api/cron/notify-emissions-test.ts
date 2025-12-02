@@ -87,6 +87,71 @@ async function sendSMS(to: string, message: string): Promise<boolean> {
 }
 
 /**
+ * Send Voice Call via ClickSend
+ */
+async function sendVoiceCall(to: string, message: string): Promise<boolean> {
+  const username = process.env.CLICKSEND_USERNAME;
+  const apiKey = process.env.CLICKSEND_API_KEY;
+
+  if (!username || !apiKey) {
+    console.log('ClickSend not configured, skipping voice call');
+    return false;
+  }
+
+  try {
+    const response = await fetch('https://rest.clicksend.com/v3/voice/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + Buffer.from(`${username}:${apiKey}`).toString('base64'),
+      },
+      body: JSON.stringify({
+        messages: [{
+          to: to.replace(/\D/g, ''),
+          body: message,
+          voice: 'female',
+          source: 'nodejs'
+        }],
+      }),
+    });
+
+    const result = await response.json();
+    if (response.ok && result.data?.messages?.[0]?.status === 'SUCCESS') {
+      console.log('✅ Voice call sent successfully to', to);
+      return true;
+    } else {
+      console.error('❌ Voice call failed:', result.response_msg || result);
+      return false;
+    }
+  } catch (error) {
+    console.error('Voice call send failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Generate voice call message (no emojis, spoken text)
+ */
+function generateVoiceContent(user: any, daysUntil: number): string {
+  const hasProtection = user.has_protection;
+  const timeText = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+
+  if (hasProtection) {
+    if (daysUntil <= 1) {
+      return `Hello from Autopilot America. This is an urgent reminder that your emissions test is due ${timeText}. We cannot renew your license plate until your emissions test is complete. Please visit air team dot app to find a testing location near you. Thank you.`;
+    } else {
+      return `Hello from Autopilot America. This is a reminder that your emissions test is due ${timeText}. Please complete your test soon so we can process your license plate renewal on time. Visit air team dot app to find a testing location. Thank you.`;
+    }
+  } else {
+    if (daysUntil <= 1) {
+      return `Hello from Autopilot America. This is an urgent reminder that your emissions test is due ${timeText}. Without a valid emissions test, you cannot renew your license plate. Please visit air team dot app to find a testing location near you. Thank you.`;
+    } else {
+      return `Hello from Autopilot America. This is a reminder that your emissions test is due ${timeText}. You need to complete your emissions test before you can renew your license plate. Visit air team dot app to find a testing location. Thank you.`;
+    }
+  }
+}
+
+/**
  * Check if notification was already sent
  */
 async function wasNotificationSent(userId: string, messageKey: string): Promise<boolean> {
@@ -356,6 +421,28 @@ export default async function handler(
         const smsSent = await sendSMS(phone, smsMessage);
         if (smsSent) {
           await logNotification(user.user_id, 'emissions_reminder_escalation', 'sms', messageKey + '_escalation', daysUntil);
+          sent = true;
+        }
+      }
+
+      // Send voice call for urgent reminders (7 days or less) if user has phone_call_enabled
+      if (daysUntil <= 7 && phone && user.phone_call_enabled) {
+        const voiceMessage = generateVoiceContent(user, Math.max(0, daysUntil));
+        console.log(`📞 Sending voice call for emissions test due in ${daysUntil} days`);
+        const voiceSent = await sendVoiceCall(phone, voiceMessage);
+        if (voiceSent) {
+          await logNotification(user.user_id, 'emissions_reminder', 'voice', messageKey + '_voice', daysUntil);
+          sent = true;
+        }
+      }
+
+      // For critical deadlines (0-1 days), send voice call even if not normally enabled
+      if (daysUntil <= 1 && phone && !user.phone_call_enabled) {
+        const voiceMessage = generateVoiceContent(user, Math.max(0, daysUntil));
+        console.log(`🚨 ESCALATION: Sending emergency voice call for emissions test due in ${daysUntil} days`);
+        const voiceSent = await sendVoiceCall(phone, voiceMessage);
+        if (voiceSent) {
+          await logNotification(user.user_id, 'emissions_reminder_escalation', 'voice', messageKey + '_voice_escalation', daysUntil);
           sent = true;
         }
       }

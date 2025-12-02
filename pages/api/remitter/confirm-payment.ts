@@ -139,11 +139,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? 'city_sticker_expiry'
       : 'license_plate_expiry';
 
+    // Build profile update - always update expiry date
+    // For city stickers, also set sticker_purchased_at to trigger the notification sequence
+    const profileUpdate: Record<string, any> = {
+      [expiryField]: nextYearDueDateStr
+    };
+
+    if (renewal_type === 'city_sticker') {
+      profileUpdate.sticker_purchased_at = new Date().toISOString();
+      profileUpdate.renewal_status = 'purchased';
+      console.log(`📬 Setting sticker_purchased_at for user ${user_id} - notification sequence will start`);
+    }
+
     const { error: profileUpdateError } = await supabaseAdmin
       .from('user_profiles')
-      .update({
-        [expiryField]: nextYearDueDateStr
-      })
+      .update(profileUpdate)
       .eq('user_id', user_id);
 
     if (profileUpdateError) {
