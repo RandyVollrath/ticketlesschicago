@@ -180,7 +180,9 @@ export class NotificationScheduler {
               const messageKey = `renewal_${renewal.type.toLowerCase().replace(/ /g, '_')}_${daysUntil}day`;
 
               // Send SMS if enabled
-              if (prefs.sms && user.phone_number) {
+              // Check both notify_sms (direct column) and prefs.sms (legacy JSONB) for backwards compatibility
+              const smsEnabled = user.notify_sms || prefs.sms;
+              if (smsEnabled && user.phone_number) {
                 // Check if we already sent this message recently (48h deduplication)
                 const recentlySent = await checkRecentlySent(user.user_id, messageKey, 48);
 
@@ -318,7 +320,7 @@ export class NotificationScheduler {
                     }
                   }
                 }
-              } else if (prefs.sms && !user.phone_number) {
+              } else if (smsEnabled && !user.phone_number) {
                 // SMS enabled but no phone number
                 await logMessageSkipped({
                   userId: user.user_id,
@@ -329,7 +331,7 @@ export class NotificationScheduler {
                   contextData,
                   reason: 'missing_phone_number'
                 });
-              } else if (!prefs.sms && user.phone_number) {
+              } else if (!smsEnabled && user.phone_number) {
                 // Has phone but SMS disabled in preferences
                 await logMessageSkipped({
                   userId: user.user_id,
@@ -343,7 +345,8 @@ export class NotificationScheduler {
               }
 
               // Send voice call if enabled
-              if (prefs.voice && user.phone_number) {
+              const voiceEnabled = user.phone_call_enabled || prefs.voice;
+              if (voiceEnabled && user.phone_number) {
                 // Check if we already sent this voice message recently
                 const voiceMessageKey = `${messageKey}_voice`;
                 const recentlyCalledVoice = await checkRecentlySent(user.user_id, voiceMessageKey, 48);
@@ -417,7 +420,7 @@ export class NotificationScheduler {
                     }
                   }
                 }
-              } else if (prefs.voice && !user.phone_number) {
+              } else if (voiceEnabled && !user.phone_number) {
                 // Voice enabled but no phone number
                 await logMessageSkipped({
                   userId: user.user_id,
