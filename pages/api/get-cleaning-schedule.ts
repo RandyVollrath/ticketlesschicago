@@ -21,13 +21,13 @@ export default async function handler(
   }
 
   try {
-    // Get all street cleaning dates for this ward/section for the next year
+    // Get all street cleaning dates for this ward/section
     const { data, error } = await supabase
       .from('street_cleaning_schedule')
-      .select('month, dates')
+      .select('cleaning_date')
       .eq('ward', ward)
       .eq('section', section)
-      .order('month', { ascending: true });
+      .order('cleaning_date', { ascending: true });
 
     if (error) {
       console.error('Error fetching cleaning schedule:', error);
@@ -38,19 +38,10 @@ export default async function handler(
       return res.status(404).json({ error: 'No cleaning schedule found for this ward/section' });
     }
 
-    // Flatten all dates into a single array
-    const allDates: string[] = [];
-    data.forEach((monthData) => {
-      if (monthData.dates && Array.isArray(monthData.dates)) {
-        monthData.dates.forEach((dateStr: string) => {
-          // Dates should be in YYYY-MM-DD format
-          allDates.push(dateStr);
-        });
-      }
-    });
-
-    // Sort dates chronologically
-    allDates.sort();
+    // Extract dates into array
+    const allDates: string[] = data
+      .map(row => row.cleaning_date)
+      .filter(Boolean);
 
     return res.status(200).json({
       ward,
