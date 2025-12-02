@@ -80,6 +80,12 @@ export default async function handler(
       client_reference_id: rewardfulReferral || userId || undefined,
       mode: 'subscription',
       line_items: lineItems,
+      // IMPORTANT: Save payment method for future renewal charges
+      payment_method_collection: 'always',
+      subscription_data: {
+        // Set the payment method as default for future invoices
+        default_payment_method: 'on_subscription',
+      },
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/alerts/success?protection=true&existing=${userId ? 'true' : 'false'}&email=${encodeURIComponent(email)}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/protection`,
       metadata: {

@@ -456,6 +456,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               } else {
                 console.log('✅ Created user profile with Protection');
 
+                // CRITICAL: Set customer's default payment method for future renewal charges
+                try {
+                  const customerId = session.customer as string;
+                  const subscriptionId = session.subscription as string;
+
+                  if (customerId && subscriptionId) {
+                    // Get the subscription to find the default payment method
+                    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+                    const paymentMethodId = subscription.default_payment_method as string;
+
+                    if (paymentMethodId) {
+                      // Update customer to use this payment method as default
+                      await stripe.customers.update(customerId, {
+                        invoice_settings: {
+                          default_payment_method: paymentMethodId,
+                        },
+                      });
+                      console.log('✅ Set default payment method for future charges:', paymentMethodId);
+                    } else {
+                      console.log('⚠️ No default payment method on subscription');
+                    }
+                  }
+                } catch (pmError) {
+                  console.error('⚠️ Failed to set default payment method (non-critical):', pmError);
+                  // Non-critical - renewals will still prompt user to add payment method
+                }
+
                 // Auto-populate ward/section for street cleaning alerts
                 if (hasValue(metadata.streetAddress)) {
                   try {
