@@ -304,11 +304,17 @@ export default function ProfileNew() {
 
   // Debounced auto-save
   const saveField = useCallback(async (field: string, value: any) => {
+    if (!user?.id) return
     try {
+      // Use upsert to handle case where user_profiles record doesn't exist yet
       const { error } = await supabase
         .from('user_profiles')
-        .update({ [field]: value })
-        .eq('user_id', user?.id)
+        .upsert({
+          user_id: user.id,
+          [field]: value
+        }, {
+          onConflict: 'user_id'
+        })
 
       if (error) throw error
 

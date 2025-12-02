@@ -703,7 +703,7 @@ export default function AlertsSuccess() {
                 fontSize: '14px'
               }}
             >
-              Upload Document
+              Go to Settings to Upload
             </a>
 
             <p style={{
@@ -713,7 +713,7 @@ export default function AlertsSuccess() {
               margin: '12px 0 0 0',
               fontStyle: 'italic'
             }}>
-              You can also do this later in your account settings
+              You can skip this for now and upload later
             </p>
           </div>
         )}
