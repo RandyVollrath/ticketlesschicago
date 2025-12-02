@@ -23,8 +23,9 @@ interface NotificationResult {
   errors: string[];
 }
 
-// Reminder schedule in days before emissions deadline
-const REMINDER_DAYS = [90, 60, 45, 30, 14, 7, 3, 1, 0];
+// Default reminder schedule in days before emissions deadline
+// Users can customize via notification_preferences.reminder_days
+const DEFAULT_REMINDER_DAYS = [90, 60, 45, 30, 14, 7, 3, 1, 0];
 
 /**
  * Send email via Resend
@@ -373,11 +374,16 @@ export default async function handler(
         continue;
       }
 
-      // Check if this falls on a reminder day
-      const reminderDay = REMINDER_DAYS.find(d => d === daysUntil || (daysUntil < 0 && d === 0));
+      // Get user's preferred reminder days or use defaults
+      const prefs = user.notification_preferences || {};
+      const userReminderDays = prefs.reminder_days || DEFAULT_REMINDER_DAYS;
 
-      if (reminderDay === undefined) {
-        continue; // Not a reminder day
+      // Check if this falls on a reminder day (user's preferred days)
+      // Also allow day 0 for overdue reminders
+      const isReminderDay = userReminderDays.includes(daysUntil) || (daysUntil <= 0 && userReminderDays.includes(0));
+
+      if (!isReminderDay) {
+        continue; // Not a reminder day for this user
       }
 
       console.log(`Processing ${user.email}: ${daysUntil} days until emissions deadline`);
@@ -395,9 +401,16 @@ export default async function handler(
       const smsMessage = generateSMSContent(user, Math.max(0, daysUntil));
 
       let sent = false;
+      const phone = user.phone || user.phone_number;
+      const hasProtection = user.has_protection || false;
 
-      // Send email if user has email
-      if (user.email) {
+      // Check user notification preferences
+      const emailEnabled = prefs.email !== false && user.notify_email !== false; // Default to true if not set
+      const smsEnabled = user.notify_sms || prefs.sms;
+      const voiceEnabled = user.phone_call_enabled;
+
+      // Send email if user has email AND email notifications enabled
+      if (user.email && emailEnabled) {
         const emailSent = await sendEmail(user.email, subject, html);
         if (emailSent) {
           await logNotification(user.user_id, 'emissions_reminder', 'email', messageKey, daysUntil);
@@ -406,8 +419,7 @@ export default async function handler(
       }
 
       // Send SMS if user has phone and SMS enabled
-      const phone = user.phone || user.phone_number;
-      if (phone && user.notify_sms) {
+      if (phone && smsEnabled) {
         const smsSent = await sendSMS(phone, smsMessage);
         if (smsSent) {
           await logNotification(user.user_id, 'emissions_reminder', 'sms', messageKey + '_sms', daysUntil);
@@ -415,9 +427,10 @@ export default async function handler(
         }
       }
 
-      // For critical deadlines (0-1 days), send SMS even if not normally enabled
-      if (daysUntil <= 1 && phone && !user.notify_sms) {
-        console.log(`🚨 ESCALATION: Sending emergency SMS for emissions test due in ${daysUntil} days`);
+      // ESCALATION: For critical deadlines (0-1 days), send SMS even if not normally enabled
+      // Only for PAID (Protection) users
+      if (daysUntil <= 1 && phone && !smsEnabled && hasProtection) {
+        console.log(`🚨 ESCALATION: Sending emergency SMS for emissions test due in ${daysUntil} days (Protection user)`);
         const smsSent = await sendSMS(phone, smsMessage);
         if (smsSent) {
           await logNotification(user.user_id, 'emissions_reminder_escalation', 'sms', messageKey + '_escalation', daysUntil);
@@ -426,7 +439,7 @@ export default async function handler(
       }
 
       // Send voice call for urgent reminders (7 days or less) if user has phone_call_enabled
-      if (daysUntil <= 7 && phone && user.phone_call_enabled) {
+      if (daysUntil <= 7 && phone && voiceEnabled) {
         const voiceMessage = generateVoiceContent(user, Math.max(0, daysUntil));
         console.log(`📞 Sending voice call for emissions test due in ${daysUntil} days`);
         const voiceSent = await sendVoiceCall(phone, voiceMessage);
@@ -436,10 +449,11 @@ export default async function handler(
         }
       }
 
-      // For critical deadlines (0-1 days), send voice call even if not normally enabled
-      if (daysUntil <= 1 && phone && !user.phone_call_enabled) {
+      // ESCALATION: For critical deadlines (0-1 days), send voice call even if not normally enabled
+      // Only for PAID (Protection) users
+      if (daysUntil <= 1 && phone && !voiceEnabled && hasProtection) {
         const voiceMessage = generateVoiceContent(user, Math.max(0, daysUntil));
-        console.log(`🚨 ESCALATION: Sending emergency voice call for emissions test due in ${daysUntil} days`);
+        console.log(`🚨 ESCALATION: Sending emergency voice call for emissions test due in ${daysUntil} days (Protection user)`);
         const voiceSent = await sendVoiceCall(phone, voiceMessage);
         if (voiceSent) {
           await logNotification(user.user_id, 'emissions_reminder_escalation', 'voice', messageKey + '_voice_escalation', daysUntil);
