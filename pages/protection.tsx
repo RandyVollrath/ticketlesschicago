@@ -393,160 +393,35 @@ export default function Protection() {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Compact Hero with Form */}
       <section style={{
-        paddingTop: '140px',
-        paddingBottom: '80px',
-        background: COLORS.deepHarbor,
-        position: 'relative',
-        overflow: 'hidden'
+        paddingTop: '96px',
+        paddingBottom: '48px',
+        background: COLORS.concrete,
+        position: 'relative'
       }}>
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `linear-gradient(${COLORS.slate}10 1px, transparent 1px), linear-gradient(90deg, ${COLORS.slate}10 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-          opacity: 0.3
-        }} />
-
-        <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 32px', position: 'relative' }}>
-          <div style={{ textAlign: 'center', maxWidth: '700px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 24px' }}>
+          {/* Compact header */}
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <h1 className="hero-title" style={{
-              fontSize: '48px',
+              fontSize: '32px',
               fontWeight: '700',
-              color: 'white',
-              lineHeight: '1.1',
-              letterSpacing: '-2px',
-              margin: '0 0 20px 0',
+              color: COLORS.graphite,
+              lineHeight: '1.2',
+              letterSpacing: '-1px',
+              margin: '0 0 12px 0',
               fontFamily: '"Space Grotesk", sans-serif'
             }}>
               Activate Autopilot
             </h1>
             <p style={{
-              fontSize: '20px',
+              fontSize: '16px',
               color: COLORS.slate,
-              lineHeight: '1.6',
-              margin: '0 0 32px 0'
+              lineHeight: '1.5',
+              margin: 0
             }}>
-              $12/month or $120/year (2 months free). We handle your city sticker and plate renewals automatically, plus up to $200/year in covered ticket reimbursement.
+              $12/month or $120/year. Automated renewals + up to $200/year ticket reimbursement.
             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section style={{ padding: '80px 32px', backgroundColor: COLORS.concrete }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div className="feature-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '24px',
-            marginBottom: '60px'
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              padding: '32px',
-              border: `1px solid ${COLORS.border}`
-            }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: `${COLORS.regulatory}10`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '20px'
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
-                </svg>
-              </div>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: COLORS.graphite,
-                margin: '0 0 12px 0',
-                fontFamily: '"Space Grotesk", sans-serif'
-              }}>
-                Automated Renewals
-              </h3>
-              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                We handle your city sticker and license plate renewals end-to-end. Just approve, and we'll purchase and mail them before your deadlines.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              padding: '32px',
-              border: `1px solid ${COLORS.border}`
-            }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: `${COLORS.signal}10`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '20px'
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="M9 12l2 2 4-4"/>
-                </svg>
-              </div>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: COLORS.graphite,
-                margin: '0 0 12px 0',
-                fontFamily: '"Space Grotesk", sans-serif'
-              }}>
-                Ticket Reimbursement
-              </h3>
-              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                We reimburse 80% of eligible tickets up to $200/year. Follow our alerts and submit tickets within 7 days for coverage.
-              </p>
-            </div>
-
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              padding: '32px',
-              border: `1px solid ${COLORS.border}`
-            }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: `${COLORS.graphite}10`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '20px'
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.graphite} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                  <line x1="1" y1="10" x2="23" y2="10"/>
-                </svg>
-              </div>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: COLORS.graphite,
-                margin: '0 0 12px 0',
-                fontFamily: '"Space Grotesk", sans-serif'
-              }}>
-                One Vehicle, Full Coverage
-              </h3>
-              <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: '1.6', margin: 0 }}>
-                Complete protection for your tracked vehicle, including renewals and ticket reimbursement guarantee.
-              </p>
-            </div>
           </div>
 
           {/* Signup Form */}
@@ -1194,6 +1069,132 @@ export default function Protection() {
             >
               View Service Guarantee & FAQ
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section - Below the fold */}
+      <section style={{ padding: '48px 24px', backgroundColor: 'white' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: COLORS.graphite,
+            textAlign: 'center',
+            marginBottom: '32px',
+            fontFamily: '"Space Grotesk", sans-serif'
+          }}>
+            What's Included
+          </h2>
+          <div className="feature-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '24px'
+          }}>
+            <div style={{
+              backgroundColor: COLORS.concrete,
+              borderRadius: '12px',
+              padding: '24px',
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor: `${COLORS.regulatory}10`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: COLORS.graphite,
+                margin: '0 0 8px 0',
+                fontFamily: '"Space Grotesk", sans-serif'
+              }}>
+                Automated Renewals
+              </h3>
+              <p style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5', margin: 0 }}>
+                We handle your city sticker and license plate renewals end-to-end.
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: COLORS.concrete,
+              borderRadius: '12px',
+              padding: '24px',
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor: `${COLORS.signal}10`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+              </div>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: COLORS.graphite,
+                margin: '0 0 8px 0',
+                fontFamily: '"Space Grotesk", sans-serif'
+              }}>
+                Ticket Reimbursement
+              </h3>
+              <p style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5', margin: 0 }}>
+                80% reimbursement on eligible tickets, up to $200/year.
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: COLORS.concrete,
+              borderRadius: '12px',
+              padding: '24px',
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor: `${COLORS.graphite}10`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.graphite} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                  <line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+              </div>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: COLORS.graphite,
+                margin: '0 0 8px 0',
+                fontFamily: '"Space Grotesk", sans-serif'
+              }}>
+                Full Coverage
+              </h3>
+              <p style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5', margin: 0 }}>
+                Complete protection for your tracked vehicle.
+              </p>
+            </div>
           </div>
         </div>
       </section>
