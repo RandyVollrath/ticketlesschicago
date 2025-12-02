@@ -82,7 +82,7 @@ export default async function handler(
     // Fetch user data separately
     const { data: users, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, email, phone, full_name')
+      .select('id, email, phone')
       .in('id', userIds);
 
     if (userError) {
@@ -115,7 +115,7 @@ export default async function handler(
         created_at: doc.created_at,
         user_email: user?.email || 'Unknown',
         user_phone: user?.phone || 'Unknown',
-        user_name: user?.full_name || 'Unknown User',
+        user_name: user?.email || 'Unknown User',
       };
     });
 
@@ -133,7 +133,7 @@ export default async function handler(
         const profileUserIds = profiles.map(p => p.user_id);
         const { data: profileUsers } = await supabaseAdmin
           .from('users')
-          .select('id, email, phone, full_name')
+          .select('id, email, phone')
           .in('id', profileUserIds);
 
         const profileUserMap = new Map();
@@ -153,7 +153,7 @@ export default async function handler(
             uploaded_at: profile.residency_proof_uploaded_at,
             user_email: user?.email || 'Unknown',
             user_phone: user?.phone || 'Unknown',
-            user_name: user?.full_name || 'Unknown User',
+            user_name: user?.email || 'Unknown User',
             is_residency_proof: true, // Flag to distinguish from permit docs
             // OCR Validation results
             validation: validation ? {

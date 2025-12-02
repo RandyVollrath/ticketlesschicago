@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: profiles, error: queryError } = await supabase
       .from('user_profiles')
-      .select('user_id, email, full_name, license_valid_until, city_sticker_expiry')
+      .select('user_id, email, first_name, license_valid_until, city_sticker_expiry')
       .eq('license_reuse_consent_given', true)
       .not('license_valid_until', 'is', null)
       .not('city_sticker_expiry', 'is', null)
@@ -136,7 +136,7 @@ async function sendExpiringLicenseEmail(profile: any): Promise<boolean> {
     const emailSubject = '🚨 Update Your Driver\'s License - City Sticker Renewal';
 
     const emailBody = `
-Hi ${profile.full_name || 'there'},
+Hi ${profile.first_name || 'there'},
 
 Your driver's license expires ${daysUntilExpiry > 0 ? `in ${daysUntilExpiry} days` : 'soon'} (${formattedDate})${
       nextRenewal
