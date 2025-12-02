@@ -213,13 +213,15 @@ function calculateTotalWithFees(basePrice: number): {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Verify this is a cron request
+  // Verify this is a cron request (skip auth for dry run testing)
+  const dryRun = req.query.dryRun === 'true';
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+
+  if (!dryRun && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  console.log('🔄 Starting unified renewal processing...');
+  console.log(`🔄 Starting unified renewal processing...${dryRun ? ' [DRY RUN - no charges will be made]' : ''}`);
 
   try {
     const results = {
@@ -319,6 +321,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (!defaultPaymentMethod) {
           throw new Error('No default payment method found');
+        }
+
+        // DRY RUN: Log what would happen but don't actually charge
+        if (dryRun) {
+          console.log(`🧪 [DRY RUN] Would charge customer ${customer.email}:`);
+          console.log(`   - Amount: $${totalAmount.toFixed(2)}`);
+          console.log(`   - Sticker price: $${stickerPrice.toFixed(2)}`);
+          console.log(`   - Service fee: $${serviceFee.toFixed(2)}`);
+          console.log(`   - Remitter: ${remitter.name} (${remitter.stripe_connected_account_id})`);
+          console.log(`   - Remitter would receive: $${(stickerPrice + REMITTER_SERVICE_FEE).toFixed(2)}`);
+          console.log(`   - Payment method: ${defaultPaymentMethod}`);
+          results.cityStickerSucceeded++;
+          continue;
         }
 
         // Create payment intent
