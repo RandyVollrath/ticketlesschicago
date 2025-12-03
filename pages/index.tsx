@@ -290,7 +290,7 @@ export default function Home() {
               paddingTop: '32px'
             }}>
               <div>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f87171', fontFamily: '"Space Grotesk", sans-serif' }}>$269M</div>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f87171', fontFamily: '"Space Grotesk", sans-serif' }}>$259M</div>
                 <div style={{ fontSize: '14px', color: COLORS.slate }}>in tickets issued by Chicago last year</div>
               </div>
               <div>
