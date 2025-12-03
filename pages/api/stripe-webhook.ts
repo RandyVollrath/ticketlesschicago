@@ -1439,10 +1439,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (!linkError && linkData.properties?.action_link) {
               console.log('Magic link generated successfully for auto-login');
-              
-              // Send welcome email using your email service
-              // For now, just log the link - you can implement email sending later
-              console.log('Magic link for user:', linkData.properties.action_link);
+              const magicLink = linkData.properties.action_link;
+
+              // Send welcome email via Resend
+              try {
+                const resendResponse = await fetch('https://api.resend.com/emails', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    from: 'Autopilot America <noreply@autopilotamerica.com>',
+                    to: email,
+                    subject: 'Welcome to Autopilot Protection!',
+                    html: `
+                      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot Protection!</h2>
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                          Your subscription is now active. Click below to sign in and complete your profile.
+                        </p>
+                        <div style="margin: 32px 0; text-align: center;">
+                          <a href="${magicLink}"
+                             style="background-color: #2563EB; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                            Sign In to Autopilot
+                          </a>
+                        </div>
+                        <p style="color: #666; font-size: 14px;">This link expires in 60 minutes.</p>
+                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+                        <p style="color: #9ca3af; font-size: 12px;">Autopilot America - Never get another parking ticket</p>
+                      </div>
+                    `
+                  })
+                });
+
+                if (resendResponse.ok) {
+                  const result = await resendResponse.json();
+                  console.log('✅ Welcome email sent via Resend. ID:', result.id);
+                } else {
+                  const errorText = await resendResponse.text();
+                  console.error('❌ Failed to send welcome email:', errorText);
+                }
+              } catch (emailSendError) {
+                console.error('❌ Error sending welcome email:', emailSendError);
+              }
             } else {
               console.error('Error generating magic link:', linkError);
             }
