@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
+import AlternativeParkingZones from '../components/AlternativeParkingZones'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -940,6 +941,16 @@ export default function CheckYourStreet() {
               </div>
             </div>
           </div>
+
+          {/* Park Here Instead - Alternative Parking Zones */}
+          {alternativeZones.length > 0 && (
+            <div style={{ padding: '20px 32px', borderTop: `1px solid ${COLORS.border}` }}>
+              <AlternativeParkingZones
+                alternatives={alternativeZones}
+                onZoneClick={(ward, section) => setHighlightZone({ ward, section })}
+              />
+            </div>
+          )}
         </div>
 
         {/* CTA Section */}
