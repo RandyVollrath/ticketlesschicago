@@ -278,11 +278,21 @@ export default async function handler(
       console.error('Winter ban notification failed (non-critical):', winterError);
     }
 
-    // Generate TWO links:
-    // 1. Immediate login (for instant access)
-    // 2. Email verification (to confirm email ownership)
-    console.log('🔐 Generating login session for immediate access...');
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+    // SIMPLIFIED: If OAuth flow, we're done - no email needed
+    if (isCurrentRequestOAuth) {
+      console.log('✅ OAuth signup complete - no email needed');
+      return res.status(200).json({
+        success: true,
+        message: 'Account created successfully. You are logged in via Google.',
+        userId,
+        alreadyAuthenticated: true
+      });
+    }
+
+    // EMAIL FLOW: Generate magic link and send email
+    // If either fails, the request fails (no silent failures)
+    console.log('📧 Generating magic link...');
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: email,
       options: {
@@ -290,139 +300,63 @@ export default async function handler(
       }
     });
 
-    if (sessionError || !sessionData?.properties?.action_link) {
-      console.error('❌ Failed to generate session:', sessionError);
-      // Don't fail signup - user can still login with Google
-      console.log('⚠️  User created but cannot auto-login. They can use Google OAuth.');
+    if (linkError || !linkData?.properties?.action_link) {
+      console.error('❌ Failed to generate magic link:', linkError);
+      throw new Error('Failed to generate login link. Please try again.');
     }
 
-    const loginLink = sessionData?.properties?.action_link;
-    console.log('✅ Login session generated');
+    const magicLink = linkData.properties.action_link;
+    console.log('✅ Magic link generated');
 
-    // Generate email verification link (use magiclink type since user already exists)
-    console.log('📧 Generating email verification link...');
-    const { data: verifyData, error: verifyError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings?verified=true`
-      }
+    // Send email via Resend - if this fails, the request fails
+    console.log('📧 Sending magic link email to:', email);
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <noreply@autopilotamerica.com>',
+        to: email,
+        subject: 'Sign in to Autopilot America',
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
+            <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+              Click the button below to sign in and start receiving free parking alerts.
+            </p>
+            <div style="margin: 32px 0; text-align: center;">
+              <a href="${magicLink}"
+                 style="background-color: #2563EB; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                Sign In to Autopilot
+              </a>
+            </div>
+            <p style="color: #666; font-size: 14px;">This link expires in 60 minutes.</p>
+            <p style="color: #666; font-size: 14px;">
+              Or sign in with Google at <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #2563EB;">autopilotamerica.com/login</a>
+            </p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+            <p style="color: #9ca3af; font-size: 12px;">Autopilot America - Never get another parking ticket</p>
+          </div>
+        `
+      })
     });
 
-    const verificationLink = verifyData?.properties?.action_link;
-    console.log('Verification link generated:', !!verificationLink);
-
-    // Send welcome email with verification link in background (non-blocking)
-    // Only skip email if THIS request came from OAuth (not just if user has OAuth in past)
-    let emailSent = false;
-    let lastError = null;
-
-    if (isCurrentRequestOAuth) {
-      console.log('⏭️  Skipping verification email - this is an OAuth signup flow');
-      emailSent = true; // Mark as "sent" so we don't log errors
-    } else {
-      console.log('📧 Sending verification email (background)...');
+    if (!resendResponse.ok) {
+      const errorText = await resendResponse.text();
+      console.error('❌ Resend API error:', resendResponse.status, errorText);
+      throw new Error('Failed to send verification email. Please try again.');
     }
 
-    for (let attempt = 1; attempt <= 3 && !isCurrentRequestOAuth; attempt++) {
-      try {
-        console.log(`📧 Email send attempt ${attempt}/3...`);
-
-        const resendResponse = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: 'Autopilot America <noreply@autopilotamerica.com>',
-            to: email,
-            subject: 'Verify Your Email - Autopilot America',
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
-
-                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                  Thanks for signing up! Please verify your email address to activate your alerts and complete your account setup.
-                </p>
-
-                <div style="margin: 32px 0; text-align: center;">
-                  <a href="${verificationLink}"
-                     style="background-color: #0052cc;
-                            color: white;
-                            padding: 14px 32px;
-                            text-decoration: none;
-                            border-radius: 8px;
-                            font-weight: 600;
-                            font-size: 16px;
-                            display: inline-block;">
-                    Verify Email Address
-                  </a>
-                </div>
-
-                <p style="color: #666; font-size: 14px; margin-top: 24px;">
-                  You can also sign in anytime using Google at <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #0052cc;">autopilotamerica.com/login</a>
-                </p>
-
-                <p style="color: #666; font-size: 14px;">This verification link will expire in 60 minutes.</p>
-
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-
-                <p style="color: #9ca3af; font-size: 13px;">
-                  Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
-                </p>
-
-                <p style="color: #9ca3af; font-size: 12px;">
-                  Autopilot America • Never get another parking ticket
-                </p>
-              </div>
-            `
-          })
-        });
-
-        if (resendResponse.ok) {
-          const result = await resendResponse.json();
-          console.log(`✅ Magic link email sent successfully via Resend (Email ID: ${result.id})`);
-          emailSent = true;
-          break; // Success, exit retry loop
-        } else {
-          const errorText = await resendResponse.text();
-          lastError = `Resend API error (${resendResponse.status}): ${errorText}`;
-          console.error(`❌ Attempt ${attempt} failed:`, lastError);
-
-          // Wait before retry (exponential backoff)
-          if (attempt < 3) {
-            const waitTime = attempt * 1000; // 1s, 2s
-            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-          }
-        }
-      } catch (resendError: any) {
-        lastError = `Network error: ${resendError.message}`;
-        console.error(`❌ Attempt ${attempt} failed:`, lastError);
-
-        // Wait before retry
-        if (attempt < 3) {
-          const waitTime = attempt * 1000;
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-      }
-    }
-
-    // Log email send failure but don't block signup
-    if (!emailSent) {
-      console.error('⚠️  Failed to send welcome email after 3 attempts:', lastError);
-      console.log('User can still access account via immediate login link');
-    }
+    const emailResult = await resendResponse.json();
+    console.log('✅ Email sent successfully. Resend ID:', emailResult.id);
 
     return res.status(200).json({
       success: true,
-      message: isCurrentRequestOAuth
-        ? 'Account updated successfully. You are already logged in via Google.'
-        : 'Account created successfully. Check your email for the verification link.',
+      message: 'Check your email for the sign-in link!',
       userId,
-      loginLink: loginLink || null, // Return immediate login link
-      alreadyAuthenticated: isCurrentRequestOAuth
+      emailId: emailResult.id
     });
 
   } catch (error: any) {
