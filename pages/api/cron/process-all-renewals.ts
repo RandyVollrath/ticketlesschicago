@@ -309,7 +309,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const stickerPrice = await getStickerPrice(vehicleType);
         const { total: totalAmount, serviceFee } = calculateTotalWithFees(stickerPrice);
 
-        // Get payment method
+        // Get payment method - check customer default first, then subscription default
         const stripeCustomer = await stripe.customers.retrieve(customer.stripe_customer_id);
 
         if (!stripeCustomer || stripeCustomer.deleted) {
@@ -317,10 +317,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // @ts-ignore
-        const defaultPaymentMethod = stripeCustomer.invoice_settings?.default_payment_method;
+        let defaultPaymentMethod = stripeCustomer.invoice_settings?.default_payment_method;
+
+        // If no default on customer, check their active subscription
+        if (!defaultPaymentMethod) {
+          console.log(`No customer default PM, checking subscriptions for ${customer.email}...`);
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customer.stripe_customer_id,
+            status: 'active',
+            limit: 1,
+          });
+
+          if (subscriptions.data.length > 0) {
+            const subscription = subscriptions.data[0];
+            defaultPaymentMethod = subscription.default_payment_method as string;
+            console.log(`Found subscription default PM: ${defaultPaymentMethod}`);
+
+            // Also set it as customer default for future charges
+            if (defaultPaymentMethod) {
+              await stripe.customers.update(customer.stripe_customer_id, {
+                invoice_settings: {
+                  default_payment_method: defaultPaymentMethod,
+                },
+              });
+              console.log(`✅ Updated customer default PM to: ${defaultPaymentMethod}`);
+            }
+          }
+        }
 
         if (!defaultPaymentMethod) {
-          throw new Error('No default payment method found');
+          throw new Error('No default payment method found on customer or subscription');
         }
 
         // DRY RUN: Log what would happen but don't actually charge
@@ -336,12 +362,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        // Create payment intent
+        // Create payment intent (off_session for merchant-initiated transaction)
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(totalAmount * 100),
           currency: 'usd',
           customer: customer.stripe_customer_id,
           payment_method: defaultPaymentMethod as string,
+          off_session: true,  // Required for merchant-initiated charges without customer present
           confirm: true,
           description: `City Sticker Renewal - ${customer.license_plate}`,
           metadata: {
