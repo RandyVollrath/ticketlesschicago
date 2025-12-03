@@ -249,15 +249,14 @@ export default async function handler(
 
     console.log('✅ Free signup successful:', email);
 
-    // Check if user already has OAuth provider (Google login)
-    // Note: "email" provider means they signed up with email/password, not OAuth
-    const { data: userData } = await supabase.auth.admin.getUserById(userId);
-    const oauthIdentities = userData?.user?.identities?.filter(i => i.provider !== 'email') || [];
-    const hasOAuthProvider = oauthIdentities.length > 0;
-    const oauthProvider = hasOAuthProvider ? oauthIdentities[0]?.provider : null;
+    // Only skip email if THIS request came from OAuth flow (authenticatedUserId was provided)
+    // If user clicked "Use Email Link Instead", they want an email regardless of past OAuth
+    const isCurrentRequestOAuth = !!authenticatedUserId;
 
-    if (hasOAuthProvider) {
-      console.log(`✅ User already authenticated via OAuth (${oauthProvider}), skipping verification email`);
+    if (isCurrentRequestOAuth) {
+      console.log('✅ This signup came from OAuth flow, will skip verification email');
+    } else {
+      console.log('📧 This signup came from email flow, will send verification email');
     }
 
     // Check if user needs winter ban notification (Dec 1 - Apr 1)
@@ -314,18 +313,18 @@ export default async function handler(
     console.log('Verification link generated:', !!verificationLink);
 
     // Send welcome email with verification link in background (non-blocking)
-    // Skip email if user is already authenticated via OAuth
+    // Only skip email if THIS request came from OAuth (not just if user has OAuth in past)
     let emailSent = false;
     let lastError = null;
 
-    if (hasOAuthProvider) {
-      console.log('⏭️  Skipping verification email - user authenticated via OAuth');
+    if (isCurrentRequestOAuth) {
+      console.log('⏭️  Skipping verification email - this is an OAuth signup flow');
       emailSent = true; // Mark as "sent" so we don't log errors
     } else {
       console.log('📧 Sending verification email (background)...');
     }
 
-    for (let attempt = 1; attempt <= 3 && !hasOAuthProvider; attempt++) {
+    for (let attempt = 1; attempt <= 3 && !isCurrentRequestOAuth; attempt++) {
       try {
         console.log(`📧 Email send attempt ${attempt}/3...`);
 
@@ -348,7 +347,7 @@ export default async function handler(
                 </p>
 
                 <div style="margin: 32px 0; text-align: center;">
-                  <a href="${verificationLink || linkData?.properties?.action_link}"
+                  <a href="${verificationLink}"
                      style="background-color: #0052cc;
                             color: white;
                             padding: 14px 32px;
@@ -418,12 +417,12 @@ export default async function handler(
 
     return res.status(200).json({
       success: true,
-      message: hasOAuthProvider
+      message: isCurrentRequestOAuth
         ? 'Account updated successfully. You are already logged in via Google.'
-        : 'Account created successfully',
+        : 'Account created successfully. Check your email for the verification link.',
       userId,
       loginLink: loginLink || null, // Return immediate login link
-      alreadyAuthenticated: hasOAuthProvider
+      alreadyAuthenticated: isCurrentRequestOAuth
     });
 
   } catch (error: any) {
