@@ -23,8 +23,9 @@ interface NotificationResult {
   errors: string[];
 }
 
-// Note: No default reminder days - users must explicitly set notify_days_array
-// This ensures we have user consent before sending notifications
+// Default reminder days if user hasn't configured notify_days_array
+// Keep it minimal - just the critical ones
+const DEFAULT_REMINDER_DAYS = [30, 7, 1];
 
 /**
  * Send email via Resend
@@ -374,15 +375,11 @@ export default async function handler(
       }
 
       // Get user's preferred reminder days from notify_days_array column
-      // If user hasn't set preferences, skip them - we need explicit consent
+      // Fall back to sensible defaults (30, 7, 1 days) if not set
       const prefs = user.notification_preferences || {};
-      const userReminderDays = user.notify_days_array; // Direct column, not from notification_preferences
-
-      // If user has no reminder days set, skip them (require explicit opt-in)
-      if (!userReminderDays || userReminderDays.length === 0) {
-        console.log(`Skipping ${user.email}: no reminder days configured`);
-        continue;
-      }
+      const userReminderDays = user.notify_days_array && user.notify_days_array.length > 0
+        ? user.notify_days_array
+        : DEFAULT_REMINDER_DAYS;
 
       // Check if this falls on a reminder day (user's preferred days)
       // Also allow day 0 for overdue reminders if user has 0 or 1 in their days
