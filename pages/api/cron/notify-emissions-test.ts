@@ -343,12 +343,12 @@ export default async function handler(
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get users with emissions dates set
-    // Note: emissions_completed column doesn't exist - we just check emissions_date
+    // Get users with emissions dates set who HAVEN'T completed their test yet
     const { data: users, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .not('emissions_date', 'is', null);
+      .not('emissions_date', 'is', null)
+      .or('emissions_completed.is.null,emissions_completed.eq.false');
 
     if (error) {
       throw error;
@@ -442,8 +442,10 @@ export default async function handler(
         }
       }
 
-      // Send voice call for urgent reminders (7 days or less) if user has phone_call_enabled
-      if (daysUntil <= 7 && phone && voiceEnabled) {
+      // Send voice call if user has phone_call_enabled AND it's 7 days or less
+      // Voice calls are only for urgent/critical timeframes - but still only on user's reminder days
+      // (we already checked isReminderDay above, so this only fires on selected days)
+      if (phone && voiceEnabled && daysUntil <= 7) {
         const voiceMessage = generateVoiceContent(user, Math.max(0, daysUntil));
         console.log(`📞 Sending voice call for emissions test due in ${daysUntil} days`);
         const voiceSent = await sendVoiceCall(phone, voiceMessage);
