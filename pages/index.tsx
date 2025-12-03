@@ -326,22 +326,27 @@ export default function Home() {
             Most of them were <strong>completely avoidable</strong>. One missed street cleaning sign.
             One late sticker renewal. One "I forgot." And suddenly you're out $200+.
           </p>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 24px',
-            backgroundColor: 'white',
-            borderRadius: '100px',
-            border: '1px solid #fecaca'
-          }}>
+          <a
+            href="#features"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              backgroundColor: 'white',
+              borderRadius: '100px',
+              border: '1px solid #fecaca',
+              textDecoration: 'none',
+              cursor: 'pointer'
+            }}
+          >
             <span style={{ fontSize: '14px', color: '#991b1b', fontWeight: '500' }}>
               Autopilot prevents all of it.
             </span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#991b1b" strokeWidth="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
-          </div>
+          </a>
         </div>
       </section>
 
