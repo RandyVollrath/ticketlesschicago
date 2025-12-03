@@ -23,9 +23,8 @@ interface NotificationResult {
   errors: string[];
 }
 
-// Default reminder schedule in days before emissions deadline
-// Users can customize via notification_preferences.reminder_days
-const DEFAULT_REMINDER_DAYS = [90, 60, 45, 30, 14, 7, 3, 1, 0];
+// Note: No default reminder days - users must explicitly set notify_days_array
+// This ensures we have user consent before sending notifications
 
 /**
  * Send email via Resend
@@ -374,13 +373,21 @@ export default async function handler(
         continue;
       }
 
-      // Get user's preferred reminder days or use defaults
+      // Get user's preferred reminder days from notify_days_array column
+      // If user hasn't set preferences, skip them - we need explicit consent
       const prefs = user.notification_preferences || {};
-      const userReminderDays = prefs.reminder_days || DEFAULT_REMINDER_DAYS;
+      const userReminderDays = user.notify_days_array; // Direct column, not from notification_preferences
+
+      // If user has no reminder days set, skip them (require explicit opt-in)
+      if (!userReminderDays || userReminderDays.length === 0) {
+        console.log(`Skipping ${user.email}: no reminder days configured`);
+        continue;
+      }
 
       // Check if this falls on a reminder day (user's preferred days)
-      // Also allow day 0 for overdue reminders
-      const isReminderDay = userReminderDays.includes(daysUntil) || (daysUntil <= 0 && userReminderDays.includes(0));
+      // Also allow day 0 for overdue reminders if user has 0 or 1 in their days
+      const isReminderDay = userReminderDays.includes(daysUntil) ||
+        (daysUntil <= 0 && (userReminderDays.includes(0) || userReminderDays.includes(1)));
 
       if (!isReminderDay) {
         continue; // Not a reminder day for this user
