@@ -268,28 +268,37 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Shoveler CTA */}
+        {/* Plower CTA */}
         <div className="text-center mt-16">
-          <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-8 max-w-xl mx-auto">
+          <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-8 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
-              Want to earn money shoveling?
+              Earn money plowing snow
             </h2>
-            <p className="text-slate-600 dark:text-slate-300 mb-4">
-              Set your rate, get matched with nearby customers. First to claim wins!
+            <p className="text-slate-600 dark:text-slate-300 mb-6">
+              Join our network of snow removal pros. Set your rate, browse jobs, and get paid!
             </p>
-            <Link
-              href="/shovel"
-              className="inline-block bg-slate-800 dark:bg-white dark:text-slate-800 hover:bg-slate-700 dark:hover:bg-slate-100 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
-            >
-              Sign Up to Shovel
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/shovel"
+                className="inline-block bg-slate-800 dark:bg-white dark:text-slate-800 hover:bg-slate-700 dark:hover:bg-slate-100 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+              >
+                Sign Up as Plower
+              </Link>
+              <Link
+                href="/plower/dashboard"
+                className="inline-block bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+              >
+                Plower Dashboard
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
         <footer className="text-center mt-16 text-slate-500 dark:text-slate-400 text-sm">
-          <p>SnowSOS - Chicago&apos;s SMS snow removal marketplace</p>
+          <p>SnowSOS - Chicago&apos;s web-first snow removal marketplace</p>
           <div className="mt-2 space-x-4">
+            <Link href="/plower/dashboard" className="hover:underline">Plower Dashboard</Link>
             <Link href="/admin" className="hover:underline">Admin</Link>
           </div>
         </footer>

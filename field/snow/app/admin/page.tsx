@@ -42,11 +42,29 @@ interface Shoveler {
   created_at: string;
 }
 
+interface Earning {
+  id: string;
+  job_id: string;
+  shoveler_phone: string;
+  job_amount: number;
+  platform_fee: number;
+  shoveler_payout: number;
+  created_at: string;
+}
+
+interface EarningsTotals {
+  totalRevenue: number;
+  platformFees: number;
+  shovelerPayouts: number;
+}
+
 export default function AdminDashboard() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [shovelers, setShovelers] = useState<Shoveler[]>([]);
+  const [earnings, setEarnings] = useState<Earning[]>([]);
+  const [earningsTotals, setEarningsTotals] = useState<EarningsTotals>({ totalRevenue: 0, platformFees: 0, shovelerPayouts: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"jobs" | "shovelers">("jobs");
+  const [activeTab, setActiveTab] = useState<"jobs" | "shovelers" | "earnings">("jobs");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
 
@@ -59,16 +77,20 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [jobsRes, shovelersRes] = await Promise.all([
+      const [jobsRes, shovelersRes, earningsRes] = await Promise.all([
         fetch("/api/jobs/list"),
         fetch("/api/shovelers/add"),
+        fetch("/api/earnings"),
       ]);
 
       const jobsData = await jobsRes.json();
       const shovelersData = await shovelersRes.json();
+      const earningsData = await earningsRes.json();
 
       setJobs(jobsData.jobs || []);
       setShovelers(shovelersData.shovelers || []);
+      setEarnings(earningsData.earnings || []);
+      setEarningsTotals(earningsData.totals || { totalRevenue: 0, platformFees: 0, shovelerPayouts: 0 });
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -192,7 +214,17 @@ export default function AdminDashboard() {
                 : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
             }`}
           >
-            Shovelers ({shovelers.length})
+            Plowers ({shovelers.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("earnings")}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeTab === "earnings"
+                ? "bg-sky-600 text-white"
+                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+            }`}
+          >
+            Earnings
           </button>
         </div>
 
@@ -361,11 +393,77 @@ export default function AdminDashboard() {
               )}
             </div>
           </>
+        ) : activeTab === "earnings" ? (
+          <>
+            {/* Earnings Summary */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Total Revenue</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-white">${earningsTotals.totalRevenue.toFixed(2)}</p>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Platform Fees (10%)</p>
+                <p className="text-2xl font-bold text-green-600">${earningsTotals.platformFees.toFixed(2)}</p>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Plower Payouts</p>
+                <p className="text-2xl font-bold text-sky-600">${earningsTotals.shovelerPayouts.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow overflow-hidden">
+              {earnings.length === 0 ? (
+                <div className="p-12 text-center">
+                  <p className="text-slate-500 dark:text-slate-400">No earnings recorded yet.</p>
+                  <p className="text-sm text-slate-400 mt-2">Earnings are recorded when jobs are completed.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-50 dark:bg-slate-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Job ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Plower</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Job Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Platform Fee</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Plower Payout</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {earnings.map((earning) => (
+                        <tr key={earning.id} className="hover:bg-slate-50 dark:hover:bg-slate-750">
+                          <td className="px-4 py-3 text-sm font-mono text-slate-600 dark:text-slate-300">
+                            {earning.job_id.substring(0, 8)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                            {formatPhone(earning.shoveler_phone)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-800 dark:text-white font-medium">
+                            ${earning.job_amount.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400">
+                            ${earning.platform_fee.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-sky-600 dark:text-sky-400">
+                            ${earning.shoveler_payout.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                            {formatDate(earning.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
         ) : (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow overflow-hidden">
             {shovelers.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-slate-500 dark:text-slate-400">No shovelers registered yet.</p>
+                <p className="text-slate-500 dark:text-slate-400">No plowers registered yet.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">

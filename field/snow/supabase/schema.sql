@@ -31,6 +31,30 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS bids JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS bid_deadline TIMESTAMPTZ;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS selected_bid_index INTEGER;
 
+-- Chat and surge columns
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS chat_history JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS surge_multiplier NUMERIC DEFAULT 1.0;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS weather_note TEXT;
+
+-- Earnings tracking table
+CREATE TABLE IF NOT EXISTS earnings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    job_id UUID REFERENCES jobs(id),
+    shoveler_phone TEXT NOT NULL,
+    job_amount NUMERIC NOT NULL,
+    platform_fee NUMERIC NOT NULL,
+    shoveler_payout NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for earnings
+CREATE INDEX IF NOT EXISTS idx_earnings_shoveler ON earnings(shoveler_phone);
+CREATE INDEX IF NOT EXISTS idx_earnings_created ON earnings(created_at DESC);
+
+-- Enable RLS on earnings
+ALTER TABLE earnings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Earnings full access" ON earnings FOR ALL USING (true);
+
 -- Update status constraint to include 'in_progress'
 ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_status_check;
 ALTER TABLE jobs ADD CONSTRAINT jobs_status_check

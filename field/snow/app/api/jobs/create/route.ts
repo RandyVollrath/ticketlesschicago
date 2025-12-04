@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase, getNearbyShovelers, getAllActiveShovelers } from "@/lib/supabase";
 import { sendSMS, broadcastSMS } from "@/lib/clicksend";
 import { geocodeAddress } from "@/lib/geocode";
-import { getSnowForecast, getSnowPriceHint } from "@/lib/weather";
+import { getSnowForecast, getSnowPriceHint, getSnowPriceMultiplier } from "@/lib/weather";
 
 // Bid window duration in milliseconds (2 minutes)
 const BID_WINDOW_MS = 2 * 60 * 1000;
+// Surge threshold in inches
+const SURGE_THRESHOLD = 4;
 
 interface CreateJobBody {
   phone: string;
@@ -43,12 +45,21 @@ export async function POST(request: NextRequest) {
     // Geocode address
     const geo = await geocodeAddress(body.address);
 
-    // Get weather forecast for dynamic pricing hint
+    // Get weather forecast for dynamic pricing and surge
     let weatherHint: string | null = null;
+    let surgeMultiplier = 1.0;
+    let weatherNote: string | null = null;
+
     if (geo?.lat && geo?.long) {
       const forecast = await getSnowForecast(geo.lat, geo.long);
       if (forecast) {
         weatherHint = getSnowPriceHint(forecast.snow_inches);
+        surgeMultiplier = getSnowPriceMultiplier(forecast.snow_inches);
+        if (forecast.snow_inches >= SURGE_THRESHOLD) {
+          weatherNote = `Heavy snow expected: ${forecast.snow_inches}" - Surge pricing active (+${Math.round((surgeMultiplier - 1) * 100)}%)`;
+        } else if (forecast.snow_inches >= 2) {
+          weatherNote = `Moderate snow expected: ${forecast.snow_inches}"`;
+        }
       }
     }
 
@@ -74,6 +85,9 @@ export async function POST(request: NextRequest) {
         bid_mode: body.bidMode || false,
         bids: [],
         bid_deadline: bidDeadline,
+        chat_history: [],
+        surge_multiplier: surgeMultiplier,
+        weather_note: weatherNote,
       })
       .select()
       .single();
