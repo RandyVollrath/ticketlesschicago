@@ -9,6 +9,9 @@ interface AddShovelerBody {
   rate?: number;
   skills?: string[];
   address?: string; // For geocoding their base location
+  hasTruck?: boolean;
+  venmoHandle?: string;
+  cashappHandle?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -43,9 +46,11 @@ export async function POST(request: NextRequest) {
     // Validate rate
     const rate = body.rate && body.rate > 0 ? body.rate : 50;
 
-    // Validate skills
-    const validSkills = ["shovel", "plow", "salt", "blower"];
-    const skills = body.skills?.filter((s) => validSkills.includes(s.toLowerCase())) || ["shovel"];
+    // Validate skills - auto-set based on hasTruck
+    let skills = body.skills || ["shovel"];
+    if (body.hasTruck && !skills.includes("plow")) {
+      skills = [...skills, "plow"];
+    }
 
     // Insert or update shoveler
     const { data, error } = await supabase
@@ -59,6 +64,9 @@ export async function POST(request: NextRequest) {
           lat,
           long,
           active: true,
+          has_truck: body.hasTruck || false,
+          venmo_handle: body.venmoHandle || null,
+          cashapp_handle: body.cashappHandle || null,
         },
         { onConflict: "phone" }
       )

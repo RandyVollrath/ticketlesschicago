@@ -17,6 +17,8 @@ interface OpenJob {
   surgeMultiplier: number;
   weatherNote: string | null;
   createdAt: string;
+  serviceType: "truck" | "shovel" | "any";
+  customerPhone: string;
 }
 
 interface PlowerInfo {
@@ -25,6 +27,7 @@ interface PlowerInfo {
   rate: number;
   lat: number | null;
   long: number | null;
+  has_truck: boolean;
 }
 
 export default function PlowerDashboard() {
@@ -34,6 +37,7 @@ export default function PlowerDashboard() {
   const [phone, setPhone] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sortBy, setSortBy] = useState<"pay" | "distance" | "newest">("pay");
+  const [serviceFilter, setServiceFilter] = useState<"all" | "truck" | "shovel">("all");
   const [claiming, setClaiming] = useState<string | null>(null);
   const [bidAmount, setBidAmount] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +59,9 @@ export default function PlowerDashboard() {
         params.set("long", plower.long.toString());
       }
       params.set("maxRate", plower.rate.toString());
+      if (plower.has_truck) {
+        params.set("hasTruck", "true");
+      }
 
       const res = await fetch(`/api/jobs/open?${params}`);
       const data = await res.json();
@@ -140,24 +147,33 @@ export default function PlowerDashboard() {
     }
   }, [isLoggedIn, plower, fetchJobs]);
 
-  // Claim job
-  const handleClaim = async (jobId: string) => {
+  // CLAIM & CALL - claims job, opens phone dialer, sends SMS
+  const handleClaimAndCall = async (job: OpenJob) => {
     if (!plower) return;
-    setClaiming(jobId);
+    setClaiming(job.id);
     setError(null);
 
     try {
-      const res = await fetch(`/api/jobs/claim/${jobId}`, {
+      const res = await fetch(`/api/jobs/claim/${job.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shovelerPhone: plower.phone }),
+        body: JSON.stringify({
+          shovelerPhone: plower.phone,
+          claimAndCall: true
+        }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        // Redirect to job chat page
-        window.location.href = `/job/${jobId}?phone=${encodeURIComponent(plower.phone)}`;
+        // Open phone dialer with customer number
+        const customerPhone = job.customerPhone.replace("+1", "");
+        window.location.href = `tel:${customerPhone}`;
+
+        // Brief delay then redirect to job chat
+        setTimeout(() => {
+          window.location.href = `/job/${job.id}?phone=${encodeURIComponent(plower.phone)}`;
+        }, 500);
       } else {
         setError(data.error || "Failed to claim job");
       }
@@ -213,6 +229,29 @@ export default function PlowerDashboard() {
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
     return date.toLocaleDateString();
+  };
+
+  // Filter jobs by service type
+  const filteredJobs = jobs.filter((job) => {
+    if (serviceFilter === "all") return true;
+    if (serviceFilter === "truck") {
+      return job.serviceType === "truck" || job.serviceType === "any";
+    }
+    if (serviceFilter === "shovel") {
+      return job.serviceType === "shovel" || job.serviceType === "any";
+    }
+    return true;
+  });
+
+  // Service type badge
+  const getServiceBadge = (type: string) => {
+    if (type === "truck") {
+      return <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">&#128668; Truck</span>;
+    }
+    if (type === "shovel") {
+      return <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded">&#128119; Shovel</span>;
+    }
+    return <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded">&#9889; Any</span>;
   };
 
   // Login screen
@@ -273,10 +312,12 @@ export default function PlowerDashboard() {
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-sm">
               {plower?.name || "Plower"} - ${plower?.rate}/job
+              {plower?.has_truck && <span className="ml-2">&#128668; Truck</span>}
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {/* Sort buttons */}
             {(["pay", "distance", "newest"] as const).map((sort) => (
               <button
                 key={sort}
@@ -293,6 +334,23 @@ export default function PlowerDashboard() {
           </div>
         </div>
 
+        {/* Service Type Filter */}
+        <div className="flex gap-2 mb-4">
+          {(["all", "truck", "shovel"] as const).map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setServiceFilter(filter)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                serviceFilter === filter
+                  ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800"
+                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              {filter === "all" ? "All Jobs" : filter === "truck" ? "&#128668; Truck" : "&#128119; Shovel"}
+            </button>
+          ))}
+        </div>
+
         {error && (
           <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg">
             <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
@@ -302,7 +360,7 @@ export default function PlowerDashboard() {
         {/* Job List */}
         {loading ? (
           <div className="text-center py-12 text-slate-500">Loading jobs...</div>
-        ) : jobs.length === 0 ? (
+        ) : filteredJobs.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">&#10052;</div>
             <p className="text-slate-600 dark:text-slate-400">
@@ -311,25 +369,27 @@ export default function PlowerDashboard() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {jobs.map((job) => (
+            {filteredJobs.map((job) => (
               <div
                 key={job.id}
                 className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 sm:p-6"
               >
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="font-mono text-sm text-slate-500">
                         #{job.shortId}
                       </span>
+                      {getServiceBadge(job.serviceType)}
                       {job.bidMode && (
                         <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded">
                           BIDDING ({job.bidCount} bids)
                         </span>
                       )}
+                      {/* SURGE BADGE - Fire emoji for >4" snow */}
                       {job.surgeMultiplier > 1 && (
-                        <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 rounded">
-                          SURGE +{Math.round((job.surgeMultiplier - 1) * 100)}%
+                        <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 rounded animate-pulse">
+                          &#128293; SURGE +{Math.round((job.surgeMultiplier - 1) * 100)}%
                         </span>
                       )}
                     </div>
@@ -346,7 +406,7 @@ export default function PlowerDashboard() {
 
                     <div className="flex flex-wrap gap-3 text-sm">
                       {job.maxPrice && (
-                        <span className="text-green-600 dark:text-green-400 font-medium">
+                        <span className="text-green-600 dark:text-green-400 font-medium text-lg">
                           ${job.maxPrice}
                         </span>
                       )}
@@ -362,12 +422,12 @@ export default function PlowerDashboard() {
 
                     {job.weatherNote && (
                       <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                        {job.weatherNote}
+                        &#127786; {job.weatherNote}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-2 sm:w-40">
+                  <div className="flex flex-col gap-2 sm:w-48">
                     {job.bidMode ? (
                       <>
                         <div className="flex gap-2">
@@ -396,12 +456,19 @@ export default function PlowerDashboard() {
                         </button>
                       </>
                     ) : (
+                      /* BIG GREEN CLAIM & CALL BUTTON */
                       <button
-                        onClick={() => handleClaim(job.id)}
+                        onClick={() => handleClaimAndCall(job)}
                         disabled={claiming === job.id}
-                        className="bg-sky-600 hover:bg-sky-700 disabled:bg-sky-300 text-white font-medium py-2 px-4 rounded-lg"
+                        className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-bold py-4 px-6 rounded-lg text-lg shadow-lg transition-all hover:scale-105"
                       >
-                        {claiming === job.id ? "Claiming..." : "Claim Job"}
+                        {claiming === job.id ? (
+                          "Claiming..."
+                        ) : (
+                          <>
+                            &#128222; CLAIM & CALL
+                          </>
+                        )}
                       </button>
                     )}
                   </div>

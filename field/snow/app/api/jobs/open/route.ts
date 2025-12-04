@@ -90,6 +90,8 @@ export async function GET(request: NextRequest) {
       createdAt: job.created_at,
       lat: job.lat,
       long: job.long,
+      serviceType: job.service_type || "any",
+      customerPhone: job.customer_phone,
     }));
 
     return NextResponse.json({

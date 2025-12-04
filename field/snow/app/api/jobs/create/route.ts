@@ -15,6 +15,7 @@ interface CreateJobBody {
   description?: string;
   maxPrice?: number;
   bidMode?: boolean;
+  serviceType?: "truck" | "shovel" | "any";
 }
 
 export async function POST(request: NextRequest) {
@@ -66,6 +67,9 @@ export async function POST(request: NextRequest) {
     // Calculate bid deadline if in bid mode
     const bidDeadline = body.bidMode ? new Date(Date.now() + BID_WINDOW_MS).toISOString() : null;
 
+    // Auto-complete after 2 hours (claimed jobs auto-complete)
+    const autoCompleteAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+
     // Ensure customer exists
     await supabase
       .from("customers")
@@ -88,6 +92,8 @@ export async function POST(request: NextRequest) {
         chat_history: [],
         surge_multiplier: surgeMultiplier,
         weather_note: weatherNote,
+        service_type: body.serviceType || "any",
+        auto_complete_at: autoCompleteAt,
       })
       .select()
       .single();
