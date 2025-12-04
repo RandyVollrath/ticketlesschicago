@@ -12,9 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function clearUsers() {
   const emails = [
-    'thechicagoapp@gmail.com',
-    'countluigivampa@gmail.com',
-    'mystreetcleaning@gmail.com'
+    'hiautopilotamerica@gmail.com'
   ];
 
   for (const email of emails) {
@@ -89,6 +87,14 @@ async function clearUsers() {
 
     // Delete user data
     console.log('\n--- Deleting user data ---');
+
+    // Delete message_audit_log first (has FK to user_profiles)
+    const { error: malError } = await supabase
+      .from('message_audit_log')
+      .delete()
+      .eq('user_id', user.id);
+    if (malError) console.error('Error deleting message_audit_log:', malError);
+    else console.log('✓ Deleted message_audit_log');
 
     // Delete vehicles
     if (vehicles?.length) {

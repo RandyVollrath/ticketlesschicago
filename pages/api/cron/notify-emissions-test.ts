@@ -259,7 +259,6 @@ function generateEmailContent(user: any, daysUntil: number, emissionsDate: Date)
         <ol style="color: #4b5563; line-height: 1.8; padding-left: 20px;">
           <li>Find a testing location at <a href="https://airteam.app/forms/locator.cfm" style="color: #2563eb;">airteam.app</a></li>
           <li>Bring your vehicle registration</li>
-          <li>Bring $20 cash (test fee)</li>
           <li>The test takes about 10-15 minutes</li>
         </ol>
 

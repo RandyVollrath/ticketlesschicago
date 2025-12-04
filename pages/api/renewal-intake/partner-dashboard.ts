@@ -224,9 +224,11 @@ function formatOrder(order: any) {
   const isCitySticker = !isLicensePlate && (CITY_STICKER_TYPES.includes(order.sticker_type?.toUpperCase?.()) || CITY_STICKER_TYPES.includes(stickerType));
   const renewalType = isLicensePlate ? 'license_plate' : 'city_sticker';
 
-  // Calculate what customer paid (sticker + platform fee + stripe fees)
+  // Calculate what customer paid (sticker + permit + platform fee + stripe fees)
   const stickerPrice = order.sticker_price || 0;
-  const customerPaid = Math.round(((stickerPrice + PLATFORM_FEE + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE)) * 100) / 100;
+  const permitFee = order.permit_fee || 0;
+  const basePrice = stickerPrice + permitFee;
+  const customerPaid = Math.round(((basePrice + PLATFORM_FEE + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE)) * 100) / 100;
 
   // Sticker type labels
   const stickerTypeLabels: Record<string, string> = {
@@ -267,6 +269,8 @@ function formatOrder(order: any) {
     stickerTypeLabel: stickerTypeLabels[order.sticker_type] || order.sticker_type,
     amount: {
       stickerPrice: order.sticker_price,
+      permitFee: order.permit_fee || 0,
+      permitRequested: order.permit_requested || false,
       serviceFee: order.service_fee,
       total: order.total_amount,
       customerPaid,

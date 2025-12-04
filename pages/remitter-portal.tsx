@@ -58,6 +58,8 @@ interface Order {
   stickerTypeLabel: string;
   amount: {
     stickerPrice: number;
+    permitFee: number;
+    permitRequested: boolean;
     serviceFee: number;
     total: number;
     customerPaid: number;
@@ -97,6 +99,15 @@ export default function RemitterPortal() {
   const [licenseData, setLicenseData] = useState<LicenseData | null>(null);
   const [licenseLoading, setLicenseLoading] = useState(false);
   const [confirmAccess, setConfirmAccess] = useState(false);
+
+  // Order processing state
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderDocuments, setOrderDocuments] = useState<{
+    driverLicense?: string;
+    residencyProof?: string;
+  } | null>(null);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [processingOrder, setProcessingOrder] = useState(false);
 
   // Document upload state
   const [uploadCustomerName, setUploadCustomerName] = useState('');
@@ -212,6 +223,124 @@ export default function RemitterPortal() {
     } catch (err) {
       setError('Failed to export CSV');
     }
+  };
+
+  const updateOrderStatus = async (orderId: string, status: string, confirmationNumber?: string) => {
+    try {
+      const response = await fetch('/api/remitter/update-order-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+        body: JSON.stringify({
+          orderId,
+          status,
+          confirmationNumber,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update order');
+      }
+
+      // Refresh the pending orders list
+      loadPendingReview();
+      return data;
+    } catch (err: any) {
+      setError(err.message || 'Failed to update order status');
+      throw err;
+    }
+  };
+
+  const openOrderForProcessing = async (order: Order) => {
+    setSelectedOrder(order);
+    setOrderDocuments(null);
+
+    // If permit is requested, fetch the documents
+    if (order.amount.permitRequested) {
+      setDocumentsLoading(true);
+      try {
+        // Fetch driver's license
+        const licenseRes = await fetch(`/api/city-sticker/get-driver-license?email=${encodeURIComponent(order.customer.email)}`, {
+          headers: { 'X-API-Key': apiKey },
+        });
+
+        // Fetch residency proof
+        const residencyRes = await fetch(`/api/city-sticker/get-residency-proof?email=${encodeURIComponent(order.customer.email)}`, {
+          headers: { 'X-API-Key': apiKey },
+        });
+
+        const docs: { driverLicense?: string; residencyProof?: string } = {};
+
+        if (licenseRes.ok) {
+          const licenseData = await licenseRes.json();
+          docs.driverLicense = licenseData.imageUrl || licenseData.url;
+        }
+
+        if (residencyRes.ok) {
+          const residencyData = await residencyRes.json();
+          docs.residencyProof = residencyData.imageUrl || residencyData.url;
+        }
+
+        setOrderDocuments(docs);
+      } catch (err) {
+        console.error('Failed to fetch documents:', err);
+      } finally {
+        setDocumentsLoading(false);
+      }
+    }
+
+    // Mark as processing if still pending
+    if (order.status === 'pending') {
+      try {
+        await updateOrderStatus(order.id, 'processing');
+      } catch (err) {
+        // Continue anyway - viewing is the important part
+      }
+    }
+  };
+
+  const handleMarkCompleted = async (confirmationNumber: string) => {
+    if (!selectedOrder || !confirmationNumber) return;
+
+    setProcessingOrder(true);
+    try {
+      await updateOrderStatus(selectedOrder.id, 'completed', confirmationNumber);
+
+      // Send SMS notification to customer
+      try {
+        await fetch('/api/sms/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey,
+          },
+          body: JSON.stringify({
+            to: selectedOrder.customer.phone,
+            message: `Great news! Your ${selectedOrder.amount.permitRequested ? 'city sticker and residential permit have' : 'city sticker has'} been submitted to the City of Chicago. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${selectedOrder.address.street}. Thanks for using Autopilot America!`,
+          }),
+        });
+      } catch (smsErr) {
+        console.error('SMS send failed:', smsErr);
+        // Don't fail the whole operation for SMS
+      }
+
+      setSelectedOrder(null);
+      setOrderDocuments(null);
+      loadPendingReview();
+    } catch (err) {
+      // Error already handled in updateOrderStatus
+    } finally {
+      setProcessingOrder(false);
+    }
+  };
+
+  const closeOrderModal = () => {
+    setSelectedOrder(null);
+    setOrderDocuments(null);
   };
 
   const exportPDF = async () => {
@@ -591,15 +720,19 @@ export default function RemitterPortal() {
                         <p className="text-gray-600">You Receive</p>
                         <p className="font-medium text-green-700">${order.amount.total?.toFixed(2)}</p>
                         <p className="text-gray-500 text-xs">
-                          Sticker: ${order.amount.stickerPrice?.toFixed(2)} + Fee: ${order.amount.serviceFee?.toFixed(2)}
+                          Sticker: ${order.amount.stickerPrice?.toFixed(2)}
+                          {order.amount.permitRequested && ` + Permit: $${order.amount.permitFee?.toFixed(2)}`}
+                          {' '}+ Fee: ${order.amount.serviceFee?.toFixed(2)}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-gray-600">Customer Paid</p>
-                        <p className="font-medium">${order.amount.customerPaid?.toFixed(2)}</p>
-                        <p className="text-gray-500 text-xs">Includes processing fees</p>
-                      </div>
                     </div>
+
+                    {order.amount.permitRequested && (
+                      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                        <span className="font-medium text-blue-800">Includes Residential Permit</span>
+                        <span className="text-blue-600 ml-2">- Submit permit with city sticker</span>
+                      </div>
+                    )}
 
                     {order.paidAt && (
                       <p className="mt-3 text-sm text-gray-600">
@@ -922,35 +1055,33 @@ export default function RemitterPortal() {
                         <p className="text-gray-600">You Receive</p>
                         <p className="font-medium text-green-700">${order.amount.total?.toFixed(2)}</p>
                         <p className="text-gray-500 text-xs">
-                          Sticker: ${order.amount.stickerPrice?.toFixed(2)} + Fee: ${order.amount.serviceFee?.toFixed(2)}
+                          Sticker: ${order.amount.stickerPrice?.toFixed(2)}
+                          {order.amount.permitRequested && ` + Permit: $${order.amount.permitFee?.toFixed(2)}`}
+                          {' '}+ Fee: ${order.amount.serviceFee?.toFixed(2)}
                         </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Customer Paid</p>
-                        <p className="font-medium">${order.amount.customerPaid?.toFixed(2)}</p>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-yellow-200 flex gap-3">
+                    {order.amount.permitRequested && (
+                      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                        <span className="font-medium text-blue-800">Includes Residential Permit</span>
+                        <span className="text-blue-600 ml-2">- Submit permit with city sticker</span>
+                      </div>
+                    )}
+
+                    <div className="mt-4 pt-4 border-t border-yellow-200 flex flex-wrap gap-3">
                       <button
-                        onClick={() => {
-                          // TODO: Mark as processing
-                          alert('Feature coming: Mark as processing in city portal');
-                        }}
+                        onClick={() => openOrderForProcessing(order)}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
                       >
-                        Start Processing
-                      </button>
-                      <button
-                        onClick={() => {
-                          setView('licenses');
-                          setSearchQuery(order.customer.email);
-                        }}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700"
-                      >
-                        View License
+                        {order.status === 'pending' ? 'Process Order' : 'View Order'}
                       </button>
                     </div>
+                    {order.status === 'processing' && (
+                      <p className="mt-2 text-sm text-blue-600 font-medium">
+                        Status: In Progress
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -966,6 +1097,187 @@ export default function RemitterPortal() {
           </div>
         )}
       </div>
+
+      {/* Order Processing Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold">Process Order #{selectedOrder.orderNumber}</h2>
+                <p className="text-blue-100">{selectedOrder.renewalTypeLabel}</p>
+              </div>
+              <button
+                onClick={closeOrderModal}
+                className="text-white hover:text-blue-200 text-2xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Customer & Vehicle Info */}
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-gray-700 mb-3">Customer Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="text-gray-500">Name:</span> <strong>{selectedOrder.customer.name}</strong></p>
+                    <p><span className="text-gray-500">Email:</span> {selectedOrder.customer.email}</p>
+                    <p><span className="text-gray-500">Phone:</span> {selectedOrder.customer.phone}</p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-gray-700 mb-3">Vehicle Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="text-gray-500">Plate:</span> <strong className="text-lg">{selectedOrder.vehicle.licensePlate}</strong> ({selectedOrder.vehicle.state})</p>
+                    <p><span className="text-gray-500">Type:</span> {selectedOrder.stickerTypeLabel}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mailing Address */}
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+                <h3 className="font-semibold text-yellow-800 mb-2">Mailing Address (for sticker delivery)</h3>
+                <p className="text-yellow-900 font-medium">{selectedOrder.address.street}</p>
+                <p className="text-yellow-900">{selectedOrder.address.city}, {selectedOrder.address.state} {selectedOrder.address.zip}</p>
+              </div>
+
+              {/* What to Submit */}
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
+                <h3 className="font-semibold text-green-800 mb-3">Submit to City of Chicago</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-900">City Vehicle Sticker ({selectedOrder.stickerTypeLabel})</span>
+                    <span className="font-bold text-green-900">${selectedOrder.amount.stickerPrice?.toFixed(2)}</span>
+                  </div>
+                  {selectedOrder.amount.permitRequested && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-green-900">Residential Parking Permit</span>
+                      <span className="font-bold text-green-900">${selectedOrder.amount.permitFee?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-green-300 pt-2 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-green-900">Your Processing Fee</span>
+                      <span className="font-bold text-green-900">${selectedOrder.amount.serviceFee?.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-green-300 pt-2 mt-2">
+                    <div className="flex justify-between items-center text-lg">
+                      <span className="font-bold text-green-900">Total You Receive</span>
+                      <span className="font-bold text-green-900">${selectedOrder.amount.total?.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents for Permit */}
+              {selectedOrder.amount.permitRequested && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-700 mb-3">Required Documents for Permit</h3>
+                  {documentsLoading ? (
+                    <div className="text-center py-8 text-gray-500">Loading documents...</div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="border rounded-lg p-3">
+                        <h4 className="font-medium text-gray-600 mb-2">Driver's License</h4>
+                        {orderDocuments?.driverLicense ? (
+                          <a
+                            href={orderDocuments.driverLicense}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <img
+                              src={orderDocuments.driverLicense}
+                              alt="Driver's License"
+                              className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
+                            />
+                            <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
+                          </a>
+                        ) : (
+                          <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                            Not available
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border rounded-lg p-3">
+                        <h4 className="font-medium text-gray-600 mb-2">Proof of Residency</h4>
+                        {orderDocuments?.residencyProof ? (
+                          <a
+                            href={orderDocuments.residencyProof}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <img
+                              src={orderDocuments.residencyProof}
+                              alt="Proof of Residency"
+                              className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
+                            />
+                            <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
+                          </a>
+                        ) : (
+                          <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                            Not available
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Completion Form */}
+              <div className="border-t pt-6">
+                <h3 className="font-semibold text-gray-700 mb-3">Mark as Complete</h3>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const confirmationNumber = formData.get('confirmationNumber') as string;
+                    if (confirmationNumber) {
+                      handleMarkCompleted(confirmationNumber);
+                    }
+                  }}
+                  className="flex gap-3"
+                >
+                  <input
+                    type="text"
+                    name="confirmationNumber"
+                    placeholder="Enter city confirmation number..."
+                    required
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={processingOrder}
+                    className="px-6 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {processingOrder ? 'Submitting...' : 'Complete Order'}
+                  </button>
+                </form>
+                <p className="text-sm text-gray-500 mt-2">
+                  This will notify the customer via SMS that their sticker has been submitted.
+                </p>
+              </div>
+
+              {/* Print Button */}
+              <div className="mt-6 pt-4 border-t flex justify-end">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                >
+                  Print This Page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -303,7 +303,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
                 // Generate and send magic link
                 console.log('📧 Generating magic link for existing auth user (no profile):', email);
-                const { data: linkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+                const { data: linkDataExisting, error: magicLinkErrorExisting } = await supabaseAdmin.auth.admin.generateLink({
                   type: 'magiclink',
                   email: email,
                   options: {
@@ -311,54 +311,87 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   }
                 });
 
-                if (magicLinkError) {
-                  console.error('Error generating magic link:', magicLinkError);
-                } else if (linkData?.properties?.action_link) {
-                  const magicLink = linkData.properties.action_link;
-                  console.log('✅ Magic link generated, sending email...');
-
-                  // Send magic link email via Resend
-                  const resendResponse = await fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      from: 'Autopilot America <noreply@autopilotamerica.com>',
-                      to: email,
-                      subject: 'Complete Your Profile - Autopilot America',
-                      html: `
-                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                          <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Ticket Protection!</h2>
-                          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                            Thank you for signing up for Ticket Protection! Click the button below to access your account and complete your profile.
-                          </p>
-                          <div style="margin: 32px 0; text-align: center;">
-                            <a href="${magicLink}"
-                               style="background-color: #0052cc;
-                                      color: white;
-                                      padding: 14px 32px;
-                                      text-decoration: none;
-                                      border-radius: 8px;
-                                      font-weight: 600;
-                                      font-size: 16px;
-                                      display: inline-block;">
-                              Complete My Profile
-                            </a>
-                          </div>
-                          <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes.</p>
-                        </div>
-                      `
-                    })
+                if (magicLinkErrorExisting) {
+                  console.error('❌ CRITICAL: Error generating magic link for existing user:', magicLinkErrorExisting);
+                  await resend.emails.send({
+                    from: 'Alerts <alerts@autopilotamerica.com>',
+                    to: 'randyvollrath@gmail.com',
+                    subject: '🚨 CRITICAL: Magic link generation failed - existing user cannot login',
+                    text: `Magic link generation failed for existing auth user!\n\nEmail: ${email}\nUser ID: ${userId}\nSession: ${session.id}\nError: ${magicLinkErrorExisting.message}\n\nUser paid but cannot access their account!`
                   });
+                  return res.status(500).json({ error: 'Magic link generation failed', email });
+                } else if (linkDataExisting?.properties?.action_link) {
+                  const magicLink = linkDataExisting.properties.action_link;
+                  console.log('✅ Magic link generated, sending email with retry...');
 
-                  if (resendResponse.ok) {
-                    const result = await resendResponse.json();
-                    console.log(`✅ Magic link email sent successfully via Resend (Email ID: ${result.id})`);
-                  } else {
-                    const errorText = await resendResponse.text();
-                    console.error(`❌ Failed to send magic link email: ${errorText}`);
+                  // Send magic link email via Resend with retry logic
+                  let emailSentExisting = false;
+                  let lastErrorExisting = '';
+                  const emailPayloadExisting = {
+                    from: 'Autopilot America <noreply@autopilotamerica.com>',
+                    to: email,
+                    subject: 'Complete Your Profile - Autopilot America',
+                    html: `
+                      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Ticket Protection!</h2>
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                          Thank you for signing up for Ticket Protection! Click the button below to access your account and complete your profile.
+                        </p>
+                        <div style="margin: 32px 0; text-align: center;">
+                          <a href="${magicLink}"
+                             style="background-color: #0052cc;
+                                    color: white;
+                                    padding: 14px 32px;
+                                    text-decoration: none;
+                                    border-radius: 8px;
+                                    font-weight: 600;
+                                    font-size: 16px;
+                                    display: inline-block;">
+                            Complete My Profile
+                          </a>
+                        </div>
+                        <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes.</p>
+                      </div>
+                    `
+                  };
+
+                  for (let attemptExisting = 1; attemptExisting <= 3 && !emailSentExisting; attemptExisting++) {
+                    try {
+                      console.log(`📧 Sending email to existing user, attempt ${attemptExisting}/3...`);
+                      const resendResponse = await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(emailPayloadExisting)
+                      });
+
+                      if (resendResponse.ok) {
+                        emailSentExisting = true;
+                        const result = await resendResponse.json();
+                        console.log(`✅ Magic link email sent successfully via Resend (Email ID: ${result.id})`);
+                      } else {
+                        lastErrorExisting = await resendResponse.text();
+                        console.error(`❌ Attempt ${attemptExisting}/3 failed:`, lastErrorExisting);
+                        if (attemptExisting < 3) await new Promise(r => setTimeout(r, 1000 * attemptExisting));
+                      }
+                    } catch (resendError: any) {
+                      lastErrorExisting = resendError.message || 'Unknown error';
+                      console.error(`❌ Attempt ${attemptExisting}/3 threw error:`, lastErrorExisting);
+                      if (attemptExisting < 3) await new Promise(r => setTimeout(r, 1000 * attemptExisting));
+                    }
+                  }
+
+                  if (!emailSentExisting) {
+                    console.error('❌ CRITICAL: All 3 email send attempts failed for existing user');
+                    await resend.emails.send({
+                      from: 'Alerts <alerts@autopilotamerica.com>',
+                      to: 'randyvollrath@gmail.com',
+                      subject: '🚨 CRITICAL: Welcome email failed - existing user cannot login',
+                      text: `Welcome email failed for existing auth user!\n\nEmail: ${email}\nUser ID: ${userId}\nSession: ${session.id}\nLast Error: ${lastErrorExisting}\n\nUser paid but cannot access their account!`
+                    });
+                    return res.status(500).json({ error: 'Welcome email failed after 3 attempts', email });
                   }
                 }
               } else {
@@ -546,84 +579,118 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               });
 
               if (magicLinkError) {
-                console.error('Error generating magic link:', magicLinkError);
+                console.error('❌ CRITICAL: Error generating magic link:', magicLinkError);
+                // Alert admin - user paid but can't get login link
+                await resend.emails.send({
+                  from: 'Alerts <alerts@autopilotamerica.com>',
+                  to: 'randyvollrath@gmail.com',
+                  subject: '🚨 CRITICAL: Magic link generation failed - new user cannot login',
+                  text: `Magic link generation failed for new Protection user!\n\nEmail: ${email}\nUser ID: ${userId}\nSession: ${session.id}\nError: ${magicLinkError.message}\n\nUser paid but cannot access their account!`
+                });
+                // Return 500 so Stripe retries
+                return res.status(500).json({ error: 'Magic link generation failed', email });
               } else if (linkData?.properties?.action_link) {
                 console.log('✅ Magic link generated, sending via Resend...');
 
-                // Send the magic link via Resend
-                try {
-                  const resendResponse = await fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      from: 'Autopilot America <noreply@autopilotamerica.com>',
-                      to: email,
-                      subject: 'Welcome to Autopilot America - Complete Your Profile',
-                      html: `
-                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                          <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
+                // Send the magic link via Resend with retry logic
+                let emailSent = false;
+                let lastError = '';
+                const emailPayload = {
+                  from: 'Autopilot America <noreply@autopilotamerica.com>',
+                  to: email,
+                  subject: 'Welcome to Autopilot America - Complete Your Profile',
+                  html: `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
 
-                          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                            Thanks for purchasing Ticket Protection! Click the button below to securely log in to your account and complete your profile:
-                          </p>
+                      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                        Thanks for purchasing Ticket Protection! Click the button below to securely log in to your account and complete your profile:
+                      </p>
 
-                          <div style="margin: 32px 0; text-align: center;">
-                            <a href="${linkData.properties.action_link}"
-                               style="background-color: #0052cc;
-                                      color: white;
-                                      padding: 14px 32px;
-                                      text-decoration: none;
-                                      border-radius: 8px;
-                                      font-weight: 600;
-                                      font-size: 16px;
-                                      display: inline-block;">
-                              Complete My Profile
-                            </a>
-                          </div>
+                      <div style="margin: 32px 0; text-align: center;">
+                        <a href="${linkData.properties.action_link}"
+                           style="background-color: #0052cc;
+                                  color: white;
+                                  padding: 14px 32px;
+                                  text-decoration: none;
+                                  border-radius: 8px;
+                                  font-weight: 600;
+                                  font-size: 16px;
+                                  display: inline-block;">
+                          Complete My Profile
+                        </a>
+                      </div>
 
-                          <p style="color: #666; font-size: 14px; margin-top: 32px;">
-                            <strong>Important:</strong> Your $200/year ticket guarantee requires a complete and accurate profile. Please verify all your information within 24 hours.
-                          </p>
+                      <p style="color: #666; font-size: 14px; margin-top: 32px;">
+                        <strong>Important:</strong> Your $200/year ticket guarantee requires a complete and accurate profile. Please verify all your information within 24 hours.
+                      </p>
 
-                          ${metadata.permitRequested === 'true' ? `
-                          <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-top: 16px;">
-                            <p style="color: #92400e; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
-                              🅿️ Parking Permit Setup Required
-                            </p>
-                            <p style="color: #78350f; font-size: 13px; margin: 0; line-height: 1.5;">
-                              You requested a residential parking permit. Please set up automatic email forwarding in your settings
-                              so we always have fresh proof of residency (required within 30 days of permit renewal).
-                            </p>
-                          </div>
-                          ` : ''}
+                      ${metadata.permitRequested === 'true' ? `
+                      <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin-top: 16px;">
+                        <p style="color: #92400e; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
+                          Parking Permit Setup Required
+                        </p>
+                        <p style="color: #78350f; font-size: 13px; margin: 0; line-height: 1.5;">
+                          You requested a residential parking permit. Please set up automatic email forwarding in your settings
+                          so we always have fresh proof of residency (required within 30 days of permit renewal).
+                        </p>
+                      </div>
+                      ` : ''}
 
-                          <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
+                      <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
 
-                          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+                      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
-                          <p style="color: #9ca3af; font-size: 13px;">
-                            Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
-                          </p>
+                      <p style="color: #9ca3af; font-size: 13px;">
+                        Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
+                      </p>
 
-                          <p style="color: #9ca3af; font-size: 12px;">
-                            Autopilot America • Never get another parking ticket
-                          </p>
-                        </div>
-                      `
-                    })
-                  });
+                      <p style="color: #9ca3af; font-size: 12px;">
+                        Autopilot America • Never get another parking ticket
+                      </p>
+                    </div>
+                  `
+                };
 
-                  if (resendResponse.ok) {
-                    console.log('✅ Magic link email sent via Resend');
-                  } else {
-                    const errorText = await resendResponse.text();
-                    console.error('Error sending magic link via Resend:', errorText);
+                for (let attempt = 1; attempt <= 3 && !emailSent; attempt++) {
+                  try {
+                    console.log(`📧 Sending welcome email, attempt ${attempt}/3...`);
+                    const resendResponse = await fetch('https://api.resend.com/emails', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify(emailPayload)
+                    });
+
+                    if (resendResponse.ok) {
+                      emailSent = true;
+                      const result = await resendResponse.json();
+                      console.log(`✅ Magic link email sent via Resend (ID: ${result.id})`);
+                    } else {
+                      lastError = await resendResponse.text();
+                      console.error(`❌ Attempt ${attempt}/3 failed:`, lastError);
+                      if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
+                    }
+                  } catch (resendError: any) {
+                    lastError = resendError.message || 'Unknown error';
+                    console.error(`❌ Attempt ${attempt}/3 threw error:`, lastError);
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
                   }
-                } catch (resendError) {
-                  console.error('Error sending email via Resend:', resendError);
+                }
+
+                if (!emailSent) {
+                  console.error('❌ CRITICAL: All 3 email send attempts failed');
+                  // Alert admin
+                  await resend.emails.send({
+                    from: 'Alerts <alerts@autopilotamerica.com>',
+                    to: 'randyvollrath@gmail.com',
+                    subject: '🚨 CRITICAL: Welcome email failed after 3 attempts - user cannot login',
+                    text: `Welcome email failed for new Protection user!\n\nEmail: ${email}\nUser ID: ${userId}\nSession: ${session.id}\nLast Error: ${lastError}\n\nUser paid but cannot access their account!`
+                  });
+                  // Return 500 so Stripe retries the entire webhook
+                  return res.status(500).json({ error: 'Welcome email failed after 3 attempts', email });
                 }
               }
 
@@ -801,7 +868,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Send magic link to existing users who purchased protection
             console.log('📧 Generating magic link for existing user upgrade:', email);
-            const { data: linkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+            const { data: linkDataUpgrade, error: magicLinkErrorUpgrade } = await supabaseAdmin.auth.admin.generateLink({
               type: 'magiclink',
               email: email,
               options: {
@@ -809,72 +876,102 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               }
             });
 
-            if (magicLinkError) {
-              console.error('Error generating magic link for upgrade:', magicLinkError);
-            } else if (linkData?.properties?.action_link) {
-              console.log('✅ Magic link generated, sending via Resend...');
+            if (magicLinkErrorUpgrade) {
+              console.error('❌ CRITICAL: Error generating magic link for upgrade:', magicLinkErrorUpgrade);
+              await resend.emails.send({
+                from: 'Alerts <alerts@autopilotamerica.com>',
+                to: 'randyvollrath@gmail.com',
+                subject: '🚨 CRITICAL: Magic link generation failed - upgraded user cannot login',
+                text: `Magic link generation failed for upgraded user!\n\nEmail: ${email}\nUser ID: ${userId}\nSession: ${session.id}\nError: ${magicLinkErrorUpgrade.message}\n\nUser paid but cannot access their account!`
+              });
+              return res.status(500).json({ error: 'Magic link generation failed', email });
+            } else if (linkDataUpgrade?.properties?.action_link) {
+              console.log('✅ Magic link generated, sending via Resend with retry...');
 
-              try {
-                const resendResponse = await fetch('https://api.resend.com/emails', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    from: 'Autopilot America <noreply@autopilotamerica.com>',
-                    to: email,
-                    subject: 'Welcome to Autopilot Protection - Access Your Account',
-                    html: `
-                      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Protection is Active!</h2>
+              let emailSentUpgrade = false;
+              let lastErrorUpgrade = '';
+              const emailPayloadUpgrade = {
+                from: 'Autopilot America <noreply@autopilotamerica.com>',
+                to: email,
+                subject: 'Welcome to Autopilot Protection - Access Your Account',
+                html: `
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Protection is Active!</h2>
 
-                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                          Thanks for upgrading to Ticket Protection! Click the button below to access your account and verify your profile:
-                        </p>
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                      Thanks for upgrading to Ticket Protection! Click the button below to access your account and verify your profile:
+                    </p>
 
-                        <div style="margin: 32px 0; text-align: center;">
-                          <a href="${linkData.properties.action_link}"
-                             style="background-color: #0052cc;
-                                    color: white;
-                                    padding: 14px 32px;
-                                    text-decoration: none;
-                                    border-radius: 8px;
-                                    font-weight: 600;
-                                    font-size: 16px;
-                                    display: inline-block;">
-                            Access My Account
-                          </a>
-                        </div>
+                    <div style="margin: 32px 0; text-align: center;">
+                      <a href="${linkDataUpgrade.properties.action_link}"
+                         style="background-color: #0052cc;
+                                color: white;
+                                padding: 14px 32px;
+                                text-decoration: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                font-size: 16px;
+                                display: inline-block;">
+                        Access My Account
+                      </a>
+                    </div>
 
-                        <p style="color: #666; font-size: 14px; margin-top: 32px;">
-                          <strong>Important:</strong> Your $200/year ticket guarantee requires a complete and accurate profile. Please verify all your information.
-                        </p>
+                    <p style="color: #666; font-size: 14px; margin-top: 32px;">
+                      <strong>Important:</strong> Your $200/year ticket guarantee requires a complete and accurate profile. Please verify all your information.
+                    </p>
 
-                        <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
+                    <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
 
-                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
-                        <p style="color: #9ca3af; font-size: 13px;">
-                          Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
-                        </p>
+                    <p style="color: #9ca3af; font-size: 13px;">
+                      Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
+                    </p>
 
-                        <p style="color: #9ca3af; font-size: 12px;">
-                          Autopilot America • Never get another parking ticket
-                        </p>
-                      </div>
-                    `
-                  })
-                });
+                    <p style="color: #9ca3af; font-size: 12px;">
+                      Autopilot America • Never get another parking ticket
+                    </p>
+                  </div>
+                `
+              };
 
-                if (resendResponse.ok) {
-                  console.log('✅ Magic link email sent to upgraded user via Resend');
-                } else {
-                  const errorText = await resendResponse.text();
-                  console.error('Error sending magic link via Resend:', errorText);
+              for (let attemptUpgrade = 1; attemptUpgrade <= 3 && !emailSentUpgrade; attemptUpgrade++) {
+                try {
+                  console.log(`📧 Sending upgrade email, attempt ${attemptUpgrade}/3...`);
+                  const resendResponse = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(emailPayloadUpgrade)
+                  });
+
+                  if (resendResponse.ok) {
+                    emailSentUpgrade = true;
+                    const result = await resendResponse.json();
+                    console.log(`✅ Magic link email sent to upgraded user via Resend (ID: ${result.id})`);
+                  } else {
+                    lastErrorUpgrade = await resendResponse.text();
+                    console.error(`❌ Attempt ${attemptUpgrade}/3 failed:`, lastErrorUpgrade);
+                    if (attemptUpgrade < 3) await new Promise(r => setTimeout(r, 1000 * attemptUpgrade));
+                  }
+                } catch (resendError: any) {
+                  lastErrorUpgrade = resendError.message || 'Unknown error';
+                  console.error(`❌ Attempt ${attemptUpgrade}/3 threw error:`, lastErrorUpgrade);
+                  if (attemptUpgrade < 3) await new Promise(r => setTimeout(r, 1000 * attemptUpgrade));
                 }
-              } catch (resendError) {
-                console.error('Error sending email via Resend:', resendError);
+              }
+
+              if (!emailSentUpgrade) {
+                console.error('❌ CRITICAL: All 3 email send attempts failed for upgrade');
+                await resend.emails.send({
+                  from: 'Alerts <alerts@autopilotamerica.com>',
+                  to: 'randyvollrath@gmail.com',
+                  subject: '🚨 CRITICAL: Upgrade email failed - user cannot login',
+                  text: `Upgrade email failed after 3 attempts!\n\nEmail: ${email}\nUser ID: ${userId}\nSession: ${session.id}\nLast Error: ${lastErrorUpgrade}\n\nUser paid but cannot access their account!`
+                });
+                return res.status(500).json({ error: 'Upgrade email failed after 3 attempts', email });
               }
             }
           }

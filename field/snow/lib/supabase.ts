@@ -46,6 +46,9 @@ export interface Shoveler {
   verified: boolean;
   active: boolean;
   created_at: string;
+  has_truck: boolean;
+  venmo_handle: string | null;
+  cashapp_handle: string | null;
 }
 
 export interface Bid {
@@ -82,6 +85,8 @@ export interface Job {
   chat_history: ChatMessage[];
   surge_multiplier: number;
   weather_note: string | null;
+  service_type: "truck" | "shovel" | "any";
+  auto_complete_at: string | null;
 }
 
 export interface Earning {

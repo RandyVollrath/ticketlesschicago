@@ -47,6 +47,9 @@ const SERVICE_FEE = 2.50;
 // Remitter processing fee (paid from subscription revenue)
 const REMITTER_SERVICE_FEE = 12.00;
 
+// Permit fee for residential parking zones
+const PERMIT_FEE = 30.00;
+
 /**
  * Send email via Resend
  */
@@ -308,7 +311,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Fetch price from Stripe
         const vehicleType = customer.vehicle_type || 'P';
         const stickerPrice = await getStickerPrice(vehicleType);
-        const { total: totalAmount, serviceFee } = calculateTotalWithFees(stickerPrice);
+
+        // Check if customer needs permit (in permit zone AND opted in)
+        const needsPermit = customer.has_permit_zone === true && customer.permit_requested === true;
+        const permitFee = needsPermit ? PERMIT_FEE : 0;
+
+        // Calculate total: sticker + permit (if applicable)
+        const basePrice = stickerPrice + permitFee;
+        const { total: totalAmount, serviceFee } = calculateTotalWithFees(basePrice);
 
         // Get payment method - check customer default first, then subscription default
         const stripeCustomer = await stripe.customers.retrieve(customer.stripe_customer_id);
@@ -355,15 +365,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log(`🧪 [DRY RUN] Would charge customer ${customer.email}:`);
           console.log(`   - Amount: $${totalAmount.toFixed(2)}`);
           console.log(`   - Sticker price: $${stickerPrice.toFixed(2)}`);
+          if (needsPermit) {
+            console.log(`   - Permit fee: $${permitFee.toFixed(2)}`);
+          }
           console.log(`   - Service fee: $${serviceFee.toFixed(2)}`);
           console.log(`   - Remitter: ${remitter.name} (${remitter.stripe_connected_account_id})`);
-          console.log(`   - Remitter would receive: $${(stickerPrice + REMITTER_SERVICE_FEE).toFixed(2)}`);
+          console.log(`   - Remitter would receive: $${(stickerPrice + permitFee + REMITTER_SERVICE_FEE).toFixed(2)}`);
           console.log(`   - Payment method: ${defaultPaymentMethod}`);
           results.cityStickerSucceeded++;
           continue;
         }
 
         // Create payment intent (off_session for merchant-initiated transaction)
+        const renewalDescription = needsPermit
+          ? `City Sticker + Permit Renewal - ${customer.license_plate}`
+          : `City Sticker Renewal - ${customer.license_plate}`;
+
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(totalAmount * 100),
           currency: 'usd',
@@ -371,19 +388,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           payment_method: defaultPaymentMethod as string,
           off_session: true,  // Required for merchant-initiated charges without customer present
           confirm: true,
-          description: `City Sticker Renewal - ${customer.license_plate}`,
+          description: renewalDescription,
           metadata: {
             user_id: customer.user_id,
             license_plate: customer.license_plate,
             renewal_type: 'city_sticker',
             expiry_date: customer.city_sticker_expiry,
             sticker_price: stickerPrice.toString(),
+            permit_fee: permitFee.toString(),
+            permit_requested: needsPermit.toString(),
             service_fee: serviceFee.toString(),
             total_charged: totalAmount.toString(),
           },
           transfer_data: {
             destination: remitter.stripe_connected_account_id,
-            amount: Math.round(stickerPrice * 100), // Remitter gets exact sticker price
+            amount: Math.round((stickerPrice + permitFee) * 100), // Remitter gets sticker + permit price
           },
           receipt_email: customer.email || undefined,
         });
@@ -423,7 +442,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           stripe_charge_id: paymentIntent.latest_charge as string,
           status: 'succeeded',
           remitter_partner_id: remitter.id,
-          remitter_received_amount: stickerPrice + REMITTER_SERVICE_FEE, // Sticker + $12 service fee
+          remitter_received_amount: stickerPrice + permitFee + REMITTER_SERVICE_FEE, // Sticker + permit + $12 service fee
           platform_fee_amount: serviceFee, // $2.50 platform keeps
           renewal_type: 'city_sticker',
           renewal_due_date: customer.city_sticker_expiry,
@@ -447,8 +466,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           zip_code: customer.zip_code,
           sticker_type: vehicleType,
           sticker_price: stickerPrice,
+          permit_fee: permitFee, // $30 if permit requested, $0 otherwise
+          permit_requested: needsPermit,
           service_fee: REMITTER_SERVICE_FEE, // $12 processing fee to remitter
-          total_amount: stickerPrice + REMITTER_SERVICE_FEE, // Total remitter receives
+          total_amount: stickerPrice + permitFee + REMITTER_SERVICE_FEE, // Total remitter receives
           payment_status: 'paid',
           status: 'pending', // Awaiting remitter to process and submit to city
           stripe_payment_intent_id: paymentIntent.id,
@@ -478,9 +499,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         results.cityStickerSucceeded++;
+        const permitNote = needsPermit ? ` + $${permitFee} permit` : '';
         console.log(`✅ Renewal complete for ${customer.user_id}:
           - Customer charged: $${totalAmount}
-          - Remitter received: $${(stickerPrice + REMITTER_SERVICE_FEE).toFixed(2)} ($${stickerPrice} sticker + $${REMITTER_SERVICE_FEE} service)
+          - Remitter received: $${(stickerPrice + permitFee + REMITTER_SERVICE_FEE).toFixed(2)} ($${stickerPrice} sticker${permitNote} + $${REMITTER_SERVICE_FEE} service)
           - Platform kept: $${serviceFee}`);
 
       } catch (error: any) {

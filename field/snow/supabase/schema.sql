@@ -36,6 +36,17 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS chat_history JSONB DEFAULT '[]'::jsonb
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS surge_multiplier NUMERIC DEFAULT 1.0;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS weather_note TEXT;
 
+-- Service type for truck vs shovel
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS service_type TEXT DEFAULT 'any' CHECK (service_type IN ('truck', 'shovel', 'any'));
+
+-- Auto-complete tracking
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS auto_complete_at TIMESTAMPTZ;
+
+-- Add has_truck and payment info to shovelers
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS has_truck BOOLEAN DEFAULT FALSE;
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS venmo_handle TEXT;
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS cashapp_handle TEXT;
+
 -- Earnings tracking table
 CREATE TABLE IF NOT EXISTS earnings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
