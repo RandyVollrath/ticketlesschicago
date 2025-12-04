@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sendClickSendSMS } from '../../../lib/sms-service';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -144,22 +145,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               smsMessage = `Great news${userProfile.first_name ? `, ${userProfile.first_name}` : ''}! Your ${hasPermit ? 'city sticker and residential permit have' : 'city sticker has'} been submitted to the City of Chicago. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${order.street_address}. Thanks for using Autopilot America!`;
             }
 
-            // Use Twilio or your SMS provider
-            const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
-            const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-            const twilioFromNumber = process.env.TWILIO_PHONE_NUMBER;
-
-            if (twilioAccountSid && twilioAuthToken && twilioFromNumber) {
-              const twilioClient = require('twilio')(twilioAccountSid, twilioAuthToken);
-              await twilioClient.messages.create({
-                body: smsMessage,
-                from: twilioFromNumber,
-                to: userProfile.phone_number,
-              });
-              console.log(`SMS sent to ${userProfile.phone_number} for order ${orderId}`);
+            // Send via ClickSend
+            const smsResult = await sendClickSendSMS(userProfile.phone_number, smsMessage);
+            if (smsResult.success) {
+              console.log(`✅ SMS sent to ${userProfile.phone_number} for order ${orderId}`);
             } else {
-              console.log(`SMS would be sent to ${userProfile.phone_number}: ${smsMessage}`);
+              console.error(`❌ SMS failed for ${userProfile.phone_number}: ${smsResult.error}`);
             }
+
+            // Schedule sticker arrival reminder (10 business days from now)
+            // Store the reminder date on the order for the cron to pick up
+            const reminderDate = new Date();
+            reminderDate.setDate(reminderDate.getDate() + 14); // ~10 business days
+            await supabase
+              .from('renewal_orders')
+              .update({
+                sticker_reminder_date: reminderDate.toISOString().split('T')[0],
+                sticker_reminder_count: 0,
+                sticker_applied: false
+              })
+              .eq('id', orderId);
+
           } catch (smsError: any) {
             console.error('Failed to send SMS:', smsError.message);
             // Don't fail the request for SMS errors
