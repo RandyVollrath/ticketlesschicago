@@ -20,6 +20,9 @@ const ADDRESS_REGEX = /\d+.*\b(st|street|ave|avenue|blvd|boulevard|dr|drive|rd|r
 // Regex to detect CLAIM command
 const CLAIM_REGEX = /^claim\s+([a-f0-9-]+)/i;
 
+// Regex to detect DONE command
+const DONE_REGEX = /^done\s*([a-f0-9-]*)/i;
+
 /**
  * Parse job request from customer message
  * Returns address and description if valid
@@ -193,7 +196,79 @@ async function handleShovelerClaim(
   return `You've successfully claimed job #${job.id.substring(0, 8)}!
 Address: ${job.address}
 ${job.description || ""}
-The customer has been notified that you're on your way.`;
+The customer has been notified that you're on your way.
+
+When finished, reply: DONE ${job.id.substring(0, 8)}`;
+}
+
+/**
+ * Handle shoveler marking job as done
+ */
+async function handleShovelerDone(
+  phone: string,
+  body: string
+): Promise<string> {
+  const match = body.match(DONE_REGEX);
+  const jobIdInput = match?.[1]?.trim();
+
+  // If no job ID provided, find their most recent claimed job
+  let job;
+
+  if (!jobIdInput) {
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("shoveler_phone", phone)
+      .eq("status", "claimed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return "No active job found. Make sure you've claimed a job first, or specify the job ID: DONE <job_id>";
+    }
+    job = data;
+  } else {
+    // Find the specific job
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .or(`id.eq.${jobIdInput},id.ilike.${jobIdInput}%`)
+      .eq("shoveler_phone", phone)
+      .single();
+
+    if (error || !data) {
+      return `Job not found or you didn't claim this job. Check the job ID and try again.`;
+    }
+    job = data;
+  }
+
+  if (job.status === "completed") {
+    return `Job #${job.id.substring(0, 8)} is already marked as completed.`;
+  }
+
+  if (job.status !== "claimed") {
+    return `This job cannot be completed (status: ${job.status}).`;
+  }
+
+  // Mark job as completed
+  const { error: updateError } = await supabase
+    .from("jobs")
+    .update({ status: "completed" })
+    .eq("id", job.id);
+
+  if (updateError) {
+    console.error("Error completing job:", updateError);
+    return "Error completing job. Please try again.";
+  }
+
+  // Notify the customer
+  await sendSMS(
+    job.customer_phone,
+    `Your snow removal at ${job.address} has been completed! Thanks for using SnowSOS.`
+  );
+
+  return `Job #${job.id.substring(0, 8)} marked as complete! The customer has been notified. Thanks for shoveling!`;
 }
 
 export async function POST(request: NextRequest) {
@@ -217,7 +292,13 @@ export async function POST(request: NextRequest) {
 
     if (shoveler) {
       // Handle shoveler commands
-      responseMessage = await handleShovelerClaim(from, body);
+      if (DONE_REGEX.test(body)) {
+        responseMessage = await handleShovelerDone(from, body);
+      } else if (CLAIM_REGEX.test(body)) {
+        responseMessage = await handleShovelerClaim(from, body);
+      } else {
+        responseMessage = "Commands: CLAIM <job_id> to accept a job, DONE to complete your current job.";
+      }
     } else {
       // Handle customer request
       responseMessage = await handleCustomerRequest(from, body);
