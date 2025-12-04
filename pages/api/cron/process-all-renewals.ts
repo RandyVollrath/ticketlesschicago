@@ -797,6 +797,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             payment_status: 'paid',
             status: 'pending',
             stripe_payment_intent_id: paymentIntent.id,
+            renewal_due_date: customer.license_plate_expiry,
           });
 
           // Send notifications
