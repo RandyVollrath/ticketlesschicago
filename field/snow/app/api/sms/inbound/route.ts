@@ -129,7 +129,7 @@ We'll find nearby shovelers for you!`;
       max_price: maxPrice,
       lat: geo?.lat || null,
       long: geo?.long || null,
-      status: "pending",
+      status: "open",
       bid_mode: bidMode,
       bids: [],
       bid_deadline: bidDeadline,
@@ -227,7 +227,7 @@ async function getCustomerJobStatus(phone: string): Promise<string> {
     .from("jobs")
     .select("*")
     .eq("customer_phone", phone)
-    .in("status", ["pending", "claimed", "in_progress"])
+    .in("status", ["open", "claimed", "in_progress"])
     .order("created_at", { ascending: false })
     .limit(3);
 
@@ -238,12 +238,12 @@ async function getCustomerJobStatus(phone: string): Promise<string> {
   const statusLines = jobs.map((j: Job) => {
     const shortId = j.id.substring(0, 8);
     let statusText =
-      j.status === "pending" ? "Waiting" :
+      j.status === "open" ? "Waiting" :
       j.status === "claimed" ? "Claimed - on the way!" :
       j.status === "in_progress" ? "In Progress" : j.status;
 
     // Add bid info if in bid mode
-    if (j.bid_mode && j.status === "pending") {
+    if (j.bid_mode && j.status === "open") {
       const bids = (j.bids as Bid[]) || [];
       statusText = `Bidding (${bids.length} bid${bids.length !== 1 ? "s" : ""})`;
     }
@@ -260,13 +260,13 @@ async function handleCustomerCancel(phone: string): Promise<string> {
     .from("jobs")
     .select("*")
     .eq("customer_phone", phone)
-    .eq("status", "pending")
+    .eq("status", "open")
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
 
   if (error || !job) {
-    return "No pending job to cancel. Jobs that are already claimed cannot be cancelled via text.";
+    return "No open job to cancel. Jobs that are already claimed cannot be cancelled via text.";
   }
 
   await supabase
@@ -302,8 +302,8 @@ async function handleCustomerSelect(phone: string, body: string): Promise<string
     return "This job is not in bidding mode.";
   }
 
-  if (job.status !== "pending") {
-    return `Job #${job.id.substring(0, 8)} is no longer pending.`;
+  if (job.status !== "open") {
+    return `Job #${job.id.substring(0, 8)} is no longer open.`;
   }
 
   const bids = (job.bids as Bid[]) || [];
@@ -328,7 +328,7 @@ async function handleCustomerSelect(phone: string, body: string): Promise<string
       selected_bid_index: bidIndex,
     })
     .eq("id", job.id)
-    .eq("status", "pending");
+    .eq("status", "open");
 
   if (updateError) {
     console.error("Error selecting bid:", updateError);
@@ -434,8 +434,7 @@ async function handleShovelerBid(phone: string, body: string): Promise<string> {
     return `Job #${job.id.substring(0, 8)} is not accepting bids. Try CLAIM instead.`;
   }
 
-  // Accept both "pending" (SMS-created) and "open" (web-created) jobs
-  if (job.status !== "pending" && job.status !== "open") {
+  if (job.status !== "open") {
     return `Job #${job.id.substring(0, 8)} is no longer accepting bids (${job.status}).`;
   }
 
@@ -533,8 +532,7 @@ async function handleShovelerClaim(phone: string, body: string): Promise<string>
     return `Job #${job.id.substring(0, 8)} is already taken.`;
   }
 
-  // Accept both "pending" (SMS-created) and "open" (web-created) jobs
-  if (job.status !== "pending" && job.status !== "open") {
+  if (job.status !== "open") {
     return `Job #${job.id.substring(0, 8)} is not available (${job.status}).`;
   }
 
@@ -543,7 +541,7 @@ async function handleShovelerClaim(phone: string, body: string): Promise<string>
     return `Your rate ($${shoveler.rate}) exceeds the customer's budget ($${job.max_price}). Job not claimed.`;
   }
 
-  // Claim the job - use "in" filter to handle both "pending" and "open" statuses
+  // Claim the job
   const { error: updateError } = await supabase
     .from("jobs")
     .update({
@@ -552,7 +550,7 @@ async function handleShovelerClaim(phone: string, body: string): Promise<string>
       claimed_at: new Date().toISOString(),
     })
     .eq("id", job.id)
-    .in("status", ["pending", "open"]); // Ensure still available (race condition protection)
+    .eq("status", "open"); // Ensure still open (race condition protection)
 
   if (updateError) {
     console.error("Error claiming job:", updateError);
