@@ -165,7 +165,83 @@ export default async function handler(
       });
     }
 
-    // If not a confirmation, just log and acknowledge
+    // Check for sticker applied confirmation: "YES", "APPLIED", "DONE" (when not emissions context)
+    const isStickerApplied =
+      upperBody === 'YES' ||
+      upperBody === 'APPLIED' ||
+      upperBody === 'Y' ||
+      upperBody.includes('PUT IT ON') ||
+      upperBody.includes('STICKER ON');
+
+    if (isStickerApplied) {
+      console.log(`🏷️ Sticker applied confirmation detected from ${phoneE164}`);
+
+      // Find user by phone number
+      const { data: user, error: userError } = await supabase
+        .from('user_profiles')
+        .select('user_id, first_name, email')
+        .eq('phone_number', phoneE164)
+        .single();
+
+      if (userError || !user) {
+        console.error('User not found for phone:', phoneE164);
+        return res.status(200).json({ success: true, message: 'User not found' });
+      }
+
+      // Find their most recent completed order that's awaiting sticker confirmation
+      const { data: order, error: orderError } = await supabase
+        .from('renewal_orders')
+        .select('id, order_number, sticker_type')
+        .eq('customer_email', user.email)
+        .eq('status', 'completed')
+        .eq('sticker_applied', false)
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (orderError || !order) {
+        // No pending sticker confirmation - maybe already confirmed or no recent order
+        console.log(`⚠️ No pending sticker confirmation for user ${user.user_id}`);
+        await sendClickSendSMS(
+          phoneE164,
+          `Autopilot: Thanks for the message! We don't have any pending sticker confirmations for you right now.`
+        );
+        return res.status(200).json({ success: true, message: 'No pending confirmation' });
+      }
+
+      // Mark sticker as applied
+      const { error: updateError } = await supabase
+        .from('renewal_orders')
+        .update({
+          sticker_applied: true,
+          sticker_applied_at: new Date().toISOString(),
+          needs_manual_followup: false
+        })
+        .eq('id', order.id);
+
+      if (updateError) {
+        console.error('Error marking sticker applied:', updateError);
+        return res.status(500).json({ error: 'Failed to update sticker status' });
+      }
+
+      const isLicensePlate = ['standard', 'vanity'].includes(order.sticker_type?.toLowerCase());
+      const stickerType = isLicensePlate ? 'license plate sticker' : 'city sticker';
+
+      console.log(`✅ Sticker marked as applied for order ${order.order_number}`);
+
+      // Send thank you SMS
+      await sendClickSendSMS(
+        phoneE164,
+        `Autopilot: Awesome${user.first_name ? `, ${user.first_name}` : ''}! Your ${stickerType} is all set. You're good to go - no more reminders from us about this one. Drive safe!`
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Sticker marked as applied'
+      });
+    }
+
+    // If not a recognized keyword, just log and acknowledge
     console.log(`📨 SMS received but no action taken: "${messageBody}"`);
     return res.status(200).json({ success: true, message: 'SMS received' });
 
