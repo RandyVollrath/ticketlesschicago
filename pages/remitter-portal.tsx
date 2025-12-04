@@ -837,7 +837,91 @@ export default function RemitterPortal() {
           </div>
         )}
 
-        {/* Document Upload View - Coming in next file */}
+        {/* Pending Review View */}
+        {view === 'pending' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">Pending Review</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Orders with status "submitted" that need to be processed through the city portal.
+            </p>
+
+            {loading ? (
+              <p className="text-center py-8 text-gray-500">Loading...</p>
+            ) : pendingOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-400 text-5xl mb-4">✅</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
+                <p className="text-gray-600">No orders pending review at this time.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingOrders.map((order) => (
+                  <div key={order.id} className="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="font-semibold text-lg">{order.orderNumber}</p>
+                        <p className="text-sm text-gray-600">{order.customer.name} - {order.customer.phone}</p>
+                        <p className="text-sm text-gray-600">{order.customer.email}</p>
+                      </div>
+                      <span className="px-3 py-1 text-sm font-medium rounded-full bg-yellow-200 text-yellow-800">
+                        Needs Processing
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Vehicle</p>
+                        <p className="font-medium">{order.vehicle.licensePlate} ({order.vehicle.state})</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Address</p>
+                        <p className="font-medium">{order.address.street}</p>
+                        <p className="text-gray-600">{order.address.city}, {order.address.zip}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Sticker Type</p>
+                        <p className="font-medium capitalize">{order.stickerType}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Amount</p>
+                        <p className="font-medium text-green-700">${order.amount.total}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-yellow-200 flex gap-3">
+                      <button
+                        onClick={() => {
+                          // TODO: Mark as processing
+                          alert('Feature coming: Mark as processing in city portal');
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                      >
+                        Start Processing
+                      </button>
+                      <button
+                        onClick={() => {
+                          setView('licenses');
+                          setSearchQuery(order.customer.email);
+                        }}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700"
+                      >
+                        View License
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Upload View */}
+        {view === 'upload' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">Upload Documents</h2>
+            <p className="text-gray-600">Document upload functionality coming soon.</p>
+          </div>
+        )}
       </div>
     </div>
   );

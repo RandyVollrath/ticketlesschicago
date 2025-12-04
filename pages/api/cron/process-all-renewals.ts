@@ -388,22 +388,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
         // Send $12 service fee from platform balance to remitter
-        // This comes from the $1/mo or $12/year collected in subscription
-        console.log(`💸 Transferring $${REMITTER_SERVICE_FEE} service fee to remitter from platform balance...`);
-        const serviceFeeTransfer = await stripe.transfers.create({
-          amount: Math.round(REMITTER_SERVICE_FEE * 100),
-          currency: 'usd',
-          destination: remitter.stripe_connected_account_id,
-          description: `Sticker Processing Service Fee - ${customer.license_plate}`,
-          metadata: {
-            user_id: customer.user_id,
-            license_plate: customer.license_plate,
-            renewal_type: 'city_sticker',
-            payment_intent_id: paymentIntent.id,
-          },
-        });
-
-        console.log(`✅ Service fee transfer complete: ${serviceFeeTransfer.id}`);
+        // This comes from the $12/mo or $120/year collected in subscription
+        // Non-blocking: if platform balance insufficient, log and continue
+        let serviceFeeTransferId: string | null = null;
+        try {
+          console.log(`💸 Transferring $${REMITTER_SERVICE_FEE} service fee to remitter from platform balance...`);
+          const serviceFeeTransfer = await stripe.transfers.create({
+            amount: Math.round(REMITTER_SERVICE_FEE * 100),
+            currency: 'usd',
+            destination: remitter.stripe_connected_account_id,
+            description: `Sticker Processing Service Fee - ${customer.license_plate}`,
+            metadata: {
+              user_id: customer.user_id,
+              license_plate: customer.license_plate,
+              renewal_type: 'city_sticker',
+              payment_intent_id: paymentIntent.id,
+            },
+          });
+          serviceFeeTransferId = serviceFeeTransfer.id;
+          console.log(`✅ Service fee transfer complete: ${serviceFeeTransfer.id}`);
+        } catch (transferError: any) {
+          // Log but don't fail - service fee can be transferred later when balance available
+          console.warn(`⚠️ Service fee transfer skipped (insufficient platform balance): ${transferError.message}`);
+          console.log(`   Will need to transfer $${REMITTER_SERVICE_FEE} to remitter manually or when balance available`);
+        }
 
         // Log successful charge
         await supabase.from('renewal_charges').insert({
