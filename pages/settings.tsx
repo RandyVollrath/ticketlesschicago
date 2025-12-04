@@ -11,13 +11,13 @@ import SnowBanSettings from '../components/SnowBanSettings'
 // import EmailForwardingSetup from '../components/EmailForwardingSetup' // Disabled - keeping code for future use
 import PropertyTaxHelper from '../components/PropertyTaxHelper'
 import { useToast } from '../components/Toast'
-import Dashboard from '../components/Dashboard'
+// import Dashboard from '../components/Dashboard' // Removed - no longer used at bottom of settings
 import NotificationPreferences from '../components/NotificationPreferences'
 import ReferralLink from '../components/ReferralLink'
 // import OnboardingProgress from '../components/OnboardingProgress' // Removed - too cluttered
 import ProfileConfirmation from '../components/ProfileConfirmation'
 // import SavingsCalculator from '../components/SavingsCalculator' // Removed - speculative numbers were confusing
-import QuickActions, { QuickActionsInline } from '../components/QuickActions'
+import QuickActions from '../components/QuickActions'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -851,14 +851,6 @@ export default function ProfileNew() {
               onConfirm={() => loadUserData()}
             />
           )}
-
-          {/* Dashboard - shows vehicles, upcoming cleaning, key stats */}
-          <Dashboard user={user} profile={profile} />
-
-          {/* Quick Actions */}
-          <div style={{ marginBottom: '24px' }}>
-            <QuickActionsInline hasProtection={profile.has_protection || false} />
-          </div>
 
           {/* Protection status card - only show if not protected */}
           {!profile.has_protection && (

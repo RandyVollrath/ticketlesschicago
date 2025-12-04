@@ -95,15 +95,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         residency_proof_path: filePath, // Store path, not URL - view API generates signed URLs
         residency_proof_type: documentType,
         residency_proof_uploaded_at: new Date().toISOString(),
-        residency_proof_source: 'manual_upload',
-        residency_proof_verified: false,
-        residency_proof_rejection_reason: null
+        residency_proof_verified: false
       })
       .eq('user_id', userId);
 
     if (updateError) {
       console.error('❌ Profile update error:', updateError);
-      // Don't fail - file is uploaded, just profile update failed
+      return res.status(500).json({ error: `Failed to save upload: ${updateError.message}` });
     }
 
     // Cleanup temp file

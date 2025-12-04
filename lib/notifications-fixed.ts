@@ -511,7 +511,7 @@ export class NotificationScheduler {
                                 renewal.type === 'License Plate' ?
                                 'Renew at cyberdriveillinois.com or visit your local Secretary of State facility.' :
                                 `<strong>Step 1:</strong> Find a testing location at <a href="https://airteam.app/forms/locator.cfm" style="color: #2563eb;">airteam.app</a><br>
-                                <strong>Step 2:</strong> Bring your vehicle, registration, and $20 cash<br>
+                                <strong>Step 2:</strong> Bring your vehicle and registration<br>
                                 <strong>Step 3:</strong> Complete the test (takes about 10-15 minutes)<br>
                                 <strong>Step 4:</strong> Results are sent electronically to the state<br><br>
                                 <em>Note: You must bring your vehicle in person - this cannot be done remotely.</em>`}
