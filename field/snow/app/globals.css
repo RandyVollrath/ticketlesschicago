@@ -25,3 +25,26 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+/* Google Places Autocomplete dropdown fix */
+.pac-container {
+  z-index: 10000 !important;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  margin-top: 4px;
+}
+
+.pac-item {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.pac-item:hover {
+  background-color: #f3f4f6;
+}
+
+/* Hide the "powered by Google" logo in production */
+.pac-logo::after {
+  display: none;
+}
