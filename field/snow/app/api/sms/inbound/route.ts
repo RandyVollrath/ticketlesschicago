@@ -719,15 +719,42 @@ async function getShovelerJobStatus(phone: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload: ClickSendPayload = await request.json();
+    let from: string;
+    let body: string;
 
-    if (!payload.messages || payload.messages.length === 0) {
-      return NextResponse.json({ error: "No messages" }, { status: 400 });
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      // ClickSend sends form data
+      const formData = await request.formData();
+      from = (formData.get("from") as string) || "";
+      body = (formData.get("body") as string) || (formData.get("message") as string) || "";
+
+      console.log("Inbound SMS (form):", Object.fromEntries(formData.entries()));
+    } else {
+      // JSON payload (original format or test)
+      const payload = await request.json();
+      console.log("Inbound SMS (json):", JSON.stringify(payload));
+
+      // Support both { messages: [...] } and flat { from, body } formats
+      if (payload.messages && payload.messages.length > 0) {
+        from = payload.messages[0].from;
+        body = payload.messages[0].body;
+      } else {
+        from = payload.from || "";
+        body = payload.body || payload.message || "";
+      }
     }
 
-    const msg = payload.messages[0];
-    const from = msg.from;
-    const body = msg.body.trim();
+    if (!from || !body) {
+      console.error("Missing from or body in inbound SMS");
+      return NextResponse.json({ error: "Missing from or body" }, { status: 400 });
+    }
+
+    // Normalize phone number
+    if (!from.startsWith("+")) {
+      from = `+${from}`;
+    }
 
     console.log(`SMS from ${from}: ${body}`);
 
@@ -736,9 +763,9 @@ export async function POST(request: NextRequest) {
 
     let response: string;
     if (shoveler) {
-      response = await handleShovelerMessage(from, body);
+      response = await handleShovelerMessage(from, body.trim());
     } else {
-      response = await handleCustomerRequest(from, body);
+      response = await handleCustomerRequest(from, body.trim());
     }
 
     // Send response
