@@ -3,18 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const SKILL_OPTIONS = [
-  { id: "shovel", label: "Shovel", icon: "Shovel" },
-  { id: "plow", label: "Snow Plow", icon: "Truck" },
-  { id: "blower", label: "Snow Blower", icon: "Wind" },
-  { id: "salt", label: "Salt/De-ice", icon: "Sparkles" },
-];
-
 export default function ShovelerSignup() {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [rate, setRate] = useState("50");
-  const [skills, setSkills] = useState<string[]>(["shovel"]);
+  const [hasTruck, setHasTruck] = useState(false);
+  const [venmoHandle, setVenmoHandle] = useState("");
+  const [cashappHandle, setCashappHandle] = useState("");
   const [address, setAddress] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -30,14 +25,6 @@ export default function ShovelerSignup() {
     setPhone(formatPhone(e.target.value));
   };
 
-  const toggleSkill = (skillId: string) => {
-    setSkills((prev) =>
-      prev.includes(skillId)
-        ? prev.filter((s) => s !== skillId)
-        : [...prev, skillId]
-    );
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
@@ -50,16 +37,17 @@ export default function ShovelerSignup() {
       return;
     }
 
-    if (skills.length === 0) {
-      setStatus("error");
-      setMessage("Please select at least one skill.");
-      return;
-    }
-
     const rateNum = parseInt(rate, 10);
     if (isNaN(rateNum) || rateNum < 10 || rateNum > 500) {
       setStatus("error");
       setMessage("Please enter a rate between $10 and $500.");
+      return;
+    }
+
+    // At least one payment method
+    if (!venmoHandle.trim() && !cashappHandle.trim()) {
+      setStatus("error");
+      setMessage("Please enter at least one payment handle (Venmo or Cash App).");
       return;
     }
 
@@ -71,7 +59,9 @@ export default function ShovelerSignup() {
           phone: `+1${phoneDigits}`,
           name: name.trim() || null,
           rate: rateNum,
-          skills,
+          hasTruck,
+          venmoHandle: venmoHandle.trim() || null,
+          cashappHandle: cashappHandle.trim() || null,
           address: address.trim() || null,
         }),
       });
@@ -80,11 +70,13 @@ export default function ShovelerSignup() {
 
       if (res.ok) {
         setStatus("success");
-        setMessage(`You're signed up! Rate: $${rateNum}/job. You'll receive a welcome text shortly.`);
+        setMessage(`You're signed up! Rate: $${rateNum}/job. Check your phone for a welcome text.`);
         setPhone("");
         setName("");
         setRate("50");
-        setSkills(["shovel"]);
+        setHasTruck(false);
+        setVenmoHandle("");
+        setCashappHandle("");
         setAddress("");
       } else {
         setStatus("error");
@@ -108,7 +100,7 @@ export default function ShovelerSignup() {
           </Link>
 
           <h1 className="text-4xl font-bold text-slate-800 dark:text-white mb-2">
-            Become a Shoveler
+            Become a Plower
           </h1>
           <p className="text-slate-600 dark:text-slate-300 mb-8">
             Get paid to clear snow in Chicago. Set your rate and get matched with nearby customers.
@@ -120,12 +112,20 @@ export default function ShovelerSignup() {
                 Welcome aboard!
               </h2>
               <p className="text-green-700 dark:text-green-300">{message}</p>
-              <button
-                onClick={() => setStatus("idle")}
-                className="mt-4 text-green-600 dark:text-green-400 hover:underline"
-              >
-                Sign up another shoveler
-              </button>
+              <div className="mt-4 flex gap-4">
+                <button
+                  onClick={() => setStatus("idle")}
+                  className="text-green-600 dark:text-green-400 hover:underline"
+                >
+                  Sign up another plower
+                </button>
+                <Link
+                  href="/plower/dashboard"
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                >
+                  Go to Dashboard
+                </Link>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-700 rounded-2xl shadow-xl p-8 space-y-6">
@@ -148,7 +148,7 @@ export default function ShovelerSignup() {
               {/* Name */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Your Name
+                  Your Name *
                 </label>
                 <input
                   type="text"
@@ -156,6 +156,7 @@ export default function ShovelerSignup() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John"
+                  required
                   className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
               </div>
@@ -183,29 +184,70 @@ export default function ShovelerSignup() {
                 </p>
               </div>
 
-              {/* Skills */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Your Equipment *
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {SKILL_OPTIONS.map((skill) => (
-                    <button
-                      key={skill.id}
-                      type="button"
-                      onClick={() => toggleSkill(skill.id)}
-                      className={`p-3 rounded-lg border-2 text-left transition-colors ${
-                        skills.includes(skill.id)
-                          ? "border-sky-500 bg-sky-50 dark:bg-sky-900/30"
-                          : "border-slate-200 dark:border-slate-600 hover:border-slate-300"
-                      }`}
-                    >
-                      <span className={`font-medium ${skills.includes(skill.id) ? "text-sky-700 dark:text-sky-300" : "text-slate-700 dark:text-slate-300"}`}>
-                        {skill.label}
-                      </span>
-                    </button>
-                  ))}
+              {/* Truck Checkbox */}
+              <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                <input
+                  type="checkbox"
+                  id="hasTruck"
+                  checked={hasTruck}
+                  onChange={(e) => setHasTruck(e.target.checked)}
+                  className="mt-1 w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                <div>
+                  <label htmlFor="hasTruck" className="font-medium text-slate-700 dark:text-slate-300 cursor-pointer flex items-center gap-2">
+                    <span className="text-2xl">&#128668;</span>
+                    I have a truck with plow
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Check this to get truck-only jobs (driveways, parking lots)
+                  </p>
                 </div>
+              </div>
+
+              {/* Payment Methods */}
+              <div className="space-y-4">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Payment Methods * (at least one required)
+                </label>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="venmo" className="block text-xs text-slate-500 mb-1">
+                      Venmo Handle
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">@</span>
+                      <input
+                        type="text"
+                        id="venmo"
+                        value={venmoHandle}
+                        onChange={(e) => setVenmoHandle(e.target.value.replace("@", ""))}
+                        placeholder="username"
+                        className="w-full pl-8 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="cashapp" className="block text-xs text-slate-500 mb-1">
+                      Cash App Handle
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                      <input
+                        type="text"
+                        id="cashapp"
+                        value={cashappHandle}
+                        onChange={(e) => setCashappHandle(e.target.value.replace("$", ""))}
+                        placeholder="cashtag"
+                        className="w-full pl-8 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Customers will pay you directly via Venmo or Cash App after the job
+                </p>
               </div>
 
               {/* Address */}
@@ -237,7 +279,7 @@ export default function ShovelerSignup() {
                 disabled={status === "loading"}
                 className="w-full bg-sky-600 hover:bg-sky-700 disabled:bg-sky-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
               >
-                {status === "loading" ? "Signing up..." : "Sign Up to Shovel"}
+                {status === "loading" ? "Signing up..." : "Sign Up to Plow"}
               </button>
 
               <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
@@ -253,10 +295,10 @@ export default function ShovelerSignup() {
             </h2>
             <div className="space-y-4">
               {[
-                "Get text alerts when customers nearby need snow removal",
-                "Reply CLAIM + job ID to accept (first come, first served!)",
-                "Reply START when you arrive, DONE when finished",
-                "Customer is notified at each step",
+                "See jobs in your dashboard - no waiting for texts!",
+                "Hit CLAIM & CALL to grab the job and call the customer",
+                "Clear the snow, job auto-completes in 2 hours",
+                "Get paid via Venmo or Cash App",
               ].map((step, i) => (
                 <div key={i} className="flex gap-4">
                   <div className="flex-shrink-0 w-8 h-8 bg-sky-100 dark:bg-sky-900 rounded-full flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold">

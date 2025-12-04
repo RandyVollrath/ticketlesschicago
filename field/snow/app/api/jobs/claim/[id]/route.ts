@@ -4,6 +4,7 @@ import { sendSMS } from "@/lib/clicksend";
 
 interface ClaimBody {
   shovelerPhone: string;
+  claimAndCall?: boolean;
 }
 
 export async function POST(
@@ -102,10 +103,20 @@ export async function POST(
 
     // Notify customer via SMS
     try {
-      await sendSMS(
-        job.customer_phone,
-        `Great news! ${shoveler.name || "A plower"} is on the way to ${job.address}!\n\nJob #${jobId.substring(0, 8)}\n\nView updates: ${process.env.NEXT_PUBLIC_BASE_URL || ""}/job/${jobId}`
-      );
+      // Different message for Claim & Call flow
+      if (body.claimAndCall) {
+        const shovelerDisplayPhone = phone.replace("+1", "");
+        const formattedShovelerPhone = `(${shovelerDisplayPhone.slice(0, 3)}) ${shovelerDisplayPhone.slice(3, 6)}-${shovelerDisplayPhone.slice(6)}`;
+        await sendSMS(
+          job.customer_phone,
+          `${shoveler.name || "A plower"} claimed your job and is calling you now!\n\nTheir phone: ${formattedShovelerPhone}\n\nJob #${jobId.substring(0, 8)}`
+        );
+      } else {
+        await sendSMS(
+          job.customer_phone,
+          `Great news! ${shoveler.name || "A plower"} is on the way to ${job.address}!\n\nJob #${jobId.substring(0, 8)}\n\nView updates: ${process.env.NEXT_PUBLIC_BASE_URL || ""}/job/${jobId}`
+        );
+      }
     } catch (smsError) {
       console.error("SMS notification failed:", smsError);
     }
