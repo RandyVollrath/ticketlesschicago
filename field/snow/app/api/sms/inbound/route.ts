@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, type Shoveler, type Job } from "@/lib/supabase";
+import {
+  supabase,
+  isShoveler,
+  getShovelerByPhone,
+  getNearbyShovelers,
+  getAllActiveShovelers,
+  type Job,
+} from "@/lib/supabase";
 import { sendSMS, broadcastSMS } from "@/lib/clicksend";
+import { geocodeAddress, parsePriceFromText, parseAddressFromText } from "@/lib/geocode";
 
-// ClickSend inbound SMS webhook payload format
+// ===========================================
+// Types
+// ===========================================
+
 interface ClickSendMessage {
   from: string;
   body: string;
@@ -14,88 +25,78 @@ interface ClickSendPayload {
   messages: ClickSendMessage[];
 }
 
-// Regex to detect address patterns
-const ADDRESS_REGEX = /\d+.*\b(st|street|ave|avenue|blvd|boulevard|dr|drive|rd|road|ln|lane|ct|court|way|place|pl|cir|circle)\b/i;
+// ===========================================
+// Regex Patterns
+// ===========================================
 
-// Regex to detect CLAIM command
 const CLAIM_REGEX = /^claim\s+([a-f0-9-]+)/i;
-
-// Regex to detect DONE command
 const DONE_REGEX = /^done\s*([a-f0-9-]*)/i;
+const START_REGEX = /^start\s*([a-f0-9-]*)/i;
+const CANCEL_REGEX = /^cancel\s*([a-f0-9-]*)/i;
+const STATUS_REGEX = /^status$/i;
+const HELP_REGEX = /^help$/i;
 
-/**
- * Parse job request from customer message
- * Returns address and description if valid
- */
-function parseJobRequest(body: string): { address: string; description: string } | null {
-  if (!ADDRESS_REGEX.test(body)) {
-    return null;
+// ===========================================
+// Customer Handlers
+// ===========================================
+
+async function handleCustomerRequest(phone: string, body: string): Promise<string> {
+  // Check for status request
+  if (STATUS_REGEX.test(body)) {
+    return await getCustomerJobStatus(phone);
   }
 
-  // Use the entire message as address + description
-  // Split by common separators to try to extract address vs description
-  const parts = body.split(/[,\n]/);
-  const address = parts[0].trim();
-  const description = parts.slice(1).join(", ").trim() || "Snow removal requested";
-
-  return { address, description };
-}
-
-/**
- * Check if a phone number belongs to a registered shoveler
- */
-async function isShoveler(phone: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("shovelers")
-    .select("id")
-    .eq("phone", phone)
-    .single();
-
-  return !!data;
-}
-
-/**
- * Get all active shovelers
- */
-async function getActiveShovelers(): Promise<Shoveler[]> {
-  const { data, error } = await supabase
-    .from("shovelers")
-    .select("*")
-    .eq("active", true);
-
-  if (error) {
-    console.error("Error fetching shovelers:", error);
-    return [];
+  if (HELP_REGEX.test(body)) {
+    return `SnowSOS Help:
+- Text your address + budget to request snow removal
+- Example: "123 Main St, driveway $50"
+- Text STATUS to check your job
+- Text CANCEL to cancel pending job`;
   }
 
-  return data || [];
-}
-
-/**
- * Handle customer job request
- */
-async function handleCustomerRequest(
-  phone: string,
-  body: string
-): Promise<string> {
-  const parsed = parseJobRequest(body);
-
-  if (!parsed) {
-    return "Please send your address + what you need (driveway, sidewalk, etc.). Example: 123 Main St, driveway and sidewalk";
+  if (CANCEL_REGEX.test(body)) {
+    return await handleCustomerCancel(phone);
   }
 
-  // Ensure customer exists in database
+  // Parse address from message
+  const address = parseAddressFromText(body);
+  if (!address) {
+    return `Welcome to SnowSOS! Text your address and budget to get snow removal help.
+
+Example: "123 Main St, driveway and sidewalk $50"
+
+We'll find nearby shovelers for you!`;
+  }
+
+  // Parse price from message
+  const maxPrice = parsePriceFromText(body);
+
+  // Extract description (everything that's not address or price)
+  const description = body
+    .replace(address, "")
+    .replace(/\$\d+|\d+\s*(?:dollars|bucks)/gi, "")
+    .replace(/(?:up\s*to|max|maximum|budget)\s*/gi, "")
+    .trim()
+    .replace(/^[,\s]+|[,\s]+$/g, "") || "Snow removal requested";
+
+  // Geocode the address
+  const geo = await geocodeAddress(address);
+
+  // Ensure customer exists
   await supabase
     .from("customers")
     .upsert({ phone }, { onConflict: "phone" });
 
-  // Create new job
+  // Create the job
   const { data: job, error } = await supabase
     .from("jobs")
     .insert({
       customer_phone: phone,
-      address: parsed.address,
-      description: parsed.description,
+      address: geo?.formattedAddress || address,
+      description,
+      max_price: maxPrice,
+      lat: geo?.lat || null,
+      long: geo?.long || null,
       status: "pending",
     })
     .select()
@@ -103,62 +104,175 @@ async function handleCustomerRequest(
 
   if (error || !job) {
     console.error("Error creating job:", error);
-    return "Sorry, there was an error processing your request. Please try again.";
+    return "Sorry, there was an error. Please try again.";
   }
 
-  // Get short job ID for easier reference (first 8 chars of UUID)
   const shortId = job.id.substring(0, 8);
 
-  // Broadcast to all active shovelers
-  const shovelers = await getActiveShovelers();
-
-  if (shovelers.length === 0) {
-    return "Your request has been received! We're currently looking for available shovelers in your area. We'll notify you when one is assigned.";
+  // Find shovelers to notify
+  let shovelers;
+  if (geo?.lat && geo?.long) {
+    // Get nearby shovelers (within 10 miles, matching budget if specified)
+    shovelers = await getNearbyShovelers(geo.lat, geo.long, 10, maxPrice || undefined);
   }
 
+  // Fallback to all active shovelers if no nearby ones or no geo
+  if (!shovelers || shovelers.length === 0) {
+    shovelers = await getAllActiveShovelers();
+    // Filter by rate if max_price specified
+    if (maxPrice) {
+      shovelers = shovelers.filter((s) => s.rate <= maxPrice);
+    }
+  }
+
+  if (shovelers.length === 0) {
+    // No matching shovelers
+    if (maxPrice) {
+      return `Job #${shortId} created! No shovelers found within your $${maxPrice} budget yet. We'll keep looking and notify you when one accepts.
+
+Text STATUS to check progress.`;
+    }
+    return `Job #${shortId} created! We're looking for available shovelers. We'll notify you when one accepts.
+
+Text STATUS to check progress.`;
+  }
+
+  // Build broadcast message
+  const priceInfo = maxPrice ? `Budget: $${maxPrice}` : "Budget: Open";
   const broadcastMessage = `NEW JOB #${shortId}
-${parsed.address}
-${parsed.description}
-Reply: CLAIM ${job.id} to accept.`;
+${geo?.formattedAddress || address}
+${description}
+${priceInfo}
+
+Reply: CLAIM ${job.id} to accept`;
 
   const shovelerPhones = shovelers.map((s) => s.phone);
   await broadcastSMS(shovelerPhones, broadcastMessage);
 
-  return `Got it! Your snow removal request for ${parsed.address} has been sent to ${shovelers.length} shoveler(s). You'll receive a text when someone claims your job.`;
+  const budgetResponse = maxPrice
+    ? `Budget: $${maxPrice}`
+    : `Tip: Add a budget (e.g. "$50") to attract more shovelers!`;
+
+  return `Job #${shortId} created!
+${geo?.formattedAddress || address}
+${budgetResponse}
+
+Sent to ${shovelers.length} shoveler(s). You'll get a text when one claims it.
+
+Text STATUS to check progress.`;
 }
 
-/**
- * Handle shoveler claim
- */
-async function handleShovelerClaim(
-  phone: string,
-  body: string
-): Promise<string> {
-  const match = body.match(CLAIM_REGEX);
-
-  if (!match) {
-    return "To claim a job, reply: CLAIM <job_id>\nExample: CLAIM abc12345-1234-1234-1234-123456789012";
-  }
-
-  const jobId = match[1];
-
-  // Find the job
-  const { data: job, error: findError } = await supabase
+async function getCustomerJobStatus(phone: string): Promise<string> {
+  const { data: jobs } = await supabase
     .from("jobs")
     .select("*")
-    .or(`id.eq.${jobId},id.ilike.${jobId}%`)
-    .single();
+    .eq("customer_phone", phone)
+    .in("status", ["pending", "claimed", "in_progress"])
+    .order("created_at", { ascending: false })
+    .limit(3);
 
-  if (findError || !job) {
-    return `Job not found. Please check the job ID and try again.`;
+  if (!jobs || jobs.length === 0) {
+    return "You have no active jobs. Text an address to request snow removal!";
   }
 
-  if (job.status === "claimed") {
-    return `Sorry, job #${job.id.substring(0, 8)} has already been claimed by another shoveler.`;
+  const statusLines = jobs.map((j: Job) => {
+    const shortId = j.id.substring(0, 8);
+    const statusEmoji =
+      j.status === "pending" ? "Waiting" :
+      j.status === "claimed" ? "Claimed - on the way!" :
+      j.status === "in_progress" ? "In Progress" : j.status;
+    return `#${shortId}: ${statusEmoji}\n${j.address}`;
+  });
+
+  return `Your active jobs:\n\n${statusLines.join("\n\n")}`;
+}
+
+async function handleCustomerCancel(phone: string): Promise<string> {
+  // Find most recent pending job
+  const { data: job, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("customer_phone", phone)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !job) {
+    return "No pending job to cancel. Jobs that are already claimed cannot be cancelled via text.";
+  }
+
+  await supabase
+    .from("jobs")
+    .update({ status: "cancelled" })
+    .eq("id", job.id);
+
+  return `Job #${job.id.substring(0, 8)} has been cancelled.`;
+}
+
+// ===========================================
+// Shoveler Handlers
+// ===========================================
+
+async function handleShovelerMessage(phone: string, body: string): Promise<string> {
+  if (HELP_REGEX.test(body)) {
+    return `Shoveler Commands:
+- CLAIM <job_id> - Accept a job
+- START <job_id> - Mark job in progress
+- DONE <job_id> - Complete a job
+- STATUS - View your active jobs`;
+  }
+
+  if (STATUS_REGEX.test(body)) {
+    return await getShovelerJobStatus(phone);
+  }
+
+  if (CLAIM_REGEX.test(body)) {
+    return await handleShovelerClaim(phone, body);
+  }
+
+  if (START_REGEX.test(body)) {
+    return await handleShovelerStart(phone, body);
+  }
+
+  if (DONE_REGEX.test(body)) {
+    return await handleShovelerDone(phone, body);
+  }
+
+  return `Commands: CLAIM <id>, START, DONE, STATUS, HELP`;
+}
+
+async function handleShovelerClaim(phone: string, body: string): Promise<string> {
+  const match = body.match(CLAIM_REGEX);
+  if (!match) {
+    return "To claim a job: CLAIM <job_id>";
+  }
+
+  const jobIdInput = match[1];
+  const shoveler = await getShovelerByPhone(phone);
+
+  // Find the job
+  const { data: job, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .or(`id.eq.${jobIdInput},id.ilike.${jobIdInput}%`)
+    .single();
+
+  if (error || !job) {
+    return "Job not found. Check the ID and try again.";
+  }
+
+  if (job.status === "claimed" || job.status === "in_progress") {
+    return `Job #${job.id.substring(0, 8)} is already taken.`;
   }
 
   if (job.status !== "pending") {
-    return `This job is no longer available (status: ${job.status}).`;
+    return `Job #${job.id.substring(0, 8)} is not available (${job.status}).`;
+  }
+
+  // Check rate vs max_price
+  if (job.max_price && shoveler && shoveler.rate > job.max_price) {
+    return `Your rate ($${shoveler.rate}) exceeds the customer's budget ($${job.max_price}). Job not claimed.`;
   }
 
   // Claim the job
@@ -167,69 +281,62 @@ async function handleShovelerClaim(
     .update({
       status: "claimed",
       shoveler_phone: phone,
+      claimed_at: new Date().toISOString(),
     })
-    .eq("id", job.id);
+    .eq("id", job.id)
+    .eq("status", "pending"); // Ensure still pending (race condition protection)
 
   if (updateError) {
     console.error("Error claiming job:", updateError);
-    return "Error claiming job. Please try again.";
+    return "Error claiming job. It may have been taken. Try again.";
   }
 
-  // Notify the customer
+  // Notify customer
   await sendSMS(
     job.customer_phone,
-    `Great news! A shoveler has claimed your job and is on the way to ${job.address}. They will arrive shortly.`
+    `Great news! A shoveler is on the way to ${job.address}!\n\nJob #${job.id.substring(0, 8)}`
   );
 
   // Notify other shovelers that job is taken
-  const shovelers = await getActiveShovelers();
-  const otherShovelers = shovelers.filter((s) => s.phone !== phone);
+  const otherShovelers = await getAllActiveShovelers();
+  const otherPhones = otherShovelers
+    .filter((s) => s.phone !== phone)
+    .map((s) => s.phone);
 
-  if (otherShovelers.length > 0) {
-    const otherPhones = otherShovelers.map((s) => s.phone);
-    await broadcastSMS(
-      otherPhones,
-      `Job #${job.id.substring(0, 8)} has been claimed and is no longer available.`
-    );
+  if (otherPhones.length > 0) {
+    await broadcastSMS(otherPhones, `Job #${job.id.substring(0, 8)} has been claimed.`);
   }
 
-  return `You've successfully claimed job #${job.id.substring(0, 8)}!
-Address: ${job.address}
-${job.description || ""}
-The customer has been notified that you're on your way.
+  return `You claimed job #${job.id.substring(0, 8)}!
 
-When finished, reply: DONE ${job.id.substring(0, 8)}`;
+${job.address}
+${job.description || ""}
+${job.max_price ? `Budget: $${job.max_price}` : ""}
+
+Reply START when you arrive, DONE when finished.`;
 }
 
-/**
- * Handle shoveler marking job as done
- */
-async function handleShovelerDone(
-  phone: string,
-  body: string
-): Promise<string> {
-  const match = body.match(DONE_REGEX);
+async function handleShovelerStart(phone: string, body: string): Promise<string> {
+  const match = body.match(START_REGEX);
   const jobIdInput = match?.[1]?.trim();
 
-  // If no job ID provided, find their most recent claimed job
   let job;
-
   if (!jobIdInput) {
+    // Find their most recent claimed job
     const { data, error } = await supabase
       .from("jobs")
       .select("*")
       .eq("shoveler_phone", phone)
       .eq("status", "claimed")
-      .order("created_at", { ascending: false })
+      .order("claimed_at", { ascending: false })
       .limit(1)
       .single();
 
     if (error || !data) {
-      return "No active job found. Make sure you've claimed a job first, or specify the job ID: DONE <job_id>";
+      return "No claimed job found. Claim a job first!";
     }
     job = data;
   } else {
-    // Find the specific job
     const { data, error } = await supabase
       .from("jobs")
       .select("*")
@@ -238,86 +345,146 @@ async function handleShovelerDone(
       .single();
 
     if (error || !data) {
-      return `Job not found or you didn't claim this job. Check the job ID and try again.`;
+      return "Job not found or not yours.";
+    }
+    job = data;
+  }
+
+  if (job.status === "in_progress") {
+    return `Job #${job.id.substring(0, 8)} is already in progress.`;
+  }
+
+  if (job.status !== "claimed") {
+    return `Cannot start job (status: ${job.status}).`;
+  }
+
+  await supabase
+    .from("jobs")
+    .update({ status: "in_progress" })
+    .eq("id", job.id);
+
+  // Notify customer
+  await sendSMS(
+    job.customer_phone,
+    `Your shoveler has arrived and started working at ${job.address}!`
+  );
+
+  return `Started job #${job.id.substring(0, 8)}. Reply DONE when finished.`;
+}
+
+async function handleShovelerDone(phone: string, body: string): Promise<string> {
+  const match = body.match(DONE_REGEX);
+  const jobIdInput = match?.[1]?.trim();
+
+  let job;
+  if (!jobIdInput) {
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("shoveler_phone", phone)
+      .in("status", ["claimed", "in_progress"])
+      .order("claimed_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return "No active job to complete.";
+    }
+    job = data;
+  } else {
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .or(`id.eq.${jobIdInput},id.ilike.${jobIdInput}%`)
+      .eq("shoveler_phone", phone)
+      .single();
+
+    if (error || !data) {
+      return "Job not found or not yours.";
     }
     job = data;
   }
 
   if (job.status === "completed") {
-    return `Job #${job.id.substring(0, 8)} is already marked as completed.`;
+    return `Job #${job.id.substring(0, 8)} is already completed.`;
   }
 
-  if (job.status !== "claimed") {
-    return `This job cannot be completed (status: ${job.status}).`;
-  }
-
-  // Mark job as completed
-  const { error: updateError } = await supabase
+  await supabase
     .from("jobs")
-    .update({ status: "completed" })
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
     .eq("id", job.id);
 
-  if (updateError) {
-    console.error("Error completing job:", updateError);
-    return "Error completing job. Please try again.";
-  }
-
-  // Notify the customer
+  // Notify customer
   await sendSMS(
     job.customer_phone,
-    `Your snow removal at ${job.address} has been completed! Thanks for using SnowSOS.`
+    `Your snow removal at ${job.address} is complete! Thanks for using SnowSOS.`
   );
 
-  return `Job #${job.id.substring(0, 8)} marked as complete! The customer has been notified. Thanks for shoveling!`;
+  return `Job #${job.id.substring(0, 8)} completed! Customer notified. Thanks for shoveling!`;
 }
+
+async function getShovelerJobStatus(phone: string): Promise<string> {
+  const { data: jobs } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("shoveler_phone", phone)
+    .in("status", ["claimed", "in_progress"])
+    .order("claimed_at", { ascending: false })
+    .limit(3);
+
+  if (!jobs || jobs.length === 0) {
+    return "No active jobs. Wait for new job alerts!";
+  }
+
+  const lines = jobs.map((j: Job) => {
+    const shortId = j.id.substring(0, 8);
+    return `#${shortId}: ${j.status}\n${j.address}`;
+  });
+
+  return `Your jobs:\n\n${lines.join("\n\n")}`;
+}
+
+// ===========================================
+// Main Handler
+// ===========================================
 
 export async function POST(request: NextRequest) {
   try {
     const payload: ClickSendPayload = await request.json();
 
     if (!payload.messages || payload.messages.length === 0) {
-      return NextResponse.json({ error: "No messages in payload" }, { status: 400 });
+      return NextResponse.json({ error: "No messages" }, { status: 400 });
     }
 
     const msg = payload.messages[0];
     const from = msg.from;
     const body = msg.body.trim();
 
-    console.log(`Inbound SMS from ${from}: ${body}`);
+    console.log(`SMS from ${from}: ${body}`);
 
-    // Determine if sender is a shoveler or customer
+    // Determine if sender is a shoveler
     const shoveler = await isShoveler(from);
 
-    let responseMessage: string;
-
+    let response: string;
     if (shoveler) {
-      // Handle shoveler commands
-      if (DONE_REGEX.test(body)) {
-        responseMessage = await handleShovelerDone(from, body);
-      } else if (CLAIM_REGEX.test(body)) {
-        responseMessage = await handleShovelerClaim(from, body);
-      } else {
-        responseMessage = "Commands: CLAIM <job_id> to accept a job, DONE to complete your current job.";
-      }
+      response = await handleShovelerMessage(from, body);
     } else {
-      // Handle customer request
-      responseMessage = await handleCustomerRequest(from, body);
+      response = await handleCustomerRequest(from, body);
     }
 
-    // Send response back to sender
-    await sendSMS(from, responseMessage);
+    // Send response
+    await sendSMS(from, response);
 
-    return NextResponse.json({ success: true, message: "Processed" });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Inbound SMS error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("SMS error:", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
 
-// Also handle GET for webhook verification if needed
 export async function GET() {
   return NextResponse.json({ status: "ok", endpoint: "sms-inbound" });
 }
