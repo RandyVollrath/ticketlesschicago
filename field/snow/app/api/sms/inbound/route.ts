@@ -434,7 +434,8 @@ async function handleShovelerBid(phone: string, body: string): Promise<string> {
     return `Job #${job.id.substring(0, 8)} is not accepting bids. Try CLAIM instead.`;
   }
 
-  if (job.status !== "pending") {
+  // Accept both "pending" (SMS-created) and "open" (web-created) jobs
+  if (job.status !== "pending" && job.status !== "open") {
     return `Job #${job.id.substring(0, 8)} is no longer accepting bids (${job.status}).`;
   }
 
@@ -532,7 +533,8 @@ async function handleShovelerClaim(phone: string, body: string): Promise<string>
     return `Job #${job.id.substring(0, 8)} is already taken.`;
   }
 
-  if (job.status !== "pending") {
+  // Accept both "pending" (SMS-created) and "open" (web-created) jobs
+  if (job.status !== "pending" && job.status !== "open") {
     return `Job #${job.id.substring(0, 8)} is not available (${job.status}).`;
   }
 
@@ -541,7 +543,7 @@ async function handleShovelerClaim(phone: string, body: string): Promise<string>
     return `Your rate ($${shoveler.rate}) exceeds the customer's budget ($${job.max_price}). Job not claimed.`;
   }
 
-  // Claim the job
+  // Claim the job - use "in" filter to handle both "pending" and "open" statuses
   const { error: updateError } = await supabase
     .from("jobs")
     .update({
@@ -550,7 +552,7 @@ async function handleShovelerClaim(phone: string, body: string): Promise<string>
       claimed_at: new Date().toISOString(),
     })
     .eq("id", job.id)
-    .eq("status", "pending"); // Ensure still pending (race condition protection)
+    .in("status", ["pending", "open"]); // Ensure still available (race condition protection)
 
   if (updateError) {
     console.error("Error claiming job:", updateError);
