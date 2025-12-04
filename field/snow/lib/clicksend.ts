@@ -1,6 +1,3 @@
-const CLICKSEND_USERNAME = process.env.CLICKSEND_USERNAME!;
-const CLICKSEND_API_KEY = process.env.CLICKSEND_API_KEY!;
-
 interface SendSMSResult {
   success: boolean;
   message?: string;
@@ -13,7 +10,15 @@ interface SendSMSResult {
  * @param message - The SMS message content
  */
 export async function sendSMS(to: string, message: string): Promise<SendSMSResult> {
-  const auth = Buffer.from(`${CLICKSEND_USERNAME}:${CLICKSEND_API_KEY}`).toString("base64");
+  const username = process.env.CLICKSEND_USERNAME;
+  const apiKey = process.env.CLICKSEND_API_KEY;
+
+  if (!username || !apiKey) {
+    console.error("ClickSend credentials missing:", { username: !!username, apiKey: !!apiKey });
+    return { success: false, error: "SMS service not configured" };
+  }
+
+  const auth = Buffer.from(`${username}:${apiKey}`).toString("base64");
 
   try {
     const response = await fetch("https://rest.clicksend.com/v3/sms/send", {
