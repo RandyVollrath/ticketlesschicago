@@ -23,12 +23,12 @@ export default function Home() {
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
                 Text your address to:
               </p>
-              <p className="text-3xl md:text-4xl font-bold text-sky-600 dark:text-sky-400 font-mono">
-                (XXX) XXX-XXXX
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                Replace with your ClickSend number
-              </p>
+              <a
+                href="sms:+18335623866"
+                className="text-3xl md:text-4xl font-bold text-sky-600 dark:text-sky-400 font-mono hover:underline"
+              >
+                (833) 562-3866
+              </a>
             </div>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
               Example: &quot;123 Main St, driveway and sidewalk please&quot;
@@ -64,6 +64,24 @@ export default function Home() {
                 You&apos;ll receive a text when a shoveler claims your job and is on the way.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Shoveler CTA */}
+        <div className="text-center mt-16">
+          <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-8 max-w-xl mx-auto">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
+              Want to earn money shoveling?
+            </h2>
+            <p className="text-slate-600 dark:text-slate-300 mb-4">
+              Get paid to help your neighbors clear snow.
+            </p>
+            <a
+              href="/shovel"
+              className="inline-block bg-slate-800 dark:bg-white dark:text-slate-800 hover:bg-slate-700 dark:hover:bg-slate-100 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+            >
+              Sign Up to Shovel
+            </a>
           </div>
         </div>
 
