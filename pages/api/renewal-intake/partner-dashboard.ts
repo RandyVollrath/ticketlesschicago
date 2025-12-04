@@ -207,10 +207,44 @@ async function getPendingReview(res: NextApiResponse, partnerId: string) {
   });
 }
 
+// City sticker vehicle types
+const CITY_STICKER_TYPES = ['P', 'MB', 'LP', 'ST', 'LT', 'passenger', 'motorcycle', 'large_passenger', 'small_truck', 'large_truck'];
+// License plate types
+const LICENSE_PLATE_TYPES = ['standard', 'vanity'];
+
+// Platform service fee
+const PLATFORM_FEE = 2.50;
+const STRIPE_PERCENTAGE = 0.029;
+const STRIPE_FIXED = 0.30;
+
 function formatOrder(order: any) {
+  // Determine renewal type from sticker_type
+  const stickerType = order.sticker_type?.toLowerCase?.() || order.sticker_type || '';
+  const isLicensePlate = LICENSE_PLATE_TYPES.includes(stickerType);
+  const isCitySticker = !isLicensePlate && (CITY_STICKER_TYPES.includes(order.sticker_type?.toUpperCase?.()) || CITY_STICKER_TYPES.includes(stickerType));
+  const renewalType = isLicensePlate ? 'license_plate' : 'city_sticker';
+
+  // Calculate what customer paid (sticker + platform fee + stripe fees)
+  const stickerPrice = order.sticker_price || 0;
+  const customerPaid = Math.round(((stickerPrice + PLATFORM_FEE + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE)) * 100) / 100;
+
+  // Sticker type labels
+  const stickerTypeLabels: Record<string, string> = {
+    'P': 'Passenger',
+    'MB': 'Motorcycle/Business',
+    'LP': 'Large Passenger',
+    'ST': 'Small Truck',
+    'LT': 'Large Truck',
+    'passenger': 'Passenger',
+    'standard': 'Standard Plate',
+    'vanity': 'Vanity Plate',
+  };
+
   return {
     id: order.id,
     orderNumber: order.order_number,
+    renewalType,
+    renewalTypeLabel: renewalType === 'city_sticker' ? 'City Sticker' : 'License Plate',
     customer: {
       name: order.customer_name,
       email: order.customer_email,
@@ -230,10 +264,13 @@ function formatOrder(order: any) {
       zip: order.zip_code,
     },
     stickerType: order.sticker_type,
+    stickerTypeLabel: stickerTypeLabels[order.sticker_type] || order.sticker_type,
     amount: {
       stickerPrice: order.sticker_price,
       serviceFee: order.service_fee,
       total: order.total_amount,
+      customerPaid,
+      platformFee: PLATFORM_FEE,
     },
     status: order.status,
     paymentStatus: order.payment_status,

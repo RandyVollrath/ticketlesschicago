@@ -34,6 +34,8 @@ interface LicenseData {
 interface Order {
   id: string;
   orderNumber: string;
+  renewalType: 'city_sticker' | 'license_plate';
+  renewalTypeLabel: string;
   customer: {
     name: string;
     email: string;
@@ -53,10 +55,13 @@ interface Order {
     zip: string;
   };
   stickerType: string;
+  stickerTypeLabel: string;
   amount: {
     stickerPrice: number;
     serviceFee: number;
     total: number;
+    customerPaid: number;
+    platformFee: number;
   };
   status: string;
   paymentStatus: string;
@@ -449,13 +454,16 @@ export default function RemitterPortal() {
                         Order #
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Customer
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Vehicle
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Amount
+                        You Receive
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Status
@@ -468,14 +476,23 @@ export default function RemitterPortal() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {order.orderNumber}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            order.renewalType === 'city_sticker'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {order.renewalTypeLabel || 'City Sticker'}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {order.customer.name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {order.vehicle.licensePlate} ({order.vehicle.state})
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${order.amount.total}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                          ${order.amount.total?.toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -546,7 +563,18 @@ export default function RemitterPortal() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Renewal Type</p>
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                          order.renewalType === 'city_sticker'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {order.renewalTypeLabel || 'City Sticker'}
+                        </span>
+                        <p className="text-gray-500 text-xs mt-1">{order.stickerTypeLabel || order.stickerType}</p>
+                      </div>
                       <div>
                         <p className="text-gray-600">Vehicle</p>
                         <p className="font-medium">{order.vehicle.licensePlate} ({order.vehicle.state})</p>
@@ -560,15 +588,16 @@ export default function RemitterPortal() {
                         <p className="text-gray-600">{order.address.city}, {order.address.zip}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Sticker Type</p>
-                        <p className="font-medium capitalize">{order.stickerType}</p>
+                        <p className="text-gray-600">You Receive</p>
+                        <p className="font-medium text-green-700">${order.amount.total?.toFixed(2)}</p>
+                        <p className="text-gray-500 text-xs">
+                          Sticker: ${order.amount.stickerPrice?.toFixed(2)} + Fee: ${order.amount.serviceFee?.toFixed(2)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Amount</p>
-                        <p className="font-medium">${order.amount.total}</p>
-                        <p className="text-gray-600 text-xs">
-                          Sticker: ${order.amount.stickerPrice} + Fee: ${order.amount.serviceFee}
-                        </p>
+                        <p className="text-gray-600">Customer Paid</p>
+                        <p className="font-medium">${order.amount.customerPaid?.toFixed(2)}</p>
+                        <p className="text-gray-500 text-xs">Includes processing fees</p>
                       </div>
                     </div>
 
@@ -868,7 +897,18 @@ export default function RemitterPortal() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Renewal Type</p>
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                          order.renewalType === 'city_sticker'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {order.renewalTypeLabel || 'City Sticker'}
+                        </span>
+                        <p className="text-gray-500 text-xs mt-1">{order.stickerTypeLabel || order.stickerType}</p>
+                      </div>
                       <div>
                         <p className="text-gray-600">Vehicle</p>
                         <p className="font-medium">{order.vehicle.licensePlate} ({order.vehicle.state})</p>
@@ -879,12 +919,15 @@ export default function RemitterPortal() {
                         <p className="text-gray-600">{order.address.city}, {order.address.zip}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Sticker Type</p>
-                        <p className="font-medium capitalize">{order.stickerType}</p>
+                        <p className="text-gray-600">You Receive</p>
+                        <p className="font-medium text-green-700">${order.amount.total?.toFixed(2)}</p>
+                        <p className="text-gray-500 text-xs">
+                          Sticker: ${order.amount.stickerPrice?.toFixed(2)} + Fee: ${order.amount.serviceFee?.toFixed(2)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Amount</p>
-                        <p className="font-medium text-green-700">${order.amount.total}</p>
+                        <p className="text-gray-600">Customer Paid</p>
+                        <p className="font-medium">${order.amount.customerPaid?.toFixed(2)}</p>
                       </div>
                     </div>
 
