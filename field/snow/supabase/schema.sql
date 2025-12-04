@@ -176,3 +176,105 @@ COMMENT ON TABLE shovelers IS 'Snow removal providers with rates and location';
 COMMENT ON TABLE jobs IS 'Snow removal job requests with geo-location';
 COMMENT ON FUNCTION haversine_distance IS 'Calculate distance between two points in miles';
 COMMENT ON FUNCTION get_nearby_shovelers IS 'Find active shovelers within radius of a job location';
+
+-- ===========================================
+-- BATTLE-READY FEATURES (Christmas Launch)
+-- ===========================================
+
+-- Shoveler online/offline status
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE;
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+
+-- Reviews table
+CREATE TABLE IF NOT EXISTS reviews (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    job_id UUID REFERENCES jobs(id) NOT NULL,
+    customer_phone TEXT NOT NULL,
+    shoveler_phone TEXT NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    tip_amount NUMERIC DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reviews_shoveler ON reviews(shoveler_phone);
+CREATE INDEX IF NOT EXISTS idx_reviews_job ON reviews(job_id);
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Reviews full access" ON reviews FOR ALL USING (true);
+
+-- Payout requests table
+CREATE TABLE IF NOT EXISTS payout_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    shoveler_phone TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    venmo_handle TEXT,
+    cashapp_handle TEXT,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'rejected')),
+    admin_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_payout_requests_phone ON payout_requests(shoveler_phone);
+CREATE INDEX IF NOT EXISTS idx_payout_requests_status ON payout_requests(status);
+ALTER TABLE payout_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Payout requests full access" ON payout_requests FOR ALL USING (true);
+
+-- Storm mode tracking
+CREATE TABLE IF NOT EXISTS storm_alerts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    snow_inches NUMERIC NOT NULL,
+    surge_multiplier NUMERIC DEFAULT 1.5,
+    active BOOLEAN DEFAULT TRUE,
+    notified_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ
+);
+
+ALTER TABLE storm_alerts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Storm alerts full access" ON storm_alerts FOR ALL USING (true);
+
+-- Leaderboard opt-in for shovelers
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS show_on_leaderboard BOOLEAN DEFAULT FALSE;
+
+-- Add average rating to shovelers (cached)
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS avg_rating NUMERIC DEFAULT 0;
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS total_reviews INTEGER DEFAULT 0;
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS total_tips NUMERIC DEFAULT 0;
+
+-- Function to update shoveler rating
+CREATE OR REPLACE FUNCTION update_shoveler_rating()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE shovelers SET
+        avg_rating = (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE shoveler_phone = NEW.shoveler_phone),
+        total_reviews = (SELECT COUNT(*) FROM reviews WHERE shoveler_phone = NEW.shoveler_phone),
+        total_tips = (SELECT COALESCE(SUM(tip_amount), 0) FROM reviews WHERE shoveler_phone = NEW.shoveler_phone)
+    WHERE phone = NEW.shoveler_phone;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to auto-update rating on review insert
+DROP TRIGGER IF EXISTS trigger_update_shoveler_rating ON reviews;
+CREATE TRIGGER trigger_update_shoveler_rating
+    AFTER INSERT ON reviews
+    FOR EACH ROW
+    EXECUTE FUNCTION update_shoveler_rating();
+
+-- ===========================================
+-- LEADERBOARD VIEW
+-- ===========================================
+CREATE OR REPLACE VIEW leaderboard_current_storm AS
+SELECT
+    s.phone,
+    LEFT(s.name, 1) || REPEAT('*', LENGTH(s.name) - 1) as display_name,
+    s.avg_rating,
+    COALESCE(SUM(e.shoveler_payout), 0) as storm_earnings,
+    COUNT(e.id) as jobs_completed
+FROM shovelers s
+LEFT JOIN earnings e ON s.phone = e.shoveler_phone
+    AND e.created_at >= NOW() - INTERVAL '48 hours'
+WHERE s.show_on_leaderboard = TRUE
+GROUP BY s.phone, s.name, s.avg_rating
+ORDER BY storm_earnings DESC
+LIMIT 10;
