@@ -141,6 +141,13 @@ export default function Home() {
             setAddress(place.formatted_address);
           }
         });
+
+        // Prevent form submission when pressing Enter in the autocomplete
+        addressInputRef.current.addEventListener("keydown", (e: KeyboardEvent) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+          }
+        });
       }
     };
 

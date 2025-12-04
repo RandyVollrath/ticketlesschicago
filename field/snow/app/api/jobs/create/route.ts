@@ -230,27 +230,11 @@ Text CANCEL ${shortId} to cancel.`
       shovelers = shovelers.filter((s) => s.has_truck);
     }
 
-    // Broadcast to shovelers (only online ones)
-    const onlineShovelers = shovelers.filter((s) => s.is_online);
+    // Filter out suspended plowers (3+ no-show strikes)
+    shovelers = shovelers.filter((s) => (s.no_show_strikes || 0) < 3);
 
-    if (onlineShovelers.length > 0) {
-      // Send push notifications with SMS fallback
-      const notification = notifications.newJob(
-        geo?.formattedAddress || body.address,
-        body.maxPrice || null,
-        job.id
-      );
-
-      await broadcastToPlowers(
-        onlineShovelers.map((s) => s.phone),
-        notification.payload,
-        notification.sms
-      );
-    }
-
-    // Also send SMS to offline shovelers who might check their phone
-    const offlineShovelers = shovelers.filter((s) => !s.is_online);
-    if (offlineShovelers.length > 0) {
+    // Broadcast SMS to ALL shovelers (simplified - no online/offline distinction)
+    if (shovelers.length > 0) {
       const priceInfo = body.maxPrice ? `Budget: $${body.maxPrice}` : "Budget: Open";
       const weatherLine = weatherHint ? `\n${weatherHint}` : "";
 
@@ -275,7 +259,7 @@ Reply: CLAIM ${job.id} to accept`;
       }
 
       await broadcastSMS(
-        offlineShovelers.map((s) => s.phone),
+        shovelers.map((s) => s.phone),
         broadcastMessage
       );
     }
