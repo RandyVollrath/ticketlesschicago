@@ -449,7 +449,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           service_fee: REMITTER_SERVICE_FEE, // $12 processing fee to remitter
           total_amount: stickerPrice + REMITTER_SERVICE_FEE, // Total remitter receives
           payment_status: 'paid',
-          status: 'pending',
+          status: 'submitted', // Ready for remitter to process
           stripe_payment_intent_id: paymentIntent.id,
         });
 
