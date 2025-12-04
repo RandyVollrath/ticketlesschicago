@@ -377,7 +377,7 @@ export function calculateDistance(
 export async function getNearbyShovelers(
   lat: number,
   long: number,
-  maxDistanceMiles: number = 15,
+  maxDistanceMiles: number = 9999, // No distance restriction - prioritize nearby but show all
   maxRate?: number
 ): Promise<Shoveler[]> {
   // Try using the database function first

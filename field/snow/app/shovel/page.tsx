@@ -274,7 +274,7 @@ export default function ShovelerSignup() {
                 <div className="mt-2 text-xs text-amber-700 dark:text-amber-300 space-y-1">
                   <p className="font-medium">Why we need this:</p>
                   <ul className="list-disc list-inside space-y-0.5 text-amber-600 dark:text-amber-400">
-                    <li>We only send you jobs within 15 miles of your location</li>
+                    <li>Jobs closer to you appear first in your feed</li>
                     <li>Closer jobs = faster response = more claims</li>
                     <li>Your exact address is never shown to customers</li>
                   </ul>
