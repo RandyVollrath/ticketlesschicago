@@ -109,8 +109,9 @@ You'll receive texts when customers need help nearby. Reply HELP for commands.`
     });
   } catch (error) {
     console.error("Add shoveler error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: `Internal server error: ${message}` },
       { status: 500 }
     );
   }
