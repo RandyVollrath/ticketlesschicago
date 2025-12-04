@@ -22,6 +22,12 @@ interface JobDetails {
   shovelerPhone: string | null;
   lat: number | null;
   long: number | null;
+  surgeMultiplier: number;
+  weatherNote: string | null;
+  backupPlowerId: string | null;
+  // Payment
+  paymentStatus: "unpaid" | "requires_payment" | "paid" | "refunded";
+  totalPriceCents: number;
 }
 
 interface Bid {
@@ -63,6 +69,17 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   // Live map state
   const [plowerLocation, setPlowerLocation] = useState<PlowerLocation | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
+
+  // Payment state
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
+
+  // New job_messages based chat
+  const [jobMessages, setJobMessages] = useState<Array<{
+    id: string;
+    sender_type: "customer" | "plower";
+    message: string;
+    created_at: string;
+  }>>([]);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -238,9 +255,91 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
     setSubmittingReview(false);
   };
 
+  // Fetch job messages from job_messages table
+  const fetchJobMessages = async () => {
+    if (!job) return;
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/messages?phone=${encodeURIComponent(phone)}`);
+      const data = await res.json();
+      if (data.messages) {
+        setJobMessages(data.messages);
+      }
+    } catch {
+      console.error("Failed to fetch messages");
+    }
+  };
+
+  // Send message using the new job_messages API
+  const handleSendNewMessage = async () => {
+    if (!message.trim() || !isAuthenticated || !job) return;
+
+    setSending(true);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone,
+          message: message.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setJobMessages((prev) => [...prev, data.message]);
+        setMessage("");
+      } else {
+        setError(data.error || "Failed to send message");
+      }
+    } catch {
+      setError("Network error");
+    }
+    setSending(false);
+  };
+
+  // Initiate Stripe payment
+  const initiatePayment = async () => {
+    if (!job || role !== "customer") return;
+
+    setInitiatingPayment(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/jobs/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId: job.id,
+          customerPhone: phone,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.clientSecret) {
+        // For now, redirect to a simple payment confirmation
+        // In a full implementation, you'd use Stripe Elements here
+        alert(`Payment of $${(data.amount / 100).toFixed(2)} initiated. Use Stripe Checkout to complete.`);
+        // Refresh to update payment status
+        window.location.reload();
+      } else if (data.alreadyPaid) {
+        setJob({ ...job, paymentStatus: "paid" });
+      } else {
+        setError(data.error || "Failed to initiate payment");
+      }
+    } catch {
+      setError("Network error");
+    }
+    setInitiatingPayment(false);
+  };
+
   // Set up realtime
   useEffect(() => {
     if (!isAuthenticated) return;
+
+    // Fetch job messages initially
+    fetchJobMessages();
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -248,13 +347,14 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
     if (supabaseUrl && supabaseAnonKey) {
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      const channel = supabase
+      // Subscribe to job updates
+      const jobChannel = supabase
         .channel(`job-${jobId}`)
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "jobs", filter: `id=eq.${jobId}` },
           (payload) => {
-            const updated = payload.new as { chat_history?: ChatMessage[]; bids?: Bid[]; status?: string };
+            const updated = payload.new as { chat_history?: ChatMessage[]; bids?: Bid[]; status?: string; payment_status?: string };
             if (updated.chat_history) {
               setChatHistory(updated.chat_history);
             }
@@ -268,16 +368,38 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
                 setShowReview(true);
               }
             }
+            if (updated.payment_status && job) {
+              setJob({ ...job, paymentStatus: updated.payment_status as JobDetails["paymentStatus"] });
+            }
+          }
+        )
+        .subscribe();
+
+      // Subscribe to job_messages for real-time chat
+      const messagesChannel = supabase
+        .channel(`job-messages-${jobId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "job_messages", filter: `job_id=eq.${jobId}` },
+          (payload) => {
+            const newMsg = payload.new as { id: string; sender_type: "customer" | "plower"; message: string; created_at: string };
+            setJobMessages((prev) => {
+              // Avoid duplicates
+              if (prev.some((m) => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
           }
         )
         .subscribe();
 
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(jobChannel);
+        supabase.removeChannel(messagesChannel);
       };
     } else {
       const interval = setInterval(() => {
         authenticateUser(phone);
+        fetchJobMessages();
       }, 5000);
       return () => clearInterval(interval);
     }
@@ -400,13 +522,93 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
           {job?.description && (
             <p className="text-sm text-slate-600 dark:text-slate-400">{job.description}</p>
           )}
-          {job?.maxPrice && (
-            <p className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">
-              Budget: ${job.maxPrice}
+          <div className="flex items-center gap-2 mt-1">
+            {job?.maxPrice && (
+              <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                Budget: ${job.maxPrice}
+              </span>
+            )}
+            {/* Surge Badge */}
+            {job?.surgeMultiplier && job.surgeMultiplier > 1 && (
+              <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 rounded-full font-medium animate-pulse">
+                SURGE {job.surgeMultiplier}x
+              </span>
+            )}
+          </div>
+          {job?.weatherNote && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              {job.weatherNote}
             </p>
           )}
         </div>
       </div>
+
+      {/* Payment Section for Customer */}
+      {role === "customer" && job?.shovelerPhone && job.paymentStatus !== "paid" && (
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-indigo-700 p-4">
+          <div className="container mx-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-white">
+                <p className="font-bold">Secure Payment Required</p>
+                <p className="text-sm opacity-90">
+                  Pay ${job.maxPrice || 50} to confirm your job
+                </p>
+              </div>
+              <button
+                onClick={initiatePayment}
+                disabled={initiatingPayment}
+                className="bg-white text-indigo-700 font-bold py-2 px-6 rounded-lg hover:bg-indigo-50 disabled:opacity-50 transition-colors whitespace-nowrap"
+              >
+                {initiatingPayment ? "Processing..." : `Pay $${job.maxPrice || 50}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Confirmed Banner */}
+      {job?.paymentStatus === "paid" && (
+        <div className="bg-green-100 dark:bg-green-900/30 border-b border-green-200 dark:border-green-800 p-3">
+          <div className="container mx-auto flex items-center gap-2 text-green-800 dark:text-green-200">
+            <span>&#9989;</span>
+            <span className="font-medium">Payment confirmed - your plower is ready to go!</span>
+          </div>
+        </div>
+      )}
+
+      {/* Claim as Backup Button (for plowers viewing accepted jobs) */}
+      {role === "shoveler" && (job?.status === "accepted" || job?.status === "on_the_way") && !job?.backupPlowerId && job?.shovelerPhone !== phone && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 p-4">
+          <div className="container mx-auto">
+            <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
+              Another plower is assigned but you can claim as backup. If they no-show, you get the job + $10 bonus!
+            </p>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/jobs/claim/${jobId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ shovelerPhone: phone, asBackup: true }),
+                  });
+                  const data = await res.json();
+                  if (res.ok) {
+                    alert("You are now the backup plower!");
+                    window.location.reload();
+                  } else {
+                    setError(data.error || "Failed to claim backup");
+                  }
+                } catch {
+                  setError("Network error");
+                }
+              }}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 rounded-lg"
+            >
+              Claim as Backup (+$10 bonus if activated)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Live Map for customer (claimed/in_progress jobs) */}
       {role === "customer" && (job?.status === "claimed" || job?.status === "in_progress") && plowerLocation && (
@@ -572,35 +774,55 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
       )}
 
       {/* Chat Section */}
-      {["claimed", "in_progress", "completed"].includes(job?.status || "") && (
+      {["claimed", "accepted", "on_the_way", "in_progress", "completed"].includes(job?.status || "") && (
         <>
           <div className="flex-1 overflow-y-auto p-4">
             <div className="container mx-auto max-w-2xl space-y-4">
-              {chatHistory.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">
-                  No messages yet. Start the conversation!
-                </p>
-              ) : (
-                chatHistory.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.sender === role ? "justify-end" : "justify-start"}`}
-                  >
+              {/* Combined messages from legacy chat_history and new job_messages */}
+              {(() => {
+                // Combine legacy and new messages
+                const legacyMsgs = chatHistory.map((msg, idx) => ({
+                  id: `legacy-${idx}`,
+                  sender_type: msg.sender === "customer" ? "customer" as const : "plower" as const,
+                  message: msg.message,
+                  created_at: msg.timestamp,
+                }));
+                const allMessages = [...legacyMsgs, ...jobMessages].sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+
+                if (allMessages.length === 0) {
+                  return (
+                    <p className="text-center text-slate-500 py-8">
+                      No messages yet. Start the conversation!
+                    </p>
+                  );
+                }
+
+                return allMessages.map((msg) => {
+                  const isOwnMessage = (role === "customer" && msg.sender_type === "customer") ||
+                    (role === "shoveler" && msg.sender_type === "plower");
+                  return (
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        msg.sender === role
-                          ? "bg-sky-600 text-white rounded-br-sm"
-                          : "bg-white dark:bg-slate-700 text-slate-800 dark:text-white rounded-bl-sm"
-                      }`}
+                      key={msg.id}
+                      className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                     >
-                      <p className="text-sm">{msg.message}</p>
-                      <p className={`text-xs mt-1 ${msg.sender === role ? "text-sky-200" : "text-slate-400"}`}>
-                        {formatTime(msg.timestamp)}
-                      </p>
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                          isOwnMessage
+                            ? "bg-sky-600 text-white rounded-br-sm"
+                            : "bg-white dark:bg-slate-700 text-slate-800 dark:text-white rounded-bl-sm"
+                        }`}
+                      >
+                        <p className="text-sm">{msg.message}</p>
+                        <p className={`text-xs mt-1 ${isOwnMessage ? "text-sky-200" : "text-slate-400"}`}>
+                          {formatTime(msg.created_at)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  );
+                });
+              })()}
               <div ref={chatEndRef} />
             </div>
           </div>
@@ -613,12 +835,12 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendNewMessage()}
                   placeholder="Type a message..."
                   className="flex-1 px-4 py-2 rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 />
                 <button
-                  onClick={handleSend}
+                  onClick={handleSendNewMessage}
                   disabled={sending || !message.trim()}
                   className="bg-sky-600 hover:bg-sky-700 disabled:bg-sky-300 text-white px-6 py-2 rounded-full font-medium"
                 >

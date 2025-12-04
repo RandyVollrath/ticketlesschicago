@@ -29,6 +29,11 @@ interface Job {
   selected_bid_index: number | null;
   service_type: string;
   surge_multiplier: number;
+  // Cancellation
+  cancellation_fee: number;
+  cancellation_fee_paid: boolean;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
 }
 
 interface Shoveler {
@@ -297,7 +302,7 @@ export default function AdminDashboard() {
           <>
             {/* Job Filters */}
             <div className="mb-4 flex gap-2 flex-wrap">
-              {["all", "pending", "claimed", "in_progress", "completed", "cancelled"].map((status) => (
+              {["all", "pending", "open", "accepted", "on_the_way", "in_progress", "completed", "cancelled_by_customer", "cancelled_by_plower"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
@@ -307,10 +312,61 @@ export default function AdminDashboard() {
                       : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                   }`}
                 >
-                  {status === "all" ? "All" : status.replace("_", " ")}
+                  {status === "all" ? "All" : status.replace(/_/g, " ")}
                 </button>
               ))}
             </div>
+
+            {/* Pending Cancellation Fees Alert */}
+            {jobs.filter(j => j.cancellation_fee > 0 && !j.cancellation_fee_paid).length > 0 && (
+              <div className="mb-4 p-4 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-xl">
+                <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-2">
+                  Pending Cancellation Fees ({jobs.filter(j => j.cancellation_fee > 0 && !j.cancellation_fee_paid).length})
+                </h3>
+                <div className="space-y-2">
+                  {jobs.filter(j => j.cancellation_fee > 0 && !j.cancellation_fee_paid).map(job => {
+                    const shoveler = getShovelerByPhone(job.shoveler_phone || "");
+                    return (
+                      <div key={job.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-lg">
+                        <div>
+                          <span className="font-mono text-sm text-slate-600 dark:text-slate-400">#{job.id.substring(0, 8)}</span>
+                          <span className="ml-2 text-sm text-slate-700 dark:text-slate-300">{job.address}</span>
+                          <div className="text-xs text-slate-500">
+                            Owed to: {shoveler?.name || formatPhone(job.shoveler_phone || "")}
+                            {shoveler?.venmo_handle && ` (Venmo: @${shoveler.venmo_handle})`}
+                            {shoveler?.cashapp_handle && ` (CashApp: $${shoveler.cashapp_handle})`}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-amber-700 dark:text-amber-300">${job.cancellation_fee}</span>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Mark $${job.cancellation_fee} cancellation fee as paid?`)) {
+                                try {
+                                  const res = await fetch("/api/admin/cancellation-fee", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ jobId: job.id }),
+                                  });
+                                  if (res.ok) {
+                                    fetchData();
+                                  }
+                                } catch (e) {
+                                  console.error("Failed to mark fee as paid:", e);
+                                }
+                              }
+                            }}
+                            className="px-3 py-1 text-xs bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                          >
+                            Mark Paid
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow overflow-hidden">
               {filteredJobs.length === 0 ? (

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Script from "next/script";
+import Image from "next/image";
 
 declare global {
   interface Window {
@@ -12,6 +13,12 @@ declare global {
   }
 }
 
+interface Quote {
+  min: number;
+  max: number;
+  suggested: number;
+}
+
 export default function Home() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -19,16 +26,101 @@ export default function Home() {
   const [maxPrice, setMaxPrice] = useState("");
   const [bidMode, setBidMode] = useState(false);
   const [serviceType, setServiceType] = useState<"any" | "truck" | "shovel">("any");
+  const [coolWithTeens, setCoolWithTeens] = useState(true);
+  const [scheduledFor, setScheduledFor] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [pics, setPics] = useState<string[]>([]);
+  const [neighborhood, setNeighborhood] = useState<string | null>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get default schedule time (tomorrow morning 8 AM)
+  const getDefaultScheduleTime = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(8, 0, 0, 0);
+    return tomorrow.toISOString().slice(0, 16);
+  };
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "");
     if (digits.length <= 3) return digits;
     if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  };
+
+  // Fetch instant quote when address or description changes
+  const fetchQuote = useCallback(async () => {
+    if (!address || address.length < 10) return;
+
+    setQuoteLoading(true);
+    try {
+      const res = await fetch("/api/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, description, serviceType }),
+      });
+      const data = await res.json();
+      if (data.quote) {
+        setQuote(data.quote);
+        setNeighborhood(data.neighborhood);
+        // Auto-fill suggested price if empty
+        if (!maxPrice) {
+          setMaxPrice(data.quote.suggested.toString());
+        }
+      }
+    } catch (err) {
+      console.error("Quote error:", err);
+    }
+    setQuoteLoading(false);
+  }, [address, description, serviceType, maxPrice]);
+
+  // Debounced quote fetch
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (address.length >= 10) {
+        fetchQuote();
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [address, description, serviceType, fetchQuote]);
+
+  // Handle picture upload
+  const handlePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // Max 3 pics
+    const remainingSlots = 3 - pics.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    filesToProcess.forEach((file) => {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image too large. Max 5MB.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        setPics((prev) => [...prev, base64].slice(0, 3));
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removePic = (index: number) => {
+    setPics((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Initialize Google Places Autocomplete
@@ -86,8 +178,27 @@ export default function Home() {
           maxPrice: maxPrice ? parseInt(maxPrice, 10) : undefined,
           bidMode,
           serviceType,
+          coolWithTeens,
+          scheduledFor: scheduledFor || undefined,
         }),
       });
+
+      // Apply referral code if provided
+      if (referralCode && res.ok) {
+        try {
+          await fetch("/api/referrals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code: referralCode,
+              phone: `+1${phoneDigits}`,
+              userType: "customer",
+            }),
+          });
+        } catch (e) {
+          console.error("Referral application error:", e);
+        }
+      }
 
       const data = await res.json();
 
@@ -112,9 +223,15 @@ export default function Home() {
     setMaxPrice("");
     setBidMode(false);
     setServiceType("any");
+    setCoolWithTeens(true);
+    setScheduledFor("");
+    setReferralCode("");
     setStatus("idle");
     setMessage("");
     setJobId(null);
+    setQuote(null);
+    setPics([]);
+    setNeighborhood(null);
   };
 
   return (
@@ -252,7 +369,7 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Budget */}
+                {/* Budget with Instant Quote */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Your Budget
@@ -269,8 +386,68 @@ export default function Home() {
                       className="w-full pl-8 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                     />
                   </div>
+                  {quoteLoading && (
+                    <p className="text-xs text-sky-500 mt-1 animate-pulse">
+                      Calculating suggested price...
+                    </p>
+                  )}
+                  {quote && !quoteLoading && (
+                    <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-sm text-green-800 dark:text-green-300 font-medium">
+                        Suggested: ${quote.min} - ${quote.max}
+                      </p>
+                      {neighborhood && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                          Based on {neighborhood} rates
+                        </p>
+                      )}
+                      {quote.suggested !== parseInt(maxPrice) && (
+                        <button
+                          type="button"
+                          onClick={() => setMaxPrice(quote.suggested.toString())}
+                          className="mt-1 text-xs text-green-700 dark:text-green-400 underline hover:no-underline"
+                        >
+                          Use suggested (${quote.suggested})
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Picture Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Add Photos (optional)
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {pics.map((pic, idx) => (
+                      <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden">
+                        <Image src={pic} alt={`Photo ${idx + 1}`} fill className="object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePic(idx)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                    {pics.length < 3 && (
+                      <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center cursor-pointer hover:border-sky-500 transition-colors">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handlePicUpload}
+                          className="hidden"
+                        />
+                        <span className="text-2xl text-slate-400">+</span>
+                      </label>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Setting a budget helps match you faster
+                    Show plowers what needs clearing (max 3)
                   </p>
                 </div>
 
@@ -291,6 +468,71 @@ export default function Home() {
                       Get competitive bids (2 min window). You pick the best offer!
                     </p>
                   </div>
+                </div>
+
+                {/* Student Shoveler Option */}
+                <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-slate-600 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="coolWithTeens"
+                    checked={coolWithTeens}
+                    onChange={(e) => setCoolWithTeens(e.target.checked)}
+                    className="mt-1 w-5 h-5 text-green-600 border-slate-300 rounded focus:ring-green-500"
+                  />
+                  <div>
+                    <label htmlFor="coolWithTeens" className="font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                      Include student shovelers (budget-friendly option)
+                    </label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Local high school &amp; college students often offer lower rates. Uncheck for experienced pros only.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Schedule for Later (Pre-Storm Booking) */}
+                <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-slate-600 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="scheduleJob"
+                    checked={!!scheduledFor}
+                    onChange={(e) => setScheduledFor(e.target.checked ? getDefaultScheduleTime() : "")}
+                    className="mt-1 w-5 h-5 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="scheduleJob" className="font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                      Schedule for later (Pre-Storm Booking)
+                    </label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Plan ahead before the storm hits. We'll match you with plowers ~1 hour before.
+                    </p>
+                    {scheduledFor && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          type="datetime-local"
+                          value={scheduledFor}
+                          onChange={(e) => setScheduledFor(e.target.value)}
+                          min={new Date().toISOString().slice(0, 16)}
+                          className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Referral Code */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Referral Code (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="SNOW1234"
+                    maxLength={8}
+                    className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Get $15 off your first job!</p>
                 </div>
 
                 {status === "error" && (
@@ -362,8 +604,10 @@ export default function Home() {
         <footer className="text-center mt-16 text-slate-500 dark:text-slate-400 text-sm">
           <p>SnowSOS - Chicago&apos;s web-first snow removal marketplace</p>
           <div className="mt-2 space-x-4">
+            <Link href="/jobs" className="hover:underline">Browse Jobs</Link>
+            <Link href="/plowers" className="hover:underline">Find Plowers</Link>
             <Link href="/plower/dashboard" className="hover:underline">Plower Dashboard</Link>
-            <Link href="/admin" className="hover:underline">Admin</Link>
+            <Link href="/leaderboard" className="hover:underline">Leaderboard</Link>
           </div>
         </footer>
       </div>

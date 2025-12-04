@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, type ChatMessage } from "@/lib/supabase";
 import { sendSMS } from "@/lib/clicksend";
+import { notifyPlower, notifications } from "@/lib/push";
 
 interface ChatBody {
   senderPhone: string;
@@ -91,19 +92,25 @@ export async function POST(
       );
     }
 
-    // SMS notify the other party
+    // Notify the other party (push with SMS fallback)
     const recipientPhone = isCustomer ? job.shoveler_phone : job.customer_phone;
-    const senderLabel = isCustomer ? "Customer" : "Plower";
+    const shortId = jobId.substring(0, 8);
 
     if (recipientPhone) {
-      try {
-        await sendSMS(
-          recipientPhone,
-          `SnowSOS Job #${jobId.substring(0, 8)}\n${senderLabel}: ${message}\n\nReply at: ${process.env.NEXT_PUBLIC_BASE_URL || ""}/job/${jobId}`
-        );
-      } catch (smsError) {
-        console.error("Chat SMS notification failed:", smsError);
-        // Don't fail the request if SMS fails
+      if (isCustomer && job.shoveler_phone) {
+        // Customer sent message -> notify plower via push
+        const chatNotif = notifications.chatMessage(jobId, shortId, message);
+        await notifyPlower(job.shoveler_phone, chatNotif.payload, chatNotif.sms);
+      } else {
+        // Plower sent message -> SMS to customer (customers don't have push)
+        try {
+          await sendSMS(
+            recipientPhone,
+            `SnowSOS Job #${shortId}\nPlower: ${message}\n\nReply at: ${process.env.NEXT_PUBLIC_BASE_URL || ""}/job/${jobId}`
+          );
+        } catch (smsError) {
+          console.error("Chat SMS notification failed:", smsError);
+        }
       }
     }
 
@@ -183,6 +190,12 @@ export async function GET(
         shovelerPhone: job.shoveler_phone,
         lat: job.lat,
         long: job.long,
+        surgeMultiplier: job.surge_multiplier || 1,
+        weatherNote: job.weather_note,
+        backupPlowerId: job.backup_plower_id,
+        // Payment info
+        paymentStatus: job.payment_status || "unpaid",
+        totalPriceCents: job.total_price_cents || 0,
       },
       chatHistory: job.chat_history || [],
       role: isCustomer ? "customer" : "shoveler",
