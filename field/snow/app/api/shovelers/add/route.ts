@@ -56,14 +56,8 @@ export async function POST(request: NextRequest) {
       skills = [...skills, "plow"];
     }
 
-    // Check if shoveler already exists
-    const { data: existing } = await supabase
-      .from("shovelers")
-      .select("id")
-      .eq("phone", phone)
-      .single();
-
-    // Insert or update shoveler
+    // Insert or update shoveler - only include core fields that always exist
+    // Optional columns (from migrations) have defaults in the database
     const shovelerData: Record<string, unknown> = {
       phone,
       name: body.name || null,
@@ -78,22 +72,6 @@ export async function POST(request: NextRequest) {
       cashapp_handle: body.cashappHandle || null,
     };
 
-    // Only set defaults for new shovelers
-    if (!existing) {
-      shovelerData.stripe_connect_onboarded = false;
-      shovelerData.sms_notify_threshold = 0;
-      shovelerData.jobs_claimed = 0;
-      shovelerData.jobs_completed = 0;
-      shovelerData.jobs_cancelled_by_plower = 0;
-      shovelerData.no_show_strikes = 0;
-      shovelerData.is_verified = false;
-      shovelerData.is_online = false;
-      shovelerData.avg_rating = 0;
-      shovelerData.total_reviews = 0;
-      shovelerData.total_tips = 0;
-      shovelerData.show_on_leaderboard = true;
-    }
-
     const { data, error } = await supabase
       .from("shovelers")
       .upsert(shovelerData, { onConflict: "phone" })
@@ -103,7 +81,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Error adding shoveler:", error);
       return NextResponse.json(
-        { error: "Failed to add shoveler" },
+        { error: `Failed to add shoveler: ${error.message}` },
         { status: 500 }
       );
     }
