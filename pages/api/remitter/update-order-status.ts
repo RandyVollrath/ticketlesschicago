@@ -135,7 +135,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (userProfile.phone_number) {
           try {
             const hasPermit = order.permit_requested || userProfile.permit_requested;
-            const smsMessage = `Great news${userProfile.first_name ? `, ${userProfile.first_name}` : ''}! Your ${hasPermit ? 'city sticker and residential permit have' : 'city sticker has'} been submitted to the City of Chicago. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${order.street_address}. Thanks for using Autopilot America!`;
+            const isLicensePlateOrder = ['standard', 'vanity'].includes(order.sticker_type?.toLowerCase());
+
+            let smsMessage: string;
+            if (isLicensePlateOrder) {
+              smsMessage = `Great news${userProfile.first_name ? `, ${userProfile.first_name}` : ''}! Your license plate renewal has been submitted to the IL Secretary of State. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${order.street_address}. Thanks for using Autopilot America!`;
+            } else {
+              smsMessage = `Great news${userProfile.first_name ? `, ${userProfile.first_name}` : ''}! Your ${hasPermit ? 'city sticker and residential permit have' : 'city sticker has'} been submitted to the City of Chicago. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${order.street_address}. Thanks for using Autopilot America!`;
+            }
 
             // Use Twilio or your SMS provider
             const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
