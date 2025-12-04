@@ -160,6 +160,17 @@ export async function GET(
       );
     }
 
+    // Check if there's already a review for this job
+    let hasReview = false;
+    if (isCustomer && job.status === "completed") {
+      const { data: existingReview } = await supabase
+        .from("reviews")
+        .select("id")
+        .eq("job_id", jobId)
+        .single();
+      hasReview = !!existingReview;
+    }
+
     return NextResponse.json({
       job: {
         id: job.id,
@@ -170,9 +181,12 @@ export async function GET(
         maxPrice: job.max_price,
         customerPhone: job.customer_phone,
         shovelerPhone: job.shoveler_phone,
+        lat: job.lat,
+        long: job.long,
       },
       chatHistory: job.chat_history || [],
       role: isCustomer ? "customer" : "shoveler",
+      hasReview,
     });
   } catch (error) {
     console.error("Chat get error:", error);

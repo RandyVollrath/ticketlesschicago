@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 
@@ -28,7 +28,22 @@ interface PlowerInfo {
   lat: number | null;
   long: number | null;
   has_truck: boolean;
+  is_online: boolean;
+  venmo_handle: string | null;
+  cashapp_handle: string | null;
+  avg_rating: number;
+  total_reviews: number;
+  show_on_leaderboard: boolean;
 }
+
+interface TodayEarnings {
+  total: number;
+  jobs: number;
+  pending: number;
+}
+
+// High-paying job threshold
+const HIGH_PAY_THRESHOLD = 75;
 
 export default function PlowerDashboard() {
   const [jobs, setJobs] = useState<OpenJob[]>([]);
@@ -36,11 +51,20 @@ export default function PlowerDashboard() {
   const [plower, setPlower] = useState<PlowerInfo | null>(null);
   const [phone, setPhone] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
   const [sortBy, setSortBy] = useState<"pay" | "distance" | "newest">("pay");
   const [serviceFilter, setServiceFilter] = useState<"all" | "truck" | "shovel">("all");
   const [claiming, setClaiming] = useState<string | null>(null);
   const [bidAmount, setBidAmount] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [todayEarnings, setTodayEarnings] = useState<TodayEarnings>({ total: 0, jobs: 0, pending: 0 });
+  const [requestingPayout, setRequestingPayout] = useState(false);
+  const [payoutSuccess, setPayoutSuccess] = useState(false);
+  const [stormMode, setStormMode] = useState(false);
+
+  // Track seen job IDs for new job alerts
+  const seenJobIds = useRef<Set<string>>(new Set());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -49,8 +73,47 @@ export default function PlowerDashboard() {
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
   };
 
+  // Initialize audio for high-pay alerts
+  useEffect(() => {
+    audioRef.current = new Audio("/sounds/cha-ching.mp3");
+    audioRef.current.volume = 0.7;
+  }, []);
+
+  // Alert for high-paying jobs
+  const alertHighPayJob = useCallback((job: OpenJob) => {
+    // Play sound
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {
+        // Audio autoplay blocked, ignore
+      });
+    }
+
+    // Vibrate (mobile)
+    if ("vibrate" in navigator) {
+      navigator.vibrate([200, 100, 200, 100, 200]);
+    }
+
+    // Show notification if permitted
+    if (Notification.permission === "granted") {
+      new Notification(`$${job.maxPrice} Job Available!`, {
+        body: job.address,
+        icon: "/icon-192.png",
+        tag: job.id,
+        requireInteraction: true,
+      });
+    }
+  }, []);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   const fetchJobs = useCallback(async () => {
-    if (!plower) return;
+    if (!plower || !isOnline) return;
 
     try {
       const params = new URLSearchParams({ sort: sortBy });
@@ -65,12 +128,102 @@ export default function PlowerDashboard() {
 
       const res = await fetch(`/api/jobs/open?${params}`);
       const data = await res.json();
-      setJobs(data.jobs || []);
+      const newJobs: OpenJob[] = data.jobs || [];
+
+      // Check for new high-paying jobs
+      for (const job of newJobs) {
+        if (!seenJobIds.current.has(job.id)) {
+          seenJobIds.current.add(job.id);
+          // Alert if high-paying (>$75) and online
+          if (job.maxPrice && job.maxPrice >= HIGH_PAY_THRESHOLD && isOnline) {
+            alertHighPayJob(job);
+          }
+        }
+      }
+
+      setJobs(newJobs);
+
+      // Check for storm mode
+      if (newJobs.some(j => j.surgeMultiplier >= 1.5)) {
+        setStormMode(true);
+      }
     } catch (err) {
       console.error("Error fetching jobs:", err);
     }
     setLoading(false);
-  }, [plower, sortBy]);
+  }, [plower, sortBy, isOnline, alertHighPayJob]);
+
+  // Fetch today's earnings
+  const fetchTodayEarnings = useCallback(async () => {
+    if (!plower) return;
+
+    try {
+      const res = await fetch(`/api/plower/earnings?phone=${encodeURIComponent(plower.phone)}`);
+      const data = await res.json();
+      setTodayEarnings({
+        total: data.todayTotal || 0,
+        jobs: data.todayJobs || 0,
+        pending: data.pendingPayout || 0,
+      });
+    } catch (err) {
+      console.error("Error fetching earnings:", err);
+    }
+  }, [plower]);
+
+  // Toggle online/offline
+  const toggleOnline = async () => {
+    if (!plower) return;
+
+    try {
+      const res = await fetch("/api/plower/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: plower.phone,
+          isOnline: !isOnline,
+        }),
+      });
+
+      if (res.ok) {
+        setIsOnline(!isOnline);
+        if (!isOnline) {
+          // Going online - clear seen jobs to enable alerts
+          seenJobIds.current.clear();
+        }
+      }
+    } catch {
+      setError("Failed to update status");
+    }
+  };
+
+  // Request payout
+  const requestPayout = async () => {
+    if (!plower || todayEarnings.pending <= 0) return;
+
+    setRequestingPayout(true);
+    try {
+      const res = await fetch("/api/plower/payout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: plower.phone,
+          amount: todayEarnings.pending,
+        }),
+      });
+
+      if (res.ok) {
+        setPayoutSuccess(true);
+        setTimeout(() => setPayoutSuccess(false), 3000);
+        fetchTodayEarnings();
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to request payout");
+      }
+    } catch {
+      setError("Network error");
+    }
+    setRequestingPayout(false);
+  };
 
   // Login handler
   const handleLogin = async () => {
@@ -87,6 +240,7 @@ export default function PlowerDashboard() {
       if (data.shoveler) {
         setPlower(data.shoveler);
         setIsLoggedIn(true);
+        setIsOnline(data.shoveler.is_online || false);
         localStorage.setItem("plowerPhone", `+1${phoneDigits}`);
         setError(null);
       } else {
@@ -107,45 +261,53 @@ export default function PlowerDashboard() {
           if (data.shoveler) {
             setPlower(data.shoveler);
             setIsLoggedIn(true);
+            setIsOnline(data.shoveler.is_online || false);
           }
         })
         .catch(console.error);
     }
   }, []);
 
-  // Fetch jobs and set up realtime
+  // Fetch jobs and earnings when logged in
   useEffect(() => {
     if (!isLoggedIn || !plower) return;
 
-    fetchJobs();
+    fetchTodayEarnings();
 
-    // Set up Supabase realtime subscription
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (isOnline) {
+      fetchJobs();
 
-    if (supabaseUrl && supabaseAnonKey) {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      // Set up Supabase realtime subscription
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      const channel = supabase
-        .channel("jobs-realtime")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "jobs" },
-          () => {
-            fetchJobs();
-          }
-        )
-        .subscribe();
+      if (supabaseUrl && supabaseAnonKey) {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
+        const channel = supabase
+          .channel("jobs-realtime")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "jobs" },
+            () => {
+              fetchJobs();
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      } else {
+        // Fallback: poll every 10 seconds
+        const interval = setInterval(fetchJobs, 10000);
+        return () => clearInterval(interval);
+      }
     } else {
-      // Fallback: poll every 10 seconds
-      const interval = setInterval(fetchJobs, 10000);
-      return () => clearInterval(interval);
+      setJobs([]);
+      setLoading(false);
     }
-  }, [isLoggedIn, plower, fetchJobs]);
+  }, [isLoggedIn, plower, isOnline, fetchJobs, fetchTodayEarnings]);
 
   // CLAIM & CALL - claims job, opens phone dialer, sends SMS
   const handleClaimAndCall = async (job: OpenJob) => {
@@ -299,57 +461,133 @@ export default function PlowerDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-slate-900">
+    <main className={`min-h-screen ${stormMode ? "bg-gradient-to-b from-purple-900 to-slate-900" : "bg-slate-100 dark:bg-slate-900"}`}>
       <div className="container mx-auto px-4 py-6">
-        {/* Header */}
+        {/* Storm Mode Banner */}
+        {stormMode && (
+          <div className="mb-4 p-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white text-center animate-pulse">
+            <span className="text-2xl mr-2">&#127786;</span>
+            <span className="font-bold text-lg">STORM MODE ACTIVE</span>
+            <span className="text-2xl ml-2">&#127786;</span>
+            <p className="text-sm opacity-90">Surge pricing in effect - earn more per job!</p>
+          </div>
+        )}
+
+        {/* Header with Online Toggle */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <Link href="/" className="text-sky-600 text-sm hover:underline">
               &larr; Back
             </Link>
             <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
-              Available Jobs
+              {isOnline ? "Available Jobs" : "You're Offline"}
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-sm">
               {plower?.name || "Plower"} - ${plower?.rate}/job
               {plower?.has_truck && <span className="ml-2">&#128668; Truck</span>}
+              {plower?.avg_rating && plower.avg_rating > 0 && (
+                <span className="ml-2">&#11088; {plower.avg_rating.toFixed(1)}</span>
+              )}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {/* Sort buttons */}
-            {(["pay", "distance", "newest"] as const).map((sort) => (
+          {/* GO ONLINE / GO OFFLINE Toggle */}
+          <button
+            onClick={toggleOnline}
+            className={`px-6 py-3 rounded-full font-bold text-lg shadow-lg transition-all transform hover:scale-105 ${
+              isOnline
+                ? "bg-green-500 hover:bg-green-600 text-white"
+                : "bg-red-500 hover:bg-red-600 text-white"
+            }`}
+          >
+            {isOnline ? (
+              <>&#128994; GO OFFLINE</>
+            ) : (
+              <>&#128308; GO ONLINE</>
+            )}
+          </button>
+        </div>
+
+        {/* Earnings Today Widget */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Earned Today</p>
+            <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+              ${todayEarnings.total.toFixed(0)}
+            </p>
+            <p className="text-xs text-slate-400">{todayEarnings.jobs} jobs completed</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Pending Payout</p>
+            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+              ${todayEarnings.pending.toFixed(0)}
+            </p>
+            {todayEarnings.pending > 0 && (
               <button
-                key={sort}
-                onClick={() => setSortBy(sort)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  sortBy === sort
-                    ? "bg-sky-600 text-white"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                }`}
+                onClick={requestPayout}
+                disabled={requestingPayout}
+                className="mt-2 w-full bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white font-medium py-2 px-4 rounded-lg text-sm"
               >
-                {sort === "pay" ? "Top Pay" : sort === "distance" ? "Nearest" : "Newest"}
+                {requestingPayout ? "Requesting..." : payoutSuccess ? "Requested!" : "Request Payout"}
               </button>
-            ))}
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Payment Methods</p>
+            <div className="text-sm space-y-1 mt-1">
+              {plower?.venmo_handle && (
+                <p className="text-slate-700 dark:text-slate-300">Venmo: @{plower.venmo_handle}</p>
+              )}
+              {plower?.cashapp_handle && (
+                <p className="text-slate-700 dark:text-slate-300">CashApp: ${plower.cashapp_handle}</p>
+              )}
+              {!plower?.venmo_handle && !plower?.cashapp_handle && (
+                <p className="text-slate-400">No payment method set</p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Service Type Filter */}
-        <div className="flex gap-2 mb-4">
-          {(["all", "truck", "shovel"] as const).map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setServiceFilter(filter)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                serviceFilter === filter
-                  ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800"
-                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-              }`}
-            >
-              {filter === "all" ? "All Jobs" : filter === "truck" ? "&#128668; Truck" : "&#128119; Shovel"}
-            </button>
-          ))}
-        </div>
+        {/* Only show job controls when online */}
+        {isOnline && (
+          <>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {/* Sort buttons */}
+              {(["pay", "distance", "newest"] as const).map((sort) => (
+                <button
+                  key={sort}
+                  onClick={() => setSortBy(sort)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    sortBy === sort
+                      ? "bg-sky-600 text-white"
+                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  {sort === "pay" ? "Top Pay" : sort === "distance" ? "Nearest" : "Newest"}
+                </button>
+              ))}
+            </div>
+
+            {/* Service Type Filter */}
+            <div className="flex gap-2 mb-4">
+              {(["all", "truck", "shovel"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setServiceFilter(filter)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    serviceFilter === filter
+                      ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800"
+                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  {filter === "all" ? "All Jobs" : filter === "truck" ? "&#128668; Truck" : "&#128119; Shovel"}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg">
@@ -357,8 +595,18 @@ export default function PlowerDashboard() {
           </div>
         )}
 
-        {/* Job List */}
-        {loading ? (
+        {/* Job List - only show when online */}
+        {!isOnline ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">&#128564;</div>
+            <p className="text-slate-600 dark:text-slate-400 text-lg">
+              You're currently offline
+            </p>
+            <p className="text-slate-500 dark:text-slate-500 text-sm mt-2">
+              Go online to see available jobs and start earning!
+            </p>
+          </div>
+        ) : loading ? (
           <div className="text-center py-12 text-slate-500">Loading jobs...</div>
         ) : filteredJobs.length === 0 ? (
           <div className="text-center py-12">
@@ -372,7 +620,11 @@ export default function PlowerDashboard() {
             {filteredJobs.map((job) => (
               <div
                 key={job.id}
-                className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 sm:p-6"
+                className={`bg-white dark:bg-slate-800 rounded-xl shadow p-4 sm:p-6 ${
+                  job.maxPrice && job.maxPrice >= HIGH_PAY_THRESHOLD
+                    ? "ring-2 ring-green-500 ring-offset-2 dark:ring-offset-slate-900"
+                    : ""
+                }`}
               >
                 <div className="flex flex-col sm:flex-row justify-between gap-4">
                   <div className="flex-1">
@@ -392,6 +644,12 @@ export default function PlowerDashboard() {
                           &#128293; SURGE +{Math.round((job.surgeMultiplier - 1) * 100)}%
                         </span>
                       )}
+                      {/* HIGH PAY badge */}
+                      {job.maxPrice && job.maxPrice >= HIGH_PAY_THRESHOLD && (
+                        <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded font-bold">
+                          &#128176; HIGH PAY
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="font-semibold text-slate-800 dark:text-white mb-1">
@@ -406,7 +664,11 @@ export default function PlowerDashboard() {
 
                     <div className="flex flex-wrap gap-3 text-sm">
                       {job.maxPrice && (
-                        <span className="text-green-600 dark:text-green-400 font-medium text-lg">
+                        <span className={`font-medium text-lg ${
+                          job.maxPrice >= HIGH_PAY_THRESHOLD
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-green-600 dark:text-green-400"
+                        }`}>
                           ${job.maxPrice}
                         </span>
                       )}
@@ -478,8 +740,14 @@ export default function PlowerDashboard() {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="mt-8 text-center">
+        {/* Footer Links */}
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <Link
+            href="/leaderboard"
+            className="text-sm text-sky-600 hover:underline"
+          >
+            &#127942; Leaderboard
+          </Link>
           <button
             onClick={() => {
               localStorage.removeItem("plowerPhone");

@@ -108,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Find user by email and update expiry
       const { data: userProfile } = await supabase
         .from('user_profiles')
-        .select('user_id, phone, first_name, city_sticker_expiry, license_plate_expiry, permit_requested')
+        .select('user_id, phone_number, first_name, city_sticker_expiry, license_plate_expiry, permit_requested')
         .eq('email', order.customer_email)
         .single();
 
@@ -132,7 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Send SMS notification to customer using phone from user_profiles (not order)
-        if (userProfile.phone) {
+        if (userProfile.phone_number) {
           try {
             const hasPermit = order.permit_requested || userProfile.permit_requested;
             const smsMessage = `Great news${userProfile.first_name ? `, ${userProfile.first_name}` : ''}! Your ${hasPermit ? 'city sticker and residential permit have' : 'city sticker has'} been submitted to the City of Chicago. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${order.street_address}. Thanks for using Autopilot America!`;
@@ -147,11 +147,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               await twilioClient.messages.create({
                 body: smsMessage,
                 from: twilioFromNumber,
-                to: userProfile.phone,
+                to: userProfile.phone_number,
               });
-              console.log(`SMS sent to ${userProfile.phone} for order ${orderId}`);
+              console.log(`SMS sent to ${userProfile.phone_number} for order ${orderId}`);
             } else {
-              console.log(`SMS would be sent to ${userProfile.phone}: ${smsMessage}`);
+              console.log(`SMS would be sent to ${userProfile.phone_number}: ${smsMessage}`);
             }
           } catch (smsError: any) {
             console.error('Failed to send SMS:', smsError.message);

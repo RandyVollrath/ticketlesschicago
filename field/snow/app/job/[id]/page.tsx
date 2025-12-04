@@ -20,6 +20,8 @@ interface JobDetails {
   maxPrice: number | null;
   customerPhone: string;
   shovelerPhone: string | null;
+  lat: number | null;
+  long: number | null;
 }
 
 interface Bid {
@@ -27,6 +29,13 @@ interface Bid {
   shoveler_name?: string;
   amount: number;
   timestamp: string;
+}
+
+interface PlowerLocation {
+  lat: number;
+  long: number;
+  name: string | null;
+  hasTruck: boolean;
 }
 
 export default function JobPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,6 +52,17 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   const [error, setError] = useState<string | null>(null);
   const [selectingBid, setSelectingBid] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Review state
+  const [showReview, setShowReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [tipAmount, setTipAmount] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  // Live map state
+  const [plowerLocation, setPlowerLocation] = useState<PlowerLocation | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -92,6 +112,11 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
         // Fetch bids if customer viewing pending bid job
         if (data.role === "customer" && data.job.status === "pending") {
           fetchBids();
+        }
+
+        // Show review prompt for completed jobs (customer only)
+        if (data.role === "customer" && data.job.status === "completed" && !data.hasReview) {
+          setShowReview(true);
         }
       } else {
         setError(data.error || "Access denied");
@@ -156,7 +181,6 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   const handleSelectBid = async (bidIndex: number) => {
     setSelectingBid(true);
     try {
-      // Use the SMS handler logic via a simple endpoint
       const bid = bids[bidIndex];
       const res = await fetch(`/api/jobs/claim/${jobId}`, {
         method: "POST",
@@ -169,7 +193,6 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
       });
 
       if (res.ok) {
-        // Refresh the page to show chat
         window.location.reload();
       } else {
         const data = await res.json();
@@ -179,6 +202,40 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
       setError("Network error");
     }
     setSelectingBid(false);
+  };
+
+  // Submit review
+  const handleSubmitReview = async () => {
+    if (reviewRating === 0) {
+      setError("Please select a rating");
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId,
+          customerPhone: phone,
+          shovelerPhone: job?.shovelerPhone,
+          rating: reviewRating,
+          tipAmount: tipAmount ? parseFloat(tipAmount) : 0,
+        }),
+      });
+
+      if (res.ok) {
+        setReviewSubmitted(true);
+        setShowReview(false);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to submit review");
+      }
+    } catch {
+      setError("Network error");
+    }
+    setSubmittingReview(false);
   };
 
   // Set up realtime
@@ -206,6 +263,10 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
             }
             if (updated.status && job) {
               setJob({ ...job, status: updated.status });
+              // Show review when job completes
+              if (updated.status === "completed" && role === "customer") {
+                setShowReview(true);
+              }
             }
           }
         )
@@ -215,18 +276,52 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
         supabase.removeChannel(channel);
       };
     } else {
-      // Fallback: poll every 5 seconds
       const interval = setInterval(() => {
         authenticateUser(phone);
       }, 5000);
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, jobId, phone, job]);
+  }, [isAuthenticated, jobId, phone, job, role]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
+
+  // Simulate plower location for live map (fake avatars for now)
+  useEffect(() => {
+    if (role !== "customer" || !job?.lat || !job?.long) return;
+    if (job.status !== "claimed" && job.status !== "in_progress") return;
+
+    // Fake plower moving toward job location
+    const fakeNames = ["Mike", "Sarah", "Carlos", "Lisa", "Dave"];
+    const fakeName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+
+    // Start position (random offset from job)
+    let plowerLat = job.lat + (Math.random() - 0.5) * 0.02;
+    let plowerLong = job.long + (Math.random() - 0.5) * 0.02;
+
+    setPlowerLocation({
+      lat: plowerLat,
+      long: plowerLong,
+      name: fakeName,
+      hasTruck: Math.random() > 0.5,
+    });
+
+    // Move plower toward job every 3 seconds
+    const interval = setInterval(() => {
+      if (!job.lat || !job.long) return;
+
+      plowerLat += (job.lat - plowerLat) * 0.1;
+      plowerLong += (job.long - plowerLong) * 0.1;
+
+      setPlowerLocation((prev) =>
+        prev ? { ...prev, lat: plowerLat, long: plowerLong } : null
+      );
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [role, job?.status, job?.lat, job?.long]);
 
   // Login screen
   if (!isAuthenticated) {
@@ -312,6 +407,134 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
           )}
         </div>
       </div>
+
+      {/* Live Map for customer (claimed/in_progress jobs) */}
+      {role === "customer" && (job?.status === "claimed" || job?.status === "in_progress") && plowerLocation && (
+        <div className="bg-slate-200 dark:bg-slate-700 p-4 border-b border-slate-300 dark:border-slate-600">
+          <div className="container mx-auto">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="animate-pulse text-green-500 text-lg">&#128994;</span>
+              <span className="font-medium text-slate-800 dark:text-white">
+                {plowerLocation.name} is on the way
+                {plowerLocation.hasTruck && <span className="ml-1">&#128668;</span>}
+              </span>
+            </div>
+            <div
+              ref={mapRef}
+              className="relative bg-slate-300 dark:bg-slate-600 rounded-xl h-40 overflow-hidden"
+              style={{
+                backgroundImage: "url('https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/-87.63,41.88,12,0/400x160?access_token=placeholder')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              {/* Job marker */}
+              <div
+                className="absolute w-6 h-6 bg-sky-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs"
+                style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+              >
+                &#127968;
+              </div>
+              {/* Plower marker (animated position) */}
+              <div
+                className="absolute w-8 h-8 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-sm animate-bounce"
+                style={{
+                  left: `${50 + (plowerLocation.long - (job?.long || 0)) * 500}%`,
+                  top: `${50 - (plowerLocation.lat - (job?.lat || 0)) * 500}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {plowerLocation.hasTruck ? "&#128668;" : "&#128119;"}
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
+              Live tracking - your plower will arrive soon!
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal for completed jobs */}
+      {showReview && role === "customer" && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-b border-green-200 dark:border-green-800 p-6">
+          <div className="container mx-auto max-w-md">
+            <h2 className="font-bold text-lg text-slate-800 dark:text-white mb-2">
+              Job Complete! &#127881;
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              How was your experience?
+            </p>
+
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setReviewRating(star)}
+                  className={`text-4xl transition-transform hover:scale-110 ${
+                    star <= reviewRating ? "text-yellow-400" : "text-slate-300 dark:text-slate-600"
+                  }`}
+                >
+                  &#11088;
+                </button>
+              ))}
+            </div>
+
+            {/* Tip Amount */}
+            <div className="mb-4">
+              <label className="block text-sm text-slate-600 dark:text-slate-400 mb-1">
+                Add a tip? (100% goes to plower)
+              </label>
+              <div className="flex gap-2">
+                {["5", "10", "20"].map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setTipAmount(amount)}
+                    className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+                      tipAmount === amount
+                        ? "bg-green-500 text-white"
+                        : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    ${amount}
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  value={tipAmount}
+                  onChange={(e) => setTipAmount(e.target.value)}
+                  placeholder="Other"
+                  className="w-20 px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-center"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleSubmitReview}
+              disabled={submittingReview || reviewRating === 0}
+              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold py-3 rounded-lg"
+            >
+              {submittingReview ? "Submitting..." : tipAmount ? `Submit Review & Send $${tipAmount} Tip` : "Submit Review"}
+            </button>
+
+            <button
+              onClick={() => setShowReview(false)}
+              className="w-full text-slate-500 text-sm mt-2 hover:underline"
+            >
+              Skip for now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Review Submitted Confirmation */}
+      {reviewSubmitted && (
+        <div className="bg-green-100 dark:bg-green-900/30 border-b border-green-200 dark:border-green-800 p-4 text-center">
+          <p className="text-green-800 dark:text-green-200 font-medium">
+            &#10004; Thank you for your review!
+          </p>
+        </div>
+      )}
 
       {/* Bids Section (for customer on pending bid jobs) */}
       {role === "customer" && job?.status === "pending" && bids.length > 0 && (

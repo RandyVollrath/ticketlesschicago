@@ -49,6 +49,12 @@ export interface Shoveler {
   has_truck: boolean;
   venmo_handle: string | null;
   cashapp_handle: string | null;
+  is_online: boolean;
+  last_seen_at: string | null;
+  show_on_leaderboard: boolean;
+  avg_rating: number;
+  total_reviews: number;
+  total_tips: number;
 }
 
 export interface Bid {
@@ -97,6 +103,38 @@ export interface Earning {
   platform_fee: number;
   shoveler_payout: number;
   created_at: string;
+}
+
+export interface Review {
+  id: string;
+  job_id: string;
+  customer_phone: string;
+  shoveler_phone: string;
+  rating: number;
+  tip_amount: number;
+  created_at: string;
+}
+
+export interface PayoutRequest {
+  id: string;
+  shoveler_phone: string;
+  amount: number;
+  venmo_handle: string | null;
+  cashapp_handle: string | null;
+  status: "pending" | "completed" | "rejected";
+  admin_notes: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface StormAlert {
+  id: string;
+  snow_inches: number;
+  surge_multiplier: number;
+  active: boolean;
+  notified_count: number;
+  created_at: string;
+  expires_at: string | null;
 }
 
 // Haversine distance calculation

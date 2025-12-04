@@ -457,7 +457,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           partner_id: remitter.id,
           customer_name: `${customer.first_name} ${customer.last_name}`,
           customer_email: customer.email,
-          customer_phone: customer.phone,
+          customer_phone: customer.phone_number,
           license_plate: customer.license_plate,
           license_state: customer.license_state || 'IL',
           street_address: customer.street_address,
@@ -482,9 +482,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await sendChargeSuccessEmail(customer, totalAmount, 'city_sticker');
 
           // SMS to customer (if phone number available)
-          if (customer.phone) {
+          if (customer.phone_number) {
             const smsMessage = `Autopilot America: We've charged $${totalAmount.toFixed(2)} for your city sticker renewal (${customer.license_plate}). We'll submit it to the city and your new sticker will be mailed to you. Questions? Reply to this text.`;
-            const smsResult = await sendClickSendSMS(customer.phone, smsMessage);
+            const smsResult = await sendClickSendSMS(customer.phone_number, smsMessage);
             if (smsResult.success) {
               console.log(`📱 SMS sent to ${customer.phone}`);
             } else {
@@ -783,7 +783,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             partner_id: remitter.id,
             customer_name: `${customer.first_name} ${customer.last_name}`,
             customer_email: customer.email,
-            customer_phone: customer.phone,
+            customer_phone: customer.phone_number,
             license_plate: customer.license_plate,
             license_state: customer.license_state || 'IL',
             street_address: customer.street_address,
@@ -803,9 +803,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           try {
             await sendChargeSuccessEmail(customer, totalAmount, 'license_plate');
 
-            if (customer.phone) {
+            if (customer.phone_number) {
               const smsMessage = `Autopilot America: We've charged $${totalAmount.toFixed(2)} for your license plate renewal (${customer.license_plate}). We'll submit it to the IL SOS and your new sticker will be mailed. Questions? Reply to this text.`;
-              await sendClickSendSMS(customer.phone, smsMessage);
+              await sendClickSendSMS(customer.phone_number, smsMessage);
             }
 
             await sendRemitterAlert(remitter, customer, platePrice, REMITTER_SERVICE_FEE);
