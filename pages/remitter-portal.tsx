@@ -267,25 +267,8 @@ export default function RemitterPortal() {
 
     setProcessingOrder(true);
     try {
+      // Backend handles: updating status, updating expiry date, and sending SMS
       await updateOrderStatus(selectedOrder.id, 'completed', confirmationNumber);
-
-      // Send SMS notification to customer
-      try {
-        await fetch('/api/sms/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': apiKey,
-          },
-          body: JSON.stringify({
-            to: selectedOrder.customer.phone,
-            message: `Great news! Your ${selectedOrder.amount.permitRequested ? 'city sticker and residential permit have' : 'city sticker has'} been submitted to the City of Chicago. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${selectedOrder.address.street}. Thanks for using Autopilot America!`,
-          }),
-        });
-      } catch (smsErr) {
-        console.error('SMS send failed:', smsErr);
-        // Don't fail the whole operation for SMS
-      }
 
       setSelectedOrder(null);
       setOrderDocuments(null);

@@ -103,12 +103,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to update order' });
     }
 
-    // If completed, also update the user's expiry date
+    // If completed, also update the user's expiry date and send SMS
     if (status === 'completed' && order.customer_email) {
       // Find user by email and update expiry
       const { data: userProfile } = await supabase
         .from('user_profiles')
-        .select('user_id, city_sticker_expiry, license_plate_expiry')
+        .select('user_id, phone, first_name, city_sticker_expiry, license_plate_expiry, permit_requested')
         .eq('email', order.customer_email)
         .single();
 
@@ -129,6 +129,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('user_id', userProfile.user_id);
 
           console.log(`Updated ${expiryField} to ${newExpiry} for user ${userProfile.user_id}`);
+        }
+
+        // Send SMS notification to customer using phone from user_profiles (not order)
+        if (userProfile.phone) {
+          try {
+            const hasPermit = order.permit_requested || userProfile.permit_requested;
+            const smsMessage = `Great news${userProfile.first_name ? `, ${userProfile.first_name}` : ''}! Your ${hasPermit ? 'city sticker and residential permit have' : 'city sticker has'} been submitted to the City of Chicago. Confirmation #${confirmationNumber}. Your new sticker will be mailed to ${order.street_address}. Thanks for using Autopilot America!`;
+
+            // Use Twilio or your SMS provider
+            const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+            const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+            const twilioFromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+            if (twilioAccountSid && twilioAuthToken && twilioFromNumber) {
+              const twilioClient = require('twilio')(twilioAccountSid, twilioAuthToken);
+              await twilioClient.messages.create({
+                body: smsMessage,
+                from: twilioFromNumber,
+                to: userProfile.phone,
+              });
+              console.log(`SMS sent to ${userProfile.phone} for order ${orderId}`);
+            } else {
+              console.log(`SMS would be sent to ${userProfile.phone}: ${smsMessage}`);
+            }
+          } catch (smsError: any) {
+            console.error('Failed to send SMS:', smsError.message);
+            // Don't fail the request for SMS errors
+          }
+        } else {
+          console.log(`No phone number on file for user ${userProfile.user_id}, skipping SMS`);
         }
       }
     }
