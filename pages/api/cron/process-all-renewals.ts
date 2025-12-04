@@ -17,6 +17,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import stripeConfig from '../../../lib/stripe-config';
+import { sendClickSendSMS } from '../../../lib/sms-service';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -453,16 +454,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           stripe_payment_intent_id: paymentIntent.id,
         });
 
-        // Send email notifications
+        // Send email and SMS notifications
         try {
           // Email to customer
           await sendChargeSuccessEmail(customer, totalAmount, 'city_sticker');
 
+          // SMS to customer (if phone number available)
+          if (customer.phone) {
+            const smsMessage = `Autopilot America: We've charged $${totalAmount.toFixed(2)} for your city sticker renewal (${customer.license_plate}). We'll submit it to the city and your new sticker will be mailed to you. Questions? Reply to this text.`;
+            const smsResult = await sendClickSendSMS(customer.phone, smsMessage);
+            if (smsResult.success) {
+              console.log(`📱 SMS sent to ${customer.phone}`);
+            } else {
+              console.log(`⚠️ SMS failed for ${customer.phone}: ${smsResult.error}`);
+            }
+          }
+
           // Email to remitter
           await sendRemitterAlert(remitter, customer, stickerPrice, REMITTER_SERVICE_FEE);
-        } catch (emailError) {
-          console.error('Failed to send notification emails:', emailError);
-          // Don't fail the whole process for email errors
+        } catch (notificationError) {
+          console.error('Failed to send notifications:', notificationError);
+          // Don't fail the whole process for notification errors
         }
 
         results.cityStickerSucceeded++;
@@ -600,10 +612,209 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        // TODO: Implement actual license plate purchase via IL SOS integration
-        // For now, log that emissions check passed and mark as ready
-        console.log(`✅ Emissions check PASSED for ${customer.email} - ready for license plate renewal`);
-        results.licensePlateSucceeded++;
+        // Check if already processed this renewal cycle
+        const { data: existingCharge } = await supabase
+          .from('renewal_charges')
+          .select('*')
+          .eq('user_id', customer.user_id)
+          .eq('charge_type', 'license_plate_renewal')
+          .eq('renewal_due_date', customer.license_plate_expiry)
+          .eq('status', 'succeeded')
+          .single();
+
+        if (existingCharge) {
+          console.log(`Already processed license plate renewal for customer ${customer.user_id}`);
+          continue;
+        }
+
+        try {
+          // Get remitter with a valid Stripe connected account
+          const { data: remitter } = await supabase
+            .from('renewal_partners')
+            .select('*')
+            .eq('status', 'active')
+            .not('stripe_connected_account_id', 'is', null)
+            .limit(1)
+            .single();
+
+          if (!remitter) {
+            throw new Error('No active remitter available');
+          }
+
+          // Fetch license plate price from Stripe
+          const isVanity = customer.is_vanity_plate === true;
+          const priceId = isVanity
+            ? stripeConfig.licensePlateVanityPriceId
+            : stripeConfig.licensePlatePriceId;
+
+          if (!priceId) {
+            throw new Error(`No Stripe price ID configured for license plate (vanity: ${isVanity})`);
+          }
+
+          const price = await stripe.prices.retrieve(priceId);
+          if (!price.unit_amount) {
+            throw new Error(`Stripe price ${priceId} has no unit_amount`);
+          }
+          const platePrice = price.unit_amount / 100;
+
+          // Calculate total with fees
+          const { total: totalAmount, serviceFee } = calculateTotalWithFees(platePrice);
+
+          // Get payment method
+          const stripeCustomer = await stripe.customers.retrieve(customer.stripe_customer_id);
+          if (!stripeCustomer || stripeCustomer.deleted) {
+            throw new Error('Stripe customer not found');
+          }
+
+          // @ts-ignore
+          let defaultPaymentMethod = stripeCustomer.invoice_settings?.default_payment_method;
+
+          if (!defaultPaymentMethod) {
+            const subscriptions = await stripe.subscriptions.list({
+              customer: customer.stripe_customer_id,
+              status: 'active',
+              limit: 1,
+            });
+
+            if (subscriptions.data.length > 0) {
+              defaultPaymentMethod = subscriptions.data[0].default_payment_method as string;
+            }
+          }
+
+          if (!defaultPaymentMethod) {
+            throw new Error('No default payment method found');
+          }
+
+          // DRY RUN check
+          if (dryRun) {
+            console.log(`🧪 [DRY RUN] Would charge license plate for ${customer.email}:`);
+            console.log(`   - Amount: $${totalAmount.toFixed(2)}`);
+            console.log(`   - Plate price: $${platePrice.toFixed(2)}`);
+            console.log(`   - Vanity: ${isVanity}`);
+            results.licensePlateSucceeded++;
+            continue;
+          }
+
+          // Create payment intent
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(totalAmount * 100),
+            currency: 'usd',
+            customer: customer.stripe_customer_id,
+            payment_method: defaultPaymentMethod as string,
+            off_session: true,
+            confirm: true,
+            description: `License Plate Renewal - ${customer.license_plate}`,
+            metadata: {
+              user_id: customer.user_id,
+              license_plate: customer.license_plate,
+              renewal_type: 'license_plate',
+              expiry_date: customer.license_plate_expiry,
+              plate_price: platePrice.toString(),
+              is_vanity: isVanity.toString(),
+            },
+            transfer_data: {
+              destination: remitter.stripe_connected_account_id,
+              amount: Math.round(platePrice * 100),
+            },
+            receipt_email: customer.email || undefined,
+          });
+
+          // Transfer $12 service fee (non-blocking)
+          try {
+            await stripe.transfers.create({
+              amount: Math.round(REMITTER_SERVICE_FEE * 100),
+              currency: 'usd',
+              destination: remitter.stripe_connected_account_id,
+              description: `License Plate Processing Fee - ${customer.license_plate}`,
+              metadata: {
+                user_id: customer.user_id,
+                license_plate: customer.license_plate,
+                renewal_type: 'license_plate',
+                payment_intent_id: paymentIntent.id,
+              },
+            });
+            console.log(`✅ Service fee transfer complete for license plate`);
+          } catch (transferError: any) {
+            console.warn(`⚠️ Service fee transfer skipped: ${transferError.message}`);
+          }
+
+          // Log successful charge
+          await supabase.from('renewal_charges').insert({
+            user_id: customer.user_id,
+            charge_type: 'license_plate_renewal',
+            amount: totalAmount,
+            stripe_payment_intent_id: paymentIntent.id,
+            stripe_charge_id: paymentIntent.latest_charge as string,
+            status: 'succeeded',
+            remitter_partner_id: remitter.id,
+            remitter_received_amount: platePrice + REMITTER_SERVICE_FEE,
+            platform_fee_amount: serviceFee,
+            renewal_type: 'license_plate',
+            renewal_due_date: customer.license_plate_expiry,
+            succeeded_at: new Date().toISOString(),
+          });
+
+          // Create order for remitter
+          await supabase.from('renewal_orders').insert({
+            order_number: 'LP-' + Date.now(),
+            partner_id: remitter.id,
+            customer_name: `${customer.first_name} ${customer.last_name}`,
+            customer_email: customer.email,
+            customer_phone: customer.phone,
+            license_plate: customer.license_plate,
+            license_state: customer.license_state || 'IL',
+            street_address: customer.street_address,
+            city: customer.mailing_city || 'Chicago',
+            state: customer.mailing_state || 'IL',
+            zip_code: customer.zip_code,
+            sticker_type: isVanity ? 'vanity' : 'standard',
+            sticker_price: platePrice,
+            service_fee: REMITTER_SERVICE_FEE,
+            total_amount: platePrice + REMITTER_SERVICE_FEE,
+            payment_status: 'paid',
+            status: 'pending',
+            stripe_payment_intent_id: paymentIntent.id,
+          });
+
+          // Send notifications
+          try {
+            await sendChargeSuccessEmail(customer, totalAmount, 'license_plate');
+
+            if (customer.phone) {
+              const smsMessage = `Autopilot America: We've charged $${totalAmount.toFixed(2)} for your license plate renewal (${customer.license_plate}). We'll submit it to the IL SOS and your new sticker will be mailed. Questions? Reply to this text.`;
+              await sendClickSendSMS(customer.phone, smsMessage);
+            }
+
+            await sendRemitterAlert(remitter, customer, platePrice, REMITTER_SERVICE_FEE);
+          } catch (notificationError) {
+            console.error('Failed to send license plate notifications:', notificationError);
+          }
+
+          results.licensePlateSucceeded++;
+          console.log(`✅ License plate renewal complete for ${customer.user_id}: $${totalAmount}`);
+
+        } catch (error: any) {
+          console.error(`Failed to process license plate for ${customer.user_id}:`, error.message);
+
+          await supabase.from('renewal_charges').insert({
+            user_id: customer.user_id,
+            charge_type: 'license_plate_renewal',
+            amount: 0,
+            status: 'failed',
+            failure_reason: error.message,
+            renewal_type: 'license_plate',
+            renewal_due_date: customer.license_plate_expiry,
+            failed_at: new Date().toISOString(),
+          });
+
+          results.licensePlateFailed++;
+          results.errors.push({
+            type: 'license_plate',
+            customer_id: customer.user_id,
+            license_plate: customer.license_plate,
+            error: error.message,
+          });
+        }
       }
     }
 
