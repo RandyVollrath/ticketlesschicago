@@ -55,6 +55,13 @@ export interface Bid {
   timestamp: string;
 }
 
+export interface ChatMessage {
+  sender: "customer" | "shoveler";
+  sender_phone: string;
+  message: string;
+  timestamp: string;
+}
+
 export interface Job {
   id: string;
   customer_phone: string;
@@ -72,6 +79,37 @@ export interface Job {
   bids: Bid[];
   bid_deadline: string | null;
   selected_bid_index: number | null;
+  chat_history: ChatMessage[];
+  surge_multiplier: number;
+  weather_note: string | null;
+}
+
+export interface Earning {
+  id: string;
+  job_id: string;
+  shoveler_phone: string;
+  job_amount: number;
+  platform_fee: number;
+  shoveler_payout: number;
+  created_at: string;
+}
+
+// Haversine distance calculation
+export function calculateDistance(
+  lat1: number,
+  long1: number,
+  lat2: number,
+  long2: number
+): number {
+  const R = 3959; // Earth's radius in miles
+  const toRad = (deg: number) => deg * (Math.PI / 180);
+  const dLat = toRad(lat2 - lat1);
+  const dLong = toRad(long2 - long1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLong / 2) ** 2;
+  const c = 2 * Math.asin(Math.sqrt(a));
+  return R * c;
 }
 
 // ===========================================
