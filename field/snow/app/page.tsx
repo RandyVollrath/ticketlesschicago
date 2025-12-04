@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import Image from "next/image";
@@ -13,29 +13,18 @@ declare global {
   }
 }
 
-interface Quote {
-  min: number;
-  max: number;
-  suggested: number;
-}
-
 export default function Home() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
-  const [bidMode, setBidMode] = useState(false);
   const [serviceType, setServiceType] = useState<"any" | "truck" | "shovel">("any");
-  const [coolWithTeens, setCoolWithTeens] = useState(true);
   const [scheduledFor, setScheduledFor] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
-  const [quote, setQuote] = useState<Quote | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
   const [pics, setPics] = useState<string[]>([]);
-  const [neighborhood, setNeighborhood] = useState<string | null>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,42 +42,6 @@ export default function Home() {
     if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
   };
-
-  // Fetch instant quote when address or description changes
-  const fetchQuote = useCallback(async () => {
-    if (!address || address.length < 10) return;
-
-    setQuoteLoading(true);
-    try {
-      const res = await fetch("/api/quote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, description, serviceType }),
-      });
-      const data = await res.json();
-      if (data.quote) {
-        setQuote(data.quote);
-        setNeighborhood(data.neighborhood);
-        // Auto-fill suggested price if empty
-        if (!maxPrice) {
-          setMaxPrice(data.quote.suggested.toString());
-        }
-      }
-    } catch (err) {
-      console.error("Quote error:", err);
-    }
-    setQuoteLoading(false);
-  }, [address, description, serviceType, maxPrice]);
-
-  // Debounced quote fetch
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (address.length >= 10) {
-        fetchQuote();
-      }
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [address, description, serviceType, fetchQuote]);
 
   // Handle picture upload
   const handlePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,9 +136,7 @@ export default function Home() {
           address,
           description: description || undefined,
           maxPrice: maxPrice ? parseInt(maxPrice, 10) : undefined,
-          bidMode,
           serviceType,
-          coolWithTeens,
           scheduledFor: scheduledFor || undefined,
         }),
       });
@@ -228,17 +179,13 @@ export default function Home() {
     setAddress("");
     setDescription("");
     setMaxPrice("");
-    setBidMode(false);
     setServiceType("any");
-    setCoolWithTeens(true);
     setScheduledFor("");
     setReferralCode("");
     setStatus("idle");
     setMessage("");
     setJobId(null);
-    setQuote(null);
     setPics([]);
-    setNeighborhood(null);
   };
 
   return (
@@ -393,32 +340,7 @@ export default function Home() {
                       className="w-full pl-8 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                     />
                   </div>
-                  {quoteLoading && (
-                    <p className="text-xs text-sky-500 mt-1 animate-pulse">
-                      Calculating suggested price...
-                    </p>
-                  )}
-                  {quote && !quoteLoading && (
-                    <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-                      <p className="text-sm text-green-800 dark:text-green-300 font-medium">
-                        Suggested: ${quote.min} - ${quote.max}
-                      </p>
-                      {neighborhood && (
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                          Based on {neighborhood} rates
-                        </p>
-                      )}
-                      {quote.suggested !== parseInt(maxPrice) && (
-                        <button
-                          type="button"
-                          onClick={() => setMaxPrice(quote.suggested.toString())}
-                          className="mt-1 text-xs text-green-700 dark:text-green-400 underline hover:no-underline"
-                        >
-                          Use suggested (${quote.suggested})
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <p className="text-xs text-slate-500 mt-1">Leave blank for open budget</p>
                 </div>
 
                 {/* Picture Upload */}
@@ -456,44 +378,6 @@ export default function Home() {
                   <p className="text-xs text-slate-500 mt-1">
                     Show plowers what needs clearing (max 3)
                   </p>
-                </div>
-
-                {/* Bid Mode Toggle */}
-                <div className="flex items-start gap-3 p-4 bg-sky-50 dark:bg-slate-600 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="bidMode"
-                    checked={bidMode}
-                    onChange={(e) => setBidMode(e.target.checked)}
-                    className="mt-1 w-5 h-5 text-sky-600 border-slate-300 rounded focus:ring-sky-500"
-                  />
-                  <div>
-                    <label htmlFor="bidMode" className="font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
-                      Enable Bidding
-                    </label>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Get competitive bids (2 min window). You pick the best offer!
-                    </p>
-                  </div>
-                </div>
-
-                {/* Student Shoveler Option */}
-                <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-slate-600 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="coolWithTeens"
-                    checked={coolWithTeens}
-                    onChange={(e) => setCoolWithTeens(e.target.checked)}
-                    className="mt-1 w-5 h-5 text-green-600 border-slate-300 rounded focus:ring-green-500"
-                  />
-                  <div>
-                    <label htmlFor="coolWithTeens" className="font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
-                      Include student shovelers (budget-friendly option)
-                    </label>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Local high school &amp; college students often offer lower rates. Uncheck for experienced pros only.
-                    </p>
-                  </div>
                 </div>
 
                 {/* Schedule for Later (Pre-Storm Booking) */}
