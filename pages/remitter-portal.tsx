@@ -743,7 +743,7 @@ export default function RemitterPortal() {
                     <p><span className="text-gray-500">Plate:</span> <strong className="text-lg">{selectedOrder.vehicle.licensePlate}</strong> ({selectedOrder.vehicle.state})</p>
                     <p><span className="text-gray-500">Type:</span> {selectedOrder.stickerTypeLabel}</p>
                     {selectedOrder.renewalDueDate && (
-                      <p><span className="text-gray-500">Renewal Due:</span> <strong className="text-red-600">{new Date(selectedOrder.renewalDueDate).toLocaleDateString()}</strong></p>
+                      <p><span className="text-gray-500">Renewal Due:</span> <strong className="text-red-600">{new Date(selectedOrder.renewalDueDate + 'T12:00:00').toLocaleDateString()}</strong></p>
                     )}
                   </div>
                 </div>
