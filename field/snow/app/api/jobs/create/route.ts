@@ -212,10 +212,10 @@ Text CANCEL ${shortId} to cancel.`
       });
     }
 
-    // Find shovelers within 15 miles (covers Chicago + suburbs)
+    // Find all active shovelers (prioritize nearby but no distance restriction)
     let shovelers;
     if (geo?.lat && geo?.long) {
-      shovelers = await getNearbyShovelers(geo.lat, geo.long, 15, body.maxPrice || undefined);
+      shovelers = await getNearbyShovelers(geo.lat, geo.long, 9999, body.maxPrice || undefined);
     }
 
     if (!shovelers || shovelers.length === 0) {

@@ -91,10 +91,10 @@ async function broadcastScheduledJob(
 ) {
   const shortId = job.id.substring(0, 8);
 
-  // Find shovelers within 15 miles
+  // Find all active shovelers (no distance restriction)
   let shovelers;
   if (job.lat && job.long) {
-    shovelers = await getNearbyShovelers(job.lat, job.long, 15, job.max_price || undefined);
+    shovelers = await getNearbyShovelers(job.lat, job.long, 9999, job.max_price || undefined);
   }
 
   if (!shovelers || shovelers.length === 0) {

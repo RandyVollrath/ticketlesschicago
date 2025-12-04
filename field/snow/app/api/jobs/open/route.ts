@@ -73,10 +73,7 @@ export async function GET(request: NextRequest) {
         return { ...job, distance_miles: undefined };
       });
 
-      // Filter to jobs within 15 miles
-      openJobs = openJobs.filter(
-        (job) => job.distance_miles === undefined || job.distance_miles <= 15
-      );
+      // No distance restriction - show all jobs, but prioritize nearby ones in sorting
     }
 
     // Filter by max rate if provided (plower's rate)
