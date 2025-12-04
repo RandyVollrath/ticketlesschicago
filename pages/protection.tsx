@@ -665,8 +665,11 @@ export default function Protection() {
                   }}>
                     Your Renewals
                   </h3>
-                  <p style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '20px', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+                  <p style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '12px', margin: '0 0 12px 0', lineHeight: '1.5' }}>
                     Track your city sticker and license plate renewal deadlines.
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#b45309', backgroundColor: '#fef3c7', padding: '8px 12px', borderRadius: '6px', marginBottom: '20px', lineHeight: '1.4' }}>
+                    Prices shown are 2024 rates set by the City of Chicago and Illinois Secretary of State. Renewal fees are subject to change and you will be charged the official rate at the time of your renewal.
                   </p>
 
                   {/* City Sticker */}
@@ -894,7 +897,7 @@ export default function Protection() {
                       required
                     />
                     <span>
-                      I authorize Autopilot America to monitor my vehicle renewal deadlines and coordinate automated renewals on my behalf. I agree to the <a href="/terms" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Privacy Policy</a>.
+                      I authorize Autopilot America to monitor my vehicle renewal deadlines and coordinate automated renewals on my behalf. I understand that renewal fees are set by the City of Chicago and State of Illinois, and I will be charged the official rate at the time of renewal. I agree to the <a href="/terms" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Privacy Policy</a>.
                     </span>
                   </label>
                 </div>

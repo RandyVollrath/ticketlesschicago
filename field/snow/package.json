@@ -9,12 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
     "next": "^14.2.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@supabase/supabase-js": "^2.39.0"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

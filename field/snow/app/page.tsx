@@ -6,7 +6,8 @@ import Script from "next/script";
 
 declare global {
   interface Window {
-    google: typeof google;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    google: any;
     initAutocomplete: () => void;
   }
 }

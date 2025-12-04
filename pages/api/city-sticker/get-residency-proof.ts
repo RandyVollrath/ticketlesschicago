@@ -23,10 +23,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { userId } = req.query;
+    let { userId, email } = req.query;
+
+    // Allow lookup by email (for remitter portal)
+    if (email && typeof email === 'string' && !userId) {
+      const { data: user } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('email', email)
+        .single();
+
+      if (user) {
+        userId = user.user_id;
+      }
+    }
 
     if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'User ID required' });
+      return res.status(400).json({ error: 'User ID or email required' });
     }
 
     // Get user profile to find residency proof path
