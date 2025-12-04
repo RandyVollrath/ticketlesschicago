@@ -7,12 +7,20 @@ interface GeocodeResult {
   lat: number;
   long: number;
   formattedAddress: string;
+  neighborhood: string | null;
+}
+
+interface AddressComponent {
+  long_name: string;
+  short_name: string;
+  types: string[];
 }
 
 interface GoogleGeocodeResponse {
   status: string;
   results: Array<{
     formatted_address: string;
+    address_components: AddressComponent[];
     geometry: {
       location: {
         lat: number;
@@ -22,9 +30,83 @@ interface GoogleGeocodeResponse {
   }>;
 }
 
+// Chicago neighborhoods and suburbs for detection
+const CHICAGO_NEIGHBORHOODS = [
+  // City neighborhoods
+  "Lincoln Park", "Lakeview", "Wicker Park", "Bucktown", "Logan Square",
+  "Wrigleyville", "Andersonville", "Edgewater", "Rogers Park", "Uptown",
+  "Ravenswood", "North Center", "Albany Park", "Irving Park", "Portage Park",
+  "Jefferson Park", "Edison Park", "Norwood Park", "O'Hare", "Dunning",
+  "Belmont Cragin", "Hermosa", "Humboldt Park", "West Town", "Ukrainian Village",
+  "East Village", "River North", "Streeterville", "Gold Coast", "Old Town",
+  "Near North Side", "Near West Side", "West Loop", "Fulton Market", "Pilsen",
+  "Little Village", "Bridgeport", "Bronzeville", "Hyde Park", "Kenwood",
+  "South Shore", "Chatham", "Beverly", "Morgan Park", "Mount Greenwood",
+  "Garfield Ridge", "Clearing", "Archer Heights", "Brighton Park", "McKinley Park",
+  "Back of the Yards", "Englewood", "Auburn Gresham", "Roseland", "Pullman",
+  // Suburbs
+  "Evanston", "Skokie", "Wilmette", "Winnetka", "Glencoe", "Highland Park",
+  "Lake Forest", "Northbrook", "Glenview", "Morton Grove", "Niles", "Park Ridge",
+  "Des Plaines", "Mount Prospect", "Arlington Heights", "Palatine", "Schaumburg",
+  "Hoffman Estates", "Elk Grove Village", "Rolling Meadows", "Buffalo Grove",
+  "Wheeling", "Deerfield", "Libertyville", "Vernon Hills", "Mundelein",
+  "Oak Park", "Forest Park", "River Forest", "Elmwood Park", "Melrose Park",
+  "Maywood", "Berwyn", "Cicero", "Oak Lawn", "Orland Park", "Tinley Park",
+  "Palos Heights", "Palos Hills", "Homer Glen", "Lemont", "Bolingbrook",
+  "Naperville", "Aurora", "Wheaton", "Glen Ellyn", "Lombard", "Downers Grove",
+  "Westmont", "Clarendon Hills", "Hinsdale", "Western Springs", "La Grange",
+  "Brookfield", "Riverside", "North Riverside", "Summit", "Bedford Park",
+  "Burbank", "Evergreen Park", "Chicago Heights", "Calumet City", "Harvey",
+  "Dolton", "South Holland", "Lansing", "Homewood", "Flossmoor", "Olympia Fields",
+];
+
+/**
+ * Extract neighborhood from address components or formatted address
+ */
+function extractNeighborhood(
+  addressComponents: AddressComponent[],
+  formattedAddress: string
+): string | null {
+  // First try to find neighborhood from address components
+  for (const component of addressComponents) {
+    if (
+      component.types.includes("neighborhood") ||
+      component.types.includes("sublocality") ||
+      component.types.includes("sublocality_level_1")
+    ) {
+      // Check if it matches our known neighborhoods
+      const match = CHICAGO_NEIGHBORHOODS.find(
+        (n) => n.toLowerCase() === component.long_name.toLowerCase()
+      );
+      if (match) return match;
+    }
+
+    // Check locality (for suburbs)
+    if (component.types.includes("locality")) {
+      const match = CHICAGO_NEIGHBORHOODS.find(
+        (n) => n.toLowerCase() === component.long_name.toLowerCase()
+      );
+      if (match) return match;
+    }
+  }
+
+  // Fallback: search formatted address for known neighborhoods
+  const lowerAddress = formattedAddress.toLowerCase();
+  for (const neighborhood of CHICAGO_NEIGHBORHOODS) {
+    if (lowerAddress.includes(neighborhood.toLowerCase())) {
+      return neighborhood;
+    }
+  }
+
+  return null;
+}
+
+export { CHICAGO_NEIGHBORHOODS };
+
 /**
  * Geocode an address using Google Maps Geocoding API
  * Biased toward Chicago, IL for better local results
+ * Returns lat/long, formatted address, and detected neighborhood
  */
 export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   const apiKey = process.env.GOOGLE_API_KEY;
@@ -53,10 +135,16 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
     }
 
     const result = data.results[0];
+    const neighborhood = extractNeighborhood(
+      result.address_components,
+      result.formatted_address
+    );
+
     return {
       lat: result.geometry.location.lat,
       long: result.geometry.location.lng,
       formattedAddress: result.formatted_address,
+      neighborhood,
     };
   } catch (error) {
     console.error("Geocoding error:", error);

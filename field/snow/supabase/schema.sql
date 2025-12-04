@@ -278,3 +278,95 @@ WHERE s.show_on_leaderboard = TRUE
 GROUP BY s.phone, s.name, s.avg_rating
 ORDER BY storm_earnings DESC
 LIMIT 10;
+
+-- ===========================================
+-- FINAL SIMPLICITY PASS
+-- ===========================================
+
+-- Plower profile fields
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS profile_pic_url TEXT;
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS tagline TEXT;
+
+-- Customer "cool with teens" preference on jobs
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cool_with_teens BOOLEAN DEFAULT TRUE;
+
+-- Push notification subscription for plowers
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS push_subscription TEXT;
+
+-- Rate limiting table
+CREATE TABLE IF NOT EXISTS rate_limits (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    identifier TEXT NOT NULL, -- phone or IP
+    action TEXT NOT NULL, -- 'job_post' or 'claim'
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_lookup ON rate_limits(identifier, action, created_at);
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Rate limits full access" ON rate_limits FOR ALL USING (true);
+
+-- Clean up old rate limit entries (run daily via cron)
+CREATE OR REPLACE FUNCTION cleanup_rate_limits()
+RETURNS void AS $$
+BEGIN
+    DELETE FROM rate_limits WHERE created_at < NOW() - INTERVAL '2 hours';
+END;
+$$ LANGUAGE plpgsql;
+
+-- ===========================================
+-- AIRBNB/UPWORK POLISH FEATURES
+-- ===========================================
+
+-- Chicago neighborhoods list for auto-detection
+-- Neighborhoods for jobs and shovelers
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS neighborhood TEXT;
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS neighborhood TEXT;
+
+-- Job pictures (before/after)
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS pics JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS after_pic TEXT;
+
+-- Payout tracking
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS paid_out BOOLEAN DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS final_price NUMERIC;
+
+-- Plower availability calendar (array of available time slots)
+ALTER TABLE shovelers ADD COLUMN IF NOT EXISTS availability JSONB DEFAULT '[]'::jsonb;
+
+-- Indexes for browsing
+CREATE INDEX IF NOT EXISTS idx_jobs_neighborhood ON jobs(neighborhood) WHERE neighborhood IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_shovelers_neighborhood ON shovelers(neighborhood) WHERE neighborhood IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_jobs_status_pending ON jobs(status, created_at DESC) WHERE status = 'pending';
+
+-- Expand geo radius for Chicagoland suburbs (update helper function)
+CREATE OR REPLACE FUNCTION get_nearby_shovelers(
+    job_lat NUMERIC,
+    job_long NUMERIC,
+    max_distance_miles NUMERIC DEFAULT 15, -- Expanded from 10 to 15 miles for suburbs
+    max_rate NUMERIC DEFAULT NULL
+) RETURNS TABLE (
+    id UUID,
+    phone TEXT,
+    name TEXT,
+    rate NUMERIC,
+    skills TEXT[],
+    distance_miles NUMERIC
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        s.id,
+        s.phone,
+        s.name,
+        s.rate,
+        s.skills,
+        haversine_distance(job_lat, job_long, s.lat, s.long) as distance_miles
+    FROM shovelers s
+    WHERE s.active = true
+        AND s.lat IS NOT NULL
+        AND s.long IS NOT NULL
+        AND haversine_distance(job_lat, job_long, s.lat, s.long) <= max_distance_miles
+        AND (max_rate IS NULL OR s.rate <= max_rate)
+    ORDER BY distance_miles ASC;
+END;
+$$ LANGUAGE plpgsql;

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, getShovelerByPhone, type ChatMessage } from "@/lib/supabase";
+import { supabase, getShovelerByPhone, isPlowerSuspended, type ChatMessage } from "@/lib/supabase";
 import { sendSMS } from "@/lib/clicksend";
+import { checkRateLimit, recordRateLimitAction } from "@/lib/rateLimit";
+import { broadcastToPlowers, notifications } from "@/lib/push";
+import { NOTIFICATION_TEMPLATES } from "@/lib/constants";
 
 interface ClaimBody {
   shovelerPhone: string;
   claimAndCall?: boolean;
+  asBackup?: boolean; // Claim as backup plower instead of primary
 }
 
 export async function POST(
@@ -37,6 +41,31 @@ export async function POST(
       );
     }
 
+    // Check if plower is suspended
+    if (isPlowerSuspended(shoveler.no_show_strikes || 0)) {
+      return NextResponse.json(
+        {
+          error: "Your account is temporarily suspended due to repeated no-shows. Contact support to appeal.",
+          suspended: true
+        },
+        { status: 403 }
+      );
+    }
+
+    // Rate limiting
+    const rateLimit = await checkRateLimit(phone, "claim");
+    if (!rateLimit.allowed) {
+      const resetMins = Math.ceil(rateLimit.resetIn / 60000);
+      return NextResponse.json(
+        {
+          error: `Too many claims. Try again in ${resetMins} minute${resetMins === 1 ? "" : "s"}.`,
+          rateLimited: true,
+          resetIn: rateLimit.resetIn,
+        },
+        { status: 429 }
+      );
+    }
+
     // Get the job
     const { data: job, error: jobError } = await supabase
       .from("jobs")
@@ -56,8 +85,66 @@ export async function POST(
       );
     }
 
-    // Check job status
-    if (job.status !== "pending") {
+    // Handle backup plower claim
+    if (body.asBackup) {
+      // Only allow backup claim if job is already accepted
+      if (job.status !== "accepted" && job.status !== "on_the_way") {
+        return NextResponse.json(
+          { error: "Can only claim backup on an accepted job" },
+          { status: 400 }
+        );
+      }
+
+      // Check if backup slot is already taken
+      if (job.backup_plower_id) {
+        return NextResponse.json(
+          { error: "Backup position already filled" },
+          { status: 409 }
+        );
+      }
+
+      // Can't be backup for your own job
+      if (job.plower_id === shoveler.id) {
+        return NextResponse.json(
+          { error: "You're already the primary plower for this job" },
+          { status: 400 }
+        );
+      }
+
+      // Claim as backup
+      const now = new Date().toISOString();
+      const { data: updated, error: updateError } = await supabase
+        .from("jobs")
+        .update({
+          backup_plower_id: shoveler.id,
+          backup_assigned_at: now,
+        })
+        .eq("id", jobId)
+        .is("backup_plower_id", null) // Race condition protection
+        .select()
+        .single();
+
+      if (updateError || !updated) {
+        return NextResponse.json(
+          { error: "Failed to claim backup - slot may be taken" },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        backup: true,
+        message: "You are now the backup plower. You'll be notified if the primary doesn't show.",
+        job: {
+          id: updated.id,
+          shortId: updated.id.substring(0, 8),
+          address: updated.address,
+        },
+      });
+    }
+
+    // Check job status for primary claim (accept both legacy 'pending' and new 'open')
+    if (job.status !== "pending" && job.status !== "open") {
       return NextResponse.json(
         { error: `Job is ${job.status}, cannot claim` },
         { status: 400 }
@@ -81,16 +168,20 @@ export async function POST(
     };
 
     // Claim the job (atomic update with status check)
+    // Use new 'accepted' status instead of 'claimed'
+    const now = new Date().toISOString();
     const { data: updated, error: updateError } = await supabase
       .from("jobs")
       .update({
-        status: "claimed",
+        status: "accepted",
         shoveler_phone: phone,
-        claimed_at: new Date().toISOString(),
+        plower_id: shoveler.id,
+        claimed_at: now,
+        accepted_at: now,
         chat_history: [initialMessage],
       })
       .eq("id", jobId)
-      .eq("status", "pending") // Race condition protection
+      .in("status", ["pending", "open"]) // Race condition protection
       .select()
       .single();
 
@@ -98,6 +189,34 @@ export async function POST(
       return NextResponse.json(
         { error: "Failed to claim job - may have been taken" },
         { status: 409 }
+      );
+    }
+
+    // Increment jobs_claimed for plower (trigger will handle this, but manual fallback)
+    await supabase
+      .from("shovelers")
+      .update({ jobs_claimed: (shoveler.jobs_claimed || 0) + 1 })
+      .eq("id", shoveler.id);
+
+    // Record rate limit
+    await recordRateLimitAction(phone, "claim");
+
+    // Notify other plowers who might have been interested (push + SMS fallback)
+    // This is a "job claimed" notification
+    const { data: otherPlowers } = await supabase
+      .from("shovelers")
+      .select("phone")
+      .eq("is_online", true)
+      .neq("phone", phone);
+
+    if (otherPlowers && otherPlowers.length > 0) {
+      const claimedNotif = notifications.jobClaimed(job.address, jobId);
+      // Only send to a few nearby plowers to avoid spam
+      const nearbyPlowers = otherPlowers.slice(0, 5);
+      await broadcastToPlowers(
+        nearbyPlowers.map((p) => p.phone),
+        claimedNotif.payload,
+        claimedNotif.sms
       );
     }
 
@@ -114,7 +233,7 @@ export async function POST(
       } else {
         await sendSMS(
           job.customer_phone,
-          `Great news! ${shoveler.name || "A plower"} is on the way to ${job.address}!\n\nJob #${jobId.substring(0, 8)}\n\nView updates: ${process.env.NEXT_PUBLIC_BASE_URL || ""}/job/${jobId}`
+          NOTIFICATION_TEMPLATES.JOB_ACCEPTED(job.address, shoveler.name || "")
         );
       }
     } catch (smsError) {

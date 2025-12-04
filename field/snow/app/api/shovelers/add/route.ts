@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import { sendSMS } from "@/lib/clicksend";
 import { geocodeAddress } from "@/lib/geocode";
 
+export const dynamic = "force-dynamic";
+
 interface AddShovelerBody {
   phone: string;
   name?: string;
@@ -34,12 +36,14 @@ export async function POST(request: NextRequest) {
     // Geocode address if provided
     let lat: number | null = null;
     let long: number | null = null;
+    let neighborhood: string | null = null;
 
     if (body.address) {
       const geo = await geocodeAddress(body.address);
       if (geo) {
         lat = geo.lat;
         long = geo.long;
+        neighborhood = geo.neighborhood;
       }
     }
 
@@ -52,24 +56,47 @@ export async function POST(request: NextRequest) {
       skills = [...skills, "plow"];
     }
 
+    // Check if shoveler already exists
+    const { data: existing } = await supabase
+      .from("shovelers")
+      .select("id")
+      .eq("phone", phone)
+      .single();
+
     // Insert or update shoveler
+    const shovelerData: Record<string, unknown> = {
+      phone,
+      name: body.name || null,
+      rate,
+      skills,
+      lat,
+      long,
+      neighborhood,
+      active: true,
+      has_truck: body.hasTruck || false,
+      venmo_handle: body.venmoHandle || null,
+      cashapp_handle: body.cashappHandle || null,
+    };
+
+    // Only set defaults for new shovelers
+    if (!existing) {
+      shovelerData.stripe_connect_onboarded = false;
+      shovelerData.sms_notify_threshold = 0;
+      shovelerData.jobs_claimed = 0;
+      shovelerData.jobs_completed = 0;
+      shovelerData.jobs_cancelled_by_plower = 0;
+      shovelerData.no_show_strikes = 0;
+      shovelerData.is_verified = false;
+      shovelerData.is_online = false;
+      shovelerData.avg_rating = 0;
+      shovelerData.total_reviews = 0;
+      shovelerData.total_tips = 0;
+      shovelerData.show_on_leaderboard = true;
+    }
+
     const { data, error } = await supabase
       .from("shovelers")
-      .upsert(
-        {
-          phone,
-          name: body.name || null,
-          rate,
-          skills,
-          lat,
-          long,
-          active: true,
-          has_truck: body.hasTruck || false,
-          venmo_handle: body.venmoHandle || null,
-          cashapp_handle: body.cashappHandle || null,
-        },
-        { onConflict: "phone" }
-      )
+      .upsert(shovelerData, { onConflict: "phone" })
       .select()
       .single();
 
@@ -111,9 +138,33 @@ You'll receive texts when customers need help nearby. Reply HELP for commands.`
   }
 }
 
-// GET endpoint to list all shovelers
-export async function GET() {
+// GET endpoint to get shoveler by phone or list all
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const phone = searchParams.get("phone");
+
+    // If phone provided, look up single shoveler
+    if (phone) {
+      let normalizedPhone = phone.trim();
+      if (!normalizedPhone.startsWith("+")) {
+        normalizedPhone = `+1${normalizedPhone.replace(/\D/g, "")}`;
+      }
+
+      const { data, error } = await supabase
+        .from("shovelers")
+        .select("*")
+        .eq("phone", normalizedPhone)
+        .single();
+
+      if (error || !data) {
+        return NextResponse.json({ shoveler: null });
+      }
+
+      return NextResponse.json({ shoveler: data });
+    }
+
+    // Otherwise list all shovelers
     const { data, error } = await supabase
       .from("shovelers")
       .select("*")

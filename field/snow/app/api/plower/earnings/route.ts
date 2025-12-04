@@ -32,6 +32,28 @@ export async function GET(request: NextRequest) {
     );
     const todayJobs = (todayEarnings || []).length;
 
+    // Fetch today's bonuses
+    // First get the plower's ID
+    const { data: plower } = await supabase
+      .from("shovelers")
+      .select("id")
+      .eq("phone", phone)
+      .single();
+
+    let todayBonuses = 0;
+    if (plower?.id) {
+      const { data: bonuses } = await supabase
+        .from("bonuses")
+        .select("amount")
+        .eq("plower_id", plower.id)
+        .gte("created_at", todayStart.toISOString());
+
+      todayBonuses = (bonuses || []).reduce(
+        (sum, b) => sum + (b.amount || 0),
+        0
+      );
+    }
+
     // Fetch pending payouts (earnings without a payout request)
     const { data: allEarnings } = await supabase
       .from("earnings")
@@ -55,8 +77,9 @@ export async function GET(request: NextRequest) {
     const pendingPayout = Math.max(0, totalEarned - totalPaidOut);
 
     return NextResponse.json({
-      todayTotal,
+      todayTotal: todayTotal + todayBonuses,
       todayJobs,
+      todayBonuses,
       pendingPayout,
       totalEarned,
       totalPaidOut,

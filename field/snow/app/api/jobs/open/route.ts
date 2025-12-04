@@ -5,6 +5,9 @@ interface OpenJobWithDistance extends Job {
   distance_miles?: number;
 }
 
+// Teen-related keywords to filter on
+const TEEN_KEYWORDS = ["kid", "teen", "student", "hs", "high school", "college", "16", "17", "18", "19", "20"];
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,12 +16,31 @@ export async function GET(request: NextRequest) {
     const skills = searchParams.get("skills")?.split(",") || [];
     const maxRate = searchParams.get("maxRate");
     const sortBy = searchParams.get("sort") || "pay"; // pay, distance, newest
+    const plowerPhone = searchParams.get("phone"); // plower's phone to get their info
 
-    // Fetch all open jobs (pending status)
+    // Get plower's info if phone provided
+    let plowerTagline: string | null = null;
+    let plowerHasTruck = false;
+    if (plowerPhone) {
+      const { data: plower } = await supabase
+        .from("shovelers")
+        .select("tagline, profile_pic_url, name, has_truck")
+        .eq("phone", plowerPhone)
+        .single();
+      plowerTagline = plower?.tagline || null;
+      plowerHasTruck = plower?.has_truck || false;
+    }
+
+    // Check if plower has teen keywords in tagline
+    const plowerIsTeen = plowerTagline
+      ? TEEN_KEYWORDS.some((kw) => plowerTagline!.toLowerCase().includes(kw))
+      : false;
+
+    // Fetch all open jobs (pending/open status)
     const { data: jobs, error } = await supabase
       .from("jobs")
       .select("*")
-      .eq("status", "pending")
+      .in("status", ["pending", "open"])
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -27,6 +49,16 @@ export async function GET(request: NextRequest) {
     }
 
     let openJobs: OpenJobWithDistance[] = jobs || [];
+
+    // Filter out jobs where customer is not cool with teens (if plower is a teen)
+    if (plowerIsTeen) {
+      openJobs = openJobs.filter((job) => job.cool_with_teens !== false);
+    }
+
+    // Filter by service type - plowers without trucks can't see truck-only jobs
+    if (!plowerHasTruck) {
+      openJobs = openJobs.filter((job) => job.service_type !== "truck");
+    }
 
     // Calculate distances if plower location provided
     if (lat && long) {

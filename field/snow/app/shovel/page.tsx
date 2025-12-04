@@ -51,6 +51,13 @@ export default function ShovelerSignup() {
       return;
     }
 
+    // Address required for matching
+    if (!address.trim()) {
+      setStatus("error");
+      setMessage("Please enter your address or neighborhood so we can match you with nearby jobs.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/shovelers/add", {
         method: "POST",
@@ -250,22 +257,28 @@ export default function ShovelerSignup() {
                 </p>
               </div>
 
-              {/* Address */}
-              <div>
+              {/* Address - Required */}
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border-2 border-amber-200 dark:border-amber-800">
                 <label htmlFor="address" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Your Location (for matching nearby jobs)
+                  Your Home Address or Neighborhood *
                 </label>
                 <input
                   type="text"
                   id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="e.g., Logan Square, Chicago or 2000 N Western Ave"
+                  placeholder="e.g., 2000 N Western Ave, Chicago or Lincoln Park"
+                  required
                   className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  We'll use this to send you jobs within 10 miles
-                </p>
+                <div className="mt-2 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                  <p className="font-medium">Why we need this:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-amber-600 dark:text-amber-400">
+                    <li>We only send you jobs within 15 miles of your location</li>
+                    <li>Closer jobs = faster response = more claims</li>
+                    <li>Your exact address is never shown to customers</li>
+                  </ul>
+                </div>
               </div>
 
               {status === "error" && (
