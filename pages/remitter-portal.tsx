@@ -43,6 +43,7 @@ interface Order {
   status: string;
   paymentStatus: string;
   paidAt?: string;
+  renewalDueDate?: string;
   createdAt: string;
   documents?: any[];
 }
@@ -234,12 +235,13 @@ export default function RemitterPortal() {
 
         if (licenseRes.ok) {
           const licenseData = await licenseRes.json();
-          docs.driverLicense = licenseData.imageUrl || licenseData.url;
+          // The API returns front.signedUrl for the front of license
+          docs.driverLicense = licenseData.front?.signedUrl || licenseData.signedUrl;
         }
 
         if (residencyRes.ok) {
           const residencyData = await residencyRes.json();
-          docs.residencyProof = residencyData.imageUrl || residencyData.url;
+          docs.residencyProof = residencyData.signedUrl;
         }
 
         setOrderDocuments(docs);
@@ -757,6 +759,9 @@ export default function RemitterPortal() {
                   <div className="space-y-2 text-sm">
                     <p><span className="text-gray-500">Plate:</span> <strong className="text-lg">{selectedOrder.vehicle.licensePlate}</strong> ({selectedOrder.vehicle.state})</p>
                     <p><span className="text-gray-500">Type:</span> {selectedOrder.stickerTypeLabel}</p>
+                    {selectedOrder.renewalDueDate && (
+                      <p><span className="text-gray-500">Renewal Due:</span> <strong className="text-red-600">{new Date(selectedOrder.renewalDueDate).toLocaleDateString()}</strong></p>
+                    )}
                   </div>
                 </div>
               </div>

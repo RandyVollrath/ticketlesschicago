@@ -26,6 +26,10 @@ ADD COLUMN IF NOT EXISTS city_confirmation_number TEXT;
 ALTER TABLE renewal_orders
 ADD COLUMN IF NOT EXISTS remitter_notes TEXT;
 
+-- Add renewal due date for remitter reference
+ALTER TABLE renewal_orders
+ADD COLUMN IF NOT EXISTS renewal_due_date DATE;
+
 -- Create index for filtering by permit status (useful for remitter queries)
 CREATE INDEX IF NOT EXISTS idx_renewal_orders_permit_requested
 ON renewal_orders(permit_requested)

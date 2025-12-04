@@ -473,6 +473,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           payment_status: 'paid',
           status: 'pending', // Awaiting remitter to process and submit to city
           stripe_payment_intent_id: paymentIntent.id,
+          renewal_due_date: customer.city_sticker_expiry,
         });
 
         // Send email and SMS notifications

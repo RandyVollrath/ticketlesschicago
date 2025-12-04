@@ -280,6 +280,7 @@ function formatOrder(order: any) {
     paymentStatus: order.payment_status,
     paidAt: order.paid_at,
     fulfillmentMethod: order.fulfillment_method,
+    renewalDueDate: order.renewal_due_date,
     createdAt: order.created_at,
     updatedAt: order.updated_at,
   };
