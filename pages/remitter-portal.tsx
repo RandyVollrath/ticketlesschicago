@@ -842,7 +842,7 @@ export default function RemitterPortal() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Pending Review</h2>
             <p className="text-sm text-gray-600 mb-6">
-              Orders with status "submitted" that need to be processed through the city portal.
+              Paid orders waiting for you to submit to the city portal.
             </p>
 
             {loading ? (

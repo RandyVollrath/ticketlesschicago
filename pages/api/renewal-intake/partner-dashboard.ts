@@ -188,11 +188,12 @@ async function getStats(res: NextApiResponse, partnerId: string) {
 }
 
 async function getPendingReview(res: NextApiResponse, partnerId: string) {
+  // Show orders with status 'pending' - these are paid and waiting for remitter to process
   const { data: pendingOrders } = await supabase
     .from('renewal_orders')
     .select('*, renewal_document_reviews(*)')
     .eq('partner_id', partnerId)
-    .eq('status', 'submitted')
+    .eq('status', 'pending')
     .order('created_at', { ascending: true });
 
   return res.status(200).json({
