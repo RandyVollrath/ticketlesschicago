@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+interface Bid {
+  shoveler_phone: string;
+  shoveler_name?: string;
+  amount: number;
+  timestamp: string;
+}
+
 interface Job {
   id: string;
   customer_phone: string;
@@ -16,6 +23,10 @@ interface Job {
   claimed_at: string | null;
   completed_at: string | null;
   created_at: string;
+  bid_mode: boolean;
+  bids: Bid[];
+  bid_deadline: string | null;
+  selected_bid_index: number | null;
 }
 
 interface Shoveler {
@@ -37,6 +48,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"jobs" | "shovelers">("jobs");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [expandedJob, setExpandedJob] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -229,49 +241,119 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {filteredJobs.map((job) => (
-                        <tr key={job.id} className="hover:bg-slate-50 dark:hover:bg-slate-750">
-                          <td className="px-4 py-3 text-sm font-mono text-slate-600 dark:text-slate-300">
-                            {job.id.substring(0, 8)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="text-sm text-slate-800 dark:text-white max-w-xs truncate">
-                              {job.address}
-                            </div>
-                            {job.description && job.description !== "Snow removal requested" && (
-                              <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                {job.description}
+                        <>
+                          <tr
+                            key={job.id}
+                            className={`hover:bg-slate-50 dark:hover:bg-slate-750 ${job.bid_mode ? "cursor-pointer" : ""}`}
+                            onClick={() => job.bid_mode && setExpandedJob(expandedJob === job.id ? null : job.id)}
+                          >
+                            <td className="px-4 py-3 text-sm font-mono text-slate-600 dark:text-slate-300">
+                              <div className="flex items-center gap-2">
+                                {job.id.substring(0, 8)}
+                                {job.bid_mode && (
+                                  <span className="px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded">
+                                    BID
+                                  </span>
+                                )}
                               </div>
-                            )}
-                            {job.lat && job.long && (
-                              <div className="text-xs text-green-600 dark:text-green-400">
-                                Geo: {job.lat.toFixed(4)}, {job.long.toFixed(4)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm text-slate-800 dark:text-white max-w-xs truncate">
+                                {job.address}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {job.max_price ? (
-                              <span className="text-green-600 dark:text-green-400 font-medium">
-                                ${job.max_price}
+                              {job.description && job.description !== "Snow removal requested" && (
+                                <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                  {job.description}
+                                </div>
+                              )}
+                              {job.lat && job.long && (
+                                <div className="text-xs text-green-600 dark:text-green-400">
+                                  Geo: {job.lat.toFixed(4)}, {job.long.toFixed(4)}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              {job.max_price ? (
+                                <span className="text-green-600 dark:text-green-400 font-medium">
+                                  ${job.max_price}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                              {job.bid_mode && job.bids && job.bids.length > 0 && (
+                                <div className="text-xs text-orange-600 dark:text-orange-400">
+                                  {job.bids.length} bid{job.bids.length !== 1 ? "s" : ""}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                              {formatPhone(job.customer_phone)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(job.status)}`}>
+                                {job.status.replace("_", " ")}
                               </span>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                            {formatPhone(job.customer_phone)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(job.status)}`}>
-                              {job.status.replace("_", " ")}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                            {job.shoveler_phone ? formatPhone(job.shoveler_phone) : "-"}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-                            {formatDate(job.created_at)}
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                              {job.shoveler_phone ? formatPhone(job.shoveler_phone) : "-"}
+                              {job.selected_bid_index !== null && job.bids && job.bids[job.selected_bid_index] && (
+                                <div className="text-xs text-green-600 dark:text-green-400">
+                                  Won: ${job.bids[job.selected_bid_index].amount}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                              {formatDate(job.created_at)}
+                            </td>
+                          </tr>
+                          {/* Expanded bid details */}
+                          {expandedJob === job.id && job.bid_mode && job.bids && job.bids.length > 0 && (
+                            <tr key={`${job.id}-bids`}>
+                              <td colSpan={7} className="px-4 py-3 bg-orange-50 dark:bg-orange-900/20">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  Bids for Job #{job.id.substring(0, 8)}
+                                  {job.bid_deadline && (
+                                    <span className="ml-2 text-xs text-slate-500">
+                                      Deadline: {formatDate(job.bid_deadline)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="grid gap-2">
+                                  {job.bids.map((bid, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`flex items-center justify-between p-2 rounded ${
+                                        job.selected_bid_index === idx
+                                          ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700"
+                                          : "bg-white dark:bg-slate-800"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <span className="font-mono text-sm text-slate-500">#{idx + 1}</span>
+                                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                                          {bid.shoveler_name || formatPhone(bid.shoveler_phone)}
+                                        </span>
+                                        {job.selected_bid_index === idx && (
+                                          <span className="px-2 py-0.5 text-xs bg-green-500 text-white rounded">
+                                            WINNER
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <span className="font-medium text-green-600 dark:text-green-400">
+                                          ${bid.amount}
+                                        </span>
+                                        <span className="text-xs text-slate-400">
+                                          {formatDate(bid.timestamp)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       ))}
                     </tbody>
                   </table>

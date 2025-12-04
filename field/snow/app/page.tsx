@@ -9,6 +9,7 @@ export default function Home() {
   const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [bidMode, setBidMode] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -39,6 +40,7 @@ export default function Home() {
           address,
           description: description || undefined,
           maxPrice: maxPrice ? parseInt(maxPrice, 10) : undefined,
+          bidMode,
         }),
       });
 
@@ -46,11 +48,13 @@ export default function Home() {
 
       if (res.ok) {
         setStatus("success");
-        setMessage(`Job #${data.job.shortId} created! Sent to ${data.job.shovelerCount} shoveler(s). Check your phone for updates.`);
+        const modeText = data.job.bidMode ? " (Bidding Mode)" : "";
+        setMessage(`Job #${data.job.shortId} created${modeText}! Sent to ${data.job.shovelerCount} shoveler(s). Check your phone for updates.`);
         setPhone("");
         setAddress("");
         setDescription("");
         setMaxPrice("");
+        setBidMode(false);
       } else {
         setStatus("error");
         setMessage(data.error || "Something went wrong.");
@@ -161,6 +165,24 @@ export default function Home() {
                   <p className="text-xs text-slate-500 mt-1">
                     Setting a budget helps match you with shovelers in your price range
                   </p>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-sky-50 dark:bg-slate-600 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="bidMode"
+                    checked={bidMode}
+                    onChange={(e) => setBidMode(e.target.checked)}
+                    className="mt-1 w-5 h-5 text-sky-600 border-slate-300 rounded focus:ring-sky-500"
+                  />
+                  <div>
+                    <label htmlFor="bidMode" className="font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                      Enable Bidding
+                    </label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Get competitive bids from multiple shovelers (2 min window). You pick the best offer!
+                    </p>
+                  </div>
                 </div>
 
                 {status === "error" && (

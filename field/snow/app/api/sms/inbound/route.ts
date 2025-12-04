@@ -6,9 +6,11 @@ import {
   getNearbyShovelers,
   getAllActiveShovelers,
   type Job,
+  type Bid,
 } from "@/lib/supabase";
 import { sendSMS, broadcastSMS } from "@/lib/clicksend";
 import { geocodeAddress, parsePriceFromText, parseAddressFromText } from "@/lib/geocode";
+import { getSnowForecast, getSnowPriceHint } from "@/lib/weather";
 
 // ===========================================
 // Types
@@ -35,6 +37,13 @@ const START_REGEX = /^start\s*([a-f0-9-]*)/i;
 const CANCEL_REGEX = /^cancel\s*([a-f0-9-]*)/i;
 const STATUS_REGEX = /^status$/i;
 const HELP_REGEX = /^help$/i;
+const BID_REGEX = /^bid\s+([a-f0-9-]+)\s+\$?(\d+)/i;
+const SELECT_REGEX = /^select\s+([a-f0-9-]+)\s+(\d+)/i;
+
+// Bid window duration in milliseconds (2 minutes)
+const BID_WINDOW_MS = 2 * 60 * 1000;
+// Number of bids that triggers customer selection prompt
+const BID_THRESHOLD = 3;
 
 // ===========================================
 // Customer Handlers
@@ -50,29 +59,41 @@ async function handleCustomerRequest(phone: string, body: string): Promise<strin
     return `SnowSOS Help:
 - Text your address + budget to request snow removal
 - Example: "123 Main St, driveway $50"
+- Add BID to enable bidding: "123 Main St BID"
 - Text STATUS to check your job
-- Text CANCEL to cancel pending job`;
+- Text CANCEL to cancel pending job
+- Text SELECT <job_id> <bid#> to pick a bid`;
   }
 
   if (CANCEL_REGEX.test(body)) {
     return await handleCustomerCancel(phone);
   }
 
+  if (SELECT_REGEX.test(body)) {
+    return await handleCustomerSelect(phone, body);
+  }
+
+  // Check if bidding mode requested
+  const bidMode = /\bbid\b/i.test(body);
+  const bodyWithoutBid = body.replace(/\bbid\b/gi, "").trim();
+
   // Parse address from message
-  const address = parseAddressFromText(body);
+  const address = parseAddressFromText(bodyWithoutBid);
   if (!address) {
     return `Welcome to SnowSOS! Text your address and budget to get snow removal help.
 
 Example: "123 Main St, driveway and sidewalk $50"
 
+Add BID to your message for competitive pricing!
+
 We'll find nearby shovelers for you!`;
   }
 
   // Parse price from message
-  const maxPrice = parsePriceFromText(body);
+  const maxPrice = parsePriceFromText(bodyWithoutBid);
 
   // Extract description (everything that's not address or price)
-  const description = body
+  const description = bodyWithoutBid
     .replace(address, "")
     .replace(/\$\d+|\d+\s*(?:dollars|bucks)/gi, "")
     .replace(/(?:up\s*to|max|maximum|budget)\s*/gi, "")
@@ -82,12 +103,23 @@ We'll find nearby shovelers for you!`;
   // Geocode the address
   const geo = await geocodeAddress(address);
 
+  // Get weather forecast for dynamic pricing hint
+  let weatherHint: string | null = null;
+  if (geo?.lat && geo?.long) {
+    const forecast = await getSnowForecast(geo.lat, geo.long);
+    if (forecast) {
+      weatherHint = getSnowPriceHint(forecast.snow_inches);
+    }
+  }
+
   // Ensure customer exists
   await supabase
     .from("customers")
     .upsert({ phone }, { onConflict: "phone" });
 
   // Create the job
+  const bidDeadline = bidMode ? new Date(Date.now() + BID_WINDOW_MS).toISOString() : null;
+
   const { data: job, error } = await supabase
     .from("jobs")
     .insert({
@@ -98,6 +130,9 @@ We'll find nearby shovelers for you!`;
       lat: geo?.lat || null,
       long: geo?.long || null,
       status: "pending",
+      bid_mode: bidMode,
+      bids: [],
+      bid_deadline: bidDeadline,
     })
     .select()
     .single();
@@ -139,12 +174,27 @@ Text STATUS to check progress.`;
 
   // Build broadcast message
   const priceInfo = maxPrice ? `Budget: $${maxPrice}` : "Budget: Open";
-  const broadcastMessage = `NEW JOB #${shortId}
+  const weatherLine = weatherHint ? `\n${weatherHint}` : "";
+
+  let broadcastMessage: string;
+  if (bidMode) {
+    broadcastMessage = `NEW JOB #${shortId} (BIDDING)
 ${geo?.formattedAddress || address}
 ${description}
-${priceInfo}
+${priceInfo}${weatherLine}
+
+Reply: BID ${job.id} <amount>
+Example: BID ${job.id} 45
+
+Bidding closes in 2 min!`;
+  } else {
+    broadcastMessage = `NEW JOB #${shortId}
+${geo?.formattedAddress || address}
+${description}
+${priceInfo}${weatherLine}
 
 Reply: CLAIM ${job.id} to accept`;
+  }
 
   const shovelerPhones = shovelers.map((s) => s.phone);
   await broadcastSMS(shovelerPhones, broadcastMessage);
@@ -152,6 +202,16 @@ Reply: CLAIM ${job.id} to accept`;
   const budgetResponse = maxPrice
     ? `Budget: $${maxPrice}`
     : `Tip: Add a budget (e.g. "$50") to attract more shovelers!`;
+
+  if (bidMode) {
+    return `Job #${shortId} created (BIDDING MODE)!
+${geo?.formattedAddress || address}
+${budgetResponse}
+
+Sent to ${shovelers.length} shoveler(s). You'll receive bids for 2 min.
+
+Text SELECT ${shortId} <bid#> to pick a winner.`;
+  }
 
   return `Job #${shortId} created!
 ${geo?.formattedAddress || address}
@@ -177,11 +237,18 @@ async function getCustomerJobStatus(phone: string): Promise<string> {
 
   const statusLines = jobs.map((j: Job) => {
     const shortId = j.id.substring(0, 8);
-    const statusEmoji =
+    let statusText =
       j.status === "pending" ? "Waiting" :
       j.status === "claimed" ? "Claimed - on the way!" :
       j.status === "in_progress" ? "In Progress" : j.status;
-    return `#${shortId}: ${statusEmoji}\n${j.address}`;
+
+    // Add bid info if in bid mode
+    if (j.bid_mode && j.status === "pending") {
+      const bids = (j.bids as Bid[]) || [];
+      statusText = `Bidding (${bids.length} bid${bids.length !== 1 ? "s" : ""})`;
+    }
+
+    return `#${shortId}: ${statusText}\n${j.address}`;
   });
 
   return `Your active jobs:\n\n${statusLines.join("\n\n")}`;
@@ -210,6 +277,97 @@ async function handleCustomerCancel(phone: string): Promise<string> {
   return `Job #${job.id.substring(0, 8)} has been cancelled.`;
 }
 
+async function handleCustomerSelect(phone: string, body: string): Promise<string> {
+  const match = body.match(SELECT_REGEX);
+  if (!match) {
+    return "Usage: SELECT <job_id> <bid_number>\nExample: SELECT abc123 2";
+  }
+
+  const jobIdInput = match[1];
+  const bidNumber = parseInt(match[2], 10);
+
+  // Find the job
+  const { data: job, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("customer_phone", phone)
+    .or(`id.eq.${jobIdInput},id.ilike.${jobIdInput}%`)
+    .single();
+
+  if (error || !job) {
+    return "Job not found.";
+  }
+
+  if (!job.bid_mode) {
+    return "This job is not in bidding mode.";
+  }
+
+  if (job.status !== "pending") {
+    return `Job #${job.id.substring(0, 8)} is no longer pending.`;
+  }
+
+  const bids = (job.bids as Bid[]) || [];
+  if (bids.length === 0) {
+    return "No bids received yet.";
+  }
+
+  if (bidNumber < 1 || bidNumber > bids.length) {
+    return `Invalid bid number. Choose 1-${bids.length}.`;
+  }
+
+  const selectedBid = bids[bidNumber - 1];
+  const bidIndex = bidNumber - 1;
+
+  // Update job with selected bid and claim it
+  const { error: updateError } = await supabase
+    .from("jobs")
+    .update({
+      status: "claimed",
+      shoveler_phone: selectedBid.shoveler_phone,
+      claimed_at: new Date().toISOString(),
+      selected_bid_index: bidIndex,
+    })
+    .eq("id", job.id)
+    .eq("status", "pending");
+
+  if (updateError) {
+    console.error("Error selecting bid:", updateError);
+    return "Error selecting bid. Please try again.";
+  }
+
+  const shortId = job.id.substring(0, 8);
+
+  // Notify winning shoveler
+  await sendSMS(
+    selectedBid.shoveler_phone,
+    `You won job #${shortId}!
+${job.address}
+${job.description || ""}
+Your bid: $${selectedBid.amount}
+
+Reply START when you arrive, DONE when finished.`
+  );
+
+  // Notify losing bidders
+  for (let i = 0; i < bids.length; i++) {
+    if (i !== bidIndex) {
+      await sendSMS(
+        bids[i].shoveler_phone,
+        `Job #${shortId} has been awarded to another shoveler. Better luck next time!`
+      );
+    }
+  }
+
+  // Calculate 10% take rate (stub for Stripe)
+  const takeRate = Math.round(selectedBid.amount * 0.1 * 100) / 100;
+  console.log(`[STRIPE STUB] Job ${shortId}: Bid $${selectedBid.amount}, Take rate: $${takeRate}`);
+
+  return `Selected bid #${bidNumber} ($${selectedBid.amount})!
+${selectedBid.shoveler_name || "Shoveler"} is on the way!
+
+Job #${shortId} - ${job.address}`;
+}
+
 // ===========================================
 // Shoveler Handlers
 // ===========================================
@@ -218,6 +376,7 @@ async function handleShovelerMessage(phone: string, body: string): Promise<strin
   if (HELP_REGEX.test(body)) {
     return `Shoveler Commands:
 - CLAIM <job_id> - Accept a job
+- BID <job_id> <amount> - Bid on a job
 - START <job_id> - Mark job in progress
 - DONE <job_id> - Complete a job
 - STATUS - View your active jobs`;
@@ -231,6 +390,10 @@ async function handleShovelerMessage(phone: string, body: string): Promise<strin
     return await handleShovelerClaim(phone, body);
   }
 
+  if (BID_REGEX.test(body)) {
+    return await handleShovelerBid(phone, body);
+  }
+
   if (START_REGEX.test(body)) {
     return await handleShovelerStart(phone, body);
   }
@@ -239,7 +402,105 @@ async function handleShovelerMessage(phone: string, body: string): Promise<strin
     return await handleShovelerDone(phone, body);
   }
 
-  return `Commands: CLAIM <id>, START, DONE, STATUS, HELP`;
+  return `Commands: CLAIM <id>, BID <id> <$>, START, DONE, STATUS, HELP`;
+}
+
+async function handleShovelerBid(phone: string, body: string): Promise<string> {
+  const match = body.match(BID_REGEX);
+  if (!match) {
+    return "Usage: BID <job_id> <amount>\nExample: BID abc123 45";
+  }
+
+  const jobIdInput = match[1];
+  const bidAmount = parseInt(match[2], 10);
+  const shoveler = await getShovelerByPhone(phone);
+
+  if (bidAmount < 10 || bidAmount > 500) {
+    return "Bid must be between $10 and $500.";
+  }
+
+  // Find the job
+  const { data: job, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .or(`id.eq.${jobIdInput},id.ilike.${jobIdInput}%`)
+    .single();
+
+  if (error || !job) {
+    return "Job not found. Check the ID and try again.";
+  }
+
+  if (!job.bid_mode) {
+    return `Job #${job.id.substring(0, 8)} is not accepting bids. Try CLAIM instead.`;
+  }
+
+  if (job.status !== "pending") {
+    return `Job #${job.id.substring(0, 8)} is no longer accepting bids (${job.status}).`;
+  }
+
+  // Check if bid deadline passed
+  if (job.bid_deadline && new Date(job.bid_deadline) < new Date()) {
+    return `Bidding for job #${job.id.substring(0, 8)} has closed.`;
+  }
+
+  // Check if shoveler already bid
+  const existingBids = (job.bids as Bid[]) || [];
+  const alreadyBid = existingBids.some((b) => b.shoveler_phone === phone);
+  if (alreadyBid) {
+    return "You already bid on this job.";
+  }
+
+  // Add the bid
+  const newBid: Bid = {
+    shoveler_phone: phone,
+    shoveler_name: shoveler?.name || undefined,
+    amount: bidAmount,
+    timestamp: new Date().toISOString(),
+  };
+
+  const updatedBids = [...existingBids, newBid];
+
+  const { error: updateError } = await supabase
+    .from("jobs")
+    .update({ bids: updatedBids })
+    .eq("id", job.id);
+
+  if (updateError) {
+    console.error("Error adding bid:", updateError);
+    return "Error submitting bid. Please try again.";
+  }
+
+  const shortId = job.id.substring(0, 8);
+  const bidCount = updatedBids.length;
+
+  // If we hit bid threshold, notify customer
+  if (bidCount === BID_THRESHOLD) {
+    const bidSummary = updatedBids
+      .map((b, i) => `${i + 1}. $${b.amount}${b.shoveler_name ? ` (${b.shoveler_name})` : ""}`)
+      .join("\n");
+
+    await sendSMS(
+      job.customer_phone,
+      `Job #${shortId} has ${bidCount} bids!
+
+${bidSummary}
+
+Reply: SELECT ${shortId} <bid#>
+Example: SELECT ${shortId} 1`
+    );
+  } else if (bidCount === 1) {
+    // First bid notification
+    await sendSMS(
+      job.customer_phone,
+      `First bid on job #${shortId}: $${bidAmount}
+
+More bids may come. We'll notify you when you have ${BID_THRESHOLD} bids or when bidding closes.`
+    );
+  }
+
+  return `Bid of $${bidAmount} submitted for job #${shortId}!
+
+You are bid #${bidCount}. Customer will select a winner soon.`;
 }
 
 async function handleShovelerClaim(phone: string, body: string): Promise<string> {
@@ -260,6 +521,11 @@ async function handleShovelerClaim(phone: string, body: string): Promise<string>
 
   if (error || !job) {
     return "Job not found. Check the ID and try again.";
+  }
+
+  // Check if job is in bid mode
+  if (job.bid_mode) {
+    return `Job #${job.id.substring(0, 8)} is in bidding mode. Use BID <job_id> <amount> instead.`;
   }
 
   if (job.status === "claimed" || job.status === "in_progress") {

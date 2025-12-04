@@ -48,6 +48,13 @@ export interface Shoveler {
   created_at: string;
 }
 
+export interface Bid {
+  shoveler_phone: string;
+  shoveler_name?: string;
+  amount: number;
+  timestamp: string;
+}
+
 export interface Job {
   id: string;
   customer_phone: string;
@@ -61,6 +68,10 @@ export interface Job {
   claimed_at: string | null;
   completed_at: string | null;
   created_at: string;
+  bid_mode: boolean;
+  bids: Bid[];
+  bid_deadline: string | null;
+  selected_bid_index: number | null;
 }
 
 // ===========================================

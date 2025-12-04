@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase, getNearbyShovelers, getAllActiveShovelers } from "@/lib/supabase";
 import { sendSMS, broadcastSMS } from "@/lib/clicksend";
 import { geocodeAddress } from "@/lib/geocode";
+import { getSnowForecast, getSnowPriceHint } from "@/lib/weather";
+
+// Bid window duration in milliseconds (2 minutes)
+const BID_WINDOW_MS = 2 * 60 * 1000;
 
 interface CreateJobBody {
   phone: string;
   address: string;
   description?: string;
   maxPrice?: number;
+  bidMode?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -38,6 +43,18 @@ export async function POST(request: NextRequest) {
     // Geocode address
     const geo = await geocodeAddress(body.address);
 
+    // Get weather forecast for dynamic pricing hint
+    let weatherHint: string | null = null;
+    if (geo?.lat && geo?.long) {
+      const forecast = await getSnowForecast(geo.lat, geo.long);
+      if (forecast) {
+        weatherHint = getSnowPriceHint(forecast.snow_inches);
+      }
+    }
+
+    // Calculate bid deadline if in bid mode
+    const bidDeadline = body.bidMode ? new Date(Date.now() + BID_WINDOW_MS).toISOString() : null;
+
     // Ensure customer exists
     await supabase
       .from("customers")
@@ -54,6 +71,9 @@ export async function POST(request: NextRequest) {
         lat: geo?.lat || null,
         long: geo?.long || null,
         status: "pending",
+        bid_mode: body.bidMode || false,
+        bids: [],
+        bid_deadline: bidDeadline,
       })
       .select()
       .single();
@@ -84,12 +104,27 @@ export async function POST(request: NextRequest) {
     // Broadcast to shovelers
     if (shovelers.length > 0) {
       const priceInfo = body.maxPrice ? `Budget: $${body.maxPrice}` : "Budget: Open";
-      const broadcastMessage = `NEW JOB #${shortId}
+      const weatherLine = weatherHint ? `\n${weatherHint}` : "";
+
+      let broadcastMessage: string;
+      if (body.bidMode) {
+        broadcastMessage = `NEW JOB #${shortId} (BIDDING)
 ${geo?.formattedAddress || body.address}
 ${body.description || "Snow removal"}
-${priceInfo}
+${priceInfo}${weatherLine}
+
+Reply: BID ${job.id} <amount>
+Example: BID ${job.id} 45
+
+Bidding closes in 2 min!`;
+      } else {
+        broadcastMessage = `NEW JOB #${shortId}
+${geo?.formattedAddress || body.address}
+${body.description || "Snow removal"}
+${priceInfo}${weatherLine}
 
 Reply: CLAIM ${job.id} to accept`;
+      }
 
       await broadcastSMS(
         shovelers.map((s) => s.phone),
@@ -99,16 +134,26 @@ Reply: CLAIM ${job.id} to accept`;
 
     // Send confirmation to customer
     try {
-      await sendSMS(
-        phone,
-        `SnowSOS: Your job #${shortId} is posted!
+      let confirmationMsg: string;
+      if (body.bidMode) {
+        confirmationMsg = `SnowSOS: Your job #${shortId} is posted (BIDDING MODE)!
+${geo?.formattedAddress || body.address}
+${body.maxPrice ? `Budget: $${body.maxPrice}` : ""}
+
+Sent to ${shovelers.length} shoveler(s). You'll receive bids for 2 min.
+
+Text SELECT ${shortId} <bid#> to pick a winner.`;
+      } else {
+        confirmationMsg = `SnowSOS: Your job #${shortId} is posted!
 ${geo?.formattedAddress || body.address}
 ${body.maxPrice ? `Budget: $${body.maxPrice}` : ""}
 
 Sent to ${shovelers.length} shoveler(s). We'll text you when one claims it.
 
-Text STATUS to check progress.`
-      );
+Text STATUS to check progress.`;
+      }
+
+      await sendSMS(phone, confirmationMsg);
     } catch (smsError) {
       console.error("Error sending confirmation SMS:", smsError);
     }
@@ -121,6 +166,7 @@ Text STATUS to check progress.`
         address: job.address,
         status: job.status,
         shovelerCount: shovelers.length,
+        bidMode: body.bidMode || false,
       },
     });
   } catch (error) {
