@@ -67,34 +67,41 @@ export default async function handler(
       throw new Error('Database not available');
     }
 
-    // Get the document and user info
-    const { data: document, error: docError } = await supabaseAdmin
-      .from('permit_zone_documents')
-      .select(`
-        *,
-        users:user_id (
-          id,
-          email,
-          phone,
-          full_name
-        )
-      `)
-      .eq('id', documentId)
+    // documentId can be:
+    // - A numeric ID from permit_zone_documents table (legacy)
+    // - "profile-{user_id}" from residencyProofDocuments
+    // - A raw user_id (UUID)
+    let userId = documentId;
+
+    // Handle profile-{user_id} format from residencyProofDocuments
+    if (typeof documentId === 'string' && documentId.startsWith('profile-')) {
+      userId = documentId.replace('profile-', '');
+    }
+
+    // Get the user profile with document info
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('user_id, email, first_name, last_name, street_address, residency_proof_path, residency_proof_verified')
+      .eq('user_id', userId)
       .single();
 
-    if (docError || !document) {
+    if (profileError || !profile) {
       throw new Error('Document not found');
     }
 
-    // Update the document
+    if (!profile.residency_proof_path) {
+      throw new Error('No residency proof uploaded for this user');
+    }
+
+    // Build update data for user_profiles
     const updateData: any = {
-      verification_status: action === 'approve' ? 'approved' : 'rejected',
-      reviewed_at: new Date().toISOString(),
+      residency_proof_verified: action === 'approve',
+      residency_proof_verified_at: new Date().toISOString(),
     };
 
     if (action === 'approve') {
-      updateData.customer_code = customerCode;
-      updateData.rejection_reason = null;
+      updateData.permit_zone_number = customerCode; // Store customer code as permit zone number
+      updateData.residency_proof_rejection_reason = null;
     } else {
       // Build rejection reason message
       const selectedReasons = rejectionReasons.map((key: string) => REJECTION_REASONS[key as keyof typeof REJECTION_REASONS]).filter(Boolean);
@@ -102,14 +109,14 @@ export default async function handler(
       if (customReason) {
         rejectionMessage += '\n\nAdditional details: ' + customReason;
       }
-      updateData.rejection_reason = rejectionMessage;
-      updateData.customer_code = null;
+      updateData.residency_proof_rejection_reason = rejectionMessage;
+      updateData.permit_zone_number = null;
     }
 
     const { error: updateError } = await supabaseAdmin
-      .from('permit_zone_documents')
+      .from('user_profiles')
       .update(updateData)
-      .eq('id', documentId);
+      .eq('user_id', userId);
 
     if (updateError) {
       console.error('Update error:', updateError);
@@ -118,16 +125,16 @@ export default async function handler(
 
     // Log audit event
     await logAuditEvent({
-      userId: document.user_id,
+      userId: profile.user_id,
       actionType: 'document_reviewed',
       entityType: 'permit_document',
-      entityId: documentId,
+      entityId: userId,
       actionDetails: {
         action: action,
         customerCode: action === 'approve' ? customerCode : null,
         rejectionReasons: action === 'reject' ? rejectionReasons : null,
         customReason: action === 'reject' ? customReason : null,
-        address: document.address,
+        address: profile.street_address,
       },
       status: 'success',
       ipAddress: getIpAddress(req),
@@ -135,8 +142,8 @@ export default async function handler(
     });
 
     // Send email to user
-    const userEmail = (document as any).users?.email;
-    const userName = (document as any).users?.full_name || 'there';
+    const userEmail = profile.email;
+    const userName = profile.first_name || 'there';
 
     if (userEmail) {
       try {
@@ -150,7 +157,7 @@ export default async function handler(
                 <h2>Great news, ${userName}!</h2>
                 <p>Your permit zone documents have been approved and we're processing your residential parking permit.</p>
                 <div style="background-color: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0;"><strong>Address:</strong> ${document.address}</p>
+                  <p style="margin: 0;"><strong>Address:</strong> ${profile.street_address}</p>
                   <p style="margin: 8px 0 0 0;"><strong>Customer Code:</strong> ${customerCode}</p>
                 </div>
                 <p>We'll purchase your permit from the City of Chicago on your behalf. You should receive it at your address within 2-3 weeks.</p>
@@ -167,7 +174,7 @@ export default async function handler(
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2>Hi ${userName},</h2>
-                <p>We reviewed your permit zone documents for <strong>${document.address}</strong>, but unfortunately we need you to resubmit them.</p>
+                <p>We reviewed your permit zone documents for <strong>${profile.street_address}</strong>, but unfortunately we need you to resubmit them.</p>
                 <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
                   <h3 style="margin-top: 0; color: #92400e;">Issues found:</h3>
                   <ul style="margin: 8px 0; padding-left: 20px; line-height: 1.8;">

@@ -51,6 +51,60 @@ const REMITTER_SERVICE_FEE = 12.00;
 const PERMIT_FEE = 30.00;
 
 /**
+ * Get the next available remitter using load balancing
+ * Selects the active remitter with the fewest pending orders
+ */
+async function getNextAvailableRemitter(): Promise<any> {
+  // Get all active remitters with valid Stripe accounts
+  const { data: remitters, error } = await supabase
+    .from('renewal_partners')
+    .select('*')
+    .eq('status', 'active')
+    .not('stripe_connected_account_id', 'is', null);
+
+  if (error) {
+    throw new Error(`Failed to fetch remitters: ${error.message}`);
+  }
+
+  if (!remitters || remitters.length === 0) {
+    throw new Error('No active remitters available');
+  }
+
+  // If only one remitter, return it immediately
+  if (remitters.length === 1) {
+    return remitters[0];
+  }
+
+  // Get pending order counts for each remitter
+  const remitterOrderCounts: Map<string, number> = new Map();
+
+  for (const remitter of remitters) {
+    const { count } = await supabase
+      .from('renewal_orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('partner_id', remitter.id)
+      .in('status', ['pending', 'processing']);
+
+    remitterOrderCounts.set(remitter.id, count || 0);
+  }
+
+  // Sort remitters by pending order count (ascending) and pick the one with fewest
+  const sortedRemitters = remitters.sort((a, b) => {
+    const countA = remitterOrderCounts.get(a.id) || 0;
+    const countB = remitterOrderCounts.get(b.id) || 0;
+    return countA - countB;
+  });
+
+  const selectedRemitter = sortedRemitters[0];
+  const pendingCount = remitterOrderCounts.get(selectedRemitter.id) || 0;
+
+  console.log(`🔄 Load balancing: Selected remitter "${selectedRemitter.name}" (${pendingCount} pending orders)`);
+  console.log(`   All remitters: ${remitters.map(r => `${r.name}:${remitterOrderCounts.get(r.id)}`).join(', ')}`);
+
+  return selectedRemitter;
+}
+
+/**
  * Send email via Resend
  */
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
@@ -295,18 +349,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         results.cityStickerProcessed++;
 
-        // Get remitter with a valid Stripe connected account
-        const { data: remitter } = await supabase
-          .from('renewal_partners')
-          .select('*')
-          .eq('status', 'active')
-          .not('stripe_connected_account_id', 'is', null)
-          .limit(1)
-          .single();
-
-        if (!remitter) {
-          throw new Error('No active remitter available');
-        }
+        // Get next available remitter using load balancing
+        const remitter = await getNextAvailableRemitter();
 
         // Fetch price from Stripe
         const vehicleType = customer.vehicle_type || 'P';
@@ -651,18 +695,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         try {
-          // Get remitter with a valid Stripe connected account
-          const { data: remitter } = await supabase
-            .from('renewal_partners')
-            .select('*')
-            .eq('status', 'active')
-            .not('stripe_connected_account_id', 'is', null)
-            .limit(1)
-            .single();
-
-          if (!remitter) {
-            throw new Error('No active remitter available');
-          }
+          // Get next available remitter using load balancing
+          const remitter = await getNextAvailableRemitter();
 
           // Fetch license plate price from Stripe
           const isVanity = customer.is_vanity_plate === true;

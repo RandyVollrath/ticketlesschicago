@@ -108,7 +108,78 @@ function generateApiKey(): string {
 }
 
 async function sendWelcomeEmail(partner: any, apiKey: string) {
-  // TODO: Implement with Resend
-  console.log('Welcome email to:', partner.email);
-  console.log('API Key:', apiKey);
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com';
+    const portalUrl = `${baseUrl}/remitter-portal`;
+
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <noreply@autopilotamerica.com>',
+        to: partner.email,
+        subject: 'Welcome to Autopilot America - Your Remitter API Key',
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #2563eb; color: white; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px;">Welcome to Autopilot America!</h1>
+              <p style="margin: 8px 0 0; opacity: 0.9;">You're now a registered remitter</p>
+            </div>
+
+            <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb;">
+              <p style="color: #374151; font-size: 16px; margin: 0 0 20px;">
+                Hi ${partner.name},
+              </p>
+
+              <p style="color: #374151; font-size: 16px; margin: 0 0 20px;">
+                Your remitter account has been created successfully. Below is your API key for accessing the Remitter Portal and API.
+              </p>
+
+              <div style="background: #1f2937; color: #10b981; padding: 16px; border-radius: 6px; font-family: monospace; word-break: break-all; margin: 20px 0;">
+                ${apiKey}
+              </div>
+
+              <p style="color: #dc2626; font-size: 14px; margin: 20px 0;">
+                <strong>Important:</strong> Keep this API key secure. Do not share it publicly. You'll need it to access the portal and update order statuses.
+              </p>
+
+              <h3 style="color: #1f2937; margin: 24px 0 12px;">Next Steps:</h3>
+              <ol style="color: #374151; padding-left: 20px; margin: 0;">
+                <li style="margin-bottom: 8px;">Complete Stripe Connect setup to receive payments</li>
+                <li style="margin-bottom: 8px;">Bookmark your portal: <a href="${portalUrl}" style="color: #2563eb;">${portalUrl}</a></li>
+                <li style="margin-bottom: 8px;">Enter your API key when prompted to access the dashboard</li>
+                <li style="margin-bottom: 8px;">Wait for renewal orders to be assigned to you</li>
+              </ol>
+
+              <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px; margin-top: 24px;">
+                <h4 style="color: #1f2937; margin: 0 0 8px;">How It Works:</h4>
+                <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                  When customers pay for renewals, orders are assigned to active remitters. You'll receive the order details including license plate, VIN, and customer info. Submit the renewal to the city/state, then update the order status with the confirmation number. Payment is automatically transferred to your Stripe account.
+                </p>
+              </div>
+            </div>
+
+            <div style="background: #f9fafb; padding: 16px; text-align: center; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                Questions? Reply to this email or contact <a href="mailto:support@autopilotamerica.com" style="color: #2563eb;">support@autopilotamerica.com</a>
+              </p>
+            </div>
+          </div>
+        `
+      })
+    });
+
+    if (resendResponse.ok) {
+      console.log(`✅ Welcome email sent to ${partner.email}`);
+    } else {
+      const errorText = await resendResponse.text();
+      console.error('❌ Failed to send welcome email:', errorText);
+    }
+  } catch (error: any) {
+    console.error('Error sending welcome email:', error.message);
+    // Don't throw - signup should still succeed even if email fails
+  }
 }

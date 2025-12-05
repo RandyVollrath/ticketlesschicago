@@ -361,9 +361,13 @@ export default function ProfileNew() {
     }
 
     try {
+      const currentYear = new Date().getFullYear()
       const { error } = await supabase
         .from('user_profiles')
-        .update({ profile_confirmed_at: new Date().toISOString() })
+        .update({
+          profile_confirmed_at: new Date().toISOString(),
+          profile_confirmed_for_year: currentYear
+        })
         .eq('user_id', user?.id)
 
       if (error) throw error

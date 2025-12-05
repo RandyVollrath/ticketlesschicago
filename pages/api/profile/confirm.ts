@@ -32,15 +32,12 @@ export default async function handler(
       return res.status(400).json({ error: 'Token-based confirmation not yet implemented' });
     }
 
-    // Build update object
+    // Build update object - always set current year if not explicitly provided
+    const currentYear = new Date().getFullYear();
     const updateData: Record<string, any> = {
-      profile_confirmed_at: new Date().toISOString()
+      profile_confirmed_at: new Date().toISOString(),
+      profile_confirmed_for_year: renewalYear || currentYear
     };
-
-    // Include renewal year if provided
-    if (renewalYear) {
-      updateData.profile_confirmed_for_year = renewalYear;
-    }
 
     // Update profile_confirmed_at timestamp
     const { data, error } = await supabase

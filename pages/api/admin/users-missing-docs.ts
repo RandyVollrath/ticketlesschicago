@@ -36,16 +36,19 @@ export default async function handler(
 
   try {
     // Get users who have Protection subscription and permit zone but no verified residency proof
+    // Check has_permit_zone = true (boolean flag) not permit_zone (actual zone number)
     const { data: profiles, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select(`
         user_id,
+        email,
         first_name,
         last_name,
-        phone,
+        phone_number,
         street_address,
         zip_code,
         permit_zone,
+        has_permit_zone,
         has_protection,
         residency_proof_path,
         residency_proof_type,
@@ -55,7 +58,7 @@ export default async function handler(
         created_at
       `)
       .eq('has_protection', true)
-      .not('permit_zone', 'is', null)
+      .eq('has_permit_zone', true)
       .order('created_at', { ascending: false });
 
     if (profileError) {
@@ -67,20 +70,10 @@ export default async function handler(
       !p.residency_proof_path || !p.residency_proof_verified
     );
 
-    // Get user emails
-    const userIds = missingDocs.map(p => p.user_id);
-    const { data: users } = await supabaseAdmin
-      .from('users')
-      .select('id, email')
-      .in('id', userIds);
-
-    const userMap = new Map();
-    users?.forEach(u => userMap.set(u.id, u.email));
-
-    // Enrich with email
+    // Build enriched user list with status
     const enrichedUsers = missingDocs.map(p => ({
       ...p,
-      email: userMap.get(p.user_id) || 'Unknown',
+      phone: p.phone_number, // Map phone_number to phone for backwards compatibility
       status: !p.residency_proof_path
         ? 'no_upload'
         : p.residency_proof_rejection_reason

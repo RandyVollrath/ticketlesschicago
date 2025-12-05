@@ -140,10 +140,14 @@ export default async function handler(
         return res.status(200).json({ success: true, message: 'Only available for Protection users' });
       }
 
-      // Update profile_confirmed_at timestamp
+      // Update profile_confirmed_at timestamp and year
+      const currentYear = new Date().getFullYear();
       const { error: updateError } = await supabase
         .from('user_profiles')
-        .update({ profile_confirmed_at: new Date().toISOString() })
+        .update({
+          profile_confirmed_at: new Date().toISOString(),
+          profile_confirmed_for_year: currentYear
+        })
         .eq('user_id', user.user_id);
 
       if (updateError) {
