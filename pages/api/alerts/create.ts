@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { notifyNewUserAboutWinterBan } from '../../../lib/winter-ban-notifications';
+import { isAddressOnSnowRoute } from '../../../lib/snow-route-matcher';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -191,6 +192,40 @@ export default async function handler(
     }
 
     console.log('[Profile Create] Profile upserted successfully:', profileResult);
+
+    // Check if user's address is on a 2-inch snow ban route and auto-opt them in
+    try {
+      const snowRouteResult = await isAddressOnSnowRoute(address);
+      if (snowRouteResult.isOnSnowRoute && snowRouteResult.route) {
+        console.log('❄️ User is on snow route:', snowRouteResult.route.on_street);
+
+        // Update profile with snow route info and auto-opt-in to alerts
+        const { error: snowUpdateError } = await supabase
+          .from('user_profiles')
+          .update({
+            on_snow_route: true,
+            snow_route_street: snowRouteResult.route.on_street,
+            notify_snow_forecast: true,
+            notify_snow_confirmation: true,
+            notify_snow_forecast_email: true,
+            notify_snow_forecast_sms: smsConsent === true, // Respect SMS consent
+            notify_snow_confirmation_email: true,
+            notify_snow_confirmation_sms: smsConsent === true
+          })
+          .eq('user_id', userId);
+
+        if (snowUpdateError) {
+          console.error('Failed to update snow route preferences:', snowUpdateError);
+        } else {
+          console.log('✅ Auto-opted user into snow ban alerts');
+        }
+      } else {
+        console.log('ℹ️ User address not on a snow route');
+      }
+    } catch (snowError) {
+      // Don't fail signup if snow route check fails
+      console.error('Snow route check failed (non-critical):', snowError);
+    }
 
     // If user opted into marketing, add them to drip campaign
     if (marketingConsent === true) {
