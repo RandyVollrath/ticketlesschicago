@@ -31,9 +31,16 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
       const response = await fetch(`/api/user/referral-link?userId=${userId}`);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Load referral link error:', errorData);
-        throw new Error(errorData.error || `Failed to load referral link (${response.status})`);
+        let errorMessage = `Failed to load referral link (${response.status})`;
+        try {
+          const errorData = await response.json();
+          console.error('Load referral link error:', errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // Response wasn't JSON, use the default error message
+          console.error('Could not parse error response:', parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -55,9 +62,16 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Affiliate access error:', errorData);
-        throw new Error(errorData.error || `Failed to request affiliate access (${response.status})`);
+        let errorMessage = `Failed to request affiliate access (${response.status})`;
+        try {
+          const errorData = await response.json();
+          console.error('Affiliate access error:', errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // Response wasn't JSON, use the default error message
+          console.error('Could not parse error response:', parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
