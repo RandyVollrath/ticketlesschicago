@@ -168,8 +168,8 @@ export default function AdminPortal() {
 
   // Property tax state
   const [propertyTaxUsers, setPropertyTaxUsers] = useState<PropertyTaxUser[]>([]);
-  const [propertyTaxCounts, setPropertyTaxCounts] = useState({ needsRefresh: 0, failed: 0, neverFetched: 0, total: 0 });
-  const [propertyTaxFilter, setPropertyTaxFilter] = useState<'needs_refresh' | 'failed' | 'never_fetched' | 'all'>('needs_refresh');
+  const [propertyTaxCounts, setPropertyTaxCounts] = useState({ urgent: 0, failed: 0, total: 0 });
+  const [propertyTaxFilter, setPropertyTaxFilter] = useState<'urgent' | 'failed' | 'all'>('urgent');
   const [uploadingUserId, setUploadingUserId] = useState<string | null>(null);
   const [uploadNotes, setUploadNotes] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -392,7 +392,7 @@ export default function AdminPortal() {
       const result = await response.json();
       if (result.success) {
         setPropertyTaxUsers(result.users || []);
-        setPropertyTaxCounts(result.counts || { needsRefresh: 0, failed: 0, neverFetched: 0, total: 0 });
+        setPropertyTaxCounts(result.counts || { urgent: 0, failed: 0, total: 0 });
       }
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
@@ -648,9 +648,9 @@ export default function AdminPortal() {
             }}
           >
             Property Tax Queue
-            {propertyTaxCounts.needsRefresh > 0 && (
+            {propertyTaxCounts.urgent > 0 && (
               <span style={{ backgroundColor: '#f59e0b', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
-                {propertyTaxCounts.needsRefresh}
+                {propertyTaxCounts.urgent}
               </span>
             )}
           </button>
@@ -823,7 +823,9 @@ export default function AdminPortal() {
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
-                          {user.documents.hasLicenseFront ? (
+                          {!user.documents.needsDocuments ? (
+                            <span style={{ color: '#9ca3af', fontSize: '11px' }}>N/A</span>
+                          ) : user.documents.hasLicenseFront ? (
                             <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
                           ) : (
                             <span style={{ color: '#ef4444', fontSize: '16px' }}>✗</span>
@@ -1162,17 +1164,14 @@ export default function AdminPortal() {
 
             {/* Filter buttons */}
             <div style={{ marginBottom: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button onClick={() => setPropertyTaxFilter('needs_refresh')} style={{ padding: '8px 16px', backgroundColor: propertyTaxFilter === 'needs_refresh' ? '#f59e0b' : '#e5e7eb', color: propertyTaxFilter === 'needs_refresh' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
-                Needs Refresh ({propertyTaxCounts.needsRefresh})
-              </button>
-              <button onClick={() => setPropertyTaxFilter('never_fetched')} style={{ padding: '8px 16px', backgroundColor: propertyTaxFilter === 'never_fetched' ? '#3b82f6' : '#e5e7eb', color: propertyTaxFilter === 'never_fetched' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
-                Never Fetched ({propertyTaxCounts.neverFetched})
+              <button onClick={() => setPropertyTaxFilter('urgent')} style={{ padding: '8px 16px', backgroundColor: propertyTaxFilter === 'urgent' ? '#f59e0b' : '#e5e7eb', color: propertyTaxFilter === 'urgent' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                Urgent - Within 60 Days ({propertyTaxCounts.urgent})
               </button>
               <button onClick={() => setPropertyTaxFilter('failed')} style={{ padding: '8px 16px', backgroundColor: propertyTaxFilter === 'failed' ? '#ef4444' : '#e5e7eb', color: propertyTaxFilter === 'failed' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
-                Failed ({propertyTaxCounts.failed})
+                Fetch Failed ({propertyTaxCounts.failed})
               </button>
               <button onClick={() => setPropertyTaxFilter('all')} style={{ padding: '8px 16px', backgroundColor: propertyTaxFilter === 'all' ? '#6b7280' : '#e5e7eb', color: propertyTaxFilter === 'all' ? 'white' : '#111827', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
-                All ({propertyTaxCounts.total})
+                All Needing Docs ({propertyTaxCounts.total})
               </button>
             </div>
 
@@ -1187,10 +1186,14 @@ export default function AdminPortal() {
                         <div style={{ fontWeight: '500' }}>{user.first_name} {user.last_name}</div>
                         <div style={{ fontSize: '13px', color: '#6b7280' }}>{user.email}</div>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {user.property_tax_fetch_failed && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '4px' }}>FAILED</span>}
-                        {user.property_tax_needs_refresh && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px' }}>NEEDS REFRESH</span>}
-                        {user.residency_proof_verified && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '4px' }}>VERIFIED</span>}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {(user as any).daysUntilExpiry !== null && (user as any).daysUntilExpiry <= 60 && (
+                          <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: (user as any).daysUntilExpiry <= 14 ? '#fee2e2' : '#fef3c7', color: (user as any).daysUntilExpiry <= 14 ? '#991b1b' : '#92400e', borderRadius: '4px' }}>
+                            {(user as any).daysUntilExpiry <= 0 ? 'EXPIRED' : `${(user as any).daysUntilExpiry} DAYS`}
+                          </span>
+                        )}
+                        {(user as any).permit_zone_number && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px' }}>Zone {(user as any).permit_zone_number}</span>}
+                        {user.property_tax_fetch_failed && <span style={{ fontSize: '11px', padding: '4px 8px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '4px' }}>FETCH FAILED</span>}
                       </div>
                     </div>
                     <div onClick={() => copyToClipboard(user.street_address)} style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px', cursor: 'pointer', border: '1px dashed #d1d5db' }} title="Click to copy">
