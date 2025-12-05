@@ -241,7 +241,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     has_permit_zone: metadata.hasPermitZone === 'true',
                     permit_requested: metadata.permitRequested === 'true',
                     residency_forwarding_consent_given: metadata.permitRequested === 'true', // Auto-consent if permit requested
-                    // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
+                    // Extract first zone number from permitZones JSON array
+                    permit_zone_number: (() => {
+                      try {
+                        if (metadata.permitZones) {
+                          const zones = JSON.parse(metadata.permitZones);
+                          if (Array.isArray(zones) && zones.length > 0) {
+                            return zones[0].zone || null;
+                          }
+                        }
+                        return null;
+                      } catch { return null; }
+                    })(),
                     updated_at: new Date().toISOString()
                   }, {
                     onConflict: 'user_id'
@@ -460,7 +471,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   has_permit_zone: metadata.hasPermitZone === 'true',
                   permit_requested: metadata.permitRequested === 'true',
                   residency_forwarding_consent_given: metadata.permitRequested === 'true', // Auto-consent if permit requested
-                  // NOTE: permit_zones column does not exist in database - removed to prevent insert failure
+                  // Extract first zone number from permitZones JSON array
+                  permit_zone_number: (() => {
+                    try {
+                      if (metadata.permitZones) {
+                        const zones = JSON.parse(metadata.permitZones);
+                        if (Array.isArray(zones) && zones.length > 0) {
+                          return zones[0].zone || null;
+                        }
+                      }
+                      return null;
+                    } catch { return null; }
+                  })(),
                   updated_at: new Date().toISOString()
                 }, {
                   onConflict: 'user_id'
@@ -788,7 +810,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updateData.has_permit_zone = true;
             updateData.permit_requested = metadata.permitRequested === 'true';
             updateData.residency_forwarding_consent_given = metadata.permitRequested === 'true'; // Auto-consent if permit requested
-            // NOTE: permit_zones column does not exist in database - removed to prevent update failure
+            // Extract first zone number from permitZones JSON array
+            try {
+              if (metadata.permitZones) {
+                const zones = JSON.parse(metadata.permitZones);
+                if (Array.isArray(zones) && zones.length > 0) {
+                  updateData.permit_zone_number = zones[0].zone || null;
+                }
+              }
+            } catch { /* ignore parse errors */ }
           }
 
           // Save street address as both mailing and street cleaning address (prefer metadata, fallback to billing)
