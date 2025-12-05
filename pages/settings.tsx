@@ -34,11 +34,19 @@ const COLORS = {
 // Phone formatting utilities
 const formatPhoneForDisplay = (value: string | null): string => {
   if (!value) return ''
+  // Handle already formatted +1XXXXXXXXXX
   if (value.startsWith('+1') && value.length === 12) {
     const digits = value.slice(2)
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
   }
-  return value
+  // Handle raw input - format as user types
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  // Take last 10 digits if more than 10 (handles 1XXXXXXXXXX)
+  const last10 = digits.slice(-10)
+  return `(${last10.slice(0, 3)}) ${last10.slice(3, 6)}-${last10.slice(6, 10)}`
 }
 
 const normalizePhoneForStorage = (value: string): string => {
@@ -2963,7 +2971,19 @@ export default function ProfileNew() {
             icon="❄️"
             defaultOpen={false}
           >
-            <SnowBanSettings />
+            <SnowBanSettings
+              onSnowRoute={profile.on_snow_route || false}
+              snowRouteStreet={profile.snow_route_street}
+              onWinterBanStreet={profile.on_winter_ban_street || false}
+              winterBanStreet={profile.winter_ban_street}
+              notifySnowForecast={formData.notify_snow_forecast ?? profile.notify_snow_forecast ?? false}
+              notifySnowForecastEmail={formData.notify_snow_forecast_email ?? profile.notify_snow_forecast_email ?? true}
+              notifySnowForecastSms={formData.notify_snow_forecast_sms ?? profile.notify_snow_forecast_sms ?? true}
+              notifySnowConfirmation={formData.notify_snow_confirmation ?? profile.notify_snow_confirmation ?? false}
+              notifySnowConfirmationEmail={formData.notify_snow_confirmation_email ?? profile.notify_snow_confirmation_email ?? true}
+              notifySnowConfirmationSms={formData.notify_snow_confirmation_sms ?? profile.notify_snow_confirmation_sms ?? true}
+              onUpdate={handleFieldChange}
+            />
           </Accordion>
 
           {/* 10. Referral Program - Uses Rewardful */}
