@@ -630,6 +630,9 @@ export default function ProfileNew() {
     if (!formData.residency_proof_type) {
       toast.warning('Please select a document type first')
       setMessage({ type: 'error', text: 'Please select a document type first' })
+      // Reset input so user can try again after selecting type
+      const input = document.getElementById('residency-proof-input') as HTMLInputElement
+      if (input) input.value = ''
       return
     }
 
@@ -2462,6 +2465,8 @@ export default function ProfileNew() {
                       if (file) {
                         handleResidencyProofUpload(file)
                       }
+                      // Reset input value so same file can be re-uploaded
+                      e.target.value = ''
                     }}
                     style={{ display: 'none' }}
                   />
