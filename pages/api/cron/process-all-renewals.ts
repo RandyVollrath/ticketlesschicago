@@ -699,7 +699,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const remitter = await getNextAvailableRemitter();
 
           // Fetch license plate price from Stripe
-          const isVanity = customer.is_vanity_plate === true;
+          const isVanity = customer.has_vanity_plate === true;
           const priceId = isVanity
             ? stripeConfig.licensePlateVanityPriceId
             : stripeConfig.licensePlatePriceId;
