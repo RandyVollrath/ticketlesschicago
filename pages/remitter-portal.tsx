@@ -787,16 +787,16 @@ export default function RemitterPortal() {
                 </div>
               </div>
 
-              {/* Documents for Permit */}
-              {selectedOrder.amount.permitRequested && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-700 mb-3">Required Documents for Permit</h3>
+              {/* Customer Documents */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-700 mb-3">Customer Documents</h3>
                   {documentsLoading ? (
                     <div className="text-center py-8 text-gray-500">Loading documents...</div>
                   ) : (
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {/* Driver's License Front */}
                       <div className="border rounded-lg p-3">
-                        <h4 className="font-medium text-gray-600 mb-2">Driver's License</h4>
+                        <h4 className="font-medium text-gray-600 mb-2">Driver's License (Front)</h4>
                         {orderDocuments?.driverLicense ? (
                           <a
                             href={orderDocuments.driverLicense}
@@ -806,44 +806,74 @@ export default function RemitterPortal() {
                           >
                             <img
                               src={orderDocuments.driverLicense}
-                              alt="Driver's License"
+                              alt="Driver's License Front"
                               className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
                             />
                             <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
                           </a>
                         ) : (
                           <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
-                            Not available
+                            Not uploaded
                           </div>
                         )}
                       </div>
 
+                      {/* Driver's License Back */}
                       <div className="border rounded-lg p-3">
-                        <h4 className="font-medium text-gray-600 mb-2">Proof of Residency</h4>
-                        {orderDocuments?.residencyProof ? (
+                        <h4 className="font-medium text-gray-600 mb-2">Driver's License (Back)</h4>
+                        {orderDocuments?.driverLicenseBack ? (
                           <a
-                            href={orderDocuments.residencyProof}
+                            href={orderDocuments.driverLicenseBack}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="block"
                           >
                             <img
-                              src={orderDocuments.residencyProof}
-                              alt="Proof of Residency"
+                              src={orderDocuments.driverLicenseBack}
+                              alt="Driver's License Back"
                               className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
                             />
                             <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
                           </a>
                         ) : (
                           <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
-                            Not available
+                            Not uploaded
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Proof of Residency - only for permit zone */}
+                      <div className="border rounded-lg p-3">
+                        <h4 className="font-medium text-gray-600 mb-2">Proof of Residency</h4>
+                        {selectedOrder?.amount.permitRequested ? (
+                          orderDocuments?.residencyProof ? (
+                            <a
+                              href={orderDocuments.residencyProof}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              <img
+                                src={orderDocuments.residencyProof}
+                                alt="Proof of Residency"
+                                className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
+                              />
+                              <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
+                            </a>
+                          ) : (
+                            <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                              Not uploaded
+                            </div>
+                          )
+                        ) : (
+                          <div className="w-full h-48 bg-gray-50 rounded flex items-center justify-center text-gray-400">
+                            N/A (no permit zone)
                           </div>
                         )}
                       </div>
                     </div>
                   )}
-                </div>
-              )}
+              </div>
 
               {/* Completion Form */}
               <div className="border-t pt-6">
