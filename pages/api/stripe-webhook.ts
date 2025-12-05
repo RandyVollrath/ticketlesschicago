@@ -6,6 +6,7 @@ import { createRewardfulAffiliate } from '../../lib/rewardful-helper';
 import { Resend } from 'resend';
 import { logAuditEvent } from '../../lib/audit-logger';
 import { notifyNewUserAboutWinterBan } from '../../lib/winter-ban-notifications';
+import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 import stripeConfig from '../../lib/stripe-config';
 
 const stripe = new Stripe(stripeConfig.secretKey!, {
@@ -309,6 +310,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                       // Non-critical - user can set up street cleaning manually
                       console.log('ℹ️ Geocoding failed (non-critical):', geoError);
                     }
+
+                    // Check if user's address is on a 2-inch snow ban route
+                    try {
+                      const userAddress = hasValue(metadata.streetAddress) ? metadata.streetAddress : billingAddress;
+                      if (userAddress) {
+                        const snowRouteResult = await isAddressOnSnowRoute(userAddress);
+                        if (snowRouteResult.isOnSnowRoute && snowRouteResult.route) {
+                          console.log('❄️ User is on snow route:', snowRouteResult.route.on_street);
+                          await supabaseAdmin
+                            .from('user_profiles')
+                            .update({
+                              on_snow_route: true,
+                              snow_route_street: snowRouteResult.route.on_street,
+                              notify_snow_forecast: true,
+                              notify_snow_confirmation: true,
+                              notify_snow_forecast_email: true,
+                              notify_snow_forecast_sms: true,
+                              notify_snow_confirmation_email: true,
+                              notify_snow_confirmation_sms: true
+                            })
+                            .eq('user_id', userId);
+                          console.log('✅ Auto-opted user into snow ban alerts');
+                        }
+                      }
+                    } catch (snowError) {
+                      console.log('ℹ️ Snow route check failed (non-critical):', snowError);
+                    }
                   }
                 }
 
@@ -565,6 +593,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   } catch (geoError) {
                     // Non-critical - user can set up street cleaning manually
                     console.log('ℹ️ Geocoding failed (non-critical):', geoError);
+                  }
+
+                  // Check if user's address is on a 2-inch snow ban route
+                  try {
+                    const snowRouteResult = await isAddressOnSnowRoute(metadata.streetAddress);
+                    if (snowRouteResult.isOnSnowRoute && snowRouteResult.route) {
+                      console.log('❄️ User is on snow route:', snowRouteResult.route.on_street);
+                      await supabaseAdmin
+                        .from('user_profiles')
+                        .update({
+                          on_snow_route: true,
+                          snow_route_street: snowRouteResult.route.on_street,
+                          notify_snow_forecast: true,
+                          notify_snow_confirmation: true,
+                          notify_snow_forecast_email: true,
+                          notify_snow_forecast_sms: true,
+                          notify_snow_confirmation_email: true,
+                          notify_snow_confirmation_sms: true
+                        })
+                        .eq('user_id', userId);
+                      console.log('✅ Auto-opted user into snow ban alerts');
+                    }
+                  } catch (snowError) {
+                    console.log('ℹ️ Snow route check failed (non-critical):', snowError);
                   }
                 }
 
@@ -872,6 +924,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               } catch (geoError) {
                 // Non-critical - user can set up street cleaning manually
                 console.log('ℹ️ Geocoding failed (non-critical):', geoError);
+              }
+
+              // Check if user's address is on a 2-inch snow ban route
+              try {
+                const snowRouteResult = await isAddressOnSnowRoute(metadata.streetAddress);
+                if (snowRouteResult.isOnSnowRoute && snowRouteResult.route) {
+                  console.log('❄️ User is on snow route:', snowRouteResult.route.on_street);
+                  await supabaseAdmin
+                    .from('user_profiles')
+                    .update({
+                      on_snow_route: true,
+                      snow_route_street: snowRouteResult.route.on_street,
+                      notify_snow_forecast: true,
+                      notify_snow_confirmation: true,
+                      notify_snow_forecast_email: true,
+                      notify_snow_forecast_sms: true,
+                      notify_snow_confirmation_email: true,
+                      notify_snow_confirmation_sms: true
+                    })
+                    .eq('user_id', userId);
+                  console.log('✅ Auto-opted user into snow ban alerts');
+                }
+              } catch (snowError) {
+                console.log('ℹ️ Snow route check failed (non-critical):', snowError);
               }
             }
 

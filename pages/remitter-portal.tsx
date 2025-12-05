@@ -19,9 +19,6 @@ interface Order {
   vehicle: {
     licensePlate: string;
     state: string;
-    make?: string;
-    model?: string;
-    year?: number;
   };
   address: {
     street: string;
@@ -218,40 +215,40 @@ export default function RemitterPortal() {
     setSelectedOrder(order);
     setOrderDocuments(null);
 
-    // Always try to fetch documents (driver's license and residency proof if available)
-    setDocumentsLoading(true);
-    try {
-      // Fetch driver's license
-      const licenseRes = await fetch(`/api/city-sticker/get-driver-license?email=${encodeURIComponent(order.customer.email)}`, {
-        headers: { 'X-API-Key': apiKey },
-      });
+    // Only fetch documents if permit is requested (permit zone orders)
+    if (order.amount.permitRequested) {
+      setDocumentsLoading(true);
+      try {
+        // Fetch driver's license
+        const licenseRes = await fetch(`/api/city-sticker/get-driver-license?email=${encodeURIComponent(order.customer.email)}`, {
+          headers: { 'X-API-Key': apiKey },
+        });
 
-      // Fetch residency proof (only for permit zone users)
-      const residencyRes = order.amount.permitRequested
-        ? await fetch(`/api/city-sticker/get-residency-proof?email=${encodeURIComponent(order.customer.email)}`, {
-            headers: { 'X-API-Key': apiKey },
-          })
-        : null;
+        // Fetch residency proof
+        const residencyRes = await fetch(`/api/city-sticker/get-residency-proof?email=${encodeURIComponent(order.customer.email)}`, {
+          headers: { 'X-API-Key': apiKey },
+        });
 
-      const docs: { driverLicense?: string; driverLicenseBack?: string; residencyProof?: string } = {};
+        const docs: { driverLicense?: string; driverLicenseBack?: string; residencyProof?: string } = {};
 
-      if (licenseRes.ok) {
-        const licenseData = await licenseRes.json();
-        // The API returns front.signedUrl for the front of license
-        docs.driverLicense = licenseData.front?.signedUrl || licenseData.signedUrl;
-        docs.driverLicenseBack = licenseData.back?.signedUrl;
+        if (licenseRes.ok) {
+          const licenseData = await licenseRes.json();
+          // The API returns front.signedUrl for the front of license
+          docs.driverLicense = licenseData.front?.signedUrl || licenseData.signedUrl;
+          docs.driverLicenseBack = licenseData.back?.signedUrl;
+        }
+
+        if (residencyRes.ok) {
+          const residencyData = await residencyRes.json();
+          docs.residencyProof = residencyData.signedUrl;
+        }
+
+        setOrderDocuments(docs);
+      } catch (err) {
+        console.error('Failed to fetch documents:', err);
+      } finally {
+        setDocumentsLoading(false);
       }
-
-      if (residencyRes?.ok) {
-        const residencyData = await residencyRes.json();
-        docs.residencyProof = residencyData.signedUrl;
-      }
-
-      setOrderDocuments(docs);
-    } catch (err) {
-      console.error('Failed to fetch documents:', err);
-    } finally {
-      setDocumentsLoading(false);
     }
 
     // Mark as processing if still pending
@@ -578,9 +575,6 @@ export default function RemitterPortal() {
                       <div>
                         <p className="text-gray-600">Vehicle</p>
                         <p className="font-medium">{order.vehicle.licensePlate} ({order.vehicle.state})</p>
-                        {order.vehicle.make && (
-                          <p className="text-gray-600">{order.vehicle.make} {order.vehicle.model}</p>
-                        )}
                       </div>
                       <div>
                         <p className="text-gray-600">Address</p>
@@ -787,66 +781,66 @@ export default function RemitterPortal() {
                 </div>
               </div>
 
-              {/* Customer Documents */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-700 mb-3">Customer Documents</h3>
-                  {documentsLoading ? (
-                    <div className="text-center py-8 text-gray-500">Loading documents...</div>
-                  ) : (
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {/* Driver's License Front */}
-                      <div className="border rounded-lg p-3">
-                        <h4 className="font-medium text-gray-600 mb-2">Driver's License (Front)</h4>
-                        {orderDocuments?.driverLicense ? (
-                          <a
-                            href={orderDocuments.driverLicense}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block"
-                          >
-                            <img
-                              src={orderDocuments.driverLicense}
-                              alt="Driver's License Front"
-                              className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
-                            />
-                            <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
-                          </a>
-                        ) : (
-                          <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
-                            Not uploaded
-                          </div>
-                        )}
-                      </div>
+              {/* Customer Documents - only shown for permit zone orders */}
+              {selectedOrder?.amount.permitRequested && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-700 mb-3">Customer Documents</h3>
+                    {documentsLoading ? (
+                      <div className="text-center py-8 text-gray-500">Loading documents...</div>
+                    ) : (
+                      <div className="grid md:grid-cols-3 gap-4">
+                        {/* Driver's License Front */}
+                        <div className="border rounded-lg p-3">
+                          <h4 className="font-medium text-gray-600 mb-2">Driver's License (Front)</h4>
+                          {orderDocuments?.driverLicense ? (
+                            <a
+                              href={orderDocuments.driverLicense}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              <img
+                                src={orderDocuments.driverLicense}
+                                alt="Driver's License Front"
+                                className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
+                              />
+                              <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
+                            </a>
+                          ) : (
+                            <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                              Not uploaded
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Driver's License Back */}
-                      <div className="border rounded-lg p-3">
-                        <h4 className="font-medium text-gray-600 mb-2">Driver's License (Back)</h4>
-                        {orderDocuments?.driverLicenseBack ? (
-                          <a
-                            href={orderDocuments.driverLicenseBack}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block"
-                          >
-                            <img
-                              src={orderDocuments.driverLicenseBack}
-                              alt="Driver's License Back"
-                              className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
-                            />
-                            <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
-                          </a>
-                        ) : (
-                          <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
-                            Not uploaded
-                          </div>
-                        )}
-                      </div>
+                        {/* Driver's License Back */}
+                        <div className="border rounded-lg p-3">
+                          <h4 className="font-medium text-gray-600 mb-2">Driver's License (Back)</h4>
+                          {orderDocuments?.driverLicenseBack ? (
+                            <a
+                              href={orderDocuments.driverLicenseBack}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              <img
+                                src={orderDocuments.driverLicenseBack}
+                                alt="Driver's License Back"
+                                className="w-full h-48 object-contain bg-gray-100 rounded cursor-pointer hover:opacity-80"
+                              />
+                              <p className="text-center text-blue-600 text-sm mt-1">Click to open full size</p>
+                            </a>
+                          ) : (
+                            <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                              Not uploaded
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Proof of Residency - only for permit zone */}
-                      <div className="border rounded-lg p-3">
-                        <h4 className="font-medium text-gray-600 mb-2">Proof of Residency</h4>
-                        {selectedOrder?.amount.permitRequested ? (
-                          orderDocuments?.residencyProof ? (
+                        {/* Proof of Residency */}
+                        <div className="border rounded-lg p-3">
+                          <h4 className="font-medium text-gray-600 mb-2">Proof of Residency</h4>
+                          {orderDocuments?.residencyProof ? (
                             <a
                               href={orderDocuments.residencyProof}
                               target="_blank"
@@ -864,16 +858,12 @@ export default function RemitterPortal() {
                             <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">
                               Not uploaded
                             </div>
-                          )
-                        ) : (
-                          <div className="w-full h-48 bg-gray-50 rounded flex items-center justify-center text-gray-400">
-                            N/A (no permit zone)
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-              </div>
+                    )}
+                </div>
+              )}
 
               {/* Completion Form */}
               <div className="border-t pt-6">

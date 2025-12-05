@@ -255,9 +255,6 @@ function formatOrder(order: any) {
     vehicle: {
       licensePlate: order.license_plate,
       state: order.license_state,
-      make: order.make,
-      model: order.model,
-      year: order.year,
     },
     address: {
       street: order.street_address,
