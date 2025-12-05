@@ -71,6 +71,7 @@ export default function RemitterPortal() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDocuments, setOrderDocuments] = useState<{
     driverLicense?: string;
+    driverLicenseBack?: string;
     residencyProof?: string;
   } | null>(null);
   const [documentsLoading, setDocumentsLoading] = useState(false);
@@ -217,39 +218,40 @@ export default function RemitterPortal() {
     setSelectedOrder(order);
     setOrderDocuments(null);
 
-    // If permit is requested, fetch the documents
-    if (order.amount.permitRequested) {
-      setDocumentsLoading(true);
-      try {
-        // Fetch driver's license
-        const licenseRes = await fetch(`/api/city-sticker/get-driver-license?email=${encodeURIComponent(order.customer.email)}`, {
-          headers: { 'X-API-Key': apiKey },
-        });
+    // Always try to fetch documents (driver's license and residency proof if available)
+    setDocumentsLoading(true);
+    try {
+      // Fetch driver's license
+      const licenseRes = await fetch(`/api/city-sticker/get-driver-license?email=${encodeURIComponent(order.customer.email)}`, {
+        headers: { 'X-API-Key': apiKey },
+      });
 
-        // Fetch residency proof
-        const residencyRes = await fetch(`/api/city-sticker/get-residency-proof?email=${encodeURIComponent(order.customer.email)}`, {
-          headers: { 'X-API-Key': apiKey },
-        });
+      // Fetch residency proof (only for permit zone users)
+      const residencyRes = order.amount.permitRequested
+        ? await fetch(`/api/city-sticker/get-residency-proof?email=${encodeURIComponent(order.customer.email)}`, {
+            headers: { 'X-API-Key': apiKey },
+          })
+        : null;
 
-        const docs: { driverLicense?: string; residencyProof?: string } = {};
+      const docs: { driverLicense?: string; driverLicenseBack?: string; residencyProof?: string } = {};
 
-        if (licenseRes.ok) {
-          const licenseData = await licenseRes.json();
-          // The API returns front.signedUrl for the front of license
-          docs.driverLicense = licenseData.front?.signedUrl || licenseData.signedUrl;
-        }
-
-        if (residencyRes.ok) {
-          const residencyData = await residencyRes.json();
-          docs.residencyProof = residencyData.signedUrl;
-        }
-
-        setOrderDocuments(docs);
-      } catch (err) {
-        console.error('Failed to fetch documents:', err);
-      } finally {
-        setDocumentsLoading(false);
+      if (licenseRes.ok) {
+        const licenseData = await licenseRes.json();
+        // The API returns front.signedUrl for the front of license
+        docs.driverLicense = licenseData.front?.signedUrl || licenseData.signedUrl;
+        docs.driverLicenseBack = licenseData.back?.signedUrl;
       }
+
+      if (residencyRes?.ok) {
+        const residencyData = await residencyRes.json();
+        docs.residencyProof = residencyData.signedUrl;
+      }
+
+      setOrderDocuments(docs);
+    } catch (err) {
+      console.error('Failed to fetch documents:', err);
+    } finally {
+      setDocumentsLoading(false);
     }
 
     // Mark as processing if still pending
