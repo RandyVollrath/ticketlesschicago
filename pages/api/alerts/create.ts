@@ -352,7 +352,7 @@ export default async function handler(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Autopilot America <noreply@autopilotamerica.com>',
+        from: 'Autopilot America <hello@autopilotamerica.com>',
         to: email,
         subject: 'Sign in to Autopilot America',
         html: `

@@ -181,7 +181,7 @@ Automated parking ticket contesting and city sticker renewals
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Ticketless Chicago <hello@ticketlesschicago.com>',
+        from: 'Autopilot America <hello@autopilotamerica.com>',
         to: profile.email,
         subject: emailSubject,
         text: emailBody,

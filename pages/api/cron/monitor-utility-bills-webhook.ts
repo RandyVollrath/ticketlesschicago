@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Send alert email to admin
       await resend.emails.send({
-        from: 'alerts@ticketlesschicago.com',
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: process.env.ADMIN_EMAIL || 'randyvollrath@gmail.com',
         subject: '🚨 Utility Bills Webhook Health Check Failed',
         html: `
@@ -109,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Send alert about the monitoring failure
     try {
       await resend.emails.send({
-        from: 'alerts@ticketlesschicago.com',
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: process.env.ADMIN_EMAIL || 'randyvollrath@gmail.com',
         subject: '🚨 Utility Bills Webhook Monitoring Failed',
         html: `

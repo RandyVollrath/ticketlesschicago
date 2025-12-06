@@ -436,7 +436,7 @@ export class NotificationScheduler {
               // Email is always sent
               if (user.email && this.resend) {
                 try {
-                  const fromAddress = process.env.RESEND_FROM || 'Autopilot America <alerts@autopilotamerica.com>';
+                  const fromAddress = 'Autopilot America <hello@autopilotamerica.com>';
 
                   const dueDateFormatted = dueDate.toLocaleDateString('en-US', {
                     weekday: 'long',

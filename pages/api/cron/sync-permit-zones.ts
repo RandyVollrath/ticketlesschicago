@@ -170,7 +170,7 @@ export default async function handler(
     // Send success email
     try {
       await resend.emails.send({
-        from: 'Ticketless Alerts <noreply@ticketlessamerica.com>',
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
         subject: dataChanged
           ? `✅ Permit Zones Synced - ${difference > 0 ? '+' : ''}${difference} zones changed`
