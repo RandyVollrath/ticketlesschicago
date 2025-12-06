@@ -12,6 +12,7 @@ interface SendSMSResult {
 export async function sendSMS(to: string, message: string): Promise<SendSMSResult> {
   const username = process.env.CLICKSEND_USERNAME;
   const apiKey = process.env.CLICKSEND_API_KEY;
+  const fromNumber = process.env.CLICKSEND_FROM_NUMBER || "+18332607864";
 
   if (!username || !apiKey) {
     console.error("ClickSend credentials missing:", { username: !!username, apiKey: !!apiKey });
@@ -31,6 +32,7 @@ export async function sendSMS(to: string, message: string): Promise<SendSMSResul
         messages: [
           {
             to: to,
+            from: fromNumber,
             body: message,
             source: "snowsos",
           },
