@@ -15,7 +15,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const BUCKET_NAME = 'residency-proofs-temp';
+const BUCKET_NAME = 'residency-proofs-temps';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -69,13 +69,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Check if proof is verified
-    if (!profile.residency_proof_verified) {
-      return res.status(400).json({
-        error: 'Residency proof not verified',
-        message: 'Bill has not been validated yet',
-      });
-    }
+    // Note: We allow unverified proofs for remitter portal
+    // Admins prefer to approve before registration but it's not a blocker
+    const isVerified = profile.residency_proof_verified;
 
     // Generate signed URL for secure download (24-hour expiration)
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
@@ -96,9 +92,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       signedUrl: signedUrlData.signedUrl,
       uploadedAt: profile.residency_proof_uploaded_at,
+      verified: isVerified,
       expiresAt: new Date(Date.now() + 86400 * 1000).toISOString(),
       filePath: profile.residency_proof_path,
-      message: 'Download URL valid for 24 hours',
+      message: isVerified ? 'Download URL valid for 24 hours' : 'Document pending verification - download URL valid for 24 hours',
     });
   } catch (error: any) {
     console.error('Get residency proof error:', error);
