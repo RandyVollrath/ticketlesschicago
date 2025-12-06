@@ -3,6 +3,8 @@
  * Free, no API key required, official US government weather data
  *
  * API Docs: https://www.weather.gov/documentation/services-web-api
+ *
+ * Fallback: OpenWeatherMap API (requires OPENWEATHERMAP_API_KEY env var)
  */
 
 // Chicago coordinates
@@ -11,6 +13,9 @@ const CHICAGO_LON = -87.6298;
 
 const NWS_API_BASE = 'https://api.weather.gov';
 const USER_AGENT = 'TicketlessAmerica/1.0 (ticketlessamerica@gmail.com)';
+
+// Request timeout in milliseconds
+const REQUEST_TIMEOUT = 15000;
 
 interface GridPoint {
   gridId: string;
@@ -54,10 +59,28 @@ interface SnowfallData {
 }
 
 /**
- * Fetch data from NWS API with proper headers
+ * Fetch with timeout
+ */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = REQUEST_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Fetch data from NWS API with proper headers and timeout
  */
 async function fetchNWS(url: string): Promise<any> {
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       'User-Agent': USER_AGENT,
       'Accept': 'application/geo+json'
@@ -173,9 +196,79 @@ function parseSnowAmount(detailedForecast: string): number {
 }
 
 /**
+ * Fallback: Check snow using OpenWeatherMap API
+ * Requires OPENWEATHERMAP_API_KEY environment variable
+ */
+async function checkForSnowOpenWeatherMap(): Promise<SnowfallData> {
+  const apiKey = process.env.OPENWEATHERMAP_API_KEY;
+  if (!apiKey) {
+    throw new Error('OpenWeatherMap API key not configured');
+  }
+
+  // Get 5-day forecast with 3-hour intervals
+  const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${CHICAGO_LAT}&lon=${CHICAGO_LON}&appid=${apiKey}&units=imperial`;
+
+  const response = await fetchWithTimeout(url, {});
+  if (!response.ok) {
+    throw new Error(`OpenWeatherMap API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  let maxSnowAmount = 0;
+  let snowPeriod = '';
+  let snowForecast = '';
+  let isCurrentlySnowing = false;
+
+  // Check each 3-hour forecast period
+  for (let i = 0; i < data.list.length && i < 16; i++) { // Next 48 hours (16 * 3 = 48)
+    const period = data.list[i];
+    const snowAmount = period.snow?.['3h'] || 0; // Snow volume in mm for last 3 hours
+
+    // Convert mm to inches (25.4mm = 1 inch)
+    const snowInches = snowAmount / 25.4;
+
+    // OpenWeatherMap gives snow in mm per 3 hours, so we need to accumulate
+    // For now, we'll check if any period has significant snow
+    if (snowInches > 0) {
+      // Estimate total accumulation based on current forecast
+      const estimatedTotal = snowInches * 4; // Very rough estimate for 12-hour period
+
+      if (estimatedTotal > maxSnowAmount) {
+        maxSnowAmount = estimatedTotal;
+        const date = new Date(period.dt * 1000);
+        snowPeriod = date.toLocaleString('en-US', { weekday: 'long', hour: 'numeric', timeZone: 'America/Chicago' });
+        snowForecast = `${period.weather[0]?.description || 'Snow'}. Expected ${snowInches.toFixed(1)}" per 3-hour period.`;
+      }
+
+      // Check if snow is happening now (first period)
+      if (i === 0 && snowInches > 0) {
+        isCurrentlySnowing = true;
+      }
+    }
+
+    // Also check weather conditions
+    const weatherId = period.weather[0]?.id;
+    if (weatherId >= 600 && weatherId < 700) { // Snow weather codes
+      if (i === 0) isCurrentlySnowing = true;
+    }
+  }
+
+  return {
+    hasSnow: maxSnowAmount > 0 || isCurrentlySnowing,
+    snowAmountInches: Math.round(maxSnowAmount * 10) / 10, // Round to 1 decimal
+    forecastPeriod: snowPeriod || 'Unknown',
+    detailedForecast: snowForecast || 'No significant snow expected',
+    isCurrentlySnowing
+  };
+}
+
+/**
  * Check if there's currently snow or snow in the forecast >= 2 inches
+ * Uses NWS as primary source with OpenWeatherMap as fallback
  */
 export async function checkForSnow(): Promise<SnowfallData> {
+  // Try NWS first (primary source)
   try {
     const gridPoint = await getGridPoint();
     const currentConditions = await getCurrentConditions();
@@ -220,6 +313,7 @@ export async function checkForSnow(): Promise<SnowfallData> {
       }
     }
 
+    console.log('NWS weather check successful');
     return {
       hasSnow: maxSnowAmount > 0 || isCurrentlySnowing,
       snowAmountInches: maxSnowAmount,
@@ -228,9 +322,19 @@ export async function checkForSnow(): Promise<SnowfallData> {
       isCurrentlySnowing
     };
 
-  } catch (error) {
-    console.error('Error checking for snow:', error);
-    throw error;
+  } catch (nwsError) {
+    console.error('NWS API failed, trying OpenWeatherMap fallback:', nwsError);
+
+    // Try OpenWeatherMap as fallback
+    try {
+      const result = await checkForSnowOpenWeatherMap();
+      console.log('OpenWeatherMap fallback successful');
+      return result;
+    } catch (owmError) {
+      console.error('OpenWeatherMap fallback also failed:', owmError);
+      // Re-throw the original NWS error as it's the primary source
+      throw nwsError;
+    }
   }
 }
 

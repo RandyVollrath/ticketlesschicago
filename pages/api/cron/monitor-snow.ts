@@ -1,14 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { checkForSnow } from '../../../lib/weather-service';
+import { supabaseAdmin } from '../../../lib/supabase';
 
 /**
  * Cron job endpoint to monitor snow conditions
  *
- * This should run every hour during winter months (Nov 1 - Apr 1)
+ * This should run every 30 minutes during winter months (Nov-Mar)
  *
- * Schedule: "0 * * * *" (every hour at minute 0)
+ * Schedule: "0,30 * * 11,12,1,2,3 *"
  *
  * Workflow:
- * 1. Check weather for snow
+ * 1. Check weather for snow (with retry logic)
  * 2. If 2+ inches detected, create snow event
  * 3. If snow event hasn't been notified, trigger notifications
  */
@@ -23,9 +25,6 @@ export default async function handler(
   const startTime = Date.now();
 
   try {
-    // Smart polling: Skip full weather check if no active snow events
-    // (saves API calls on 15-min checks when there's no snow forecasted)
-    const { supabaseAdmin } = require('../../../lib/supabase');
     const today = new Date().toISOString().split('T')[0];
 
     const { data: activeEvent } = await supabaseAdmin
@@ -35,102 +34,163 @@ export default async function handler(
       .gte('event_date', today)
       .single();
 
-    // If no active event, skip full check (except on hourly runs at :00)
+    // If no active event, skip full check (except on hourly runs at :00 or :30)
     const currentMinute = new Date().getMinutes();
-    const isHourlyRun = currentMinute === 0;
+    const isScheduledRun = currentMinute === 0 || currentMinute === 30;
 
-    if (!activeEvent && !isHourlyRun) {
+    if (!activeEvent && !isScheduledRun) {
       return res.status(200).json({
         success: true,
-        message: 'No active snow event - skipping 15-min check',
+        message: 'No active snow event - skipping check',
         skipped: true,
         processingTime: Date.now() - startTime
       });
     }
 
-    // Step 1: Check for snow
-    const checkSnowResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/weather/check-snow`,
-      { method: 'POST' }
-    );
+    // Step 1: Check for snow with retry logic
+    let snowData = null;
+    let lastError = null;
 
-    if (!checkSnowResponse.ok) {
-      throw new Error(`Snow check failed: ${checkSnowResponse.statusText}`);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        snowData = await checkForSnow();
+        break; // Success, exit retry loop
+      } catch (error) {
+        lastError = error;
+        console.error(`Weather check attempt ${attempt} failed:`, error);
+        if (attempt < 3) {
+          // Wait before retry (1s, 2s)
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
+      }
     }
 
-    const snowCheckResult = await checkSnowResponse.json();
+    if (!snowData) {
+      throw new Error(`Weather check failed after 3 attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
+    }
 
-    console.log('Snow check result:', snowCheckResult);
+    console.log('Snow check result:', snowData);
+
+    // Build a result object similar to what check-snow API returns
+    let snowCheckResult: any = {
+      success: true,
+      snowDetected: snowData.hasSnow,
+      twoInchBanTriggered: false,
+      needsNotification: false,
+      snowData,
+      event: null
+    };
+
+    // If snow >= 2 inches, handle snow event creation/update
+    if (snowData.snowAmountInches >= 2.0) {
+      // Check if we already have a snow event for today
+      const { data: existingEvent } = await supabaseAdmin
+        .from('snow_events')
+        .select('*')
+        .eq('event_date', today)
+        .single();
+
+      if (!existingEvent) {
+        // Create new snow event
+        const { data: newEvent, error: insertError } = await supabaseAdmin
+          .from('snow_events')
+          .insert({
+            event_date: today,
+            snow_amount_inches: snowData.snowAmountInches,
+            forecast_source: 'nws',
+            is_active: true,
+            two_inch_ban_triggered: false,
+            metadata: {
+              forecast_period: snowData.forecastPeriod,
+              detailed_forecast: snowData.detailedForecast,
+              is_currently_snowing: snowData.isCurrentlySnowing,
+              checked_at: new Date().toISOString()
+            }
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Error creating snow event:', insertError);
+        } else {
+          console.log('Created new snow event:', newEvent);
+          snowCheckResult.event = newEvent;
+          snowCheckResult.needsNotification = true;
+        }
+      } else {
+        // Update existing event
+        await supabaseAdmin
+          .from('snow_events')
+          .update({
+            snow_amount_inches: Math.max(existingEvent.snow_amount_inches, snowData.snowAmountInches),
+            is_active: true,
+            metadata: {
+              ...existingEvent.metadata,
+              latest_forecast_period: snowData.forecastPeriod,
+              latest_detailed_forecast: snowData.detailedForecast,
+              latest_check_at: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingEvent.id);
+
+        snowCheckResult.event = existingEvent;
+        snowCheckResult.twoInchBanTriggered = existingEvent.two_inch_ban_triggered;
+        snowCheckResult.needsNotification = !existingEvent.two_inch_ban_triggered;
+      }
+    }
 
     // Step 2: If snow >= 2 inches detected, send notifications
-    if (snowCheckResult.needsNotification && snowCheckResult.snowData?.snowAmountInches >= 2.0) {
-      const { supabaseAdmin } = require('../../../lib/supabase');
+    if (snowCheckResult.needsNotification && snowData.snowAmountInches >= 2.0) {
       const event = snowCheckResult.event;
 
       // Determine notification type:
       // - 'forecast': When 2+ inches is predicted (send early warning)
       // - 'confirmation': When 2+ inches has accumulated (send urgent alert)
-      // For now, we'll use isCurrentlySnowing as a proxy for "snow has accumulated"
-      // In future, could check observation data for actual accumulation
-      const hasAccumulated = snowCheckResult.snowData.isCurrentlySnowing;
+      const hasAccumulated = snowData.isCurrentlySnowing;
       const notificationType = hasAccumulated ? 'confirmation' : 'forecast';
 
       console.log(`2+ inches of snow ${hasAccumulated ? 'has accumulated' : 'forecasted'} - sending ${notificationType} notifications...`);
 
       // Check if we've already sent this type of notification
-      const { data: existingEvent } = await supabaseAdmin
+      const { data: eventCheck } = await supabaseAdmin
         .from('snow_events')
         .select('*')
         .eq('id', event?.id)
         .single();
 
-      const alreadySentForecast = existingEvent?.forecast_sent;
-      const alreadySentConfirmation = existingEvent?.two_inch_ban_triggered;
+      const alreadySentForecast = eventCheck?.forecast_sent;
+      const alreadySentConfirmation = eventCheck?.two_inch_ban_triggered;
 
       // Only send if we haven't sent this type yet
       const shouldSendForecast = notificationType === 'forecast' && !alreadySentForecast;
       const shouldSendConfirmation = notificationType === 'confirmation' && !alreadySentConfirmation;
 
       if (shouldSendForecast || shouldSendConfirmation) {
-        // Send user notifications
-        const userNotifyResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-snow-ban-notifications`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              notificationType
-            })
-          }
-        );
+        // Import and call notification sender directly (more reliable than HTTP)
+        const { sendSnowBanNotifications } = await import('../send-snow-ban-notifications');
 
         let userNotifyResult = null;
-        if (!userNotifyResponse.ok) {
-          console.error('User notification failed:', userNotifyResponse.statusText);
-        } else {
-          userNotifyResult = await userNotifyResponse.json();
+        try {
+          userNotifyResult = await sendSnowBanNotifications(notificationType);
           console.log('User notifications sent:', userNotifyResult);
+        } catch (notifyError) {
+          console.error('User notification failed:', notifyError);
         }
 
         // Also notify admin
-        const adminNotifyResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/admin/notify-admin-snow`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              snowAmount: snowCheckResult.snowData.snowAmountInches,
-              forecastPeriod: snowCheckResult.snowData.forecastPeriod,
-              detailedForecast: snowCheckResult.snowData.detailedForecast,
-              eventId: event?.id,
-              notificationType,
-              userStats: userNotifyResult?.stats
-            })
-          }
-        );
-
-        if (!adminNotifyResponse.ok) {
-          console.error('Admin notification failed:', adminNotifyResponse.statusText);
+        try {
+          const { notifyAdminSnow } = await import('../admin/notify-admin-snow');
+          await notifyAdminSnow({
+            snowAmount: snowData.snowAmountInches,
+            forecastPeriod: snowData.forecastPeriod,
+            detailedForecast: snowData.detailedForecast,
+            eventId: event?.id,
+            notificationType,
+            userStats: userNotifyResult?.stats
+          });
+        } catch (adminError) {
+          console.error('Admin notification failed:', adminError);
         }
 
         return res.status(200).json({
