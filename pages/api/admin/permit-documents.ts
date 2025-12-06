@@ -136,7 +136,7 @@ export default async function handler(
     try {
       const { data: profiles, error: profileError } = await supabaseAdmin
         .from('user_profiles')
-        .select('user_id, email, phone, street_address, home_address_full, city_sticker_expiry, residency_proof_type, residency_proof_path, residency_proof_source, residency_proof_uploaded_at, residency_proof_verified, residency_proof_validation, residency_proof_validated_at')
+        .select('user_id, email, phone, street_address, home_address_full, city_sticker_expiry, residency_proof_type, residency_proof_path, residency_proof_uploaded_at, residency_proof_verified, residency_proof_validation, residency_proof_validated_at')
         .not('residency_proof_path', 'is', null)
         .order('residency_proof_uploaded_at', { ascending: false });
 
@@ -173,7 +173,7 @@ export default async function handler(
             user_id: profile.user_id,
             document_url: profile.residency_proof_path,
             document_type: profile.residency_proof_type || validation?.documentType || 'unknown',
-            document_source: profile.residency_proof_source || 'manual_upload',
+            document_source: 'manual_upload',
             address: profile.street_address || profile.home_address_full || 'Unknown',
             verification_status: profile.residency_proof_verified ? 'approved' : 'pending',
             uploaded_at: profile.residency_proof_uploaded_at,
