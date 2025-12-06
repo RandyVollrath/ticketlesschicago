@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Find user by phone number
     const { data: users, error: userError } = await supabaseAdmin
       .from('user_profiles')
-      .select('user_id, email, phone, phone_number, home_address_full, license_plate, vin')
+      .select('user_id, email, phone, phone_number, home_address_full, license_plate, vin, first_name')
       .or(phoneVariations.map(p => `phone.eq.${p},phone_number.eq.${p}`).join(','));
 
     let matchedUser = users?.[0];
@@ -175,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Handle START/resubscribe
-    if (['start', 'subscribe', 'yes'].includes(messageLower) && matchedUser) {
+    if (['start', 'subscribe'].includes(messageLower) && matchedUser) {
       console.log(`✅ START received from ${matchedEmail} - enabling SMS`);
 
       await supabaseAdmin
@@ -188,6 +188,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await sendClickSendSMS(fromNumber, "You've been re-subscribed to Autopilot SMS notifications.");
       } catch (smsError) {
         console.error('Error sending resubscribe SMS:', smsError);
+      }
+    }
+
+    // Handle YES - sticker applied confirmation
+    if (['yes', 'y', 'applied'].includes(messageLower) && matchedUser) {
+      console.log(`🏷️ Sticker applied confirmation from ${matchedEmail}`);
+
+      // Find their most recent completed order awaiting sticker confirmation
+      const { data: order, error: orderError } = await supabaseAdmin
+        .from('renewal_orders')
+        .select('id, order_number, sticker_type')
+        .eq('customer_email', matchedUser.email)
+        .eq('status', 'completed')
+        .eq('sticker_applied', false)
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (orderError) {
+        console.error('Error finding order:', orderError);
+      } else if (!order) {
+        // No pending sticker confirmation
+        console.log(`⚠️ No pending sticker confirmation for ${matchedEmail}`);
+        try {
+          const { sendClickSendSMS } = await import('../../../lib/sms-service');
+          await sendClickSendSMS(fromNumber, "Thanks for the message! We don't have any pending sticker confirmations for you right now.");
+        } catch (smsError) {
+          console.error('Error sending SMS:', smsError);
+        }
+      } else {
+        // Mark sticker as applied
+        const { error: updateError } = await supabaseAdmin
+          .from('renewal_orders')
+          .update({
+            sticker_applied: true,
+            sticker_applied_at: new Date().toISOString(),
+            needs_manual_followup: false
+          })
+          .eq('id', order.id);
+
+        if (updateError) {
+          console.error('Error marking sticker applied:', updateError);
+        } else {
+          const isLicensePlate = ['standard', 'vanity'].includes(order.sticker_type?.toLowerCase());
+          const stickerType = isLicensePlate ? 'license plate sticker' : 'city sticker';
+
+          console.log(`✅ Sticker marked as applied for order ${order.order_number}`);
+
+          try {
+            const { sendClickSendSMS } = await import('../../../lib/sms-service');
+            const firstName = matchedUser.first_name || matchedUser.email?.split('@')[0];
+            await sendClickSendSMS(
+              fromNumber,
+              `Autopilot: Awesome${firstName ? `, ${firstName}` : ''}! Your ${stickerType} is all set. You're good to go - no more reminders from us about this one. Drive safe!`
+            );
+          } catch (smsError) {
+            console.error('Error sending confirmation SMS:', smsError);
+          }
+        }
       }
     }
 
