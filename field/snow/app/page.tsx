@@ -432,6 +432,13 @@ export default function Home() {
                   </div>
                 )}
 
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                  By submitting, you agree to receive SMS notifications about your job.{" "}
+                  <Link href="/terms" className="underline hover:no-underline">
+                    Terms & SMS Policy
+                  </Link>
+                </p>
+
                 <button
                   type="submit"
                   disabled={status === "loading"}
@@ -499,6 +506,9 @@ export default function Home() {
             <Link href="/plowers" className="hover:underline">Find Plowers</Link>
             <Link href="/plower/dashboard" className="hover:underline">Plower Dashboard</Link>
             <Link href="/leaderboard" className="hover:underline">Leaderboard</Link>
+          </div>
+          <div className="mt-4 space-x-4">
+            <Link href="/terms" className="hover:underline">Terms & Privacy</Link>
           </div>
         </footer>
       </div>
