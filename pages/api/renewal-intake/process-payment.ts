@@ -142,7 +142,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: 'Payment successful! Your renewal order is being processed.',
       nextSteps: [
         'Your documents are being verified',
-        'Order will be submitted to the city',
+        ['standard', 'vanity'].includes(order.sticker_type?.toLowerCase())
+          ? 'Order will be submitted to the IL Secretary of State'
+          : 'Order will be submitted to the City of Chicago',
         partner.fulfillment_method === 'mail'
           ? 'Your sticker will be mailed to you'
           : 'You will be notified when your sticker is ready for pickup',

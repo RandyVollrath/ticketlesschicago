@@ -337,7 +337,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
                   </div>
                   <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
                     <p>Hi ${userData.first_name || 'there'},</p>
-                    <p>Great news! Your ${renewalType === 'city_sticker' ? 'Chicago city sticker' : 'license plate'} renewal has been submitted to the city.</p>
+                    <p>Great news! Your ${renewalType === 'city_sticker' ? 'Chicago city sticker' : 'license plate'} renewal has been submitted to the ${renewalType === 'city_sticker' ? 'City of Chicago' : 'IL Secretary of State'}.</p>
                     ${confirmationNumber ? `<p><strong>Confirmation Number:</strong> ${confirmationNumber}</p>` : ''}
                     <p><strong>New Expiration:</strong> ${nextYearStr}</p>
                     <p>Your new sticker will be mailed to your address on file. If you need to update your mailing address, please contact us.</p>
