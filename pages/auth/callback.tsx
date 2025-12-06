@@ -166,6 +166,57 @@ export default function AuthCallback() {
             sessionStorage.removeItem('expectedGoogleEmail');
           }
 
+          // Handle Protection Google signup flow - redirect to Stripe checkout
+          const isProtectionGoogleFlow = new URLSearchParams(window.location.search).get('flow') === 'protection-google';
+
+          if (isProtectionGoogleFlow) {
+            console.log('🛡️ Protection Google flow detected - checking for pending checkout data...');
+            const pendingCheckout = sessionStorage.getItem('pendingProtectionCheckout');
+
+            if (pendingCheckout) {
+              console.log('✅ Found pending protection checkout, redirecting to Stripe...');
+              setDebugInfo('✅ Redirecting to payment...');
+
+              try {
+                const checkoutData = JSON.parse(pendingCheckout);
+                // Add user info from Google OAuth
+                checkoutData.email = user.email;
+                checkoutData.userId = user.id;
+
+                // Call the checkout API
+                const response = await fetch('/api/protection/checkout', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(checkoutData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                  throw new Error(result.error || 'Checkout failed');
+                }
+
+                // Clean up sessionStorage
+                sessionStorage.removeItem('pendingProtectionCheckout');
+
+                // Redirect to Stripe
+                if (result.url) {
+                  window.location.href = result.url;
+                  return;
+                }
+              } catch (error: any) {
+                console.error('❌ Error processing protection checkout:', error);
+                sessionStorage.removeItem('pendingProtectionCheckout');
+                router.push(`/protection?error=${encodeURIComponent(error.message || 'Checkout failed')}`);
+                return;
+              }
+            } else {
+              console.error('❌ Protection Google flow but no pending checkout data');
+              router.push('/protection?error=session_expired');
+              return;
+            }
+          }
+
           // Check if this is a free signup flow (even if data was lost)
           const isFreeSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'free-signup';
 
