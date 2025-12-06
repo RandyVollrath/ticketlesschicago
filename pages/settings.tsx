@@ -1418,8 +1418,12 @@ export default function ProfileNew() {
           <Accordion
             title="Renewal Dates"
             icon="📅"
-            badge={profile.has_protection ? 'Required for protection' : undefined}
-            badgeColor="yellow"
+            badge={profile.has_protection
+              ? (formData.city_sticker_expiry && formData.license_plate_expiry
+                ? 'Dates saved'
+                : 'Required for protection')
+              : undefined}
+            badgeColor={formData.city_sticker_expiry && formData.license_plate_expiry ? 'green' : 'yellow'}
             defaultOpen={profile.has_protection && !formData.city_sticker_expiry}
           >
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0' }}>

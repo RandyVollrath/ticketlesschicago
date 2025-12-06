@@ -85,6 +85,16 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
   }
 
   const nextExpiry = getNextExpiry()
+
+  // Check if profile has essential fields filled in
+  const isProfileComplete = !!(
+    profile.first_name &&
+    profile.last_name &&
+    profile.license_plate &&
+    profile.street_address &&
+    profile.zip_code
+  )
+
   const showConfirmationCard = profile.has_protection && nextExpiry && nextExpiry.daysUntil <= 60 && !isConfirmedForCurrentYear
 
   const handleConfirm = async () => {
@@ -177,15 +187,17 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
             fontWeight: 600,
             margin: '0 0 4px 0',
           }}>
-            Confirm Your Information
+            {isProfileComplete ? 'Confirm Your Information' : 'Complete Your Profile'}
           </h3>
           <p style={{
             color: '#6b7280',
             fontSize: '14px',
             margin: 0,
           }}>
-            Your {nextExpiry?.type} renewal is coming up in {nextExpiry?.daysUntil} days.
-            Please confirm your info is correct so we can process it.
+            {isProfileComplete
+              ? `Your ${nextExpiry?.type} renewal is coming up in ${nextExpiry?.daysUntil} days. Please confirm your info is correct so we can process it.`
+              : `Your ${nextExpiry?.type} renewal is coming up in ${nextExpiry?.daysUntil} days. Please fill out your profile so we can process it.`
+            }
           </p>
         </div>
       </div>
@@ -209,7 +221,10 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
           marginBottom: showDetails ? '16px' : 0,
         }}>
           <span style={{ color: '#6b7280', fontSize: '14px' }}>
-            Click to {showDetails ? 'hide' : 'review'} your information
+            {isProfileComplete
+              ? `Click to ${showDetails ? 'hide' : 'review'} your information`
+              : `Click to ${showDetails ? 'hide' : 'see'} what's needed`
+            }
           </span>
           <svg
             width="16"
@@ -270,10 +285,10 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
         )}
       </div>
 
-      {/* Warning about what needs to be correct */}
+      {/* Warning/Info box - different content based on profile completeness */}
       <div style={{
-        background: '#fef3c7',
-        border: '1px solid #f59e0b',
+        background: isProfileComplete ? '#fef3c7' : '#eff6ff',
+        border: `1px solid ${isProfileComplete ? '#f59e0b' : '#3b82f6'}`,
         borderRadius: '8px',
         padding: '12px 16px',
         marginBottom: '20px',
@@ -281,16 +296,29 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
         alignItems: 'flex-start',
         gap: '12px',
       }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style={{ flexShrink: 0, marginTop: '2px' }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill={isProfileComplete ? '#f59e0b' : '#3b82f6'} stroke="none" style={{ flexShrink: 0, marginTop: '2px' }}>
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
         </svg>
-        <div style={{ color: '#92400e', fontSize: '13px', lineHeight: 1.5 }}>
-          <strong>Before confirming, make sure:</strong>
-          <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px' }}>
-            <li>You haven't gotten a new vehicle (different VIN)</li>
-            <li>Your license plate number is still the same</li>
-            <li>Your mailing address is where you want the sticker sent</li>
-          </ul>
+        <div style={{ color: isProfileComplete ? '#92400e' : '#1e40af', fontSize: '13px', lineHeight: 1.5 }}>
+          {isProfileComplete ? (
+            <>
+              <strong>Before confirming, make sure:</strong>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px' }}>
+                <li>You haven't gotten a new vehicle (different VIN)</li>
+                <li>Your license plate number is still the same</li>
+                <li>Your mailing address is where you want the sticker sent</li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <strong>We need the following to process your renewal:</strong>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px' }}>
+                <li>Your name</li>
+                <li>Your vehicle and license plate info</li>
+                <li>Your mailing address (where to send the sticker)</li>
+              </ul>
+            </>
+          )}
         </div>
       </div>
 
@@ -300,65 +328,97 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
         gap: '12px',
         flexWrap: 'wrap',
       }}>
-        <button
-          onClick={handleConfirm}
-          disabled={confirming}
-          style={{
-            flex: 1,
-            minWidth: '200px',
-            background: COLORS.emerald,
-            color: COLORS.white,
-            border: 'none',
-            borderRadius: '8px',
-            padding: '14px 24px',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: confirming ? 'not-allowed' : 'pointer',
-            opacity: confirming ? 0.7 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {confirming ? (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-              </svg>
-              Confirming...
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Yes, My Information is Correct
-            </>
-          )}
-        </button>
+        {isProfileComplete ? (
+          <>
+            <button
+              onClick={handleConfirm}
+              disabled={confirming}
+              style={{
+                flex: 1,
+                minWidth: '200px',
+                background: COLORS.emerald,
+                color: COLORS.white,
+                border: 'none',
+                borderRadius: '8px',
+                padding: '14px 24px',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: confirming ? 'not-allowed' : 'pointer',
+                opacity: confirming ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {confirming ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                  Confirming...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Yes, My Information is Correct
+                </>
+              )}
+            </button>
 
-        <a
-          href="/settings#vehicle"
-          style={{
-            flex: 1,
-            minWidth: '150px',
-            background: '#f9fafb',
-            color: '#374151',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            padding: '14px 24px',
-            fontSize: '15px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            textDecoration: 'none',
-            textAlign: 'center',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          I Need to Update Something
-        </a>
+            <a
+              href="/settings#vehicle"
+              style={{
+                flex: 1,
+                minWidth: '150px',
+                background: '#f9fafb',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                padding: '14px 24px',
+                fontSize: '15px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                textDecoration: 'none',
+                textAlign: 'center',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              I Need to Update Something
+            </a>
+          </>
+        ) : (
+          <a
+            href="/settings#vehicle"
+            style={{
+              flex: 1,
+              background: COLORS.emerald,
+              color: COLORS.white,
+              border: 'none',
+              borderRadius: '8px',
+              padding: '14px 24px',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'none',
+              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Complete Your Profile
+          </a>
+        )}
       </div>
 
       {/* Last confirmed info */}
