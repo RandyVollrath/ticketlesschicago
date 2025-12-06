@@ -718,8 +718,8 @@ export default function AlertsSuccess() {
           </div>
         )}
 
-        {/* What's Next Section */}
-        {!isExistingUser && (
+        {/* What's Next Section - only show for users not logged in */}
+        {!isExistingUser && !user && (
           <div style={{
             backgroundColor: COLORS.concrete,
             borderRadius: '12px',
@@ -747,8 +747,8 @@ export default function AlertsSuccess() {
           flexDirection: 'column',
           gap: '12px'
         }}>
-          {/* For new Protection users, show email check reminder */}
-          {isProtection && !isExistingUser ? (
+          {/* For new Protection users who are NOT logged in, show email check reminder */}
+          {isProtection && !isExistingUser && !user ? (
             <div style={{
               backgroundColor: `${COLORS.regulatory}08`,
               border: `1px solid ${COLORS.regulatory}30`,
@@ -833,8 +833,8 @@ export default function AlertsSuccess() {
                 </div>
               )}
 
-              {/* For existing users, show account button */}
-              {isExistingUser && (
+              {/* For existing users OR logged-in users (Google OAuth), show account button */}
+              {(isExistingUser || user) && (
                 <button
                   onClick={() => router.push(isProtection ? '/settings?protection=true' : '/settings')}
                   style={{
