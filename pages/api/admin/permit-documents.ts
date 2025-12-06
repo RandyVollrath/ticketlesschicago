@@ -79,15 +79,27 @@ export default async function handler(
     // Get user IDs to fetch user data
     const userIds = [...new Set(documents.map(d => d.user_id))];
 
-    // Fetch user data separately
-    const { data: users, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id, email, phone')
-      .in('id', userIds);
+    // Fetch user data from auth.users (more reliable than public.users)
+    const { data: authUsers, error: authUserError } = await supabaseAdmin.auth.admin.listUsers();
 
-    if (userError) {
-      console.error('User query error:', userError);
-      // Continue without user data
+    let users: { id: string; email: string; phone: string }[] = [];
+    if (!authUserError && authUsers?.users) {
+      users = authUsers.users
+        .filter((u: any) => userIds.includes(u.id))
+        .map((u: any) => ({ id: u.id, email: u.email || '', phone: u.phone || '' }));
+    }
+
+    if (authUserError) {
+      console.error('Auth user query error:', authUserError);
+      // Fallback to public.users table
+      const { data: publicUsers, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('id, email, phone')
+        .in('id', userIds);
+
+      if (!userError && publicUsers) {
+        users = publicUsers;
+      }
     }
 
     // Create a map of user data
@@ -124,20 +136,34 @@ export default async function handler(
     try {
       const { data: profiles, error: profileError } = await supabaseAdmin
         .from('user_profiles')
-        .select('user_id, street_address, home_address_full, city_sticker_expiry, residency_proof_type, residency_proof_path, residency_proof_source, residency_proof_uploaded_at, residency_proof_verified, residency_proof_validation, residency_proof_validated_at')
+        .select('user_id, email, phone, street_address, home_address_full, city_sticker_expiry, residency_proof_type, residency_proof_path, residency_proof_source, residency_proof_uploaded_at, residency_proof_verified, residency_proof_validation, residency_proof_validated_at')
         .not('residency_proof_path', 'is', null)
         .order('residency_proof_uploaded_at', { ascending: false });
 
       if (!profileError && profiles) {
-        // Fetch user data for these profiles
+        // Fetch user data for these profiles from auth.users
         const profileUserIds = profiles.map(p => p.user_id);
-        const { data: profileUsers } = await supabaseAdmin
-          .from('users')
-          .select('id, email, phone')
-          .in('id', profileUserIds);
 
+        // Use auth.users data if already fetched, otherwise get from user_profiles email
+        let profileUsers: { id: string; email: string; phone: string }[] = [];
+
+        // Try to use the already-fetched auth users if available
+        if (authUsers?.users) {
+          profileUsers = authUsers.users
+            .filter((u: any) => profileUserIds.includes(u.id))
+            .map((u: any) => ({ id: u.id, email: u.email || '', phone: u.phone || '' }));
+        }
+
+        // Also add fallback from profiles themselves (they store email)
         const profileUserMap = new Map();
         profileUsers?.forEach(u => profileUserMap.set(u.id, u));
+
+        // Fallback: use email/phone from user_profiles if not found in auth.users
+        profiles.forEach((p: any) => {
+          if (!profileUserMap.has(p.user_id) && p.email) {
+            profileUserMap.set(p.user_id, { id: p.user_id, email: p.email, phone: p.phone || '' });
+          }
+        });
 
         residencyProofDocs = profiles.map((profile: any) => {
           const user = profileUserMap.get(profile.user_id);
