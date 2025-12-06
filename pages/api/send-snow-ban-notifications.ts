@@ -254,6 +254,254 @@ function getAwarenessConfirmationSMSText(snowAmount: number): string {
   return `🚨 2-inch snow ban ACTIVE in Chicago (${snowAmount}" fell). If parked on a main street, check signs & move if needed. -Autopilot America`;
 }
 
+// Exportable function for direct calls (from cron jobs)
+export async function sendSnowBanNotifications(notificationType: 'forecast' | 'confirmation' = 'confirmation') {
+  const stats = {
+    usersChecked: 0,
+    usersNotified: 0,
+    emailsSent: 0,
+    emailsFailed: 0,
+    smsSent: 0,
+    smsFailed: 0,
+    alreadyNotified: 0,
+    noActiveEvent: 0,
+    notOnSnowRoute: 0
+  };
+
+  // Get the most recent active snow event that hasn't been fully notified
+  const { data: snowEvent } = await supabaseAdmin
+    .from('snow_events')
+    .select('*')
+    .eq('is_active', true)
+    .gte('snow_amount_inches', 2.0)
+    .order('event_date', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!snowEvent) {
+    return {
+      success: true,
+      message: 'No active 2-inch snow event to notify about',
+      stats
+    };
+  }
+
+  const isForecastNotif = notificationType === 'forecast';
+
+  // Get users on snow routes (filters by home_address_full matching snow_routes table)
+  const usersOnSnowRoutes = await getUsersOnSnowRoutes();
+  const snowRouteUserIds = new Set(usersOnSnowRoutes.map(u => u.user_id));
+
+  // Filter snow route users based on their notification preferences
+  const snowRouteUsersToNotify = usersOnSnowRoutes.filter(user => {
+    return isForecastNotif ? user.notify_snow_forecast === true : user.notify_snow_confirmation === true;
+  });
+
+  // Also get ALL users who opted in (for awareness alerts to those NOT on snow routes)
+  const { data: allOptedInUsers } = await supabaseAdmin
+    .from('user_profiles')
+    .select(`
+      user_id,
+      email,
+      phone_number,
+      first_name,
+      notify_snow_forecast,
+      notify_snow_forecast_email,
+      notify_snow_forecast_sms,
+      notify_snow_confirmation,
+      notify_snow_confirmation_email,
+      notify_snow_confirmation_sms,
+      on_snow_route
+    `)
+    .eq(isForecastNotif ? 'notify_snow_forecast' : 'notify_snow_confirmation', true);
+
+  // Filter to only users NOT on snow routes (awareness alerts)
+  const awarenessUsers = (allOptedInUsers || []).filter(user => !snowRouteUserIds.has(user.user_id));
+
+  const totalUsersToNotify = snowRouteUsersToNotify.length + awarenessUsers.length;
+  stats.usersChecked = totalUsersToNotify;
+
+  if (totalUsersToNotify === 0) {
+    return {
+      success: true,
+      message: `No users opted in for ${notificationType} notifications`,
+      stats,
+      snowEvent
+    };
+  }
+
+  // Helper function to send notification and log it
+  async function sendAndLogNotification(
+    userId: string,
+    email: string | null,
+    phoneNumber: string | null,
+    firstName: string | null,
+    emailSubject: string,
+    emailHtml: string,
+    smsText: string,
+    smsEnabled: boolean,
+    emailEnabled: boolean
+  ) {
+    // Check if user has already been notified for this snow event and notification type
+    const { data: existingNotification } = await supabaseAdmin
+      .from('user_snow_ban_notifications')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('snow_event_id', snowEvent.id)
+      .eq('notification_type', notificationType)
+      .single();
+
+    if (existingNotification) {
+      stats.alreadyNotified++;
+      return;
+    }
+
+    const channels: string[] = [];
+
+    // Send SMS (if enabled and user has phone number)
+    if (smsEnabled && phoneNumber) {
+      try {
+        await sendSMS(phoneNumber, smsText);
+        channels.push('sms');
+        stats.smsSent++;
+      } catch (error) {
+        console.error(`SMS failed for user ${userId}:`, error);
+        stats.smsFailed++;
+      }
+    }
+
+    // Send Email (if enabled and user has email)
+    if (emailEnabled && email) {
+      try {
+        await sendEmail(email, emailSubject, emailHtml);
+        channels.push('email');
+        stats.emailsSent++;
+      } catch (error) {
+        console.error(`Email failed for user ${userId}:`, error);
+        stats.emailsFailed++;
+      }
+    }
+
+    // Log the notification
+    if (channels.length > 0) {
+      const { error: insertError } = await supabaseAdmin
+        .from('user_snow_ban_notifications')
+        .insert({
+          user_id: userId,
+          snow_event_id: snowEvent.id,
+          notification_date: new Date().toISOString().split('T')[0],
+          notification_type: notificationType,
+          channels,
+          status: 'sent'
+        });
+
+      if (insertError) {
+        console.error(`Failed to log notification for user ${userId}:`, insertError);
+      }
+
+      stats.usersNotified++;
+    }
+  }
+
+  // Process users ON snow routes (urgent alerts with their specific street)
+  for (const user of snowRouteUsersToNotify) {
+    const streetInfo = user.route.on_street;
+    const userAddress = user.home_address_full || user.route.on_street;
+
+    const emailSubject = isForecastNotif
+      ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban May Apply`
+      : `🚨 2-Inch Snow Ban Active on Your Street (${snowEvent.snow_amount_inches}" snow)`;
+    const emailHtml = isForecastNotif
+      ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress)
+      : getConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress);
+    const smsText = isForecastNotif
+      ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress)
+      : getConfirmationSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress);
+
+    const smsEnabled = isForecastNotif
+      ? user.notify_snow_forecast_sms !== false
+      : user.notify_snow_confirmation_sms !== false;
+    const emailEnabled = isForecastNotif
+      ? user.notify_snow_forecast_email !== false
+      : user.notify_snow_confirmation_email !== false;
+
+    await sendAndLogNotification(
+      user.user_id,
+      user.email,
+      user.phone_number,
+      user.first_name,
+      emailSubject,
+      emailHtml,
+      smsText,
+      smsEnabled,
+      emailEnabled
+    );
+  }
+
+  // Process users NOT on snow routes (awareness alerts)
+  for (const user of awarenessUsers) {
+    const emailSubject = isForecastNotif
+      ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban Alert`
+      : `🚨 2-Inch Snow Ban Active in Chicago (${snowEvent.snow_amount_inches}" snow)`;
+    const emailHtml = isForecastNotif
+      ? getAwarenessForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches)
+      : getAwarenessConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches);
+    const smsText = isForecastNotif
+      ? getAwarenessForecastSMSText(snowEvent.snow_amount_inches)
+      : getAwarenessConfirmationSMSText(snowEvent.snow_amount_inches);
+
+    const smsEnabled = isForecastNotif
+      ? user.notify_snow_forecast_sms !== false
+      : user.notify_snow_confirmation_sms !== false;
+    const emailEnabled = isForecastNotif
+      ? user.notify_snow_forecast_email !== false
+      : user.notify_snow_confirmation_email !== false;
+
+    await sendAndLogNotification(
+      user.user_id,
+      user.email,
+      user.phone_number,
+      user.first_name,
+      emailSubject,
+      emailHtml,
+      smsText,
+      smsEnabled,
+      emailEnabled
+    );
+  }
+
+  // Mark the snow event as having triggered notifications
+  if (notificationType === 'forecast') {
+    await supabaseAdmin
+      .from('snow_events')
+      .update({
+        forecast_sent: true,
+        forecast_sent_at: new Date().toISOString()
+      })
+      .eq('id', snowEvent.id);
+  } else {
+    await supabaseAdmin
+      .from('snow_events')
+      .update({
+        two_inch_ban_triggered: true,
+        ban_triggered_at: new Date().toISOString()
+      })
+      .eq('id', snowEvent.id);
+  }
+
+  return {
+    success: true,
+    notificationType,
+    stats,
+    snowEvent: {
+      id: snowEvent.id,
+      date: snowEvent.event_date,
+      snowAmount: snowEvent.snow_amount_inches
+    }
+  };
+}
+
+// API Handler for HTTP calls
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -272,262 +520,20 @@ export default async function handler(
   }
 
   const startTime = Date.now();
-  const stats = {
-    usersChecked: 0,
-    usersNotified: 0,
-    emailsSent: 0,
-    emailsFailed: 0,
-    smsSent: 0,
-    smsFailed: 0,
-    alreadyNotified: 0,
-    noActiveEvent: 0,
-    notOnSnowRoute: 0
-  };
 
   try {
-    // Get the most recent active snow event that hasn't been fully notified
-    const { data: snowEvent } = await supabaseAdmin
-      .from('snow_events')
-      .select('*')
-      .eq('is_active', true)
-      .gte('snow_amount_inches', 2.0)
-      .order('event_date', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (!snowEvent) {
-      return res.status(200).json({
-        success: true,
-        message: 'No active 2-inch snow event to notify about',
-        stats
-      });
-    }
-
-    stats.noActiveEvent = 0;
-
-    const isForecastNotif = notificationType === 'forecast';
-
-    // Get users on snow routes (filters by home_address_full matching snow_routes table)
-    const usersOnSnowRoutes = await getUsersOnSnowRoutes();
-    const snowRouteUserIds = new Set(usersOnSnowRoutes.map(u => u.user_id));
-
-    // Filter snow route users based on their notification preferences
-    const snowRouteUsersToNotify = usersOnSnowRoutes.filter(user => {
-      return isForecastNotif ? user.notify_snow_forecast === true : user.notify_snow_confirmation === true;
-    });
-
-    // Also get ALL users who opted in (for awareness alerts to those NOT on snow routes)
-    const { data: allOptedInUsers } = await supabaseAdmin
-      .from('user_profiles')
-      .select(`
-        user_id,
-        email,
-        phone_number,
-        first_name,
-        notify_snow_forecast,
-        notify_snow_forecast_email,
-        notify_snow_forecast_sms,
-        notify_snow_confirmation,
-        notify_snow_confirmation_email,
-        notify_snow_confirmation_sms,
-        on_snow_route
-      `)
-      .eq(isForecastNotif ? 'notify_snow_forecast' : 'notify_snow_confirmation', true);
-
-    // Filter to only users NOT on snow routes (awareness alerts)
-    const awarenessUsers = (allOptedInUsers || []).filter(user => !snowRouteUserIds.has(user.user_id));
-
-    const totalUsersToNotify = snowRouteUsersToNotify.length + awarenessUsers.length;
-    stats.usersChecked = totalUsersToNotify;
-
-    if (totalUsersToNotify === 0) {
-      return res.status(200).json({
-        success: true,
-        message: `No users opted in for ${notificationType} notifications`,
-        stats,
-        snowEvent
-      });
-    }
-
-    // Helper function to send notification and log it
-    async function sendAndLogNotification(
-      userId: string,
-      email: string | null,
-      phoneNumber: string | null,
-      firstName: string | null,
-      emailSubject: string,
-      emailHtml: string,
-      smsText: string,
-      smsEnabled: boolean,
-      emailEnabled: boolean
-    ) {
-      // Check if user has already been notified for this snow event and notification type
-      const { data: existingNotification } = await supabaseAdmin
-        .from('user_snow_ban_notifications')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('snow_event_id', snowEvent.id)
-        .eq('notification_type', notificationType)
-        .single();
-
-      if (existingNotification) {
-        stats.alreadyNotified++;
-        return;
-      }
-
-      const channels: string[] = [];
-
-      // Send SMS (if enabled and user has phone number)
-      if (smsEnabled && phoneNumber) {
-        try {
-          await sendSMS(phoneNumber, smsText);
-          channels.push('sms');
-          stats.smsSent++;
-        } catch (error) {
-          console.error(`SMS failed for user ${userId}:`, error);
-          stats.smsFailed++;
-        }
-      }
-
-      // Send Email (if enabled and user has email)
-      if (emailEnabled && email) {
-        try {
-          await sendEmail(email, emailSubject, emailHtml);
-          channels.push('email');
-          stats.emailsSent++;
-        } catch (error) {
-          console.error(`Email failed for user ${userId}:`, error);
-          stats.emailsFailed++;
-        }
-      }
-
-      // Log the notification
-      if (channels.length > 0) {
-        const { error: insertError } = await supabaseAdmin
-          .from('user_snow_ban_notifications')
-          .insert({
-            user_id: userId,
-            snow_event_id: snowEvent.id,
-            notification_date: new Date().toISOString().split('T')[0],
-            notification_type: notificationType,
-            channels,
-            status: 'sent'
-          });
-
-        if (insertError) {
-          console.error(`Failed to log notification for user ${userId}:`, insertError);
-        }
-
-        stats.usersNotified++;
-      }
-    }
-
-    // Process users ON snow routes (urgent alerts with their specific street)
-    for (const user of snowRouteUsersToNotify) {
-      const streetInfo = user.route.on_street;
-      const userAddress = user.home_address_full || user.route.on_street;
-
-      const emailSubject = isForecastNotif
-        ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban May Apply`
-        : `🚨 2-Inch Snow Ban Active on Your Street (${snowEvent.snow_amount_inches}" snow)`;
-      const emailHtml = isForecastNotif
-        ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress)
-        : getConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress);
-      const smsText = isForecastNotif
-        ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress)
-        : getConfirmationSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress);
-
-      const smsEnabled = isForecastNotif
-        ? user.notify_snow_forecast_sms !== false
-        : user.notify_snow_confirmation_sms !== false;
-      const emailEnabled = isForecastNotif
-        ? user.notify_snow_forecast_email !== false
-        : user.notify_snow_confirmation_email !== false;
-
-      await sendAndLogNotification(
-        user.user_id,
-        user.email,
-        user.phone_number,
-        user.first_name,
-        emailSubject,
-        emailHtml,
-        smsText,
-        smsEnabled,
-        emailEnabled
-      );
-    }
-
-    // Process users NOT on snow routes (awareness alerts)
-    for (const user of awarenessUsers) {
-      const emailSubject = isForecastNotif
-        ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban Alert`
-        : `🚨 2-Inch Snow Ban Active in Chicago (${snowEvent.snow_amount_inches}" snow)`;
-      const emailHtml = isForecastNotif
-        ? getAwarenessForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches)
-        : getAwarenessConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches);
-      const smsText = isForecastNotif
-        ? getAwarenessForecastSMSText(snowEvent.snow_amount_inches)
-        : getAwarenessConfirmationSMSText(snowEvent.snow_amount_inches);
-
-      const smsEnabled = isForecastNotif
-        ? user.notify_snow_forecast_sms !== false
-        : user.notify_snow_confirmation_sms !== false;
-      const emailEnabled = isForecastNotif
-        ? user.notify_snow_forecast_email !== false
-        : user.notify_snow_confirmation_email !== false;
-
-      await sendAndLogNotification(
-        user.user_id,
-        user.email,
-        user.phone_number,
-        user.first_name,
-        emailSubject,
-        emailHtml,
-        smsText,
-        smsEnabled,
-        emailEnabled
-      );
-    }
-
-    // Mark the snow event as having triggered notifications
-    // Update different fields based on notification type
-    if (notificationType === 'forecast') {
-      await supabaseAdmin
-        .from('snow_events')
-        .update({
-          forecast_sent: true,
-          forecast_sent_at: new Date().toISOString()
-        })
-        .eq('id', snowEvent.id);
-    } else {
-      await supabaseAdmin
-        .from('snow_events')
-        .update({
-          two_inch_ban_triggered: true,
-          ban_triggered_at: new Date().toISOString()
-        })
-        .eq('id', snowEvent.id);
-    }
-
+    const result = await sendSnowBanNotifications(notificationType as 'forecast' | 'confirmation');
     return res.status(200).json({
-      success: true,
-      notificationType,
-      stats,
-      snowEvent: {
-        id: snowEvent.id,
-        date: snowEvent.event_date,
-        snowAmount: snowEvent.snow_amount_inches
-      },
+      ...result,
       processingTime: Date.now() - startTime
     });
-
   } catch (error) {
     console.error('Snow ban notification job failed:', error);
     return res.status(500).json({
       success: false,
       error: 'Job failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      stats
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 }
+
