@@ -129,8 +129,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('✅ SMS stored in database:', smsRecord.id);
 
+    const messageLower = messageBody.toLowerCase().trim();
+
+    // Handle CONFIRM reply - mark profile as confirmed
+    if (messageLower === 'confirm' && matchedUser) {
+      console.log(`✅ CONFIRM received from ${matchedEmail} - updating profile`);
+
+      const { error: confirmError } = await supabaseAdmin
+        .from('user_profiles')
+        .update({
+          profile_confirmed_at: new Date().toISOString(),
+          profile_confirmed_for_year: new Date().getFullYear()
+        })
+        .eq('user_id', matchedUserId);
+
+      if (!confirmError) {
+        // Send confirmation SMS back
+        try {
+          const { sendClickSendSMS } = await import('../../../lib/sms-service');
+          await sendClickSendSMS(fromNumber, "Thanks! Your profile has been confirmed. We'll process your renewal automatically when it's time.");
+          console.log('✅ Confirmation SMS sent');
+        } catch (smsError) {
+          console.error('Error sending confirmation SMS:', smsError);
+        }
+      } else {
+        console.error('❌ Error updating profile_confirmed_at:', confirmError);
+      }
+    }
+
+    // Handle STOP/unsubscribe
+    if (['stop', 'unsubscribe', 'cancel', 'quit'].includes(messageLower) && matchedUser) {
+      console.log(`🛑 STOP received from ${matchedEmail} - disabling SMS`);
+
+      await supabaseAdmin
+        .from('user_profiles')
+        .update({ notify_sms: false })
+        .eq('user_id', matchedUserId);
+
+      try {
+        const { sendClickSendSMS } = await import('../../../lib/sms-service');
+        await sendClickSendSMS(fromNumber, "You've been unsubscribed from Autopilot SMS notifications. Reply START to re-enable.");
+      } catch (smsError) {
+        console.error('Error sending unsubscribe SMS:', smsError);
+      }
+    }
+
+    // Handle START/resubscribe
+    if (['start', 'subscribe', 'yes'].includes(messageLower) && matchedUser) {
+      console.log(`✅ START received from ${matchedEmail} - enabling SMS`);
+
+      await supabaseAdmin
+        .from('user_profiles')
+        .update({ notify_sms: true })
+        .eq('user_id', matchedUserId);
+
+      try {
+        const { sendClickSendSMS } = await import('../../../lib/sms-service');
+        await sendClickSendSMS(fromNumber, "You've been re-subscribed to Autopilot SMS notifications.");
+      } catch (smsError) {
+        console.error('Error sending resubscribe SMS:', smsError);
+      }
+    }
+
     // Handle permit zone document uploads via MMS
-    const messageLower = messageBody.toLowerCase();
     const isPermitDocs = (messageLower.includes('permit') || messageLower.includes('document') ||
                          messageLower.includes('id') || messageLower.includes('license') ||
                          messageLower.includes('residency') || mediaFiles.length > 0) &&
