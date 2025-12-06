@@ -754,10 +754,10 @@ export default function RemitterPortal() {
 
               {/* What to Submit */}
               <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
-                <h3 className="font-semibold text-green-800 mb-3">Submit to City of Chicago</h3>
+                <h3 className="font-semibold text-green-800 mb-3">Submit to State of Illinois</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-green-900">City Vehicle Sticker ({selectedOrder.stickerTypeLabel})</span>
+                    <span className="text-green-900">License Plate Sticker ({selectedOrder.stickerTypeLabel})</span>
                     <span className="font-bold text-green-900">${selectedOrder.amount.stickerPrice?.toFixed(2)}</span>
                   </div>
                   {selectedOrder.amount.permitRequested && (
