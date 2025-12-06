@@ -141,15 +141,37 @@ export default function SnowBanSettings({
 
       {!onSnowRoute && (
         <div style={{
-          background: 'white',
+          background: '#eff6ff',
           borderRadius: '12px',
           padding: '20px',
           marginBottom: '24px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          border: '1px solid #bfdbfe'
         }}>
-          <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
-            Your street cleaning address is not on a 2-inch snow ban route. You can still opt in to alerts below if you park on other streets affected by the ban.
-          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <div style={{
+              fontSize: '24px',
+              lineHeight: '1',
+              marginTop: '2px'
+            }}>ℹ️</div>
+            <div style={{ flex: 1 }}>
+              <p style={{
+                margin: '0 0 6px',
+                fontSize: '15px',
+                fontWeight: '600',
+                color: '#1e40af'
+              }}>
+                Your address is not on a 2-inch snow ban street
+              </p>
+              <p style={{
+                margin: '0',
+                fontSize: '14px',
+                color: '#3b82f6',
+                lineHeight: '1.5'
+              }}>
+                You can still opt in to receive alerts below in case you park on other streets that are affected by the ban.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
