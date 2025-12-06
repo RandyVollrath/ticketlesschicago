@@ -403,7 +403,7 @@ export default async function handler(
 
       // Log the notification
       if (channels.length > 0) {
-        await supabaseAdmin
+        const { error: insertError } = await supabaseAdmin
           .from('user_snow_ban_notifications')
           .insert({
             user_id: userId,
@@ -413,6 +413,10 @@ export default async function handler(
             channels,
             status: 'sent'
           });
+
+        if (insertError) {
+          console.error(`Failed to log notification for user ${userId}:`, insertError);
+        }
 
         stats.usersNotified++;
       }
