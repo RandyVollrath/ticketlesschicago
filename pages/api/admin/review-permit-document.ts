@@ -149,7 +149,7 @@ export default async function handler(
       try {
         if (action === 'approve') {
           await resend.emails.send({
-            from: 'Autopilot America <hello@ticketlessamerica.com>',
+            from: 'Autopilot America <hello@autopilotamerica.com>',
             to: userEmail,
             subject: 'Your Permit Zone Documents Have Been Approved! ✅',
             html: `
@@ -168,7 +168,7 @@ export default async function handler(
           });
         } else {
           await resend.emails.send({
-            from: 'Autopilot America <hello@ticketlessamerica.com>',
+            from: 'Autopilot America <hello@autopilotamerica.com>',
             to: userEmail,
             subject: 'Action Needed: Permit Zone Documents',
             html: `

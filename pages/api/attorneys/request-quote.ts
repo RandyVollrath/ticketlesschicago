@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (resend && attorney.email) {
       try {
         await resend.emails.send({
-          from: process.env.RESEND_FROM || 'noreply@ticketlessamerica.com',
+          from: 'Autopilot America <hello@autopilotamerica.com>',
           to: attorney.email,
           subject: `New Quote Request - ${violationCode || 'Parking Ticket'}`,
           html: `
@@ -133,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (resend && (profile?.email || user.email)) {
       try {
         await resend.emails.send({
-          from: process.env.RESEND_FROM || 'noreply@ticketlessamerica.com',
+          from: 'Autopilot America <hello@autopilotamerica.com>',
           to: profile?.email || user.email,
           subject: `Quote Request Sent - ${attorney.full_name}`,
           html: `

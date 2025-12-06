@@ -113,7 +113,7 @@ export default async function handler(
       const resend = new Resend(process.env.RESEND_API_KEY);
 
       await resend.emails.send({
-        from: 'Autopilot America <noreply@ticketlessamerica.com>',
+        from: 'Autopilot America <hello@autopilotamerica.com>',
         to: 'ticketlessamerica@gmail.com',
         subject: `🅿️ Permit Zone Boundary Changes Detected (${changesDetected} users affected)`,
         html: `

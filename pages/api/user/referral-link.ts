@@ -119,7 +119,7 @@ export default async function handler(
       try {
         // Email to admin
         await resend.emails.send({
-          from: process.env.RESEND_FROM || 'noreply@ticketlessamerica.com',
+          from: 'Autopilot America <hello@autopilotamerica.com>',
           to: 'ticketlessamerica@gmail.com',
           subject: '🎉 New Affiliate Link Request',
           html: `
@@ -140,7 +140,7 @@ export default async function handler(
 
         // Email to user
         await resend.emails.send({
-          from: process.env.RESEND_FROM || 'noreply@ticketlessamerica.com',
+          from: 'Autopilot America <hello@autopilotamerica.com>',
           to: profile.email,
           subject: '🎉 Your Autopilot America Referral Link is Ready!',
           html: `

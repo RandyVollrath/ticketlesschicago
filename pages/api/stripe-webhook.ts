@@ -367,7 +367,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   let emailSentExisting = false;
                   let lastErrorExisting = '';
                   const emailPayloadExisting = {
-                    from: 'Autopilot America <noreply@autopilotamerica.com>',
+                    from: 'Autopilot America <hello@autopilotamerica.com>',
                     to: email,
                     subject: 'Complete Your Profile - Autopilot America',
                     html: `
@@ -670,7 +670,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 let emailSent = false;
                 let lastError = '';
                 const emailPayload = {
-                  from: 'Autopilot America <noreply@autopilotamerica.com>',
+                  from: 'Autopilot America <hello@autopilotamerica.com>',
                   to: email,
                   subject: 'Welcome to Autopilot America - Complete Your Profile',
                   html: `
@@ -997,7 +997,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               let emailSentUpgrade = false;
               let lastErrorUpgrade = '';
               const emailPayloadUpgrade = {
-                from: 'Autopilot America <noreply@autopilotamerica.com>',
+                from: 'Autopilot America <hello@autopilotamerica.com>',
                 to: email,
                 subject: 'Welcome to Autopilot Protection - Access Your Account',
                 html: `
@@ -1225,7 +1225,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Send email notification
           try {
             await resend.emails.send({
-              from: 'Ticketless Alerts <noreply@autopilotamerica.com>',
+              from: 'Autopilot America <hello@autopilotamerica.com>',
               to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
               subject: '🎉 Affiliate Sale - Manual Commission Adjustment Needed',
               html: `
@@ -1653,7 +1653,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    from: 'Autopilot America <noreply@autopilotamerica.com>',
+                    from: 'Autopilot America <hello@autopilotamerica.com>',
                     to: email,
                     subject: 'Welcome to Autopilot Protection!',
                     html: `

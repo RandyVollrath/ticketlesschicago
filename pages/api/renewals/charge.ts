@@ -252,7 +252,7 @@ async function sendChargeConfirmationEmail(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Autopilot America <noreply@autopilotamerica.com>',
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: email,
       subject: `Payment Confirmation: ${chargeTypeLabel} Renewal`,
       html: `
@@ -339,7 +339,7 @@ async function sendPaymentFailureEmail(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Autopilot America <noreply@autopilotamerica.com>',
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: email,
       subject: `⚠️ Payment Failed: ${chargeTypeLabel} Renewal`,
       html: `

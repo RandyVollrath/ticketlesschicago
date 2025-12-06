@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Autopilot America <noreply@autopilotamerica.com>',
+            from: 'Autopilot America <hello@autopilotamerica.com>',
             to: email,
             subject: 'Verify Your Email - Autopilot America',
             html: `

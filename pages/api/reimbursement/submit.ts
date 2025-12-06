@@ -106,7 +106,7 @@ export default async function handler(
       );
 
       await resend.emails.send({
-        from: 'Ticketless Alerts <noreply@ticketlessamerica.com>',
+        from: 'Autopilot America <hello@autopilotamerica.com>',
         to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
         subject: `🎫 New Reimbursement Request - ${profile.first_name} ${profile.last_name}`,
         html: `

@@ -241,7 +241,7 @@ Automated parking permit renewals
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     const { error } = await resend.emails.send({
-      from: 'Autopilot America <noreply@autopilotamerica.com>',
+      from: 'Autopilot America <hello@autopilotamerica.com>',
       to: user.email,
       subject: subject,
       text: body,

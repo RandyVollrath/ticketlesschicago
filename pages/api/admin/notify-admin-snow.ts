@@ -68,7 +68,7 @@ export async function notifyAdminSnow(params: NotifyAdminSnowParams) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: [ADMIN_EMAIL],
       subject: `🚨 2-Inch Snow Alert: ${snowAmount}" forecasted in Chicago`,
       html: emailHtml

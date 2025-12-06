@@ -119,7 +119,7 @@ async function sendWelcomeEmail(partner: any, apiKey: string) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Autopilot America <noreply@autopilotamerica.com>',
+        from: 'Autopilot America <hello@autopilotamerica.com>',
         to: partner.email,
         subject: 'Welcome to Autopilot America - Your Remitter API Key',
         html: `

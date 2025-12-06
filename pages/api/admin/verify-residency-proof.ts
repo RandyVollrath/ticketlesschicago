@@ -97,7 +97,7 @@ export default async function handler(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              from: 'Autopilot America <noreply@autopilotamerica.com>',
+              from: 'Autopilot America <hello@autopilotamerica.com>',
               to: [userEmail],
               subject: '✅ Your Proof of Residency Has Been Verified',
               html: `
@@ -171,7 +171,7 @@ export default async function handler(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              from: 'Autopilot America <noreply@autopilotamerica.com>',
+              from: 'Autopilot America <hello@autopilotamerica.com>',
               to: [userEmail],
               subject: '📋 Action Required: Please Re-submit Proof of Residency',
               html: `
