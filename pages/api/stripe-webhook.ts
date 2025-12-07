@@ -228,7 +228,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     email: email,
                     first_name: firstName,
                     last_name: lastName,
-                    phone_number: hasValue(metadata.phone) ? metadata.phone : (stripePhone || null),
+                    phone_number: normalizePhoneNumber(metadata.phone || stripePhone),
                     zip_code: zipCode,
                     vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
                     has_protection: true,
@@ -485,7 +485,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   email: email,
                   first_name: firstName,
                   last_name: lastName,
-                  phone_number: hasValue(metadata.phone) ? metadata.phone : (stripePhone || null),
+                  phone_number: normalizePhoneNumber(metadata.phone || stripePhone),
                   zip_code: zipCode,
                   vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
                   has_protection: true,
@@ -845,7 +845,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // Phone from metadata (Protection form) OR Stripe customer details
           if (hasValue(metadata.phone) || stripePhone) {
-            updateData.phone_number = hasValue(metadata.phone) ? metadata.phone : stripePhone;
+            updateData.phone_number = normalizePhoneNumber(metadata.phone || stripePhone);
           }
           if (hasValue(metadata.vehicleType)) {
             updateData.vehicle_type = metadata.vehicleType;
