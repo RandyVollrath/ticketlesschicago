@@ -72,7 +72,9 @@ export default function CheckYourStreet() {
   const [tripEndDate, setTripEndDate] = useState('')
   const [dateRangeResult, setDateRangeResult] = useState<{cleaningDates: string[], hasCleaningDuringTrip: boolean} | null>(null)
   const [showSnowSafeMode, setShowSnowSafeMode] = useState(false)
+  const [showWinterBanMode, setShowWinterBanMode] = useState(false)
   const [snowRoutes, setSnowRoutes] = useState<any[]>([])
+  const [winterBanRoutes, setWinterBanRoutes] = useState<any[]>([])
   const [alternativeZones, setAlternativeZones] = useState<any[]>([])
   const [loadingAlternatives, setLoadingAlternatives] = useState(false)
 
@@ -105,7 +107,7 @@ export default function CheckYourStreet() {
     fetchMapData()
   }, [])
 
-  // Load snow routes
+  // Load snow routes (2-inch snow ban)
   useEffect(() => {
     const fetchSnowRoutes = async () => {
       try {
@@ -119,6 +121,23 @@ export default function CheckYourStreet() {
       }
     }
     fetchSnowRoutes()
+  }, [])
+
+  // Load winter ban routes (winter overnight parking ban)
+  useEffect(() => {
+    const fetchWinterBanRoutes = async () => {
+      try {
+        const response = await fetch('/api/get-winter-ban-routes')
+        if (response.ok) {
+          const result = await response.json()
+          setWinterBanRoutes(result.routes || [])
+          console.log(`Loaded ${result.count} winter ban routes, ${result.successfullyGeocoded || 0} with geometry`)
+        }
+      } catch (error) {
+        console.error('Error fetching winter ban routes:', error)
+      }
+    }
+    fetchWinterBanRoutes()
   }, [])
 
   // Check URL parameters
@@ -580,10 +599,38 @@ export default function CheckYourStreet() {
               />
               <div>
                 <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Show Snow Ban Routes
+                  Show 2-Inch Snow Ban Routes
                 </div>
                 <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
-                  Highlight streets near you that are <strong style={{ color: '#ff1493' }}>affected</strong> by the 2-inch snow parking ban. Avoid parking on these streets when 2+ inches of snow falls.
+                  Highlight streets near you that are <strong style={{ color: '#ff00ff' }}>affected</strong> by Chicago's 2-inch snow parking ban. Parking prohibited when 2+ inches of snow falls until streets are cleared.
+                </div>
+              </div>
+            </label>
+
+            {/* Winter Overnight Parking Ban Toggle */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '16px',
+              padding: '20px 24px',
+              background: showWinterBanMode ? `${COLORS.regulatory}08` : 'white',
+              borderRadius: '16px',
+              marginBottom: '16px',
+              border: `2px solid ${showWinterBanMode ? COLORS.regulatory : COLORS.border}`,
+              cursor: 'pointer'
+            }}>
+              <input
+                type="checkbox"
+                checked={showWinterBanMode}
+                onChange={(e) => setShowWinterBanMode(e.target.checked)}
+                style={{ marginTop: '2px', width: '20px', height: '20px', cursor: 'pointer', accentColor: COLORS.regulatory }}
+              />
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Show Winter Overnight Parking Ban Routes
+                </div>
+                <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
+                  Highlight streets with <strong style={{ color: '#00ff00' }}>winter overnight parking bans</strong>. No parking 3:00 AM - 7:00 AM every night from December 1 - April 1. (~107 miles of major arterials)
                 </div>
               </div>
             </label>
@@ -911,6 +958,8 @@ export default function CheckYourStreet() {
               triggerPopup={highlightZone}
               snowRoutes={snowRoutes}
               showSnowSafeMode={showSnowSafeMode}
+              winterBanRoutes={winterBanRoutes}
+              showWinterBanMode={showWinterBanMode}
               userLocation={searchResult?.coordinates}
               alternativeZones={alternativeZones}
             />
@@ -938,6 +987,10 @@ export default function CheckYourStreet() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '28px', height: '4px', backgroundColor: '#ff00ff', borderRadius: '2px' }}></div>
                 <span style={{ color: COLORS.slate }}><strong style={{ color: '#ff00ff' }}>Magenta:</strong> 2" Snow Ban</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '28px', height: '4px', backgroundColor: '#00ff00', borderRadius: '2px' }}></div>
+                <span style={{ color: COLORS.slate }}><strong style={{ color: '#00cc00' }}>Green Line:</strong> Winter Ban</span>
               </div>
             </div>
           </div>

@@ -20,6 +20,8 @@ interface StreetCleaningMapProps {
   onMapClick?: (lat: number, lng: number) => void;
   snowRoutes?: any[];
   showSnowSafeMode?: boolean;
+  winterBanRoutes?: any[];
+  showWinterBanMode?: boolean;
   userLocation?: { lat: number; lng: number };
   alternativeZones?: any[];
 }
@@ -30,6 +32,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
   triggerPopup,
   snowRoutes = [],
   showSnowSafeMode = false,
+  winterBanRoutes = [],
+  showWinterBanMode = false,
   userLocation,
   alternativeZones = []
 }) => {
@@ -244,6 +248,51 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         }
       }
 
+      // Add winter ban routes overlay (neon green)
+      if (showWinterBanMode && winterBanRoutes.length > 0) {
+        winterBanRoutes.forEach((route) => {
+          if (!route.geometry) return;
+
+          const winterBanLayer = L.geoJSON(route.geometry, {
+            style: {
+              color: '#00ff00',
+              weight: 6,
+              opacity: 1.0,
+              fillColor: '#00ff00',
+              fillOpacity: 0.85
+            }
+          });
+
+          // Add popup with route info
+          const routePopup = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
+              <div style="background: linear-gradient(135deg, #00cc00, #008800); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,255,0,0.3);">
+                🌙 Winter Overnight Parking Ban
+              </div>
+              <div style="background: #f0fff0; border: 1px solid #90ee90; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 13px; color: #006400; font-weight: 600; margin-bottom: 4px;">${route.properties?.street_name || 'Unknown Street'}</div>
+                ${route.properties?.from_location && route.properties?.to_location ?
+                  `<div style="font-size: 12px; color: #228b22;">From ${route.properties.from_location} to ${route.properties.to_location}</div>` :
+                  ''}
+              </div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic;">
+                ⚠️ No parking 3:00 AM - 7:00 AM (Dec 1 - Apr 1)
+              </div>
+            </div>
+          `;
+
+          winterBanLayer.bindPopup(routePopup);
+          winterBanLayer.addTo(mapInstanceRef.current);
+        });
+
+        // Zoom to user location if available
+        if (userLocation) {
+          setTimeout(() => {
+            mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 15);
+          }, 500);
+        }
+      }
+
       // Add alternative parking zones overlay (bright green with "Park Here Instead")
       if (alternativeZones.length > 0) {
         alternativeZones.forEach((altZone) => {
@@ -378,7 +427,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, userLocation, alternativeZones]);
+  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, winterBanRoutes, showWinterBanMode, userLocation, alternativeZones]);
 
   return (
     <div 
