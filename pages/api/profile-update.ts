@@ -2,6 +2,16 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
+// Normalize phone number to E.164 format (+1XXXXXXXXXX)
+function normalizePhoneNumber(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 0) return null;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return digits.length >= 10 ? `+1${digits.slice(-10)}` : null;
+}
+
 // Connect to MyStreetCleaning database
 function getMSCClient() {
   const url = process.env.MSC_SUPABASE_URL;
@@ -25,7 +35,15 @@ export default async function handler(
 
   try {
     const { userId, email, updates } = req.body;
-    
+
+    // Normalize phone number if present
+    if (updates.phone_number) {
+      updates.phone_number = normalizePhoneNumber(updates.phone_number);
+    }
+    if (updates.phone) {
+      updates.phone = normalizePhoneNumber(updates.phone);
+    }
+
     // Update TicketlessAmerica profile
     const { data: profile, error: updateError } = await supabaseAdmin
       .from('user_profiles')

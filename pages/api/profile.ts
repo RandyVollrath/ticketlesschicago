@@ -3,6 +3,16 @@ import { supabaseAdmin } from '../../lib/supabase';
 import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integration';
 import { createClient } from '@supabase/supabase-js';
 
+// Normalize phone number to E.164 format (+1XXXXXXXXXX)
+function normalizePhoneNumber(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 0) return null;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return digits.length >= 10 ? `+1${digits.slice(-10)}` : null;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -95,10 +105,11 @@ export default async function handler(
     const cleanData = Object.keys(updateData)
       .filter(key => allowedFields.includes(key))
       .reduce((obj, key) => {
-        // Map phone to phone_number for consistency
-        if (key === 'phone') {
-          obj['phone_number'] = updateData[key];
-          obj['phone'] = updateData[key]; // Keep both for compatibility
+        // Map phone to phone_number for consistency and ALWAYS normalize
+        if (key === 'phone' || key === 'phone_number') {
+          const normalized = normalizePhoneNumber(updateData[key]);
+          obj['phone_number'] = normalized;
+          obj['phone'] = normalized; // Keep both for compatibility
         } else {
           obj[key] = updateData[key];
         }
