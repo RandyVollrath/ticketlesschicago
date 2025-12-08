@@ -16,7 +16,7 @@ interface WinterBanStreet {
 
 /**
  * Get winter ban routes with geometry for map display
- * Uses Google Directions API to geocode street segments
+ * Uses Google Geocoding API to get start/end coordinates
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ routes: [], count: 0 });
     }
 
-    // Try to geocode each street segment using Google Directions API
+    // Try to geocode each street segment using Google Geocoding API
     const googleApiKey = process.env.GOOGLE_API_KEY;
 
     if (!googleApiKey) {
@@ -66,22 +66,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (const street of streets) {
       try {
         // Build origin and destination addresses
-        const origin = `${street.from_location} and ${street.street_name}, Chicago, IL`;
-        const destination = `${street.to_location} and ${street.street_name}, Chicago, IL`;
+        const originAddress = `${street.from_location} and ${street.street_name}, Chicago, IL`;
+        const destAddress = `${street.to_location} and ${street.street_name}, Chicago, IL`;
 
-        const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&key=${googleApiKey}`;
+        // Geocode origin
+        const originUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(originAddress)}&key=${googleApiKey}`;
+        const originResponse = await fetch(originUrl);
+        const originData = await originResponse.json();
 
-        const response = await fetch(directionsUrl);
-        const data = await response.json();
+        // Geocode destination
+        const destUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(destAddress)}&key=${googleApiKey}`;
+        const destResponse = await fetch(destUrl);
+        const destData = await destResponse.json();
 
-        if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-          // Decode the polyline to get coordinates
-          const encodedPolyline = data.routes[0].overview_polyline.points;
-          const coordinates = decodePolyline(encodedPolyline);
+        if (originData.status === 'OK' && destData.status === 'OK' &&
+            originData.results?.length > 0 && destData.results?.length > 0) {
 
+          const originLoc = originData.results[0].geometry.location;
+          const destLoc = destData.results[0].geometry.location;
+
+          // Create a LineString from origin to destination
+          // GeoJSON uses [lng, lat] format
           const geom = {
             type: 'LineString',
-            coordinates: coordinates
+            coordinates: [
+              [originLoc.lng, originLoc.lat],
+              [destLoc.lng, destLoc.lat]
+            ]
           };
 
           routesWithGeometry.push({
@@ -95,7 +106,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           });
         } else {
-          console.log(`Could not geocode: ${street.street_name} from ${street.from_location} to ${street.to_location}`);
+          console.log(`Could not geocode: ${street.street_name} from ${street.from_location} to ${street.to_location}`,
+            { originStatus: originData.status, destStatus: destData.status });
           routesWithGeometry.push({
             type: 'Feature',
             geometry: null,
@@ -104,13 +116,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               from_location: street.from_location,
               to_location: street.to_location,
               restriction: 'Winter Overnight Ban (3AM-7AM, Dec 1 - Apr 1)',
-              geocodeError: data.status
+              geocodeError: `Origin: ${originData.status}, Dest: ${destData.status}`
             }
           });
         }
 
         // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 50));
 
       } catch (geocodeError: any) {
         console.error(`Error geocoding ${street.street_name}:`, geocodeError.message);
@@ -141,46 +153,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('API Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-}
-
-/**
- * Decode Google's encoded polyline format
- */
-function decodePolyline(encoded: string): number[][] {
-  const coordinates: number[][] = [];
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-
-  while (index < encoded.length) {
-    let shift = 0;
-    let result = 0;
-    let byte;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const dlat = result & 1 ? ~(result >> 1) : result >> 1;
-    lat += dlat;
-
-    shift = 0;
-    result = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const dlng = result & 1 ? ~(result >> 1) : result >> 1;
-    lng += dlng;
-
-    // GeoJSON uses [lng, lat] format
-    coordinates.push([lng / 1e5, lat / 1e5]);
-  }
-
-  return coordinates;
 }
