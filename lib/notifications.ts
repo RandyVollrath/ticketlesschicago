@@ -2,6 +2,9 @@ import { supabaseAdmin } from './supabase';
 import { Resend } from 'resend';
 import { sendClickSendSMS } from './sms-service';
 import { notificationLogger } from './notification-logger';
+import { pushService, PushNotification } from './push-service';
+
+export { pushService, pushNotifications } from './push-service';
 
 // ClickSend types (basic)
 interface ClickSendConfig {
@@ -72,6 +75,14 @@ export interface VoiceNotification {
   message: string;
   // Optional logging fields
   userId?: string;
+  category?: string;
+}
+
+export interface PushNotificationRequest {
+  userId: string;
+  title: string;
+  body: string;
+  data?: Record<string, string>;
   category?: string;
 }
 
@@ -284,6 +295,31 @@ export class NotificationService {
     } catch (error) {
       console.error('❌ Error making voice call via ClickSend:', error);
       if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, String(error));
+      return false;
+    }
+  }
+
+  // Push notification service
+  async sendPush(notification: PushNotificationRequest): Promise<boolean> {
+    try {
+      console.log('📱 Sending push notification to user:', notification.userId);
+
+      const result = await pushService.sendToUser(notification.userId, {
+        title: notification.title,
+        body: notification.body,
+        data: notification.data,
+        category: notification.category
+      });
+
+      if (result.success) {
+        console.log(`✅ Push sent to ${result.successCount} device(s)`);
+        return true;
+      } else {
+        console.log('❌ Push notification failed - no devices or all failed');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Push notification error:', error);
       return false;
     }
   }
