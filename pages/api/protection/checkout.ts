@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { logAuditEvent, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 import stripeConfig from '../../../lib/stripe-config';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
+import { validateClientReferenceId } from '../../../lib/webhook-validator';
 
 const stripe = new Stripe(stripeConfig.secretKey!, {
   apiVersion: '2024-12-18.acacia',
@@ -13,6 +15,21 @@ export default async function handler(
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Rate limiting
+  const ip = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(ip, 'checkout');
+
+  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit);
+  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
+
+  if (!rateLimitResult.allowed) {
+    console.warn(`Rate limit exceeded for ${ip} on protection checkout`);
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: `Rate limit exceeded. Please try again in ${Math.ceil(rateLimitResult.resetIn / 1000)} seconds.`,
+    });
   }
 
   const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType, permitRequested } = req.body;
@@ -73,11 +90,17 @@ export default async function handler(
     // User gets protection service immediately
     // Renewal charges happen automatically before due dates
 
+    // Record rate limit action
+    await recordRateLimitAction(ip, 'checkout');
+
+    // SECURITY: Validate client_reference_id
+    const validatedReferralId = validateClientReferenceId(rewardfulReferral);
+
     // Create Stripe Checkout session with mixed line items
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
-      // Use Rewardful referral ID as client_reference_id for tracking conversions
-      client_reference_id: rewardfulReferral || userId || undefined,
+      // Use validated Rewardful referral ID as client_reference_id for tracking conversions
+      client_reference_id: validatedReferralId || userId || undefined,
       mode: 'subscription',
       line_items: lineItems,
       // IMPORTANT: Save payment method for future renewal charges

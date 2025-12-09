@@ -20,9 +20,16 @@ async function buffer(readable: any) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // SECURITY: Only allow in development mode
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   console.log('=== WEBHOOK DEBUG ENDPOINT ===');
   console.log('Method:', req.method);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  // SECURITY: Don't log full headers - log only non-sensitive ones
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Stripe-Signature:', req.headers['stripe-signature'] ? 'Present' : 'Missing');
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -53,13 +60,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         secret
       );
       workingSecret = secret;
-      console.log('✅ Signature verified with secret:', secret.substring(0, 15) + '...');
+      console.log('✅ Signature verified');
       break;
     } catch (err: any) {
-      console.log(`❌ Failed with secret ${secret?.substring(0, 15)}...: ${err.message}`);
+      console.log(`❌ Signature verification failed: ${err.message}`);
     }
   }
-  
+
   if (!event) {
     return res.status(400).json({
       error: 'Webhook signature verification failed',
@@ -67,8 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         hasSignature: !!sig,
         bodyLength: buf.length,
         envSecretSet: !!process.env.STRIPE_WEBHOOK_SECRET,
-        envSecretValue: process.env.STRIPE_WEBHOOK_SECRET?.substring(0, 15) + '...',
-        tried: secrets.filter(s => s).map(s => s?.substring(0, 15) + '...')
+        // SECURITY: Don't expose secret values
       }
     });
   }
@@ -87,9 +93,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
   
-  res.status(200).json({ 
+  res.status(200).json({
     received: true,
     eventType: event.type,
-    workingSecret: workingSecret?.substring(0, 15) + '...'
+    // SECURITY: Don't expose secret values
   });
 }
