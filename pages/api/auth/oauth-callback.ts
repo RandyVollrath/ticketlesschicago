@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
-import { syncUserToMyStreetCleaning } from '../../../lib/mystreetcleaning-integration';
 
 interface SignupData {
   address: string;
@@ -64,7 +63,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       notificationMethod: signupData.notificationMethod,
       phone: signupData.phone,
       reminderDays: signupData.reminderDays || [1, 7, 30],
-      msc_account_created: false, // Will be updated after MSC creation
       oauth_provider: user.app_metadata.provider,
       google_id: user.user_metadata.sub || user.id
     };
@@ -87,48 +85,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('✅ Updated user metadata in Autopilot America');
     }
 
-    // Parse notification preferences
-    const notificationPrefs = {
-      email: signupData.notificationMethod.includes('email'),
-      sms: signupData.notificationMethod.includes('text') || signupData.notificationMethod.includes('sms'),
-      voice: signupData.notificationMethod.includes('phone') || signupData.notificationMethod.includes('voice'),
-      days_before: signupData.reminderDays || [1, 7, 30]
-    };
-
-    // Create MyStreetCleaning account
-    console.log('🏠 Creating MyStreetCleaning account...');
-    
-    const mscResult = await syncUserToMyStreetCleaning(
-      user.email!,
-      signupData.address,
-      user.id,
-      {
-        googleId: user.user_metadata.sub || user.id,
-        name: user.user_metadata.full_name || user.user_metadata.name,
-        notificationPreferences: notificationPrefs
-      }
-    );
-
-    if (mscResult.success) {
-      console.log('✅ Successfully created MyStreetCleaning account:', mscResult.accountId);
-      
-      // Update user metadata to indicate MSC account was created
-      await supabaseAdmin.auth.admin.updateUserById(
-        user.id,
-        {
-          user_metadata: {
-            ...user.user_metadata,
-            ...userMetadata,
-            msc_account_created: true,
-            msc_account_id: mscResult.accountId
-          }
-        }
-      );
-    } else {
-      console.error('❌ Failed to create MyStreetCleaning account:', mscResult.error);
-      // Don't fail the whole flow, but log for follow-up
-    }
-
     // Determine redirect URL based on whether this is a full signup or just OAuth
     const redirectUrl = req.query.redirect || '/auth/callback';
 
@@ -142,9 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: 'OAuth callback processed successfully',
         user: {
           id: user.id,
-          email: user.email,
-          msc_account_created: mscResult.success,
-          msc_account_id: mscResult.success ? mscResult.accountId : null
+          email: user.email
         },
         redirectUrl
       });

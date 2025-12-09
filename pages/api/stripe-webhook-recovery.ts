@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '../../lib/supabase';
-import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integration';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -145,20 +144,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        // Create MyStreetCleaning account
-        const streetAddress = formData.streetAddress || 
-                             `${formData.mailingAddress}, ${formData.mailingCity}, ${formData.mailingState} ${formData.mailingZip}`;
-        
-        const mscResult = await syncUserToMyStreetCleaning(
-          email,
-          streetAddress,
-          userId
-        );
-        
-        if (mscResult.success) {
-          console.log('✅ MyStreetCleaning account created');
-        }
-        
         console.log('✅ Webhook processed successfully');
       } catch (error) {
         console.error('Error processing checkout session:', error);

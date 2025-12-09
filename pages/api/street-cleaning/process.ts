@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
 import { sendClickSendVoiceCall } from '../../../lib/sms-service';
-import { createClient } from '@supabase/supabase-js';
 
 interface ProcessResult {
   success: boolean;
@@ -214,19 +213,14 @@ async function processStreetCleaningReminders(type: string) {
 
           console.log(`🐦 Canary user ${user.email}: simulating cleaning on ${cleaningDate.toDateString()} (${daysUntil} days) for ${type}`);
         } else {
-          // Regular users: Get next cleaning date for user's address
-          // First try local database, then MSC database
-          let schedule = null;
-          let scheduleError = null;
-
+          // Regular users: Get next cleaning date for user's address from local database
           // For evening reminders (7pm), we want tomorrow or later, not today
           // For morning reminders (7am), we want today or later
           const minDate = type === 'evening_reminder'
             ? new Date(today.getTime() + 24 * 60 * 60 * 1000) // Tomorrow
             : today; // Today
 
-          // Try local database first
-          const localResult = await supabase
+          const { data: schedule, error: scheduleError } = await supabase
             .from('street_cleaning_schedule')
             .select('cleaning_date')
             .eq('ward', user.home_address_ward)
@@ -235,35 +229,6 @@ async function processStreetCleaningReminders(type: string) {
             .order('cleaning_date', { ascending: true })
             .limit(1)
             .single();
-          
-          if (!localResult.error && localResult.data) {
-            schedule = localResult.data;
-          } else if (process.env.MSC_SUPABASE_URL && process.env.MSC_SUPABASE_SERVICE_ROLE_KEY) {
-            // Try MyStreetCleaning database
-            const mscSupabase = createClient(
-              process.env.MSC_SUPABASE_URL,
-              process.env.MSC_SUPABASE_SERVICE_ROLE_KEY
-            );
-            
-            const mscResult = await mscSupabase
-              .from('street_cleaning_schedule')
-              .select('cleaning_date')
-              .eq('ward', user.home_address_ward)
-              .eq('section', user.home_address_section)
-              .gte('cleaning_date', minDate.toISOString())
-              .order('cleaning_date', { ascending: true })
-              .limit(1)
-              .single();
-            
-            if (!mscResult.error && mscResult.data) {
-              schedule = mscResult.data;
-              console.log(`Using MSC database for ward ${user.home_address_ward}, section ${user.home_address_section}`);
-            } else {
-              scheduleError = mscResult.error || localResult.error;
-            }
-          } else {
-            scheduleError = localResult.error;
-          }
 
           if (scheduleError || !schedule) {
             console.log(`No upcoming cleaning for ward ${user.home_address_ward}, section ${user.home_address_section}`);

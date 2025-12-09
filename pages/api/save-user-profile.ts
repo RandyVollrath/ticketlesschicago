@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
-import { syncUserToMyStreetCleaning } from '../../lib/mystreetcleaning-integration';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -176,41 +175,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('✅ Created vehicle reminder');
     }
 
-    // Create MyStreetCleaning account
+    // Mark profile as completed
     try {
-      const notificationPrefs = {
-        email: formData.emailNotifications !== false,
-        sms: formData.smsNotifications || false,
-        voice: formData.voiceNotifications || false,
-        days_before: formData.reminderDays || [1, 7, 30]
-      };
-
-      const mscResult = await syncUserToMyStreetCleaning(
-        email,
-        streetAddress,
-        userId,
-        {
-          googleId: user.user.user_metadata?.sub,
-          name: user.user.user_metadata?.full_name || formData.name,
-          notificationPreferences: notificationPrefs
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ...user.user.user_metadata,
+          profile_completed: true
         }
-      );
-
-      if (mscResult.success) {
-        console.log('✅ Created MyStreetCleaning account:', mscResult.accountId);
-        
-        // Update user metadata
-        await supabaseAdmin.auth.admin.updateUserById(userId, {
-          user_metadata: {
-            ...user.user.user_metadata,
-            msc_account_created: true,
-            msc_account_id: mscResult.accountId,
-            profile_completed: true
-          }
-        });
-      }
-    } catch (mscError) {
-      console.error('MyStreetCleaning integration error:', mscError);
+      });
+    } catch (metaError) {
+      console.error('Warning: Could not update user metadata:', metaError);
     }
 
     res.status(200).json({
