@@ -162,6 +162,7 @@ export default function AlertsSuccess() {
         const formData = new FormData();
         formData.append('license', file);
         formData.append('userId', user.id);
+        formData.append('side', 'front'); // Front of license for address verification
 
         const response = await fetch('/api/protection/upload-license', {
           method: 'POST',
@@ -357,7 +358,7 @@ export default function AlertsSuccess() {
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
-              Action Required: Upload Driver's License
+              Action Required: Upload Driver's License (Front)
             </h3>
             <p style={{
               fontSize: '14px',
@@ -365,7 +366,7 @@ export default function AlertsSuccess() {
               lineHeight: '1.6',
               margin: '0 0 16px 0'
             }}>
-              Because your address is in a <strong>residential permit zone</strong>, we need a photo of your driver's license to process your city sticker renewal.
+              Because your address is in a <strong>residential permit zone</strong>, we need a photo of the <strong>front</strong> of your driver's license (showing your address) to process your city sticker renewal.
             </p>
 
             <div style={{
