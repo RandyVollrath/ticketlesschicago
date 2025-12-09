@@ -18,6 +18,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import stripeConfig from '../../../lib/stripe-config';
 import { sendClickSendSMS } from '../../../lib/sms-service';
+import { PLATFORM_FEES, STRIPE_FEES } from '../../../lib/pricing-config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -37,18 +38,9 @@ const STICKER_PRICE_IDS: Record<string, string | undefined> = {
   LT: stripeConfig.cityStickerLtPriceId,
 };
 
-// Stripe processing fee: 2.9% + $0.30
-const STRIPE_PERCENTAGE_FEE = 0.029;
-const STRIPE_FIXED_FEE = 0.30;
-
-// Service fee for operational costs (processing, infrastructure)
-const SERVICE_FEE = 2.50;
-
-// Remitter processing fee (paid from subscription revenue)
-const REMITTER_SERVICE_FEE = 12.00;
-
-// Permit fee for residential parking zones
-const PERMIT_FEE = 30.00;
+// Use centralized pricing constants
+const { PERCENTAGE_FEE: STRIPE_PERCENTAGE_FEE, FIXED_FEE: STRIPE_FIXED_FEE } = STRIPE_FEES;
+const { SERVICE_FEE, REMITTER_SERVICE_FEE, PERMIT_FEE } = PLATFORM_FEES;
 
 /**
  * Get the next available remitter using load balancing
