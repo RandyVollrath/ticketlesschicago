@@ -167,10 +167,17 @@ export default function AuthCallback() {
           }
 
           // Handle Protection Google signup flow - redirect to Stripe checkout
-          const isProtectionGoogleFlow = new URLSearchParams(window.location.search).get('flow') === 'protection-google';
+          // Check URL param first, then fallback to sessionStorage (URL params can be lost during OAuth)
+          const urlFlowParam = new URLSearchParams(window.location.search).get('flow');
+          const sessionFlowParam = sessionStorage.getItem('pendingProtectionFlow');
+          const isProtectionGoogleFlow = urlFlowParam === 'protection-google' || sessionFlowParam === 'protection-google';
+
+          console.log('🔍 Flow detection - URL param:', urlFlowParam, 'Session param:', sessionFlowParam);
 
           if (isProtectionGoogleFlow) {
             console.log('🛡️ Protection Google flow detected - checking for pending checkout data...');
+            // Clean up the flow indicator
+            sessionStorage.removeItem('pendingProtectionFlow');
             const pendingCheckout = sessionStorage.getItem('pendingProtectionCheckout');
 
             if (pendingCheckout) {
