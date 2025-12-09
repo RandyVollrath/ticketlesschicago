@@ -404,8 +404,22 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
     }
   }
 
-  // Process users ON snow routes (urgent alerts with their specific street)
-  for (const user of snowRouteUsersToNotify) {
+  // Batch size for parallel processing (avoid overwhelming APIs)
+  const BATCH_SIZE = 50;
+
+  // Helper to process notifications in parallel batches
+  async function processBatch<T>(
+    items: T[],
+    processor: (item: T) => Promise<void>
+  ) {
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const batch = items.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(batch.map(processor));
+    }
+  }
+
+  // Process users ON snow routes (urgent alerts with their specific street) - PARALLEL
+  await processBatch(snowRouteUsersToNotify, async (user) => {
     const streetInfo = user.route.on_street;
     const userAddress = user.home_address_full || user.route.on_street;
 
@@ -437,10 +451,10 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
       smsEnabled,
       emailEnabled
     );
-  }
+  });
 
-  // Process users NOT on snow routes (awareness alerts)
-  for (const user of awarenessUsers) {
+  // Process users NOT on snow routes (awareness alerts) - PARALLEL
+  await processBatch(awarenessUsers, async (user) => {
     const emailSubject = isForecastNotif
       ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban Alert`
       : `🚨 ${snowEvent.snow_amount_inches}" Snow Fell - 2-Inch Ban May Be Active`;
@@ -469,7 +483,7 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
       smsEnabled,
       emailEnabled
     );
-  }
+  });
 
   // Mark the snow event as having triggered notifications
   if (notificationType === 'forecast') {
