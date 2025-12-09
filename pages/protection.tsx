@@ -246,6 +246,8 @@ export default function Protection() {
       };
 
       sessionStorage.setItem('pendingProtectionCheckout', JSON.stringify(checkoutData));
+      // Also store the flow indicator separately for reliability
+      sessionStorage.setItem('pendingProtectionFlow', 'protection-google');
 
       // Redirect to Google OAuth
       const { error } = await supabase.auth.signInWithOAuth({
