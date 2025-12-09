@@ -1,5 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import {
+  checkRateLimit,
+  checkEmailRateLimit,
+  recordRateLimitAction,
+  recordMagicLinkRequest,
+  getClientIP
+} from '../../../lib/rate-limiter';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -10,6 +17,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' });
+  }
+
+  // SECURITY: Rate limiting by IP
+  const ip = getClientIP(req);
+  const ipRateLimitResult = await checkRateLimit(ip, 'auth');
+
+  res.setHeader('X-RateLimit-Limit', ipRateLimitResult.limit);
+  res.setHeader('X-RateLimit-Remaining', ipRateLimitResult.remaining);
+
+  if (!ipRateLimitResult.allowed) {
+    console.warn(`Rate limit exceeded for IP ${ip} on magic link`);
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many login attempts. Please try again later.',
+    });
+  }
+
+  // SECURITY: Rate limiting by email (prevents email bombing)
+  const emailRateLimitResult = await checkEmailRateLimit(email);
+  if (!emailRateLimitResult.allowed) {
+    console.warn(`Rate limit exceeded for email ${email} on magic link`);
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many login attempts for this email. Please try again later.',
+    });
   }
 
   if (!supabaseAdmin) {
@@ -44,6 +76,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log('✅ Magic link generated, sending via Resend...');
+
+    // Record rate limit actions
+    await Promise.all([
+      recordRateLimitAction(ip, 'auth'),
+      recordMagicLinkRequest(email)
+    ]);
 
     // Send the magic link via Resend with retry logic for reliability
     let emailSent = false;

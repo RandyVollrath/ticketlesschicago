@@ -56,7 +56,8 @@
     "react-leaflet": "^4.2.1",
     "resend": "^6.0.3",
     "sharp": "^0.34.5",
-    "stripe": "^18.5.0"
+    "stripe": "^18.5.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^2.0.0",

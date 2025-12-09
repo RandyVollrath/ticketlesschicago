@@ -8,6 +8,17 @@ import { logAuditEvent } from '../../lib/audit-logger';
 import { notifyNewUserAboutWinterBan } from '../../lib/winter-ban-notifications';
 import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 import stripeConfig from '../../lib/stripe-config';
+import {
+  validateTicketProtectionMetadata,
+  safeParseJson,
+  vehicleInfoSchema,
+  renewalDatesSchema,
+  contactInfoSchema,
+  preferencesSchema,
+  streetCleaningSchema,
+  sanitizeString,
+  extractFirstPermitZone,
+} from '../../lib/webhook-validator';
 
 const stripe = new Stripe(stripeConfig.secretKey!, {
   apiVersion: '2024-12-18.acacia'
@@ -95,35 +106,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   let event: Stripe.Event;
+  const webhookSecret = stripeConfig.webhookSecret;
+
+  if (!webhookSecret) {
+    console.error(`❌ STRIPE_WEBHOOK_SECRET is not set for ${stripeConfig.mode} mode!`);
+    // SECURITY: Always require webhook secret - use Stripe CLI for local testing
+    return res.status(500).send('Webhook secret not configured');
+  }
 
   try {
-    const webhookSecret = stripeConfig.webhookSecret;
-
-    if (!webhookSecret) {
-      console.error(`❌ STRIPE_WEBHOOK_SECRET is not set for ${stripeConfig.mode} mode!`);
-      // Try to handle the event anyway in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('⚠️ Development mode: Processing without signature verification');
-        event = JSON.parse(buf.toString()) as Stripe.Event;
-      } else {
-        return res.status(500).send('Webhook secret not configured');
-      }
-    } else {
-      event = stripe.webhooks.constructEvent(
-        buf.toString(),
-        sig,
-        webhookSecret
-      );
-      console.log(`✅ Webhook signature verified successfully (${stripeConfig.mode} mode)`);
-    }
-
+    event = stripe.webhooks.constructEvent(
+      buf.toString(),
+      sig,
+      webhookSecret
+    );
+    console.log(`✅ Webhook signature verified successfully (${stripeConfig.mode} mode)`);
     console.log('Event type:', event.type);
     console.log('Event ID:', event.id);
   } catch (err: any) {
     console.error('❌ Webhook signature verification failed:', err.message);
     console.error('Signature header:', sig ? 'Present' : 'Missing');
-    console.error('Using webhook secret:', process.env.STRIPE_WEBHOOK_SECRET ? `Set (${process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15)}...)` : 'NOT SET!');
-    console.error('Raw body length:', buf.length);
+    console.error('Webhook secret configured:', webhookSecret ? 'Yes' : 'No');
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -242,18 +245,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     has_permit_zone: metadata.hasPermitZone === 'true',
                     permit_requested: metadata.permitRequested === 'true',
                     residency_forwarding_consent_given: metadata.permitRequested === 'true', // Auto-consent if permit requested
-                    // Extract first zone number from permitZones JSON array
-                    permit_zone_number: (() => {
-                      try {
-                        if (metadata.permitZones) {
-                          const zones = JSON.parse(metadata.permitZones);
-                          if (Array.isArray(zones) && zones.length > 0) {
-                            return zones[0].zone || null;
-                          }
-                        }
-                        return null;
-                      } catch { return null; }
-                    })(),
+                    // SECURITY: Safe extraction of first permit zone
+                    permit_zone_number: extractFirstPermitZone(metadata.permitZones),
                     updated_at: new Date().toISOString()
                   }, {
                     onConflict: 'user_id'
@@ -499,18 +492,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   has_permit_zone: metadata.hasPermitZone === 'true',
                   permit_requested: metadata.permitRequested === 'true',
                   residency_forwarding_consent_given: metadata.permitRequested === 'true', // Auto-consent if permit requested
-                  // Extract first zone number from permitZones JSON array
-                  permit_zone_number: (() => {
-                    try {
-                      if (metadata.permitZones) {
-                        const zones = JSON.parse(metadata.permitZones);
-                        if (Array.isArray(zones) && zones.length > 0) {
-                          return zones[0].zone || null;
-                        }
-                      }
-                      return null;
-                    } catch { return null; }
-                  })(),
+                  // SECURITY: Safe extraction of first permit zone
+                  permit_zone_number: extractFirstPermitZone(metadata.permitZones),
                   updated_at: new Date().toISOString()
                 }, {
                   onConflict: 'user_id'
@@ -862,15 +845,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updateData.has_permit_zone = true;
             updateData.permit_requested = metadata.permitRequested === 'true';
             updateData.residency_forwarding_consent_given = metadata.permitRequested === 'true'; // Auto-consent if permit requested
-            // Extract first zone number from permitZones JSON array
-            try {
-              if (metadata.permitZones) {
-                const zones = JSON.parse(metadata.permitZones);
-                if (Array.isArray(zones) && zones.length > 0) {
-                  updateData.permit_zone_number = zones[0].zone || null;
-                }
-              }
-            } catch { /* ignore parse errors */ }
+            // SECURITY: Safe extraction of first permit zone
+            const firstZone = extractFirstPermitZone(metadata.permitZones);
+            if (firstZone) {
+              updateData.permit_zone_number = firstZone;
+            }
           }
 
           // Save street address as both mailing and street cleaning address (prefer metadata, fallback to billing)
@@ -1148,11 +1127,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           streetCleaning: metadata.streetCleaning
         });
 
-        const vehicleInfo = JSON.parse(metadata.vehicleInfo || '{}');
-        const renewalDates = JSON.parse(metadata.renewalDates || '{}');
-        const contactInfo = JSON.parse(metadata.contactInfo || '{}');
-        const preferences = JSON.parse(metadata.preferences || '{}');
-        const streetCleaning = JSON.parse(metadata.streetCleaning || '{}');
+        // SECURITY: Use safe JSON parsing with validation
+        const vehicleInfo = safeParseJson(metadata.vehicleInfo, vehicleInfoSchema, {});
+        const renewalDates = safeParseJson(metadata.renewalDates, renewalDatesSchema, {});
+        const contactInfo = safeParseJson(metadata.contactInfo, contactInfoSchema, {});
+        const preferences = safeParseJson(metadata.preferences, preferencesSchema, {});
+        const streetCleaning = safeParseJson(metadata.streetCleaning, streetCleaningSchema, {});
         
         // DEBUG: Log parsed values to find missing data
         console.log('📊 PARSED WEBHOOK DATA:', {

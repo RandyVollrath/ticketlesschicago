@@ -36,9 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized - invalid token' });
   }
 
-  console.log('📱 Incoming SMS webhook called (verified ✅)');
-  console.log('Headers:', req.headers);
-  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('📱 Incoming SMS webhook called (verified)');
+  // SECURITY: Don't log full headers - they may contain sensitive tokens
 
   try {
     // ClickSend sends data in different formats depending on configuration

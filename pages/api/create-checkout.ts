@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
+import { validateClientReferenceId } from '../../lib/webhook-validator';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -8,6 +10,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Rate limiting
+  const ip = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(ip, 'checkout');
+
+  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit);
+  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
+
+  if (!rateLimitResult.allowed) {
+    console.warn(`Rate limit exceeded for ${ip} on checkout`);
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: `Rate limit exceeded. Please try again in ${Math.ceil(rateLimitResult.resetIn / 1000)} seconds.`,
+    });
   }
 
   const { email, licensePlate, billingPlan, formData, referralId } = req.body;
@@ -89,15 +106,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     };
 
-    // Add referral ID as client_reference_id if present
+    // SECURITY: Validate and sanitize client_reference_id
     if (referralId) {
-      checkoutParams.client_reference_id = referralId;
-      console.log('Added client_reference_id to Stripe:', referralId);
-    } else {
-      console.log('No referralId provided, skipping client_reference_id');
+      const validatedReferralId = validateClientReferenceId(referralId);
+      if (validatedReferralId) {
+        checkoutParams.client_reference_id = validatedReferralId;
+        console.log('Added validated client_reference_id to Stripe:', validatedReferralId);
+      } else {
+        console.warn('Invalid referralId rejected:', referralId);
+      }
     }
 
-    console.log('Creating Stripe session with params:', JSON.stringify(checkoutParams, null, 2));
+    // Record rate limit action
+    await recordRateLimitAction(ip, 'checkout');
+
+    console.log('Creating Stripe session');
     const session = await stripe.checkout.sessions.create(checkoutParams);
     console.log('Stripe session created with ID:', session.id);
 

@@ -7,11 +7,16 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // SECURITY: Only allow in development mode
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   console.log('🔔 WEBHOOK HIT!');
   console.log('Method:', req.method);
-  console.log('Headers:', req.headers);
+  // SECURITY: Don't log full headers
+  console.log('Content-Type:', req.headers['content-type']);
   console.log('Body keys:', Object.keys(req.body || {}));
-  console.log('Body:', JSON.stringify(req.body, null, 2));
 
   return res.status(200).json({
     success: true,
