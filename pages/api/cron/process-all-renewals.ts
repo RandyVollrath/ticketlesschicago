@@ -75,17 +75,26 @@ async function getNextAvailableRemitter(): Promise<any> {
     return remitters[0];
   }
 
-  // Get pending order counts for each remitter
+  // Get pending order counts for ALL remitters in a single query (avoids N+1)
+  const remitterIds = remitters.map(r => r.id);
+  const { data: orderCounts, error: countError } = await supabase
+    .from('renewal_orders')
+    .select('partner_id')
+    .in('partner_id', remitterIds)
+    .in('status', ['pending', 'processing']);
+
+  if (countError) {
+    console.warn('Failed to fetch order counts:', countError.message);
+  }
+
+  // Count orders per partner from the single query result
   const remitterOrderCounts: Map<string, number> = new Map();
-
-  for (const remitter of remitters) {
-    const { count } = await supabase
-      .from('renewal_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('partner_id', remitter.id)
-      .in('status', ['pending', 'processing']);
-
-    remitterOrderCounts.set(remitter.id, count || 0);
+  for (const remitterId of remitterIds) {
+    remitterOrderCounts.set(remitterId, 0);
+  }
+  for (const order of orderCounts || []) {
+    const currentCount = remitterOrderCounts.get(order.partner_id) || 0;
+    remitterOrderCounts.set(order.partner_id, currentCount + 1);
   }
 
   // Sort remitters by pending order count (ascending) and pick the one with fewest
