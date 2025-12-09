@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { Resend } from 'resend';
 import { sendClickSendSMS } from './sms-service';
+import { notificationLogger } from './notification-logger';
 
 // ClickSend types (basic)
 interface ClickSendConfig {
@@ -53,16 +54,25 @@ export interface EmailNotification {
   subject: string;
   html: string;
   text: string;
+  // Optional logging fields
+  userId?: string;
+  category?: string;
 }
 
 export interface SMSNotification {
   to: string;
   message: string;
+  // Optional logging fields
+  userId?: string;
+  category?: string;
 }
 
 export interface VoiceNotification {
   to: string;
   message: string;
+  // Optional logging fields
+  userId?: string;
+  category?: string;
 }
 
 export class NotificationService {
@@ -95,18 +105,41 @@ export class NotificationService {
 
   // Email service using Resend
   async sendEmail(notification: EmailNotification): Promise<boolean> {
+    let logId: string | null = null;
+
     try {
+      // Log the notification attempt
+      if (notification.userId || notification.category) {
+        logId = await notificationLogger.log({
+          user_id: notification.userId,
+          email: notification.to,
+          notification_type: 'email',
+          category: notification.category || 'general',
+          subject: notification.subject,
+          content_preview: notification.text?.substring(0, 200),
+          status: 'pending',
+          metadata: {
+            email_content: {
+              subject: notification.subject,
+              html: notification.html,
+              text: notification.text
+            }
+          }
+        });
+      }
+
       if (!this.resend || !process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'your-resend-api-key-here' || process.env.RESEND_API_KEY.length < 10) {
         console.log('📧 MOCK: No valid Resend API key, would send email:', {
           to: notification.to,
           subject: notification.subject,
           preview: notification.text.substring(0, 100) + '...'
         });
+        if (logId) await notificationLogger.updateStatus(logId, 'sent');
         return true; // Mock success when no valid API key
       }
 
       const fromAddress = process.env.RESEND_FROM || 'onboarding@resend.dev';
-      
+
       console.log('📧 Sending email via Resend:', {
         from: fromAddress,
         to: notification.to,
@@ -123,26 +156,46 @@ export class NotificationService {
           'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
           'X-Entity-Ref-ID': crypto.randomUUID(),
         },
-        reply_to: 'support@autopilotamerica.com'
+        replyTo: 'support@autopilotamerica.com'
       });
 
       if (error) {
         console.error('Resend error details:', error);
         console.error('From address used:', fromAddress);
+        if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, error.message);
         return false;
       }
 
       console.log('✅ Email sent successfully:', data);
+      if (logId) await notificationLogger.updateStatus(logId, 'sent', data?.id);
       return true;
     } catch (error) {
       console.error('Email sending failed:', error);
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, String(error));
       return false;
     }
   }
 
   // SMS service using ClickSend
   async sendSMS(notification: SMSNotification): Promise<boolean> {
+    let logId: string | null = null;
+
     try {
+      // Log the notification attempt
+      if (notification.userId || notification.category) {
+        logId = await notificationLogger.log({
+          user_id: notification.userId,
+          phone: notification.to,
+          notification_type: 'sms',
+          category: notification.category || 'general',
+          content_preview: notification.message?.substring(0, 200),
+          status: 'pending',
+          metadata: {
+            sms_content: notification.message
+          }
+        });
+      }
+
       console.log('📱 Sending SMS via ClickSend:', {
         to: notification.to,
         length: notification.message.length + ' chars'
@@ -150,25 +203,46 @@ export class NotificationService {
 
       // Use direct API implementation instead of broken npm package
       const result = await sendClickSendSMS(notification.to, notification.message);
-      
-      if (result) {
+
+      if (result.success) {
         console.log('✅ SMS sent successfully to', notification.to);
+        if (logId) await notificationLogger.updateStatus(logId, 'sent');
+      } else {
+        if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, result.error || 'ClickSend API returned failure');
       }
-      
-      return result;
+
+      return result.success;
     } catch (error) {
       console.error('SMS sending failed:', error);
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, String(error));
       return false;
     }
   }
 
   // Voice service using ClickSend
   async sendVoiceCall(notification: VoiceNotification): Promise<boolean> {
+    let logId: string | null = null;
     const username = process.env.CLICKSEND_USERNAME;
     const apiKey = process.env.CLICKSEND_API_KEY;
-    
+
+    // Log the notification attempt
+    if (notification.userId || notification.category) {
+      logId = await notificationLogger.log({
+        user_id: notification.userId,
+        phone: notification.to,
+        notification_type: 'voice',
+        category: notification.category || 'general',
+        content_preview: notification.message?.substring(0, 200),
+        status: 'pending',
+        metadata: {
+          voice_content: notification.message
+        }
+      });
+    }
+
     if (!username || !apiKey) {
       console.log('📞 MOCK: No ClickSend credentials for voice call');
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, 'No ClickSend credentials');
       return false;
     }
 
@@ -197,16 +271,19 @@ export class NotificationService {
       });
 
       const result = await response.json();
-      
+
       if (response.ok && result.data?.messages?.[0]?.status === 'SUCCESS') {
         console.log('✅ Voice call initiated successfully to', notification.to);
+        if (logId) await notificationLogger.updateStatus(logId, 'sent', result.data?.messages?.[0]?.message_id);
         return true;
       } else {
         console.error('❌ ClickSend Voice failed:', result);
+        if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, JSON.stringify(result));
         return false;
       }
     } catch (error) {
       console.error('❌ Error making voice call via ClickSend:', error);
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, String(error));
       return false;
     }
   }
