@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 // Phone number formatting utilities
@@ -58,9 +58,28 @@ interface SignupData {
   reminderDays: number[];
 }
 
+interface AddressValidation {
+  status: 'idle' | 'validating' | 'valid' | 'invalid';
+  message?: string;
+  ward?: number;
+  section?: string;
+}
+
 interface Props {
   onSuccess?: (data: any) => void;
   onError?: (error: string) => void;
+}
+
+// Debounce helper
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
@@ -72,6 +91,52 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
     phone: '',
     reminderDays: [1, 7, 30]
   });
+
+  // Address validation state
+  const [addressValidation, setAddressValidation] = useState<AddressValidation>({
+    status: 'idle'
+  });
+
+  // Debounce address input for validation
+  const debouncedAddress = useDebounce(signupData.address, 800);
+
+  // Validate address when debounced value changes
+  useEffect(() => {
+    const validateAddress = async () => {
+      if (!debouncedAddress || debouncedAddress.trim().length < 5) {
+        setAddressValidation({ status: 'idle' });
+        return;
+      }
+
+      setAddressValidation({ status: 'validating' });
+
+      try {
+        const response = await fetch(`/api/validate-address?address=${encodeURIComponent(debouncedAddress)}`);
+        const data = await response.json();
+
+        if (data.valid) {
+          setAddressValidation({
+            status: 'valid',
+            message: data.message,
+            ward: data.ward,
+            section: data.section
+          });
+        } else {
+          setAddressValidation({
+            status: 'invalid',
+            message: data.message || 'Invalid address'
+          });
+        }
+      } catch (error) {
+        setAddressValidation({
+          status: 'invalid',
+          message: 'Unable to validate address. Please try again.'
+        });
+      }
+    };
+
+    validateAddress();
+  }, [debouncedAddress]);
 
   const handleInputChange = (field: keyof SignupData, value: any) => {
     setSignupData(prev => ({ ...prev, [field]: value }));
@@ -97,7 +162,19 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
       return;
     }
 
-    if (!validateChicagoAddress(signupData.address)) {
+    // Check address validation status
+    if (addressValidation.status === 'validating') {
+      onError?.('Please wait for address validation to complete');
+      return;
+    }
+
+    if (addressValidation.status === 'invalid') {
+      onError?.(addressValidation.message || 'Please enter a valid Chicago address');
+      return;
+    }
+
+    // If validation hasn't run yet (status is idle), do a quick check
+    if (addressValidation.status === 'idle' && !validateChicagoAddress(signupData.address)) {
       onError?.('Please enter a valid Chicago address');
       return;
     }
@@ -174,17 +251,57 @@ export const EnhancedSignupFlow: React.FC<Props> = ({ onSuccess, onError }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Your Chicago Address *
             </label>
-            <input
-              type="text"
-              value={signupData.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder="123 Main St, Chicago, IL 60601"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              We'll use this to find your street cleaning schedule
-            </p>
+            <div className="relative">
+              <input
+                type="text"
+                value={signupData.address}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+                placeholder="123 Main St, Chicago, IL 60601"
+                className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 ${
+                  addressValidation.status === 'valid'
+                    ? 'border-green-500 focus:ring-green-500'
+                    : addressValidation.status === 'invalid'
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+                required
+              />
+              {/* Validation status indicator */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {addressValidation.status === 'validating' && (
+                  <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {addressValidation.status === 'valid' && (
+                  <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                )}
+                {addressValidation.status === 'invalid' && (
+                  <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                )}
+              </div>
+            </div>
+            {/* Validation message */}
+            {addressValidation.status === 'valid' && (
+              <p className="text-xs text-green-600 mt-1">
+                {addressValidation.message}
+              </p>
+            )}
+            {addressValidation.status === 'invalid' && (
+              <p className="text-xs text-red-600 mt-1">
+                {addressValidation.message}
+              </p>
+            )}
+            {addressValidation.status === 'idle' && (
+              <p className="text-xs text-gray-500 mt-1">
+                We'll use this to find your street cleaning schedule
+              </p>
+            )}
           </div>
 
           <div>
