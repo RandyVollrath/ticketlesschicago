@@ -26,17 +26,27 @@ export default function AlertsSuccess() {
 
   // License upload for permit zone users
   const [needsLicenseUpload, setNeedsLicenseUpload] = useState(false);
-  const [licenseFile, setLicenseFile] = useState<File | null>(null);
-  const [licensePreview, setLicensePreview] = useState<string | null>(null);
-  const [licenseUploading, setLicenseUploading] = useState(false);
-  const [licenseUploadError, setLicenseUploadError] = useState('');
-  const [licenseUploadSuccess, setLicenseUploadSuccess] = useState(false);
   const [user, setUser] = useState<any>(null);
+
+  // Front of license
+  const [licenseFrontFile, setLicenseFrontFile] = useState<File | null>(null);
+  const [licenseFrontUploading, setLicenseFrontUploading] = useState(false);
+  const [licenseFrontError, setLicenseFrontError] = useState('');
+  const [licenseFrontSuccess, setLicenseFrontSuccess] = useState(false);
+
+  // Back of license
+  const [licenseBackFile, setLicenseBackFile] = useState<File | null>(null);
+  const [licenseBackUploading, setLicenseBackUploading] = useState(false);
+  const [licenseBackError, setLicenseBackError] = useState('');
+  const [licenseBackSuccess, setLicenseBackSuccess] = useState(false);
 
   // License consent
   const [thirdPartyConsent, setThirdPartyConsent] = useState(false);
   const [reuseConsent, setReuseConsent] = useState(false);
   const [licenseExpiryDate, setLicenseExpiryDate] = useState('');
+
+  // Combined success state
+  const licenseUploadComplete = licenseFrontSuccess && licenseBackSuccess;
 
   // Permit zone for proof of residency
   const [hasPermitZone, setHasPermitZone] = useState(false);
@@ -121,48 +131,43 @@ export default function AlertsSuccess() {
     }
   };
 
-  const handleLicenseFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleLicenseUpload = async (file: File, side: 'front' | 'back') => {
+    const setFile = side === 'front' ? setLicenseFrontFile : setLicenseBackFile;
+    const setUploading = side === 'front' ? setLicenseFrontUploading : setLicenseBackUploading;
+    const setError = side === 'front' ? setLicenseFrontError : setLicenseBackError;
+    const setSuccess = side === 'front' ? setLicenseFrontSuccess : setLicenseBackSuccess;
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      setLicenseUploadError('Please upload a JPEG, PNG, or WebP image');
+      setError('Please upload a JPEG, PNG, or WebP image');
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      setLicenseUploadError('File size must be less than 5MB');
+      setError('File size must be less than 5MB');
       return;
     }
 
     // Validate consent
     if (!thirdPartyConsent) {
-      setLicenseUploadError('Please consent to Google Cloud Vision processing your license image');
+      setError('Please consent to Google Cloud Vision processing first');
       return;
     }
 
-    // Clear previous errors
-    setLicenseUploadError('');
-    setLicenseFile(file);
+    // Clear previous errors and set file
+    setError('');
+    setFile(file);
 
-    // Create image preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setLicensePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // Upload to server immediately with quality verification
+    // Upload to server
     if (user?.id) {
-      setLicenseUploading(true);
+      setUploading(true);
       try {
         const formData = new FormData();
         formData.append('license', file);
         formData.append('userId', user.id);
-        formData.append('side', 'front'); // Front of license for address verification
+        formData.append('side', side);
 
         const response = await fetch('/api/protection/upload-license', {
           method: 'POST',
@@ -175,33 +180,43 @@ export default function AlertsSuccess() {
           throw new Error(result.error || 'Upload failed');
         }
 
-        setLicenseUploadSuccess(true);
+        setSuccess(true);
+        console.log(`License ${side} uploaded successfully:`, result);
 
-        // Save consents to database
-        if (reuseConsent || licenseExpiryDate) {
-          await supabase
-            .from('user_profiles')
-            .update({
-              third_party_processing_consent: true,
-              third_party_processing_consent_at: new Date().toISOString(),
-              license_reuse_consent_given: reuseConsent,
-              license_reuse_consent_given_at: reuseConsent ? new Date().toISOString() : null,
-              license_valid_until: licenseExpiryDate || null,
-            })
-            .eq('user_id', user.id);
+        // Save consents to database after both uploads complete
+        if (side === 'back' && licenseFrontSuccess) {
+          if (reuseConsent || licenseExpiryDate) {
+            await supabase
+              .from('user_profiles')
+              .update({
+                third_party_processing_consent: true,
+                third_party_processing_consent_at: new Date().toISOString(),
+                license_reuse_consent_given: reuseConsent,
+                license_reuse_consent_given_at: reuseConsent ? new Date().toISOString() : null,
+                license_valid_until: licenseExpiryDate || null,
+              })
+              .eq('user_id', user.id);
+          }
         }
 
-        console.log('License uploaded successfully:', result);
-
       } catch (error: any) {
-        console.error('License upload error:', error);
-        setLicenseUploadError(error.message || 'Failed to upload license image');
-        setLicenseFile(null);
-        setLicensePreview(null);
+        console.error(`License ${side} upload error:`, error);
+        setError(error.message || 'Failed to upload');
+        setFile(null);
       } finally {
-        setLicenseUploading(false);
+        setUploading(false);
       }
     }
+  };
+
+  const handleFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleLicenseUpload(file, 'front');
+  };
+
+  const handleBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleLicenseUpload(file, 'back');
   };
 
   return (
@@ -334,7 +349,7 @@ export default function AlertsSuccess() {
         )}
 
         {/* License Upload for Permit Zone Users */}
-        {needsLicenseUpload && !licenseUploadSuccess && (
+        {needsLicenseUpload && !licenseUploadComplete && (
           <div style={{
             backgroundColor: '#fffbeb',
             border: `2px solid #f59e0b`,
@@ -358,7 +373,7 @@ export default function AlertsSuccess() {
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
-              Action Required: Upload Driver's License (Front)
+              Upload Driver's License (Front & Back)
             </h3>
             <p style={{
               fontSize: '14px',
@@ -366,7 +381,7 @@ export default function AlertsSuccess() {
               lineHeight: '1.6',
               margin: '0 0 16px 0'
             }}>
-              Because your address is in a <strong>residential permit zone</strong>, we need a photo of the <strong>front</strong> of your driver's license (showing your address) to process your city sticker renewal.
+              Because your address is in a <strong>residential permit zone</strong>, we need photos of both sides of your driver's license to process your city sticker renewal.
             </p>
 
             <div style={{
@@ -382,7 +397,7 @@ export default function AlertsSuccess() {
                 margin: 0,
                 lineHeight: '1.5'
               }}>
-                <strong>Photo requirements:</strong> Clear, well-lit image showing all text. Avoid glare, shadows, or blur.
+                <strong>Photo requirements:</strong> Clear, well-lit images showing all text. Avoid glare, shadows, or blur.
               </p>
             </div>
 
@@ -451,7 +466,7 @@ export default function AlertsSuccess() {
                   color: '#92400e',
                   lineHeight: '1.5'
                 }}>
-                  <strong>Required:</strong> I consent to Google Cloud Vision processing my driver's license image for automated quality verification.
+                  <strong>Required:</strong> I consent to Google Cloud Vision processing my driver's license images for automated quality verification.
                 </span>
               </label>
             </div>
@@ -521,84 +536,163 @@ export default function AlertsSuccess() {
               )}
             </div>
 
-            <input
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              onChange={handleLicenseFileChange}
-              disabled={licenseUploading}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: `2px solid #f59e0b`,
-                borderRadius: '8px',
+            {/* Front of License Upload */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
                 fontSize: '14px',
-                boxSizing: 'border-box',
-                backgroundColor: 'white',
-                cursor: licenseUploading ? 'not-allowed' : 'pointer',
-                marginBottom: '12px'
-              }}
-            />
-
-            {licenseUploading && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '14px',
-                color: COLORS.regulatory,
-                marginBottom: '12px'
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
               }}>
+                Front of License {licenseFrontSuccess && <span style={{ color: COLORS.signal }}>✓</span>}
+              </label>
+              {licenseFrontSuccess ? (
                 <div style={{
-                  width: '16px',
-                  height: '16px',
-                  border: `2px solid ${COLORS.regulatory}`,
-                  borderTop: '2px solid transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }}></div>
-                <span>Verifying image quality...</span>
-              </div>
-            )}
+                  backgroundColor: '#f0fdf4',
+                  border: '2px solid #86efac',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '13px',
+                  color: '#059669',
+                  fontWeight: '500'
+                }}>
+                  ✅ Front uploaded successfully
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleFrontChange}
+                    disabled={licenseFrontUploading || !thirdPartyConsent}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '2px dashed #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      backgroundColor: '#f9fafb',
+                      cursor: (licenseFrontUploading || !thirdPartyConsent) ? 'not-allowed' : 'pointer',
+                      opacity: !thirdPartyConsent ? 0.5 : 1
+                    }}
+                  />
+                  {licenseFrontUploading && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '13px',
+                      color: COLORS.regulatory,
+                      marginTop: '8px'
+                    }}>
+                      <div style={{
+                        width: '14px',
+                        height: '14px',
+                        border: `2px solid ${COLORS.regulatory}`,
+                        borderTop: '2px solid transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                      <span>Verifying front image...</span>
+                    </div>
+                  )}
+                  {licenseFrontError && (
+                    <p style={{ fontSize: '13px', color: '#dc2626', margin: '8px 0 0 0' }}>
+                      ❌ {licenseFrontError}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
-            {licenseUploadError && (
-              <div style={{
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                padding: '12px',
-                fontSize: '13px',
-                color: '#dc2626',
-                marginBottom: '12px'
+            {/* Back of License Upload */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
               }}>
-                <strong>Upload failed:</strong> {licenseUploadError}
-              </div>
-            )}
+                Back of License {licenseBackSuccess && <span style={{ color: COLORS.signal }}>✓</span>}
+              </label>
+              {licenseBackSuccess ? (
+                <div style={{
+                  backgroundColor: '#f0fdf4',
+                  border: '2px solid #86efac',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '13px',
+                  color: '#059669',
+                  fontWeight: '500'
+                }}>
+                  ✅ Back uploaded successfully
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleBackChange}
+                    disabled={licenseBackUploading || !thirdPartyConsent}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '2px dashed #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      backgroundColor: '#f9fafb',
+                      cursor: (licenseBackUploading || !thirdPartyConsent) ? 'not-allowed' : 'pointer',
+                      opacity: !thirdPartyConsent ? 0.5 : 1
+                    }}
+                  />
+                  {licenseBackUploading && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '13px',
+                      color: COLORS.regulatory,
+                      marginTop: '8px'
+                    }}>
+                      <div style={{
+                        width: '14px',
+                        height: '14px',
+                        border: `2px solid ${COLORS.regulatory}`,
+                        borderTop: '2px solid transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                      <span>Verifying back image...</span>
+                    </div>
+                  )}
+                  {licenseBackError && (
+                    <p style={{ fontSize: '13px', color: '#dc2626', margin: '8px 0 0 0' }}>
+                      ❌ {licenseBackError}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
-            {licensePreview && !licenseUploading && !licenseUploadError && (
-              <div style={{
-                border: `2px solid ${COLORS.signal}`,
-                borderRadius: '8px',
-                overflow: 'hidden',
-                marginTop: '12px'
-              }}>
-                <img
-                  src={licensePreview}
-                  alt="License preview"
-                  style={{
-                    width: '100%',
-                    maxHeight: '200px',
-                    objectFit: 'contain',
-                    display: 'block',
-                    backgroundColor: COLORS.concrete
-                  }}
-                />
-              </div>
-            )}
+            {/* Skip for now option */}
+            <p style={{
+              fontSize: '12px',
+              color: COLORS.slate,
+              margin: '16px 0 0 0',
+              textAlign: 'center',
+              fontStyle: 'italic'
+            }}>
+              You can skip this for now and upload later in your <a href="/settings" style={{ color: COLORS.regulatory }}>account settings</a>.
+            </p>
           </div>
         )}
 
         {/* License Upload Success */}
-        {licenseUploadSuccess && (
+        {licenseUploadComplete && (
           <div style={{
             backgroundColor: `${COLORS.signal}10`,
             border: `2px solid ${COLORS.signal}`,
