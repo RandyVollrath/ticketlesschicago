@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 
+const RESIDENCY_PROOF_BUCKET = 'residency-proofs-temps';
+
 interface Document {
   id: number;
   user_id: string;
@@ -165,12 +167,40 @@ export default async function handler(
           }
         });
 
-        residencyProofDocs = profiles.map((profile: any) => {
+        // Generate signed URLs for each residency proof document
+        residencyProofDocs = await Promise.all(profiles.map(async (profile: any) => {
           const user = profileUserMap.get(profile.user_id);
+
+          // Generate signed URL from Supabase Storage path
+          let documentUrl = profile.residency_proof_path;
+          if (profile.residency_proof_path && supabaseAdmin) {
+            try {
+              // Extract file path if it's a full URL
+              let filePath = profile.residency_proof_path;
+              if (filePath.includes('/storage/v1/object/')) {
+                const match = filePath.match(/\/storage\/v1\/object\/(?:public|sign)\/[^/]+\/(.+)/);
+                if (match) {
+                  filePath = match[1];
+                }
+              }
+
+              const { data: signedUrlData } = await supabaseAdmin.storage
+                .from(RESIDENCY_PROOF_BUCKET)
+                .createSignedUrl(filePath, 3600); // 1 hour expiration
+
+              if (signedUrlData?.signedUrl) {
+                documentUrl = signedUrlData.signedUrl;
+              }
+            } catch (err) {
+              console.error('Error generating signed URL for residency proof:', err);
+              // Keep the original path as fallback
+            }
+          }
+
           return {
             id: `profile-${profile.user_id}`,
             user_id: profile.user_id,
-            document_url: profile.residency_proof_path,
+            document_url: documentUrl,
             document_type: profile.residency_proof_type || 'unknown',
             document_source: 'manual_upload',
             address: profile.street_address || profile.home_address_full || 'Unknown',
@@ -182,7 +212,7 @@ export default async function handler(
             is_residency_proof: true, // Flag to distinguish from permit docs
             city_sticker_expiry: profile.city_sticker_expiry,
           };
-        });
+        }));
       }
     } catch (error) {
       console.error('Error fetching residency proof documents:', error);
