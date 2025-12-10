@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '../../lib/supabase';
+import { supabaseAdmin, supabase } from '../../lib/supabase';
 
 // Normalize phone number to E.164 format (+1XXXXXXXXXX)
 function normalizePhoneNumber(phone: string | null | undefined): string | null {
@@ -24,6 +24,24 @@ export default async function handler(
   if (!userId) {
     return res.status(400).json({ error: 'User ID is required' });
   }
+
+  // Verify the user is authenticated and owns this profile
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Ensure user can only update their own profile
+    if (user.id !== userId) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
+  }
+  // Note: Allow unauthenticated updates for backward compatibility during signup flow
+  // TODO: Eventually require auth for all profile updates
 
   try {
     console.log('Profile update request:', { userId, updateData });
@@ -162,8 +180,7 @@ export default async function handler(
 
     res.status(200).json({
       success: true,
-      data: profileData,
-      synced: hasRelevantChange
+      data: profileData
     });
 
   } catch (error) {

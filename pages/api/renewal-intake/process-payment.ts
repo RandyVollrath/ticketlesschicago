@@ -6,6 +6,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sendClickSendSMS } from '../../../lib/sms-service';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -188,8 +190,108 @@ async function logActivity(
 }
 
 async function sendPaymentConfirmation(order: any) {
-  // TODO: Send email/SMS confirmation
-  console.log('Payment confirmation sent to:', order.customer_email);
+  const partner = order.renewal_partners;
+  const isLicensePlate = ['standard', 'vanity'].includes(order.sticker_type?.toLowerCase());
+  const renewalType = isLicensePlate ? 'License Plate Sticker' : 'City Sticker';
+
+  // Send email confirmation
+  try {
+    const response = await fetchWithTimeout('https://api.resend.com/emails', {
+      method: 'POST',
+      timeout: DEFAULT_TIMEOUTS.email,
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <orders@autopilotamerica.com>',
+        to: order.customer_email,
+        subject: `Payment Confirmed - ${renewalType} Renewal #${order.order_number}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #10b981; padding: 24px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Payment Confirmed!</h1>
+            </div>
+
+            <div style="padding: 24px; background-color: #f9fafb;">
+              <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                Hi ${order.customer_name.split(' ')[0]},
+              </p>
+
+              <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                Thank you for your payment! Your ${renewalType.toLowerCase()} renewal is now being processed.
+              </p>
+
+              <div style="background-color: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 24px 0;">
+                <h2 style="margin-top: 0; color: #1a1a1a; font-size: 18px;">Order Details</h2>
+                <table style="width: 100%; font-size: 14px;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">Order Number:</td>
+                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">${order.order_number}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">License Plate:</td>
+                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">${order.license_plate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">Renewal Type:</td>
+                    <td style="padding: 8px 0; text-align: right;">${renewalType}</td>
+                  </tr>
+                  <tr style="border-top: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0 8px 0; color: #1a1a1a; font-weight: 600;">Total Paid:</td>
+                    <td style="padding: 12px 0 8px 0; text-align: right; font-weight: 600; font-size: 18px; color: #10b981;">$${order.total_amount.toFixed(2)}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="background-color: #dbeafe; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <h3 style="margin: 0 0 8px 0; color: #1e40af; font-size: 14px;">What happens next?</h3>
+                <ol style="margin: 0; padding-left: 20px; color: #1e40af; font-size: 14px; line-height: 1.8;">
+                  <li>Your documents are being verified</li>
+                  <li>Your order will be submitted to ${isLicensePlate ? 'the IL Secretary of State' : 'the City of Chicago'}</li>
+                  <li>${partner?.fulfillment_method === 'pickup' ? 'You\'ll be notified when your sticker is ready for pickup' : 'Your sticker will be mailed to your address'}</li>
+                </ol>
+              </div>
+
+              <p style="color: #6b7280; font-size: 14px;">
+                We'll send you updates as your renewal is processed. If you have questions, reply to this email or contact us at support@autopilotamerica.com.
+              </p>
+            </div>
+
+            <div style="padding: 16px 24px; background-color: #f3f4f6; text-align: center;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                Autopilot America • <a href="https://autopilotamerica.com" style="color: #3b82f6;">autopilotamerica.com</a>
+              </p>
+            </div>
+          </div>
+        `
+      })
+    });
+
+    if (response.ok) {
+      console.log(`✅ Payment confirmation email sent to ${order.customer_email}`);
+    } else {
+      console.error(`❌ Failed to send payment confirmation email: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('❌ Email sending error:', error);
+  }
+
+  // Send SMS confirmation if phone number available
+  if (order.customer_phone) {
+    try {
+      const smsMessage = `Payment confirmed! Your ${renewalType} renewal order #${order.order_number} for ${order.license_plate} is being processed. We'll text you when it's complete. - Autopilot America`;
+
+      const result = await sendClickSendSMS(order.customer_phone, smsMessage);
+      if (result.success) {
+        console.log(`✅ Payment confirmation SMS sent to ${order.customer_phone}`);
+      } else {
+        console.error(`❌ Failed to send SMS: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ SMS sending error:', error);
+    }
+  }
 }
 
 async function pushToPartnerPortal(order: any, partner: any) {
