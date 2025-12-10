@@ -697,7 +697,7 @@ export default function ProfileNew() {
     if (!formData.phone_number && !formData.phone) missing.push('Phone number')
     if (!formData.license_plate) missing.push('License plate')
     if (!formData.zip_code) missing.push('ZIP code')
-    // Removed license_plate_type check - field doesn't exist on form
+    if (!formData.vin) missing.push('VIN')
     return missing
   }
 
@@ -1277,7 +1277,7 @@ export default function ProfileNew() {
                   color: '#374151',
                   marginBottom: '6px'
                 }}>
-                  VIN (Optional)
+                  VIN <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -1288,7 +1288,7 @@ export default function ProfileNew() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #d1d5db',
+                    border: `1px solid ${profile.has_protection && !formData.vin ? '#dc2626' : '#d1d5db'}`,
                     borderRadius: '6px',
                     fontSize: '14px',
                     boxSizing: 'border-box',
@@ -1296,6 +1296,9 @@ export default function ProfileNew() {
                     fontFamily: 'monospace'
                   }}
                 />
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
+                  Required for city sticker renewal. Find on your registration or driver&apos;s side door jamb.
+                </p>
               </div>
             </div>
           </Accordion>

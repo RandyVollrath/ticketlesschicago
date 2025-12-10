@@ -7,6 +7,18 @@ import Footer from '../components/Footer';
 import { PermitZoneWarning } from '../components/PermitZoneWarning';
 import MobileNav from '../components/MobileNav';
 
+// Phone validation - must match backend validation
+function isValidUSPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return digits[0] !== '0' && digits[0] !== '1';
+  }
+  if (digits.length === 11 && digits[0] === '1') {
+    return digits[1] !== '0' && digits[1] !== '1';
+  }
+  return false;
+}
+
 // Brand Colors - Municipal Fintech
 const COLORS = {
   deepHarbor: '#0F172A',
@@ -50,6 +62,9 @@ export default function Protection() {
 
   // Phone number (REQUIRED for Protection)
   const [phone, setPhone] = useState('');
+
+  // VIN (REQUIRED for city sticker renewal)
+  const [vin, setVin] = useState('');
 
   // Google auth loading state
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
@@ -183,6 +198,16 @@ export default function Protection() {
       return;
     }
 
+    if (!isValidUSPhone(phone)) {
+      setMessage('Please enter a valid 10-digit US phone number (e.g., 312-555-1234)');
+      return;
+    }
+
+    if (needsCitySticker && (!vin || vin.trim().length !== 17)) {
+      setMessage('Please enter a valid 17-character VIN - required for city sticker renewal');
+      return;
+    }
+
     if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
       setMessage('Please select a billing plan (monthly or annual)');
       return;
@@ -193,6 +218,7 @@ export default function Protection() {
     const checkoutData = {
       billingPlan,
       email: userEmail,
+      vin: vin || undefined,
       phone: phone,
       userId: user?.id || undefined,
       rewardfulReferral: rewardfulReferral,
@@ -222,6 +248,16 @@ export default function Protection() {
       return;
     }
 
+    if (!isValidUSPhone(phone)) {
+      setMessage('Please enter a valid 10-digit US phone number (e.g., 312-555-1234)');
+      return;
+    }
+
+    if (needsCitySticker && (!vin || vin.trim().length !== 17)) {
+      setMessage('Please enter a valid 17-character VIN - required for city sticker renewal');
+      return;
+    }
+
     if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
       setMessage('Please select a billing plan (monthly or annual)');
       return;
@@ -237,6 +273,7 @@ export default function Protection() {
       const checkoutData = {
         billingPlan,
         phone: phone,
+        vin: vin || undefined,
         rewardfulReferral: rewardfulReferral,
         streetAddress: streetAddress || undefined,
         hasPermitZone: hasPermitZone,
@@ -854,6 +891,38 @@ export default function Protection() {
                         />
                       </div>
                     )}
+                  </div>
+
+                  {/* VIN - Required for city sticker */}
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    border: `1px solid ${!vin && needsCitySticker ? '#dc2626' : COLORS.border}`
+                  }}>
+                    <label style={{ display: 'block', fontSize: '15px', fontWeight: '600', color: COLORS.graphite, marginBottom: '8px' }}>
+                      Vehicle Identification Number (VIN) <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={vin}
+                      onChange={(e) => setVin(e.target.value.toUpperCase())}
+                      placeholder="1HGBH41JXMN109186"
+                      maxLength={17}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: `1px solid ${!vin && needsCitySticker ? '#dc2626' : COLORS.border}`,
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        boxSizing: 'border-box',
+                        textTransform: 'uppercase',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                    <p style={{ fontSize: '12px', color: COLORS.slate, marginTop: '6px', margin: '6px 0 0 0' }}>
+                      Required for city sticker renewal. Find on your registration or driver's side door jamb.
+                    </p>
                   </div>
                 </div>
 

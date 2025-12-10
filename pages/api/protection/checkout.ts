@@ -28,6 +28,7 @@ const checkoutSchema = z.object({
   }).optional().nullable(),
   hasPermitZone: z.boolean().optional(),
   streetAddress: z.string().max(500).optional().nullable(),
+  vin: z.string().max(17).optional().nullable(),
   permitZones: z.array(z.string().max(50)).optional().nullable(),
   vehicleType: z.enum(['standard', 'large']).optional(),
   permitRequested: z.boolean().optional(),
@@ -76,7 +77,7 @@ export default async function handler(
     });
   }
 
-  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType, permitRequested, smsConsent } = parseResult.data;
+  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, vin, permitZones, vehicleType, permitRequested, smsConsent } = parseResult.data;
 
   console.log('Protection checkout request:', {
     billingPlan,
@@ -147,6 +148,7 @@ export default async function handler(
         licensePlate: renewals?.licensePlate ? renewals.licensePlate.date : '',
         isVanityPlate: renewals?.licensePlate?.isVanity ? 'true' : 'false',
         streetAddress: streetAddress || '',
+        vin: vin || '',
         hasPermitZone: hasPermitZone ? 'true' : 'false',
         permitRequested: permitRequested ? 'true' : 'false',
         permitZones: hasPermitZone && permitZones ? JSON.stringify(permitZones) : '',

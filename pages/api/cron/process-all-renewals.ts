@@ -369,6 +369,106 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
+        // VIN REQUIRED CHECK
+        // City clerk requires VIN for city sticker renewals: "Renewal Notice OR (Plate + VIN)"
+        // Block processing if VIN is missing
+        if (!customer.vin || customer.vin.trim().length === 0) {
+          console.log(`⚠️ BLOCKED: Cannot process city sticker renewal for ${customer.email}`);
+          console.log(`   Reason: VIN is missing (required for city sticker renewal)`);
+          console.log(`   Action: Sending VIN required notification`);
+
+          // Log the blocking for tracking
+          await supabase.from('renewal_charges').insert({
+            user_id: customer.user_id,
+            charge_type: 'sticker_renewal',
+            amount: 0,
+            status: 'blocked',
+            failure_reason: 'VIN is missing - required for city sticker renewal',
+            failure_code: 'vin_required',
+            renewal_type: 'city_sticker',
+            renewal_due_date: customer.city_sticker_expiry,
+            failed_at: new Date().toISOString(),
+          });
+
+          // Send notification to user
+          const expiryStr = new Date(customer.city_sticker_expiry).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
+
+          if (customer.email) {
+            const vinRequiredHtml = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+                  <h1 style="margin: 0; font-size: 24px;">⚠️ Action Required: VIN Needed</h1>
+                </div>
+                <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+                  <p>Hi ${customer.first_name || 'there'},</p>
+
+                  <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <strong style="font-size: 16px; color: #92400e;">Your city sticker renewal is blocked because your VIN is missing.</strong>
+                  </div>
+
+                  <p>Chicago requires your vehicle's VIN (Vehicle Identification Number) to process your city sticker renewal. <strong>We cannot process your renewal until you add your VIN.</strong></p>
+
+                  <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <div style="margin-bottom: 8px;">
+                      <span style="color: #6b7280;">License Plate:</span>
+                      <strong>${customer.license_plate}</strong>
+                    </div>
+                    <div>
+                      <span style="color: #6b7280;">City Sticker Expires:</span>
+                      <strong style="color: #dc2626;">${expiryStr}</strong>
+                    </div>
+                  </div>
+
+                  <p><strong>What to do now:</strong></p>
+                  <ol style="line-height: 1.8;">
+                    <li>Log in at <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/settings" style="color: #2563eb;">Your Settings Page</a></li>
+                    <li>Enter your 17-character VIN (found on your registration card or driver's side dashboard)</li>
+                    <li>Save your settings</li>
+                    <li>We'll automatically process your renewal once your VIN is saved</li>
+                  </ol>
+
+                  <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <strong style="color: #dc2626;">⏰ Don't wait!</strong>
+                    <p style="margin: 8px 0 0 0; color: #7f1d1d;">
+                      If your city sticker expires before you add your VIN, you could receive parking tickets.
+                      Add your VIN as soon as possible.
+                    </p>
+                  </div>
+
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                    Questions? Reply to this email or contact support@autopilotamerica.com
+                  </p>
+                </div>
+              </div>
+            `;
+            await sendEmail(customer.email, '⚠️ Action Required: VIN Needed for City Sticker Renewal', vinRequiredHtml);
+            console.log(`📧 Sent VIN required notification to ${customer.email}`);
+          }
+
+          // SMS notification
+          if (customer.phone_number) {
+            const smsMessage = `URGENT: Your city sticker renewal is BLOCKED. Please add your VIN to your settings at autopilotamerica.com/settings. VIN is required to renew your city sticker for ${customer.license_plate}. Reply HELP for assistance.`;
+            await sendClickSendSMS(customer.phone_number, smsMessage);
+            console.log(`📱 Sent VIN required SMS to ${customer.phone_number}`);
+          }
+
+          results.cityStickerFailed++;
+          results.errors.push({
+            type: 'city_sticker',
+            customer_id: customer.user_id,
+            license_plate: customer.license_plate,
+            error: 'VIN is missing - required for city sticker renewal',
+          });
+
+          // Skip to next customer
+          continue;
+        }
+
         results.cityStickerProcessed++;
 
         // Get next available remitter using load balancing
@@ -678,7 +778,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           console.log(`⚠️ BLOCKED: Cannot process license plate renewal for ${customer.email}`);
           console.log(`   Reason: Emissions test not completed (due in ${daysUntilEmissions} days)`);
-          console.log(`   Action: Sending urgent emissions reminder`);
+          console.log(`   Action: Sending emissions blocking notification`);
 
           // Log the blocking for tracking
           await supabase.from('renewal_charges').insert({
@@ -692,6 +792,85 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             renewal_due_date: customer.license_plate_expiry,
             failed_at: new Date().toISOString(),
           });
+
+          // SEND NOTIFICATION: Tell user WHY their renewal is blocked
+          // This is critical - users need to know they must complete emissions first
+          const emissionsDateStr = emissionsDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
+          const plateExpiryStr = new Date(customer.license_plate_expiry).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
+
+          // Email notification
+          if (customer.email) {
+            const emissionsBlockedHtml = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+                  <h1 style="margin: 0; font-size: 24px;">⚠️ Action Required: Emissions Test Needed</h1>
+                </div>
+                <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+                  <p>Hi ${customer.first_name || 'there'},</p>
+
+                  <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <strong style="font-size: 16px; color: #92400e;">Your license plate renewal is blocked because you haven't completed your emissions test.</strong>
+                  </div>
+
+                  <p>Illinois law requires a valid emissions test before we can renew your license plates. <strong>We cannot process your renewal until this is complete.</strong></p>
+
+                  <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <div style="margin-bottom: 8px;">
+                      <span style="color: #6b7280;">License Plate:</span>
+                      <strong>${customer.license_plate}</strong>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                      <span style="color: #6b7280;">Plate Expires:</span>
+                      <strong style="color: #dc2626;">${plateExpiryStr}</strong>
+                    </div>
+                    <div>
+                      <span style="color: #6b7280;">Emissions Due By:</span>
+                      <strong style="color: #dc2626;">${emissionsDateStr}</strong>
+                    </div>
+                  </div>
+
+                  <p><strong>What to do now:</strong></p>
+                  <ol style="line-height: 1.8;">
+                    <li>Get your emissions test at any Illinois EPA testing station</li>
+                    <li>Find locations at <a href="https://www.epa.illinois.gov/topics/air-quality/mobile-sources/vehicle-emissions-testing/index" style="color: #2563eb;">Illinois EPA Website</a></li>
+                    <li>After completing the test, let us know by replying to this email or updating your settings</li>
+                    <li>We'll automatically process your renewal once the test is recorded</li>
+                  </ol>
+
+                  <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <strong style="color: #dc2626;">⏰ Don't wait!</strong>
+                    <p style="margin: 8px 0 0 0; color: #7f1d1d;">
+                      If your plate expires before you complete the emissions test, you could receive tickets for expired registration.
+                      Complete your test as soon as possible.
+                    </p>
+                  </div>
+
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                    Questions? Reply to this email or contact support@autopilotamerica.com
+                  </p>
+                </div>
+              </div>
+            `;
+            await sendEmail(customer.email, '⚠️ Action Required: Emissions Test Needed for License Plate Renewal', emissionsBlockedHtml);
+            console.log(`📧 Sent emissions blocking notification to ${customer.email}`);
+          }
+
+          // SMS notification
+          if (customer.phone_number) {
+            const smsMessage = `URGENT: Your IL license plate renewal is BLOCKED. You must complete your emissions test before we can renew plates for ${customer.license_plate}. Test is due ${emissionsDateStr}. Find test locations at epa.illinois.gov - Reply HELP for assistance.`;
+            await sendClickSendSMS(customer.phone_number, smsMessage);
+            console.log(`📱 Sent emissions blocking SMS to ${customer.phone_number}`);
+          }
 
           results.licensePlateFailed++;
           results.errors.push({

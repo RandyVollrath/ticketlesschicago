@@ -234,6 +234,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     phone_number: normalizePhoneNumber(metadata.phone || stripePhone),
                     zip_code: zipCode,
                     vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
+                    vin: hasValue(metadata.vin) ? metadata.vin : null,
                     has_protection: true,
                     stripe_customer_id: session.customer as string,
                     city_sticker_expiry: hasValue(metadata.citySticker) ? metadata.citySticker : null,
@@ -484,6 +485,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   phone_number: normalizePhoneNumber(metadata.phone || stripePhone),
                   zip_code: zipCode,
                   vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
+                  vin: hasValue(metadata.vin) ? metadata.vin : null,
                   has_protection: true,
                   stripe_customer_id: session.customer as string, // CRITICAL: Save for future renewals
                   city_sticker_expiry: hasValue(metadata.citySticker) ? metadata.citySticker : null,
