@@ -12,6 +12,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,8 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('❌ Error creating UtilityAPI form:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      details: error.message,
+      error: sanitizeErrorMessage(error),
     });
   }
 }

@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { email as emailTemplates, sms as smsTemplates, voice as voiceTemplates, getUrgencyLevel } from '../../../lib/message-templates';
 import { sendClickSendSMS, sendClickSendVoiceCall } from '../../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -279,7 +280,7 @@ export default async function handler(
   } catch (error: any) {
     console.error('Error processing emissions reminders:', error);
     results.success = false;
-    results.errors.push(error.message);
+    results.errors.push(sanitizeErrorMessage(error));
     return res.status(500).json(results);
   }
 }

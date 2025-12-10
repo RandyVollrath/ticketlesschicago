@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { verifyWebhook } from '../../../lib/webhook-verification';
 import { maskPhone, maskEmail } from '../../../lib/mask-pii';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * ClickSend Incoming SMS Webhook
@@ -525,8 +526,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('❌ Error processing incoming SMS:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

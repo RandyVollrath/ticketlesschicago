@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Hourly cron to sync new towing data from Chicago API
 // Fetches latest tows and adds to database
@@ -66,7 +67,7 @@ export default async function handler(
       console.error('Error inserting records:', error);
       return res.status(500).json({
         success: false,
-        error: error.message
+        error: sanitizeErrorMessage(error)
       });
     }
 
@@ -84,7 +85,7 @@ export default async function handler(
     console.error('Error syncing towing data:', error);
     return res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

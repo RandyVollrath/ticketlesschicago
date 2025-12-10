@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -38,9 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (ward43Error) {
       console.error('Ward 43 Section 1 query error:', ward43Error);
-      return res.status(500).json({ 
-        error: 'Database query failed',
-        details: ward43Error.message
+      return res.status(500).json({
+        error: 'Database query failed'
       });
     }
 
@@ -83,17 +83,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         geometryRecord: geomData?.[0] || null
       },
       errors: {
-        ward43Error: ward43Error?.message || null,
-        geomError: geomError?.message || null,
-        futureError: futureError?.message || null
+        ward43Error: ward43Error ? sanitizeErrorMessage(ward43Error) : null,
+        geomError: geomError ? sanitizeErrorMessage(geomError) : null,
+        futureError: futureError ? sanitizeErrorMessage(futureError) : null
       }
     });
 
   } catch (error: any) {
     console.error('Debug API error:', error);
-    return res.status(500).json({ 
-      error: 'Debug API failed',
-      details: error.message
+    return res.status(500).json({
+      error: 'Debug API failed'
     });
   }
 }

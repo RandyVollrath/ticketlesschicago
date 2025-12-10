@@ -14,6 +14,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import formidable from 'formidable';
 import fs from 'fs';
 import vision from '@google-cloud/vision';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Configure formidable to NOT parse by default
 export const config = {
@@ -347,8 +348,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('License validation error:', error);
     return res.status(500).json({
       valid: false,
-      error: 'Validation failed',
-      details: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

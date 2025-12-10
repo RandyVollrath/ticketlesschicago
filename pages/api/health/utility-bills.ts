@@ -9,6 +9,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const checks: any = {
@@ -38,7 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         checks.checks.supabase_storage = {
           status: 'error',
           message: 'Cannot list buckets',
-          error: bucketError.message
         };
         checks.overall_status = 'unhealthy';
       } else {
@@ -65,7 +65,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         checks.checks.database = {
           status: 'error',
           message: 'Cannot query user_profiles',
-          error: dbError.message
         };
         checks.overall_status = 'unhealthy';
       } else {
@@ -103,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({
       timestamp: new Date().toISOString(),
       overall_status: 'unhealthy',
-      error: error.message,
+      error: sanitizeErrorMessage(error),
       checks: checks.checks,
     });
   }

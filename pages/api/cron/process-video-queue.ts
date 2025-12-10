@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { processVideo } from '../../../lib/video-processor';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -198,13 +199,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .update({
             status: job.retry_count >= 2 ? 'failed' : 'pending', // Fail after 3 attempts
             retry_count: job.retry_count + 1,
-            error_message: error.message,
+            error_message: sanitizeErrorMessage(error),
             updated_at: new Date().toISOString(),
           })
           .eq('id', job.id);
 
         results.failed++;
-        results.errors.push(`Job ${job.id}: ${error.message}`);
+        results.errors.push(`Job ${job.id}: ${sanitizeErrorMessage(error)}`);
       }
     }
 
@@ -216,7 +217,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Video queue processing error:', error);
     return res.status(500).json({
-      error: error.message || 'Failed to process video queue',
+      error: sanitizeErrorMessage(error),
     });
   }
 }

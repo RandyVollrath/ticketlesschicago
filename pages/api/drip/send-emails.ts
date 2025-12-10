@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,7 +49,7 @@ export default async function handler(
 
     if (welcomeError) {
       console.error('Error fetching welcome pending:', welcomeError);
-      results.errors.push(`Welcome query error: ${welcomeError.message}`);
+      results.errors.push(`Welcome query error: ${sanitizeErrorMessage(welcomeError)}`);
     } else if (welcomePending && welcomePending.length > 0) {
       console.log(`📨 Found ${welcomePending.length} welcome emails to send`);
 
@@ -71,7 +72,7 @@ export default async function handler(
           // Wait 600ms between emails to stay under 2 req/sec rate limit
           await new Promise(resolve => setTimeout(resolve, 600));
         } catch (error: any) {
-          results.errors.push(`Welcome email failed for ${user.email}: ${error.message}`);
+          results.errors.push(`Welcome email failed for ${user.email}: ${sanitizeErrorMessage(error)}`);
           console.error(`❌ Failed to send welcome to ${user.email}:`, error);
         }
       }
@@ -91,7 +92,7 @@ export default async function handler(
 
     if (proofError) {
       console.error('Error fetching proof pending:', proofError);
-      results.errors.push(`Proof query error: ${proofError.message}`);
+      results.errors.push(`Proof query error: ${sanitizeErrorMessage(proofError)}`);
     } else if (proofPending && proofPending.length > 0) {
       console.log(`📨 Found ${proofPending.length} proof/story emails to send`);
 
@@ -114,7 +115,7 @@ export default async function handler(
           // Wait 600ms between emails to stay under 2 req/sec rate limit
           await new Promise(resolve => setTimeout(resolve, 600));
         } catch (error: any) {
-          results.errors.push(`Proof email failed for ${user.email}: ${error.message}`);
+          results.errors.push(`Proof email failed for ${user.email}: ${sanitizeErrorMessage(error)}`);
           console.error(`❌ Failed to send proof to ${user.email}:`, error);
         }
       }
@@ -134,7 +135,7 @@ export default async function handler(
 
     if (softSellError) {
       console.error('Error fetching soft-sell pending:', softSellError);
-      results.errors.push(`Soft-sell query error: ${softSellError.message}`);
+      results.errors.push(`Soft-sell query error: ${sanitizeErrorMessage(softSellError)}`);
     } else if (softSellPending && softSellPending.length > 0) {
       console.log(`📨 Found ${softSellPending.length} soft-sell emails to send`);
 
@@ -175,7 +176,7 @@ export default async function handler(
           // Wait 600ms between emails to stay under 2 req/sec rate limit
           await new Promise(resolve => setTimeout(resolve, 600));
         } catch (error: any) {
-          results.errors.push(`Soft-sell email failed for ${user.email}: ${error.message}`);
+          results.errors.push(`Soft-sell email failed for ${user.email}: ${sanitizeErrorMessage(error)}`);
           console.error(`❌ Failed to send soft-sell to ${user.email}:`, error);
         }
       }
@@ -200,7 +201,7 @@ export default async function handler(
   } catch (error: any) {
     console.error('❌ Drip campaign error:', error);
     return res.status(500).json({
-      error: error.message || 'Internal server error',
+      error: sanitizeErrorMessage(error),
       timestamp: new Date().toISOString()
     });
   }

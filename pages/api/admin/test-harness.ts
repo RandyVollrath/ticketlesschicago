@@ -7,6 +7,7 @@ import {
   verifyScenario
 } from '../../../lib/test-harness';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Test Harness API
@@ -207,8 +208,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
   } catch (error: any) {
     console.error('Error in test harness:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

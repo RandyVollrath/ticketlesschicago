@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Cron job to send Winter Overnight Parking Ban reminders
@@ -51,8 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('❌ Winter ban notification failed:', result);
       return res.status(500).json({
         success: false,
-        error: 'Failed to send winter ban notifications',
-        details: result
+        error: 'Failed to send winter ban notifications'
       });
     }
 
@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('❌ Winter ban cron job failed:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

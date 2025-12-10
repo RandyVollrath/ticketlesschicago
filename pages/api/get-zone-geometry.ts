@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Use MyStreetCleaning database for geometry data
 const MSC_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
@@ -136,13 +137,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('❌ Zone geometry API error:', error);
-    
-    return res.status(500).json({ 
-      error: 'Failed to fetch zone geometry data',
-      details: {
-        error_message: error.message,
-        zones_requested: zones.length
-      }
+
+    return res.status(500).json({
+      error: 'Failed to fetch zone geometry data'
     });
   }
 }

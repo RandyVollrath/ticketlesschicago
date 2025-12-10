@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface SignupData {
   address: string;
@@ -106,9 +107,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('❌ OAuth callback error:', error);
-    res.status(500).json({ 
-      error: 'OAuth callback failed',
-      details: error.message 
+    res.status(500).json({
+      error: sanitizeErrorMessage(error)
     });
   }
 }

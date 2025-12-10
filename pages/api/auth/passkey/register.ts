@@ -3,6 +3,7 @@ import { generateRegistrationOptions, verifyRegistrationResponse } from '@simple
 import { createClient } from '@supabase/supabase-js'
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../../lib/rate-limiter'
 import { maskEmail, maskUserId } from '../../../../lib/mask-pii'
+import { sanitizeErrorMessage } from '../../../../lib/error-utils'
 
 // Create admin client directly in API route to ensure proper environment variables
 const supabaseAdmin = createClient(
@@ -116,7 +117,7 @@ async function handleRegistrationStart(req: NextApiRequest, res: NextApiResponse
     
     if (userError) {
       console.error('User lookup error:', userError)
-      return res.status(401).json({ error: `User lookup failed: ${userError.message}` })
+      return res.status(401).json({ error: sanitizeErrorMessage(userError) })
     }
 
     if (!user) {
@@ -159,9 +160,8 @@ async function handleRegistrationStart(req: NextApiRequest, res: NextApiResponse
     res.json(options)
   } catch (error) {
     console.error('Passkey registration start error:', error)
-    res.status(500).json({ 
-      error: 'Failed to start passkey registration',
-      details: error instanceof Error ? error.message : String(error)
+    res.status(500).json({
+      error: sanitizeErrorMessage(error)
     })
   }
 }
@@ -281,9 +281,8 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
 
     if (insertError) {
       console.error('Database insert error:', insertError)
-      return res.status(500).json({ 
-        error: 'Failed to save passkey',
-        details: insertError.message
+      return res.status(500).json({
+        error: sanitizeErrorMessage(insertError)
       })
     }
 
@@ -294,9 +293,8 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
     })
   } catch (error) {
     console.error('Passkey registration verify error:', error)
-    res.status(500).json({ 
-      error: 'Failed to verify passkey registration',
-      details: error instanceof Error ? error.message : String(error)
+    res.status(500).json({
+      error: sanitizeErrorMessage(error)
     })
   }
 }

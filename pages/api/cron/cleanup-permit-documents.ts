@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { del } from '@vercel/blob';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Cron job to delete permit zone documents older than 60 days after approval
@@ -120,7 +121,7 @@ export default async function handler(
     console.error('Cleanup cron error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

@@ -12,6 +12,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -146,7 +147,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Get license plate renewal info error:', error);
     return res.status(500).json({
       error: 'Failed to retrieve renewal info',
-      details: error.message,
     });
   }
 }

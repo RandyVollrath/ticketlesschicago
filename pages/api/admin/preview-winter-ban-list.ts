@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Generate preview of users who will receive winter ban notifications
@@ -190,8 +191,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('Preview generation failed:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to generate preview',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 });

@@ -5,6 +5,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -56,8 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       } catch (err: any) {
         return res.status(400).json({
-          error: 'Cannot enable transfers',
-          reason: err.message,
+          error: sanitizeErrorMessage(err),
           solution: 'Complete onboarding at: /api/stripe-connect/authorize?partnerId=d78e9928-613f-4f1d-b63a-cda5cb20eef0',
         });
       }
@@ -80,8 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     return res.status(500).json({
-      error: error.message,
-      raw: error.raw?.message,
+      error: sanitizeErrorMessage(error)
     });
   }
 }

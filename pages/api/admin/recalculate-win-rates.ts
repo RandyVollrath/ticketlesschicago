@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Recalculate win_rate_statistics from court_case_outcomes
@@ -103,7 +104,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('❌ Error recalculating win rates:', error);
     return res.status(500).json({
       success: false,
-      error: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

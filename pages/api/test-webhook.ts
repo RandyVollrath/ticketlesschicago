@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -50,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (authError) {
       console.error('Auth error:', authError);
-      return res.status(500).json({ error: 'Auth error', details: authError });
+      return res.status(500).json({ error: 'Auth error' });
     }
 
     if (authData.user) {
@@ -86,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (reminderError) {
         console.error('Reminder error:', reminderError);
-        return res.status(500).json({ error: 'Reminder error', details: reminderError });
+        return res.status(500).json({ error: 'Reminder error' });
       }
 
       console.log('Success! Created user and reminder');
@@ -101,6 +102,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Test webhook error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

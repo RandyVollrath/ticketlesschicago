@@ -10,6 +10,7 @@ import {
   formatCombinedRestrictions,
   type FormattedRestriction,
 } from '../../lib/parking-restriction-formatter';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(
   req: NextApiRequest,
@@ -85,8 +86,7 @@ export default async function handler(
   } catch (error) {
     console.error('Error checking parking location:', error);
     return res.status(500).json({
-      error: 'Failed to check parking location',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeErrorMessage(error)
     });
   }
 }

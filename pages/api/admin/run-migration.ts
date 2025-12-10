@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Admin API Endpoint - Run Message Audit Log Migration
@@ -82,8 +83,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     if (tableError) {
       console.error('❌ Failed to create table:', tableError);
       return res.status(500).json({
-        error: 'Failed to create table',
-        details: tableError
+        error: 'Failed to create table'
       });
     }
 
@@ -149,8 +149,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
   } catch (error: any) {
     console.error('❌ Unexpected error running migration:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

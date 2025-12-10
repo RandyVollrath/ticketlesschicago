@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sendClickSendSMS } from '../../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Force test notification for Randy
 export default async function handler(
@@ -28,7 +29,7 @@ export default async function handler(
       
     if (error) {
       log(`❌ Database error: ${error.message}`);
-      return res.status(500).json({ logs, error: error.message });
+      return res.status(500).json({ logs, error: sanitizeErrorMessage(error) });
     }
     
     log(`Found ${users?.length || 0} total users with renewal dates\n`);

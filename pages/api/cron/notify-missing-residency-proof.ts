@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Cron Job: Notify users to upload proof of residency for permit renewals
@@ -98,7 +99,7 @@ export default async function handler(
         console.error(`Error processing user ${user.user_id}:`, error);
         errors.push({
           userId: user.user_id,
-          error: error.message,
+          error: sanitizeErrorMessage(error),
         });
       }
     }
@@ -120,7 +121,6 @@ export default async function handler(
     console.error('Cron job error:', error);
     return res.status(500).json({
       error: 'Cron job failed',
-      details: error.message,
     });
   }
 }

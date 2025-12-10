@@ -12,6 +12,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -89,8 +90,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
   } catch (error: any) {
     console.error('Error fetching webhook health status:', error);
     return res.status(500).json({
-      error: 'Failed to fetch webhook health status',
-      details: error.message,
+      error: sanitizeErrorMessage(error),
     });
   }
 });

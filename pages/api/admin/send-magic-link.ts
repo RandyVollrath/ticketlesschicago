@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { withAdminAuth } from '../../../lib/auth-middleware';
 import { maskEmail } from '../../../lib/mask-pii';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,7 +33,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
     if (magicLinkError) {
       console.error('Error generating magic link:', magicLinkError);
-      return res.status(500).json({ error: magicLinkError.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(magicLinkError) });
     }
 
     if (!linkData?.properties?.action_link) {
@@ -90,9 +91,8 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
     if (!resendResponse.ok) {
       console.error('Resend error:', resendData);
-      return res.status(500).json({ 
-        error: 'Failed to send email',
-        details: resendData
+      return res.status(500).json({
+        error: 'Failed to send email'
       });
     }
 
@@ -107,6 +107,6 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
   } catch (error: any) {
     console.error('Error sending magic link:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 });

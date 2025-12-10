@@ -10,6 +10,7 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
 import Stripe from 'stripe';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -227,7 +228,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
     console.error('Error in admin renewals GET:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error',
+      error: sanitizeErrorMessage(error),
     });
   }
 }
@@ -511,7 +512,6 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
         return res.status(500).json({
           success: false,
           error: 'Payment retry failed',
-          details: stripeError.message,
           retriesRemaining: 3 - ((charge.retry_count || 0) + 1)
         });
       }
@@ -580,7 +580,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     console.error('Error in admin renewals POST:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error',
+      error: sanitizeErrorMessage(error),
     });
   }
 }

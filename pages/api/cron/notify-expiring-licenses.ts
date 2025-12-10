@@ -11,6 +11,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -88,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error(`Error processing user ${profile.user_id}:`, error);
         errors.push({
           userId: profile.user_id,
-          error: error.message,
+          error: sanitizeErrorMessage(error),
         });
       }
     }
@@ -96,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       success: true,
       message: `Sent ${notifiedCount} license expiration notifications`,
-      totalFound: expiringLicenses.length,
+      totalFound: profiles.length,
       notifiedCount,
       errors: errors.length > 0 ? errors : undefined,
     });
@@ -104,7 +105,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Cron job error:', error);
     return res.status(500).json({
       error: 'Cron job failed',
-      details: error.message,
     });
   }
 }

@@ -3,6 +3,7 @@ import { put } from '@vercel/blob';
 import { IncomingForm } from 'formidable';
 import fs from 'fs';
 import { supabase } from '../../lib/supabase';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export const config = {
   api: {
@@ -131,6 +132,6 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Document upload error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to upload document' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

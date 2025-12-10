@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 import { sendClickSendSMS } from '../../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -161,14 +162,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await logActivity(
         orderId,
         'payment_failed',
-        `Payment failed: ${error.message}`,
-        { error: error.message },
+        `Payment failed: ${sanitizeErrorMessage(error)}`,
+        { error: sanitizeErrorMessage(error) },
         'system'
       );
     }
 
     return res.status(500).json({
-      error: error.message || 'Payment processing failed',
+      error: sanitizeErrorMessage(error),
     });
   }
 }
@@ -365,14 +366,14 @@ async function pushToPartnerPortal(order: any, partner: any) {
     await supabase
       .from('renewal_orders')
       .update({
-        portal_error: error.message,
+        portal_error: sanitizeErrorMessage(error),
       })
       .eq('id', order.id);
 
     await logActivity(
       order.id,
       'portal_push_failed',
-      `Failed to push to partner portal: ${error.message}`,
+      `Failed to push to partner portal: ${sanitizeErrorMessage(error)}`,
       null,
       'system'
     );

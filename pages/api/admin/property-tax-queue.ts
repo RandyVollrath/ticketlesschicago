@@ -14,6 +14,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,7 +70,7 @@ async function getPropertyTaxQueue(req: NextApiRequest, res: NextApiResponse) {
 
     if (error) {
       console.error('Error fetching property tax queue:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
 
     // Filter in JavaScript for complex logic
@@ -133,6 +134,6 @@ async function getPropertyTaxQueue(req: NextApiRequest, res: NextApiResponse) {
 
   } catch (error: any) {
     console.error('Property tax queue error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

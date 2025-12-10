@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
 import { sendClickSendVoiceCall } from '../../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface ProcessResult {
   success: boolean;
@@ -148,7 +149,7 @@ async function processStreetCleaningReminders(type: string) {
     let { data: users, error: userError } = await query;
 
     if (userError) {
-      errors.push(`Failed to fetch users: ${userError.message}`);
+      errors.push(`Failed to fetch users: ${sanitizeErrorMessage(userError)}`);
       return { processed, successful, failed, errors };
     }
 
@@ -260,14 +261,14 @@ async function processStreetCleaningReminders(type: string) {
         
       } catch (userError) {
         console.error(`Error processing user ${user.email}:`, userError);
-        errors.push(`User ${user.email}: ${userError.message}`);
+        errors.push(`User ${user.email}: ${sanitizeErrorMessage(userError)}`);
         failed++;
       }
     }
     
   } catch (error) {
     console.error('Error in processStreetCleaningReminders:', error);
-    errors.push(`General error: ${error.message}`);
+    errors.push(`General error: ${sanitizeErrorMessage(error)}`);
   }
 
   return { processed, successful, failed, errors };

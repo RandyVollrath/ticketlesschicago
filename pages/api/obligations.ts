@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyOwnership, handleAuthError } from '../../lib/auth-middleware';
 import { supabaseAdmin } from '../../lib/supabase';
 import { z } from 'zod';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Validation schemas
 const getObligationsSchema = z.object({
@@ -111,7 +112,7 @@ export default async function handler(
       return res.status(200).json(response);
     } catch (error: any) {
       console.error('Obligations fetch error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 
@@ -169,7 +170,7 @@ export default async function handler(
       });
     } catch (error: any) {
       console.error('Obligation create error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 
@@ -257,7 +258,7 @@ export default async function handler(
       });
     } catch (error: any) {
       console.error('Obligation update error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 
@@ -301,7 +302,7 @@ export default async function handler(
       return res.status(200).json({ success: true, message: 'Obligation deleted' });
     } catch (error: any) {
       console.error('Obligation delete error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 

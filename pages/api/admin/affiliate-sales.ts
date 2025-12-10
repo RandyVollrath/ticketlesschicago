@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method === 'GET') {
@@ -33,7 +34,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
 
   } catch (error: any) {
     console.error('Error fetching affiliate sales:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
 
@@ -64,6 +65,6 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse, adminUser:
 
   } catch (error: any) {
     console.error('Error updating commission status:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

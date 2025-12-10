@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sendClickSendSMS } from '../../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Checks if any user's car was towed recently
 // Sends immediate SMS/email alerts
@@ -186,7 +187,7 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
     console.error('Error checking towed vehicles:', error);
     return res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

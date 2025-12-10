@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
 import { sendClickSendSMS } from '../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -522,8 +523,7 @@ export default async function handler(
     console.error('Snow ban notification job failed:', error);
     return res.status(500).json({
       success: false,
-      error: 'Job failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

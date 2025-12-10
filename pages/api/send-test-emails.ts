@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { notificationService } from '../../lib/notifications';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -104,7 +105,7 @@ TicketLess Chicago - Keeping Chicago drivers compliant`
         }
       } catch (error: any) {
         results.failed++;
-        results.errors.push(`Error sending email to ${user.email}: ${error.message}`);
+        results.errors.push(`Error sending email to ${user.email}: ${sanitizeErrorMessage(error)}`);
       }
     }
 
@@ -116,6 +117,6 @@ TicketLess Chicago - Keeping Chicago drivers compliant`
 
   } catch (error: any) {
     console.error('Send test emails error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

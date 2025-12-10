@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -104,16 +105,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         finalResult: finalWard43
       },
       errors: {
-        allZonesError: allZonesError?.message || null,
-        scheduleError: scheduleError?.message || null
+        allZonesError: allZonesError ? sanitizeErrorMessage(allZonesError) : null,
+        scheduleError: scheduleError ? sanitizeErrorMessage(scheduleError) : null
       }
     });
 
   } catch (error: any) {
     console.error('Debug data types API error:', error);
-    return res.status(500).json({ 
-      error: 'Debug API failed',
-      details: error.message
+    return res.status(500).json({
+      error: 'Debug API failed'
     });
   }
 }

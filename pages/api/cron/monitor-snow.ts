@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkForSnow } from '../../../lib/weather-service';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Cron job endpoint to monitor snow conditions
@@ -66,7 +67,7 @@ export default async function handler(
     }
 
     if (!snowData) {
-      throw new Error(`Weather check failed after 3 attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
+      throw new Error(`Weather check failed after 3 attempts`);
     }
 
     console.log('Snow check result:', snowData);
@@ -178,6 +179,19 @@ export default async function handler(
           console.error('User notification failed:', notifyError);
         }
 
+        // Also send push notifications to mobile app users parked on snow routes
+        let mobileNotifyResult = null;
+        try {
+          const { sendMobileSnowBanNotifications } = await import('./mobile-snow-notifications');
+          mobileNotifyResult = await sendMobileSnowBanNotifications(
+            notificationType,
+            snowData.snowAmountInches
+          );
+          console.log('Mobile notifications sent:', mobileNotifyResult);
+        } catch (mobileError) {
+          console.error('Mobile notification failed:', mobileError);
+        }
+
         // Also notify admin
         try {
           const { notifyAdminSnow } = await import('../admin/notify-admin-snow');
@@ -199,6 +213,7 @@ export default async function handler(
           snowCheck: snowCheckResult,
           notificationType,
           userNotifications: userNotifyResult,
+          mobileNotifications: mobileNotifyResult,
           processingTime: Date.now() - startTime
         });
       } else {
@@ -226,8 +241,7 @@ export default async function handler(
     console.error('Snow monitoring cron failed:', error);
     return res.status(500).json({
       success: false,
-      error: 'Monitoring failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeErrorMessage(error),
       processingTime: Date.now() - startTime
     });
   }

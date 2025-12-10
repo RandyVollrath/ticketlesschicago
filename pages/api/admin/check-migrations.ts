@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Check if database migrations have been run
@@ -69,8 +70,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     });
   } catch (error: any) {
     return res.status(500).json({
-      error: 'Failed to check migrations',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

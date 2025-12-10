@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Input validation schema
 const remitterSignupSchema = z.object({
@@ -107,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Signup error:', error);
-    return res.status(500).json({ error: 'Failed to create account' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
 
@@ -190,7 +191,7 @@ async function sendWelcomeEmail(partner: any, apiKey: string) {
       console.error('❌ Failed to send welcome email:', errorText);
     }
   } catch (error: any) {
-    console.error('Error sending welcome email:', error.message);
+    console.error('Error sending welcome email:', error);
     // Don't throw - signup should still succeed even if email fails
   }
 }

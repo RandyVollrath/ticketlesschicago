@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Use MyStreetCleaning database for street cleaning schedule data
 const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
@@ -459,13 +460,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('❌ Alternative parking API error:', error);
-    
-    return res.status(500).json({ 
-      error: 'Failed to find alternative parking zones',
-      details: {
-        error_message: error.message,
-        user_location: { ward, section }
-      }
+
+    return res.status(500).json({
+      error: sanitizeErrorMessage(error)
     });
   }
 }

@@ -6,6 +6,7 @@ import {
   logMessageBlocked
 } from '../../../lib/message-audit-logger';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Test Endpoint - Populate Audit Log with Sample Data
@@ -182,8 +183,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
   } catch (error: any) {
     console.error('❌ Error creating sample entries:', error);
     return res.status(500).json({
-      error: 'Failed to create sample entries',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

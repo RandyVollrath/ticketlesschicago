@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { withAdminAuth } from '../../../lib/auth-middleware';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const ADMIN_EMAIL = 'ticketlessamerica@gmail.com';
 
@@ -117,8 +118,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('Admin snow notification failed:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to send admin notification',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 });

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { requireAuth, handleAuthError } from '../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(
   req: NextApiRequest,
@@ -51,9 +52,8 @@ export default async function handler(
 
   } catch (error) {
     console.error('Error fetching obligations:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch obligations',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    res.status(500).json({
+      error: sanitizeErrorMessage(error)
     });
   }
 }

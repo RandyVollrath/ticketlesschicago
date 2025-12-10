@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      return res.status(500).json({ error: 'Failed to upload image: ' + uploadError.message });
+      return res.status(500).json({ error: 'Failed to upload image' });
     }
 
     const { data: urlData } = supabase.storage
@@ -145,7 +146,7 @@ Only return the JSON object, no other text.`
 
     if (insertError) {
       console.error('Insert error:', insertError);
-      return res.status(500).json({ error: 'Failed to create contest record: ' + insertError.message });
+      return res.status(500).json({ error: 'Failed to create contest record' });
     }
 
     res.status(200).json({
@@ -156,6 +157,6 @@ Only return the JSON object, no other text.`
 
   } catch (error: any) {
     console.error('Upload ticket error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

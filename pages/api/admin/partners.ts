@@ -7,6 +7,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,7 +50,7 @@ async function handler(
 
       if (error) {
         console.error('Error fetching partners:', error);
-        return res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
       }
 
       // For each partner, get their order stats
@@ -105,7 +106,7 @@ async function handler(
 
     } catch (error: any) {
       console.error('Partners API error:', error);
-      return res.status(500).json({ success: false, error: error.message });
+      return res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
     }
   }
 
@@ -150,7 +151,7 @@ async function handler(
 
       if (error) {
         console.error('Error updating partner:', error);
-        return res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
       }
 
       return res.status(200).json({
@@ -160,7 +161,7 @@ async function handler(
 
     } catch (error: any) {
       console.error('Partner update error:', error);
-      return res.status(500).json({ success: false, error: error.message });
+      return res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
     }
   }
 

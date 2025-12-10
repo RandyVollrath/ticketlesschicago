@@ -19,6 +19,7 @@ import { simpleParser } from 'mailparser';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { validateResidencyProof } from '../protection/validate-residency-proof';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -277,7 +278,7 @@ async function convertHTMLToPDF(html: string, metadata: { from?: string; subject
     return { buffer: Buffer.from(pdfBuffer), extractedInfo };
   } catch (error: any) {
     console.error('❌ HTML to PDF conversion failed:', error);
-    throw new Error(`HTML to PDF conversion failed: ${error.message}`);
+    throw new Error(`HTML to PDF conversion failed`);
   } finally {
     if (browser) {
       await browser.close();
@@ -442,10 +443,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               });
             }
           } catch (error: any) {
-            console.error('❌ Error verifying Gmail forwarding:', error.message);
+            console.error('❌ Error verifying Gmail forwarding:', error);
             return res.status(500).json({
               error: 'Failed to verify forwarding address',
-              details: error.message,
             });
           }
         } else {
@@ -599,7 +599,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Upload error:', uploadError);
       return res.status(500).json({
         error: 'Failed to upload bill',
-        details: uploadError.message,
       });
     }
 
@@ -698,7 +697,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Email processing error:', error);
     return res.status(500).json({
       error: 'Processing failed',
-      details: error.message,
     });
   }
 }

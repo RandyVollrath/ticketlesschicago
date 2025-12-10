@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { logAuditEvent } from '../../../lib/audit-logger';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Remitter API Endpoint - Confirm City Payment
@@ -73,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (findError) {
       console.error('Error finding renewal:', findError);
-      return res.status(500).json({ error: 'Database error', details: findError.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(findError) });
     }
 
     if (!renewal) {
@@ -124,7 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (updateError) {
       console.error('Error updating renewal:', updateError);
-      return res.status(500).json({ error: 'Update failed', details: updateError.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(updateError) });
     }
 
     // CRITICAL: Update user's profile expiry date to next year
@@ -199,8 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       profile_update: profileUpdateError ? {
         success: false,
-        error: 'Failed to update user profile expiry date',
-        details: profileUpdateError.message
+        error: 'Failed to update user profile expiry date'
       } : {
         success: true,
         field_updated: expiryField,
@@ -213,8 +213,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Unexpected error in confirm-payment:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

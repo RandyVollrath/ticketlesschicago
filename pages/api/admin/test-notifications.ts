@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createNotificationScheduler } from '../../../lib/notifications';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Admin Test Endpoint - Run Notifications in Dry Run Mode
@@ -55,8 +56,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
   } catch (error: any) {
     console.error('❌ Error running notifications:', error);
     return res.status(500).json({
-      error: 'Failed to process notifications',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

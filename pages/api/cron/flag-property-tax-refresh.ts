@@ -11,6 +11,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (queryError) {
       console.error('Error querying users:', queryError);
-      return res.status(500).json({ error: queryError.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(queryError) });
     }
 
     if (!users || users.length === 0) {
@@ -59,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (updateError) {
       console.error('Error flagging users:', updateError);
-      return res.status(500).json({ error: updateError.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(updateError) });
     }
 
     console.log(`Flagged ${users.length} homeowners for property tax refresh`);
@@ -72,6 +73,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Flag property tax refresh error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

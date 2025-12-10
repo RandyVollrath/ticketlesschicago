@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NotificationService } from '../../lib/notifications';
 import { supabaseAdmin } from '../../lib/supabase';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(
   req: NextApiRequest,
@@ -143,8 +144,7 @@ export default async function handler(
   } catch (error) {
     console.error('Test notification error:', error);
     res.status(500).json({
-      error: 'Failed to send test notifications',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeErrorMessage(error),
       results
     });
   }

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkForSnow } from '../../../lib/weather-service';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * API endpoint to check current snow conditions
@@ -132,8 +133,7 @@ export default async function handler(
     console.error('Error checking snow:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to check snow conditions',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

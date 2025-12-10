@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
@@ -27,7 +28,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
     if (error) {
       console.error('Update error:', error);
-      return res.status(500).json({ error: 'Failed to update user', details: error });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
 
     return res.status(200).json({
@@ -38,6 +39,6 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
   } catch (error: any) {
     console.error('Update user error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 });

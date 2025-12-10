@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 import { isAddressOnWinterBan } from '../../lib/winter-ban-matcher';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // MyStreetCleaning database for PostGIS queries (has the geospatial data)
 // Uses environment variables - set MSC_SUPABASE_URL and MSC_SUPABASE_ANON_KEY in .env
@@ -164,12 +165,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error: any) {
       console.error('❌ Geocoding error:', error);
 
-      return res.status(500).json({ 
-        error: 'Geocoding failed',
-        details: {
-          error_message: error.message,
-          address: address
-        }
+      return res.status(500).json({
+        error: 'Geocoding failed'
       });
     }
   }
@@ -361,14 +358,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (scheduleError) {
       console.error('❌ Schedule lookup error:', scheduleError);
-      
-      return res.status(500).json({ 
-        error: 'Failed to get cleaning schedule',
-        details: {
-          database_error: scheduleError.message,
-          ward: foundWard,
-          section: foundSection
-        }
+
+      return res.status(500).json({
+        error: 'Failed to get cleaning schedule'
       });
     }
 
@@ -430,11 +422,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('❌ API Error:', error);
 
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: {
-        error_message: error.message
-      }
+    return res.status(500).json({
+      error: sanitizeErrorMessage(error)
     });
   }
 }

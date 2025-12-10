@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
 import { calculateNextCleaning as calculateSFNextCleaning, SFStreetSweepingSchedule } from '../../../lib/sf-street-sweeping';
 import { calculateNextCleaning as calculateSDNextCleaning, SDStreetSweepingSchedule } from '../../../lib/sd-street-sweeping';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface ProcessResult {
   success: boolean;
@@ -112,7 +113,7 @@ async function processSFStreetCleaningReminders(type: string) {
       .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
 
     if (userError) {
-      errors.push(`Failed to fetch SF users: ${userError.message}`);
+      errors.push(`Failed to fetch SF users: ${sanitizeErrorMessage(userError)}`);
       return { processed, successful, failed, errors };
     }
 
@@ -282,7 +283,7 @@ async function processSFStreetCleaningReminders(type: string) {
 
       } catch (userError) {
         failed++;
-        const errorMsg = `Failed to process SF user ${user.id}: ${userError instanceof Error ? userError.message : 'Unknown error'}`;
+        const errorMsg = `Failed to process SF user ${user.id}: ${sanitizeErrorMessage(userError)}`;
         errors.push(errorMsg);
         console.error(errorMsg);
       }
@@ -291,7 +292,7 @@ async function processSFStreetCleaningReminders(type: string) {
     return { processed, successful, failed, errors };
 
   } catch (error) {
-    errors.push(`Fatal SF error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    errors.push(`Fatal SF error: ${sanitizeErrorMessage(error)}`);
     return { processed, successful, failed, errors };
   }
 }
@@ -313,7 +314,7 @@ async function processSDStreetCleaningReminders(type: string) {
       .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
 
     if (userError) {
-      errors.push(`Failed to fetch SD users: ${userError.message}`);
+      errors.push(`Failed to fetch SD users: ${sanitizeErrorMessage(userError)}`);
       return { processed, successful, failed, errors };
     }
 
@@ -518,7 +519,7 @@ async function processSDStreetCleaningReminders(type: string) {
 
       } catch (userError) {
         failed++;
-        const errorMsg = `Failed to process SD user ${user.id}: ${userError instanceof Error ? userError.message : 'Unknown error'}`;
+        const errorMsg = `Failed to process SD user ${user.id}: ${sanitizeErrorMessage(userError)}`;
         errors.push(errorMsg);
         console.error(errorMsg);
       }
@@ -527,7 +528,7 @@ async function processSDStreetCleaningReminders(type: string) {
     return { processed, successful, failed, errors };
 
   } catch (error) {
-    errors.push(`Fatal SD error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    errors.push(`Fatal SD error: ${sanitizeErrorMessage(error)}`);
     return { processed, successful, failed, errors };
   }
 }
@@ -549,7 +550,7 @@ async function processLAStreetCleaningReminders(type: string) {
       .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
 
     if (userError) {
-      errors.push(`Failed to fetch LA users: ${userError.message}`);
+      errors.push(`Failed to fetch LA users: ${sanitizeErrorMessage(userError)}`);
       return { processed, successful, failed, errors };
     }
 
@@ -661,7 +662,7 @@ async function processLAStreetCleaningReminders(type: string) {
 
       } catch (userError) {
         failed++;
-        const errorMsg = `Failed to process LA user ${user.id}: ${userError instanceof Error ? userError.message : 'Unknown error'}`;
+        const errorMsg = `Failed to process LA user ${user.id}: ${sanitizeErrorMessage(userError)}`;
         errors.push(errorMsg);
         console.error(errorMsg);
       }
@@ -670,7 +671,7 @@ async function processLAStreetCleaningReminders(type: string) {
     return { processed, successful, failed, errors };
 
   } catch (error) {
-    errors.push(`Fatal LA error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    errors.push(`Fatal LA error: ${sanitizeErrorMessage(error)}`);
     return { processed, successful, failed, errors };
   }
 }

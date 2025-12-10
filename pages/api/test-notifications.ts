@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { notificationScheduler } from '../../lib/notifications';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(
   req: NextApiRequest,
@@ -32,10 +33,9 @@ export default async function handler(
     
   } catch (error) {
     console.error('❌ Error processing notifications:', error);
-    
+
     res.status(500).json({
-      error: 'Failed to process notifications',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

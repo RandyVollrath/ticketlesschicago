@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Use MyStreetCleaning database for street cleaning data
 const MSC_URL = process.env.MSC_SUPABASE_URL;
@@ -164,10 +165,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Street cleaning data API error:', error);
-    
-    return res.status(500).json({ 
-      error: 'Failed to load street cleaning data',
-      details: error.message
+
+    return res.status(500).json({
+      error: sanitizeErrorMessage(error)
     });
   }
 }

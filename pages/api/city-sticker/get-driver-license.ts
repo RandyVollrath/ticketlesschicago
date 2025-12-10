@@ -18,6 +18,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -123,7 +124,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error('Front signed URL error:', frontError);
         return res.status(500).json({
           error: 'Failed to generate front download URL',
-          details: frontError.message,
         });
       }
 
@@ -147,7 +147,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error('Back signed URL error:', backError);
         return res.status(500).json({
           error: 'Failed to generate back download URL',
-          details: backError.message,
         });
       }
 
@@ -210,7 +209,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Get driver license error:', error);
     return res.status(500).json({
       error: 'Failed to retrieve license',
-      details: error.message,
     });
   }
 }

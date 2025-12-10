@@ -11,6 +11,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           errors.push({
             userId: profile.user_id,
             path: profile.residency_proof_path,
-            error: deleteError.message,
+            error: sanitizeErrorMessage(deleteError),
           });
           continue;
         }
@@ -76,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error(`Failed to update profile ${profile.user_id}:`, updateError);
           errors.push({
             userId: profile.user_id,
-            error: updateError.message,
+            error: sanitizeErrorMessage(updateError),
           });
           continue;
         }
@@ -87,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error(`Error processing user ${profile.user_id}:`, error);
         errors.push({
           userId: profile.user_id,
-          error: error.message,
+          error: sanitizeErrorMessage(error),
         });
       }
     }
@@ -101,8 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Cleanup error:', error);
     return res.status(500).json({
-      error: 'Cleanup failed',
-      details: error.message,
+      error: sanitizeErrorMessage(error),
     });
   }
 }

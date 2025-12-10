@@ -13,6 +13,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import vision from '@google-cloud/vision';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -676,7 +677,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .download(docPath);
 
     if (downloadError || !fileData) {
-      return res.status(404).json({ error: 'Document not found in storage', details: downloadError?.message });
+      return res.status(404).json({ error: 'Document not found in storage' });
     }
 
     // Convert to buffer
@@ -714,8 +715,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Validation error:', error);
     return res.status(500).json({
-      error: 'Validation failed',
-      details: error.message,
+      error: sanitizeErrorMessage(error)
     });
   }
 }

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
 import { calculateNextCleaning, BostonStreetSweepingSchedule } from '../../../lib/boston-street-sweeping';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface ProcessResult {
   success: boolean;
@@ -106,7 +107,7 @@ async function processBostonStreetCleaningReminders(type: string) {
       .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
 
     if (userError) {
-      errors.push(`Failed to fetch Boston users: ${userError.message}`);
+      errors.push(`Failed to fetch Boston users: ${sanitizeErrorMessage(userError)}`);
       return { processed, successful, failed, errors };
     }
 
@@ -354,7 +355,7 @@ async function processBostonStreetCleaningReminders(type: string) {
 
       } catch (userError) {
         failed++;
-        const errorMsg = `Failed to process user ${user.id}: ${userError instanceof Error ? userError.message : 'Unknown error'}`;
+        const errorMsg = `Failed to process user ${user.id}: ${sanitizeErrorMessage(userError)}`;
         errors.push(errorMsg);
         console.error(errorMsg);
       }
@@ -363,7 +364,7 @@ async function processBostonStreetCleaningReminders(type: string) {
     return { processed, successful, failed, errors };
 
   } catch (error) {
-    errors.push(`Fatal error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    errors.push(`Fatal error: ${sanitizeErrorMessage(error)}`);
     return { processed, successful, failed, errors };
   }
 }

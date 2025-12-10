@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const CHICAGO_API_URL = 'https://data.cityofchicago.org/resource/u9xt-hiju.json';
 const BATCH_SIZE = 1000;
@@ -264,7 +265,7 @@ export default async function handler(
         last_synced_at: new Date().toISOString(),
         total_records: 0,
         sync_status: 'failed',
-        error_message: error.message
+        error_message: sanitizeErrorMessage(error)
       });
     } catch (logError) {
       console.error('Failed to log error to database:', logError);
@@ -272,7 +273,7 @@ export default async function handler(
 
     return res.status(500).json({
       success: false,
-      error: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

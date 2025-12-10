@@ -15,6 +15,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendClickSendSMS } from '../../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -140,9 +141,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.failed++;
         results.errors.push({
           order: order.order_number,
-          error: err.message
+          error: sanitizeErrorMessage(err)
         });
-        console.error(`Error processing order ${order.order_number}:`, err.message);
+        console.error(`Error processing order ${order.order_number}:`, err);
       }
     }
 
@@ -156,6 +157,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Sticker reminder cron error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
