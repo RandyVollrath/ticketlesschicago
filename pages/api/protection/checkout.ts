@@ -6,6 +6,7 @@ import stripeConfig from '../../../lib/stripe-config';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 import { validateClientReferenceId } from '../../../lib/webhook-validator';
 import { maskEmail } from '../../../lib/mask-pii';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Input validation schema
 const checkoutSchema = z.object({
@@ -202,6 +203,6 @@ export default async function handler(
       userAgent: getUserAgent(req),
     });
 
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

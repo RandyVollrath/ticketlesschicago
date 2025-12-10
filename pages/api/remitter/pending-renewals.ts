@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { validatePagination, sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Remitter API Endpoint - Get Pending Renewals
@@ -32,7 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { renewal_type, limit = '100' } = req.query;
+  const { renewal_type } = req.query;
+  const { limit: validatedLimit } = validatePagination(req.query.limit, undefined, 100);
 
   try {
     // Build query
@@ -65,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('city_payment_status', 'pending') // We haven't paid city yet
       .gte('due_date', new Date().toISOString().split('T')[0]) // Only current/future
       .order('due_date', { ascending: true })
-      .limit(parseInt(limit as string));
+      .limit(validatedLimit);
 
     // Optional filter by renewal type
     if (renewal_type && ['city_sticker', 'license_plate'].includes(renewal_type as string)) {
@@ -76,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       console.error('Error fetching pending renewals:', error);
-      return res.status(500).json({ error: 'Database error', details: error.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
 
     // Format response
