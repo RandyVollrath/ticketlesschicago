@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { verifyAuthenticationResponse } from '@simplewebauthn/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../../lib/rate-limiter'
+import { maskUserId } from '../../../../lib/mask-pii'
 
 // Create admin client directly in API route to ensure proper environment variables
 const supabaseAdmin = createClient(
@@ -65,6 +67,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
+
+  // SECURITY: Rate limiting by IP
+  const ip = getClientIP(req)
+  const rateLimitResult = await checkRateLimit(ip, 'auth')
+
+  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit)
+  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining)
+
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many authentication attempts. Please try again later.',
+    })
+  }
+
+  // Record rate limit action
+  await recordRateLimitAction(ip, 'auth')
 
   try {
     const { id, rawId, response, type, challenge } = req.body
@@ -161,7 +180,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    console.log('Found passkey for user:', passkeyRecord.user_id)
+    console.log('Found passkey for user:', maskUserId(passkeyRecord.user_id))
 
     // Log what we're about to verify
     console.log('About to verify with:', {

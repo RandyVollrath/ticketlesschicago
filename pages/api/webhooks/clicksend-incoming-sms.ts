@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { verifyWebhook } from '../../../lib/webhook-verification';
+import { maskPhone, maskEmail } from '../../../lib/mask-pii';
 
 /**
  * ClickSend Incoming SMS Webhook
@@ -67,11 +68,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Validate phone number format (basic check)
     if (!/^[\+\d\s\-\(\)]+$/.test(fromNumber)) {
-      console.error('Invalid phone number format:', fromNumber);
+      console.error('Invalid phone number format:', maskPhone(fromNumber));
       return res.status(400).json({ error: 'Invalid phone number format' });
     }
 
-    console.log(`📨 SMS from ${fromNumber}: "${messageBody}"`);
+    console.log(`📨 SMS from ${maskPhone(fromNumber)}: "${messageBody.substring(0, 50)}..."`);
 
     if (!supabaseAdmin) {
       console.error('Supabase admin client not available');
@@ -87,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       normalizedPhone.replace(/^\+?1/, '')
     ];
 
-    console.log('Searching for user with phone variations:', phoneVariations);
+    console.log('Searching for user with phone variations:', phoneVariations.map(p => maskPhone(p)));
 
     // Find user by phone number
     const { data: users, error: userError } = await supabaseAdmin
@@ -100,9 +101,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let matchedUserId = matchedUser?.user_id || null;
 
     if (matchedUser) {
-      console.log(`✅ Matched user: ${matchedEmail}`);
+      console.log(`✅ Matched user: ${maskEmail(matchedEmail)}`);
     } else {
-      console.log(`⚠️  No user found for phone: ${fromNumber}`);
+      console.log(`⚠️  No user found for phone: ${maskPhone(fromNumber)}`);
     }
 
     // Store incoming SMS in database
@@ -179,7 +180,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (emissionsQueryError) {
         console.error('Error querying emissions users:', emissionsQueryError);
       } else if (!emissionsUsers || emissionsUsers.length === 0) {
-        console.log(`⚠️ No users with pending emissions found for phone: ${fromNumber}`);
+        console.log(`⚠️ No users with pending emissions found for phone: ${maskPhone(fromNumber)}`);
         try {
           const { sendClickSendSMS } = await import('../../../lib/sms-service');
           await sendClickSendSMS(
@@ -192,7 +193,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else {
         // Pick the user with the soonest emissions date
         const emissionsUser = emissionsUsers[0];
-        console.log(`✅ Found user with pending emissions: ${emissionsUser.email} (due: ${emissionsUser.emissions_date})`);
+        console.log(`✅ Found user with pending emissions: ${maskEmail(emissionsUser.email)} (due: ${emissionsUser.emissions_date})`);
 
         const currentYear = new Date().getFullYear();
         const emissionsTestYear = currentYear;
@@ -209,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (updateError) {
           console.error('❌ Error marking emissions complete:', updateError);
         } else {
-          console.log(`✅ Emissions marked complete for ${emissionsUser.email} via SMS`);
+          console.log(`✅ Emissions marked complete for ${maskEmail(emissionsUser.email)} via SMS`);
 
           try {
             const { sendClickSendSMS } = await import('../../../lib/sms-service');
@@ -226,7 +227,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Handle STOP/unsubscribe
     if (['stop', 'unsubscribe', 'cancel', 'quit'].includes(messageLower) && matchedUser) {
-      console.log(`🛑 STOP received from ${matchedEmail} - disabling SMS`);
+      console.log(`🛑 STOP received from ${maskEmail(matchedEmail)} - disabling SMS`);
 
       await supabaseAdmin
         .from('user_profiles')

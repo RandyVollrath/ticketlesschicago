@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { checkRateLimit, checkEmailRateLimit, recordRateLimitAction, recordMagicLinkRequest, getClientIP } from '../../../lib/rate-limiter';
+import { maskEmail } from '../../../lib/mask-pii';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -12,13 +14,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Email is required' });
   }
 
+  // SECURITY: Rate limiting by IP
+  const ip = getClientIP(req);
+  const ipRateLimitResult = await checkRateLimit(ip, 'auth');
+
+  res.setHeader('X-RateLimit-Limit', ipRateLimitResult.limit);
+  res.setHeader('X-RateLimit-Remaining', ipRateLimitResult.remaining);
+
+  if (!ipRateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many verification attempts. Please try again later.',
+    });
+  }
+
+  // SECURITY: Rate limiting by email (prevents email bombing)
+  const emailRateLimitResult = await checkEmailRateLimit(email);
+  if (!emailRateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many verification emails sent. Please try again later.',
+    });
+  }
+
   if (!supabaseAdmin) {
     console.error('Supabase admin client not available');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
   try {
-    console.log('📧 Resending verification email to:', email);
+    console.log('📧 Resending verification email to:', maskEmail(email));
 
     // Generate verification link (use magiclink since user already exists)
     const { data: verifyData, error: verifyError } = await supabaseAdmin.auth.admin.generateLink({
@@ -40,6 +65,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log('✅ Verification link generated, sending via Resend...');
+
+    // Record rate limit actions
+    await Promise.all([
+      recordRateLimitAction(ip, 'auth'),
+      recordMagicLinkRequest(email)
+    ]);
 
     // Send verification email with retry logic
     let emailSent = false;
