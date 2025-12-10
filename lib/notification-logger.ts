@@ -45,6 +45,7 @@ export class NotificationLogger {
     }
 
     try {
+      // @ts-expect-error - RPC function not in generated types
       const { data, error } = await supabaseAdmin.rpc('log_notification', {
         p_user_id: entry.user_id || null,
         p_email: entry.email || null,
@@ -56,7 +57,7 @@ export class NotificationLogger {
         p_status: entry.status || 'pending',
         p_external_id: entry.external_id || null,
         p_metadata: entry.metadata || {}
-      });
+      }) as { data: string | null; error: any };
 
       if (error) {
         console.error('Error logging notification:', error);
@@ -85,12 +86,13 @@ export class NotificationLogger {
     }
 
     try {
+      // @ts-expect-error - RPC function not in generated types
       const { error: updateError } = await supabaseAdmin.rpc('update_notification_status', {
         p_id: id,
         p_status: status,
         p_external_id: externalId || null,
         p_error: error || null
-      });
+      }) as { error: any };
 
       if (updateError) {
         console.error('Error updating notification status:', updateError);
@@ -114,9 +116,10 @@ export class NotificationLogger {
     }
 
     try {
+      // @ts-expect-error - RPC function not in generated types
       const { data, error } = await supabaseAdmin.rpc('get_pending_retries', {
         p_limit: limit
-      });
+      }) as { data: NotificationRetryEntry[] | null; error: any };
 
       if (error) {
         console.error('Error getting pending retries:', error);
@@ -140,9 +143,10 @@ export class NotificationLogger {
     }
 
     try {
+      // @ts-expect-error - RPC function not in generated types
       const { error } = await supabaseAdmin.rpc('increment_retry_attempt', {
         p_id: id
-      });
+      }) as { error: any };
 
       if (error) {
         console.error('Error incrementing retry attempt:', error);
@@ -171,25 +175,27 @@ export class NotificationLogger {
     }
 
     try {
+      // @ts-expect-error - notification_logs table not in generated types
       const { data, error } = await supabaseAdmin
         .from('notification_logs')
         .select('notification_type, status')
         .eq('user_id', userId)
-        .gte('created_at', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString());
+        .gte('created_at', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()) as { data: Array<{notification_type: string; status: string}> | null; error: any };
 
       if (error) {
         console.error('Error getting user stats:', error);
         return null;
       }
 
+      const records = data || [];
       const stats = {
-        total: data.length,
-        sent: data.filter(n => n.status === 'sent' || n.status === 'delivered').length,
-        failed: data.filter(n => n.status === 'failed' || n.status === 'bounced').length,
+        total: records.length,
+        sent: records.filter(n => n.status === 'sent' || n.status === 'delivered').length,
+        failed: records.filter(n => n.status === 'failed' || n.status === 'bounced').length,
         by_type: {} as Record<string, number>
       };
 
-      data.forEach(n => {
+      records.forEach(n => {
         stats.by_type[n.notification_type] = (stats.by_type[n.notification_type] || 0) + 1;
       });
 
@@ -210,12 +216,13 @@ export class NotificationLogger {
     }
 
     try {
+      // @ts-expect-error - notification_logs table not in generated types
       const { data, error } = await supabaseAdmin
         .from('notification_logs')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit) as { data: NotificationLogEntry[] | null; error: any };
 
       if (error) {
         console.error('Error getting user history:', error);

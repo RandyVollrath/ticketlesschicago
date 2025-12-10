@@ -143,7 +143,7 @@ export async function sendDailyDigest(options: DigestOptions = {}): Promise<{
           subject,
           text: fullDigest,
           html: generateDigestHTML(fullDigest, stats, adminItems),
-          reply_to: 'support@autopilotamerica.com'
+          replyTo: 'support@autopilotamerica.com'
         });
 
         if (error) {

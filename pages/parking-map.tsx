@@ -225,8 +225,8 @@ export default function ParkingMapPage() {
                 transition: 'all 0.2s ease'
               }}
               onClick={() => window.location.href = '/'}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+              onMouseOver={(e) => (e.target as HTMLElement).style.backgroundColor = '#2563eb'}
+              onMouseOut={(e) => (e.target as HTMLElement).style.backgroundColor = '#3b82f6'}
             >
               ← Back to Dashboard
             </button>

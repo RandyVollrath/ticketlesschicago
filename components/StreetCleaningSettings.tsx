@@ -78,7 +78,7 @@ export default function StreetCleaningSettings() {
     const todayStr = today.toISOString().split('T')[0];
     return dateStr === todayStr;
   };
-  const [cleaningStatus, setCleaningStatus] = useState<'today' | 'next-3-days' | 'later' | 'unknown'>('unknown');
+  const [cleaningStatus, setCleaningStatus] = useState<'today' | 'tomorrow' | 'next-3-days' | 'later' | 'no_upcoming_dates' | 'invalid_zone' | 'unknown'>('unknown');
   const [loadingCleaningInfo, setLoadingCleaningInfo] = useState(false);
   
 
