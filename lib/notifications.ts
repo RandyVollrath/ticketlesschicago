@@ -600,8 +600,10 @@ export class NotificationScheduler {
                 });
               }
               
-              // Email is always sent
-              if (user.email && this.resend) {
+              // Email is sent if user has email enabled (defaults to true if not set)
+              // Check both notify_email (direct column) and prefs.email (legacy JSONB) for backwards compatibility
+              const emailEnabled = user.notify_email !== false && prefs.email !== false;
+              if (emailEnabled && user.email && this.resend) {
                 try {
                   const fromAddress = EMAIL.FROM_DEFAULT;
 
@@ -752,6 +754,18 @@ export class NotificationScheduler {
                   messageChannel: 'email',
                   contextData,
                   reason: 'missing_email'
+                });
+              } else if (!emailEnabled) {
+                // User has disabled email notifications
+                console.log(`📧 Email disabled by user preference, skipping for ${user.email}`);
+                await logMessageSkipped({
+                  userId: user.user_id,
+                  userEmail: user.email,
+                  userPhone: user.phone_number,
+                  messageKey: `${messageKey}_email`,
+                  messageChannel: 'email',
+                  contextData,
+                  reason: 'user_disabled_email'
                 });
               }
               

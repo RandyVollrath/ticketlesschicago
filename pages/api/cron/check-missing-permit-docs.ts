@@ -2,10 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { sendClickSendSMS } from '../../../lib/sms-service';
 
 /**
  * PANIC ALERT: Daily check for users within 30 days of renewal without permit documents
- * Sends urgent email to admin every day until documents are received
+ * 1. Sends urgent email to admin every day until documents are received
+ * 2. Sends reminders to USERS themselves (email + SMS)
  *
  * Runs: Daily at 8am
  */
@@ -89,10 +91,131 @@ export default async function handler(
       });
     }
 
-    // Send PANIC alert email
-    console.log(`🚨 PANIC: ${usersNeedingDocs.length} users need documents!`);
-
+    // ========================================
+    // SEND REMINDERS TO USERS THEMSELVES
+    // ========================================
+    console.log(`📬 Sending document reminders to ${usersNeedingDocs.length} users...`);
     const resend = new Resend(process.env.RESEND_API_KEY);
+    let userRemindersAttempted = 0;
+    let userRemindersSent = 0;
+
+    for (const userInfo of usersNeedingDocs) {
+      userRemindersAttempted++;
+      const daysLeft = userInfo.daysRemaining;
+      const uploadUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/settings`;
+
+      // Determine urgency and reminder frequency
+      // Critical (<=7 days): remind daily
+      // Urgent (8-14 days): remind every 3 days
+      // Normal (15-30 days): remind every 7 days
+      const today = new Date();
+      const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+
+      let shouldRemind = false;
+      if (daysLeft <= 7) {
+        shouldRemind = true; // Daily reminder for critical
+      } else if (daysLeft <= 14) {
+        shouldRemind = dayOfYear % 3 === 0; // Every 3 days for urgent
+      } else {
+        shouldRemind = dayOfYear % 7 === 0; // Weekly for normal
+      }
+
+      if (!shouldRemind) {
+        continue;
+      }
+
+      // Determine what documents are missing
+      // For now, we'll use a generic message since we need to check individual fields
+      const urgencyText = daysLeft <= 7
+        ? '🚨 CRITICAL'
+        : daysLeft <= 14
+        ? '⚠️ URGENT'
+        : '📋 REMINDER';
+
+      // Send EMAIL reminder to user
+      if (userInfo.email) {
+        const userEmailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: ${daysLeft <= 7 ? '#dc2626' : daysLeft <= 14 ? '#f59e0b' : '#2563eb'}; color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">${urgencyText}: Permit Documents Needed</h1>
+            </div>
+            <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+              <p>Hi there,</p>
+
+              <div style="background: ${daysLeft <= 7 ? '#fef2f2' : daysLeft <= 14 ? '#fef3c7' : '#dbeafe'}; border: 2px solid ${daysLeft <= 7 ? '#dc2626' : daysLeft <= 14 ? '#f59e0b' : '#3b82f6'}; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <strong style="font-size: 16px;">Your city sticker renewal is in ${daysLeft} days and we're missing your permit zone documents.</strong>
+              </div>
+
+              <p><strong>We cannot process your renewal without these documents:</strong></p>
+              <ul style="line-height: 1.8;">
+                <li>📄 Front of your driver's license</li>
+                <li>📄 Back of your driver's license</li>
+                <li>🏠 Proof of residency (utility bill, lease, or bank statement showing your Chicago address)</li>
+              </ul>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${uploadUrl}"
+                   style="background-color: ${daysLeft <= 7 ? '#dc2626' : '#2563eb'}; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                  Upload Documents Now
+                </a>
+              </div>
+
+              ${daysLeft <= 7 ? `
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <strong style="color: #dc2626;">⏰ Don't wait!</strong>
+                <p style="margin: 8px 0 0 0; color: #7f1d1d;">
+                  Your renewal deadline is only ${daysLeft} days away. Without your documents, we cannot get your permit and you may receive parking tickets in your zone.
+                </p>
+              </div>
+              ` : ''}
+
+              <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                Need help? Reply to this email or contact support@autopilotamerica.com
+              </p>
+            </div>
+          </div>
+        `;
+
+        try {
+          await resend.emails.send({
+            from: 'Autopilot America <alerts@autopilotamerica.com>',
+            to: [userInfo.email],
+            subject: `${urgencyText}: Upload permit documents - ${daysLeft} days until renewal`,
+            html: userEmailHtml,
+            headers: {
+              'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>'
+            }
+          });
+          console.log(`📧 Sent document reminder email to ${userInfo.email}`);
+          userRemindersSent++;
+        } catch (emailError) {
+          console.error(`Failed to send email to ${userInfo.email}:`, emailError);
+        }
+      }
+
+      // Send SMS reminder to user (only for critical/urgent - <= 14 days)
+      if (userInfo.phone && daysLeft <= 14) {
+        const smsMessage = daysLeft <= 7
+          ? `🚨 URGENT: Your city sticker renewal is in ${daysLeft} days! We need your permit documents NOW or we can't process your permit. Upload at: ${uploadUrl} - Reply HELP for assistance`
+          : `⚠️ REMINDER: ${daysLeft} days until your city sticker renewal. Please upload your permit documents (driver's license + proof of residency) at ${uploadUrl}`;
+
+        try {
+          const smsResult = await sendClickSendSMS(userInfo.phone, smsMessage);
+          if (smsResult.success) {
+            console.log(`📱 Sent document reminder SMS to ${userInfo.phone}`);
+          }
+        } catch (smsError) {
+          console.error(`Failed to send SMS to ${userInfo.phone}:`, smsError);
+        }
+      }
+    }
+
+    console.log(`📬 User reminders: ${userRemindersSent}/${userRemindersAttempted} sent`);
+
+    // ========================================
+    // SEND ADMIN PANIC ALERT
+    // ========================================
+    console.log(`🚨 PANIC: ${usersNeedingDocs.length} users need documents!`);
 
     // Sort by urgency (fewest days remaining first)
     usersNeedingDocs.sort((a, b) => a.daysRemaining - b.daysRemaining);
@@ -231,6 +354,10 @@ export default async function handler(
       message: `Panic alert sent for ${usersNeedingDocs.length} users`,
       usersChecked: users?.length || 0,
       usersNeedingDocs: usersNeedingDocs.length,
+      userReminders: {
+        attempted: userRemindersAttempted,
+        sent: userRemindersSent
+      },
       breakdown: {
         critical: urgentUsers.length,
         urgent: warningUsers.length,
