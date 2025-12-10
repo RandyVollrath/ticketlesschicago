@@ -1,12 +1,34 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { notifyNewUserAboutWinterBan } from '../../../lib/winter-ban-notifications';
 import { isAddressOnSnowRoute } from '../../../lib/snow-route-matcher';
+import { maskEmail, maskPhone } from '../../../lib/mask-pii';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Input validation schema for alert signup
+const alertSignupSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().max(100).optional(),
+  email: z.string().email('Invalid email format').max(255).transform(val => val.toLowerCase().trim()),
+  phone: z.string().min(7).max(20).regex(/^[\+\d\s\-\(\)]+$/, 'Invalid phone number format'),
+  licensePlate: z.string().min(2).max(10).regex(/^[A-Z0-9\-\s]+$/i, 'Invalid license plate').transform(val => val.toUpperCase().trim()),
+  address: z.string().min(5).max(500),
+  zip: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
+  city: z.string().max(100).optional(),
+  vin: z.string().max(17).optional().nullable(),
+  make: z.string().max(50).optional().nullable(),
+  model: z.string().max(50).optional().nullable(),
+  citySticker: z.string().optional().nullable(),
+  token: z.string().max(100).optional().nullable(),
+  smsConsent: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
+  authenticatedUserId: z.string().uuid().optional().nullable(),
+});
 
 // Normalize phone number to E.164 format (+1XXXXXXXXXX)
 function normalizePhoneNumber(phone: string): string {
@@ -46,6 +68,21 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Validate request body
+  const parseResult = alertSignupSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }));
+    console.warn('Alert signup validation failed:', errors);
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: errors,
+    });
+  }
+
   const {
     firstName,
     lastName,
@@ -62,12 +99,10 @@ export default async function handler(
     token,
     smsConsent,
     marketingConsent,
-    authenticatedUserId // For OAuth users, skip user creation
-  } = req.body;
+    authenticatedUserId
+  } = parseResult.data;
 
-  if (!email || !phone || !licensePlate || !address || !zip) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+  console.log(`Alert signup: ${maskEmail(email)}, plate: ${licensePlate}, phone: ${maskPhone(phone)}`);
 
   try {
     // Mark token as used if provided

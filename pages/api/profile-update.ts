@@ -1,6 +1,37 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
 import { supabaseAdmin } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { maskEmail, maskUserId } from '../../lib/mask-pii';
+
+// Input validation schema for profile updates
+const profileUpdateSchema = z.object({
+  userId: z.string().uuid('Invalid user ID format'),
+  email: z.string().email('Invalid email format').max(255),
+  updates: z.object({
+    first_name: z.string().max(100).optional(),
+    last_name: z.string().max(100).optional(),
+    phone: z.string().max(20).optional().nullable(),
+    phone_number: z.string().max(20).optional().nullable(),
+    street_address: z.string().max(500).optional().nullable(),
+    home_address_full: z.string().max(500).optional().nullable(),
+    home_address_ward: z.string().max(10).optional().nullable(),
+    home_address_section: z.string().max(10).optional().nullable(),
+    license_plate: z.string().max(10).regex(/^[A-Z0-9\-\s]*$/i, 'Invalid license plate').optional().nullable(),
+    city_sticker_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional().nullable(),
+    license_plate_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional().nullable(),
+    emissions_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional().nullable(),
+    notify_email: z.boolean().optional(),
+    notify_sms: z.boolean().optional(),
+    notify_push: z.boolean().optional(),
+    notification_preferences: z.record(z.boolean()).optional(),
+    vin: z.string().max(17).optional().nullable(),
+    vehicle_make: z.string().max(50).optional().nullable(),
+    vehicle_model: z.string().max(50).optional().nullable(),
+    vehicle_year: z.number().int().min(1900).max(2100).optional().nullable(),
+    vehicle_color: z.string().max(30).optional().nullable(),
+  }).strict(), // Reject unknown fields
+});
 
 // Normalize phone number to E.164 format (+1XXXXXXXXXX)
 function normalizePhoneNumber(phone: string | null | undefined): string | null {
@@ -33,8 +64,25 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Validate request body
+  const parseResult = profileUpdateSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }));
+    console.warn('Profile update validation failed:', errors);
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: errors,
+    });
+  }
+
   try {
-    const { userId, email, updates } = req.body;
+    const { userId, email, updates } = parseResult.data;
+
+    console.log(`Profile update for user ${maskUserId(userId)} (${maskEmail(email)})`);
 
     // Normalize phone number if present
     if (updates.phone_number) {
