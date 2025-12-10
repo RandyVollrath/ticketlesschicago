@@ -104,12 +104,19 @@ export async function recordRateLimitAction(
   action: RateLimitAction
 ): Promise<void> {
   try {
-    await (supabaseAdmin.from('rate_limits') as any).insert({
-      identifier,
-      action,
-    });
+    // Note: rate_limits table may not be in generated types, using type assertion
+    const { error } = await supabaseAdmin
+      .from('rate_limits')
+      .insert({
+        identifier,
+        action,
+      } as { identifier: string; action: string });
+
+    if (error) {
+      console.error('Failed to record rate limit action:', error.message);
+    }
   } catch (error) {
-    console.error('Failed to record rate limit action:', error);
+    console.error('Failed to record rate limit action:', error instanceof Error ? error.message : error);
   }
 }
 
