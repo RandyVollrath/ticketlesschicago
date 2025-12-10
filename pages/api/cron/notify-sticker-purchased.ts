@@ -9,6 +9,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { email as emailTemplates, sms as smsTemplates } from '../../../lib/message-templates';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -172,57 +173,16 @@ export default async function handler(
         const messageKey = `sticker_purchased_${user.sticker_purchased_at}`;
 
         if (!(await wasNotificationSent(user.user_id, messageKey))) {
-          const expectedDelivery = new Date(purchaseDate);
-          expectedDelivery.setDate(expectedDelivery.getDate() + 10);
+          // Use centralized templates
+          const userContext = { firstName: user.first_name, licensePlate: user.license_plate };
+          const emailContent = emailTemplates.stickerPurchased(userContext, purchaseDate);
+          const smsMessage = smsTemplates.stickerPurchased(user.license_plate);
 
           // Send email
-          const emailSent = await sendEmail(
-            user.email,
-            `Your City Sticker Has Been Purchased! 🎉`,
-            `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0; font-size: 24px;">Great News! Your Sticker is On Its Way</h1>
-              </div>
-              <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
-                <p>Hi ${user.first_name || 'there'},</p>
-                <p>We've successfully purchased your Chicago City Sticker on your behalf! Here's what happens next:</p>
-
-                <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                  <div style="margin-bottom: 12px;">
-                    <strong>License Plate:</strong> ${user.license_plate}
-                  </div>
-                  <div style="margin-bottom: 12px;">
-                    <strong>Purchase Date:</strong> ${purchaseDate.toLocaleDateString()}
-                  </div>
-                  <div>
-                    <strong>Expected Delivery:</strong> Around ${expectedDelivery.toLocaleDateString()}
-                  </div>
-                </div>
-
-                <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 16px 0;">
-                  <h3 style="margin: 0 0 8px; color: #1e40af;">What's Next?</h3>
-                  <ol style="margin: 0; padding-left: 20px; color: #1e40af;">
-                    <li>Your sticker will be mailed to your address on file</li>
-                    <li>It typically arrives within 7-10 business days</li>
-                    <li>Once received, apply it to your windshield immediately</li>
-                  </ol>
-                </div>
-
-                <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-                  This is why you have Autopilot Protection - we handle the hassle so you don't have to!<br><br>
-                  Questions? Reply to this email or contact support@autopilotamerica.com
-                </p>
-              </div>
-            </div>
-            `
-          );
+          const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
 
           // Send SMS
-          const smsSent = await sendSMS(
-            user.phone || user.phone_number,
-            `Autopilot: Great news! Your Chicago City Sticker for ${user.license_plate} has been purchased. It should arrive at your address within 7-10 business days. Don't forget to apply it when it arrives! - Autopilot America`
-          );
+          const smsSent = await sendSMS(user.phone || user.phone_number, smsMessage);
 
           if (emailSent || smsSent) {
             await logNotification(user.user_id, 'sticker_purchased', emailSent ? 'email' : 'sms', messageKey);
@@ -237,40 +197,13 @@ export default async function handler(
         const messageKey = `sticker_delivery_reminder_${user.sticker_purchased_at}`;
 
         if (!(await wasNotificationSent(user.user_id, messageKey))) {
-          const emailSent = await sendEmail(
-            user.email,
-            `Your City Sticker Should Be Arriving Soon`,
-            `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0; font-size: 24px;">📬 Check Your Mailbox!</h1>
-              </div>
-              <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
-                <p>Hi ${user.first_name || 'there'},</p>
-                <p>Your Chicago City Sticker for <strong>${user.license_plate}</strong> should be arriving any day now!</p>
+          // Use centralized templates
+          const userContext = { firstName: user.first_name, licensePlate: user.license_plate };
+          const emailContent = emailTemplates.stickerDelivery(userContext);
+          const smsMessage = smsTemplates.stickerDelivery(user.license_plate);
 
-                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                  <h3 style="margin: 0 0 8px; color: #92400e;">🔔 Important Reminder</h3>
-                  <p style="margin: 0; color: #92400e;">
-                    As soon as your sticker arrives, <strong>apply it to your windshield immediately</strong>.
-                    Don't leave it sitting in your car - you can still get a ticket if the sticker isn't displayed!
-                  </p>
-                </div>
-
-                <p style="margin-top: 16px;">Your sticker was purchased on ${purchaseDate.toLocaleDateString()} and should arrive within 7-10 business days.</p>
-
-                <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-                  Haven't received it after 14 days? Reply to this email and we'll look into it for you.
-                </p>
-              </div>
-            </div>
-            `
-          );
-
-          const smsSent = await sendSMS(
-            user.phone || user.phone_number,
-            `Autopilot: Your city sticker for ${user.license_plate} should arrive soon! Remember to apply it to your windshield right away. Haven't received it? Reply to let us know. - Autopilot America`
-          );
+          const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
+          const smsSent = await sendSMS(user.phone || user.phone_number, smsMessage);
 
           if (emailSent || smsSent) {
             await logNotification(user.user_id, 'sticker_delivery_reminder', emailSent ? 'email' : 'sms', messageKey);
@@ -285,51 +218,13 @@ export default async function handler(
         const messageKey = `sticker_apply_reminder_${user.sticker_purchased_at}`;
 
         if (!(await wasNotificationSent(user.user_id, messageKey))) {
-          const emailSent = await sendEmail(
-            user.email,
-            `Did You Apply Your New City Sticker?`,
-            `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0; font-size: 24px;">Quick Check-In</h1>
-              </div>
-              <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
-                <p>Hi ${user.first_name || 'there'},</p>
-                <p>It's been about 2 weeks since we purchased your city sticker. Just checking in!</p>
+          // Use centralized templates
+          const userContext = { firstName: user.first_name, licensePlate: user.license_plate };
+          const emailContent = emailTemplates.stickerApplyCheck(userContext);
+          const smsMessage = smsTemplates.stickerApplyCheck(user.license_plate);
 
-                <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center;">
-                  <h3 style="margin: 0 0 16px; color: #374151;">Did you receive and apply your sticker?</h3>
-                  <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a href="https://autopilotamerica.com/settings?sticker_applied=yes"
-                       style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                      Yes, Applied It!
-                    </a>
-                    <a href="https://autopilotamerica.com/settings?sticker_applied=no"
-                       style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                      Not Yet / Problem
-                    </a>
-                  </div>
-                </div>
-
-                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 16px 0;">
-                  <p style="margin: 0; color: #92400e;">
-                    <strong>⚠️ Reminder:</strong> Even if you purchased a new sticker, you can still get a ticket if it's not displayed on your windshield!
-                  </p>
-                </div>
-
-                <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-                  If you haven't received your sticker yet, reply to this email and we'll investigate.<br><br>
-                  Thanks for being an Autopilot America member!
-                </p>
-              </div>
-            </div>
-            `
-          );
-
-          const smsSent = await sendSMS(
-            user.phone || user.phone_number,
-            `Autopilot: Quick check - did you receive and apply your city sticker for ${user.license_plate}? If not displayed, you can still get a ticket! Reply YES if applied, or NO if there's a problem. - Autopilot America`
-          );
+          const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
+          const smsSent = await sendSMS(user.phone || user.phone_number, smsMessage);
 
           if (emailSent || smsSent) {
             await logNotification(user.user_id, 'sticker_apply_reminder', emailSent ? 'email' : 'sms', messageKey);
