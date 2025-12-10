@@ -2,12 +2,18 @@
  * Admin API for Renewal Management
  *
  * GET /api/admin/renewals - Fetch all renewal data for admin dashboard
- * POST /api/admin/renewals - Confirm city payment / update status
+ * POST /api/admin/renewals - Confirm city payment / update status / retry failed charges
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import Stripe from 'stripe';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-12-18.acacia',
+});
 
 interface RenewalCharge {
   id: string;
@@ -349,11 +355,166 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
 
     } else if (action === 'retry_charge') {
       // Retry a failed charge
-      // TODO: Implement retry logic
-      return res.status(501).json({
-        success: false,
-        error: 'Retry not yet implemented',
-      });
+      const { chargeId } = req.body;
+
+      if (!chargeId) {
+        return res.status(400).json({ success: false, error: 'Charge ID required' });
+      }
+
+      // Get the failed charge record
+      const { data: charge, error: chargeError } = await supabaseAdmin!
+        .from('renewal_charges')
+        .select('*')
+        .eq('id', chargeId)
+        .single();
+
+      if (chargeError || !charge) {
+        return res.status(404).json({ success: false, error: 'Charge not found' });
+      }
+
+      if (charge.status === 'charged') {
+        return res.status(400).json({ success: false, error: 'Charge already successful' });
+      }
+
+      // Check retry limit (max 3 retries)
+      if ((charge.retry_count || 0) >= 3) {
+        return res.status(400).json({ success: false, error: 'Maximum retry attempts reached (3)' });
+      }
+
+      // Get user's Stripe customer ID
+      const { data: profile, error: profileError } = await supabaseAdmin!
+        .from('user_profiles')
+        .select('stripe_customer_id, email, first_name')
+        .eq('user_id', charge.user_id)
+        .single();
+
+      if (profileError || !profile) {
+        return res.status(404).json({ success: false, error: 'User profile not found' });
+      }
+
+      if (!profile.stripe_customer_id) {
+        return res.status(400).json({ success: false, error: 'User has no payment method on file' });
+      }
+
+      // Attempt to charge the card via Stripe
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(charge.total_charged * 100), // Convert to cents
+          currency: 'usd',
+          customer: profile.stripe_customer_id,
+          off_session: true,
+          confirm: true,
+          description: `${charge.charge_type.replace('_', ' ')} renewal for ${charge.license_plate} (retry)`,
+          metadata: {
+            user_id: charge.user_id,
+            charge_type: charge.charge_type,
+            license_plate: charge.license_plate || '',
+            renewal_deadline: charge.renewal_deadline,
+            charge_record_id: charge.id,
+            is_retry: 'true',
+            retry_number: String((charge.retry_count || 0) + 1)
+          }
+        });
+
+        if (paymentIntent.status === 'succeeded') {
+          // Update charge record to 'charged'
+          await supabaseAdmin!
+            .from('renewal_charges')
+            .update({
+              status: 'charged',
+              stripe_payment_intent_id: paymentIntent.id,
+              stripe_charge_id: paymentIntent.latest_charge as string,
+              charged_at: new Date().toISOString(),
+              error_message: null,
+              retry_count: (charge.retry_count || 0) + 1,
+              last_retry_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', chargeId);
+
+          console.log(`✅ Retry successful: Charged $${charge.total_charged.toFixed(2)} to user ${charge.user_id}`);
+
+          // Send confirmation email
+          if (profile.email) {
+            try {
+              await fetchWithTimeout('https://api.resend.com/emails', {
+                method: 'POST',
+                timeout: DEFAULT_TIMEOUTS.email,
+                headers: {
+                  'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  from: 'Autopilot America <alerts@autopilotamerica.com>',
+                  to: profile.email,
+                  subject: `Payment Successful: ${charge.charge_type.replace('_', ' ')} Renewal`,
+                  html: `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <h2 style="color: #10b981;">Payment Successful!</h2>
+                      <p>Hi ${profile.first_name || 'there'},</p>
+                      <p>Your payment of <strong>$${charge.total_charged.toFixed(2)}</strong> for your ${charge.charge_type.replace('_', ' ')} renewal has been processed successfully.</p>
+                      <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0;"><strong>License Plate:</strong> ${charge.license_plate || 'N/A'}</p>
+                        <p style="margin: 8px 0 0 0;"><strong>Renewal Deadline:</strong> ${new Date(charge.renewal_deadline).toLocaleDateString()}</p>
+                      </div>
+                      <p>We'll file this renewal with the city on your behalf. You don't need to do anything else!</p>
+                      <p style="color: #6b7280; font-size: 13px;">Autopilot America</p>
+                    </div>
+                  `
+                })
+              });
+            } catch (emailErr) {
+              console.error('Failed to send retry success email:', emailErr);
+            }
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: 'Payment retry successful',
+            paymentIntentId: paymentIntent.id,
+            amountCharged: charge.total_charged
+          });
+
+        } else {
+          // Payment requires additional action
+          await supabaseAdmin!
+            .from('renewal_charges')
+            .update({
+              retry_count: (charge.retry_count || 0) + 1,
+              last_retry_at: new Date().toISOString(),
+              error_message: `Payment requires action: ${paymentIntent.status}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', chargeId);
+
+          return res.status(400).json({
+            success: false,
+            error: 'Payment requires additional authentication',
+            paymentIntentId: paymentIntent.id
+          });
+        }
+
+      } catch (stripeError: any) {
+        // Stripe charge failed
+        await supabaseAdmin!
+          .from('renewal_charges')
+          .update({
+            retry_count: (charge.retry_count || 0) + 1,
+            last_retry_at: new Date().toISOString(),
+            error_message: stripeError.message,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', chargeId);
+
+        console.error(`❌ Retry failed for charge ${chargeId}:`, stripeError.message);
+
+        return res.status(500).json({
+          success: false,
+          error: 'Payment retry failed',
+          details: stripeError.message,
+          retriesRemaining: 3 - ((charge.retry_count || 0) + 1)
+        });
+      }
 
     } else if (action === 'send_reminder') {
       // Send reminder to user about failed payment
