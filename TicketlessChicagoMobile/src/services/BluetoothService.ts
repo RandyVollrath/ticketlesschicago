@@ -141,6 +141,16 @@ class BluetoothServiceClass {
     });
   }
 
+  // Stop Bluetooth scanning
+  async stopScanning(): Promise<void> {
+    try {
+      await BleManager.stopScan();
+      log.debug('Bluetooth scanning stopped');
+    } catch (error) {
+      log.error('Error stopping Bluetooth scan', error);
+    }
+  }
+
   async monitorCarConnection(onDisconnect: () => void): Promise<void> {
     await this.initialize();
 

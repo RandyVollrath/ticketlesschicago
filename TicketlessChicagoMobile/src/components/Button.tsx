@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { colors, typography, borderRadius, spacing } from '../theme';
 
-interface ButtonProps {
+export interface ButtonProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -19,6 +19,7 @@ interface ButtonProps {
   icon?: React.ReactNode;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  accessibilityLabel?: string;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -31,6 +32,7 @@ const Button: React.FC<ButtonProps> = ({
   icon,
   style,
   textStyle,
+  accessibilityLabel,
 }) => {
   const getButtonStyle = (): ViewStyle[] => {
     const baseStyle: ViewStyle[] = [styles.base, styles[`size_${size}`]];
@@ -82,6 +84,8 @@ const Button: React.FC<ButtonProps> = ({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityRole="button"
     >
       {loading ? (
         <ActivityIndicator
