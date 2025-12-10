@@ -137,3 +137,52 @@ export function isErrorWithMessage(error: unknown): error is { message: string }
     typeof (error as { message: unknown }).message === 'string'
   );
 }
+
+/**
+ * Validates and normalizes a US phone number
+ * Returns normalized E.164 format (+1XXXXXXXXXX) or null if invalid
+ */
+export function validateAndNormalizePhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '');
+
+  // Check for valid US number (10 digits, or 11 starting with 1)
+  if (digits.length === 10) {
+    // Validate area code (first digit can't be 0 or 1)
+    if (digits[0] === '0' || digits[0] === '1') {
+      return null;
+    }
+    return `+1${digits}`;
+  }
+
+  if (digits.length === 11 && digits[0] === '1') {
+    // Validate area code (second digit can't be 0 or 1)
+    if (digits[1] === '0' || digits[1] === '1') {
+      return null;
+    }
+    return `+${digits}`;
+  }
+
+  // Invalid length
+  return null;
+}
+
+/**
+ * Validates phone number format (looser validation for Zod)
+ * Use validateAndNormalizePhone for strict validation and normalization
+ */
+export function isValidUSPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, '');
+
+  if (digits.length === 10) {
+    return digits[0] !== '0' && digits[0] !== '1';
+  }
+
+  if (digits.length === 11 && digits[0] === '1') {
+    return digits[1] !== '0' && digits[1] !== '1';
+  }
+
+  return false;
+}

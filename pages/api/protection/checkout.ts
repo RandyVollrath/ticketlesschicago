@@ -6,7 +6,7 @@ import stripeConfig from '../../../lib/stripe-config';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 import { validateClientReferenceId } from '../../../lib/webhook-validator';
 import { maskEmail } from '../../../lib/mask-pii';
-import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { sanitizeErrorMessage, isValidUSPhone, validateAndNormalizePhone } from '../../../lib/error-utils';
 
 // Input validation schema
 const checkoutSchema = z.object({
@@ -14,7 +14,11 @@ const checkoutSchema = z.object({
     errorMap: () => ({ message: 'Billing plan must be "monthly" or "annual"' })
   }),
   email: z.string().email('Invalid email format').max(255).transform(val => val.toLowerCase().trim()),
-  phone: z.string().regex(/^[\+\d\s\-\(\)]{7,20}$/).optional().nullable(),
+  phone: z.string()
+    .refine((val) => !val || isValidUSPhone(val), { message: 'Please enter a valid US phone number' })
+    .transform((val) => val ? validateAndNormalizePhone(val) : null)
+    .optional()
+    .nullable(),
   userId: z.string().uuid().optional().nullable(),
   rewardfulReferral: z.string().max(100).optional().nullable(),
   renewals: z.object({
