@@ -4,9 +4,20 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+
+// Input validation schema
+const remitterSignupSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  email: z.string().email('Invalid email format').max(255).transform(val => val.toLowerCase().trim()),
+  phone: z.string().min(7, 'Phone number too short').max(20).regex(/^[\+\d\s\-\(\)]+$/, 'Invalid phone number format'),
+  businessType: z.string().max(50).optional(),
+  businessAddress: z.string().max(500).optional(),
+  licenseNumber: z.string().max(50).optional(),
+});
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,20 +29,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const {
-      name,
-      email,
-      phone,
-      businessType,
-      businessAddress,
-      licenseNumber,
-    } = req.body;
+  // Validate request body
+  const parseResult = remitterSignupSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }));
+    return res.status(400).json({ error: 'Validation failed', details: errors });
+  }
 
-    // Validation
-    if (!name || !email || !phone) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+  try {
+    const { name, email, phone, businessType, businessAddress, licenseNumber } = parseResult.data;
 
     // Check if email already exists
     const { data: existing } = await supabase

@@ -1,7 +1,15 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { CHICAGO_ORDINANCES, getOrdinanceByCode } from '../../../lib/chicago-ordinances';
+
+// Input validation schema
+const generateLetterSchema = z.object({
+  contestId: z.string().uuid('Invalid contest ID format'),
+  contestGrounds: z.array(z.string().max(100)).max(10).optional(),
+  additionalContext: z.string().max(5000).optional(),
+});
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -219,11 +227,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { contestId, contestGrounds, additionalContext } = req.body;
-
-    if (!contestId) {
-      return res.status(400).json({ error: 'Missing contest ID' });
+    // Validate request body
+    const parseResult = generateLetterSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
+      return res.status(400).json({ error: 'Validation failed', details: errors });
     }
+
+    const { contestId, contestGrounds, additionalContext } = parseResult.data;
 
     // Get contest record
     const { data: contest, error: fetchError } = await supabase
