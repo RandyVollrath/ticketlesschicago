@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 import crypto from 'crypto';
+import { maskEmail } from '../../../lib/mask-pii';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -312,11 +313,96 @@ async function logActivity(
 }
 
 async function sendOrderConfirmation(order: any, partner: any) {
-  // TODO: Implement email/SMS via Resend/Twilio
-  console.log('Sending confirmation to:', order.customer_email);
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not set, skipping order confirmation email');
+    return;
+  }
 
-  // Send email confirmation
-  // Send SMS confirmation
+  const formattedAmount = (order.total_amount / 100).toFixed(2);
+  const stickerTypeName = order.sticker_type === 'large'
+    ? 'Large Vehicle (over 4,500 lbs)'
+    : 'Standard Vehicle';
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: order.customer_email,
+        subject: `Order Received - City Sticker Renewal #${order.order_number}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">Order Received!</h1>
+              <p style="margin: 8px 0 0 0; opacity: 0.9;">Order #${order.order_number}</p>
+            </div>
+
+            <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+              <p style="color: #374151; font-size: 16px;">Hi ${order.customer_name.split(' ')[0]},</p>
+
+              <p style="color: #374151; font-size: 16px;">
+                We've received your city sticker renewal application. Here are your order details:
+              </p>
+
+              <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 14px; text-transform: uppercase;">Order Summary</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">License Plate</td>
+                    <td style="padding: 8px 0; color: #1f2937; text-align: right; font-weight: 600;">${order.license_plate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">Sticker Type</td>
+                    <td style="padding: 8px 0; color: #1f2937; text-align: right; font-weight: 600;">${stickerTypeName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">Address</td>
+                    <td style="padding: 8px 0; color: #1f2937; text-align: right; font-weight: 600;">${order.street_address}</td>
+                  </tr>
+                  <tr style="border-top: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0 0 0; color: #6b7280; font-weight: 600;">Total</td>
+                    <td style="padding: 12px 0 0 0; color: #1f2937; text-align: right; font-weight: 700; font-size: 18px;">$${formattedAmount}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 16px; margin: 24px 0;">
+                <p style="margin: 0; color: #1e40af; font-size: 14px;">
+                  <strong>What happens next?</strong><br>
+                  We'll review your application and documents. Once approved, we'll submit your renewal to the City of Chicago.
+                  Your new city sticker will be mailed to your address within 7-10 business days.
+                </p>
+              </div>
+
+              <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                Questions about your order? Reply to this email or contact us at
+                <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                ${partner?.name || 'Autopilot America'} • Powered by Autopilot America
+              </p>
+            </div>
+          </div>
+        `
+      })
+    });
+
+    if (response.ok) {
+      console.log(`✅ Sent order confirmation email to ${maskEmail(order.customer_email)}`);
+    } else {
+      const error = await response.text();
+      console.error('Failed to send order confirmation email:', error);
+    }
+  } catch (error) {
+    console.error('Error sending order confirmation email:', error);
+  }
 }
 
 async function notifyPartner(webhookUrl: string, order: any) {
