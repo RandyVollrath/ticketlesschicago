@@ -64,6 +64,12 @@ export default function RemitterPortal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Search and pagination state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ordersPerPage = 20;
+
   // Order processing state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDocuments, setOrderDocuments] = useState<{
@@ -130,6 +136,7 @@ export default function RemitterPortal() {
 
   const loadOrders = async (status?: string) => {
     setLoading(true);
+    setCurrentPage(1); // Reset to first page when filtering
     try {
       const url = status
         ? `/api/renewal-intake/partner-dashboard?view=orders&status=${status}`
@@ -141,12 +148,45 @@ export default function RemitterPortal() {
 
       const data = await response.json();
       setOrders(data.orders || []);
+      setTotalPages(Math.ceil((data.orders || []).length / ordersPerPage));
     } catch (err) {
       setError('Failed to load orders');
     } finally {
       setLoading(false);
     }
   };
+
+  // Filter orders based on search query
+  const filteredOrders = orders.filter(order => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      order.orderNumber?.toLowerCase().includes(query) ||
+      order.customer?.name?.toLowerCase().includes(query) ||
+      order.customer?.email?.toLowerCase().includes(query) ||
+      order.customer?.phone?.includes(query) ||
+      order.vehicle?.licensePlate?.toLowerCase().includes(query)
+    );
+  });
+
+  // Paginate filtered orders
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * ordersPerPage,
+    currentPage * ordersPerPage
+  );
+
+  // Filter pending orders based on search query
+  const filteredPendingOrders = pendingOrders.filter(order => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      order.orderNumber?.toLowerCase().includes(query) ||
+      order.customer?.name?.toLowerCase().includes(query) ||
+      order.customer?.email?.toLowerCase().includes(query) ||
+      order.customer?.phone?.includes(query) ||
+      order.vehicle?.licensePlate?.toLowerCase().includes(query)
+    );
+  });
 
   const loadPendingReview = async () => {
     setLoading(true);
@@ -371,6 +411,8 @@ export default function RemitterPortal() {
                 key={tab.id}
                 onClick={() => {
                   setView(tab.id as any);
+                  setSearchQuery(''); // Clear search when switching views
+                  setCurrentPage(1); // Reset pagination
                   if (tab.id === 'orders') loadOrders();
                   if (tab.id === 'pending') loadPendingReview();
                 }}
@@ -430,10 +472,14 @@ export default function RemitterPortal() {
                   📄 Export Renewal Batch PDF
                 </button>
                 <button
-                  onClick={() => setView('upload')}
-                  className="px-4 py-3 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700"
+                  disabled
+                  title="Coming soon"
+                  className="px-4 py-3 bg-gray-400 text-white rounded-md font-medium cursor-not-allowed relative group"
                 >
-                  📤 Upload New Documents
+                  📤 Upload Documents
+                  <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    Coming Soon
+                  </span>
                 </button>
               </div>
             </div>
@@ -513,7 +559,46 @@ export default function RemitterPortal() {
         {view === 'orders' && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">All Orders</h2>
-            <div className="mb-4 flex gap-2">
+
+            {/* Search Bar */}
+            <div className="mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search by order #, customer name, email, phone, or license plate..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg
+                  className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Found {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} matching "{searchQuery}"
+                </p>
+              )}
+            </div>
+
+            {/* Status Filter Buttons */}
+            <div className="mb-4 flex flex-wrap gap-2">
               <button
                 onClick={() => loadOrders()}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
@@ -542,9 +627,17 @@ export default function RemitterPortal() {
 
             {loading ? (
               <p className="text-center py-8 text-gray-500">Loading...</p>
+            ) : filteredOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-400 text-5xl mb-4">📋</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
+                <p className="text-gray-600">
+                  {searchQuery ? `No orders match "${searchQuery}"` : 'No orders to display.'}
+                </p>
+              </div>
             ) : (
               <div className="space-y-4">
-                {orders.map((order) => (
+                {paginatedOrders.map((order) => (
                   <div key={order.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -606,6 +699,34 @@ export default function RemitterPortal() {
                     )}
                   </div>
                 ))}
+
+                {/* Pagination Controls */}
+                {filteredOrders.length > ordersPerPage && (
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <p className="text-sm text-gray-600">
+                      Showing {((currentPage - 1) * ordersPerPage) + 1} - {Math.min(currentPage * ordersPerPage, filteredOrders.length)} of {filteredOrders.length} orders
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="px-3 py-1 text-sm text-gray-600">
+                        Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredOrders.length / ordersPerPage), p + 1))}
+                        disabled={currentPage >= Math.ceil(filteredOrders.length / ordersPerPage)}
+                        className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -615,21 +736,73 @@ export default function RemitterPortal() {
         {view === 'pending' && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Pending Review</h2>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-gray-600 mb-4">
               Paid orders waiting for you to submit to the city portal.
             </p>
 
+            {/* Search Bar */}
+            {pendingOrders.length > 0 && (
+              <div className="mb-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by order #, customer name, email, phone, or license plate..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <svg
+                    className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      &times;
+                    </button>
+                  )}
+                </div>
+                {searchQuery && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Found {filteredPendingOrders.length} order{filteredPendingOrders.length !== 1 ? 's' : ''} matching "{searchQuery}"
+                  </p>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <p className="text-center py-8 text-gray-500">Loading...</p>
-            ) : pendingOrders.length === 0 ? (
+            ) : filteredPendingOrders.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-gray-400 text-5xl mb-4">✅</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
-                <p className="text-gray-600">No orders pending review at this time.</p>
+                {searchQuery ? (
+                  <>
+                    <div className="text-gray-400 text-5xl mb-4">🔍</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No matching orders</h3>
+                    <p className="text-gray-600">No pending orders match "{searchQuery}"</p>
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Clear search
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-gray-400 text-5xl mb-4">✅</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
+                    <p className="text-gray-600">No orders pending review at this time.</p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
-                {pendingOrders.map((order) => (
+                {filteredPendingOrders.map((order) => (
                   <div key={order.id} className="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>

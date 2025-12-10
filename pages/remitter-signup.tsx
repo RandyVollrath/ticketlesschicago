@@ -3,7 +3,7 @@
  * Allows remitters to create an account and connect Stripe
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 
 export default function RemitterSignup() {
@@ -14,6 +14,8 @@ export default function RemitterSignup() {
   const [apiKey, setApiKey] = useState('');
   const [partnerId, setPartnerId] = useState('');
 
+  const [copied, setCopied] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,6 +24,24 @@ export default function RemitterSignup() {
     businessAddress: '',
     licenseNumber: '',
   });
+
+  const copyApiKey = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = apiKey;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [apiKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,12 +97,43 @@ export default function RemitterSignup() {
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Your API Key</h2>
-            <div className="bg-white border border-gray-300 rounded p-3 mb-3">
-              <code className="text-sm break-all">{apiKey}</code>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex-1 bg-white border border-gray-300 rounded p-3 font-mono text-sm break-all">
+                {apiKey}
+              </div>
+              <button
+                onClick={copyApiKey}
+                className={`flex-shrink-0 px-4 py-3 rounded-md font-medium transition-colors ${
+                  copied
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {copied ? (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied!
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </span>
+                )}
+              </button>
             </div>
-            <p className="text-sm text-gray-600 mb-2">
-              ⚠️ Save this API key somewhere safe - you'll need it to log into the portal.
-            </p>
+            <div className="bg-yellow-50 border border-yellow-300 rounded p-3">
+              <p className="text-sm text-yellow-800 font-medium">
+                ⚠️ Important: Save this API key somewhere safe!
+              </p>
+              <p className="text-sm text-yellow-700 mt-1">
+                You will need this key to log into the remitter portal. It will not be shown again.
+              </p>
+            </div>
           </div>
 
           <div className="space-y-4">
