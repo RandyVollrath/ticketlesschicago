@@ -19,6 +19,7 @@ import fs from 'fs';
 // import sharp from 'sharp';
 import vision from '@google-cloud/vision';
 import { logAuditEvent, getIpAddress, getUserAgent } from '@/lib/audit-logger';
+import { sanitizeErrorMessage } from '@/lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -346,7 +347,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      return res.status(500).json({ error: 'Failed to upload file', details: uploadError.message });
+      return res.status(500).json({ error: 'Failed to upload file. Please try again.' });
     }
 
     // Generate signed URL (24-hour expiration)
@@ -415,9 +416,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Error name:', error.name);
     console.error('Full error object:', JSON.stringify(error, null, 2));
     return res.status(500).json({
-      error: 'Upload failed',
-      details: error.message,
-      errorType: error.name
+      error: sanitizeErrorMessage(error)
     });
   }
 }
