@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Simple endpoint to manually test the webhook logic without Stripe
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -53,9 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (vehicleError) {
       console.error('Vehicle error:', vehicleError);
-      return res.status(500).json({ 
-        error: 'Failed to create vehicle',
-        details: vehicleError 
+      return res.status(500).json({
+        error: 'Failed to create vehicle'
       });
     }
 
@@ -135,6 +135,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Test webhook error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

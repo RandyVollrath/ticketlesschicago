@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * PANIC ALERT: Daily check for users within 30 days of renewal without permit documents
@@ -242,7 +243,7 @@ export default async function handler(
     console.error('Panic alert error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

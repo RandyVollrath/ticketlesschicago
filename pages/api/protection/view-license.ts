@@ -12,6 +12,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,8 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (signedUrlError) {
       console.error('Signed URL error:', signedUrlError);
       return res.status(500).json({
-        error: 'Failed to generate view URL',
-        details: signedUrlError.message,
+        error: 'Failed to generate view URL'
       });
     }
 
@@ -80,8 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('View license error:', error);
     return res.status(500).json({
-      error: 'Failed to generate view URL',
-      details: error.message,
+      error: sanitizeErrorMessage(error)
     });
   }
 }

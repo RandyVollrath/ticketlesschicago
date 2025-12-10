@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -87,8 +88,7 @@ If you can't determine a field, use null. Be as accurate as possible.`
   } catch (error: any) {
     console.error('Error analyzing ticket photo:', error);
     return res.status(500).json({
-      error: 'Failed to analyze ticket photo',
-      details: error.message
+      error: 'Failed to analyze ticket photo'
     });
   }
 }

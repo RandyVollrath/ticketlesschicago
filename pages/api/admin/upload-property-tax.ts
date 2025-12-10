@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -110,7 +111,7 @@ async function uploadPropertyTax(req: NextApiRequest, res: NextApiResponse) {
 
     if (uploadError) {
       console.error('❌ Storage upload error:', uploadError);
-      return res.status(500).json({ error: `Upload failed: ${uploadError.message}` });
+      return res.status(500).json({ error: 'Upload failed' });
     }
 
     console.log(`✅ Uploaded successfully: ${filePath}`);
@@ -135,7 +136,7 @@ async function uploadPropertyTax(req: NextApiRequest, res: NextApiResponse) {
 
     if (updateError) {
       console.error('❌ Profile update error:', updateError);
-      return res.status(500).json({ error: `Profile update failed: ${updateError.message}` });
+      return res.status(500).json({ error: 'Profile update failed' });
     }
 
     // Cleanup temp file
@@ -155,6 +156,6 @@ async function uploadPropertyTax(req: NextApiRequest, res: NextApiResponse) {
 
   } catch (error: any) {
     console.error('❌ Admin upload error:', error);
-    return res.status(500).json({ error: error.message || 'Upload failed' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

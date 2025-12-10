@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { CHICAGO_ORDINANCES, getOrdinanceByCode } from '../../../lib/chicago-ordinances';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Input validation schema
 const generateLetterSchema = z.object({
@@ -398,7 +399,7 @@ Use a formal letter format with proper salutation and closing.`
 
     if (updateError) {
       console.error('Update error:', updateError);
-      return res.status(500).json({ error: 'Failed to save letter: ' + updateError.message });
+      return res.status(500).json({ error: 'Failed to save letter' });
     }
 
     res.status(200).json({
@@ -410,7 +411,7 @@ Use a formal letter format with proper salutation and closing.`
 
   } catch (error: any) {
     console.error('Generate letter error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
 

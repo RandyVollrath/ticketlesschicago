@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sendClickSendSMS, sendClickSendVoiceCall } from '../../../lib/sms-service';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default async function handler(
   req: NextApiRequest,
@@ -38,7 +39,7 @@ export default async function handler(
     
     if (userError) {
       log(`❌ Error fetching user: ${userError.message}`);
-      return res.status(500).json({ logs, error: userError.message });
+      return res.status(500).json({ logs, error: sanitizeErrorMessage(userError) });
     }
     
     if (!userData) {
@@ -214,6 +215,6 @@ export default async function handler(
     
   } catch (error) {
     log(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    res.status(500).json({ logs, error: error instanceof Error ? error.message : 'Unknown error' });
+    res.status(500).json({ logs, error: sanitizeErrorMessage(error) });
   }
 }

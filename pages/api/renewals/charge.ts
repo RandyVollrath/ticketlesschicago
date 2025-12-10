@@ -226,7 +226,6 @@ export default async function handler(
 
       return res.status(500).json({
         error: 'Payment failed',
-        message: stripeError.message,
         chargeId: chargeRecord.id
       });
     }

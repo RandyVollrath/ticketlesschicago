@@ -5,6 +5,7 @@ import {
   detectAnomalies
 } from '../../../lib/monitoring';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Monitoring API
@@ -100,8 +101,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
   } catch (error: any) {
     console.error('Error in monitoring endpoint:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

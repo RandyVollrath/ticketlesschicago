@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
 import { logAuditEvent, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -196,7 +197,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('Error reviewing document:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: sanitizeErrorMessage(error)
     });
   }
 });

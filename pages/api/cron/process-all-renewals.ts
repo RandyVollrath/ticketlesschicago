@@ -19,6 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import stripeConfig from '../../../lib/stripe-config';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { PLATFORM_FEES, STRIPE_FEES } from '../../../lib/pricing-config';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -55,7 +56,7 @@ async function getNextAvailableRemitter(): Promise<any> {
     .not('stripe_connected_account_id', 'is', null);
 
   if (error) {
-    throw new Error(`Failed to fetch remitters: ${error.message}`);
+    throw new Error('Failed to fetch remitters');
   }
 
   if (!remitters || remitters.length === 0) {
@@ -76,7 +77,7 @@ async function getNextAvailableRemitter(): Promise<any> {
     .in('status', ['pending', 'processing']);
 
   if (countError) {
-    console.warn('Failed to fetch order counts:', countError.message);
+    console.warn('Failed to fetch order counts:', sanitizeErrorMessage(countError));
   }
 
   // Count orders per partner from the single query result
@@ -494,7 +495,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log(`✅ Service fee transfer complete: ${serviceFeeTransfer.id}`);
         } catch (transferError: any) {
           // Log but don't fail - service fee can be transferred later when balance available
-          console.warn(`⚠️ Service fee transfer skipped (insufficient platform balance): ${transferError.message}`);
+          console.warn('⚠️ Service fee transfer skipped (insufficient platform balance):', sanitizeErrorMessage(transferError));
           console.log(`   Will need to transfer $${REMITTER_SERVICE_FEE} to remitter manually or when balance available`);
         }
 
@@ -583,7 +584,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           charge_type: 'sticker_renewal',
           amount: 0,
           status: 'failed',
-          failure_reason: error.message,
+          failure_reason: sanitizeErrorMessage(error),
           failure_code: error.code || 'unknown',
           renewal_type: 'city_sticker',
           renewal_due_date: customer.city_sticker_expiry,
@@ -628,7 +629,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: 'city_sticker',
           customer_id: customer.user_id,
           license_plate: customer.license_plate,
-          error: error.message,
+          error: sanitizeErrorMessage(error),
         });
       }
     }
@@ -697,7 +698,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             type: 'license_plate',
             customer_id: customer.user_id,
             license_plate: customer.license_plate,
-            error: `Emissions test required but not completed (due: ${customer.emissions_date})`,
+            error: 'Emissions test required but not completed',
           });
 
           // Skip to next customer - cannot process without emissions
@@ -817,7 +818,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
             console.log(`✅ Service fee transfer complete for license plate`);
           } catch (transferError: any) {
-            console.warn(`⚠️ Service fee transfer skipped: ${transferError.message}`);
+            console.warn('⚠️ Service fee transfer skipped:', sanitizeErrorMessage(transferError));
           }
 
           // Log successful charge
@@ -881,14 +882,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log(`✅ License plate renewal complete for ${customer.user_id}: $${totalAmount}`);
 
         } catch (error: any) {
-          console.error(`Failed to process license plate for ${customer.user_id}:`, error.message);
+          console.error(`Failed to process license plate for ${customer.user_id}:`, error);
 
           await supabase.from('renewal_charges').insert({
             user_id: customer.user_id,
             charge_type: 'license_plate_renewal',
             amount: 0,
             status: 'failed',
-            failure_reason: error.message,
+            failure_reason: sanitizeErrorMessage(error),
             renewal_type: 'license_plate',
             renewal_due_date: customer.license_plate_expiry,
             failed_at: new Date().toISOString(),
@@ -899,7 +900,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             type: 'license_plate',
             customer_id: customer.user_id,
             license_plate: customer.license_plate,
-            error: error.message,
+            error: sanitizeErrorMessage(error),
           });
         }
       }
@@ -916,8 +917,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Cron job error:', error);
     return res.status(500).json({
-      error: error.message,
-      details: error.raw?.message,
+      error: sanitizeErrorMessage(error),
     });
   }
 }

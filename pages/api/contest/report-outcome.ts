@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (outcomeError) {
       console.error('Error inserting court outcome:', outcomeError);
-      return res.status(500).json({ error: 'Failed to save outcome: ' + outcomeError.message });
+      return res.status(500).json({ error: 'Failed to save outcome' });
     }
 
     // Update the contest status
@@ -123,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Report outcome error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
 

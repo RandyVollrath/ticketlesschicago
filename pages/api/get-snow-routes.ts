@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Main Autopilot America database (snow routes are stored here)
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -36,9 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (error) {
       console.error('❌ Error fetching snow routes:', error);
       return res.status(500).json({
-        error: 'Failed to fetch snow routes',
-        details: error.message,
-        code: error.code
+        error: sanitizeErrorMessage(error)
       });
     }
 

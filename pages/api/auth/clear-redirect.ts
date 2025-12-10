@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { clearRedirectCookie } from '../../../lib/auth-cookies';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Clear Redirect Cookie After Successful Redirect
@@ -23,8 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Error clearing cookie:', error);
     return res.status(500).json({
-      error: 'Failed to clear cookie',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

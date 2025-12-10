@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getOrdinanceByCode, getAverageWinProbability } from '../../../lib/chicago-ordinances';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Calculate win probability for contesting a ticket
@@ -149,6 +150,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Win probability error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

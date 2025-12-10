@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,6 +70,6 @@ COMMENT ON TABLE pending_signups IS 'Temporary storage for signup form data befo
 
   } catch (error: any) {
     console.error('Error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 });

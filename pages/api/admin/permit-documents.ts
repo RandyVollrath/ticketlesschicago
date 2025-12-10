@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const RESIDENCY_PROOF_BUCKET = 'residency-proofs-temps';
 
@@ -215,7 +216,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('Error fetching documents:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: sanitizeErrorMessage(error)
     });
   }
 });

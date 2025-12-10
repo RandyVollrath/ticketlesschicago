@@ -7,6 +7,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (partnerError || !partner) {
       console.error('Partner auth error:', partnerError);
-      return res.status(401).json({ error: 'Invalid API key', details: partnerError?.message });
+      return res.status(401).json({ error: 'Invalid API key' });
     }
 
     console.log('Partner authenticated:', partner.name);
@@ -66,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (searchError) {
       console.error('Search error:', searchError);
-      return res.status(500).json({ error: 'Search failed', details: searchError.message });
+      return res.status(500).json({ error: sanitizeErrorMessage(searchError) });
     }
 
     // Format response - don't expose sensitive data, just enough to identify
@@ -117,6 +118,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Search API error:', error);
-    return res.status(500).json({ error: 'Search failed', details: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

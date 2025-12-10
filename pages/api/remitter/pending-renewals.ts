@@ -126,8 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Unexpected error in pending-renewals:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

@@ -6,6 +6,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const REJECTION_REASONS = {
   DOCUMENT_UNREADABLE: 'Document is not clear or readable',
@@ -216,7 +217,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('Error verifying document:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error',
+      error: sanitizeErrorMessage(error),
     });
   }
 });

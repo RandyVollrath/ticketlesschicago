@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Input validation schema
 const partnerContactSchema = z.object({

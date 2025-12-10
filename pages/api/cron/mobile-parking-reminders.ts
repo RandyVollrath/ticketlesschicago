@@ -13,45 +13,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { getChicagoTime } from '../../../lib/chicago-timezone-utils';
-
-// Firebase Admin SDK for sending push notifications (optional)
-let admin: any = null;
-let firebaseInitialized = false;
-
-// Dynamically import and initialize Firebase Admin
-async function initFirebase() {
-  if (firebaseInitialized) return admin;
-
-  try {
-    // Dynamic import to avoid build errors if firebase-admin is not installed
-    const firebaseAdmin = await import('firebase-admin').catch(() => null);
-
-    if (!firebaseAdmin) {
-      console.warn('firebase-admin package not installed - push notifications disabled');
-      firebaseInitialized = true;
-      return null;
-    }
-
-    admin = firebaseAdmin.default;
-
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        }),
-      });
-    }
-
-    firebaseInitialized = true;
-    return admin;
-  } catch (error) {
-    console.error('Firebase Admin initialization error:', error);
-    firebaseInitialized = true;
-    return null;
-  }
-}
+import { sendPushNotification, isFirebaseConfigured } from '../../../lib/firebase-admin';
 
 interface ParkedVehicle {
   id: string;
@@ -109,10 +71,9 @@ export default async function handler(
     return res.status(500).json({ error: 'Database not configured' });
   }
 
-  // Initialize Firebase
-  await initFirebase();
-  if (!admin) {
-    console.warn('Firebase Admin not available - push notifications will be skipped');
+  // Check Firebase configuration
+  if (!isFirebaseConfigured()) {
+    console.warn('Firebase Admin not configured - push notifications will be skipped');
   }
 
   const chicagoTime = getChicagoTime();
@@ -157,7 +118,7 @@ export default async function handler(
         // Winter ban reminder (10pm check, ban starts at 3am)
         // Only send once per parking session
         if (chicagoHour >= 21 && chicagoHour <= 23 && isWinterSeason && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at) {
-          const sent = await sendPushNotification(vehicle.fcm_token, {
+          const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Winter Parking Ban Reminder',
             body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
             data: {
@@ -166,19 +127,25 @@ export default async function handler(
               lng: vehicle.longitude?.toString(),
             },
           });
-          if (sent) {
+          if (result.success) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ winter_ban_notified_at: new Date().toISOString() })
               .eq('id', vehicle.id);
             results.winterBanReminders++;
             console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
+          } else if (result.invalidToken) {
+            // Mark vehicle as inactive if token is invalid
+            await supabaseAdmin.from('user_parked_vehicles')
+              .update({ is_active: false })
+              .eq('id', vehicle.id);
+            console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
           }
         }
 
         // Street cleaning reminder (7am check, cleaning at 9am)
         // Only send once per parking session
         if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.street_cleaning_date === today && !vehicle.street_cleaning_notified_at) {
-          const sent = await sendPushNotification(vehicle.fcm_token, {
+          const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Today!',
             body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car now to avoid a $65 ticket.`,
             data: {
@@ -187,12 +154,17 @@ export default async function handler(
               lng: vehicle.longitude?.toString(),
             },
           });
-          if (sent) {
+          if (result.success) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ street_cleaning_notified_at: new Date().toISOString() })
               .eq('id', vehicle.id);
             results.streetCleaningReminders++;
             console.log(`Sent street cleaning reminder to ${vehicle.user_id}`);
+          } else if (result.invalidToken) {
+            await supabaseAdmin.from('user_parked_vehicles')
+              .update({ is_active: false })
+              .eq('id', vehicle.id);
+            console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
           }
         }
 
@@ -204,7 +176,7 @@ export default async function handler(
 
           // Send reminder if restriction starts within the next 1-2 hours
           if (restrictionStartHour && chicagoHour < restrictionStartHour && (restrictionStartHour - chicagoHour) <= 2) {
-            const sent = await sendPushNotification(vehicle.fcm_token, {
+            const result = await sendPushNotification(vehicle.fcm_token, {
               title: 'Permit Zone Reminder',
               body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit required starting at ${restrictionStartHour}am. Move now or risk a $65 ticket.`,
               data: {
@@ -213,12 +185,17 @@ export default async function handler(
                 lng: vehicle.longitude?.toString(),
               },
             });
-            if (sent) {
+            if (result.success) {
               await supabaseAdmin.from('user_parked_vehicles')
                 .update({ permit_zone_notified_at: new Date().toISOString() })
                 .eq('id', vehicle.id);
               results.permitZoneReminders++;
               console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
+            } else if (result.invalidToken) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ is_active: false })
+                .eq('id', vehicle.id);
+              console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
             }
           }
         }
@@ -258,55 +235,3 @@ export default async function handler(
   }
 }
 
-async function sendPushNotification(
-  fcmToken: string,
-  notification: {
-    title: string;
-    body: string;
-    data?: Record<string, string>;
-  }
-): Promise<boolean> {
-  try {
-    if (!admin || !admin.apps?.length) {
-      console.warn('Firebase Admin not available - skipping push notification');
-      return false;
-    }
-
-    const message = {
-      token: fcmToken,
-      notification: {
-        title: notification.title,
-        body: notification.body,
-      },
-      data: notification.data || {},
-      android: {
-        priority: 'high' as const,
-        notification: {
-          channelId: 'parking-alerts',
-          priority: 'high' as const,
-          sound: 'default',
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-          },
-        },
-      },
-    };
-
-    await admin.messaging().send(message);
-    return true;
-  } catch (error: any) {
-    // Handle invalid token errors
-    if (error?.code === 'messaging/invalid-registration-token' ||
-        error?.code === 'messaging/registration-token-not-registered') {
-      console.warn('Invalid FCM token, should be cleaned up:', fcmToken.substring(0, 20));
-    } else {
-      console.error('Error sending push notification:', error);
-    }
-    return false;
-  }
-}

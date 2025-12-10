@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,14 +64,14 @@ CREATE INDEX IF NOT EXISTS idx_renewal_payments_stripe_payment_intent ON renewal
     });
     
     console.log('exec_sql test result:', { funcData, funcError });
-    
+
     if (funcError) {
       console.log('exec_sql function not available:', funcError.message);
-      return res.status(200).json({ 
+      return res.status(200).json({
         success: false,
         message: 'Table creation requires manual SQL execution',
         sql: createTableSQL,
-        error: funcError.message,
+        error: sanitizeErrorMessage(funcError),
         instructions: 'Please run this SQL in the Supabase SQL Editor or database console'
       });
     }
@@ -82,8 +83,8 @@ CREATE INDEX IF NOT EXISTS idx_renewal_payments_stripe_payment_intent ON renewal
     
     if (sqlError) {
       console.error('SQL execution error:', sqlError);
-      return res.status(500).json({ 
-        error: 'Failed to create table: ' + sqlError.message,
+      return res.status(500).json({
+        error: 'Failed to create table',
         sql: createTableSQL,
         instructions: 'You may need to run this SQL manually in Supabase'
       });
@@ -96,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_renewal_payments_stripe_payment_intent ON renewal
       .limit(1);
 
     if (testError) {
-      return res.status(500).json({ error: 'Table created but test failed: ' + testError.message });
+      return res.status(500).json({ error: 'Table created but test failed' });
     }
 
     console.log('✅ renewal_payments table created successfully!');
@@ -109,6 +110,6 @@ CREATE INDEX IF NOT EXISTS idx_renewal_payments_stripe_payment_intent ON renewal
 
   } catch (error: any) {
     console.error('Setup error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

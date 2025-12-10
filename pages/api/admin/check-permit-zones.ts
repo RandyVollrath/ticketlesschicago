@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default withAdminAuth(async (req, res, adminUser) => {
   try {
@@ -47,7 +48,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
   } catch (error: any) {
     console.error('Error:', error);
     return res.status(500).json({
-      error: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 });

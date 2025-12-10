@@ -11,6 +11,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,7 +42,7 @@ async function deleteLicenseImage(
       user_id: userId,
       path: imagePath,
       side,
-      error: deleteError.message,
+      error: sanitizeErrorMessage(deleteError),
     });
     return false;
   }
@@ -151,7 +152,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             type: 'opted_out_processing',
             user_id: profile.user_id,
             side: 'front',
-            error: error.message,
+            error: sanitizeErrorMessage(error),
           });
         }
       }
@@ -181,7 +182,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             type: 'opted_out_back_processing',
             user_id: profile.user_id,
             side: 'back',
-            error: error.message,
+            error: sanitizeErrorMessage(error),
           });
         }
       }
@@ -227,7 +228,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: 'abandoned_processing',
           user_id: profile.user_id,
           side: 'front',
-          error: error.message,
+          error: sanitizeErrorMessage(error),
         });
       }
     }
@@ -267,7 +268,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           type: 'abandoned_back_processing',
           user_id: profile.user_id,
           side: 'back',
-          error: error.message,
+          error: sanitizeErrorMessage(error),
         });
       }
     }
@@ -288,8 +289,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Cleanup cron job error:', error);
     return res.status(500).json({
-      error: error.message,
-      details: error.raw?.message,
+      error: sanitizeErrorMessage(error),
     });
   }
 }

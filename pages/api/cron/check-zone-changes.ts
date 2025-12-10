@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Weekly cron to check if zone boundaries have changed
@@ -182,7 +183,7 @@ export default async function handler(
     console.error('Zone change check error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

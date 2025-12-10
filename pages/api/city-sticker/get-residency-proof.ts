@@ -9,6 +9,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,7 +83,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Signed URL error:', signedUrlError);
       return res.status(500).json({
         error: 'Failed to generate download URL',
-        details: signedUrlError.message,
       });
     }
 
@@ -101,7 +101,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Get residency proof error:', error);
     return res.status(500).json({
       error: 'Failed to retrieve proof',
-      details: error.message,
     });
   }
 }

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin, supabase } from '../../lib/supabase';
 import { z } from 'zod';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Validation schemas
 const createUserSchema = z.object({
@@ -134,7 +135,7 @@ export default async function handler(
       return res.status(200).json(response);
     } catch (error: any) {
       console.error('User fetch error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 
@@ -221,7 +222,7 @@ export default async function handler(
       return res.status(201).json(response);
     } catch (error: any) {
       console.error('User create error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 
@@ -299,7 +300,7 @@ export default async function handler(
       return res.status(200).json(response);
     } catch (error: any) {
       console.error('User update error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 
@@ -359,7 +360,7 @@ export default async function handler(
       return res.status(200).json({ success: true, message: 'User profile deleted' });
     } catch (error: any) {
       console.error('User delete error:', error);
-      return res.status(500).json({ error: error.message || 'Internal server error' });
+      return res.status(500).json({ error: sanitizeErrorMessage(error) });
     }
   }
 

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { sendDailyDigest, scheduleDailyDigest } from '../../../lib/daily-digest';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Send Daily Digest
@@ -79,8 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Error sending daily digest:', error);
     return res.status(500).json({
-      error: 'Failed to send digest',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

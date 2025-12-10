@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const hasCredentials = !!process.env.GOOGLE_CLOUD_VISION_CREDENTIALS;
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         clientEmail: parsed.client_email ? parsed.client_email.substring(0, 30) + '...' : null
       };
     } catch (error: any) {
-      credentialDetails = { parseError: error.message };
+      credentialDetails = { parseError: sanitizeErrorMessage(error) };
     }
   }
 

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkAllUserTickets } from '../../../lib/ticket-monitor';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Cron job to check for new parking tickets for all users
@@ -32,7 +33,7 @@ export default async function handler(
     console.error('Error in ticket check cron:', error);
     return res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeErrorMessage(error),
       timestamp: new Date().toISOString()
     });
   }

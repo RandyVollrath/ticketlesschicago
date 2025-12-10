@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { sendRemitterDailyEmail } from '../../../lib/remitter-emails';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Send Remitter Daily Email
@@ -52,8 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Error sending remitter email:', error);
     return res.status(500).json({
-      error: 'Failed to send email',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

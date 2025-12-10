@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { supabaseAdmin } from '../../../lib/supabase'
+import { sanitizeErrorMessage } from '../../../lib/error-utils'
 
 // DEV ONLY: Direct login endpoint for testing when email is not working
 // REMOVE THIS IN PRODUCTION!
@@ -43,9 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
   } catch (error: any) {
     console.error('Dev login error:', error)
-    res.status(500).json({ 
-      error: 'Failed to generate login link',
-      details: error.message 
+    res.status(500).json({
+      error: sanitizeErrorMessage(error)
     })
   }
 }

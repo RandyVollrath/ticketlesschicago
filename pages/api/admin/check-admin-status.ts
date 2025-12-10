@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Check Admin Status
@@ -42,8 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error: any) {
     return res.status(500).json({
-      error: 'Failed to check admin status',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }

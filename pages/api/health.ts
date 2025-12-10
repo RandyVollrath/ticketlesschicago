@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const checks: any = {
@@ -12,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check Supabase connection
     if (supabaseAdmin) {
       const { error } = await supabaseAdmin.from('user_profiles').select('user_id').limit(1);
-      checks.checks.supabase = error ? { status: 'unhealthy', error: error.message } : { status: 'healthy' };
+      checks.checks.supabase = error ? { status: 'unhealthy', error: sanitizeErrorMessage(error) } : { status: 'healthy' };
     } else {
       checks.checks.supabase = { status: 'unhealthy', error: 'Supabase admin client not configured' };
     }
@@ -38,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(checks);
   } catch (error: any) {
     checks.status = 'error';
-    checks.error = error.message;
+    checks.error = sanitizeErrorMessage(error);
     return res.status(500).json(checks);
   }
 }

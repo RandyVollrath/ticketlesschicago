@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { parseChicagoAddress } from '../../lib/address-parser';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export interface PermitZoneResult {
   hasPermitZone: boolean;
@@ -137,7 +138,7 @@ export default async function handler(
       hasPermitZone: false,
       zones: [],
       parsedAddress: null,
-      error: error.message || 'Internal server error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

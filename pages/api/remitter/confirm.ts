@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Remitter One-Click Confirmation
@@ -100,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           <html>
             <body style="font-family: sans-serif; padding: 40px; text-align: center;">
               <h1>❌ Update Failed</h1>
-              <p>${updateError.message}</p>
+              <p>An error occurred while updating the renewal status.</p>
             </body>
           </html>
         `);
@@ -209,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       <html>
         <body style="font-family: sans-serif; padding: 40px; text-align: center;">
           <h1>❌ Error</h1>
-          <p>${error.message}</p>
+          <p>An unexpected error occurred. Please try again or contact support.</p>
         </body>
       </html>
     `);

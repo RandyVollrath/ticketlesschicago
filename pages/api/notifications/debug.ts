@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Admin emails that can access this debug endpoint
 const ADMIN_EMAILS = (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.ADMIN_EMAIL || '')
@@ -197,8 +198,7 @@ export default withAdminAuth(async (
   } catch (error) {
     console.error('Debug endpoint error:', error);
     res.status(500).json({
-      error: 'Failed to run diagnostics',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeErrorMessage(error)
     });
   }
 });

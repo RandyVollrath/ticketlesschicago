@@ -10,6 +10,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'GET') {
@@ -85,7 +86,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('Error fetching users missing docs:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error',
+      error: sanitizeErrorMessage(error),
     });
   }
 });

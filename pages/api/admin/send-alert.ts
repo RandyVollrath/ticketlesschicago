@@ -3,6 +3,7 @@ import { withAdminAuth } from '../../../lib/auth-middleware';
 import { maskPhone, maskEmail } from '../../../lib/mask-pii';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Send SMS via ClickSend
 const sendSMS = async (phone: string, message: string, dryRun: boolean): Promise<{ success: boolean; dryRun?: boolean; error?: string }> => {
@@ -22,7 +23,7 @@ const sendSMS = async (phone: string, message: string, dryRun: boolean): Promise
     }
   } catch (error: any) {
     console.error(`❌ SMS error:`, error);
-    return { success: false, error: error.message || 'SMS sending failed' };
+    return { success: false, error: 'SMS sending failed' };
   }
 };
 
@@ -68,7 +69,7 @@ const sendEmail = async (email: string, subject: string, message: string, dryRun
     return { success: true };
   } catch (error: any) {
     console.error(`❌ Email error:`, error);
-    return { success: false, error: error.message || 'Email sending failed' };
+    return { success: false, error: 'Email sending failed' };
   }
 };
 
@@ -125,6 +126,6 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
   } catch (error: any) {
     console.error('Send alert error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 });

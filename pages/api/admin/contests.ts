@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +35,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
       if (fetchError) {
         console.error('Fetch error:', fetchError);
-        return res.status(500).json({ error: 'Failed to fetch contests: ' + fetchError.message });
+        return res.status(500).json({ error: sanitizeErrorMessage(fetchError) });
       }
 
       // Get total count
@@ -73,7 +74,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
       if (updateError) {
         console.error('Update error:', updateError);
-        return res.status(500).json({ error: 'Failed to update contest: ' + updateError.message });
+        return res.status(500).json({ error: sanitizeErrorMessage(updateError) });
       }
 
       res.status(200).json({
@@ -87,6 +88,6 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
   } catch (error: any) {
     console.error('Admin contests error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 });

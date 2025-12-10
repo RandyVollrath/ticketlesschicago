@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import contestKnowledge from '../../lib/ticket-contest-knowledge.json';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -111,8 +112,8 @@ Which reason best matches their situation? Reply with ONLY the number (1-${viola
         : 'CONSIDER CONTESTING - Moderate chance, gather strong evidence'
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
