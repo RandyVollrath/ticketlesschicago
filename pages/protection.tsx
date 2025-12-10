@@ -45,6 +45,9 @@ export default function Protection() {
   // Consent checkbox
   const [consentGiven, setConsentGiven] = useState(false);
 
+  // SMS consent - default true for Protection users
+  const [smsConsent, setSmsConsent] = useState(true);
+
   // Phone number (REQUIRED for Protection)
   const [phone, setPhone] = useState('');
 
@@ -198,6 +201,7 @@ export default function Protection() {
       permitZones: hasPermitZone ? zones : undefined,
       permitRequested: permitRequested,
       vehicleType: vehicleType,
+      smsConsent: smsConsent, // TCPA compliance - pass SMS consent to backend
       renewals: {
         citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
         licensePlate: needsLicensePlate ? { date: licensePlateDate, isVanity: hasVanityPlate } : null
@@ -239,6 +243,7 @@ export default function Protection() {
         permitZones: hasPermitZone ? zones : undefined,
         permitRequested: permitRequested,
         vehicleType: vehicleType,
+        smsConsent: smsConsent, // TCPA compliance - pass SMS consent to backend
         renewals: {
           citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
           licensePlate: needsLicensePlate ? { date: licensePlateDate, isVanity: hasVanityPlate } : null
@@ -958,6 +963,35 @@ export default function Protection() {
                     />
                     <span>
                       I authorize Autopilot America to monitor my vehicle renewal deadlines and coordinate automated renewals on my behalf. I understand that renewal fees are set by the City of Chicago and State of Illinois, and I will be charged the official rate at the time of renewal. I agree to the <a href="/terms" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Privacy Policy</a>.
+                    </span>
+                  </label>
+                </div>
+
+                {/* SMS Consent Checkbox - TCPA Compliance */}
+                <div style={{
+                  backgroundColor: `${COLORS.regulatory}08`,
+                  borderRadius: '8px',
+                  border: `2px solid ${COLORS.regulatory}`,
+                  padding: '16px',
+                  marginBottom: '20px'
+                }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    color: COLORS.graphite
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={smsConsent}
+                      onChange={(e) => setSmsConsent(e.target.checked)}
+                      style={{ width: '20px', height: '20px', marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <span>
+                      <strong>Yes, send me SMS/text alerts!</strong> I consent to receive automated text messages from Autopilot America about my vehicle renewals, street cleaning, permit zone updates, and important reminders. Message & data rates may apply. Reply STOP to opt-out anytime.
                     </span>
                   </label>
                 </div>

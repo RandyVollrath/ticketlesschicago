@@ -156,6 +156,74 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Handle DONE/EMISSIONS - mark emissions test as completed
+    const isEmissionsComplete =
+      messageLower.includes('emissions') ||
+      messageLower === 'done' ||
+      messageLower.includes('test done') ||
+      messageLower.includes('passed');
+
+    if (isEmissionsComplete && matchedUser) {
+      console.log(`🚗 Emissions completion keyword detected from ${matchedEmail}`);
+
+      // For emissions, we need to re-query to find the right user if there are duplicates
+      // Find all users with this phone who have an emissions_date set
+      const { data: emissionsUsers, error: emissionsQueryError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('user_id, email, first_name, emissions_date, emissions_completed, phone_number')
+        .or(phoneVariations.map(p => `phone.eq.${p},phone_number.eq.${p}`).join(','))
+        .not('emissions_date', 'is', null)
+        .eq('emissions_completed', false)
+        .order('emissions_date', { ascending: true });
+
+      if (emissionsQueryError) {
+        console.error('Error querying emissions users:', emissionsQueryError);
+      } else if (!emissionsUsers || emissionsUsers.length === 0) {
+        console.log(`⚠️ No users with pending emissions found for phone: ${fromNumber}`);
+        try {
+          const { sendClickSendSMS } = await import('../../../lib/sms-service');
+          await sendClickSendSMS(
+            fromNumber,
+            `Autopilot: We don't have an emissions due date on file for you, or it's already been marked complete. Visit autopilotamerica.com/settings to check your profile.`
+          );
+        } catch (smsError) {
+          console.error('Error sending SMS:', smsError);
+        }
+      } else {
+        // Pick the user with the soonest emissions date
+        const emissionsUser = emissionsUsers[0];
+        console.log(`✅ Found user with pending emissions: ${emissionsUser.email} (due: ${emissionsUser.emissions_date})`);
+
+        const currentYear = new Date().getFullYear();
+        const emissionsTestYear = currentYear;
+
+        const { error: updateError } = await supabaseAdmin
+          .from('user_profiles')
+          .update({
+            emissions_completed: true,
+            emissions_completed_at: new Date().toISOString(),
+            emissions_test_year: emissionsTestYear
+          })
+          .eq('user_id', emissionsUser.user_id);
+
+        if (updateError) {
+          console.error('❌ Error marking emissions complete:', updateError);
+        } else {
+          console.log(`✅ Emissions marked complete for ${emissionsUser.email} via SMS`);
+
+          try {
+            const { sendClickSendSMS } = await import('../../../lib/sms-service');
+            await sendClickSendSMS(
+              fromNumber,
+              `Autopilot: Great news${emissionsUser.first_name ? `, ${emissionsUser.first_name}` : ''}! We've marked your emissions test as complete. Your license plate renewal can now proceed without any blocks. Thanks for letting us know!`
+            );
+          } catch (smsError) {
+            console.error('Error sending confirmation SMS:', smsError);
+          }
+        }
+      }
+    }
+
     // Handle STOP/unsubscribe
     if (['stop', 'unsubscribe', 'cancel', 'quit'].includes(messageLower) && matchedUser) {
       console.log(`🛑 STOP received from ${matchedEmail} - disabling SMS`);

@@ -1,5 +1,45 @@
-// Direct ClickSend API implementation without the broken npm package
-export async function sendClickSendSMS(to: string, message: string): Promise<{success: boolean, error?: string}> {
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000; // 1 second between retries
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Direct ClickSend API implementation with retry logic
+export async function sendClickSendSMS(
+  to: string,
+  message: string,
+  options: { maxRetries?: number } = {}
+): Promise<{success: boolean, error?: string, attempts?: number}> {
+  const maxRetries = options.maxRetries ?? MAX_RETRIES;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await sendClickSendSMSOnce(to, message);
+
+    if (result.success) {
+      return { ...result, attempts: attempt };
+    }
+
+    // Don't retry on credential errors or invalid number
+    if (result.error?.includes('No credentials') ||
+        result.error?.includes('INVALID_RECIPIENT')) {
+      console.log(`❌ SMS failed (not retrying): ${result.error}`);
+      return { ...result, attempts: attempt };
+    }
+
+    if (attempt < maxRetries) {
+      console.log(`⚠️ SMS attempt ${attempt} failed, retrying in ${RETRY_DELAY_MS}ms...`);
+      await sleep(RETRY_DELAY_MS * attempt); // Exponential backoff
+    }
+  }
+
+  console.error(`❌ SMS failed after ${maxRetries} attempts`);
+  return { success: false, error: `Failed after ${maxRetries} attempts`, attempts: maxRetries };
+}
+
+// Single attempt (internal)
+async function sendClickSendSMSOnce(to: string, message: string): Promise<{success: boolean, error?: string}> {
   const username = process.env.CLICKSEND_USERNAME;
   const apiKey = process.env.CLICKSEND_API_KEY;
   
@@ -62,8 +102,40 @@ export async function sendClickSendSMS(to: string, message: string): Promise<{su
   }
 }
 
-// Voice call implementation using ClickSend Voice API
-export async function sendClickSendVoiceCall(to: string, message: string): Promise<{success: boolean, error?: string}> {
+// Voice call implementation with retry logic
+export async function sendClickSendVoiceCall(
+  to: string,
+  message: string,
+  options: { maxRetries?: number } = {}
+): Promise<{success: boolean, error?: string, attempts?: number}> {
+  const maxRetries = options.maxRetries ?? MAX_RETRIES;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await sendClickSendVoiceCallOnce(to, message);
+
+    if (result.success) {
+      return { ...result, attempts: attempt };
+    }
+
+    // Don't retry on credential errors or invalid number
+    if (result.error?.includes('No credentials') ||
+        result.error?.includes('INVALID_RECIPIENT')) {
+      console.log(`❌ Voice call failed (not retrying): ${result.error}`);
+      return { ...result, attempts: attempt };
+    }
+
+    if (attempt < maxRetries) {
+      console.log(`⚠️ Voice call attempt ${attempt} failed, retrying in ${RETRY_DELAY_MS}ms...`);
+      await sleep(RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  console.error(`❌ Voice call failed after ${maxRetries} attempts`);
+  return { success: false, error: `Failed after ${maxRetries} attempts`, attempts: maxRetries };
+}
+
+// Single voice call attempt (internal)
+async function sendClickSendVoiceCallOnce(to: string, message: string): Promise<{success: boolean, error?: string}> {
   const username = process.env.CLICKSEND_USERNAME;
   const apiKey = process.env.CLICKSEND_API_KEY;
   

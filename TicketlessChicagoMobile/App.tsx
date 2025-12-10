@@ -1,374 +1,246 @@
-import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState, useEffect, useRef } from 'react';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-gesture-handler';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Switch,
-} from 'react-native';
-import LocationService, { ParkingRule } from './src/services/LocationService';
-import BluetoothService, { SavedCarDevice } from './src/services/BluetoothService';
+
+// Screens
+import HomeScreen from './src/screens/HomeScreen';
+import MapScreen from './src/screens/MapScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import LoginScreen from './src/screens/LoginScreen';
 
-const Stack = createStackNavigator();
+// Services
+import AuthService, { AuthState } from './src/services/AuthService';
+import PushNotificationService from './src/services/PushNotificationService';
+import DeepLinkingService from './src/services/DeepLinkingService';
 
-function HomeScreen({ navigation }: any): React.JSX.Element {
-  const [isMonitoring, setIsMonitoring] = useState(false);
-  const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
-  const [lastParkingCheck, setLastParkingCheck] = useState<{
-    address: string;
-    rules: ParkingRule[];
-    timestamp: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(false);
+// Components
+import TabBar from './src/navigation/TabBar';
+import { ErrorBoundary } from './src/components';
 
-  useEffect(() => {
-    loadSavedCar();
-  }, []);
+// Theme
+import { colors, typography } from './src/theme';
 
-  // Reload car when returning from settings
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadSavedCar();
-    });
-    return unsubscribe;
-  }, [navigation]);
+// Utils
+import Logger from './src/utils/Logger';
+import { setupGlobalErrorHandler } from './src/utils/errorHandler';
 
-  const loadSavedCar = async () => {
-    const device = await BluetoothService.getSavedCarDevice();
-    setSavedCar(device);
-  };
+const log = Logger.createLogger('App');
 
-  const handleCarDisconnect = async () => {
-    console.log('Car disconnected - checking parking location...');
-    setLoading(true);
+// Setup global error handling
+setupGlobalErrorHandler();
 
-    try {
-      const coords = await LocationService.getCurrentLocation();
-      const rules = await LocationService.checkParkingRules(coords);
-      await LocationService.saveLastParkingLocation(coords, rules);
+// Type definitions
+export type RootStackParamList = {
+  Onboarding: undefined;
+  Login: undefined;
+  MainTabs: undefined;
+  BluetoothSettings: undefined;
+};
 
-      setLastParkingCheck({
-        address: `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
-        rules,
-        timestamp: Date.now(),
-      });
+export type MainTabParamList = {
+  Home: undefined;
+  Map: undefined;
+  History: undefined;
+  Profile: undefined;
+};
 
-      if (rules.length > 0) {
-        await LocationService.sendParkingAlert(rules);
-      }
-    } catch (error) {
-      console.error('Error handling car disconnect:', error);
-      Alert.alert('Error', 'Failed to check parking location');
-    } finally {
-      setLoading(false);
-    }
-  };
+const Stack = createStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
 
-  const startMonitoring = async () => {
-    if (!savedCar) {
-      Alert.alert('No Car Paired', 'Please pair your car Bluetooth device first');
-      return;
-    }
+// Custom TabBar renderer - extracted to avoid re-creation on each render
+const renderTabBar = (props: any) => <TabBar {...props} />;
 
-    setLoading(true);
-
-    try {
-      const hasLocationPermission = await LocationService.requestLocationPermission();
-      if (!hasLocationPermission) {
-        Alert.alert('Permission Denied', 'Location permission is required');
-        setLoading(false);
-        return;
-      }
-
-      await BluetoothService.monitorCarConnection(handleCarDisconnect);
-      setIsMonitoring(true);
-      Alert.alert('Monitoring Started', 'We\'ll check parking restrictions when you disconnect from your car');
-    } catch (error) {
-      console.error('Error starting monitoring:', error);
-      Alert.alert('Error', 'Failed to start monitoring');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const stopMonitoring = () => {
-    BluetoothService.stopMonitoring();
-    setIsMonitoring(false);
-    Alert.alert('Monitoring Stopped', 'Parking detection has been disabled');
-  };
-
-  const testParkingCheck = async () => {
-    setLoading(true);
-
-    try {
-      const coords = await LocationService.getCurrentLocation();
-      const rules = await LocationService.checkParkingRules(coords);
-
-      setLastParkingCheck({
-        address: `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
-        rules,
-        timestamp: Date.now(),
-      });
-
-      if (rules.length > 0) {
-        await LocationService.sendParkingAlert(rules);
-      } else {
-        Alert.alert('All Clear!', 'No parking restrictions at your current location');
-      }
-    } catch (error) {
-      console.error('Error testing parking check:', error);
-      Alert.alert('Error', 'Failed to check parking location');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+// Main Tab Navigator
+function MainTabNavigator() {
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <ScrollView contentContainerStyle={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Ticketless Chicago</Text>
-          <Text style={styles.subtitle}>Auto Parking Detection</Text>
-        </View>
-
-        {/* Monitoring Status */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Auto-Detection</Text>
-            <Switch
-              value={isMonitoring}
-              onValueChange={isMonitoring ? stopMonitoring : startMonitoring}
-              disabled={loading || !savedCar}
-            />
-          </View>
-          <Text style={styles.cardText}>
-            {isMonitoring
-              ? '✅ Monitoring your car connection'
-              : savedCar
-              ? '⏸️ Tap to start monitoring'
-              : '⚠️ Please pair your car first'}
-          </Text>
-        </View>
-
-        {/* Saved Car */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Paired Car</Text>
-          {savedCar ? (
-            <View>
-              <Text style={styles.cardText}>🚗 {savedCar.name}</Text>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => navigation.navigate('Settings')}
-              >
-                <Text style={styles.secondaryButtonText}>Change Car</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View>
-              <Text style={styles.cardText}>No car paired</Text>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => navigation.navigate('Settings')}
-              >
-                <Text style={styles.buttonText}>Pair Your Car</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Test Button */}
-        <TouchableOpacity
-          style={[styles.primaryButton, styles.testButton]}
-          onPress={testParkingCheck}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>🔍 Check Current Location</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Last Parking Check */}
-        {lastParkingCheck && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Last Parking Check</Text>
-            <Text style={styles.timestamp}>
-              {new Date(lastParkingCheck.timestamp).toLocaleString()}
-            </Text>
-            <Text style={styles.address}>{lastParkingCheck.address}</Text>
-
-            {lastParkingCheck.rules.length > 0 ? (
-              <View style={styles.rulesContainer}>
-                {lastParkingCheck.rules.map((rule, index) => (
-                  <View key={index} style={styles.ruleCard}>
-                    <Text style={styles.ruleType}>
-                      {rule.type === 'street_cleaning'
-                        ? '🧹 Street Cleaning'
-                        : rule.type === 'snow_route'
-                        ? '❄️ Snow Route'
-                        : '🅿️ Permit Zone'}
-                    </Text>
-                    <Text style={styles.ruleMessage}>{rule.message}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.allClear}>✅ No restrictions found</Text>
-            )}
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+    <Tab.Navigator
+      tabBar={renderTabBar}
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ tabBarLabel: 'Map' }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{ tabBarLabel: 'History' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarLabel: 'Profile' }}
+      />
+    </Tab.Navigator>
   );
 }
 
+// App Component
 function App(): React.JSX.Element {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasOnboarded, setHasOnboarded] = useState(false);
+  const [hasSeenLogin, setHasSeenLogin] = useState(false);
+  const [authState, setAuthState] = useState<AuthState | null>(null);
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+
+  useEffect(() => {
+    initializeApp();
+  }, []);
+
+  // Note: Deep linking and push notification navigation refs are set in
+  // NavigationContainer's onReady callback to ensure navigation is ready
+
+  useEffect(() => {
+    // Subscribe to auth state changes
+    const unsubscribe = AuthService.subscribe((state) => {
+      setAuthState(state);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const initializeApp = async () => {
+    try {
+      // Check onboarding and login status in parallel
+      const [onboarded, seenLogin] = await Promise.all([
+        AsyncStorage.getItem('hasOnboarded'),
+        AsyncStorage.getItem('hasSeenLogin'),
+      ]);
+
+      setHasOnboarded(onboarded === 'true');
+      setHasSeenLogin(seenLogin === 'true');
+
+      // Initialize services
+      await AuthService.initialize();
+      await PushNotificationService.initialize();
+
+      // If user is already authenticated, ensure push token is registered
+      if (AuthService.isAuthenticated()) {
+        const pushEnabled = await PushNotificationService.isEnabled();
+        if (pushEnabled) {
+          await PushNotificationService.registerTokenWithBackend();
+        }
+      }
+    } catch (error) {
+      log.error('Error initializing app', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOnboardingComplete = async () => {
+    await AsyncStorage.setItem('hasOnboarded', 'true');
+    setHasOnboarded(true);
+  };
+
+  const handleLoginComplete = async () => {
+    await AsyncStorage.setItem('hasSeenLogin', 'true');
+    setHasSeenLogin(true);
+
+    // Request push notification permissions after login
+    await PushNotificationService.requestPermissionAndRegister();
+  };
+
+  if (isLoading || authState?.isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  // Determine initial route
+  const getInitialRoute = (): keyof RootStackParamList => {
+    if (!hasOnboarded) return 'Onboarding';
+    if (!hasSeenLogin && !authState?.isAuthenticated) return 'Login';
+    return 'MainTabs';
+  };
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{
-            title: 'Pair Your Car',
-            headerBackTitle: 'Back',
-          }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ErrorBoundary>
+      <NavigationContainer
+        ref={navigationRef}
+        linking={DeepLinkingService.getLinkingConfig()}
+        onReady={() => {
+          // Initialize navigation refs for deep linking and push notifications
+          // This is called when navigation container is ready, ensuring safe navigation
+          if (navigationRef.current) {
+            DeepLinkingService.setNavigationRef(navigationRef.current);
+            DeepLinkingService.initialize(navigationRef.current);
+            PushNotificationService.setNavigationRef(navigationRef.current);
+          }
+        }}
+      >
+        <Stack.Navigator
+          initialRouteName={getInitialRoute()}
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen name="Onboarding">
+            {(props) => (
+              <OnboardingScreen
+                {...props}
+                onComplete={handleOnboardingComplete}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Login">
+            {(props) => (
+              <LoginScreen
+                {...props}
+                onAuthSuccess={handleLoginComplete}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+          <Stack.Screen
+            name="BluetoothSettings"
+            component={SettingsScreen}
+            options={{
+              headerShown: true,
+              title: 'Pair Your Car',
+              headerBackTitle: 'Back',
+              headerStyle: {
+                backgroundColor: colors.cardBg,
+              },
+              headerTintColor: colors.primary,
+              headerTitleStyle: {
+                fontWeight: typography.weights.semibold,
+              },
+            }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollView: {
-    padding: 16,
-  },
-  header: {
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    marginTop: 16,
+    backgroundColor: colors.background,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  cardText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  primaryButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
+  loadingText: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
     marginTop: 12,
-  },
-  secondaryButton: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButtonText: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  testButton: {
-    marginVertical: 8,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 4,
-  },
-  address: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  rulesContainer: {
-    marginTop: 8,
-  },
-  ruleCard: {
-    backgroundColor: '#fff5f5',
-    borderLeftWidth: 4,
-    borderLeftColor: '#ff4444',
-    padding: 12,
-    marginBottom: 8,
-    borderRadius: 4,
-  },
-  ruleType: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ff4444',
-    marginBottom: 4,
-  },
-  ruleMessage: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-  },
-  allClear: {
-    fontSize: 14,
-    color: '#4CAF50',
-    fontWeight: '600',
   },
 });
 

@@ -32,3 +32,8 @@ config.local.js
 .DS_Store
 Thumbs.db
 .env*.local
+
+# Vercel env files
+.env.vercel
+.env.vercel-pulled
+.env.temp

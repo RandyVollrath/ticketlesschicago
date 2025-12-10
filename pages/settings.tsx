@@ -867,6 +867,75 @@ export default function ProfileNew() {
             />
           )}
 
+          {/* SMS Opt-in Banner for Migrated Users */}
+          {profile.role?.startsWith('msc_migrated') && !formData.notify_sms && profile.phone_number && (
+            <div style={{
+              marginBottom: '24px',
+              padding: '20px',
+              backgroundColor: '#eff6ff',
+              border: '2px solid #3b82f6',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '16px'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor: '#3b82f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: COLORS.graphite }}>
+                  Enable SMS Alerts
+                </h3>
+                <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
+                  Get instant text alerts for street cleaning, parking bans, and renewal reminders. Never miss an important deadline!
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const { error } = await supabase
+                        .from('user_profiles')
+                        .update({ notify_sms: true })
+                        .eq('user_id', user?.id)
+
+                      if (!error) {
+                        setFormData((prev: any) => ({ ...prev, notify_sms: true }))
+                        toast.success('SMS alerts enabled! You\'ll now receive text notifications.')
+                      }
+                    } catch (err) {
+                      console.error('Error enabling SMS:', err)
+                    }
+                  }}
+                  style={{
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Enable SMS Alerts
+                </button>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: COLORS.slate }}>
+                  Message & data rates may apply. Reply STOP to opt-out anytime.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Protection status card - only show if not protected */}
           {!profile.has_protection && (
             <div style={{ marginBottom: '24px' }}>
