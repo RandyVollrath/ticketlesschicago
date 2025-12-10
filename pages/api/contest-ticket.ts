@@ -1,9 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
 import OpenAI from 'openai';
 import contestKnowledge from '../../lib/ticket-contest-knowledge.json';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
+});
+
+// Input validation schema
+const contestTicketSchema = z.object({
+  violation_description: z.string().min(1, 'Violation description is required').max(1000),
+  situation_description: z.string().max(2000).optional(),
 });
 
 interface ContestReason {
@@ -28,11 +35,17 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { violation_description, situation_description } = req.body;
-
-  if (!violation_description) {
-    return res.status(400).json({ error: 'Violation description is required' });
+  // Validate request body
+  const parseResult = contestTicketSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }));
+    return res.status(400).json({ error: 'Validation failed', details: errors });
   }
+
+  const { violation_description, situation_description } = parseResult.data;
 
   try {
     // Use OpenAI to find most relevant violation type

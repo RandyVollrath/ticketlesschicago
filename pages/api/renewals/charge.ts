@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,14 +29,17 @@ const RENEWAL_FEES = {
   permit: 30
 };
 
-interface ChargeRenewalRequest {
-  userId: string;
-  chargeType: 'city_sticker' | 'license_plate' | 'permit';
-  vehicleType?: string; // Required for city_sticker
-  isVanity?: boolean; // Required for license_plate
-  licensePlate: string;
-  renewalDeadline: string; // ISO date string
-}
+// Input validation schema
+const chargeRenewalSchema = z.object({
+  userId: z.string().uuid('Invalid user ID format'),
+  chargeType: z.enum(['city_sticker', 'license_plate', 'permit'], {
+    errorMap: () => ({ message: 'Invalid charge type' })
+  }),
+  vehicleType: z.string().max(10).optional(),
+  isVanity: z.boolean().optional(),
+  licensePlate: z.string().min(2).max(10).regex(/^[A-Z0-9\-\s]+$/i, 'Invalid license plate').transform(val => val.toUpperCase().trim()),
+  renewalDeadline: z.string().refine(val => !isNaN(Date.parse(val)), 'Invalid date format'),
+});
 
 export default async function handler(
   req: NextApiRequest,
@@ -51,19 +56,17 @@ export default async function handler(
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const {
-    userId,
-    chargeType,
-    vehicleType,
-    isVanity,
-    licensePlate,
-    renewalDeadline
-  } = req.body as ChargeRenewalRequest;
-
-  // Validate required fields
-  if (!userId || !chargeType || !licensePlate || !renewalDeadline) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  // Validate request body
+  const parseResult = chargeRenewalSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }));
+    return res.status(400).json({ error: 'Validation failed', details: errors });
   }
+
+  const { userId, chargeType, vehicleType, isVanity, licensePlate, renewalDeadline } = parseResult.data;
 
   try {
     // Calculate amount based on charge type
@@ -245,8 +248,9 @@ async function sendChargeConfirmationEmail(
 ) {
   const chargeTypeLabel = chargeType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-  const response = await fetch('https://api.resend.com/emails', {
+  const response = await fetchWithTimeout('https://api.resend.com/emails', {
     method: 'POST',
+    timeout: DEFAULT_TIMEOUTS.email,
     headers: {
       'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json'
@@ -332,8 +336,9 @@ async function sendPaymentFailureEmail(
 ) {
   const chargeTypeLabel = chargeType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-  const response = await fetch('https://api.resend.com/emails', {
+  const response = await fetchWithTimeout('https://api.resend.com/emails', {
     method: 'POST',
+    timeout: DEFAULT_TIMEOUTS.email,
     headers: {
       'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json'
