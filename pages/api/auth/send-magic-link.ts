@@ -7,6 +7,7 @@ import {
   recordMagicLinkRequest,
   getClientIP
 } from '../../../lib/rate-limiter';
+import { maskEmail } from '../../../lib/mask-pii';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -27,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('X-RateLimit-Remaining', ipRateLimitResult.remaining);
 
   if (!ipRateLimitResult.allowed) {
-    console.warn(`Rate limit exceeded for IP ${ip} on magic link`);
+    console.warn('Rate limit exceeded for IP on magic link');
     return res.status(429).json({
       error: 'Too many requests',
       message: 'Too many login attempts. Please try again later.',
@@ -37,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // SECURITY: Rate limiting by email (prevents email bombing)
   const emailRateLimitResult = await checkEmailRateLimit(email);
   if (!emailRateLimitResult.allowed) {
-    console.warn(`Rate limit exceeded for email ${email} on magic link`);
+    console.warn(`Rate limit exceeded for email ${maskEmail(email)} on magic link`);
     return res.status(429).json({
       error: 'Too many requests',
       message: 'Too many login attempts for this email. Please try again later.',
@@ -50,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log('📧 Generating magic link for:', email);
+    console.log('📧 Generating magic link for:', maskEmail(email));
 
     // Simple callback URL - redirect destination is stored in cookie
     const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;

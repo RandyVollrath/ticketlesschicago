@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../../lib/rate-limiter'
 
 // Create admin client directly in API route to ensure proper environment variables
 const supabaseAdmin = createClient(
@@ -68,9 +69,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  // SECURITY: Rate limiting by IP
+  const ip = getClientIP(req)
+  const rateLimitResult = await checkRateLimit(ip, 'auth')
+
+  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit)
+  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining)
+
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many authentication attempts. Please try again later.',
+    })
+  }
+
   try {
     const { action } = req.body
     const { rpID, origin } = getRpConfig(req)
+
+    // Record rate limit action
+    await recordRateLimitAction(ip, 'auth')
     
     if (action === 'start') {
       // For discoverable credentials (resident keys), we leave allowCredentials empty

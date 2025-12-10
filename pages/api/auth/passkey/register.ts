@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../../lib/rate-limiter'
+import { maskEmail, maskUserId } from '../../../../lib/mask-pii'
 
 // Create admin client directly in API route to ensure proper environment variables
 const supabaseAdmin = createClient(
@@ -68,6 +70,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  // SECURITY: Rate limiting by IP
+  const ip = getClientIP(req)
+  const rateLimitResult = await checkRateLimit(ip, 'auth')
+
+  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit)
+  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining)
+
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many passkey registration attempts. Please try again later.',
+    })
+  }
+
+  // Record rate limit action
+  await recordRateLimitAction(ip, 'auth')
+
   const { action, ...body } = req.body
 
   if (action === 'start') {
@@ -84,14 +103,7 @@ async function handleRegistrationStart(req: NextApiRequest, res: NextApiResponse
     const { email, userId } = req.body
     const { rpID, origin } = getRpConfig(req)
 
-    console.log('Passkey registration start:', { email, userId })
-    console.log('Environment check:', {
-      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      host: req.headers.host,
-      rpID,
-      origin
-    })
+    console.log('Passkey registration start:', { email: maskEmail(email), userId: maskUserId(userId) })
 
     if (!email || !userId) {
       return res.status(400).json({ error: 'Email and userId are required' })
@@ -99,7 +111,7 @@ async function handleRegistrationStart(req: NextApiRequest, res: NextApiResponse
 
     // Get user from Supabase
 
-    console.log('Looking up user:', userId)
+    console.log('Looking up user:', maskUserId(userId))
     const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
     
     if (userError) {
@@ -108,11 +120,11 @@ async function handleRegistrationStart(req: NextApiRequest, res: NextApiResponse
     }
 
     if (!user) {
-      console.error('User not found for ID:', userId)
+      console.error('User not found for ID:', maskUserId(userId))
       return res.status(401).json({ error: 'User not found' })
     }
 
-    console.log('User found:', user.email)
+    console.log('User found:', maskEmail(user.email))
 
     // Get existing passkeys for this user
     const { data: existingPasskeys } = await supabaseAdmin
