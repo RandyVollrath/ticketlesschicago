@@ -2,7 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
 
-const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
+// Admin emails from environment variable (comma-separated)
+const ADMIN_EMAILS = (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.ADMIN_EMAIL || '')
+  .split(',')
+  .map(e => e.trim())
+  .filter(Boolean);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

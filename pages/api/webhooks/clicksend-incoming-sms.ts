@@ -492,14 +492,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify({
           from: 'Autopilot America <alerts@autopilotamerica.com>',
-          to: 'hiautopilotamerica@gmail.com',
+          to: process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'hiautopilotamerica@gmail.com',
           subject: emailSubject,
           html: emailHtml
         })
       });
 
       if (resendResponse.ok) {
-        console.log('✅ Email notification sent to hiautopilotamerica@gmail.com');
+        console.log('✅ Email notification sent for incoming SMS');
 
         // Mark email as sent
         await supabaseAdmin
