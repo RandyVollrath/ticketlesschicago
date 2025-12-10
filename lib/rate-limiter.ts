@@ -7,6 +7,8 @@ export const RATE_LIMITS = {
   auth: { limit: 10, windowMs: 15 * 60 * 1000 }, // 10 per 15 minutes
   checkout: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
   api: { limit: 100, windowMs: 60 * 1000 }, // 100 per minute
+  vision_api: { limit: 20, windowMs: 60 * 60 * 1000 }, // 20 per hour (expensive GPT-4V calls)
+  geocoding: { limit: 50, windowMs: 60 * 60 * 1000 }, // 50 per hour (Google Maps API)
 } as const;
 
 export type RateLimitAction = keyof typeof RATE_LIMITS;

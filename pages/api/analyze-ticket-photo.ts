@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -21,11 +22,29 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Rate limit expensive Vision API calls
+  const ip = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(ip, 'vision_api');
+
+  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit);
+  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
+
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: `Rate limit exceeded. Please try again in ${Math.ceil(rateLimitResult.resetIn / 1000)} seconds.`,
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    });
+  }
+
   const { imageBase64 } = req.body;
 
   if (!imageBase64) {
     return res.status(400).json({ error: 'Image is required' });
   }
+
+  // Record the action before making the expensive API call
+  await recordRateLimitAction(ip, 'vision_api');
 
   try {
     const completion = await openai.chat.completions.create({
