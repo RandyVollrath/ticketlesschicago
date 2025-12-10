@@ -106,7 +106,7 @@ async function getNextAvailableRemitter(): Promise<any> {
 }
 
 /**
- * Send email via Resend
+ * Send email via Resend with timeout
  */
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) {
@@ -115,6 +115,9 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   }
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -127,10 +130,17 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
         subject,
         html,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
     return response.ok;
-  } catch (error) {
-    console.error('Email send failed:', error);
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error('Email send timed out');
+    } else {
+      console.error('Email send failed:', error);
+    }
     return false;
   }
 }
@@ -192,6 +202,8 @@ async function sendRemitterAlert(remitter: any, customer: any, stickerPrice: num
   const email = remitter.email;
   if (!email) return;
 
+  const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/remitter-portal`;
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
@@ -222,19 +234,27 @@ async function sendRemitterAlert(remitter: any, customer: any, stickerPrice: num
 
         <p><strong>Action Required:</strong></p>
         <ol>
+          <li>Log in to your remitter portal</li>
           <li>Submit renewal to city portal</li>
           <li>Record confirmation number</li>
-          <li>Confirm payment via API or admin dashboard</li>
+          <li>Update order status in the portal</li>
         </ol>
 
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${portalUrl}"
+             style="background-color: #10b981; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+            Open Remitter Portal
+          </a>
+        </div>
+
         <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-          View all pending orders at your dashboard.
+          Questions? Reply to this email or contact support@autopilotamerica.com
         </p>
       </div>
     </div>
   `;
 
-  await sendEmail(email, `New City Sticker Order - ${customer.license_plate}`, html);
+  await sendEmail(email, `🆕 New City Sticker Order - ${customer.license_plate}`, html);
   console.log(`📧 Sent new order alert to remitter ${email}`);
 }
 
