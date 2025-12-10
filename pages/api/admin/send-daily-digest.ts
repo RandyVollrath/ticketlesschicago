@@ -21,7 +21,8 @@ import { sendDailyDigest, scheduleDailyDigest } from '../../../lib/daily-digest'
  * - POST /api/admin/send-daily-digest?slack=https://hooks.slack.com/...
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
+  // Accept both GET (for Vercel cron) and POST (for manual trigger)
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 

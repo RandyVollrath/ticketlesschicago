@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createNotificationScheduler } from '../../../lib/notifications-fixed';
+import { createNotificationScheduler } from '../../../lib/notifications';
 
 /**
  * Admin Test Endpoint - Run Notifications in Dry Run Mode

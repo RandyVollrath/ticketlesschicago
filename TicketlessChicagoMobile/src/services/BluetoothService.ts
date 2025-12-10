@@ -1,10 +1,14 @@
 import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from 'react-native';
 import BleManager from 'react-native-ble-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Logger from '../utils/Logger';
+
+const log = Logger.createLogger('BluetoothService');
 
 export interface SavedCarDevice {
   id: string;
   name: string;
+  rssi?: number;
 }
 
 const BleManagerModule = NativeModules.BleManager;
@@ -18,9 +22,9 @@ class BluetoothServiceClass {
   async initialize(): Promise<void> {
     try {
       await BleManager.start({ showAlert: false });
-      console.log('BLE Manager initialized');
+      log.debug('BLE Manager initialized');
     } catch (error) {
-      console.error('Error initializing BLE Manager:', error);
+      log.error('Error initializing BLE Manager', error);
     }
   }
 
@@ -42,7 +46,7 @@ class BluetoothServiceClass {
         granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED
       );
     } catch (err) {
-      console.error('Error requesting Bluetooth permission:', err);
+      log.error('Error requesting Bluetooth permission', err);
       return false;
     }
   }
@@ -67,12 +71,27 @@ class BluetoothServiceClass {
       }
     };
 
-    bleManagerEmitter.addListener('BleManagerDiscoverPeripheral', handleDiscoverPeripheral);
+    // Add listeners and store subscriptions for cleanup
+    const discoverSubscription = bleManagerEmitter.addListener(
+      'BleManagerDiscoverPeripheral',
+      handleDiscoverPeripheral
+    );
+
+    const stopSubscription = bleManagerEmitter.addListener(
+      'BleManagerStopScan',
+      () => {
+        // Clean up listeners when scan completes
+        discoverSubscription.remove();
+        stopSubscription.remove();
+      }
+    );
 
     try {
       await BleManager.scan([], 10, false);
     } catch (error) {
-      console.error('Error scanning for devices:', error);
+      // Clean up listeners on error
+      discoverSubscription.remove();
+      stopSubscription.remove();
       throw error;
     }
   }
@@ -80,8 +99,9 @@ class BluetoothServiceClass {
   async saveCarDevice(device: SavedCarDevice): Promise<void> {
     try {
       await AsyncStorage.setItem('savedCarDevice', JSON.stringify(device));
+      log.debug('Car device saved', device.name);
     } catch (error) {
-      console.error('Error saving car device:', error);
+      log.error('Error saving car device', error);
       throw error;
     }
   }
@@ -91,7 +111,7 @@ class BluetoothServiceClass {
       const deviceJson = await AsyncStorage.getItem('savedCarDevice');
       return deviceJson ? JSON.parse(deviceJson) : null;
     } catch (error) {
-      console.error('Error getting saved car device:', error);
+      log.error('Error getting saved car device', error);
       return null;
     }
   }
@@ -99,10 +119,26 @@ class BluetoothServiceClass {
   async deleteSavedCarDevice(): Promise<void> {
     try {
       await AsyncStorage.removeItem('savedCarDevice');
+      log.debug('Car device deleted');
     } catch (error) {
-      console.error('Error deleting saved car device:', error);
+      log.error('Error deleting saved car device', error);
       throw error;
     }
+  }
+
+  // Alias for deleteSavedCarDevice
+  async removeSavedCarDevice(): Promise<void> {
+    return this.deleteSavedCarDevice();
+  }
+
+  // Alias for scanForDevices
+  async startScanning(callback: (device: SavedCarDevice) => void): Promise<void> {
+    await this.scanForDevices((devices) => {
+      // Call back with the most recent device
+      if (devices.length > 0) {
+        callback(devices[devices.length - 1]);
+      }
+    });
   }
 
   async monitorCarConnection(onDisconnect: () => void): Promise<void> {
@@ -120,7 +156,7 @@ class BluetoothServiceClass {
       'BleManagerDisconnectPeripheral',
       (data: any) => {
         if (data.peripheral === savedDevice.id) {
-          console.log('Car disconnected:', data.peripheral);
+          log.info('Car disconnected', data.peripheral);
           if (this.disconnectCallback) {
             this.disconnectCallback();
           }
@@ -132,10 +168,10 @@ class BluetoothServiceClass {
     try {
       await BleManager.connect(savedDevice.id);
       this.connectedDeviceId = savedDevice.id;
-      console.log('Connected to car for monitoring:', savedDevice.name);
+      log.info('Connected to car for monitoring', savedDevice.name);
     } catch (error) {
       // Device might not be in range, but we'll still monitor for when it connects/disconnects
-      console.log('Could not connect to car (might not be in range):', error);
+      log.debug('Could not connect to car (might not be in range)', error);
     }
   }
 
@@ -147,12 +183,13 @@ class BluetoothServiceClass {
 
     if (this.connectedDeviceId) {
       BleManager.disconnect(this.connectedDeviceId).catch((error) => {
-        console.error('Error disconnecting from device:', error);
+        log.error('Error disconnecting from device', error);
       });
       this.connectedDeviceId = null;
     }
 
     this.disconnectCallback = null;
+    log.debug('Bluetooth monitoring stopped');
   }
 }
 

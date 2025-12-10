@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase';
-import { createNotificationScheduler } from './notifications-fixed';
+import { createNotificationScheduler } from './notifications';
 
 /**
  * Automated Test Harness

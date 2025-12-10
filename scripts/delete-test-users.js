@@ -7,13 +7,14 @@ const supabase = createClient(
 );
 
 const TEST_EMAILS = [
+  'heyliberalname@gmail.com',
   'hellodolldarlings@gmail.com',
   'thechicagoapp@gmail.com',
-  'countluigivampa@gmail.com',
-  'heyliberalnames@gmail.com',
-  'hiautopilotamerica@gmail.com',
-  'countluigivampa+11@gmail.com',
-  'supballroombro@gmail.com'
+  'principleddating@gmail.com',
+  'ticketlessamerica@gmail.com',
+  'ticketlesschicago@gmail.com',
+  'hellosexdollnow@gmail.com',
+  'mystreetcleaning@gmail.com'
 ];
 
 async function deleteTestUsers() {

@@ -107,7 +107,7 @@ async function checkRandyNotifications() {
   console.log('\n🔄 NOTIFICATION SYSTEM STATUS:');
   console.log('------------------------------');
   
-  // The notifications-fixed.ts queries user_profiles table
+  // The notifications.ts queries user_profiles table
   console.log('Vehicle renewals: Queries user_profiles table');
   console.log('Street cleaning: Queries user_profiles table');
   

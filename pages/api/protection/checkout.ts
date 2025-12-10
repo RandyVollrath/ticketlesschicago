@@ -32,7 +32,7 @@ export default async function handler(
     });
   }
 
-  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType, permitRequested } = req.body;
+  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType, permitRequested, smsConsent } = req.body;
 
   console.log('Protection checkout request:', {
     billingPlan,
@@ -122,7 +122,8 @@ export default async function handler(
         hasPermitZone: hasPermitZone ? 'true' : 'false',
         permitRequested: permitRequested ? 'true' : 'false',
         permitZones: hasPermitZone && permitZones ? JSON.stringify(permitZones) : '',
-        rewardful_referral_id: rewardfulReferral || ''
+        rewardful_referral_id: rewardfulReferral || '',
+        smsConsent: smsConsent === true ? 'true' : 'false' // TCPA compliance - track SMS consent
       }
     });
 

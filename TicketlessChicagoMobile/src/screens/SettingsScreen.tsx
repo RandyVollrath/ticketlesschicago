@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,62 +7,114 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  SafeAreaView,
 } from 'react-native';
-import { Peripheral } from 'react-native-ble-manager';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
+import { colors, typography, spacing, borderRadius } from '../theme';
+import Logger from '../utils/Logger';
+
+const log = Logger.createLogger('SettingsScreen');
 
 const SettingsScreen: React.FC = () => {
   const [scanning, setScanning] = useState(false);
-  const [devices, setDevices] = useState<Peripheral[]>([]);
+  const [devices, setDevices] = useState<SavedCarDevice[]>([]);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  // Refs to prevent memory leaks and race conditions
+  const isMountedRef = useRef(true);
+  const scanningRef = useRef(false);
+  const selectingRef = useRef(false);
+  const removingRef = useRef(false);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      // Stop any active scan when unmounting
+      if (scanningRef.current) {
+        BluetoothService.stopScanning().catch(() => {});
+      }
+    };
+  }, []);
 
   useEffect(() => {
     loadSavedCar();
   }, []);
 
-  const loadSavedCar = async () => {
-    const device = await BluetoothService.getSavedCarDevice();
-    setSavedCar(device);
-  };
+  const loadSavedCar = useCallback(async () => {
+    try {
+      const device = await BluetoothService.getSavedCarDevice();
+      if (isMountedRef.current) {
+        setSavedCar(device);
+      }
+    } catch (error) {
+      log.error('Error loading saved car', error);
+    }
+  }, []);
 
-  const startScanning = async () => {
+  const startScanning = useCallback(async () => {
+    if (scanningRef.current) return;
+    scanningRef.current = true;
     setScanning(true);
     setDevices([]);
 
     try {
       await BluetoothService.startScanning((device) => {
-        setDevices((prev) => {
-          // Avoid duplicates
-          const exists = prev.find((d) => d.id === device.id);
-          if (exists) return prev;
-          return [...prev, device];
-        });
+        if (isMountedRef.current) {
+          setDevices((prev) => {
+            // Avoid duplicates
+            const exists = prev.find((d) => d.id === device.id);
+            if (exists) return prev;
+            return [...prev, device];
+          });
+        }
       });
     } catch (error) {
-      console.error('Scanning error:', error);
-      Alert.alert('Error', 'Failed to scan for Bluetooth devices');
+      log.error('Scanning error', error);
+      if (isMountedRef.current) {
+        Alert.alert('Error', 'Failed to scan for Bluetooth devices. Please ensure Bluetooth is enabled.');
+      }
     } finally {
-      setScanning(false);
+      scanningRef.current = false;
+      if (isMountedRef.current) {
+        setScanning(false);
+      }
     }
-  };
+  }, []);
 
-  const selectDevice = async (device: Peripheral) => {
-    const carDevice: SavedCarDevice = {
-      id: device.id,
-      name: device.name || device.id,
-      rssi: device.rssi,
-    };
+  const selectDevice = useCallback(async (device: SavedCarDevice) => {
+    if (selectingRef.current) return;
+    selectingRef.current = true;
+    setIsSelecting(true);
 
-    await BluetoothService.saveCarDevice(carDevice);
-    setSavedCar(carDevice);
+    try {
+      await BluetoothService.saveCarDevice(device);
+      if (isMountedRef.current) {
+        setSavedCar(device);
+        Alert.alert(
+          'Car Paired!',
+          `${device.name} has been saved as your car. We'll monitor when you disconnect from it.`
+        );
+      }
+    } catch (error) {
+      log.error('Error saving car device', error);
+      if (isMountedRef.current) {
+        Alert.alert('Error', 'Failed to save car. Please try again.');
+      }
+    } finally {
+      selectingRef.current = false;
+      if (isMountedRef.current) {
+        setIsSelecting(false);
+      }
+    }
+  }, []);
 
-    Alert.alert(
-      'Car Paired!',
-      `${carDevice.name} has been saved as your car. We'll monitor when you disconnect from it.`
-    );
-  };
+  const removeCar = useCallback(() => {
+    if (removingRef.current) return;
 
-  const removeCar = async () => {
     Alert.alert(
       'Remove Car',
       'Are you sure you want to remove your paired car?',
@@ -72,18 +124,39 @@ const SettingsScreen: React.FC = () => {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
-            await BluetoothService.removeSavedCarDevice();
-            setSavedCar(null);
+            removingRef.current = true;
+            if (isMountedRef.current) setIsRemoving(true);
+
+            try {
+              await BluetoothService.removeSavedCarDevice();
+              if (isMountedRef.current) {
+                setSavedCar(null);
+              }
+            } catch (error) {
+              log.error('Error removing car', error);
+              if (isMountedRef.current) {
+                Alert.alert('Error', 'Failed to remove car. Please try again.');
+              }
+            } finally {
+              removingRef.current = false;
+              if (isMountedRef.current) {
+                setIsRemoving(false);
+              }
+            }
           },
         },
       ]
     );
-  };
+  }, []);
 
-  const renderDevice = ({ item }: { item: Peripheral }) => (
+  const renderDevice = useCallback(({ item }: { item: SavedCarDevice }) => (
     <TouchableOpacity
-      style={styles.deviceCard}
+      style={[styles.deviceCard, isSelecting && styles.deviceCardDisabled]}
       onPress={() => selectDevice(item)}
+      disabled={isSelecting}
+      accessibilityRole="button"
+      accessibilityLabel={`Pair with ${item.name || 'Unknown Device'}. Signal strength: ${item.rssi ? `${item.rssi} dBm` : 'unknown'}`}
+      accessibilityHint="Double tap to pair this device as your car"
     >
       <View style={styles.deviceInfo}>
         <Text style={styles.deviceName}>{item.name || 'Unknown Device'}</Text>
@@ -91,173 +164,198 @@ const SettingsScreen: React.FC = () => {
       </View>
       <Text style={styles.rssi}>{item.rssi ? `${item.rssi} dBm` : ''}</Text>
     </TouchableOpacity>
-  );
+  ), [isSelecting, selectDevice]);
 
   return (
-    <View style={styles.container}>
-
-      {/* Saved Car Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Paired Car</Text>
-        {savedCar ? (
-          <View style={styles.savedCarCard}>
-            <View style={styles.savedCarInfo}>
-              <Text style={styles.savedCarName}>🚗 {savedCar.name}</Text>
-              <Text style={styles.savedCarId}>{savedCar.id}</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Saved Car Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Paired Car</Text>
+          {savedCar ? (
+            <View style={styles.savedCarCard}>
+              <View style={styles.savedCarInfo}>
+                <Text style={styles.savedCarName}>🚗 {savedCar.name}</Text>
+                <Text style={styles.savedCarId}>{savedCar.id}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={removeCar}
+                style={[styles.removeButton, isRemoving && styles.buttonDisabled]}
+                disabled={isRemoving}
+                accessibilityRole="button"
+                accessibilityLabel="Remove paired car"
+                accessibilityHint="Double tap to unpair this car"
+              >
+                {isRemoving ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.removeButtonText}>Remove</Text>
+                )}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={removeCar} style={styles.removeButton}>
-              <Text style={styles.removeButtonText}>Remove</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <Text style={styles.noCarText}>No car paired yet</Text>
-        )}
-      </View>
-
-      {/* Scan Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Find Your Car</Text>
-        <Text style={styles.instructions}>
-          Turn on Bluetooth in your car and tap "Scan for Devices" below.
-          Select your car from the list to pair it.
-        </Text>
-
-        <TouchableOpacity
-          style={[styles.scanButton, scanning && styles.scanButtonDisabled]}
-          onPress={startScanning}
-          disabled={scanning}
-        >
-          {scanning ? (
-            <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.scanButtonText}>🔍 Scan for Devices</Text>
+            <Text style={styles.noCarText}>No car paired yet</Text>
           )}
-        </TouchableOpacity>
+        </View>
 
-        {scanning && (
-          <Text style={styles.scanningText}>Scanning for 10 seconds...</Text>
-        )}
+        {/* Scan Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Find Your Car</Text>
+          <Text style={styles.instructions}>
+            Turn on Bluetooth in your car and tap "Scan for Devices" below.
+            Select your car from the list to pair it.
+          </Text>
 
-        {devices.length > 0 && (
-          <View style={styles.devicesList}>
-            <Text style={styles.devicesTitle}>
-              Found {devices.length} device{devices.length !== 1 ? 's' : ''}:
-            </Text>
-            <FlatList
-              data={devices}
-              renderItem={renderDevice}
-              keyExtractor={(item) => item.id}
-              style={styles.flatList}
-            />
-          </View>
-        )}
-      </View>
+          <TouchableOpacity
+            style={[styles.scanButton, scanning && styles.scanButtonDisabled]}
+            onPress={startScanning}
+            disabled={scanning}
+            accessibilityRole="button"
+            accessibilityLabel={scanning ? 'Scanning for Bluetooth devices' : 'Scan for Bluetooth devices'}
+            accessibilityHint="Double tap to start scanning for your car's Bluetooth"
+            accessibilityState={{ busy: scanning }}
+          >
+            {scanning ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.scanButtonText}>🔍 Scan for Devices</Text>
+            )}
+          </TouchableOpacity>
 
-      {/* Info Section */}
-      <View style={styles.section}>
-        <Text style={styles.infoTitle}>How it works:</Text>
-        <Text style={styles.infoText}>
-          1. Pair your car's Bluetooth{'\n'}
-          2. Turn on monitoring in the app{'\n'}
-          3. When you disconnect from your car, we'll automatically check parking restrictions at your location{'\n'}
-          4. You'll get an instant notification if there are any restrictions
-        </Text>
-      </View>
-    </View>
+          {scanning && (
+            <Text style={styles.scanningText}>Scanning for 10 seconds...</Text>
+          )}
+
+          {devices.length > 0 && (
+            <View style={styles.devicesList}>
+              <Text style={styles.devicesTitle}>
+                Found {devices.length} device{devices.length !== 1 ? 's' : ''}:
+              </Text>
+              <FlatList
+                data={devices}
+                renderItem={renderDevice}
+                keyExtractor={(item) => item.id}
+                style={styles.flatList}
+                scrollEnabled={false}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Info Section */}
+        <View style={styles.section}>
+          <Text style={styles.infoTitle}>How it works:</Text>
+          <Text style={styles.infoText}>
+            1. Pair your car's Bluetooth{'\n'}
+            2. Turn on monitoring in the app{'\n'}
+            3. When you disconnect from your car, we'll automatically check parking restrictions at your location{'\n'}
+            4. You'll get an instant notification if there are any restrictions
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xxl,
   },
   section: {
-    backgroundColor: '#fff',
-    padding: 16,
-    marginTop: 16,
+    backgroundColor: colors.cardBg,
+    padding: spacing.base,
+    marginTop: spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 12,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   savedCarCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f0f8ff',
-    borderRadius: 8,
+    padding: spacing.md,
+    backgroundColor: colors.infoBg,
+    borderRadius: borderRadius.md,
     borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
+    borderLeftColor: colors.primary,
   },
   savedCarInfo: {
     flex: 1,
   },
   savedCarName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 4,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   savedCarId: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
   removeButton: {
-    padding: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#ff4444',
-    borderRadius: 6,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.base,
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.sm,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   removeButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    color: colors.white,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
   },
   noCarText: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
     fontStyle: 'italic',
   },
   instructions: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: spacing.base,
   },
   scanButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     alignItems: 'center',
   },
   scanButtonDisabled: {
-    backgroundColor: '#999',
+    backgroundColor: colors.textTertiary,
   },
   scanButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.white,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
   },
   scanningText: {
-    fontSize: 14,
-    color: '#007AFF',
+    fontSize: typography.sizes.sm,
+    color: colors.primary,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   devicesList: {
-    marginTop: 16,
+    marginTop: spacing.base,
   },
   devicesTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   flatList: {
     maxHeight: 300,
@@ -266,39 +364,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginBottom: 8,
+    padding: spacing.md,
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
+  },
+  deviceCardDisabled: {
+    opacity: 0.6,
   },
   deviceInfo: {
     flex: 1,
   },
   deviceName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1a1a1a',
-    marginBottom: 4,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   deviceId: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
   },
   rssi: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
   infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   infoText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
     lineHeight: 22,
   },
 });

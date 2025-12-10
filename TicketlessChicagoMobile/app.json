@@ -1,4 +1,104 @@
 {
-  "name": "TicketlessChicagoMobile",
-  "displayName": "TicketlessChicagoMobile"
+  "name": "TicketlessChicago",
+  "displayName": "Ticketless Chicago",
+  "version": "1.0.0",
+  "buildNumber": "1",
+  "bundleIdentifier": "fyi.ticketless.app",
+  "description": "Never get a parking ticket in Chicago again. Automatic parking violation detection and alerts.",
+  "author": "Ticketless Chicago",
+  "homepage": "https://ticketless.fyi",
+  "privacy": "https://ticketless.fyi/privacy",
+  "keywords": [
+    "parking",
+    "chicago",
+    "tickets",
+    "street cleaning",
+    "parking violation",
+    "car",
+    "bluetooth"
+  ],
+  "expo": {
+    "name": "Ticketless Chicago",
+    "slug": "ticketless-chicago",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#007AFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fyi.ticketless.app",
+      "buildNumber": "1",
+      "associatedDomains": [
+        "applinks:ticketless.fyi"
+      ],
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Ticketless needs your location to check parking restrictions at your current location.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Ticketless needs background location access to automatically check parking when you leave your car.",
+        "NSBluetoothPeripheralUsageDescription": "Ticketless uses Bluetooth to detect when you disconnect from your car.",
+        "NSBluetoothAlwaysUsageDescription": "Ticketless uses Bluetooth to detect when you disconnect from your car.",
+        "UIBackgroundModes": [
+          "bluetooth-central",
+          "location",
+          "fetch",
+          "remote-notification"
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["ticketlesschicago"]
+          }
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#007AFF"
+      },
+      "package": "fyi.ticketless.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "POST_NOTIFICATIONS",
+        "FOREGROUND_SERVICE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "ticketlesschicago"
+            },
+            {
+              "scheme": "https",
+              "host": "ticketless.fyi",
+              "pathPrefix": "/auth"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ticketless-chicago"
+      }
+    }
+  }
 }

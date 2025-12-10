@@ -1,0 +1,65 @@
+/**
+ * Type declarations for modules that don't have TypeScript types
+ */
+
+// Global declarations for Jest tests
+declare var global: typeof globalThis & {
+  fetch: typeof fetch;
+};
+
+// React Native Firebase Messaging
+declare module '@react-native-firebase/messaging' {
+  export interface FirebaseMessagingTypes {
+    AuthorizationStatus: {
+      NOT_DETERMINED: number;
+      DENIED: number;
+      AUTHORIZED: number;
+      PROVISIONAL: number;
+    };
+  }
+
+  export interface RemoteMessage {
+    notification?: {
+      title?: string;
+      body?: string;
+    };
+    data?: Record<string, string>;
+    messageId?: string;
+  }
+
+  export interface Messaging {
+    (): MessagingModule;
+    AuthorizationStatus: FirebaseMessagingTypes['AuthorizationStatus'];
+  }
+
+  export interface MessagingModule {
+    requestPermission(): Promise<number>;
+    getToken(): Promise<string>;
+    deleteToken(): Promise<void>;
+    onMessage(listener: (message: RemoteMessage) => any): () => void;
+    onTokenRefresh(listener: (token: string) => any): () => void;
+    setBackgroundMessageHandler(handler: (message: RemoteMessage) => Promise<any>): void;
+    getInitialNotification(): Promise<RemoteMessage | null>;
+  }
+
+  const messaging: Messaging;
+  export default messaging;
+}
+
+// NetInfo
+declare module '@react-native-community/netinfo' {
+  export interface NetInfoState {
+    type: string;
+    isConnected: boolean | null;
+    isInternetReachable: boolean | null;
+    details: any;
+  }
+
+  export interface NetInfo {
+    fetch(): Promise<NetInfoState>;
+    addEventListener(listener: (state: NetInfoState) => void): () => void;
+  }
+
+  const NetInfo: NetInfo;
+  export default NetInfo;
+}
