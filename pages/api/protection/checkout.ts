@@ -1,9 +1,33 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
+import { z } from 'zod';
 import { logAuditEvent, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 import stripeConfig from '../../../lib/stripe-config';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 import { validateClientReferenceId } from '../../../lib/webhook-validator';
+import { maskEmail } from '../../../lib/mask-pii';
+
+// Input validation schema
+const checkoutSchema = z.object({
+  billingPlan: z.enum(['monthly', 'annual'], {
+    errorMap: () => ({ message: 'Billing plan must be "monthly" or "annual"' })
+  }),
+  email: z.string().email('Invalid email format').max(255).transform(val => val.toLowerCase().trim()),
+  phone: z.string().regex(/^[\+\d\s\-\(\)]{7,20}$/).optional().nullable(),
+  userId: z.string().uuid().optional().nullable(),
+  rewardfulReferral: z.string().max(100).optional().nullable(),
+  renewals: z.object({
+    citySticker: z.boolean().optional(),
+    licensePlate: z.boolean().optional(),
+    cityVehicleSticker: z.boolean().optional(),
+  }).optional().nullable(),
+  hasPermitZone: z.boolean().optional(),
+  streetAddress: z.string().max(500).optional().nullable(),
+  permitZones: z.array(z.string().max(50)).optional().nullable(),
+  vehicleType: z.enum(['standard', 'large']).optional(),
+  permitRequested: z.boolean().optional(),
+  smsConsent: z.boolean().optional(),
+});
 
 const stripe = new Stripe(stripeConfig.secretKey!, {
   apiVersion: '2024-12-18.acacia',
@@ -32,34 +56,33 @@ export default async function handler(
     });
   }
 
-  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType, permitRequested, smsConsent } = req.body;
+  // Validate request body
+  const parseResult = checkoutSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }));
+    console.warn('Checkout validation failed:', errors);
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: errors,
+    });
+  }
+
+  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, permitZones, vehicleType, permitRequested, smsConsent } = parseResult.data;
 
   console.log('Protection checkout request:', {
     billingPlan,
-    email,
-    userId,
+    email: maskEmail(email),
+    userId: userId ? userId.substring(0, 8) + '...' : null,
     rewardfulReferral,
     hasRenewals: !!renewals,
     hasPermitZone,
     permitRequested,
-    streetAddress,
     vehicleType
   });
-
-  if (!email || typeof email !== 'string' || email.trim() === '') {
-    console.error('Missing or invalid email:', email);
-    return res.status(400).json({ error: 'Missing required field: email' });
-  }
-
-  if (!billingPlan) {
-    console.error('Missing billingPlan');
-    return res.status(400).json({ error: 'Missing required field: billingPlan' });
-  }
-
-  if (billingPlan !== 'monthly' && billingPlan !== 'annual') {
-    console.error('Invalid billing plan:', billingPlan);
-    return res.status(400).json({ error: 'Invalid billing plan. Must be "monthly" or "annual"' });
-  }
 
   try {
     // Create Stripe price IDs based on plan
