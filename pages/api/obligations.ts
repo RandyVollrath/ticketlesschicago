@@ -1,142 +1,310 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { addDays, addYears, format } from 'date-fns';
 import { verifyOwnership, handleAuthError } from '../../lib/auth-middleware';
+import { supabaseAdmin } from '../../lib/supabase';
+import { z } from 'zod';
 
-interface Obligation {
-  id: string;
-  userId: string;
-  vehicleId: string;
-  type: 'city-sticker' | 'emissions' | 'vehicle-registration';
-  dueDate: string;
-  description: string;
-  completed: boolean;
-  autoRegister: boolean;
-  reminders: Reminder[];
-}
+// Validation schemas
+const getObligationsSchema = z.object({
+  userId: z.string().uuid('Invalid user ID'),
+  vehicleId: z.string().uuid().optional(),
+});
 
-interface Reminder {
-  id: string;
-  obligationId: string;
-  type: 'email' | 'sms';
-  scheduledFor: string;
-  sent: boolean;
-  sentAt?: string;
-}
+const createObligationSchema = z.object({
+  userId: z.string().uuid('Invalid user ID'),
+  vehicleId: z.string().uuid().optional(),
+  type: z.enum(['city-sticker', 'emissions', 'vehicle-registration', 'license-plate']),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
+  notes: z.string().max(500).optional(),
+  autoRenewEnabled: z.boolean().optional(),
+});
 
-// Chicago-specific obligation rules
-const generateObligations = (vehicleId: string, userId: string, vehicleYear: number): Obligation[] => {
-  const now = new Date();
-  const obligations: Obligation[] = [];
+const updateObligationSchema = z.object({
+  completed: z.boolean().optional(),
+  autoRenewEnabled: z.boolean().optional(),
+  notes: z.string().max(500).optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
 
-  // City Sticker - due by July 31st each year
-  const citySticker: Obligation = {
-    id: `cs_${vehicleId}_${now.getFullYear()}`,
-    userId,
-    vehicleId,
-    type: 'city-sticker',
-    dueDate: format(new Date(now.getFullYear(), 6, 31), 'yyyy-MM-dd'), // July 31st
-    description: `City of Chicago vehicle sticker registration for ${now.getFullYear()}`,
-    completed: false,
-    autoRegister: false,
-    reminders: []
-  };
-  obligations.push(citySticker);
-
-  // Emissions Testing - required for vehicles 4+ years old, every 2 years
-  if (now.getFullYear() - vehicleYear >= 4) {
-    const emissionsYear = vehicleYear % 2 === now.getFullYear() % 2 ? now.getFullYear() : now.getFullYear() + 1;
-    const emissions: Obligation = {
-      id: `em_${vehicleId}_${emissionsYear}`,
-      userId,
-      vehicleId,
-      type: 'emissions',
-      dueDate: format(new Date(emissionsYear, 11, 31), 'yyyy-MM-dd'), // December 31st of emission year
-      description: `Illinois emissions test for ${emissionsYear}`,
-      completed: false,
-      autoRegister: false,
-      reminders: []
-    };
-    obligations.push(emissions);
+// Generate description based on obligation type
+function getObligationDescription(type: string, dueDate: string): string {
+  const year = new Date(dueDate).getFullYear();
+  switch (type) {
+    case 'city-sticker':
+      return `City of Chicago vehicle sticker for ${year}`;
+    case 'emissions':
+      return `Illinois emissions test for ${year}`;
+    case 'vehicle-registration':
+      return `Vehicle registration renewal for ${year}`;
+    case 'license-plate':
+      return `License plate sticker renewal for ${year}`;
+    default:
+      return `${type} due ${dueDate}`;
   }
-
-  return obligations;
-};
+}
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method === 'GET') {
-    const { userId, vehicleId } = req.query;
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Database not configured' });
+  }
 
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+  // GET - Fetch user's obligations
+  if (req.method === 'GET') {
+    // Validate query params
+    const parseResult = getObligationsSchema.safeParse({
+      userId: req.query.userId,
+      vehicleId: req.query.vehicleId,
+    });
+
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+      });
     }
 
-    // SECURITY: Verify user owns this resource or is admin
+    const { userId, vehicleId } = parseResult.data;
+
+    // SECURITY: Verify user owns this resource
     try {
-      await verifyOwnership(req, userId as string);
+      await verifyOwnership(req, userId);
     } catch (error: any) {
       return handleAuthError(res, error);
     }
 
-    // TODO: Fetch from database
-    // For now, return sample obligations
-    const sampleObligations: Obligation[] = [
-      {
-        id: 'cs_sample_2024',
-        userId: userId as string,
-        vehicleId: 'sample_vehicle',
-        type: 'city-sticker',
-        dueDate: '2024-07-31',
-        description: 'City of Chicago vehicle sticker registration for 2024',
-        completed: false,
-        autoRegister: false,
-        reminders: []
-      },
-      {
-        id: 'em_sample_2024',
-        userId: userId as string,
-        vehicleId: 'sample_vehicle',
-        type: 'emissions',
-        dueDate: '2024-12-31',
-        description: 'Illinois emissions test for 2024',
-        completed: false,
-        autoRegister: false,
-        reminders: []
-      }
-    ];
+    try {
+      let query = supabaseAdmin
+        .from('obligations')
+        .select('*')
+        .eq('user_id', userId)
+        .order('due_date', { ascending: true });
 
-    return res.status(200).json(sampleObligations);
+      if (vehicleId) {
+        query = query.eq('vehicle_id', vehicleId);
+      }
+
+      const { data: obligations, error } = await query;
+
+      if (error) {
+        console.error('Error fetching obligations:', error);
+        return res.status(500).json({ error: 'Failed to fetch obligations' });
+      }
+
+      // Transform to API response format
+      const response = (obligations || []).map(ob => ({
+        id: ob.id,
+        userId: ob.user_id,
+        vehicleId: ob.vehicle_id,
+        type: ob.type,
+        dueDate: ob.due_date,
+        description: getObligationDescription(ob.type, ob.due_date),
+        completed: ob.completed || false,
+        completedAt: ob.completed_at,
+        autoRenewEnabled: ob.auto_renew_enabled || false,
+        notes: ob.notes,
+        createdAt: ob.created_at,
+        updatedAt: ob.updated_at,
+      }));
+
+      return res.status(200).json(response);
+    } catch (error: any) {
+      console.error('Obligations fetch error:', error);
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
   }
 
+  // POST - Create new obligation
   if (req.method === 'POST') {
-    const { userId, vehicleId, vehicleYear } = req.body;
-    
-    if (!userId || !vehicleId || !vehicleYear) {
-      return res.status(400).json({ error: 'User ID, vehicle ID, and vehicle year are required' });
+    const parseResult = createObligationSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+      });
     }
 
-    const obligations = generateObligations(vehicleId, userId, vehicleYear);
-    
-    // TODO: Save to database
-    
-    return res.status(201).json(obligations);
+    const { userId, vehicleId, type, dueDate, notes, autoRenewEnabled } = parseResult.data;
+
+    // SECURITY: Verify user owns this resource
+    try {
+      await verifyOwnership(req, userId);
+    } catch (error: any) {
+      return handleAuthError(res, error);
+    }
+
+    try {
+      const { data: obligation, error } = await supabaseAdmin
+        .from('obligations')
+        .insert({
+          user_id: userId,
+          vehicle_id: vehicleId || null,
+          type,
+          due_date: dueDate,
+          notes: notes || null,
+          auto_renew_enabled: autoRenewEnabled || false,
+          completed: false,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating obligation:', error);
+        return res.status(500).json({ error: 'Failed to create obligation' });
+      }
+
+      return res.status(201).json({
+        id: obligation.id,
+        userId: obligation.user_id,
+        vehicleId: obligation.vehicle_id,
+        type: obligation.type,
+        dueDate: obligation.due_date,
+        description: getObligationDescription(obligation.type, obligation.due_date),
+        completed: obligation.completed,
+        autoRenewEnabled: obligation.auto_renew_enabled,
+        notes: obligation.notes,
+        createdAt: obligation.created_at,
+      });
+    } catch (error: any) {
+      console.error('Obligation create error:', error);
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
   }
 
+  // PATCH - Update obligation
   if (req.method === 'PATCH') {
     const { obligationId } = req.query;
-    const { completed, autoRegister } = req.body;
-    
-    if (!obligationId) {
+
+    if (!obligationId || typeof obligationId !== 'string') {
       return res.status(400).json({ error: 'Obligation ID is required' });
     }
 
-    // TODO: Update obligation in database
-    
-    return res.status(200).json({ message: 'Obligation updated' });
+    const parseResult = updateObligationSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+      });
+    }
+
+    const updates = parseResult.data;
+
+    try {
+      // First, get the obligation to verify ownership
+      const { data: existing, error: fetchError } = await supabaseAdmin
+        .from('obligations')
+        .select('user_id')
+        .eq('id', obligationId)
+        .single();
+
+      if (fetchError || !existing) {
+        return res.status(404).json({ error: 'Obligation not found' });
+      }
+
+      // SECURITY: Verify user owns this obligation
+      try {
+        await verifyOwnership(req, existing.user_id);
+      } catch (error: any) {
+        return handleAuthError(res, error);
+      }
+
+      // Build update object
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (updates.completed !== undefined) {
+        updateData.completed = updates.completed;
+        updateData.completed_at = updates.completed ? new Date().toISOString() : null;
+      }
+      if (updates.autoRenewEnabled !== undefined) {
+        updateData.auto_renew_enabled = updates.autoRenewEnabled;
+      }
+      if (updates.notes !== undefined) {
+        updateData.notes = updates.notes;
+      }
+      if (updates.dueDate !== undefined) {
+        updateData.due_date = updates.dueDate;
+      }
+
+      const { data: obligation, error } = await supabaseAdmin
+        .from('obligations')
+        .update(updateData)
+        .eq('id', obligationId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating obligation:', error);
+        return res.status(500).json({ error: 'Failed to update obligation' });
+      }
+
+      return res.status(200).json({
+        id: obligation.id,
+        userId: obligation.user_id,
+        vehicleId: obligation.vehicle_id,
+        type: obligation.type,
+        dueDate: obligation.due_date,
+        description: getObligationDescription(obligation.type, obligation.due_date),
+        completed: obligation.completed,
+        completedAt: obligation.completed_at,
+        autoRenewEnabled: obligation.auto_renew_enabled,
+        notes: obligation.notes,
+        updatedAt: obligation.updated_at,
+      });
+    } catch (error: any) {
+      console.error('Obligation update error:', error);
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
   }
 
-  res.setHeader('Allow', ['GET', 'POST', 'PATCH']);
+  // DELETE - Remove obligation
+  if (req.method === 'DELETE') {
+    const { obligationId } = req.query;
+
+    if (!obligationId || typeof obligationId !== 'string') {
+      return res.status(400).json({ error: 'Obligation ID is required' });
+    }
+
+    try {
+      // First, get the obligation to verify ownership
+      const { data: existing, error: fetchError } = await supabaseAdmin
+        .from('obligations')
+        .select('user_id')
+        .eq('id', obligationId)
+        .single();
+
+      if (fetchError || !existing) {
+        return res.status(404).json({ error: 'Obligation not found' });
+      }
+
+      // SECURITY: Verify user owns this obligation
+      try {
+        await verifyOwnership(req, existing.user_id);
+      } catch (error: any) {
+        return handleAuthError(res, error);
+      }
+
+      const { error } = await supabaseAdmin
+        .from('obligations')
+        .delete()
+        .eq('id', obligationId);
+
+      if (error) {
+        console.error('Error deleting obligation:', error);
+        return res.status(500).json({ error: 'Failed to delete obligation' });
+      }
+
+      return res.status(200).json({ success: true, message: 'Obligation deleted' });
+    } catch (error: any) {
+      console.error('Obligation delete error:', error);
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+  }
+
+  res.setHeader('Allow', ['GET', 'POST', 'PATCH', 'DELETE']);
   res.status(405).end(`Method ${req.method} Not Allowed`);
 }
