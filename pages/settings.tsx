@@ -110,6 +110,7 @@ export default function ProfileNew() {
   // File input refs for clearing on cancel
   const licenseFrontInputRef = useRef<HTMLInputElement>(null)
   const licenseBackInputRef = useRef<HTMLInputElement>(null)
+  const uploadInProgressRef = useRef(false) // Ref-based guard against race conditions
 
   useEffect(() => {
     loadUserData()
@@ -557,8 +558,15 @@ export default function ProfileNew() {
       return // Need to confirm auto-detected date
     }
     if (licenseUploading) {
-      return // Already uploading
+      return // Already uploading (state check)
     }
+
+    // Ref-based guard to prevent race conditions from multiple useEffect triggers
+    if (uploadInProgressRef.current) {
+      console.log('⏸️ Upload already in progress (ref check) - skipping duplicate')
+      return
+    }
+    uploadInProgressRef.current = true
 
     console.log('🚀 Auto-uploading license...')
     setLicenseUploading(true)
@@ -609,11 +617,13 @@ export default function ProfileNew() {
         .eq('user_id', user!.id)
 
       toast.success('License uploaded successfully!', 'Documents Updated')
+      // Note: ref reset not needed here because page reloads
       window.location.reload()
     } catch (error: any) {
       console.error('License upload error:', error)
       toast.error(error.message || 'Unknown error', 'Upload Failed')
       setLicenseUploading(false)
+      uploadInProgressRef.current = false // Reset ref on failure
     }
   }
 
