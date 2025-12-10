@@ -9,6 +9,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -83,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (uploadError) {
       console.error('❌ Storage upload error:', uploadError);
-      return res.status(500).json({ error: `Upload failed: ${uploadError.message}` });
+      return res.status(500).json({ error: 'Upload failed. Please try again.' });
     }
 
     console.log(`✅ Uploaded successfully: ${filePath}`);
@@ -101,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (updateError) {
       console.error('❌ Profile update error:', updateError);
-      return res.status(500).json({ error: `Failed to save upload: ${updateError.message}` });
+      return res.status(500).json({ error: 'Failed to save upload. Please try again.' });
     }
 
     // Cleanup temp file
@@ -118,6 +119,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('❌ Upload handler error:', error);
-    return res.status(500).json({ error: error.message || 'Upload failed' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

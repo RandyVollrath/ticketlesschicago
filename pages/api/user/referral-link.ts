@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { getRewardfulAffiliate, createRewardfulAffiliate } from '../../../lib/rewardful-helper';
 import { Resend } from 'resend';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -34,8 +35,7 @@ export default async function handler(
         errorMessage: profileError?.message
       });
       return res.status(404).json({
-        error: 'User profile not found. Please complete your profile setup first.',
-        details: profileError?.message
+        error: 'User profile not found. Please complete your profile setup first.'
       });
     }
 
@@ -205,12 +205,11 @@ export default async function handler(
     console.error('Error stack:', error.stack);
     console.error('Request details:', {
       method: req.method,
-      userId,
+      userId: req.query.userId,
       hasRewardfulKey: !!process.env.REWARDFUL_API_SECRET
     });
     return res.status(500).json({
-      error: 'Failed to process referral link',
-      details: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }
