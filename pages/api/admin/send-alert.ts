@@ -1,10 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { withAdminAuth } from '../../../lib/auth-middleware';
+import { maskPhone, maskEmail } from '../../../lib/mask-pii';
 
 // ClickSend integration (if available)
 const sendSMS = async (phone: string, message: string, dryRun: boolean) => {
@@ -35,10 +31,7 @@ const sendEmail = async (email: string, message: string, dryRun: boolean) => {
   return { success: true };
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -67,7 +60,7 @@ export default async function handler(
       results.sms = smsResult;
     }
 
-    console.log(`✅ Alert sent to ${email}${dryRun ? ' [DRY RUN]' : ''}`);
+    console.log(`✅ Alert sent to ${maskEmail(email)}${dryRun ? ' [DRY RUN]' : ''} by admin ${maskEmail(adminUser.email)}`);
 
     return res.status(200).json({
       success: true,
@@ -79,4 +72,4 @@ export default async function handler(
     console.error('Send alert error:', error);
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
-}
+});

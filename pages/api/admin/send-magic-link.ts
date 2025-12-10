@@ -1,15 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { withAdminAuth } from '../../../lib/auth-middleware';
+import { maskEmail } from '../../../lib/mask-pii';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -21,7 +20,7 @@ export default async function handler(
   }
 
   try {
-    console.log('📧 Generating magic link for:', email);
+    console.log(`📧 Admin ${maskEmail(adminUser.email)} generating magic link for: ${maskEmail(email)}`);
     
     const { data: linkData, error: magicLinkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
@@ -110,4 +109,4 @@ export default async function handler(
     console.error('Error sending magic link:', error);
     return res.status(500).json({ error: error.message });
   }
-}
+});
