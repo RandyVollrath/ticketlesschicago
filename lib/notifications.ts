@@ -10,6 +10,7 @@ import {
 } from './message-audit-logger';
 import { pushService, PushNotification, pushNotifications } from './push-service';
 import { EMAIL, URLS, BRAND } from './config';
+import { sms, email, voice, RenewalContext, UserContext } from './message-templates';
 
 // Re-export push service for convenience
 export { pushService, pushNotifications } from './push-service';
@@ -408,70 +409,22 @@ export class NotificationScheduler {
                   });
                   // Don't send, continue to next notification type
                 } else {
-                  let message = '';
+                  // Build renewal context for templates
+                  const renewalCtx: RenewalContext = {
+                    renewalType: renewal.type as RenewalContext['renewalType'],
+                    daysUntil,
+                    dueDate,
+                    hasProtection,
+                    profileConfirmed: user.profile_confirmed_at !== null,
+                    actuallyPurchased,
+                    needsPermitDocs,
+                    blocksLicensePlate: renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate
+                  };
 
-                  if (!hasProtection || !renewal.canAutoPurchase) {
-                    // Simple reminder for free alert users OR for emissions tests (which can't be auto-purchased)
-                    const blocksPlate = renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate;
-                    const urgentPrefix = blocksPlate ? 'URGENT: ' : '';
-                    const plateWarning = blocksPlate ? ' Required for license plate renewal!' : '';
-
-                    if (daysUntil === 0) {
-                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due TODAY.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Complete your test now at airteam.app' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
-                    } else if (daysUntil === 1) {
-                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due TOMORROW.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Complete your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
-                    } else if (daysUntil <= 7) {
-                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due in ${daysUntil} days.${plateWarning} ${renewal.type === 'Emissions Test' ? 'Find test locations at airteam.app' : "Don't forget to renew!"}. Reply STOP to opt out.`;
-                    } else {
-                      message = `Autopilot: ${urgentPrefix}Your ${renewal.type} is due in ${daysUntil} days (${dueDate.toLocaleDateString()}).${plateWarning}${renewal.type === 'Emissions Test' ? ' You must complete this test to renew your license plate.' : ''} Reply STOP to opt out.`;
-                    }
-                  } else {
-                  // Protection users - professional, clear communication about auto-registration
-                  // (Only for City Sticker and License Plate - NOT Emissions Test)
-                  const daysUntilPurchase = Math.max(0, daysUntil - 30);
-                  const purchaseDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-                  const purchaseDateStr = purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-                  if (daysUntil === 30) {
-                    // Purchase day - urgent final reminder
-                    message = `Autopilot: We're charging your card TODAY for your ${renewal.type} renewal (expires in 30 days). Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder before we process payment.`;
-                  } else if (daysUntil === 37) {
-                    // 1 week before charge - important checkpoint
-                    message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card in 7 days (on ${purchaseDateStr}). Please update your profile NOW if you have: New VIN (new car), new plate number, or new address. This is your last reminder before charge day.`;
-                  } else if (daysUntil > 37) {
-                    // Before purchase - collecting info
-                    // Check if user already confirmed their profile
-                    const profileConfirmed = user.profile_confirmed_at !== null;
-                    if (!profileConfirmed) {
-                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr}. Reply CONFIRM if your profile info is current (VIN, plate, address). Or visit autopilotamerica.com/settings to update.`;
-                    } else {
-                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr} (30 days before expiration). Your profile is confirmed. Reply if you need to update anything!`;
-                    }
-                  } else if (daysUntil >= 14) {
-                    // CRITICAL FIX: Only say "already purchased" if we have city confirmation
-                    if (actuallyPurchased) {
-                      message = `Autopilot: Good news! We already purchased your ${renewal.type}. Your sticker will arrive by mail within 10-14 days. No action needed from you!`;
-                    } else {
-                      // No confirmation yet - be honest
-                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We're processing your renewal purchase and will update you when it's confirmed. Your profile is confirmed.`;
-                    }
-                  } else {
-                    // Sticker delivery window
-                    if (actuallyPurchased) {
-                      message = `Autopilot: Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDateStr} and it typically takes 10-14 days to arrive. Contact us if you haven't received it.`;
-                    } else {
-                      // Still no confirmation - concerning
-                      message = `Autopilot: Your ${renewal.type} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`;
-                    }
-                  }
-
-                  // Add permit zone docs request
-                  if (needsPermitDocs) {
-                    message += ` URGENT: Text or email permit zone documents (ID front/back + proof of residency) to documents@autopilotamerica.com`;
-                  }
-
-                  message += ` Reply STOP to opt out.`;
-                }
+                  // Use centralized SMS templates
+                  const message = (!hasProtection || !renewal.canAutoPurchase)
+                    ? sms.renewalFree(renewalCtx)
+                    : sms.renewalProtection(renewalCtx);
 
                   if (this.dryRun) {
                     // DRY RUN MODE: Log what WOULD be sent but don't actually send
@@ -572,7 +525,12 @@ export class NotificationScheduler {
                     reason: 'already_sent_48h'
                   });
                 } else {
-                  const voiceMessage = `Hello from Autopilot America. This is a reminder that your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Please renew promptly to avoid penalties.`;
+                  // Use centralized voice template
+                  const voiceMessage = voice.renewalReminder(
+                    renewal.type as RenewalContext['renewalType'],
+                    daysUntil,
+                    dueDate
+                  );
 
                   if (this.dryRun) {
                     // DRY RUN MODE: Log what WOULD be sent
@@ -645,270 +603,35 @@ export class NotificationScheduler {
               // Email is always sent
               if (user.email && this.resend) {
                 try {
-                  const fromAddress = 'Autopilot America <hello@autopilotamerica.com>';
+                  const fromAddress = EMAIL.FROM_DEFAULT;
 
-                  const dueDateFormatted = dueDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  });
+                  // Build contexts for email templates
+                  const emailRenewalCtx: RenewalContext = {
+                    renewalType: renewal.type as RenewalContext['renewalType'],
+                    daysUntil,
+                    dueDate,
+                    hasProtection,
+                    profileConfirmed: user.profile_confirmed_at !== null,
+                    actuallyPurchased,
+                    needsPermitDocs,
+                    blocksLicensePlate: renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate
+                  };
 
-                  const timeText = daysUntil === 0 ? 'TODAY' :
-                                   daysUntil === 1 ? 'TOMORROW' :
-                                   `${daysUntil} days`;
+                  const userCtx: UserContext = {
+                    firstName: user.first_name,
+                    email: user.email,
+                    phone: user.phone_number,
+                    licensePlate: user.license_plate
+                  };
 
-                  const emailSubject = daysUntil <= 1
-                    ? `${renewal.type} Renewal Reminder - Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}`
-                    : (hasProtection && renewal.canAutoPurchase)
-                    ? `${renewal.type} Renewal - ${daysUntil === 30 ? "Charging your card today!" : daysUntil === 37 ? "Charging in 7 days - confirm your info" : daysUntil > 37 ? "Confirm your info" : "Sticker arriving soon"}`
-                    : `${renewal.type} - Due in ${daysUntil} days`;
+                  // Use centralized email templates
+                  const emailContent = (hasProtection && renewal.canAutoPurchase)
+                    ? email.renewalProtection(emailRenewalCtx, userCtx)
+                    : email.renewalFree(emailRenewalCtx);
 
-                  const daysUntilPurchase = Math.max(0, daysUntil - 30);
-                  const purchaseDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-                  const emailHtml = `
-                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
-                      <div style="background: #2563eb; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-                        <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Autopilot America</h1>
-                        <p style="margin: 8px 0 0; font-size: 16px; opacity: 0.9;">Your Vehicle Compliance Partner</p>
-                      </div>
-
-                      <div style="padding: 32px 24px; background: #ffffff;">
-                        <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
-                          <h2 style="margin: 0 0 12px; color: #1e40af; font-size: 20px;">📋 ${renewal.type} Reminder</h2>
-                          <div style="color: #1e40af; font-size: 16px; line-height: 1.5;">
-                            <strong>Due Date:</strong> ${dueDateFormatted}<br>
-                            <strong>Days Remaining:</strong> ${daysUntil === 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `${daysUntil} days`}
-                          </div>
-                        </div>
-
-                        ${!hasProtection || !renewal.canAutoPurchase ? `
-                          ${daysUntil <= 1 ? `
-                            <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                              <h3 style="color: #92400e; margin: 0 0 8px; font-size: 18px;">⏰ ${renewal.type === 'Emissions Test' ? 'Test' : 'Renewal'} Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}</h3>
-                              <p style="color: #92400e; margin: 0;">We recommend ${renewal.type === 'Emissions Test' ? 'completing your test' : 'renewing'} today to stay compliant and avoid any potential issues.</p>
-                            </div>
-                          ` : ''}
-
-                          ${renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate ? `
-                            <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                              <h3 style="color: #991b1b; margin: 0 0 12px; font-size: 18px;">🚨 URGENT: Required for License Plate Renewal</h3>
-                              <p style="color: #7f1d1d; margin: 0 0 12px; line-height: 1.6;">
-                                <strong>Illinois requires a valid emissions test to renew your license plate.</strong> Your license plate renewal is also coming up, and you won't be able to complete it until your emissions test is done.
-                              </p>
-                              <p style="color: #7f1d1d; margin: 0; line-height: 1.6;">
-                                The test results are sent electronically to the Secretary of State. Once you pass, you can proceed with your license plate renewal.
-                              </p>
-                            </div>
-                          ` : ''}
-
-                          ${renewal.type === 'Emissions Test' ? `
-                            <div style="background: #fef9c3; border: 1px solid #eab308; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                              <h3 style="color: #854d0e; margin: 0 0 12px; font-size: 18px;">📋 Why This Matters</h3>
-                              <p style="color: #713f12; margin: 0; line-height: 1.6;">
-                                Illinois requires emissions testing every 2 years to register your vehicle. <strong>You cannot renew your license plate without a valid emissions test.</strong> Test results are sent electronically to the state.
-                              </p>
-                            </div>
-                          ` : ''}
-
-                          <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                            <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to ${renewal.type === 'Emissions Test' ? 'Complete Your Test' : 'Renew'}:</h3>
-                            <div style="color: #0369a1; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
-                              ${renewal.type === 'City Sticker' ?
-                                'Renew online at chicityclerk.com or visit any Currency Exchange location. Bring your registration and proof of insurance.' :
-                                renewal.type === 'License Plate' ?
-                                'Renew at cyberdriveillinois.com or visit your local Secretary of State facility.' :
-                                `<strong>Step 1:</strong> Find a testing location at <a href="https://airteam.app/forms/locator.cfm" style="color: #2563eb;">airteam.app</a><br>
-                                <strong>Step 2:</strong> Bring your vehicle and registration<br>
-                                <strong>Step 3:</strong> Complete the test (takes about 10-15 minutes)<br>
-                                <strong>Step 4:</strong> Results are sent electronically to the state<br><br>
-                                <em>Note: You must bring your vehicle in person - this cannot be done remotely.</em>`}
-                            </div>
-
-                            <div style="text-align: center; margin: 20px 0;">
-                              ${renewal.type === 'Emissions Test' ? `
-                                <a href="https://airteam.app/forms/locator.cfm"
-                                   style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin-right: 12px;">
-                                  Find Testing Locations
-                                </a>
-                              ` : ''}
-                              <a href="https://autopilotamerica.com/dashboard"
-                                 style="background: ${renewal.type === 'Emissions Test' ? '#6b7280' : '#2563eb'}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
-                                View Dashboard
-                              </a>
-                            </div>
-                          </div>
-
-                          ${renewal.canAutoPurchase ? `
-                          <!-- Upgrade to Protection (only show for things that CAN be auto-purchased) -->
-                          <div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                            <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">💡 Want us to handle this for you?</h3>
-                            <p style="color: #065f46; margin: 0 0 16px; line-height: 1.6;">
-                              Upgrade to Autopilot Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
-                            </p>
-                            <div style="text-align: center;">
-                              <a href="https://autopilotamerica.com/protection"
-                                 style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
-                                Learn About Protection
-                              </a>
-                            </div>
-                          </div>
-                          ` : ''}
-                        ` : `
-                          <!-- Protection Plan Users -->
-                          <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin-bottom: 24px; border-radius: 4px;">
-                            <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">✅ We're Handling This For You</h3>
-                            <p style="color: #065f46; margin: 0; line-height: 1.6;">
-                              ${daysUntil === 30
-                                ? `We're <strong>charging your card today</strong> for your ${renewal.type} renewal (expires in 30 days). The sticker will be mailed to you and should arrive within 10-14 days!`
-                                : daysUntil === 37
-                                ? `Your ${renewal.type} expires in ${daysUntil} days. We'll <strong>charge your card in 7 days</strong> (on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}). Please update your profile now if you have any changes. This is your last reminder before charge day!`
-                                : daysUntil > 37
-                                ? `We'll automatically charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> (30 days before expiration) for your ${renewal.type} renewal. You have time to update your info if needed!`
-                                : daysUntil >= 14 && actuallyPurchased
-                                ? `Good news! We already purchased your ${renewal.type} renewal. Your sticker is in the mail and should arrive within 10-14 days. No action needed from you!`
-                                : daysUntil >= 14 && !actuallyPurchased
-                                ? `Your ${renewal.type} expires in ${daysUntil} days. We're processing your renewal purchase and will update you when it's confirmed.`
-                                : actuallyPurchased
-                                ? `Your ${renewal.type} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} and it typically takes 10-14 days to arrive.`
-                                : `Your ${renewal.type} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`
-                              }
-                            </p>
-                          </div>
-
-                          ${daysUntil > 30 ? `
-                          <!-- Confirm Information (Only shown before 30-day charge) -->
-                          <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                            <h3 style="color: #0c4a6e; margin: 0 0 12px; font-size: 18px;">📝 Please Confirm Your Information</h3>
-                            <p style="color: #0369a1; margin: 0 0 16px; line-height: 1.6;">
-                              Before we charge your card on <strong>${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>, please verify your profile is up-to-date. If any of the following has changed, update your profile now:
-                            </p>
-                            <ul style="color: #0369a1; margin: 0 0 16px; padding-left: 20px; line-height: 1.8;">
-                              <li>VIN (if you got a new vehicle)</li>
-                              <li>License plate number</li>
-                              <li>Mailing address (where we'll send your sticker)</li>
-                            </ul>
-                            <div style="text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                              <a href="https://autopilotamerica.com/settings"
-                                 style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
-                                ✅ Confirm Profile is Current
-                              </a>
-                              <a href="https://autopilotamerica.com/settings"
-                                 style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px;">
-                                Update My Profile
-                              </a>
-                            </div>
-                          </div>
-                          ` : ''}
-                        `}
-
-                        ${needsPermitDocs ? `
-                          <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 24px; margin: 24px 0;">
-                            <h3 style="color: #991b1b; margin: 0 0 16px; font-size: 18px;">📄 Permit Zone Documents Required</h3>
-                            <p style="color: #7f1d1d; margin: 0 0 16px; line-height: 1.6; font-weight: 500;">
-                              <strong>ACTION NEEDED:</strong> Your address is in a residential permit parking zone. We need the following documents to purchase your city sticker:
-                            </p>
-                            <div style="background: white; border-radius: 6px; padding: 16px; margin: 16px 0;">
-                              <ul style="color: #991b1b; margin: 0; padding-left: 20px; line-height: 1.8;">
-                                <li><strong>Driver's License:</strong> Front and back (clear photos)</li>
-                                <li><strong>Proof of Residency:</strong> Utility bill, lease agreement, mortgage statement, or property tax bill showing your address</li>
-                              </ul>
-                            </div>
-                            <p style="color: #7f1d1d; margin: 16px 0 0; font-size: 15px; line-height: 1.6;">
-                              <strong>Easy submission options:</strong><br>
-                              • <strong>Text photos to:</strong> ${user.phone_number || '(your contact number)'}<br>
-                              • <strong>Email to:</strong> <a href="mailto:documents@autopilotamerica.com" style="color: #2563eb;">documents@autopilotamerica.com</a><br>
-                              • <strong>Upload at:</strong> <a href="https://autopilotamerica.com/dashboard" style="color: #2563eb;">autopilotamerica.com/dashboard</a>
-                            </p>
-                          </div>
-                        ` : ''}
-
-                        <div style="background: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                          <h3 style="color: #374151; margin: 0 0 12px; font-size: 16px;">Why This Matters:</h3>
-                          <p style="color: #6b7280; margin: 0; line-height: 1.6;">
-                            Staying on top of your vehicle renewals helps you avoid unnecessary fines and keeps you compliant.
-                            We're here to help make sure nothing slips through the cracks.
-                          </p>
-                        </div>
-
-                        <div style="text-align: center; color: #6b7280; margin: 24px 0;">
-                          <p style="margin: 0;">Questions? Contact us at support@autopilotamerica.com</p>
-                        </div>
-                      </div>
-
-                      <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px;">
-                        <div style="margin-bottom: 12px;">
-                          <strong style="color: #374151;">Autopilot America</strong><br>
-                          Your trusted vehicle compliance partner
-                        </div>
-                      </div>
-                    </div>
-                  `;
-
-                  const emailText = !hasProtection ? `
-Hello,
-
-This is a friendly reminder from Autopilot America about your upcoming ${renewal.type}.
-
-Due Date: ${dueDateFormatted}
-Days Remaining: ${daysUntil === 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `${daysUntil} days`}
-
-${daysUntil <= 1 ? 'We recommend renewing today to stay compliant.' : 'You have time to renew, but we wanted to give you a heads up.'}
-
-View your dashboard: https://autopilotamerica.com/dashboard
-
-💡 Want us to handle this for you?
-Upgrade to Autopilot Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
-Learn more: https://autopilotamerica.com/protection
-
-Best regards,
-Autopilot America Team
-
-Questions? Reply to support@autopilotamerica.com
-                  ` : `
-Hello,
-
-This is a friendly reminder from Autopilot America about your upcoming ${renewal.type}.
-
-Due Date: ${dueDateFormatted}
-Days Remaining: ${daysUntil === 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `${daysUntil} days`}
-
-✅ WE'RE HANDLING THIS FOR YOU
-${daysUntil === 14
-  ? `We're purchasing your ${renewal.type} TODAY on your behalf. You don't need to do anything!`
-  : daysUntil > 14
-  ? `We'll automatically purchase your ${renewal.type} in ${daysUntilPurchase} days (on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, when there are 30 days left). You don't need to do anything!`
-  : daysUntil < 14
-  ? `We already purchased your ${renewal.type} - your sticker is in the mail and should arrive within 7-10 business days!`
-  : `We'll automatically purchase your ${renewal.type} on ${purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (when there are 30 days left). You have plenty of time!`
-}
-
-📝 PLEASE CONFIRM YOUR INFORMATION
-Before we purchase your renewal, please reply if any of the following has changed:
-- VIN (if you got a new vehicle)
-- License plate number
-- Mailing address
-
-${needsPermitDocs ? `
-📄 PERMIT ZONE DOCUMENTS REQUIRED
-Your address is in a residential permit parking zone. We need:
-- Driver's License (front and back - clear photos)
-- Proof of Residency (utility bill, lease, mortgage, or property tax bill)
-
-Easy submission options:
-- Text photos to your contact number
-- Email to: documents@autopilotamerica.com
-- Upload at: https://autopilotamerica.com/dashboard
-` : ''}
-
-View your dashboard: https://autopilotamerica.com/dashboard
-
-Best regards,
-Autopilot America Team
-
-Questions? Reply to support@autopilotamerica.com
-                  `;
+                  const emailSubject = emailContent.subject;
+                  const emailHtml = emailContent.html;
+                  const emailText = emailContent.text;
 
                   // Check if we already sent this email recently
                   const emailMessageKey = `${messageKey}_email`;
