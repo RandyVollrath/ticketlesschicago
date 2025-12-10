@@ -8,6 +8,7 @@ import {
   getClientIP
 } from '../../../lib/rate-limiter';
 import { maskEmail } from '../../../lib/mask-pii';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -92,8 +93,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         console.log(`📧 Email send attempt ${attempt}/3...`);
 
-        const resendResponse = await fetch('https://api.resend.com/emails', {
+        const resendResponse = await fetchWithTimeout('https://api.resend.com/emails', {
           method: 'POST',
+          timeout: DEFAULT_TIMEOUTS.email,
           headers: {
             'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
             'Content-Type': 'application/json'

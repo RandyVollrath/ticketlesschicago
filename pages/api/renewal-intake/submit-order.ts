@@ -9,6 +9,7 @@ import formidable from 'formidable';
 import fs from 'fs';
 import crypto from 'crypto';
 import { maskEmail } from '../../../lib/mask-pii';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -324,8 +325,9 @@ async function sendOrderConfirmation(order: any, partner: any) {
     : 'Standard Vehicle';
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetchWithTimeout('https://api.resend.com/emails', {
       method: 'POST',
+      timeout: DEFAULT_TIMEOUTS.email,
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type': 'application/json'
@@ -407,8 +409,9 @@ async function sendOrderConfirmation(order: any, partner: any) {
 
 async function notifyPartner(webhookUrl: string, order: any) {
   try {
-    await fetch(webhookUrl, {
+    await fetchWithTimeout(webhookUrl, {
       method: 'POST',
+      timeout: DEFAULT_TIMEOUTS.webhook,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         event: 'renewal_order_created',
