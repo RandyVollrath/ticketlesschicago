@@ -512,6 +512,115 @@ Questions? Reply to ${EMAIL.SUPPORT}
   },
 
   /**
+   * Emissions test reminder email
+   */
+  emissionsReminder(
+    user: UserContext & { vehicleYear?: string; vehicleMake?: string; vehicleModel?: string },
+    daysUntil: number,
+    emissionsDate: Date,
+    hasProtection: boolean
+  ): { subject: string; html: string; text: string } {
+    const urgency = getUrgencyLevel(daysUntil);
+    const dateStr = formatDate(emissionsDate, 'long');
+    const timeText = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `in ${daysUntil} days`;
+
+    const urgencyStyles: Record<string, { type: 'info' | 'success' | 'warning' | 'danger'; emoji: string }> = {
+      critical: { type: 'danger', emoji: '🚨' },
+      urgent: { type: 'warning', emoji: '⚠️' },
+      warning: { type: 'info', emoji: '📋' },
+      normal: { type: 'success', emoji: '🔔' },
+    };
+
+    const style = urgencyStyles[urgency];
+
+    let subject: string;
+    let headerText: string;
+    let bodyText: string;
+
+    switch (urgency) {
+      case 'critical':
+        subject = `${style.emoji} URGENT: Emissions Test Due ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}`;
+        headerText = `Your Emissions Test is Due ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}!`;
+        bodyText = `This is your final reminder. Without a valid emissions test, you cannot renew your license plate. Please complete your test immediately.`;
+        break;
+      case 'urgent':
+        subject = `${style.emoji} Emissions Test Due in ${daysUntil} Days - Action Required`;
+        headerText = `Emissions Test Due in ${daysUntil} Days`;
+        bodyText = `Your emissions test deadline is approaching quickly. Schedule your test now to avoid delays with your license plate renewal.`;
+        break;
+      case 'warning':
+        subject = `${style.emoji} Emissions Test Reminder - ${daysUntil} Days Left`;
+        headerText = `Emissions Test Due in ${daysUntil} Days`;
+        bodyText = `Don't forget - you need to complete your emissions test before you can renew your license plate. Schedule it soon to avoid the last-minute rush.`;
+        break;
+      default:
+        subject = `${style.emoji} Emissions Test Coming Up - ${daysUntil} Days`;
+        headerText = `Emissions Test Due in ${daysUntil} Days`;
+        bodyText = `This is a friendly reminder that your emissions test is coming up. You have time, but it's good to plan ahead!`;
+    }
+
+    const vehicleInfo = [user.vehicleYear, user.vehicleMake, user.vehicleModel].filter(Boolean).join(' ');
+
+    const protectionSection = hasProtection ? emailComponents.section(`
+      <h3 style="color: #1e40af; margin: 0 0 8px; font-size: 16px;">Why This Matters for Your Protection Plan:</h3>
+      <p style="color: #1e40af; margin: 0; line-height: 1.6;">
+        We handle your license plate renewal automatically, but Illinois requires a valid emissions test first.
+        Once you complete your test, we'll process your renewal!
+      </p>
+    `, '#eff6ff', '#3b82f6') : '';
+
+    const html = emailComponents.wrapper(`
+      ${emailComponents.header()}
+      ${emailComponents.body(`
+        ${emailComponents.alertBox(style.type, headerText, bodyText)}
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="margin-bottom: 8px;">
+            <strong>Vehicle:</strong> ${vehicleInfo} (${user.licensePlate})
+          </div>
+          <div>
+            <strong>Emissions Test Deadline:</strong> ${dateStr}
+          </div>
+        </div>
+        <h3 style="color: #374151; margin-bottom: 12px;">How to Get Your Emissions Test:</h3>
+        <ol style="color: #4b5563; line-height: 1.8; padding-left: 20px;">
+          <li>Find a testing location at <a href="${URLS.EMISSIONS_LOCATOR}" style="color: #2563eb;">airteam.app</a></li>
+          <li>Bring your vehicle registration</li>
+          <li>The test takes about 10-15 minutes</li>
+        </ol>
+        ${protectionSection}
+        <div style="margin-top: 24px; text-align: center;">
+          ${emailComponents.button('Find Testing Locations', URLS.EMISSIONS_LOCATOR)}
+        </div>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px; text-align: center;">
+          Questions? Reply to this email or contact ${EMAIL.SUPPORT}
+        </p>
+      `)}
+      ${emailComponents.footer()}
+    `);
+
+    const text = `
+${BRAND.NAME} - Emissions Test Reminder
+
+${headerText}
+${bodyText}
+
+Vehicle: ${vehicleInfo} (${user.licensePlate})
+Emissions Test Deadline: ${dateStr}
+
+How to Get Your Emissions Test:
+1. Find a testing location at airteam.app
+2. Bring your vehicle registration
+3. The test takes about 10-15 minutes
+
+${hasProtection ? 'Your Protection Plan: We handle your license plate renewal automatically, but Illinois requires a valid emissions test first.' : ''}
+
+Questions? ${EMAIL.SUPPORT}
+    `.trim();
+
+    return { subject, html, text };
+  },
+
+  /**
    * Sticker purchased notification
    */
   stickerPurchased(user: UserContext, purchaseDate: Date): { subject: string; html: string; text: string } {

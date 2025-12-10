@@ -10,6 +10,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { email as emailTemplates, sms as smsTemplates, voice as voiceTemplates, getUrgencyLevel } from '../../../lib/message-templates';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -130,27 +131,7 @@ async function sendVoiceCall(to: string, message: string): Promise<boolean> {
   }
 }
 
-/**
- * Generate voice call message (no emojis, spoken text)
- */
-function generateVoiceContent(user: any, daysUntil: number): string {
-  const hasProtection = user.has_protection;
-  const timeText = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
-
-  if (hasProtection) {
-    if (daysUntil <= 1) {
-      return `Hello from Autopilot America. This is an urgent reminder that your emissions test is due ${timeText}. We cannot renew your license plate until your emissions test is complete. Please visit air team dot app to find a testing location near you. Thank you.`;
-    } else {
-      return `Hello from Autopilot America. This is a reminder that your emissions test is due ${timeText}. Please complete your test soon so we can process your license plate renewal on time. Visit air team dot app to find a testing location. Thank you.`;
-    }
-  } else {
-    if (daysUntil <= 1) {
-      return `Hello from Autopilot America. This is an urgent reminder that your emissions test is due ${timeText}. Without a valid emissions test, you cannot renew your license plate. Please visit air team dot app to find a testing location near you. Thank you.`;
-    } else {
-      return `Hello from Autopilot America. This is a reminder that your emissions test is due ${timeText}. You need to complete your emissions test before you can renew your license plate. Visit air team dot app to find a testing location. Thank you.`;
-    }
-  }
-}
+// generateVoiceContent - using centralized template voiceTemplates.emissionsReminder()
 
 /**
  * Check if notification was already sent
@@ -185,141 +166,11 @@ async function logNotification(userId: string, type: string, channel: string, me
   }).catch(err => console.log('Note: Could not log notification'));
 }
 
-/**
- * Get urgency level for messaging
- */
-function getUrgencyLevel(daysUntil: number): 'critical' | 'urgent' | 'important' | 'reminder' {
-  if (daysUntil <= 1) return 'critical';
-  if (daysUntil <= 7) return 'urgent';
-  if (daysUntil <= 30) return 'important';
-  return 'reminder';
-}
+// getUrgencyLevel imported from message-templates
 
-/**
- * Generate email content based on urgency
- */
-function generateEmailContent(user: any, daysUntil: number, emissionsDate: Date): { subject: string; html: string } {
-  const urgency = getUrgencyLevel(daysUntil);
-  const dateStr = emissionsDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+// generateEmailContent - using centralized template emailTemplates.emissionsReminder()
 
-  const urgencyStyles: Record<string, { bg: string; border: string; text: string; emoji: string }> = {
-    critical: { bg: '#fef2f2', border: '#ef4444', text: '#991b1b', emoji: '🚨' },
-    urgent: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', emoji: '⚠️' },
-    important: { bg: '#eff6ff', border: '#3b82f6', text: '#1e40af', emoji: '📋' },
-    reminder: { bg: '#f0fdf4', border: '#10b981', text: '#065f46', emoji: '🔔' },
-  };
-
-  const style = urgencyStyles[urgency];
-  const timeText = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `in ${daysUntil} days`;
-
-  let subject: string;
-  let headerText: string;
-  let bodyText: string;
-
-  switch (urgency) {
-    case 'critical':
-      subject = `${style.emoji} URGENT: Emissions Test Due ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}`;
-      headerText = `Your Emissions Test is Due ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}!`;
-      bodyText = `This is your final reminder. Without a valid emissions test, you cannot renew your license plate. Please complete your test immediately.`;
-      break;
-    case 'urgent':
-      subject = `${style.emoji} Emissions Test Due in ${daysUntil} Days - Action Required`;
-      headerText = `Emissions Test Due in ${daysUntil} Days`;
-      bodyText = `Your emissions test deadline is approaching quickly. Schedule your test now to avoid delays with your license plate renewal.`;
-      break;
-    case 'important':
-      subject = `${style.emoji} Emissions Test Reminder - ${daysUntil} Days Left`;
-      headerText = `Emissions Test Due in ${daysUntil} Days`;
-      bodyText = `Don't forget - you need to complete your emissions test before you can renew your license plate. Schedule it soon to avoid the last-minute rush.`;
-      break;
-    default:
-      subject = `${style.emoji} Emissions Test Coming Up - ${daysUntil} Days`;
-      headerText = `Emissions Test Due in ${daysUntil} Days`;
-      bodyText = `This is a friendly reminder that your emissions test is coming up. You have time, but it's good to plan ahead!`;
-  }
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: ${style.bg}; border-left: 4px solid ${style.border}; padding: 24px; border-radius: 4px;">
-        <h1 style="margin: 0 0 16px; color: ${style.text}; font-size: 24px;">${headerText}</h1>
-        <p style="margin: 0; color: ${style.text}; font-size: 16px;">${bodyText}</p>
-      </div>
-
-      <div style="padding: 24px; background: #ffffff;">
-        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-          <div style="margin-bottom: 8px;">
-            <strong>Vehicle:</strong> ${user.vehicle_year || ''} ${user.vehicle_make || ''} ${user.vehicle_model || ''} (${user.license_plate})
-          </div>
-          <div>
-            <strong>Emissions Test Deadline:</strong> ${dateStr}
-          </div>
-        </div>
-
-        <h3 style="color: #374151; margin-bottom: 12px;">How to Get Your Emissions Test:</h3>
-        <ol style="color: #4b5563; line-height: 1.8; padding-left: 20px;">
-          <li>Find a testing location at <a href="https://airteam.app/forms/locator.cfm" style="color: #2563eb;">airteam.app</a></li>
-          <li>Bring your vehicle registration</li>
-          <li>The test takes about 10-15 minutes</li>
-        </ol>
-
-        ${user.has_protection ? `
-          <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 16px; margin-top: 20px;">
-            <h3 style="margin: 0 0 8px; color: #1e40af;">Why This Matters for Your Protection Plan:</h3>
-            <p style="margin: 0; color: #1e40af;">
-              We handle your license plate renewal automatically, but Illinois requires a valid emissions test first.
-              Once you complete your test, we'll process your renewal!
-            </p>
-          </div>
-        ` : ''}
-
-        <div style="margin-top: 24px; text-align: center;">
-          <a href="https://airteam.app/forms/locator.cfm"
-             style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">
-            Find Testing Locations
-          </a>
-        </div>
-
-        <p style="color: #6b7280; font-size: 14px; margin-top: 24px; text-align: center;">
-          Questions? Reply to this email or contact support@autopilotamerica.com
-        </p>
-      </div>
-    </div>
-  `;
-
-  return { subject, html };
-}
-
-/**
- * Generate SMS content based on urgency
- */
-function generateSMSContent(user: any, daysUntil: number): string {
-  const timeText = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `in ${daysUntil} days`;
-  const hasProtection = user.has_protection;
-
-  if (hasProtection) {
-    // Protection users - emphasize we need this done so we can register them
-    if (daysUntil <= 1) {
-      return `🚨 URGENT: Emissions test due ${timeText}! We can't renew your plate until this is done. Complete it now: airteam.app - Autopilot America`;
-    } else if (daysUntil <= 7) {
-      return `⚠️ Emissions test due ${timeText}. Complete this soon so we can process your plate renewal! Find locations: airteam.app - Autopilot America`;
-    } else if (daysUntil <= 30) {
-      return `📋 Emissions test due ${timeText}. Get this done so we can handle your plate renewal on time. Locations: airteam.app - Autopilot America`;
-    } else {
-      return `🔔 Emissions test due ${timeText}. Plan ahead - we'll renew your plate once this is complete. Locations: airteam.app - Autopilot America`;
-    }
-  } else {
-    // Free users - standard reminders
-    if (daysUntil <= 1) {
-      return `🚨 URGENT: Emissions test for ${user.license_plate} is due ${timeText}! Without it, you can't renew your plate. Find a location: airteam.app - Autopilot America`;
-    } else if (daysUntil <= 7) {
-      return `⚠️ Emissions test for ${user.license_plate} due ${timeText}. Schedule now: airteam.app. Required for plate renewal. - Autopilot America`;
-    } else if (daysUntil <= 30) {
-      return `📋 Reminder: Emissions test for ${user.license_plate} due ${timeText}. Plan ahead: airteam.app - Autopilot America`;
-    } else {
-      return `🔔 FYI: Emissions test for ${user.license_plate} due ${timeText}. Find locations: airteam.app - Autopilot America`;
-    }
-  }
-}
+// generateSMSContent - using centralized template smsTemplates.emissionsReminder()
 
 export default async function handler(
   req: NextApiRequest,
@@ -399,13 +250,26 @@ export default async function handler(
         continue;
       }
 
-      // Generate and send notifications
-      const { subject, html } = generateEmailContent(user, Math.max(0, daysUntil), emissionsDate);
-      const smsMessage = generateSMSContent(user, Math.max(0, daysUntil));
+      // Generate and send notifications using centralized templates
+      const effectiveDays = Math.max(0, daysUntil);
+      const hasProtection = user.has_protection || false;
+
+      const emailContent = emailTemplates.emissionsReminder(
+        {
+          firstName: user.first_name,
+          licensePlate: user.license_plate,
+          vehicleYear: user.vehicle_year,
+          vehicleMake: user.vehicle_make,
+          vehicleModel: user.vehicle_model,
+        },
+        effectiveDays,
+        emissionsDate,
+        hasProtection
+      );
+      const smsMessage = smsTemplates.emissionsReminder(effectiveDays, hasProtection, true);
 
       let sent = false;
       const phone = user.phone || user.phone_number;
-      const hasProtection = user.has_protection || false;
 
       // Check user notification preferences
       const emailEnabled = prefs.email !== false && user.notify_email !== false; // Default to true if not set
@@ -414,7 +278,7 @@ export default async function handler(
 
       // Send email if user has email AND email notifications enabled
       if (user.email && emailEnabled) {
-        const emailSent = await sendEmail(user.email, subject, html);
+        const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
         if (emailSent) {
           await logNotification(user.user_id, 'emissions_reminder', 'email', messageKey, daysUntil);
           sent = true;
@@ -445,7 +309,7 @@ export default async function handler(
       // Voice calls are only for urgent/critical timeframes - but still only on user's reminder days
       // (we already checked isReminderDay above, so this only fires on selected days)
       if (phone && voiceEnabled && daysUntil <= 7) {
-        const voiceMessage = generateVoiceContent(user, Math.max(0, daysUntil));
+        const voiceMessage = voiceTemplates.emissionsReminder(effectiveDays, hasProtection);
         console.log(`📞 Sending voice call for emissions test due in ${daysUntil} days`);
         const voiceSent = await sendVoiceCall(phone, voiceMessage);
         if (voiceSent) {
@@ -457,7 +321,7 @@ export default async function handler(
       // ESCALATION: For critical deadlines (0-1 days), send voice call even if not normally enabled
       // Only for PAID (Protection) users
       if (daysUntil <= 1 && phone && !voiceEnabled && hasProtection) {
-        const voiceMessage = generateVoiceContent(user, Math.max(0, daysUntil));
+        const voiceMessage = voiceTemplates.emissionsReminder(effectiveDays, hasProtection);
         console.log(`🚨 ESCALATION: Sending emergency voice call for emissions test due in ${daysUntil} days (Protection user)`);
         const voiceSent = await sendVoiceCall(phone, voiceMessage);
         if (voiceSent) {
