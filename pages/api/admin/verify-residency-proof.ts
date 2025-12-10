@@ -5,6 +5,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 const REJECTION_REASONS = {
   DOCUMENT_UNREADABLE: 'Document is not clear or readable',
@@ -27,22 +28,7 @@ interface VerifyRequest {
   notes?: string;
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  // Check admin authorization
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  const adminToken = process.env.ADMIN_API_TOKEN || 'ticketless2025admin';
-  if (token !== adminToken) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -233,4 +219,4 @@ export default async function handler(
       error: error.message || 'Internal server error',
     });
   }
-}
+});

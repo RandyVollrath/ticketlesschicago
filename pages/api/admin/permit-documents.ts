@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 const RESIDENCY_PROOF_BUCKET = 'residency-proofs-temps';
 
@@ -26,22 +27,7 @@ interface DocumentsResponse {
   error?: string;
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<DocumentsResponse>
-) {
-  // TODO: Add authentication check here to ensure only admins can access
-  // For now, we'll check for an admin authorization header
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  const adminToken = process.env.ADMIN_API_TOKEN;
-  if (!adminToken || authHeader.replace('Bearer ', '') !== adminToken) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -232,4 +218,4 @@ export default async function handler(
       error: error.message || 'Internal server error'
     });
   }
-}
+});
