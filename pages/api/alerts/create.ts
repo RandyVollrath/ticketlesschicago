@@ -5,7 +5,7 @@ import { notifyNewUserAboutWinterBan } from '../../../lib/winter-ban-notificatio
 import { isAddressOnSnowRoute } from '../../../lib/snow-route-matcher';
 import { maskEmail, maskPhone } from '../../../lib/mask-pii';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
-import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { sanitizeErrorMessage, isValidUSPhone, validateAndNormalizePhone } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +17,9 @@ const alertSignupSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().max(100).optional(),
   email: z.string().email('Invalid email format').max(255).transform(val => val.toLowerCase().trim()),
-  phone: z.string().min(7).max(20).regex(/^[\+\d\s\-\(\)]+$/, 'Invalid phone number format'),
+  phone: z.string()
+    .refine((val) => isValidUSPhone(val), { message: 'Please enter a valid US phone number (10 digits)' })
+    .transform((val) => validateAndNormalizePhone(val) || val),
   licensePlate: z.string().min(2).max(10).regex(/^[A-Z0-9\-\s]+$/i, 'Invalid license plate').transform(val => val.toUpperCase().trim()),
   address: z.string().min(5).max(500),
   zip: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
