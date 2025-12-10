@@ -117,57 +117,8 @@ export default function AuthCallback() {
           // User is authenticated
           const user = recheckData.session.user
 
-          // Check if this user has a profile (existing user vs new OAuth user)
-          const { data: userProfile } = await supabase
-            .from('user_profiles')
-            .select('email, has_protection')
-            .eq('user_id', user.id)
-            .single();
-
-          if (!userProfile) {
-            // New user signed in with OAuth but hasn't completed signup
-            console.log('🆕 New OAuth user detected - redirecting to free alerts signup');
-            setDebugInfo(`🆕 New user! Redirecting to signup...`);
-            await new Promise(r => setTimeout(r, 1000));
-            router.push('/alerts/signup?flow=oauth&email=' + encodeURIComponent(user.email || ''));
-            return;
-          }
-
-          console.log('✅ Existing user profile found');
-          setDebugInfo(`✅ Welcome back! Redirecting to app...`);
-
-          // Handle email verification callback
-          const isVerified = new URLSearchParams(window.location.search).get('verified') === 'true';
-          if (isVerified && user.email_confirmed_at) {
-            try {
-              await fetch('/api/user/mark-verified', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id })
-              });
-            } catch (error) {
-              console.error('Error updating verification status:', error);
-            }
-          }
-
-          // Handle Google signup flow email validation
-          const isGoogleSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'google-signup';
-
-          if (isGoogleSignupFlow) {
-            const expectedEmail = sessionStorage.getItem('expectedGoogleEmail');
-
-            if (expectedEmail && user.email !== expectedEmail) {
-              console.error('Email mismatch - expected:', expectedEmail, 'got:', user.email);
-              sessionStorage.removeItem('expectedGoogleEmail');
-              router.push(`/login?error=${encodeURIComponent(`You signed in with ${user.email} but created an account with ${expectedEmail}. Please check your email (${expectedEmail}) for a magic link to access your account.`)}`);
-              return;
-            }
-
-            sessionStorage.removeItem('expectedGoogleEmail');
-          }
-
-          // Handle Protection Google signup flow - redirect to Stripe checkout
-          // Check URL param first, then fallback to sessionStorage (URL params can be lost during OAuth)
+          // IMPORTANT: Check for Protection Google flow FIRST, before checking user profile
+          // This ensures new users signing up for Protection get to Stripe, not free signup
           const urlFlowParam = new URLSearchParams(window.location.search).get('flow');
           const sessionFlowParam = sessionStorage.getItem('pendingProtectionFlow');
           const isProtectionGoogleFlow = urlFlowParam === 'protection-google' || sessionFlowParam === 'protection-google';
@@ -222,6 +173,55 @@ export default function AuthCallback() {
               router.push('/protection?error=session_expired');
               return;
             }
+          }
+
+          // Check if this user has a profile (existing user vs new OAuth user)
+          const { data: userProfile } = await supabase
+            .from('user_profiles')
+            .select('email, has_protection')
+            .eq('user_id', user.id)
+            .single();
+
+          if (!userProfile) {
+            // New user signed in with OAuth but hasn't completed signup
+            console.log('🆕 New OAuth user detected - redirecting to free alerts signup');
+            setDebugInfo(`🆕 New user! Redirecting to signup...`);
+            await new Promise(r => setTimeout(r, 1000));
+            router.push('/alerts/signup?flow=oauth&email=' + encodeURIComponent(user.email || ''));
+            return;
+          }
+
+          console.log('✅ Existing user profile found');
+          setDebugInfo(`✅ Welcome back! Redirecting to app...`);
+
+          // Handle email verification callback
+          const isVerified = new URLSearchParams(window.location.search).get('verified') === 'true';
+          if (isVerified && user.email_confirmed_at) {
+            try {
+              await fetch('/api/user/mark-verified', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id })
+              });
+            } catch (error) {
+              console.error('Error updating verification status:', error);
+            }
+          }
+
+          // Handle Google signup flow email validation
+          const isGoogleSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'google-signup';
+
+          if (isGoogleSignupFlow) {
+            const expectedEmail = sessionStorage.getItem('expectedGoogleEmail');
+
+            if (expectedEmail && user.email !== expectedEmail) {
+              console.error('Email mismatch - expected:', expectedEmail, 'got:', user.email);
+              sessionStorage.removeItem('expectedGoogleEmail');
+              router.push(`/login?error=${encodeURIComponent(`You signed in with ${user.email} but created an account with ${expectedEmail}. Please check your email (${expectedEmail}) for a magic link to access your account.`)}`);
+              return;
+            }
+
+            sessionStorage.removeItem('expectedGoogleEmail');
           }
 
           // Check if this is a free signup flow (even if data was lost)
