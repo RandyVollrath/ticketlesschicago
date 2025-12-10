@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin, supabase } from '../../lib/supabase';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Normalize phone number to E.164 format (+1XXXXXXXXXX)
 function normalizePhoneNumber(phone: string | null | undefined): string | null {
@@ -163,9 +164,8 @@ export default async function handler(
     
     if (result.error) {
       console.error('Error updating user_profiles:', result.error);
-      return res.status(500).json({ 
-        error: 'Failed to update profile data',
-        details: result.error.message
+      return res.status(500).json({
+        error: sanitizeErrorMessage(result.error)
       });
     }
     
@@ -185,9 +185,8 @@ export default async function handler(
 
   } catch (error) {
     console.error('Error in profile update:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    res.status(500).json({
+      error: sanitizeErrorMessage(error)
     });
   }
 }

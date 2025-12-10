@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { maskEmail } from '../../../lib/mask-pii';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -207,6 +208,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Payment confirmation error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

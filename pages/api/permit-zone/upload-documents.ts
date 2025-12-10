@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { put } from '@vercel/blob';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 // Disable body parser to handle multipart/form-data
 export const config = {
@@ -244,7 +245,7 @@ export default async function handler(
     console.error('Error uploading documents:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

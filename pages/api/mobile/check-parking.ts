@@ -2,44 +2,15 @@
  * Mobile Check Parking API
  *
  * Optimized endpoint for mobile app parking location checks.
- * Supports GET requests with query params and returns address + restrictions.
+ * Uses unified checker for efficiency:
+ * - ONE reverse geocode call
+ * - ONE batch of database queries
+ * - Checks all 4 restriction types
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { matchStreetCleaningSchedule } from '../../../lib/street-cleaning-schedule-matcher';
-import { checkWinterOvernightBan } from '../../../lib/winter-overnight-ban-checker';
-import { checkLocationTwoInchSnowBan } from '../../../lib/two-inch-snow-ban-checker';
-import { getStreetAddress, reverseGeocode } from '../../../lib/reverse-geocoder';
-
-interface StreetCleaningResponse {
-  hasRestriction: boolean;
-  message: string;
-  timing?: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE';
-  nextDate?: string;
-  schedule?: string;
-}
-
-interface WinterBanResponse {
-  active: boolean;
-  message: string;
-  severity?: 'critical' | 'warning' | 'info';
-  startTime?: string;
-  endTime?: string;
-}
-
-interface SnowBanResponse {
-  active: boolean;
-  message: string;
-  severity?: 'critical' | 'warning' | 'info';
-  reason?: string;
-}
-
-interface PermitZoneResponse {
-  inPermitZone: boolean;
-  message: string;
-  zoneName?: string;
-  permitRequired?: boolean;
-}
+import { checkAllParkingRestrictions, UnifiedParkingResult } from '../../../lib/unified-parking-checker';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface MobileCheckParkingResponse {
   success: boolean;
@@ -48,10 +19,43 @@ interface MobileCheckParkingResponse {
     latitude: number;
     longitude: number;
   };
-  streetCleaning: StreetCleaningResponse;
-  winterOvernightBan: WinterBanResponse;
-  twoInchSnowBan: SnowBanResponse;
-  permitZone: PermitZoneResponse;
+  streetCleaning: {
+    hasRestriction: boolean;
+    message: string;
+    timing?: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE';
+    nextDate?: string;
+    schedule?: string;
+    severity?: 'critical' | 'warning' | 'info' | 'none';
+  };
+  winterOvernightBan: {
+    active: boolean;
+    message: string;
+    severity?: 'critical' | 'warning' | 'info' | 'none';
+    startTime?: string;
+    endTime?: string;
+  };
+  twoInchSnowBan: {
+    active: boolean;
+    message: string;
+    severity?: 'critical' | 'warning' | 'info' | 'none';
+    reason?: string;
+  };
+  permitZone: {
+    inPermitZone: boolean;
+    message: string;
+    zoneName?: string;
+    permitRequired?: boolean;
+    severity?: 'critical' | 'warning' | 'info' | 'none';
+    restrictionSchedule?: string;
+  };
+  rushHour: {
+    hasRestriction: boolean;
+    message: string;
+    isActiveNow?: boolean;
+    activeRestriction?: 'MORNING' | 'EVENING' | null;
+    severity?: 'critical' | 'warning' | 'info' | 'none';
+    schedule?: string;
+  };
   timestamp: string;
   error?: string;
 }
@@ -82,138 +86,64 @@ export default async function handler(
   }
 
   try {
-    // Run all checks in parallel for performance
-    const [
-      streetCleaningMatch,
-      winterOvernightBanStatus,
-      twoInchSnowBanStatus,
-      geocodeResult,
-    ] = await Promise.all([
-      matchStreetCleaningSchedule(latitude, longitude).catch(err => {
-        console.error('Street cleaning check error:', err);
-        return null;
-      }),
-      checkWinterOvernightBan(latitude, longitude).catch(err => {
-        console.error('Winter ban check error:', err);
-        return null;
-      }),
-      checkLocationTwoInchSnowBan(latitude, longitude).catch(err => {
-        console.error('Two inch snow ban check error:', err);
-        return null;
-      }),
-      reverseGeocode(latitude, longitude).catch(err => {
-        console.error('Reverse geocode error:', err);
-        return null;
-      }),
-    ]);
+    // Single unified check - ONE geocode, ONE batch of queries
+    const result = await checkAllParkingRestrictions(latitude, longitude);
 
-    // Format address
-    let address = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-    if (geocodeResult) {
-      if (geocodeResult.street_number && geocodeResult.street_name) {
-        address = `${geocodeResult.street_number} ${geocodeResult.street_name}`;
-        if (geocodeResult.neighborhood) {
-          address += `, ${geocodeResult.neighborhood}`;
-        }
-      } else if (geocodeResult.formatted_address) {
-        address = geocodeResult.formatted_address;
-      }
-    }
-
-    // Format street cleaning response
-    const streetCleaning: StreetCleaningResponse = {
-      hasRestriction: false,
-      message: 'No street cleaning restrictions found',
-      timing: 'NONE',
-    };
-
-    if (streetCleaningMatch && streetCleaningMatch.match) {
-      streetCleaning.hasRestriction = true;
-      streetCleaning.schedule = streetCleaningMatch.schedule?.days_and_times || '';
-
-      // Determine timing based on the match data
-      const now = new Date();
-      const matchDate = streetCleaningMatch.nextCleaningDate
-        ? new Date(streetCleaningMatch.nextCleaningDate)
-        : null;
-
-      if (streetCleaningMatch.isActiveNow) {
-        streetCleaning.timing = 'NOW';
-        streetCleaning.message = `STREET CLEANING IN PROGRESS on ${geocodeResult?.street_name || 'this street'}. Move your car immediately!`;
-      } else if (matchDate && matchDate.toDateString() === now.toDateString()) {
-        streetCleaning.timing = 'TODAY';
-        streetCleaning.message = `Street cleaning scheduled today: ${streetCleaningMatch.schedule?.days_and_times || 'Check signage'}`;
-      } else if (matchDate) {
-        streetCleaning.timing = 'UPCOMING';
-        streetCleaning.nextDate = matchDate.toISOString();
-        streetCleaning.message = `Street cleaning: ${streetCleaningMatch.schedule?.days_and_times || 'See schedule'}`;
-      } else {
-        streetCleaning.message = `Street cleaning on this block: ${streetCleaningMatch.schedule?.days_and_times || 'Check signage'}`;
-      }
-    }
-
-    // Format winter overnight ban response
-    const winterOvernightBan: WinterBanResponse = {
-      active: false,
-      message: 'No winter overnight ban at this location',
-    };
-
-    if (winterOvernightBanStatus && winterOvernightBanStatus.isOnWinterBanStreet) {
-      winterOvernightBan.active = winterOvernightBanStatus.banActiveNow || false;
-      winterOvernightBan.startTime = '3:00 AM';
-      winterOvernightBan.endTime = '7:00 AM';
-
-      if (winterOvernightBanStatus.banActiveNow) {
-        winterOvernightBan.severity = 'critical';
-        winterOvernightBan.message = 'WINTER OVERNIGHT BAN ACTIVE NOW! No parking 3 AM - 7 AM (Dec 1 - Apr 1)';
-      } else {
-        winterOvernightBan.severity = 'warning';
-        winterOvernightBan.message = 'This street has winter overnight parking ban (3 AM - 7 AM, Dec 1 - Apr 1)';
-      }
-    }
-
-    // Format 2-inch snow ban response
-    const twoInchSnowBan: SnowBanResponse = {
-      active: false,
-      message: 'No snow ban active',
-    };
-
-    if (twoInchSnowBanStatus && twoInchSnowBanStatus.isOnSnowRoute) {
-      if (twoInchSnowBanStatus.banActive) {
-        twoInchSnowBan.active = true;
-        twoInchSnowBan.severity = 'critical';
-        twoInchSnowBan.reason = twoInchSnowBanStatus.snowfall ? `${twoInchSnowBanStatus.snowfall}" snowfall` : 'Snow emergency declared';
-        twoInchSnowBan.message = `SNOW BAN ACTIVE! ${twoInchSnowBan.reason}. No parking on this snow route until cleared.`;
-      } else {
-        twoInchSnowBan.severity = 'info';
-        twoInchSnowBan.message = 'This is a snow route. No parking when 2"+ snow falls.';
-      }
-    }
-
-    // Format permit zone response (placeholder - would need permit zone data)
-    const permitZone: PermitZoneResponse = {
-      inPermitZone: false,
-      message: 'Not in a permit zone',
-    };
-
-    // TODO: Add permit zone checking when geometry data is available
-    // if (permitZoneStatus && permitZoneStatus.inZone) {
-    //   permitZone.inPermitZone = true;
-    //   permitZone.zoneName = permitZoneStatus.zoneName;
-    //   permitZone.permitRequired = permitZoneStatus.isEnforced;
-    //   permitZone.message = `Permit Zone ${permitZoneStatus.zoneName}. ${permitZoneStatus.hours}`;
-    // }
-
-    return res.status(200).json({
+    // Transform to mobile API response format
+    const response: MobileCheckParkingResponse = {
       success: true,
-      address,
+      address: result.location.address,
       coordinates: { latitude, longitude },
-      streetCleaning,
-      winterOvernightBan,
-      twoInchSnowBan,
-      permitZone,
-      timestamp: new Date().toISOString(),
-    });
+
+      streetCleaning: {
+        hasRestriction: result.streetCleaning.found,
+        message: result.streetCleaning.message,
+        timing: result.streetCleaning.isActiveNow ? 'NOW' :
+                result.streetCleaning.found ? 'UPCOMING' : 'NONE',
+        nextDate: result.streetCleaning.nextCleaningDate || undefined,
+        schedule: result.streetCleaning.schedule || undefined,
+        severity: result.streetCleaning.severity,
+      },
+
+      winterOvernightBan: {
+        active: result.winterBan.isBanHours && result.winterBan.found,
+        message: result.winterBan.message,
+        severity: result.winterBan.severity,
+        startTime: '3:00 AM',
+        endTime: '7:00 AM',
+      },
+
+      twoInchSnowBan: {
+        active: result.snowBan.isBanActive,
+        message: result.snowBan.message,
+        severity: result.snowBan.severity,
+        reason: result.snowBan.snowAmount
+          ? `${result.snowBan.snowAmount}" snowfall`
+          : undefined,
+      },
+
+      permitZone: {
+        inPermitZone: result.permitZone.found,
+        message: result.permitZone.message,
+        zoneName: result.permitZone.zoneName || undefined,
+        permitRequired: result.permitZone.isCurrentlyRestricted,
+        severity: result.permitZone.severity,
+        restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
+      },
+
+      rushHour: {
+        hasRestriction: result.rushHour.found,
+        message: result.rushHour.message,
+        isActiveNow: result.rushHour.isActiveNow,
+        activeRestriction: result.rushHour.activeRestriction,
+        severity: result.rushHour.severity,
+        schedule: result.rushHour.schedule || undefined,
+      },
+
+      timestamp: result.timestamp,
+    };
+
+    return res.status(200).json(response);
 
   } catch (error) {
     console.error('Error checking parking location:', error);
@@ -225,8 +155,9 @@ export default async function handler(
       winterOvernightBan: { active: false, message: 'Error checking restrictions' },
       twoInchSnowBan: { active: false, message: 'Error checking restrictions' },
       permitZone: { inPermitZone: false, message: 'Error checking restrictions' },
+      rushHour: { hasRestriction: false, message: 'Error checking restrictions' },
       timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeErrorMessage(error),
     });
   }
 }

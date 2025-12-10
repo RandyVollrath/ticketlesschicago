@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { maskEmail, maskUserId } from '../../lib/mask-pii';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 // Input validation schema for profile updates
 const profileUpdateSchema = z.object({
@@ -200,9 +201,8 @@ export default async function handler(
     
   } catch (error) {
     console.error('Profile update error:', error);
-    res.status(500).json({ 
-      error: 'Failed to update profile',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    res.status(500).json({
+      error: sanitizeErrorMessage(error)
     });
   }
 }
