@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Session Sync Endpoint
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error || !data.session) {
       console.error('❌ Failed to set server session:', error);
-      return res.status(401).json({ error: 'Failed to set server session', details: error?.message });
+      return res.status(401).json({ error: 'Failed to set server session' });
     }
 
     console.log('✅ Server-side session established for:', data.session.user.email);
@@ -50,8 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('❌ Error establishing server session:', error);
     return res.status(500).json({
-      error: 'Failed to establish server session',
-      message: error.message
+      error: sanitizeErrorMessage(error)
     });
   }
 }
