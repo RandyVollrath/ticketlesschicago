@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -161,6 +162,6 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Reimbursement submission error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -232,7 +233,7 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Renewal charge error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
 

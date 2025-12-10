@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -196,6 +197,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Profile save error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
