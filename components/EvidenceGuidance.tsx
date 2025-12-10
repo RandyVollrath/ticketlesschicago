@@ -20,6 +20,18 @@ interface EvidenceRecommendation {
   tips: string[];
 }
 
+// Type for court case outcomes from database view (not in generated types)
+interface CourtCaseOutcome {
+  violation_code: string;
+  outcome: string;
+  evidence_submitted?: {
+    photos?: boolean;
+    witnesses?: boolean;
+    documentation?: boolean;
+  };
+  contest_ground?: string;
+}
+
 interface CourtDataResponse {
   hasData: boolean;
   stats: {
@@ -63,12 +75,13 @@ export default function EvidenceGuidance({ violationCode, fineAmount, onEvidence
       setLoading(true);
 
       // Get win rate statistics
+      // @ts-expect-error - win_rate_statistics view not in generated types
       const { data: stats } = await supabase
         .from('win_rate_statistics')
         .select('*')
         .eq('stat_type', 'violation_code')
         .eq('stat_key', violationCode)
-        .single();
+        .single() as { data: { win_rate: number; total_cases: number; dismissal_rate: number } | null };
 
       if (!stats) {
         setLoading(false);
@@ -76,11 +89,12 @@ export default function EvidenceGuidance({ violationCode, fineAmount, onEvidence
       }
 
       // Get court outcomes to analyze evidence impact
+      // @ts-expect-error - court_case_outcomes view not in generated types
       const { data: outcomes } = await supabase
         .from('court_case_outcomes')
         .select('*')
         .eq('violation_code', violationCode)
-        .in('outcome', ['dismissed', 'reduced']);
+        .in('outcome', ['dismissed', 'reduced']) as { data: CourtCaseOutcome[] | null };
 
       if (!outcomes || outcomes.length === 0) {
         setLoading(false);

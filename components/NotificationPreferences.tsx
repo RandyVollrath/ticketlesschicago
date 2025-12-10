@@ -123,7 +123,7 @@ export default function NotificationPreferences({ userId, onSave }: Notification
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('notify_days_array, notify_evening_before, phone_call_enabled, sms_enabled, email_enabled, marketing_opt_out')
+        .select('notify_days_array, notify_evening_before, phone_call_enabled, notify_sms, notify_email, marketing_consent')
         .eq('user_id', userId)
         .single();
 
@@ -135,13 +135,13 @@ export default function NotificationPreferences({ userId, onSave }: Notification
           notify_days_array: data.notify_days_array || [1],
           notify_evening_before: data.notify_evening_before || false,
           phone_call_enabled: data.phone_call_enabled || false,
-          street_cleaning_sms: data.sms_enabled !== false,
-          street_cleaning_email: data.email_enabled !== false,
-          snow_ban_sms: data.sms_enabled !== false,
-          snow_ban_email: data.email_enabled !== false,
-          renewal_reminder_sms: data.sms_enabled !== false,
-          renewal_reminder_email: data.email_enabled !== false,
-          marketing_emails: !data.marketing_opt_out,
+          street_cleaning_sms: data.notify_sms !== false,
+          street_cleaning_email: data.notify_email !== false,
+          snow_ban_sms: data.notify_sms !== false,
+          snow_ban_email: data.notify_email !== false,
+          renewal_reminder_sms: data.notify_sms !== false,
+          renewal_reminder_email: data.notify_email !== false,
+          marketing_emails: data.marketing_consent !== false,
         });
       }
     } catch (error) {

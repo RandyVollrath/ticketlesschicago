@@ -110,8 +110,8 @@ export default function Support() {
             cursor: 'pointer',
             transition: 'color 0.2s'
           }}
-          onMouseOver={(e) => e.target.style.color = '#111827'}
-          onMouseOut={(e) => e.target.style.color = '#6b7280'}
+          onMouseOver={(e) => (e.target as HTMLElement).style.color = '#111827'}
+          onMouseOut={(e) => (e.target as HTMLElement).style.color = '#6b7280'}
         >
           ← Back to Home
         </button>
