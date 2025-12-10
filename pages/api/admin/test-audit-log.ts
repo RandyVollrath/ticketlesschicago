@@ -5,16 +5,15 @@ import {
   logMessageError,
   logMessageBlocked
 } from '../../../lib/message-audit-logger';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Test Endpoint - Populate Audit Log with Sample Data
  *
  * This creates sample audit log entries to test the dashboard
  * POST /api/admin/test-audit-log
- *
- * Security: You should add authentication here
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -187,4 +186,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});

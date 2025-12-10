@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
-
-const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 interface UserNotification {
   user_id: string;
@@ -13,30 +12,12 @@ interface UserNotification {
   license_plate: string;
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Get the authenticated user
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = authHeader.substring(7);
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Verify user is an admin
-    if (!ADMIN_EMAILS.includes(user.email || '')) {
-      return res.status(403).json({ error: 'Forbidden - Admin access required' });
-    }
-
     const { users, stickerTypes } = req.body as {
       users: UserNotification[];
       stickerTypes: string[];
@@ -234,4 +215,4 @@ Autopilot America Team
     console.error('Error in send-sticker-notifications:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-}
+});

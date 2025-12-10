@@ -1,12 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Check Schema
  *
  * Debug endpoint to check what columns exist in renewal_charges table
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   try {
     // Try to select from renewal_charges with all possible column variations
     const { data, error } = await supabaseAdmin
@@ -47,4 +48,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});

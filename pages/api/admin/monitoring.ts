@@ -4,6 +4,7 @@ import {
   generateDailyDigest,
   detectAnomalies
 } from '../../../lib/monitoring';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Monitoring API
@@ -14,10 +15,8 @@ import {
  * - GET /api/admin/monitoring?action=stats&days=7 - Get stats for last N days
  * - GET /api/admin/monitoring?action=digest - Generate daily digest
  * - GET /api/admin/monitoring?action=anomalies - Detect anomalies
- *
- * Security: Should add authentication
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -105,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});
 
 /**
  * Generate recommendations based on anomalies
