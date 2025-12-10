@@ -5,10 +5,13 @@ import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 import { isAddressOnWinterBan } from '../../lib/winter-ban-matcher';
 
 // MyStreetCleaning database for PostGIS queries (has the geospatial data)
-const MSC_SUPABASE_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
-const MSC_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxbGp4a3FkZ2ZpYmZ6ZGpmamlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5NjUwMjQsImV4cCI6MjA1ODU0MTAyNH0.AwJc5gnerC8Dymk9uHVfHs_-orb297zxnVzY7lhWIS0';
+// Uses environment variables - set MSC_SUPABASE_URL and MSC_SUPABASE_ANON_KEY in .env
+const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL;
+const MSC_SUPABASE_ANON_KEY = process.env.MSC_SUPABASE_ANON_KEY;
 
-const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY);
+const mscSupabase = MSC_SUPABASE_URL && MSC_SUPABASE_ANON_KEY
+  ? createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY)
+  : null;
 
 // Enhanced geocoding function with retry logic and better error handling
 async function geocodeAddress(address: string, retryCount = 0): Promise<{ status: string; coordinates: { lat: number; lng: number }; retries?: number }> {
@@ -180,11 +183,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('🎯 Trying PostGIS function for coordinate lookup...');
     let postgisResult = null;
     let postgisError = null;
-    
-    // Retry database operations up to 3 times
-    for (let dbRetry = 0; dbRetry < 3; dbRetry++) {
-      try {
-        const result = await mscSupabase.rpc('find_section_for_point', {
+
+    // Check if MSC database is configured
+    if (!mscSupabase) {
+      console.warn('⚠️ MSC Supabase not configured - skipping PostGIS lookup');
+      postgisError = { message: 'MSC database not configured' };
+    } else {
+      // Retry database operations up to 3 times
+      for (let dbRetry = 0; dbRetry < 3; dbRetry++) {
+        try {
+          const result = await mscSupabase.rpc('find_section_for_point', {
           lon: coordinates.lng,
           lat: coordinates.lat
         });
@@ -210,6 +218,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     }
+    } // end else (mscSupabase configured)
 
     let foundWard = null;
     let foundSection = null;
