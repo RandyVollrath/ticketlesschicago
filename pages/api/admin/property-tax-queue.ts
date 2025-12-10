@@ -62,6 +62,7 @@ async function getPropertyTaxQueue(req: NextApiRequest, res: NextApiResponse) {
         residency_proof_path,
         residency_proof_uploaded_at,
         residency_proof_verified,
+        residency_proof_rejection_reason,
         property_tax_last_fetched_at,
         property_tax_needs_refresh,
         property_tax_fetch_failed,
@@ -93,7 +94,13 @@ async function getPropertyTaxQueue(req: NextApiRequest, res: NextApiResponse) {
       // Determine status
       const hasProof = !!user.residency_proof_path;
       const isVerified = user.residency_proof_verified === true;
-      const needsDocument = !hasProof || !isVerified;
+      const wasRejected = !!user.residency_proof_rejection_reason;
+
+      // Only show in property tax queue if:
+      // - No document uploaded at all, OR
+      // - Document was rejected (need to re-upload)
+      // Do NOT show if document is pending review (hasProof but not verified yet)
+      const needsDocument = !hasProof || wasRejected;
       const isUrgent = daysUntilExpiry !== null && daysUntilExpiry <= 60 && daysUntilExpiry >= 0;
       const hasFailed = user.property_tax_fetch_failed === true;
 
