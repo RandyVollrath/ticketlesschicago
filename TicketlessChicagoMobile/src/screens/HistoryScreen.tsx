@@ -15,6 +15,7 @@ import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { StatusBadge, RuleCard } from '../components';
 import { ParkingRule, Coordinates } from '../services/LocationService';
 import Logger from '../utils/Logger';
+import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('HistoryScreen');
 
@@ -26,7 +27,7 @@ interface ParkingHistoryItem {
   timestamp: number;
 }
 
-const HISTORY_KEY = 'parkingHistory';
+const HISTORY_KEY = StorageKeys.PARKING_HISTORY;
 const MAX_HISTORY_ITEMS = 50;
 
 // Service to manage parking history
