@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createNotificationScheduler } from '../../../lib/notifications';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Admin Test Endpoint - Run Notifications in Dry Run Mode
@@ -11,10 +12,8 @@ import { createNotificationScheduler } from '../../../lib/notifications';
  *
  * Query params:
  * - dryRun: true (default) = shadow mode, false = actually send
- *
- * Security: You should add authentication here
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -60,4 +59,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});

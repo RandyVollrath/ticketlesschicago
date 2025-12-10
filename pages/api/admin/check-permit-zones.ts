@@ -1,10 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default withAdminAuth(async (req, res, adminUser) => {
   try {
     if (!supabaseAdmin) {
       throw new Error('Database not available');
@@ -52,4 +50,4 @@ export default async function handler(
       error: error.message
     });
   }
-}
+});

@@ -1,4 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { withAdminAuth } from '../../../lib/auth-middleware';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 
 const ADMIN_EMAIL = 'ticketlessamerica@gmail.com';
 
@@ -61,8 +63,9 @@ export async function notifyAdminSnow(params: NotifyAdminSnowParams) {
     </div>
   `;
 
-  const response = await fetch('https://api.resend.com/emails', {
+  const response = await fetchWithTimeout('https://api.resend.com/emails', {
     method: 'POST',
+    timeout: DEFAULT_TIMEOUTS.email,
     headers: {
       'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json'
@@ -93,10 +96,7 @@ export async function notifyAdminSnow(params: NotifyAdminSnowParams) {
  * API Handler for HTTP calls
  * Send admin notification when 2+ inches of snow detected
  */
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -121,5 +121,5 @@ export default async function handler(
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-}
+});
 

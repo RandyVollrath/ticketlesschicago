@@ -1,15 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Admin API Endpoint - Run Message Audit Log Migration
  *
  * This endpoint creates the message_audit_log table and indexes
  * POST /api/admin/run-migration
- *
- * Security: Requires admin authentication (you can add this later)
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -154,4 +153,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});

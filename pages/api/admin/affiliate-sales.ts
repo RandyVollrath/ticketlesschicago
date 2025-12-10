@@ -1,36 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
-const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method === 'GET') {
     return handleGet(req, res);
   } else if (req.method === 'PATCH') {
-    return handlePatch(req, res);
+    return handlePatch(req, res, adminUser);
   } else {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-}
+});
 
 async function handleGet(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Check auth
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     // Fetch affiliate sales from database (last 90 days)
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
@@ -54,21 +37,8 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
+async function handlePatch(req: NextApiRequest, res: NextApiResponse, adminUser: { id: string; email: string }) {
   try {
-    // Check auth
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     const { id, commission_adjusted } = req.body;
 
     if (!id || typeof commission_adjusted !== 'boolean') {
@@ -80,7 +50,7 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
       .from('affiliate_commission_tracker')
       .update({
         commission_adjusted,
-        adjusted_by: user.email,
+        adjusted_by: adminUser.email,
         adjusted_at: commission_adjusted ? new Date().toISOString() : null
       })
       .eq('id', id);

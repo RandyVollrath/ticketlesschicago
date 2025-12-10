@@ -1,10 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Check if database migrations have been run
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   try {
     const checks: any = {
       message_audit_log: false,
@@ -72,4 +73,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});

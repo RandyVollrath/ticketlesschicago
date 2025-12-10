@@ -6,6 +6,7 @@ import {
   cleanupTestUsers,
   verifyScenario
 } from '../../../lib/test-harness';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Test Harness API
@@ -19,10 +20,8 @@ import {
  * - POST /api/admin/test-harness?action=runAll - Run all scenarios
  * - POST /api/admin/test-harness?action=cleanup - Delete test users
  * - GET  /api/admin/test-harness?action=verify&scenario=renewal_30_days - Verify results
- *
- * Security: Should add authentication
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   const { action, scenario, dryRun } = req.query;
 
   try {
@@ -212,4 +211,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});

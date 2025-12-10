@@ -1,12 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Test Renewal Query
  *
  * Test if we can query renewal_charges with the expected columns
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   try {
     // Try the exact query we use in remitter-emails.ts
     const { data: charges, error: fetchError } = await supabaseAdmin
@@ -37,4 +38,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error.message
     });
   }
-}
+});

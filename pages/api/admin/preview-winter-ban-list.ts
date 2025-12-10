@@ -1,14 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 
 /**
  * Generate preview of users who will receive winter ban notifications
  * Send this list to admin email 2 weeks before Nov 30
  */
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -154,8 +153,9 @@ export default async function handler(
     `;
 
     // Send preview email to admin
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetchWithTimeout('https://api.resend.com/emails', {
       method: 'POST',
+      timeout: DEFAULT_TIMEOUTS.email,
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type': 'application/json'
@@ -194,4 +194,4 @@ export default async function handler(
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-}
+});

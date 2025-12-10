@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { notifyNewUserAboutWinterBan } from '../../../lib/winter-ban-notifications';
 import { isAddressOnSnowRoute } from '../../../lib/snow-route-matcher';
 import { maskEmail, maskPhone } from '../../../lib/mask-pii';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -380,8 +381,9 @@ export default async function handler(
 
     // Send email via Resend - if this fails, the request fails
     console.log('📧 Sending magic link email to:', email);
-    const resendResponse = await fetch('https://api.resend.com/emails', {
+    const resendResponse = await fetchWithTimeout('https://api.resend.com/emails', {
       method: 'POST',
+      timeout: DEFAULT_TIMEOUTS.email,
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type': 'application/json'

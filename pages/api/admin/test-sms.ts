@@ -6,18 +6,9 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sendClickSendSMS } from '@/lib/sms-service';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  // Only allow admin access
-  const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` &&
-      authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
+export default withAdminAuth(async (req, res, adminUser) => {
   const phone = req.query.phone as string || '12243217290';
 
   console.log('🧪 Testing SMS to:', phone);
@@ -42,4 +33,4 @@ export default async function handler(
       hasApiKey: !!process.env.CLICKSEND_API_KEY
     }
   });
-}
+});

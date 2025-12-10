@@ -11,6 +11,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,15 +50,9 @@ interface RenewalUser {
   created_at: string;
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // Verify admin auth
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token !== (process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin')) {
-    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
@@ -195,4 +190,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Upcoming renewals error:', error);
     return res.status(500).json({ error: error.message });
   }
-}
+});

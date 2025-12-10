@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 
 export default async function handler(
   req: NextApiRequest,
@@ -54,8 +55,9 @@ Received: ${new Date().toLocaleString()}
     // Use Resend to send notification
     if (process.env.RESEND_API_KEY) {
       try {
-        await fetch('https://api.resend.com/emails', {
+        await fetchWithTimeout('https://api.resend.com/emails', {
           method: 'POST',
+          timeout: DEFAULT_TIMEOUTS.email,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.RESEND_API_KEY}`

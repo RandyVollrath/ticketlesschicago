@@ -7,21 +7,14 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Verify admin token
-  const authHeader = req.headers.authorization;
-  const expectedToken = process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin';
-
-  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -76,4 +69,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Property tax status error:', error);
     return res.status(500).json({ error: error.message });
   }
-}
+});

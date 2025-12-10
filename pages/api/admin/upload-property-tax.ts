@@ -10,6 +10,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,21 +27,13 @@ const BUCKET_NAME = 'residency-proofs-temps';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Verify admin token
-  const authHeader = req.headers.authorization;
-  const expectedToken = process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin';
-
-  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method === 'POST') {
     return uploadPropertyTax(req, res);
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+});
 
 async function uploadPropertyTax(req: NextApiRequest, res: NextApiResponse) {
   try {
