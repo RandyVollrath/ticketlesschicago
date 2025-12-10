@@ -1,21 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   try {
-    // Check admin auth
-    const authHeader = req.headers.authorization;
-    const adminToken = req.headers['x-admin-token'];
-
-    if (adminToken !== process.env.ADMIN_API_TOKEN) {
-      return res.status(401).json({ error: 'Unauthorized - Invalid admin token' });
-    }
-
     if (req.method === 'GET') {
       // List all contests
       const { status, limit = '50', offset = '0' } = req.query;
@@ -96,4 +89,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Admin contests error:', error);
     res.status(500).json({ error: error.message });
   }
-}
+});
