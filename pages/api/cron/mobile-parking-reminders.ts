@@ -5,8 +5,9 @@
  * in restricted zones before restrictions take effect.
  *
  * Runs at:
- * - 10pm CT: Winter ban reminders (ban starts at 3am)
+ * - 5am CT: Permit zone reminders (most zones start at 6am)
  * - 7am CT: Street cleaning reminders (cleaning starts at 9am)
+ * - 10pm CT: Winter ban reminders (ban starts at 3am)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -63,7 +64,35 @@ interface ParkedVehicle {
   on_snow_route: boolean;
   street_cleaning_date: string | null;
   permit_zone: string | null;
+  permit_restriction_schedule: string | null;
   parked_at: string;
+  // Notification tracking
+  winter_ban_notified_at: string | null;
+  street_cleaning_notified_at: string | null;
+  permit_zone_notified_at: string | null;
+}
+
+/**
+ * Parse permit restriction schedule to get start hour
+ * Examples: "Mon-Fri 6am-6pm" -> 6, "Mon-Fri 8am-6pm" -> 8
+ */
+function getPermitRestrictionStartHour(schedule: string | null): number | null {
+  if (!schedule) return null;
+
+  // Match patterns like "6am", "8am", "6:00am"
+  const match = schedule.match(/(\d{1,2})(?::\d{2})?\s*am/i);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return null;
+}
+
+/**
+ * Check if today is a weekday (permit zones typically Mon-Fri)
+ */
+function isWeekday(date: Date): boolean {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
 }
 
 export default async function handler(
@@ -96,6 +125,7 @@ export default async function handler(
     const results = {
       winterBanReminders: 0,
       streetCleaningReminders: 0,
+      permitZoneReminders: 0,
       errors: 0,
     };
 
@@ -125,8 +155,9 @@ export default async function handler(
     for (const vehicle of parkedVehicles as ParkedVehicle[]) {
       try {
         // Winter ban reminder (10pm check, ban starts at 3am)
-        if (chicagoHour >= 21 && chicagoHour <= 23 && isWinterSeason && vehicle.on_winter_ban_street) {
-          await sendPushNotification(vehicle.fcm_token, {
+        // Only send once per parking session
+        if (chicagoHour >= 21 && chicagoHour <= 23 && isWinterSeason && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at) {
+          const sent = await sendPushNotification(vehicle.fcm_token, {
             title: 'Winter Parking Ban Reminder',
             body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
             data: {
@@ -135,13 +166,19 @@ export default async function handler(
               lng: vehicle.longitude?.toString(),
             },
           });
-          results.winterBanReminders++;
-          console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
+          if (sent) {
+            await supabaseAdmin.from('user_parked_vehicles')
+              .update({ winter_ban_notified_at: new Date().toISOString() })
+              .eq('id', vehicle.id);
+            results.winterBanReminders++;
+            console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
+          }
         }
 
         // Street cleaning reminder (7am check, cleaning at 9am)
-        if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.street_cleaning_date === today) {
-          await sendPushNotification(vehicle.fcm_token, {
+        // Only send once per parking session
+        if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.street_cleaning_date === today && !vehicle.street_cleaning_notified_at) {
+          const sent = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Today!',
             body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car now to avoid a $65 ticket.`,
             data: {
@@ -150,8 +187,40 @@ export default async function handler(
               lng: vehicle.longitude?.toString(),
             },
           });
-          results.streetCleaningReminders++;
-          console.log(`Sent street cleaning reminder to ${vehicle.user_id}`);
+          if (sent) {
+            await supabaseAdmin.from('user_parked_vehicles')
+              .update({ street_cleaning_notified_at: new Date().toISOString() })
+              .eq('id', vehicle.id);
+            results.streetCleaningReminders++;
+            console.log(`Sent street cleaning reminder to ${vehicle.user_id}`);
+          }
+        }
+
+        // Permit zone reminder (5-6am check, most zones start at 6am)
+        // Only on weekdays since most permit zones are Mon-Fri
+        // Only send once per parking session
+        if (chicagoHour >= 5 && chicagoHour <= 6 && vehicle.permit_zone && isWeekday(chicagoTime) && !vehicle.permit_zone_notified_at) {
+          const restrictionStartHour = getPermitRestrictionStartHour(vehicle.permit_restriction_schedule);
+
+          // Send reminder if restriction starts within the next 1-2 hours
+          if (restrictionStartHour && chicagoHour < restrictionStartHour && (restrictionStartHour - chicagoHour) <= 2) {
+            const sent = await sendPushNotification(vehicle.fcm_token, {
+              title: 'Permit Zone Reminder',
+              body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit required starting at ${restrictionStartHour}am. Move now or risk a $65 ticket.`,
+              data: {
+                type: 'permit_reminder',
+                lat: vehicle.latitude?.toString(),
+                lng: vehicle.longitude?.toString(),
+              },
+            });
+            if (sent) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ permit_zone_notified_at: new Date().toISOString() })
+                .eq('id', vehicle.id);
+              results.permitZoneReminders++;
+              console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
+            }
+          }
         }
 
       } catch (err) {
@@ -160,11 +229,26 @@ export default async function handler(
       }
     }
 
+    // Cleanup stale parked vehicles (older than 48 hours)
+    // These are likely cars that moved without the app detecting it
+    const cutoffTime = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const { data: staleVehicles } = await supabaseAdmin
+      .from('user_parked_vehicles')
+      .update({ is_active: false })
+      .eq('is_active', true)
+      .lt('parked_at', cutoffTime)
+      .select('id');
+
+    const staleCount = staleVehicles?.length || 0;
+    if (staleCount > 0) {
+      console.log(`Deactivated ${staleCount} stale parked vehicles (>48 hours old)`);
+    }
+
     console.log('Mobile parking reminders completed:', results);
 
     return res.status(200).json({
       success: true,
-      results,
+      results: { ...results, staleDeactivated: staleCount },
       timestamp: chicagoTime.toISOString(),
     });
 
