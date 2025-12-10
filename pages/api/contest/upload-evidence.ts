@@ -2,6 +2,18 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
+
+// Valid evidence types
+const VALID_EVIDENCE_TYPES = ['sign_photo', 'location_photo', 'ticket_photo', 'permit', 'receipt', 'other_document'] as const;
+type EvidenceType = typeof VALID_EVIDENCE_TYPES[number];
+
+function validateEvidenceType(value: string | undefined): EvidenceType {
+  if (value && VALID_EVIDENCE_TYPES.includes(value as EvidenceType)) {
+    return value as EvidenceType;
+  }
+  return 'other_document';
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -109,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       uploadedFiles.push({
         url: publicUrl,
-        type: (evidenceType as any) || 'other_document',
+        type: validateEvidenceType(evidenceType),
         filename: file.originalFilename || fileName,
         uploaded_at: new Date().toISOString(),
         description: description || undefined,
@@ -159,7 +171,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Evidence upload error:', error);
     return res.status(500).json({
-      error: error.message || 'Failed to upload evidence',
+      error: sanitizeErrorMessage(error),
     });
   }
 }
@@ -179,7 +191,7 @@ async function updateEvidenceQuality(contestId: string) {
 
     const evidencePhotos = contest.evidence_photos as EvidenceFile[] || [];
     const supportingDocs = contest.supporting_documents as EvidenceFile[] || [];
-    const checklist = contest.evidence_checklist as any[] || [];
+    const checklist = Array.isArray(contest.evidence_checklist) ? contest.evidence_checklist : [];
 
     // Calculate completeness
     const completeness: Record<string, boolean> = {};

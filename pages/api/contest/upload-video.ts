@@ -19,6 +19,18 @@ import {
   validateVideoFile,
   extractVideoMetadata,
 } from '../../../lib/video-processor';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
+
+// Valid video sources
+const VALID_VIDEO_SOURCES = ['dashcam', 'phone', 'upload'] as const;
+type VideoSource = typeof VALID_VIDEO_SOURCES[number];
+
+function validateVideoSource(value: string | undefined): VideoSource {
+  if (value && VALID_VIDEO_SOURCES.includes(value as VideoSource)) {
+    return value as VideoSource;
+  }
+  return 'upload';
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -206,7 +218,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       id: crypto.randomUUID(),
       url: videoUrl,
       thumbnail_url: thumbnailUrl,
-      source: source as any,
+      source: validateVideoSource(source),
       timestamp: processed.metadata.video_timestamp,
       duration_seconds: processed.slice_info.slice_duration,
       file_size: processed.metadata.file_size,
@@ -291,7 +303,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(500).json({
-      error: error.message || 'Failed to upload and process video',
+      error: sanitizeErrorMessage(error),
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
