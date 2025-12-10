@@ -6,6 +6,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -101,4 +102,86 @@ export function handleAuthError(res: NextApiResponse, error: Error) {
   }
 
   return res.status(500).json({ error: 'Internal server error' });
+}
+
+/**
+ * Admin emails that have access to admin routes
+ * Also checks is_admin field in user_profiles
+ */
+const ADMIN_EMAILS = [
+  'randy.vollrath@gmail.com',
+  'randyvollrath@gmail.com',
+  process.env.ADMIN_EMAIL,
+].filter(Boolean) as string[];
+
+/**
+ * Higher-order function to wrap admin API routes with authentication
+ * Uses session cookies for browser-based access
+ *
+ * Usage:
+ * ```
+ * export default withAdminAuth(async (req, res, user) => {
+ *   // Handler code - user is guaranteed to be an admin
+ * });
+ * ```
+ */
+export function withAdminAuth(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse,
+    user: { id: string; email: string }
+  ) => Promise<void | NextApiResponse>
+) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    try {
+      // Create Supabase client with cookie-based session
+      const supabaseServer = createPagesServerClient({ req, res });
+
+      // Get session from cookies
+      const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
+
+      if (sessionError || !session) {
+        console.warn('Admin route accessed without authentication');
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Authentication required'
+        });
+      }
+
+      const userEmail = session.user.email || '';
+      const userId = session.user.id;
+
+      // Check if user is admin by email
+      let isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+      // If not in email list, check is_admin field in user_profiles
+      if (!isAdmin) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('user_id', userId)
+          .single();
+
+        isAdmin = profile?.is_admin === true;
+      }
+
+      if (!isAdmin) {
+        console.warn(`Non-admin user ${userEmail} attempted to access admin route: ${req.url}`);
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Admin access required'
+        });
+      }
+
+      // User is authenticated and is an admin - call the handler
+      return handler(req, res, { id: userId, email: userEmail });
+
+    } catch (error: any) {
+      console.error('Admin auth middleware error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+        message: 'Authentication check failed'
+      });
+    }
+  };
 }

@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -55,4 +56,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Admin users API error:', error);
     return res.status(500).json({ error: error.message });
   }
-}
+});

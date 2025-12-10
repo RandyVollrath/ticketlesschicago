@@ -1,36 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
-const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default withAdminAuth(async (req, res, adminUser) => {
   if (req.method === 'GET') {
     return handleGet(req, res);
   } else if (req.method === 'PATCH') {
-    return handlePatch(req, res);
+    return handlePatch(req, res, adminUser);
   } else {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-}
+});
 
 async function handleGet(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Check auth
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     // Fetch all reimbursement requests
     const { data: requests, error } = await supabaseAdmin
       .from('reimbursement_requests')
@@ -75,21 +58,8 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
+async function handlePatch(req: NextApiRequest, res: NextApiResponse, adminUser: { id: string; email: string }) {
   try {
-    // Check auth
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     const { id, status, reimbursement_amount, admin_notes } = req.body;
 
     if (!id || !status) {
@@ -99,7 +69,7 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
     // Update reimbursement request
     const updateData: any = {
       status,
-      processed_by: user.email,
+      processed_by: adminUser.email,
       processed_at: new Date().toISOString()
     };
 
