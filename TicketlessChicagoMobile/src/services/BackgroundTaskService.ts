@@ -43,7 +43,7 @@ class BackgroundTaskServiceClass {
   };
 
   private appStateSubscription: any = null;
-  private monitoringInterval: NodeJS.Timeout | null = null;
+  private monitoringInterval: ReturnType<typeof setInterval> | null = null;
   private disconnectCallback: (() => void) | null = null;
 
   /**

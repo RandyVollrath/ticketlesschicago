@@ -11,6 +11,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { email as emailTemplates, sms as smsTemplates, voice as voiceTemplates, getUrgencyLevel } from '../../../lib/message-templates';
+import { sendClickSendSMS, sendClickSendVoiceCall } from '../../../lib/sms-service';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,78 +59,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   }
 }
 
-/**
- * Send SMS via ClickSend
- */
-async function sendSMS(to: string, message: string): Promise<boolean> {
-  const username = process.env.CLICKSEND_USERNAME;
-  const apiKey = process.env.CLICKSEND_API_KEY;
-
-  if (!username || !apiKey) {
-    console.log('ClickSend not configured, skipping SMS');
-    return false;
-  }
-
-  try {
-    const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + Buffer.from(`${username}:${apiKey}`).toString('base64'),
-      },
-      body: JSON.stringify({
-        messages: [{ to: to.replace(/\D/g, ''), body: message, source: 'nodejs' }],
-      }),
-    });
-    return response.ok;
-  } catch (error) {
-    console.error('SMS send failed:', error);
-    return false;
-  }
-}
-
-/**
- * Send Voice Call via ClickSend
- */
-async function sendVoiceCall(to: string, message: string): Promise<boolean> {
-  const username = process.env.CLICKSEND_USERNAME;
-  const apiKey = process.env.CLICKSEND_API_KEY;
-
-  if (!username || !apiKey) {
-    console.log('ClickSend not configured, skipping voice call');
-    return false;
-  }
-
-  try {
-    const response = await fetch('https://rest.clicksend.com/v3/voice/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + Buffer.from(`${username}:${apiKey}`).toString('base64'),
-      },
-      body: JSON.stringify({
-        messages: [{
-          to: to.replace(/\D/g, ''),
-          body: message,
-          voice: 'female',
-          source: 'nodejs'
-        }],
-      }),
-    });
-
-    const result = await response.json();
-    if (response.ok && result.data?.messages?.[0]?.status === 'SUCCESS') {
-      console.log('✅ Voice call sent successfully to', to);
-      return true;
-    } else {
-      console.error('❌ Voice call failed:', result.response_msg || result);
-      return false;
-    }
-  } catch (error) {
-    console.error('Voice call send failed:', error);
-    return false;
-  }
-}
+// SMS and Voice calls via centralized service with retry (lib/sms-service.ts)
 
 // generateVoiceContent - using centralized template voiceTemplates.emissionsReminder()
 
@@ -287,7 +217,8 @@ export default async function handler(
 
       // Send SMS if user has phone and SMS enabled
       if (phone && smsEnabled) {
-        const smsSent = await sendSMS(phone, smsMessage);
+        const smsResult = await sendClickSendSMS(phone, smsMessage);
+        const smsSent = smsResult.success;
         if (smsSent) {
           await logNotification(user.user_id, 'emissions_reminder', 'sms', messageKey + '_sms', daysUntil);
           sent = true;
@@ -298,7 +229,8 @@ export default async function handler(
       // Only for PAID (Protection) users
       if (daysUntil <= 1 && phone && !smsEnabled && hasProtection) {
         console.log(`🚨 ESCALATION: Sending emergency SMS for emissions test due in ${daysUntil} days (Protection user)`);
-        const smsSent = await sendSMS(phone, smsMessage);
+        const smsResult = await sendClickSendSMS(phone, smsMessage);
+        const smsSent = smsResult.success;
         if (smsSent) {
           await logNotification(user.user_id, 'emissions_reminder_escalation', 'sms', messageKey + '_escalation', daysUntil);
           sent = true;
@@ -311,7 +243,8 @@ export default async function handler(
       if (phone && voiceEnabled && daysUntil <= 7) {
         const voiceMessage = voiceTemplates.emissionsReminder(effectiveDays, hasProtection);
         console.log(`📞 Sending voice call for emissions test due in ${daysUntil} days`);
-        const voiceSent = await sendVoiceCall(phone, voiceMessage);
+        const voiceResult = await sendClickSendVoiceCall(phone, voiceMessage);
+        const voiceSent = voiceResult.success;
         if (voiceSent) {
           await logNotification(user.user_id, 'emissions_reminder', 'voice', messageKey + '_voice', daysUntil);
           sent = true;
@@ -323,7 +256,8 @@ export default async function handler(
       if (daysUntil <= 1 && phone && !voiceEnabled && hasProtection) {
         const voiceMessage = voiceTemplates.emissionsReminder(effectiveDays, hasProtection);
         console.log(`🚨 ESCALATION: Sending emergency voice call for emissions test due in ${daysUntil} days (Protection user)`);
-        const voiceSent = await sendVoiceCall(phone, voiceMessage);
+        const voiceResult = await sendClickSendVoiceCall(phone, voiceMessage);
+        const voiceSent = voiceResult.success;
         if (voiceSent) {
           await logNotification(user.user_id, 'emissions_reminder_escalation', 'voice', messageKey + '_voice_escalation', daysUntil);
           sent = true;

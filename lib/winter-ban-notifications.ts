@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase';
+import { sendClickSendSMS } from './sms-service';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -85,32 +86,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   return data;
 }
 
-async function sendSMS(to: string, body: string) {
-  const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Basic ' + Buffer.from(
-        `${process.env.CLICKSEND_USERNAME}:${process.env.CLICKSEND_API_KEY}`
-      ).toString('base64')
-    },
-    body: JSON.stringify({
-      messages: [{
-        source: 'node',
-        from: process.env.SMS_SENDER,
-        to,
-        body,
-        custom_string: 'winter-ban-signup'
-      }]
-    })
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`ClickSend ${response.status}: ${JSON.stringify(data)}`);
-  }
-  return data;
-}
+// SMS via centralized service with retry (lib/sms-service.ts)
 
 function getEmailHtml(firstName: string | null, streetName: string): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
@@ -194,11 +170,11 @@ export async function notifyNewUserAboutWinterBan(
 
   // Send SMS
   if (phone) {
-    try {
-      await sendSMS(phone, getSMSText(matchedStreet));
+    const smsResult = await sendClickSendSMS(phone, getSMSText(matchedStreet));
+    if (smsResult.success) {
       channels.push('sms');
-    } catch (error) {
-      console.error(`Winter ban SMS failed for user ${userId}:`, error);
+    } else {
+      console.error(`Winter ban SMS failed for user ${userId}:`, smsResult.error);
     }
   }
 

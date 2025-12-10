@@ -10,6 +10,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { email as emailTemplates, sms as smsTemplates } from '../../../lib/message-templates';
+import { sendClickSendSMS } from '../../../lib/sms-service';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,35 +56,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   }
 }
 
-/**
- * Send SMS via ClickSend
- */
-async function sendSMS(to: string, message: string): Promise<boolean> {
-  const username = process.env.CLICKSEND_USERNAME;
-  const apiKey = process.env.CLICKSEND_API_KEY;
-
-  if (!username || !apiKey) {
-    console.log('ClickSend not configured, skipping SMS');
-    return false;
-  }
-
-  try {
-    const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + Buffer.from(`${username}:${apiKey}`).toString('base64'),
-      },
-      body: JSON.stringify({
-        messages: [{ to: to.replace(/\D/g, ''), body: message, source: 'nodejs' }],
-      }),
-    });
-    return response.ok;
-  } catch (error) {
-    console.error('SMS send failed:', error);
-    return false;
-  }
-}
+// SMS sending via centralized service with retry (lib/sms-service.ts)
 
 /**
  * Check if notification was already sent
@@ -182,7 +155,8 @@ export default async function handler(
           const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
 
           // Send SMS
-          const smsSent = await sendSMS(user.phone || user.phone_number, smsMessage);
+          const smsResult = await sendClickSendSMS(user.phone || user.phone_number, smsMessage);
+          const smsSent = smsResult.success;
 
           if (emailSent || smsSent) {
             await logNotification(user.user_id, 'sticker_purchased', emailSent ? 'email' : 'sms', messageKey);
@@ -203,7 +177,8 @@ export default async function handler(
           const smsMessage = smsTemplates.stickerDelivery(user.license_plate);
 
           const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
-          const smsSent = await sendSMS(user.phone || user.phone_number, smsMessage);
+          const smsResult = await sendClickSendSMS(user.phone || user.phone_number, smsMessage);
+          const smsSent = smsResult.success;
 
           if (emailSent || smsSent) {
             await logNotification(user.user_id, 'sticker_delivery_reminder', emailSent ? 'email' : 'sms', messageKey);
@@ -224,7 +199,8 @@ export default async function handler(
           const smsMessage = smsTemplates.stickerApplyCheck(user.license_plate);
 
           const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
-          const smsSent = await sendSMS(user.phone || user.phone_number, smsMessage);
+          const smsResult = await sendClickSendSMS(user.phone || user.phone_number, smsMessage);
+          const smsSent = smsResult.success;
 
           if (emailSent || smsSent) {
             await logNotification(user.user_id, 'sticker_apply_reminder', emailSent ? 'email' : 'sms', messageKey);

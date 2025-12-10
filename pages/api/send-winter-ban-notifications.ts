@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
+import { sendClickSendSMS } from '../../lib/sms-service';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -37,32 +38,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   return data;
 }
 
-async function sendSMS(to: string, body: string) {
-  const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Basic ' + Buffer.from(
-        `${process.env.CLICKSEND_USERNAME}:${process.env.CLICKSEND_API_KEY}`
-      ).toString('base64')
-    },
-    body: JSON.stringify({
-      messages: [{
-        source: 'node',
-        from: process.env.SMS_SENDER,
-        to,
-        body,
-        custom_string: 'winter-ban-notification'
-      }]
-    })
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`ClickSend ${response.status}: ${JSON.stringify(data)}`);
-  }
-  return data;
-}
+// SMS via centralized service with retry (lib/sms-service.ts)
 
 function getNotificationYear(): number {
   const now = new Date();
@@ -200,12 +176,12 @@ export default async function handler(
 
       // Send SMS
       if (user.phone_number) {
-        try {
-          await sendSMS(user.phone_number, getSMSText(matchedStreet));
+        const smsResult = await sendClickSendSMS(user.phone_number, getSMSText(matchedStreet));
+        if (smsResult.success) {
           channels.push('sms');
           stats.smsSent++;
-        } catch (error) {
-          console.error(`SMS failed for user ${user.user_id}:`, error);
+        } else {
+          console.error(`SMS failed for user ${user.user_id}:`, smsResult.error);
           stats.smsFailed++;
         }
       }

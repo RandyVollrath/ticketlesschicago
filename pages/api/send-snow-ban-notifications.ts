@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
+import { sendClickSendSMS } from '../../lib/sms-service';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -30,32 +31,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   return data;
 }
 
-async function sendSMS(to: string, body: string) {
-  const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Basic ' + Buffer.from(
-        `${process.env.CLICKSEND_USERNAME}:${process.env.CLICKSEND_API_KEY}`
-      ).toString('base64')
-    },
-    body: JSON.stringify({
-      messages: [{
-        source: 'node',
-        from: process.env.SMS_SENDER,
-        to,
-        body,
-        custom_string: 'snow-ban-notification'
-      }]
-    })
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`ClickSend ${response.status}: ${JSON.stringify(data)}`);
-  }
-  return data;
-}
+// SMS via centralized service with retry (lib/sms-service.ts)
 
 function getForecastEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string, userAddress: string): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
@@ -361,12 +337,12 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
 
     // Send SMS (if enabled and user has phone number)
     if (smsEnabled && phoneNumber) {
-      try {
-        await sendSMS(phoneNumber, smsText);
+      const smsResult = await sendClickSendSMS(phoneNumber, smsText);
+      if (smsResult.success) {
         channels.push('sms');
         stats.smsSent++;
-      } catch (error) {
-        console.error(`SMS failed for user ${userId}:`, error);
+      } else {
+        console.error(`SMS failed for user ${userId}:`, smsResult.error);
         stats.smsFailed++;
       }
     }

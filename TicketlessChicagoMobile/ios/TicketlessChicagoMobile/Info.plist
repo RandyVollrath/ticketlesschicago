@@ -44,10 +44,14 @@
 	<string>We use Bluetooth to detect when you disconnect from your car to know when you've parked</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>We use Bluetooth to detect when you disconnect from your car to know when you've parked</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Use Face ID to quickly and securely sign in to Ticketless</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
 		<string>bluetooth-central</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
