@@ -16,6 +16,7 @@ import { Button, Card, RuleCard } from '../components';
 import LocationService, { Coordinates, ParkingCheckResult } from '../services/LocationService';
 import NetworkStatus from '../utils/NetworkStatus';
 import Logger from '../utils/Logger';
+import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('MapScreen');
 
@@ -114,14 +115,14 @@ const MapScreen: React.FC = () => {
 
   const loadLastLocation = async () => {
     try {
-      const stored = await AsyncStorage.getItem('lastParkingLocation');
+      const stored = await AsyncStorage.getItem(StorageKeys.LAST_PARKING_LOCATION);
       if (stored && isMountedRef.current) {
         try {
           const parsed = JSON.parse(stored);
           setLastLocation(parsed);
         } catch (parseError) {
           log.error('Corrupted location data, clearing', parseError);
-          await AsyncStorage.removeItem('lastParkingLocation');
+          await AsyncStorage.removeItem(StorageKeys.LAST_PARKING_LOCATION);
         }
       }
     } catch (error) {

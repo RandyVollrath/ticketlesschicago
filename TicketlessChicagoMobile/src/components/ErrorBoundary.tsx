@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import Logger from '../utils/Logger';
+import CrashReportingService from '../services/CrashReportingService';
 
 const log = Logger.createLogger('ErrorBoundary');
 
@@ -46,10 +47,12 @@ class ErrorBoundary extends Component<Props, State> {
       componentStack: errorInfo.componentStack,
     });
 
-    // TODO: Send to crash reporting service in production
-    // if (!__DEV__) {
-    //   CrashReporting.recordError(error, { componentStack: errorInfo.componentStack });
-    // }
+    // Send to crash reporting service in production
+    if (!__DEV__) {
+      // Log component stack separately, then record the error
+      CrashReportingService.logMessage(`Component stack: ${errorInfo.componentStack || 'unknown'}`);
+      CrashReportingService.recordError(error, 'react_error_boundary');
+    }
   }
 
   handleRetry = (): void => {

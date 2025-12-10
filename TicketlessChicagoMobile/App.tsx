@@ -30,6 +30,7 @@ import { colors, typography } from './src/theme';
 // Utils
 import Logger from './src/utils/Logger';
 import { setupGlobalErrorHandler } from './src/utils/errorHandler';
+import { StorageKeys } from './src/constants';
 
 const log = Logger.createLogger('App');
 
@@ -99,33 +100,33 @@ function App(): React.JSX.Element {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   useEffect(() => {
+    // Subscribe to auth state changes FIRST before initializing
+    // This prevents missing the initial auth state
+    const unsubscribe = AuthService.subscribe((state) => {
+      setAuthState(state);
+    });
+
+    // Then initialize the app
     initializeApp();
+
+    return () => unsubscribe();
   }, []);
 
   // Note: Deep linking and push notification navigation refs are set in
   // NavigationContainer's onReady callback to ensure navigation is ready
 
-  useEffect(() => {
-    // Subscribe to auth state changes
-    const unsubscribe = AuthService.subscribe((state) => {
-      setAuthState(state);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   const initializeApp = async () => {
     try {
       // Check onboarding and login status in parallel
       const [onboarded, seenLogin] = await Promise.all([
-        AsyncStorage.getItem('hasOnboarded'),
-        AsyncStorage.getItem('hasSeenLogin'),
+        AsyncStorage.getItem(StorageKeys.HAS_ONBOARDED),
+        AsyncStorage.getItem(StorageKeys.HAS_SEEN_LOGIN),
       ]);
 
       setHasOnboarded(onboarded === 'true');
       setHasSeenLogin(seenLogin === 'true');
 
-      // Initialize services
+      // Initialize services - auth first, then others
       await AuthService.initialize();
       await PushNotificationService.initialize();
 
@@ -144,12 +145,12 @@ function App(): React.JSX.Element {
   };
 
   const handleOnboardingComplete = async () => {
-    await AsyncStorage.setItem('hasOnboarded', 'true');
+    await AsyncStorage.setItem(StorageKeys.HAS_ONBOARDED, 'true');
     setHasOnboarded(true);
   };
 
   const handleLoginComplete = async () => {
-    await AsyncStorage.setItem('hasSeenLogin', 'true');
+    await AsyncStorage.setItem(StorageKeys.HAS_SEEN_LOGIN, 'true');
     setHasSeenLogin(true);
 
     // Request push notification permissions after login

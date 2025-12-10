@@ -39,6 +39,9 @@ export const StorageKeys = {
   // Cache
   LAST_API_RESPONSE_CACHE: 'lastApiResponseCache',
   GEOCODE_CACHE: 'geocodeCache',
+
+  // Background Tasks
+  BACKGROUND_TASK_STATE: 'backgroundTaskState',
 } as const;
 
 // Type for storage keys

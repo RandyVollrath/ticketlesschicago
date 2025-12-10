@@ -6,6 +6,7 @@ import ApiClient, { ApiErrorType } from '../utils/ApiClient';
 import Logger from '../utils/Logger';
 import { validateChicagoCoordinates, validateParkingApiResponse } from '../utils/validation';
 import { RateLimiter } from '../utils/RateLimiter';
+import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('LocationService');
 
@@ -172,7 +173,7 @@ class LocationServiceClass {
   async saveLastParkingLocation(coords: Coordinates, rules: ParkingRule[], address?: string): Promise<void> {
     try {
       await AsyncStorage.setItem(
-        'lastParkingLocation',
+        StorageKeys.LAST_PARKING_LOCATION,
         JSON.stringify({
           coords,
           rules,
@@ -188,7 +189,7 @@ class LocationServiceClass {
   async saveParkingCheckResult(result: ParkingCheckResult): Promise<void> {
     try {
       await AsyncStorage.setItem(
-        'lastParkingLocation',
+        StorageKeys.LAST_PARKING_LOCATION,
         JSON.stringify(result)
       );
     } catch (error) {

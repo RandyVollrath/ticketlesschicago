@@ -359,7 +359,7 @@ class BackgroundTaskServiceClass {
    */
   private async loadState(): Promise<void> {
     try {
-      const stateJson = await AsyncStorage.getItem('backgroundTaskState');
+      const stateJson = await AsyncStorage.getItem(StorageKeys.BACKGROUND_TASK_STATE);
       if (stateJson) {
         const savedState = JSON.parse(stateJson);
         this.state = { ...this.state, ...savedState };
@@ -374,11 +374,12 @@ class BackgroundTaskServiceClass {
    */
   private async saveState(): Promise<void> {
     try {
-      await AsyncStorage.setItem('backgroundTaskState', JSON.stringify({
+      await AsyncStorage.setItem(StorageKeys.BACKGROUND_TASK_STATE, JSON.stringify({
         isMonitoring: this.state.isMonitoring,
         lastCarConnectionStatus: this.state.lastCarConnectionStatus,
         lastDisconnectTime: this.state.lastDisconnectTime,
         lastParkingCheckTime: this.state.lastParkingCheckTime,
+        isInitialized: this.state.isInitialized,
       }));
     } catch (error) {
       log.error('Error saving background task state', error);

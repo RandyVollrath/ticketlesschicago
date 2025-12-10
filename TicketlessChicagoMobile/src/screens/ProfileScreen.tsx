@@ -129,7 +129,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const loadSettings = async () => {
     try {
-      const stored = await AsyncStorage.getItem('appSettings');
+      const stored = await AsyncStorage.getItem(StorageKeys.APP_SETTINGS);
       if (stored) {
         setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
       }
@@ -140,7 +140,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const saveSettings = async (newSettings: AppSettings) => {
     try {
-      await AsyncStorage.setItem('appSettings', JSON.stringify(newSettings));
+      await AsyncStorage.setItem(StorageKeys.APP_SETTINGS, JSON.stringify(newSettings));
       setSettings(newSettings);
     } catch (error) {
       log.error('Error saving settings', error);
@@ -160,7 +160,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const loadStats = useCallback(async () => {
     try {
-      const history = await AsyncStorage.getItem('parkingHistory');
+      const history = await AsyncStorage.getItem(StorageKeys.PARKING_HISTORY);
       if (history && isMountedRef.current) {
         const items = JSON.parse(history);
         if (Array.isArray(items)) {

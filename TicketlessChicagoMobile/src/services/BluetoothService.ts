@@ -2,6 +2,7 @@ import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from 
 import BleManager from 'react-native-ble-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/Logger';
+import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('BluetoothService');
 
@@ -98,7 +99,7 @@ class BluetoothServiceClass {
 
   async saveCarDevice(device: SavedCarDevice): Promise<void> {
     try {
-      await AsyncStorage.setItem('savedCarDevice', JSON.stringify(device));
+      await AsyncStorage.setItem(StorageKeys.SAVED_CAR_DEVICE, JSON.stringify(device));
       log.debug('Car device saved', device.name);
     } catch (error) {
       log.error('Error saving car device', error);
@@ -108,7 +109,7 @@ class BluetoothServiceClass {
 
   async getSavedCarDevice(): Promise<SavedCarDevice | null> {
     try {
-      const deviceJson = await AsyncStorage.getItem('savedCarDevice');
+      const deviceJson = await AsyncStorage.getItem(StorageKeys.SAVED_CAR_DEVICE);
       return deviceJson ? JSON.parse(deviceJson) : null;
     } catch (error) {
       log.error('Error getting saved car device', error);

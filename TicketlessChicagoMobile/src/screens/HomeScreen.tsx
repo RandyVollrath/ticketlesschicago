@@ -20,6 +20,7 @@ import { ParkingHistoryService } from './HistoryScreen';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
+import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('HomeScreen');
 
@@ -92,7 +93,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const loadLastCheck = async () => {
     try {
-      const stored = await AsyncStorage.getItem('lastParkingLocation');
+      const stored = await AsyncStorage.getItem(StorageKeys.LAST_PARKING_LOCATION);
       if (stored) {
         setLastParkingCheck(JSON.parse(stored));
       }

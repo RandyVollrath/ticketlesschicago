@@ -6,6 +6,9 @@ import { Alert, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Config from '../config/config';
 import AuthService from '../services/AuthService';
+import Logger from './Logger';
+
+const log = Logger.createLogger('ApiClient');
 
 // Retry configuration
 const DEFAULT_RETRY_COUNT = 3;
@@ -257,7 +260,7 @@ async function apiRequest<T>(
 
       // Handle 401 errors with token refresh
       if (response.status === 401 && requireAuth && attempt === 0) {
-        console.log('Received 401, attempting token refresh');
+        log.debug('Received 401, attempting token refresh');
         const refreshed = await AuthService.handleAuthError();
         if (refreshed) {
           // Update the auth header with new token and retry
@@ -300,7 +303,7 @@ async function apiRequest<T>(
     // Wait before retry (if not the last attempt)
     if (attempt < retries) {
       const delay = getRetryDelay(attempt, retryDelay);
-      console.log(`API request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
+      log.debug(`API request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
       await sleep(delay);
     }
   }

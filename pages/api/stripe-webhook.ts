@@ -20,7 +20,8 @@ import {
 } from '../../lib/webhook-validator';
 
 const stripe = new Stripe(stripeConfig.secretKey!, {
-  apiVersion: '2024-12-18.acacia'
+  // Using older API version for stability - cast to bypass newer type definitions
+  apiVersion: '2024-12-18.acacia' as Stripe.LatestApiVersion
 });
 
 const resend = new Resend(process.env.RESEND_API_KEY);
