@@ -1,20 +1,26 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { withAdminAuth } from '../../../lib/auth-middleware';
 
-export default async function handler(
+// Admin emails that can access this debug endpoint
+const ADMIN_EMAILS = (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.ADMIN_EMAIL || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
+export default withAdminAuth(async (
   req: NextApiRequest,
-  res: NextApiResponse
-) {
-  // Only allow POST requests with a specific debug key
+  res: NextApiResponse,
+  adminUser: any
+) => {
+  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple auth check - you can call this with your email
+  // Email to diagnose - use the admin's email if not specified
   const { email } = req.body;
-  if (!email || email !== 'randyvollrath@gmail.com') {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
+  const targetEmail = email || adminUser?.email;
 
   try {
     const diagnostics: any = {
@@ -56,8 +62,9 @@ export default async function handler(
       diagnostics.checks.database.error = dbError.message;
     }
 
-    // 3. Check Randy's data in user_profiles
+    // 3. Check target user's data in user_profiles
     diagnostics.checks.userData = {
+      targetEmail: targetEmail,
       found: false,
       hasPhoneNumber: false,
       hasCityStickerExpiry: false,
@@ -72,7 +79,7 @@ export default async function handler(
       const { data: userData, error: userError } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
-        .eq('email', 'randyvollrath@gmail.com')
+        .eq('email', targetEmail)
         .maybeSingle();
 
       if (!userError && userData) {
@@ -123,7 +130,7 @@ export default async function handler(
       const { data: oldUserData, error: oldUserError } = await supabaseAdmin
         .from('users')
         .select('*')
-        .eq('email', 'randyvollrath@gmail.com')
+        .eq('email', targetEmail)
         .maybeSingle();
 
       if (!oldUserError && oldUserData) {
@@ -189,9 +196,9 @@ export default async function handler(
     res.status(200).json(diagnostics);
   } catch (error) {
     console.error('Debug endpoint error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to run diagnostics',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-}
+});
