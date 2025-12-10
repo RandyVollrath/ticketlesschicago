@@ -418,7 +418,7 @@ export class NotificationScheduler {
                     profileConfirmed: user.profile_confirmed_at !== null,
                     actuallyPurchased,
                     needsPermitDocs,
-                    blocksLicensePlate: renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate
+                    blocksLicensePlate: renewal.type === 'Emissions Test' && 'blocksLicensePlate' in renewal && renewal.blocksLicensePlate
                   };
 
                   // Use centralized SMS templates
@@ -614,7 +614,7 @@ export class NotificationScheduler {
                     profileConfirmed: user.profile_confirmed_at !== null,
                     actuallyPurchased,
                     needsPermitDocs,
-                    blocksLicensePlate: renewal.type === 'Emissions Test' && (renewal as any).blocksLicensePlate
+                    blocksLicensePlate: renewal.type === 'Emissions Test' && 'blocksLicensePlate' in renewal && renewal.blocksLicensePlate
                   };
 
                   const userCtx: UserContext = {

@@ -55,6 +55,24 @@ interface RenewalOrderData {
   customerNotes?: string;
 }
 
+// Type validation helpers
+const VALID_STICKER_TYPES = ['passenger', 'large', 'small', 'motorcycle'] as const;
+const VALID_FULFILLMENT_METHODS = ['mail', 'pickup'] as const;
+
+function validateStickerType(value: string | undefined): RenewalOrderData['stickerType'] {
+  if (value && VALID_STICKER_TYPES.includes(value as any)) {
+    return value as RenewalOrderData['stickerType'];
+  }
+  return 'passenger'; // Default to passenger if invalid
+}
+
+function validateFulfillmentMethod(value: string | undefined): RenewalOrderData['fulfillmentMethod'] {
+  if (value && VALID_FULFILLMENT_METHODS.includes(value as any)) {
+    return value as RenewalOrderData['fulfillmentMethod'];
+  }
+  return 'mail'; // Default to mail if invalid
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -93,8 +111,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       city: getField(fields.city),
       state: getField(fields.state) || 'IL',
       zipCode: getField(fields.zipCode),
-      stickerType: getField(fields.stickerType) as any,
-      fulfillmentMethod: (getField(fields.fulfillmentMethod) || 'mail') as any,
+      stickerType: validateStickerType(getField(fields.stickerType)),
+      fulfillmentMethod: validateFulfillmentMethod(getField(fields.fulfillmentMethod)),
       pickupLocation: getField(fields.pickupLocation),
       customerNotes: getField(fields.customerNotes),
     };
