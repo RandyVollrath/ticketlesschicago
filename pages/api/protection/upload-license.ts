@@ -149,6 +149,18 @@ async function verifyImageQuality(filePath: string): Promise<{ valid: boolean; r
 }
 
 /**
+ * Helper to add timeout to a promise
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    ),
+  ]);
+}
+
+/**
  * Verify driver's license using Google Cloud Vision API
  * Checks if text is readable, detects quality issues, verifies it's a document
  */
@@ -161,15 +173,19 @@ async function verifyWithGoogleVision(filePath: string): Promise<{ valid: boolea
 
     const buffer = fs.readFileSync(filePath);
 
-    // Run multiple Vision API features
-    const [result] = await visionClient.annotateImage({
-      image: { content: buffer },
-      features: [
-        { type: 'DOCUMENT_TEXT_DETECTION' }, // OCR for text readability
-        { type: 'IMAGE_PROPERTIES' }, // Quality analysis
-        { type: 'LABEL_DETECTION' }, // Identify document type
-      ],
-    });
+    // Run multiple Vision API features with 30 second timeout
+    const [result] = await withTimeout(
+      visionClient.annotateImage({
+        image: { content: buffer },
+        features: [
+          { type: 'DOCUMENT_TEXT_DETECTION' }, // OCR for text readability
+          { type: 'IMAGE_PROPERTIES' }, // Quality analysis
+          { type: 'LABEL_DETECTION' }, // Identify document type
+        ],
+      }),
+      30000,
+      'Vision API timeout'
+    );
 
     // Check 1: Text Detection (must have readable text)
     const textAnnotations = result.textAnnotations;
@@ -242,6 +258,16 @@ async function verifyWithGoogleVision(filePath: string): Promise<{ valid: boolea
 
   } catch (error: any) {
     console.error('Google Vision verification error:', error);
+
+    // Handle timeout specifically
+    if (error.message === 'Vision API timeout') {
+      console.error('⏱️ Vision API timed out after 30 seconds');
+      return {
+        valid: false,
+        reason: 'Image verification is taking too long. Please try again with a smaller image file.'
+      };
+    }
+
     // Fail closed - reject if Vision API has errors
     // Note: This shouldn't happen during normal flow since we pass skipValidation=true
     return {

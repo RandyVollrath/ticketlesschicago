@@ -273,6 +273,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         </div>
       `;
 
+      // Add timeout to prevent webhook from hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -281,11 +285,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify({
           from: 'Autopilot America <alerts@autopilotamerica.com>',
-          to: 'hiautopilotamerica@gmail.com',
+          to: process.env.ADMIN_NOTIFICATION_EMAIL || 'hiautopilotamerica@gmail.com',
           subject: emailSubject,
           html: emailHtml
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (resendResponse.ok) {
         console.log('✅ Notification email sent to hiautopilotamerica@gmail.com');
@@ -299,8 +305,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const errorText = await resendResponse.text();
         console.error('❌ Failed to send notification email:', errorText);
       }
-    } catch (emailError) {
-      console.error('Error sending notification email:', emailError);
+    } catch (emailError: any) {
+      if (emailError.name === 'AbortError') {
+        console.error('⏱️ Notification email send timed out');
+      } else {
+        console.error('Error sending notification email:', emailError);
+      }
       // Don't fail the webhook if email fails
     }
 

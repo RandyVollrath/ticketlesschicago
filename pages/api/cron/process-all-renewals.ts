@@ -23,6 +23,8 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
+  timeout: 30000, // 30 second timeout for API calls
+  maxNetworkRetries: 2, // Retry on network failures
 });
 
 const supabase = createClient(
@@ -44,66 +46,112 @@ const { PERCENTAGE_FEE: STRIPE_PERCENTAGE_FEE, FIXED_FEE: STRIPE_FIXED_FEE } = S
 const { SERVICE_FEE, REMITTER_SERVICE_FEE, PERMIT_FEE } = PLATFORM_FEES;
 
 /**
- * Get the next available remitter using load balancing
- * Selects the active remitter with the fewest pending orders
+ * RemitterManager - Caches remitter data to avoid N+1 queries
+ * Loads remitters once at start, tracks orders assigned during this run
+ */
+class RemitterManager {
+  private remitters: any[] = [];
+  private orderCounts: Map<string, number> = new Map();
+  private initialized = false;
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    // Get all active remitters with valid Stripe accounts (1 query)
+    const { data: remitters, error } = await supabase
+      .from('renewal_partners')
+      .select('*')
+      .eq('status', 'active')
+      .not('stripe_connected_account_id', 'is', null);
+
+    if (error) {
+      throw new Error('Failed to fetch remitters');
+    }
+
+    if (!remitters || remitters.length === 0) {
+      throw new Error('No active remitters available');
+    }
+
+    this.remitters = remitters;
+
+    // Get pending order counts for ALL remitters in a single query
+    const remitterIds = remitters.map(r => r.id);
+    const { data: orderCounts, error: countError } = await supabase
+      .from('renewal_orders')
+      .select('partner_id')
+      .in('partner_id', remitterIds)
+      .in('status', ['pending', 'processing']);
+
+    if (countError) {
+      console.warn('Failed to fetch order counts:', sanitizeErrorMessage(countError));
+    }
+
+    // Initialize counts to 0
+    for (const remitterId of remitterIds) {
+      this.orderCounts.set(remitterId, 0);
+    }
+    // Count from database
+    for (const order of orderCounts || []) {
+      const currentCount = this.orderCounts.get(order.partner_id) || 0;
+      this.orderCounts.set(order.partner_id, currentCount + 1);
+    }
+
+    this.initialized = true;
+    console.log(`📋 RemitterManager initialized: ${remitters.length} remitters loaded`);
+  }
+
+  /**
+   * Get the next available remitter using load balancing
+   * Uses cached data - no database queries after initialization
+   */
+  getNextAvailableRemitter(): any {
+    if (!this.initialized) {
+      throw new Error('RemitterManager not initialized - call initialize() first');
+    }
+
+    // If only one remitter, return it
+    if (this.remitters.length === 1) {
+      return this.remitters[0];
+    }
+
+    // Sort remitters by pending order count (ascending) and pick the one with fewest
+    const sortedRemitters = [...this.remitters].sort((a, b) => {
+      const countA = this.orderCounts.get(a.id) || 0;
+      const countB = this.orderCounts.get(b.id) || 0;
+      return countA - countB;
+    });
+
+    const selectedRemitter = sortedRemitters[0];
+    const pendingCount = this.orderCounts.get(selectedRemitter.id) || 0;
+
+    console.log(`🔄 Load balancing: Selected remitter "${selectedRemitter.name}" (${pendingCount} pending orders)`);
+
+    return selectedRemitter;
+  }
+
+  /**
+   * Track that an order was assigned to a remitter
+   * Updates in-memory count for future selections
+   */
+  recordOrderAssigned(remitterId: string): void {
+    const currentCount = this.orderCounts.get(remitterId) || 0;
+    this.orderCounts.set(remitterId, currentCount + 1);
+  }
+}
+
+// Global remitter manager instance for this request
+let remitterManager: RemitterManager | null = null;
+
+/**
+ * Get the next available remitter using cached load balancing
+ * @deprecated Use remitterManager.getNextAvailableRemitter() instead after initialization
  */
 async function getNextAvailableRemitter(): Promise<any> {
-  // Get all active remitters with valid Stripe accounts
-  const { data: remitters, error } = await supabase
-    .from('renewal_partners')
-    .select('*')
-    .eq('status', 'active')
-    .not('stripe_connected_account_id', 'is', null);
-
-  if (error) {
-    throw new Error('Failed to fetch remitters');
+  if (!remitterManager) {
+    remitterManager = new RemitterManager();
+    await remitterManager.initialize();
   }
-
-  if (!remitters || remitters.length === 0) {
-    throw new Error('No active remitters available');
-  }
-
-  // If only one remitter, return it immediately
-  if (remitters.length === 1) {
-    return remitters[0];
-  }
-
-  // Get pending order counts for ALL remitters in a single query (avoids N+1)
-  const remitterIds = remitters.map(r => r.id);
-  const { data: orderCounts, error: countError } = await supabase
-    .from('renewal_orders')
-    .select('partner_id')
-    .in('partner_id', remitterIds)
-    .in('status', ['pending', 'processing']);
-
-  if (countError) {
-    console.warn('Failed to fetch order counts:', sanitizeErrorMessage(countError));
-  }
-
-  // Count orders per partner from the single query result
-  const remitterOrderCounts: Map<string, number> = new Map();
-  for (const remitterId of remitterIds) {
-    remitterOrderCounts.set(remitterId, 0);
-  }
-  for (const order of orderCounts || []) {
-    const currentCount = remitterOrderCounts.get(order.partner_id) || 0;
-    remitterOrderCounts.set(order.partner_id, currentCount + 1);
-  }
-
-  // Sort remitters by pending order count (ascending) and pick the one with fewest
-  const sortedRemitters = remitters.sort((a, b) => {
-    const countA = remitterOrderCounts.get(a.id) || 0;
-    const countB = remitterOrderCounts.get(b.id) || 0;
-    return countA - countB;
-  });
-
-  const selectedRemitter = sortedRemitters[0];
-  const pendingCount = remitterOrderCounts.get(selectedRemitter.id) || 0;
-
-  console.log(`🔄 Load balancing: Selected remitter "${selectedRemitter.name}" (${pendingCount} pending orders)`);
-  console.log(`   All remitters: ${remitters.map(r => `${r.name}:${remitterOrderCounts.get(r.id)}`).join(', ')}`);
-
-  return selectedRemitter;
+  return remitterManager.getNextAvailableRemitter();
 }
 
 /**
@@ -301,9 +349,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  console.log(`🔄 Starting unified renewal processing...${dryRun ? ' [DRY RUN - no charges will be made]' : ''}`);
+  // Generate correlation ID for tracking this run through logs
+  const runId = `renewal_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  console.log(`🔄 Starting unified renewal processing [${runId}]${dryRun ? ' [DRY RUN - no charges will be made]' : ''}`);
+
+  // Reset and initialize remitter manager for this request
+  remitterManager = new RemitterManager();
 
   try {
+    // Initialize remitter manager once at the start (2 queries total instead of N*2)
+    await remitterManager.initialize();
+
     const results = {
       cityStickerProcessed: 0,
       cityStickerSucceeded: 0,
@@ -651,6 +707,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           renewal_due_date: customer.city_sticker_expiry,
         });
 
+        // Track order assignment for load balancing
+        remitterManager?.recordOrderAssigned(remitter.id);
+
         // Send email and SMS notifications
         try {
           // Email to customer
@@ -682,7 +741,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           - Platform kept: $${serviceFee}`);
 
       } catch (error: any) {
-        console.error(`Failed to process city sticker for customer ${customer.user_id}:`, error);
+        // Enhanced error logging for payment failures
+        console.error(`[${runId}] Failed to process city sticker for customer ${customer.user_id}:`, {
+          error_type: error.type || 'unknown',
+          error_code: error.code || 'unknown',
+          decline_code: error.decline_code || null,
+          message: sanitizeErrorMessage(error),
+          stripe_request_id: error.requestId || null,
+        });
 
         await supabase.from('renewal_charges').insert({
           user_id: customer.user_id,
@@ -1053,6 +1119,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             renewal_due_date: customer.license_plate_expiry,
           });
 
+          // Track order assignment for load balancing
+          remitterManager?.recordOrderAssigned(remitter.id);
+
           // Send notifications
           try {
             await sendChargeSuccessEmail(customer, totalAmount, 'license_plate');
@@ -1071,7 +1140,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log(`✅ License plate renewal complete for ${customer.user_id}: $${totalAmount}`);
 
         } catch (error: any) {
-          console.error(`Failed to process license plate for ${customer.user_id}:`, error);
+          // Enhanced error logging for payment failures
+          console.error(`[${runId}] Failed to process license plate for ${customer.user_id}:`, {
+            error_type: error.type || 'unknown',
+            error_code: error.code || 'unknown',
+            decline_code: error.decline_code || null,
+            message: sanitizeErrorMessage(error),
+            stripe_request_id: error.requestId || null,
+          });
 
           await supabase.from('renewal_charges').insert({
             user_id: customer.user_id,
@@ -1079,6 +1155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             amount: 0,
             status: 'failed',
             failure_reason: sanitizeErrorMessage(error),
+            failure_code: error.code || 'unknown',
             renewal_type: 'license_plate',
             renewal_due_date: customer.license_plate_expiry,
             failed_at: new Date().toISOString(),
@@ -1090,6 +1167,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             customer_id: customer.user_id,
             license_plate: customer.license_plate,
             error: sanitizeErrorMessage(error),
+            error_code: error.code || 'unknown',
           });
         }
       }
