@@ -245,6 +245,10 @@ Autopilot America
       to: user.email,
       subject: subject,
       text: body,
+      headers: {
+        'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     });
 
     if (error) {

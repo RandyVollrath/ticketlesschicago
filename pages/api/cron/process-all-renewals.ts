@@ -547,6 +547,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ? `City Sticker + Permit Renewal - ${customer.license_plate}`
           : `City Sticker Renewal - ${customer.license_plate}`;
 
+        // Idempotency key prevents duplicate charges if cron retries
+        const stickerIdempotencyKey = `sticker_${customer.user_id}_${customer.city_sticker_expiry}`;
+
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(totalAmount * 100),
           currency: 'usd',
@@ -571,6 +574,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             amount: Math.round((stickerPrice + permitFee) * 100), // Remitter gets sticker + permit price
           },
           receipt_email: customer.email || undefined,
+        }, {
+          idempotencyKey: stickerIdempotencyKey,
         });
 
         // Send $12 service fee from platform balance to remitter
@@ -957,6 +962,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             continue;
           }
 
+          // Idempotency key prevents duplicate charges if cron retries
+          const plateIdempotencyKey = `plate_${customer.user_id}_${customer.license_plate_expiry}`;
+
           // Create payment intent
           const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(totalAmount * 100),
@@ -979,6 +987,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               amount: Math.round(platePrice * 100),
             },
             receipt_email: customer.email || undefined,
+          }, {
+            idempotencyKey: plateIdempotencyKey,
           });
 
           // Transfer $12 service fee (non-blocking)

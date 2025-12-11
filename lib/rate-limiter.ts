@@ -9,6 +9,7 @@ export const RATE_LIMITS = {
   api: { limit: 100, windowMs: 60 * 1000 }, // 100 per minute
   vision_api: { limit: 20, windowMs: 60 * 60 * 1000 }, // 20 per hour (expensive GPT-4V calls)
   geocoding: { limit: 50, windowMs: 60 * 60 * 1000 }, // 50 per hour (Google Maps API)
+  upload: { limit: 20, windowMs: 60 * 60 * 1000 }, // 20 uploads per hour per IP
 } as const;
 
 export type RateLimitAction = keyof typeof RATE_LIMITS;

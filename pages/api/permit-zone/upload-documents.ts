@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { put } from '@vercel/blob';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
 // Disable body parser to handle multipart/form-data
 export const config = {
@@ -89,6 +90,17 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
+
+  // Rate limiting - 20 uploads per hour per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'upload');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      success: false,
+      error: 'Too many upload attempts. Please try again later.',
+    });
+  }
+  await recordRateLimitAction(clientIp, 'upload');
 
   try {
     // Parse the multipart form data

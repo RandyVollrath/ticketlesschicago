@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +26,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limiting - 20 uploads per hour per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'upload');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many upload attempts. Please try again later.',
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    });
+  }
+  await recordRateLimitAction(clientIp, 'upload');
 
   try {
     // Get authenticated user

@@ -121,7 +121,11 @@ export async function sendRemitterDailyEmail(
       subject: `${renewals.length} Renewal${renewals.length !== 1 ? 's' : ''} Ready for Submission - ${new Date().toLocaleDateString()}`,
       html: emailHtml,
       text: emailText,
-      reply_to: 'support@autopilotamerica.com'
+      reply_to: 'support@autopilotamerica.com',
+      headers: {
+        'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     });
 
     if (sendError) {
