@@ -173,7 +173,11 @@ export default async function handler(
               <p>Thanks for spreading the word!</p>
               <p>- The Autopilot America Team</p>
             </div>
-          `
+          `,
+          headers: {
+            'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
         });
       } catch (emailError) {
         console.error('Failed to send notification emails:', emailError);

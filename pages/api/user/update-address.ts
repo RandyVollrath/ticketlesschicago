@@ -158,7 +158,11 @@ export default async function handler(
                 Questions? Reply to this email or contact us at support@ticketlessamerica.com
               </p>
             </div>
-          `
+          `,
+          headers: {
+            'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
         });
 
         return res.status(200).json({
@@ -242,7 +246,11 @@ export default async function handler(
               Questions? Reply to this email or contact us at support@ticketlessamerica.com
             </p>
           </div>
-        `
+        `,
+        headers: {
+          'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       });
 
       return res.status(200).json({

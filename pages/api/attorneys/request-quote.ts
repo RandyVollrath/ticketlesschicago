@@ -153,7 +153,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             <p>You should receive a quote within ${attorney.response_time_hours || 24} hours.</p>
 
             <p><a href="${process.env.NEXT_PUBLIC_SITE_URL}/my-quotes">View Your Quote Requests</a></p>
-          `
+          `,
+          headers: {
+            'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
         });
       } catch (emailError) {
         console.error('User email send error:', emailError);

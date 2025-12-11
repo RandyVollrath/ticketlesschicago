@@ -153,6 +153,10 @@ export default withAdminAuth(async (req, res, adminUser) => {
                 <p>Best,<br>The Autopilot America Team</p>
               </div>
             `,
+            headers: {
+              'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
           });
         } else {
           await resend.emails.send({
@@ -183,6 +187,10 @@ export default withAdminAuth(async (req, res, adminUser) => {
                 <p>Best,<br>The Autopilot America Team</p>
               </div>
             `,
+            headers: {
+              'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
           });
         }
       } catch (emailError) {
