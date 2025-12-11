@@ -337,10 +337,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let residencyDocFilename = '';
 
         for (const mediaUrl of mediaFiles) {
-          // Download the MMS image from ClickSend
-          const response = await fetch(mediaUrl);
+          // Download the MMS image from ClickSend with timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+          let response: Response;
+          try {
+            response = await fetch(mediaUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+          } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+              console.error(`⏱️ Media download timed out: ${mediaUrl}`);
+            } else {
+              console.error(`Failed to download media: ${mediaUrl}`, fetchError.message);
+            }
+            continue;
+          }
+
           if (!response.ok) {
-            console.error(`Failed to download media: ${mediaUrl}`);
+            console.error(`Failed to download media: ${mediaUrl} (${response.status})`);
             continue;
           }
 
