@@ -1,20 +1,25 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { sendRemitterDailyEmail } from '../../../lib/remitter-emails';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { withCronOrAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Send Remitter Daily Email
  *
  * Sends email to remitter with all pending renewals
- * Can be called manually or via cron
+ * Can be called via cron (with CRON_SECRET) or manually by admin
  *
  * POST /api/admin/send-remitter-email
+ *
+ * Authentication:
+ * - Cron: Authorization: Bearer ${CRON_SECRET}
+ * - Admin: Valid admin session cookie
  *
  * Query params:
  * - email: Override remitter email (optional)
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
+export default withCronOrAdminAuth(async (req, res, context) => {
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -22,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { email } = req.query;
     const remitterEmail = (email as string) || process.env.REMITTER_EMAIL;
 
-    console.log(`📧 Sending remitter email to: ${remitterEmail}`);
+    console.log(`📧 Sending remitter email to: ${remitterEmail} (triggered by ${context.isCron ? 'cron' : context.user?.email})`);
 
     const result = await sendRemitterDailyEmail(remitterEmail);
 
@@ -56,4 +61,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: sanitizeErrorMessage(error)
     });
   }
-}
+});
