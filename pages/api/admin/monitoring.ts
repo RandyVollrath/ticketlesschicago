@@ -6,6 +6,16 @@ import {
 } from '../../../lib/monitoring';
 import { withAdminAuth } from '../../../lib/auth-middleware';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import {
+  validateAllEnvGroups,
+  getEnvDebugInfo,
+  EnvGroup
+} from '../../../lib/env-validation';
+import {
+  getAllCircuitStates,
+  circuitBreakers,
+  resetAllCircuits
+} from '../../../lib/circuit-breaker';
 
 /**
  * Monitoring API
@@ -16,9 +26,13 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  * - GET /api/admin/monitoring?action=stats&days=7 - Get stats for last N days
  * - GET /api/admin/monitoring?action=digest - Generate daily digest
  * - GET /api/admin/monitoring?action=anomalies - Detect anomalies
+ * - GET /api/admin/monitoring?action=env - Check environment variables
+ * - GET /api/admin/monitoring?action=circuits - Check circuit breaker states
+ * - POST /api/admin/monitoring?action=reset-circuits - Reset all circuit breakers
  */
 export default withAdminAuth(async (req, res, adminUser) => {
-  if (req.method !== 'GET') {
+  // Allow POST for reset-circuits action
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -87,13 +101,105 @@ export default withAdminAuth(async (req, res, adminUser) => {
         });
       }
 
+      case 'env': {
+        // Environment variable health check
+        const results = validateAllEnvGroups();
+        const debugInfo = getEnvDebugInfo();
+
+        const groups: Record<string, {
+          valid: boolean;
+          missing: string[];
+          missingRecommended: string[];
+          description: string;
+        }> = {};
+
+        let allValid = true;
+        let totalMissing = 0;
+        let totalMissingRecommended = 0;
+
+        for (const [group, result] of results) {
+          groups[group] = {
+            valid: result.valid,
+            missing: result.missing,
+            missingRecommended: result.missingRecommended,
+            description: result.description,
+          };
+          if (!result.valid) allValid = false;
+          totalMissing += result.missing.length;
+          totalMissingRecommended += result.missingRecommended.length;
+        }
+
+        return res.status(200).json({
+          success: true,
+          environment: {
+            node_env: process.env.NODE_ENV || 'development',
+            all_required_set: allValid,
+            total_missing_required: totalMissing,
+            total_missing_recommended: totalMissingRecommended,
+          },
+          groups,
+          variables: debugInfo,
+          message: allValid
+            ? '✅ All required environment variables are set'
+            : `❌ Missing ${totalMissing} required environment variable(s)`,
+        });
+      }
+
+      case 'circuits': {
+        // Circuit breaker health check
+        const circuitStates = getAllCircuitStates();
+
+        const hasOpenCircuits = Object.values(circuitStates).some(
+          (c) => c.state === 'OPEN'
+        );
+        const hasHalfOpenCircuits = Object.values(circuitStates).some(
+          (c) => c.state === 'HALF_OPEN'
+        );
+
+        return res.status(200).json({
+          success: true,
+          circuits: circuitStates,
+          summary: {
+            total: Object.keys(circuitStates).length,
+            open: Object.values(circuitStates).filter((c) => c.state === 'OPEN').length,
+            halfOpen: Object.values(circuitStates).filter((c) => c.state === 'HALF_OPEN').length,
+            closed: Object.values(circuitStates).filter((c) => c.state === 'CLOSED').length,
+          },
+          alert_level: hasOpenCircuits ? 'high' : hasHalfOpenCircuits ? 'medium' : 'low',
+          message: hasOpenCircuits
+            ? '🚫 Some circuit breakers are OPEN - services may be degraded'
+            : hasHalfOpenCircuits
+            ? '⚠️ Some circuit breakers are testing recovery'
+            : '✅ All circuit breakers healthy',
+        });
+      }
+
+      case 'reset-circuits': {
+        if (req.method !== 'POST') {
+          return res.status(405).json({
+            error: 'Use POST to reset circuit breakers',
+          });
+        }
+
+        resetAllCircuits();
+
+        return res.status(200).json({
+          success: true,
+          message: '✅ All circuit breakers have been reset',
+          circuits: getAllCircuitStates(),
+        });
+      }
+
       default: {
         return res.status(400).json({
           error: 'Invalid action',
           available_actions: {
             stats: 'GET /api/admin/monitoring?action=stats&days=7',
             digest: 'GET /api/admin/monitoring?action=digest',
-            anomalies: 'GET /api/admin/monitoring?action=anomalies'
+            anomalies: 'GET /api/admin/monitoring?action=anomalies',
+            env: 'GET /api/admin/monitoring?action=env',
+            circuits: 'GET /api/admin/monitoring?action=circuits',
+            'reset-circuits': 'POST /api/admin/monitoring?action=reset-circuits',
           }
         });
       }

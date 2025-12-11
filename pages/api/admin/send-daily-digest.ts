@@ -1,14 +1,20 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { sendDailyDigest, scheduleDailyDigest } from '../../../lib/daily-digest';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { withCronOrAdminAuth } from '../../../lib/auth-middleware';
 
 /**
  * Send Daily Digest
  *
  * Sends automated daily messaging report via email and/or Slack
- * Can be called manually or via cron
+ * Can be called via cron (with CRON_SECRET) or manually by admin
  *
  * POST /api/admin/send-daily-digest
+ * GET /api/admin/send-daily-digest (for Vercel cron)
+ *
+ * Authentication:
+ * - Cron: Authorization: Bearer ${CRON_SECRET}
+ * - Admin: Valid admin session cookie
  *
  * Query params:
  * - email: Override email address (optional)
@@ -21,7 +27,7 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  * - POST /api/admin/send-daily-digest?email=custom@example.com
  * - POST /api/admin/send-daily-digest?slack=https://hooks.slack.com/...
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withCronOrAdminAuth(async (req, res, context) => {
   // Accept both GET (for Vercel cron) and POST (for manual trigger)
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -29,6 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { email, slack, includeAnomalies, useDefault } = req.query;
+    console.log(`📊 Daily digest triggered by ${context.isCron ? 'cron' : context.user?.email}`);
 
     // If useDefault is true (or not specified), use scheduled digest
     if (useDefault !== 'false') {
@@ -83,4 +90,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: sanitizeErrorMessage(error)
     });
   }
-}
+});

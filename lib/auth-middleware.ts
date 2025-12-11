@@ -185,3 +185,83 @@ export function withAdminAuth(
     }
   };
 }
+
+/**
+ * Higher-order function to wrap API routes that can be called by either:
+ * 1. Cron jobs with CRON_SECRET in Authorization header
+ * 2. Admin users via browser session
+ *
+ * Usage:
+ * ```
+ * export default withCronOrAdminAuth(async (req, res, context) => {
+ *   // Handler code - caller is guaranteed to be cron or admin
+ *   console.log(context.isCron ? 'Called by cron' : `Called by ${context.user?.email}`);
+ * });
+ * ```
+ */
+export function withCronOrAdminAuth(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse,
+    context: { isCron: boolean; user?: { id: string; email: string } }
+  ) => Promise<void | NextApiResponse>
+) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    try {
+      // First check for cron secret in Authorization header
+      const authHeader = req.headers.authorization;
+      const cronSecret = process.env.CRON_SECRET || 'dev-secret';
+
+      if (authHeader === `Bearer ${cronSecret}`) {
+        // Valid cron call
+        return handler(req, res, { isCron: true });
+      }
+
+      // Not cron - check for admin session
+      const supabaseServer = createPagesServerClient({ req, res });
+      const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
+
+      if (sessionError || !session) {
+        console.warn('Protected route accessed without valid cron secret or authentication');
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Valid cron secret or admin authentication required'
+        });
+      }
+
+      const userEmail = session.user.email || '';
+      const userId = session.user.id;
+
+      // Check if user is admin
+      let isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+      if (!isAdmin) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('user_id', userId)
+          .single();
+
+        isAdmin = profile?.is_admin === true;
+      }
+
+      if (!isAdmin) {
+        console.warn(`Non-admin user ${userEmail} attempted to access protected route: ${req.url}`);
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Admin access required'
+        });
+      }
+
+      // User is authenticated and is an admin
+      return handler(req, res, { isCron: false, user: { id: userId, email: userEmail } });
+
+    } catch (error: any) {
+      console.error('Cron/Admin auth middleware error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+        message: 'Authentication check failed'
+      });
+    }
+  };
+}

@@ -133,28 +133,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const messageLower = messageBody.toLowerCase().trim();
 
     // Handle CONFIRM reply - mark profile as confirmed
+    // RACE CONDITION FIX: Only confirm if not already confirmed for this year
     if (messageLower === 'confirm' && matchedUser) {
-      console.log(`✅ CONFIRM received from ${matchedEmail} - updating profile`);
+      const currentYear = new Date().getFullYear();
 
-      const { error: confirmError } = await supabaseAdmin
+      // Check if already confirmed this year (prevents duplicate processing)
+      const { data: existingProfile } = await supabaseAdmin
         .from('user_profiles')
-        .update({
-          profile_confirmed_at: new Date().toISOString(),
-          profile_confirmed_for_year: new Date().getFullYear()
-        })
-        .eq('user_id', matchedUserId);
+        .select('profile_confirmed_at, profile_confirmed_for_year')
+        .eq('user_id', matchedUserId)
+        .single();
 
-      if (!confirmError) {
-        // Send confirmation SMS back
+      if (existingProfile?.profile_confirmed_for_year === currentYear) {
+        console.log(`⏭️ CONFIRM received but already confirmed for ${currentYear} - skipping duplicate`);
+        // Still send a friendly message so user knows it worked
         try {
           const { sendClickSendSMS } = await import('../../../lib/sms-service');
-          await sendClickSendSMS(fromNumber, "Thanks! Your profile has been confirmed. We'll process your renewal automatically when it's time.");
-          console.log('✅ Confirmation SMS sent');
+          await sendClickSendSMS(fromNumber, "Your profile is already confirmed for this year. You're all set!");
+          console.log('✅ Already-confirmed SMS sent');
         } catch (smsError) {
-          console.error('Error sending confirmation SMS:', smsError);
+          console.error('Error sending already-confirmed SMS:', smsError);
         }
       } else {
-        console.error('❌ Error updating profile_confirmed_at:', confirmError);
+        console.log(`✅ CONFIRM received from ${maskEmail(matchedEmail)} - updating profile`);
+
+        // Use atomic update with WHERE clause to prevent race condition
+        const { data: updatedRows, error: confirmError } = await supabaseAdmin
+          .from('user_profiles')
+          .update({
+            profile_confirmed_at: new Date().toISOString(),
+            profile_confirmed_for_year: currentYear
+          })
+          .eq('user_id', matchedUserId)
+          .neq('profile_confirmed_for_year', currentYear) // Only update if not already confirmed this year
+          .select();
+
+        if (!confirmError && updatedRows && updatedRows.length > 0) {
+          // Send confirmation SMS back
+          try {
+            const { sendClickSendSMS } = await import('../../../lib/sms-service');
+            await sendClickSendSMS(fromNumber, "Thanks! Your profile has been confirmed. We'll process your renewal automatically when it's time.");
+            console.log('✅ Confirmation SMS sent');
+          } catch (smsError) {
+            console.error('Error sending confirmation SMS:', smsError);
+          }
+        } else if (confirmError) {
+          console.error('❌ Error updating profile_confirmed_at:', confirmError);
+        } else {
+          // No rows updated - likely another request already processed
+          console.log('⏭️ CONFIRM: No rows updated (likely already processed by another request)');
+        }
       }
     }
 
@@ -199,18 +227,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const currentYear = new Date().getFullYear();
         const emissionsTestYear = currentYear;
 
-        const { error: updateError } = await supabaseAdmin
+        // RACE CONDITION FIX: Use atomic update with WHERE clause
+        const { data: updatedRows, error: updateError } = await supabaseAdmin
           .from('user_profiles')
           .update({
             emissions_completed: true,
             emissions_completed_at: new Date().toISOString(),
             emissions_test_year: emissionsTestYear
           })
-          .eq('user_id', emissionsUser.user_id);
+          .eq('user_id', emissionsUser.user_id)
+          .eq('emissions_completed', false) // Only update if still false (prevents duplicates)
+          .select();
 
         if (updateError) {
           console.error('❌ Error marking emissions complete:', updateError);
-        } else {
+        } else if (updatedRows && updatedRows.length > 0) {
           console.log(`✅ Emissions marked complete for ${maskEmail(emissionsUser.email)} via SMS`);
 
           try {
@@ -222,6 +253,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } catch (smsError) {
             console.error('Error sending confirmation SMS:', smsError);
           }
+        } else {
+          // No rows updated - already processed by another request
+          console.log('⏭️ Emissions: No rows updated (likely already processed by another request)');
         }
       }
     }
@@ -279,7 +313,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error('Error finding order:', orderError);
       } else if (!order) {
         // No pending sticker confirmation
-        console.log(`⚠️ No pending sticker confirmation for ${matchedEmail}`);
+        console.log(`⚠️ No pending sticker confirmation for ${maskEmail(matchedEmail)}`);
         try {
           const { sendClickSendSMS } = await import('../../../lib/sms-service');
           await sendClickSendSMS(fromNumber, "Thanks for the message! We don't have any pending sticker confirmations for you right now.");
@@ -287,19 +321,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error('Error sending SMS:', smsError);
         }
       } else {
-        // Mark sticker as applied
-        const { error: updateError } = await supabaseAdmin
+        // RACE CONDITION FIX: Use atomic update with WHERE clause
+        const { data: updatedRows, error: updateError } = await supabaseAdmin
           .from('renewal_orders')
           .update({
             sticker_applied: true,
             sticker_applied_at: new Date().toISOString(),
             needs_manual_followup: false
           })
-          .eq('id', order.id);
+          .eq('id', order.id)
+          .eq('sticker_applied', false) // Only update if not already applied
+          .select();
 
         if (updateError) {
           console.error('Error marking sticker applied:', updateError);
-        } else {
+        } else if (updatedRows && updatedRows.length > 0) {
           const isLicensePlate = ['standard', 'vanity'].includes(order.sticker_type?.toLowerCase());
           const stickerType = isLicensePlate ? 'license plate sticker' : 'city sticker';
 
@@ -315,6 +351,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } catch (smsError) {
             console.error('Error sending confirmation SMS:', smsError);
           }
+        } else {
+          // No rows updated - already processed
+          console.log('⏭️ Sticker applied: No rows updated (likely already processed by another request)');
         }
       }
     }
