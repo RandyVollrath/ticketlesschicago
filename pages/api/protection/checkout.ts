@@ -22,8 +22,20 @@ const checkoutSchema = z.object({
   userId: z.string().uuid().optional().nullable(),
   rewardfulReferral: z.string().max(100).optional().nullable(),
   renewals: z.object({
-    citySticker: z.boolean().optional(),
-    licensePlate: z.boolean().optional(),
+    citySticker: z.union([
+      z.object({
+        date: z.string().optional(),
+        vehicleType: z.string().optional(),
+      }),
+      z.null(),
+    ]).optional(),
+    licensePlate: z.union([
+      z.object({
+        date: z.string().optional(),
+        isVanity: z.boolean().optional(),
+      }),
+      z.null(),
+    ]).optional(),
     cityVehicleSticker: z.boolean().optional(),
   }).optional().nullable(),
   hasPermitZone: z.boolean().optional(),
