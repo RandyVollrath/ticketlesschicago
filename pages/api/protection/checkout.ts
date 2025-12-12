@@ -42,7 +42,7 @@ const checkoutSchema = z.object({
   streetAddress: z.string().max(500).optional().nullable(),
   vin: z.string().max(17).optional().nullable(),
   permitZones: z.array(z.string().max(50)).optional().nullable(),
-  vehicleType: z.enum(['standard', 'large']).optional(),
+  vehicleType: z.enum(['MB', 'P', 'LP', 'ST', 'LT', 'standard', 'large']).optional(),
   permitRequested: z.boolean().optional(),
   smsConsent: z.boolean().optional(),
 });
@@ -55,54 +55,53 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // SECURITY: Rate limiting
-  const ip = getClientIP(req);
-  const rateLimitResult = await checkRateLimit(ip, 'checkout');
-
-  res.setHeader('X-RateLimit-Limit', rateLimitResult.limit);
-  res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
-
-  if (!rateLimitResult.allowed) {
-    console.warn(`Rate limit exceeded for ${ip} on protection checkout`);
-    return res.status(429).json({
-      error: 'Too many requests',
-      message: `Rate limit exceeded. Please try again in ${Math.ceil(rateLimitResult.resetIn / 1000)} seconds.`,
-    });
-  }
-
-  // Validate request body
-  const parseResult = checkoutSchema.safeParse(req.body);
-
-  if (!parseResult.success) {
-    const errors = parseResult.error.errors.map(err => ({
-      field: err.path.join('.'),
-      message: err.message,
-    }));
-    console.warn('Checkout validation failed:', errors);
-    return res.status(400).json({
-      error: 'Validation failed',
-      details: errors,
-    });
-  }
-
-  const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, vin, permitZones, vehicleType, permitRequested, smsConsent } = parseResult.data;
-
-  console.log('Protection checkout request:', {
-    billingPlan,
-    email: maskEmail(email),
-    userId: userId ? userId.substring(0, 8) + '...' : null,
-    rewardfulReferral,
-    hasRenewals: !!renewals,
-    hasPermitZone,
-    permitRequested,
-    vehicleType
-  });
-
   try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // SECURITY: Rate limiting
+    const ip = getClientIP(req);
+    const rateLimitResult = await checkRateLimit(ip, 'checkout');
+
+    res.setHeader('X-RateLimit-Limit', rateLimitResult.limit);
+    res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
+
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for ${ip} on protection checkout`);
+      return res.status(429).json({
+        error: 'Too many requests',
+        message: `Rate limit exceeded. Please try again in ${Math.ceil(rateLimitResult.resetIn / 1000)} seconds.`,
+      });
+    }
+
+    // Validate request body
+    const parseResult = checkoutSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
+      console.warn('Checkout validation failed:', errors);
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors,
+      });
+    }
+
+    const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, vin, permitZones, vehicleType, permitRequested, smsConsent } = parseResult.data;
+
+    console.log('Protection checkout request:', {
+      billingPlan,
+      email: maskEmail(email),
+      userId: userId ? userId.substring(0, 8) + '...' : null,
+      rewardfulReferral,
+      hasRenewals: !!renewals,
+      hasPermitZone,
+      permitRequested,
+      vehicleType
+    });
     // Create Stripe price IDs based on plan
     const priceId = billingPlan === 'monthly'
       ? stripeConfig.protectionMonthlyPriceId
@@ -204,22 +203,25 @@ export default async function handler(
   } catch (error: any) {
     console.error('Checkout error:', error);
 
-    // Log failed checkout attempt
-    await logAuditEvent({
-      userId: userId,
-      actionType: 'subscription_created',
-      entityType: 'subscription',
-      entityId: undefined,
-      actionDetails: {
-        billingPlan,
-        email,
-        error: error.message,
-      },
-      status: 'failure',
-      errorMessage: error.message,
-      ipAddress: getIpAddress(req),
-      userAgent: getUserAgent(req),
-    });
+    // Log failed checkout attempt - use try-catch since variables may not be defined
+    try {
+      await logAuditEvent({
+        userId: undefined,
+        actionType: 'subscription_created',
+        entityType: 'subscription',
+        entityId: undefined,
+        actionDetails: {
+          error: error.message,
+          requestBody: JSON.stringify(req.body || {}).substring(0, 500),
+        },
+        status: 'failure',
+        errorMessage: error.message,
+        ipAddress: getIpAddress(req),
+        userAgent: getUserAgent(req),
+      });
+    } catch (logError) {
+      console.error('Failed to log audit event:', logError);
+    }
 
     return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
