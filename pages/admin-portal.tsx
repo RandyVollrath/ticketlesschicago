@@ -130,6 +130,7 @@ interface Remitter {
   status: string;
   is_default: boolean;
   stripe_connected_account_id: string | null;
+  api_key: string;
   pending_orders: number;
   total_orders: number;
 }
@@ -226,6 +227,7 @@ export default function AdminPortal() {
   const [selectedRemitterId, setSelectedRemitterId] = useState<string | null>(null);
   const [transferringOrder, setTransferringOrder] = useState<RenewalOrder | null>(null);
   const [transferTargetId, setTransferTargetId] = useState<string>('');
+  const [revealedApiKeys, setRevealedApiKeys] = useState<Set<string>>(new Set());
 
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
@@ -1536,6 +1538,52 @@ export default function AdminPortal() {
                     <div>
                       <span style={{ color: '#6b7280' }}>Total: </span>
                       <span style={{ fontWeight: '600' }}>{remitter.total_orders}</span>
+                    </div>
+                  </div>
+                  {/* API Key Section */}
+                  <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: '#6b7280', minWidth: '55px' }}>API Key:</span>
+                      <code style={{
+                        flex: 1,
+                        fontFamily: 'monospace',
+                        fontSize: '11px',
+                        backgroundColor: '#e5e7eb',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {revealedApiKeys.has(remitter.id) ? remitter.api_key : '••••••••••••••••••••••••••••••••'}
+                      </code>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRevealedApiKeys(prev => {
+                            const newSet = new Set(prev);
+                            if (newSet.has(remitter.id)) {
+                              newSet.delete(remitter.id);
+                            } else {
+                              newSet.add(remitter.id);
+                            }
+                            return newSet;
+                          });
+                        }}
+                        style={{ padding: '4px 8px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                      >
+                        {revealedApiKeys.has(remitter.id) ? 'Hide' : 'Show'}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(remitter.api_key);
+                          setMessage('API key copied to clipboard');
+                        }}
+                        style={{ padding: '4px 8px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                      >
+                        Copy
+                      </button>
                     </div>
                   </div>
                   <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
