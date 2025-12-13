@@ -477,6 +477,33 @@ export default function AdminPortal() {
     }
   };
 
+  const deleteRemitter = async (remitterId: string, remitterName: string) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/delete-remitter', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ remitterId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage(`Remitter "${remitterName}" deleted`);
+        if (selectedRemitterId === remitterId) {
+          setSelectedRemitterId(null);
+          setRemitterOrders([]);
+        }
+        fetchRemitters();
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
   const transferOrder = async () => {
     if (!transferringOrder || !transferTargetId) return;
     try {
@@ -1483,7 +1510,7 @@ export default function AdminPortal() {
                       <span style={{ fontWeight: '600' }}>{remitter.total_orders}</span>
                     </div>
                   </div>
-                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {!remitter.is_default && remitter.stripe_connected_account_id && (
                       <button
                         onClick={(e) => {
@@ -1495,6 +1522,19 @@ export default function AdminPortal() {
                         style={{ padding: '6px 12px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
                       >
                         Set Default
+                      </button>
+                    )}
+                    {!remitter.is_default && remitter.pending_orders === 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Delete "${remitter.name}"? This cannot be undone.`)) {
+                            deleteRemitter(remitter.id, remitter.name);
+                          }
+                        }}
+                        style={{ padding: '6px 12px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        Delete
                       </button>
                     )}
                     <span style={{
