@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { data: orders, error } = await supabase
       .from('renewal_orders')
-      .select('id, order_number, customer_email, customer_name, license_plate, sticker_type, status, total_amount, partner_id, created_at, original_partner_id, original_partner_name, payment_transfer_status, transferred_at')
+      .select('id, order_number, customer_email, customer_name, license_plate, sticker_type, status, total_amount, partner_id, created_at, renewal_due_date, original_partner_id, original_partner_name, payment_transfer_status, transferred_at')
       .eq('partner_id', remitterId)
       .order('created_at', { ascending: false })
       .limit(100);

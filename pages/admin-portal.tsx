@@ -146,6 +146,7 @@ interface RenewalOrder {
   total_amount: number;
   partner_id: string;
   created_at: string;
+  renewal_due_date?: string;
   // Payment transfer tracking
   original_partner_id?: string;
   original_partner_name?: string;
@@ -1646,6 +1647,7 @@ export default function AdminPortal() {
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Customer</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Plate</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Due Date</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Payment</th>
@@ -1678,6 +1680,9 @@ export default function AdminPortal() {
                               }}>
                                 {order.order_number.startsWith('LP-') ? 'License Plate' : 'City Sticker'}
                               </span>
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '12px' }}>
+                              {order.renewal_due_date ? new Date(order.renewal_due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
                             </td>
                             <td style={{ padding: '12px' }}>
                               <span style={{
