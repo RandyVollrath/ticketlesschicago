@@ -31,17 +31,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // First check if this remitter has any pending orders
-    const { count: pendingCount } = await supabase
+    // First check if this remitter has ANY orders (foreign key constraint)
+    const { count: orderCount } = await supabase
       .from('renewal_orders')
       .select('*', { count: 'exact', head: true })
-      .eq('partner_id', remitterId)
-      .in('status', ['pending', 'processing', 'submitted', 'payment_received']);
+      .eq('partner_id', remitterId);
 
-    if (pendingCount && pendingCount > 0) {
+    if (orderCount && orderCount > 0) {
       return res.status(400).json({
         success: false,
-        error: `Cannot delete remitter with ${pendingCount} pending orders. Transfer orders first.`
+        error: `Cannot delete remitter with ${orderCount} orders. Transfer all orders first.`
       });
     }
 
