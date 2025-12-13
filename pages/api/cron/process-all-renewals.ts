@@ -281,7 +281,7 @@ async function sendRemitterAlert(remitter: any, customer: any, stickerPrice: num
           <div style="line-height: 1.8;">
             <div><strong>Name:</strong> ${customer.first_name} ${customer.last_name}</div>
             <div><strong>License Plate:</strong> ${customer.license_plate}</div>
-            <div><strong>Address:</strong> ${customer.street_address}</div>
+            <div><strong>Mailing Address:</strong> ${customer.mailing_address || customer.street_address}, ${customer.mailing_city || 'Chicago'}, ${customer.mailing_state || 'IL'} ${customer.mailing_zip || customer.zip_code}</div>
             <div><strong>Due Date:</strong> ${customer.city_sticker_expiry}</div>
           </div>
         </div>
@@ -705,10 +705,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           make: customer.vehicle_make || null,
           model: customer.vehicle_model || null,
           year: customer.vehicle_year || null,
-          street_address: customer.street_address,
+          street_address: customer.mailing_address || customer.street_address,
           city: customer.mailing_city || 'Chicago',
           state: customer.mailing_state || 'IL',
-          zip_code: customer.zip_code,
+          zip_code: customer.mailing_zip || customer.zip_code,
           sticker_type: vehicleType,
           sticker_price: stickerPrice,
           permit_fee: permitFee, // $30 if permit requested, $0 otherwise
@@ -1119,10 +1119,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             make: customer.vehicle_make || null,
             model: customer.vehicle_model || null,
             year: customer.vehicle_year || null,
-            street_address: customer.street_address,
+            street_address: customer.mailing_address || customer.street_address,
             city: customer.mailing_city || 'Chicago',
             state: customer.mailing_state || 'IL',
-            zip_code: customer.zip_code,
+            zip_code: customer.mailing_zip || customer.zip_code,
             sticker_type: isVanity ? 'vanity' : 'standard',
             sticker_price: platePrice,
             service_fee: REMITTER_SERVICE_FEE,
