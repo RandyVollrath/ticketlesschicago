@@ -145,6 +145,11 @@ interface RenewalOrder {
   total_amount: number;
   partner_id: string;
   created_at: string;
+  // Payment transfer tracking
+  original_partner_id?: string;
+  original_partner_name?: string;
+  payment_transfer_status?: 'pending' | 'requested' | 'confirmed';
+  transferred_at?: string;
 }
 
 // ============ Constants ============
@@ -496,6 +501,29 @@ export default function AdminPortal() {
           setRemitterOrders([]);
         }
         fetchRemitters();
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const updatePaymentTransferStatus = async (orderId: string, status: 'requested' | 'confirmed') => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/update-payment-transfer', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId, status })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage(`Payment transfer marked as ${status}`);
+        if (selectedRemitterId) fetchRemitterOrders(selectedRemitterId);
       } else {
         setMessage(`Error: ${result.error}`);
       }
@@ -1572,13 +1600,21 @@ export default function AdminPortal() {
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Payment</th>
                           <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {remitterOrders.map((order) => (
-                          <tr key={order.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '12px' }}>{order.order_number}</td>
+                          <tr key={order.id} style={{ borderTop: '1px solid #e5e7eb', backgroundColor: order.original_partner_id && order.payment_transfer_status !== 'confirmed' ? '#fffbeb' : 'transparent' }}>
+                            <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '12px' }}>
+                              {order.order_number}
+                              {order.original_partner_name && (
+                                <div style={{ fontSize: '10px', color: '#dc2626', marginTop: '2px' }}>
+                                  From: {order.original_partner_name}
+                                </div>
+                              )}
+                            </td>
                             <td style={{ padding: '12px' }}>
                               <div style={{ fontWeight: '500', fontSize: '13px' }}>{order.customer_name}</div>
                               <div style={{ fontSize: '12px', color: '#6b7280' }}>{order.customer_email}</div>
@@ -1607,6 +1643,33 @@ export default function AdminPortal() {
                               </span>
                             </td>
                             <td style={{ padding: '12px', fontSize: '13px' }}>${order.total_amount?.toFixed(2)}</td>
+                            <td style={{ padding: '12px' }}>
+                              {order.original_partner_id ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {order.payment_transfer_status === 'confirmed' ? (
+                                    <span style={{ padding: '4px 8px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '4px', fontSize: '10px', textAlign: 'center' }}>
+                                      Confirmed
+                                    </span>
+                                  ) : order.payment_transfer_status === 'requested' ? (
+                                    <button
+                                      onClick={() => updatePaymentTransferStatus(order.id, 'confirmed')}
+                                      style={{ padding: '4px 8px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                                    >
+                                      Confirm Paid
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => updatePaymentTransferStatus(order.id, 'requested')}
+                                      style={{ padding: '4px 8px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                                    >
+                                      Request $
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: '#9ca3af' }}>-</span>
+                              )}
+                            </td>
                             <td style={{ padding: '12px' }}>
                               <button
                                 onClick={() => {
@@ -1638,6 +1701,15 @@ export default function AdminPortal() {
             <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>
               Transfer order <strong>{transferringOrder.order_number}</strong> to another remitter.
             </p>
+            {/* Payment Warning */}
+            <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+              <div style={{ fontWeight: '600', color: '#92400e', fontSize: '13px', marginBottom: '4px' }}>
+                Payment Reconciliation Required
+              </div>
+              <div style={{ fontSize: '12px', color: '#78350f' }}>
+                The payment for this order was already sent to the current remitter. After transferring, you will need to manually request the payment be transferred to the new remitter.
+              </div>
+            </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Select Remitter</label>
               <select
