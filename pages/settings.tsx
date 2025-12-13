@@ -597,21 +597,32 @@ export default function ProfileNew() {
         })
       ])
 
+      // Parse responses (can only call .json() once per response)
+      const frontResult = await frontRes.json()
+      const backResult = await backRes.json()
+
       if (!frontRes.ok) {
-        const error = await frontRes.json()
-        throw new Error(error.error || 'Failed to upload front image')
+        throw new Error(frontResult.error || 'Failed to upload front image')
       }
 
       if (!backRes.ok) {
-        const error = await backRes.json()
-        throw new Error(error.error || 'Failed to upload back image')
+        throw new Error(backResult.error || 'Failed to upload back image')
+      }
+
+      // Check if front upload returned an extracted expiration date
+      const extractedExpiry = frontResult.licenseExpirationDate
+
+      // Use extracted date if available, otherwise use manually entered date
+      const finalExpiryDate = extractedExpiry || licenseExpiryDate
+      if (extractedExpiry) {
+        console.log('🗓️ Using auto-extracted license expiry date:', extractedExpiry)
       }
 
       // Update license expiry and consent in profile
       await supabase
         .from('user_profiles')
         .update({
-          license_valid_until: licenseExpiryDate,
+          license_valid_until: finalExpiryDate,
           license_reuse_consent_given: licenseReuseConsent,
         })
         .eq('user_id', user!.id)
@@ -1610,7 +1621,7 @@ export default function ProfileNew() {
                   color: '#374151',
                   marginBottom: '6px'
                 }}>
-                  Emissions Test Due (Optional)
+                  Emissions Test Due {profile?.has_protection ? <span style={{ color: '#dc2626' }}>*</span> : '(Optional)'}
                 </label>
                 <input
                   type="date"
@@ -1619,14 +1630,51 @@ export default function ProfileNew() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '1px solid #d1d5db',
+                    border: profile?.has_protection && !formData.emissions_date
+                      ? '2px solid #f59e0b'
+                      : '1px solid #d1d5db',
                     borderRadius: '6px',
                     fontSize: '14px',
                     boxSizing: 'border-box'
                   }}
                 />
+                {profile?.has_protection && !formData.emissions_date && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '12px',
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #f59e0b',
+                    borderRadius: '6px'
+                  }}>
+                    <p style={{ fontSize: '13px', color: '#92400e', margin: '0 0 8px 0', fontWeight: '500' }}>
+                      Required for Autopilot subscribers
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#78350f', margin: '0 0 8px 0', lineHeight: '1.5' }}>
+                      We need your emissions test due date to process your license plate renewal. Illinois requires a valid emissions test before plates can be renewed (every 2 years for most vehicles).
+                    </p>
+                    <a
+                      href="https://airteam.app/forms/eligibility.cfm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '12px',
+                        color: '#2563eb',
+                        textDecoration: 'none',
+                        fontWeight: '500'
+                      }}
+                    >
+                      Look up your emissions test date →
+                    </a>
+                  </div>
+                )}
                 <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0 0' }}>
-                  We'll send you reminders {profile.has_protection ? '(not automatically handled)' : 'when this is due'}
+                  {profile?.has_protection
+                    ? "We'll automatically handle your license plate renewal once your emissions test is complete."
+                    : "We'll send you reminders when this is due."
+                  }
                 </p>
 
                 {/* Emissions Completion Status - Only show if emissions date is set */}
@@ -1920,6 +1968,17 @@ export default function ProfileNew() {
                         onClick={async () => {
                           if (confirm('Delete this image? You can upload a new one after deleting.')) {
                             try {
+                              // Delete from storage first
+                              if (licenseFrontPath) {
+                                const { error: storageError } = await supabase.storage
+                                  .from('license-images-temp')
+                                  .remove([licenseFrontPath])
+                                if (storageError) {
+                                  console.error('Storage deletion error:', storageError)
+                                  // Continue anyway - file might already be deleted
+                                }
+                              }
+
                               // Delete from database
                               const { error } = await supabase
                                 .from('user_profiles')
@@ -1939,7 +1998,7 @@ export default function ProfileNew() {
                               setLicenseExpiryDate('')
                               setDetectedExpiryDate('')
                               setDateConfirmed(false)
-                              console.log('🗑️ Deleted front image from database')
+                              console.log('🗑️ Deleted front image from storage and database')
                             } catch (error) {
                               console.error('Delete error:', error)
                               alert('Failed to delete image')
@@ -2072,6 +2131,17 @@ export default function ProfileNew() {
                         onClick={async () => {
                           if (confirm('Delete this image? You can upload a new one after deleting.')) {
                             try {
+                              // Delete from storage first
+                              if (licenseBackPath) {
+                                const { error: storageError } = await supabase.storage
+                                  .from('license-images-temp')
+                                  .remove([licenseBackPath])
+                                if (storageError) {
+                                  console.error('Storage deletion error:', storageError)
+                                  // Continue anyway - file might already be deleted
+                                }
+                              }
+
                               // Delete from database
                               const { error } = await supabase
                                 .from('user_profiles')
@@ -2091,7 +2161,7 @@ export default function ProfileNew() {
                               setLicenseExpiryDate('')
                               setDetectedExpiryDate('')
                               setDateConfirmed(false)
-                              console.log('🗑️ Deleted back image from database')
+                              console.log('🗑️ Deleted back image from storage and database')
                             } catch (error) {
                               console.error('Delete error:', error)
                               alert('Failed to delete image')

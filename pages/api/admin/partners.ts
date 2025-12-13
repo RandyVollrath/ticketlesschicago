@@ -42,6 +42,7 @@ async function handler(
           commission_percentage,
           service_fee_amount,
           status,
+          is_default,
           onboarding_completed,
           created_at,
           updated_at
@@ -120,6 +121,7 @@ async function handler(
     // Only allow certain fields to be updated
     const allowedFields = [
       'status',
+      'is_default',
       'notification_email',
       'notify_daily_digest',
       'notify_instant_alerts',
@@ -137,6 +139,18 @@ async function handler(
 
     if (Object.keys(sanitizedUpdates).length === 0) {
       return res.status(400).json({ success: false, error: 'No valid updates provided' });
+    }
+
+    // If setting is_default to true, clear all other defaults first
+    if (sanitizedUpdates.is_default === true) {
+      const { error: clearError } = await supabase
+        .from('renewal_partners')
+        .update({ is_default: false, updated_at: new Date().toISOString() })
+        .neq('id', partnerId);
+
+      if (clearError) {
+        console.error('Error clearing other defaults:', clearError);
+      }
     }
 
     sanitizedUpdates.updated_at = new Date().toISOString();

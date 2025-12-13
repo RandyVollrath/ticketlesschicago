@@ -101,7 +101,7 @@ export default async function handler(
     // Users ready for renewal (profile confirmed for current year)
     const { data: confirmedUsers, error: confirmedError } = await supabase
       .from('user_profiles')
-      .select('user_id, email, first_name, last_name, license_plate, profile_confirmed_at, sticker_expiration_date')
+      .select('user_id, email, first_name, last_name, license_plate, profile_confirmed_at, city_sticker_expiry')
       .eq('has_protection', true)
       .eq('profile_confirmed_for_year', currentYear)
       .is('sticker_purchased_at', null); // Not yet purchased
@@ -113,11 +113,11 @@ export default async function handler(
     // Users with urgent deadlines (sticker expires within 7 days)
     const { data: urgentUsers, error: urgentError } = await supabase
       .from('user_profiles')
-      .select('user_id, email, first_name, last_name, license_plate, sticker_expiration_date')
+      .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry')
       .eq('has_protection', true)
       .is('sticker_purchased_at', null)
-      .lte('sticker_expiration_date', sevenDaysFromNow.toISOString().split('T')[0])
-      .gte('sticker_expiration_date', today.toISOString().split('T')[0]);
+      .lte('city_sticker_expiry', sevenDaysFromNow.toISOString().split('T')[0])
+      .gte('city_sticker_expiry', today.toISOString().split('T')[0]);
 
     if (urgentError) {
       console.error('Error fetching urgent users:', urgentError);
@@ -126,10 +126,10 @@ export default async function handler(
     // All pending Protection users (not yet purchased)
     const { data: allPendingUsers, error: pendingError } = await supabase
       .from('user_profiles')
-      .select('user_id, email, first_name, last_name, license_plate, sticker_expiration_date, profile_confirmed_for_year, license_image_path')
+      .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, profile_confirmed_for_year, license_image_path')
       .eq('has_protection', true)
       .is('sticker_purchased_at', null)
-      .order('sticker_expiration_date', { ascending: true });
+      .order('city_sticker_expiry', { ascending: true });
 
     if (pendingError) {
       console.error('Error fetching pending users:', pendingError);
@@ -218,7 +218,7 @@ function generateDigestEmail(data: DigestEmailData): string {
           <tr>
             <td style="padding: 8px; border-bottom: 1px solid #fecaca;">${u.first_name || ''} ${u.last_name || ''}</td>
             <td style="padding: 8px; border-bottom: 1px solid #fecaca; font-weight: bold;">${u.license_plate || 'N/A'}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #fecaca; color: #dc2626;">${u.sticker_expiration_date || 'Unknown'}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #fecaca; color: #dc2626;">${u.city_sticker_expiry || 'Unknown'}</td>
           </tr>
         `).join('')}
       </table>
