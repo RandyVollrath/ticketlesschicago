@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get all remitters
     const { data: partners, error } = await supabase
       .from('renewal_partners')
-      .select('id, name, email, status, is_default, stripe_connected_account_id')
+      .select('id, name, email, status, is_default, stripe_connected_account_id, api_key')
       .order('is_default', { ascending: false })
       .order('name', { ascending: true });
 
