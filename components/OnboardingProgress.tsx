@@ -35,7 +35,7 @@ interface OnboardingProgressProps {
     home_address_full?: string | null
     home_address_ward?: string | null
     license_plate?: string | null
-    vehicle_make?: string | null
+    vin?: string | null
     city_sticker_expiry?: string | null
     license_plate_expiry?: string | null
     notify_sms?: boolean
@@ -97,8 +97,8 @@ export default function OnboardingProgress({ profile, onStepClick }: OnboardingP
     {
       id: 'vehicle',
       title: 'Add Vehicle Info',
-      description: 'License plate and vehicle details',
-      completed: !!(profile.license_plate && profile.vehicle_make),
+      description: 'License plate and VIN',
+      completed: !!(profile.license_plate && profile.vin),
       required: true,
       actionLabel: 'Add Vehicle',
       icon: (

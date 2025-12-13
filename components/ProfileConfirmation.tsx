@@ -24,9 +24,7 @@ interface ProfileConfirmationProps {
     first_name?: string
     last_name?: string
     license_plate?: string
-    vehicle_make?: string
-    vehicle_model?: string
-    vehicle_year?: string
+    vin?: string
     street_address?: string
     mailing_city?: string
     mailing_state?: string
@@ -258,18 +256,18 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
             </div>
             <div>
               <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
-                Vehicle
+                License Plate
               </div>
-              <div style={{ color: '#111827', fontSize: '14px' }}>
-                {profile.vehicle_year} {profile.vehicle_make} {profile.vehicle_model}
+              <div style={{ color: '#111827', fontSize: '14px', fontWeight: 600, fontFamily: 'monospace' }}>
+                {profile.license_plate || 'Not provided'}
               </div>
             </div>
             <div>
               <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase' }}>
-                License Plate
+                VIN
               </div>
-              <div style={{ color: '#111827', fontSize: '14px' }}>
-                {profile.license_plate}
+              <div style={{ color: '#111827', fontSize: '14px', fontFamily: 'monospace' }}>
+                {profile.vin || 'Not provided'}
               </div>
             </div>
             <div>
