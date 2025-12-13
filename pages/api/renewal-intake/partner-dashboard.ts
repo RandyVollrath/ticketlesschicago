@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     switch (view) {
       case 'overview':
-        return await getOverview(res, partner.id);
+        return await getOverview(res, partner.id, partner.name);
       case 'orders':
         return await getOrders(res, partner.id, { status, startDate, endDate, limit });
       case 'stats':
@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function getOverview(res: NextApiResponse, partnerId: string) {
+async function getOverview(res: NextApiResponse, partnerId: string, partnerName: string) {
   // Get statistics
   const { data: stats } = await supabase
     .from('renewal_partner_stats')
@@ -91,6 +91,7 @@ async function getOverview(res: NextApiResponse, partnerId: string) {
     .eq('status', 'pending');
 
   return res.status(200).json({
+    partnerName,
     stats: {
       today: {
         orders: stats?.orders_today || 0,

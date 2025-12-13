@@ -63,6 +63,7 @@ export default function RemitterPortal() {
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [partnerName, setPartnerName] = useState('');
 
   // Search and pagination state
   const [searchQuery, setSearchQuery] = useState('');
@@ -126,6 +127,7 @@ export default function RemitterPortal() {
       const data = await response.json();
       setStats(data.stats);
       setOrders(data.recentOrders || []);
+      setPartnerName(data.partnerName || '');
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard');
       setIsAuthenticated(false);
@@ -388,7 +390,12 @@ export default function RemitterPortal() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Remitter Portal</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Remitter Portal</h1>
+            {partnerName && (
+              <p className="text-sm text-gray-600">Welcome, {partnerName}</p>
+            )}
+          </div>
           <button
             onClick={handleLogout}
             className="text-sm text-gray-600 hover:text-gray-900"
@@ -526,9 +533,13 @@ export default function RemitterPortal() {
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             order.renewalType === 'city_sticker'
                               ? 'bg-blue-100 text-blue-800'
-                              : 'bg-purple-100 text-purple-800'
+                              : order.stickerType === 'vanity'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-purple-100 text-purple-800'
                           }`}>
-                            {order.renewalTypeLabel || 'City Sticker'}
+                            {order.renewalType === 'license_plate'
+                              ? (order.stickerType === 'vanity' ? 'Vanity Plate' : 'License Plate')
+                              : (order.stickerTypeLabel || 'City Sticker')}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

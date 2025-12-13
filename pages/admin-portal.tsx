@@ -1673,12 +1673,20 @@ export default function AdminPortal() {
                             <td style={{ padding: '12px' }}>
                               <span style={{
                                 padding: '4px 8px',
-                                backgroundColor: order.sticker_type === 'P' || order.order_number.startsWith('AUTO-') ? '#dbeafe' : '#fef3c7',
-                                color: order.sticker_type === 'P' || order.order_number.startsWith('AUTO-') ? '#1e40af' : '#92400e',
+                                backgroundColor: order.order_number.startsWith('AUTO-') ? '#dbeafe'
+                                  : order.sticker_type === 'vanity' ? '#fef3c7'
+                                  : order.order_number.startsWith('LP-') ? '#e9d5ff'
+                                  : '#dbeafe',
+                                color: order.order_number.startsWith('AUTO-') ? '#1e40af'
+                                  : order.sticker_type === 'vanity' ? '#92400e'
+                                  : order.order_number.startsWith('LP-') ? '#7c3aed'
+                                  : '#1e40af',
                                 borderRadius: '4px',
                                 fontSize: '11px'
                               }}>
-                                {order.order_number.startsWith('LP-') ? 'License Plate' : 'City Sticker'}
+                                {order.order_number.startsWith('LP-')
+                                  ? (order.sticker_type === 'vanity' ? 'Vanity Plate' : 'License Plate')
+                                  : 'City Sticker'}
                               </span>
                             </td>
                             <td style={{ padding: '12px', fontSize: '12px' }}>
