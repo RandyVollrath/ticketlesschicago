@@ -111,6 +111,7 @@ export function handleAuthError(res: NextApiResponse, error: Error) {
 const ADMIN_EMAILS = [
   'randy.vollrath@gmail.com',
   'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
   process.env.ADMIN_EMAIL,
 ].filter(Boolean) as string[];
 
