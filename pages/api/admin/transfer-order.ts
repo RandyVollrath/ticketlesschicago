@@ -70,13 +70,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('id', order.partner_id)
       .single();
 
-    // Transfer the order
+    // Transfer the order - track original partner for payment reconciliation
+    const transferNote = `Transferred from "${oldPartner?.name || 'Unknown'}" to "${newPartner.name}" by admin on ${new Date().toLocaleString()}. PAYMENT RECONCILIATION REQUIRED.`;
+
     const { error: updateError } = await supabase
       .from('renewal_orders')
       .update({
         partner_id: newPartnerId,
         updated_at: new Date().toISOString(),
-        internal_notes: `Transferred from "${oldPartner?.name || 'Unknown'}" to "${newPartner.name}" by admin on ${new Date().toLocaleString()}`
+        internal_notes: transferNote,
+        // Track payment transfer status
+        original_partner_id: order.partner_id,
+        original_partner_name: oldPartner?.name || 'Unknown',
+        payment_transfer_status: 'pending', // pending, requested, confirmed
+        transferred_at: new Date().toISOString()
       })
       .eq('id', orderId);
 
@@ -85,16 +92,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to transfer order' });
     }
 
-    console.log(`📦 Order ${order.order_number} transferred from "${oldPartner?.name}" to "${newPartner.name}"`);
+    console.log(`📦 Order ${order.order_number} transferred from "${oldPartner?.name}" to "${newPartner.name}" - PAYMENT RECONCILIATION NEEDED`);
 
     return res.status(200).json({
       success: true,
-      message: `Order ${order.order_number} transferred to ${newPartner.name}`,
+      message: `Order ${order.order_number} transferred to ${newPartner.name}. Remember: Payment was sent to original remitter and needs manual reconciliation.`,
       order: {
         id: orderId,
         orderNumber: order.order_number,
         oldPartner: oldPartner?.name,
-        newPartner: newPartner.name
+        newPartner: newPartner.name,
+        paymentReconciliationRequired: true
       }
     });
 
