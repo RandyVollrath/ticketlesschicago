@@ -1552,7 +1552,7 @@ export default function AdminPortal() {
                         Set Default
                       </button>
                     )}
-                    {!remitter.is_default && remitter.pending_orders === 0 && (
+                    {!remitter.is_default && remitter.total_orders === 0 && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
