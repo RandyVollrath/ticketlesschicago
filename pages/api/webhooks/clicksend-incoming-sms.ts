@@ -137,16 +137,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (messageLower === 'confirm' && matchedUser) {
       const currentYear = new Date().getFullYear();
 
-      // Check if already confirmed this year (prevents duplicate processing)
-      const { data: existingProfile } = await supabaseAdmin
+      // Find the right user to confirm - prioritize users with protection who haven't confirmed this year
+      const { data: confirmUsers, error: confirmQueryError } = await supabaseAdmin
         .from('user_profiles')
-        .select('profile_confirmed_at, profile_confirmed_for_year')
-        .eq('user_id', matchedUserId)
-        .single();
+        .select('user_id, email, first_name, profile_confirmed_at, profile_confirmed_for_year, has_protection')
+        .or(phoneVariations.map(p => `phone.eq.${p},phone_number.eq.${p}`).join(','))
+        .eq('has_protection', true)
+        .neq('profile_confirmed_for_year', currentYear)
+        .order('created_at', { ascending: false });
 
-      if (existingProfile?.profile_confirmed_for_year === currentYear) {
-        console.log(`⏭️ CONFIRM received but already confirmed for ${currentYear} - skipping duplicate`);
-        // Still send a friendly message so user knows it worked
+      if (confirmQueryError) {
+        console.error('Error querying for confirm users:', confirmQueryError);
+      }
+
+      const confirmUser = confirmUsers?.[0];
+
+      if (!confirmUser) {
+        // No user needs confirmation - they're all already confirmed or don't have protection
+        console.log(`⏭️ CONFIRM received but no users need confirmation for ${currentYear}`);
         try {
           const { sendClickSendSMS } = await import('../../../lib/sms-service');
           await sendClickSendSMS(fromNumber, "Your profile is already confirmed for this year. You're all set!");
@@ -155,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error('Error sending already-confirmed SMS:', smsError);
         }
       } else {
-        console.log(`✅ CONFIRM received from ${maskEmail(matchedEmail)} - updating profile`);
+        console.log(`✅ CONFIRM received - updating profile for ${maskEmail(confirmUser.email)}`);
 
         // Use atomic update with WHERE clause to prevent race condition
         const { data: updatedRows, error: confirmError } = await supabaseAdmin
@@ -164,7 +172,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             profile_confirmed_at: new Date().toISOString(),
             profile_confirmed_for_year: currentYear
           })
-          .eq('user_id', matchedUserId)
+          .eq('user_id', confirmUser.user_id)
           .neq('profile_confirmed_for_year', currentYear) // Only update if not already confirmed this year
           .select();
 

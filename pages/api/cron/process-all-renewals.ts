@@ -46,11 +46,12 @@ const { PERCENTAGE_FEE: STRIPE_PERCENTAGE_FEE, FIXED_FEE: STRIPE_FIXED_FEE } = S
 const { SERVICE_FEE, REMITTER_SERVICE_FEE, PERMIT_FEE } = PLATFORM_FEES;
 
 /**
- * RemitterManager - Caches remitter data to avoid N+1 queries
- * Loads remitters once at start, tracks orders assigned during this run
+ * RemitterManager - Handles remitter selection for order assignment
+ * Uses default remitter if set, otherwise falls back to load balancing
  */
 class RemitterManager {
   private remitters: any[] = [];
+  private defaultRemitter: any = null;
   private orderCounts: Map<string, number> = new Map();
   private initialized = false;
 
@@ -74,26 +75,34 @@ class RemitterManager {
 
     this.remitters = remitters;
 
-    // Get pending order counts for ALL remitters in a single query
-    const remitterIds = remitters.map(r => r.id);
-    const { data: orderCounts, error: countError } = await supabase
-      .from('renewal_orders')
-      .select('partner_id')
-      .in('partner_id', remitterIds)
-      .in('status', ['pending', 'processing']);
+    // Check for default remitter
+    this.defaultRemitter = remitters.find(r => r.is_default === true) || null;
+    if (this.defaultRemitter) {
+      console.log(`📌 Default remitter set: "${this.defaultRemitter.name}"`);
+    } else {
+      console.log(`⚠️ No default remitter set - using load balancing`);
 
-    if (countError) {
-      console.warn('Failed to fetch order counts:', sanitizeErrorMessage(countError));
-    }
+      // Get pending order counts for ALL remitters in a single query (only needed for load balancing)
+      const remitterIds = remitters.map(r => r.id);
+      const { data: orderCounts, error: countError } = await supabase
+        .from('renewal_orders')
+        .select('partner_id')
+        .in('partner_id', remitterIds)
+        .in('status', ['pending', 'processing']);
 
-    // Initialize counts to 0
-    for (const remitterId of remitterIds) {
-      this.orderCounts.set(remitterId, 0);
-    }
-    // Count from database
-    for (const order of orderCounts || []) {
-      const currentCount = this.orderCounts.get(order.partner_id) || 0;
-      this.orderCounts.set(order.partner_id, currentCount + 1);
+      if (countError) {
+        console.warn('Failed to fetch order counts:', sanitizeErrorMessage(countError));
+      }
+
+      // Initialize counts to 0
+      for (const remitterId of remitterIds) {
+        this.orderCounts.set(remitterId, 0);
+      }
+      // Count from database
+      for (const order of orderCounts || []) {
+        const currentCount = this.orderCounts.get(order.partner_id) || 0;
+        this.orderCounts.set(order.partner_id, currentCount + 1);
+      }
     }
 
     this.initialized = true;
@@ -101,15 +110,20 @@ class RemitterManager {
   }
 
   /**
-   * Get the next available remitter using load balancing
-   * Uses cached data - no database queries after initialization
+   * Get the remitter for order assignment
+   * Returns default remitter if set, otherwise uses load balancing
    */
   getNextAvailableRemitter(): any {
     if (!this.initialized) {
       throw new Error('RemitterManager not initialized - call initialize() first');
     }
 
-    // If only one remitter, return it
+    // Use default remitter if set
+    if (this.defaultRemitter) {
+      return this.defaultRemitter;
+    }
+
+    // Fallback to load balancing if no default set
     if (this.remitters.length === 1) {
       return this.remitters[0];
     }
@@ -131,7 +145,7 @@ class RemitterManager {
 
   /**
    * Track that an order was assigned to a remitter
-   * Updates in-memory count for future selections
+   * Updates in-memory count for future selections (only used in load balancing mode)
    */
   recordOrderAssigned(remitterId: string): void {
     const currentCount = this.orderCounts.get(remitterId) || 0;
@@ -405,9 +419,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue; // Too early
         }
 
-        if (daysUntilExpiry < 0) {
+        if (daysUntilExpiry < -1) {
           console.log(`Sticker already expired for customer ${customer.user_id} (${Math.abs(daysUntilExpiry)} days ago)`);
-          continue; // Too late
+          continue; // Too late (allow 1-day buffer for timezone edge cases)
         }
 
         // Check if already processed
@@ -831,8 +845,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const daysUntilExpiry = Math.floor((plateExpiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         const notificationDays = customer.renewal_notification_days || 30;
 
-        // Skip if not within processing window
-        if (daysUntilExpiry > notificationDays || daysUntilExpiry < 0) {
+        // Skip if not within processing window (allow 1-day buffer for timezone edge cases)
+        if (daysUntilExpiry > notificationDays || daysUntilExpiry < -1) {
           continue;
         }
 

@@ -123,6 +123,30 @@ interface MissingDocUser {
   status: 'no_upload' | 'rejected' | 'pending_review';
 }
 
+interface Remitter {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  is_default: boolean;
+  stripe_connected_account_id: string | null;
+  pending_orders: number;
+  total_orders: number;
+}
+
+interface RenewalOrder {
+  id: string;
+  order_number: string;
+  customer_email: string;
+  customer_name: string;
+  license_plate: string;
+  sticker_type: string;
+  status: string;
+  total_amount: number;
+  partner_id: string;
+  created_at: string;
+}
+
 // ============ Constants ============
 
 const RESIDENCY_REJECTION_REASONS = {
@@ -153,7 +177,7 @@ export default function AdminPortal() {
   const [message, setMessage] = useState('');
 
   // Active section
-  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals'>('upcoming-renewals');
+  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals' | 'remitters'>('upcoming-renewals');
 
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
@@ -191,6 +215,13 @@ export default function AdminPortal() {
   const [upcomingFilter, setUpcomingFilter] = useState<'all' | 'ready' | 'needs_action' | 'blocked' | 'purchased'>('all');
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
+  // Remitters state
+  const [remitters, setRemitters] = useState<Remitter[]>([]);
+  const [remitterOrders, setRemitterOrders] = useState<RenewalOrder[]>([]);
+  const [selectedRemitterId, setSelectedRemitterId] = useState<string | null>(null);
+  const [transferringOrder, setTransferringOrder] = useState<RenewalOrder | null>(null);
+  const [transferTargetId, setTransferTargetId] = useState<string>('');
+
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
   useEffect(() => {
@@ -206,6 +237,7 @@ export default function AdminPortal() {
       if (activeSection === 'property-tax') fetchPropertyTaxQueue();
       if (activeSection === 'renewals') fetchRenewals();
       if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals();
+      if (activeSection === 'remitters') fetchRemitters();
     }
   }, [authenticated, activeSection, docFilter, propertyTaxFilter]);
 
@@ -377,6 +409,97 @@ export default function AdminPortal() {
       setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ============ Remitters Functions ============
+
+  const fetchRemitters = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/remitters', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRemitters(result.remitters || []);
+        if (result.remitters?.length > 0 && !selectedRemitterId) {
+          const defaultRemitter = result.remitters.find((r: Remitter) => r.is_default) || result.remitters[0];
+          setSelectedRemitterId(defaultRemitter.id);
+          fetchRemitterOrders(defaultRemitter.id);
+        }
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRemitterOrders = async (remitterId: string) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`/api/admin/remitter-orders?remitterId=${remitterId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRemitterOrders(result.orders || []);
+      }
+    } catch (error: any) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  const setDefaultRemitter = async (remitterId: string) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/partners', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ partnerId: remitterId, updates: { is_default: true } })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage('Default remitter updated');
+        fetchRemitters();
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const transferOrder = async () => {
+    if (!transferringOrder || !transferTargetId) return;
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/transfer-order', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId: transferringOrder.id, newPartnerId: transferTargetId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage(`Order ${transferringOrder.order_number} transferred successfully`);
+        setTransferringOrder(null);
+        setTransferTargetId('');
+        if (selectedRemitterId) fetchRemitterOrders(selectedRemitterId);
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
     }
   };
 
@@ -676,6 +799,24 @@ export default function AdminPortal() {
                 {pendingCityPaymentCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveSection('remitters')}
+            style={{
+              padding: '16px 24px',
+              border: 'none',
+              background: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: activeSection === 'remitters' ? '#3b82f6' : '#6b7280',
+              borderBottom: activeSection === 'remitters' ? '2px solid #3b82f6' : '2px solid transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            Remitters
           </button>
         </div>
       </div>
@@ -1299,7 +1440,203 @@ export default function AdminPortal() {
             )}
           </div>
         )}
+
+        {/* ============ Remitters Section ============ */}
+        {activeSection === 'remitters' && !loading && (
+          <div>
+            {/* Remitter Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              {remitters.map((remitter) => (
+                <div
+                  key={remitter.id}
+                  onClick={() => {
+                    setSelectedRemitterId(remitter.id);
+                    fetchRemitterOrders(remitter.id);
+                  }}
+                  style={{
+                    backgroundColor: 'white',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: selectedRemitterId === remitter.id ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div>
+                      <div style={{ fontWeight: '600', fontSize: '16px' }}>{remitter.name}</div>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>{remitter.email}</div>
+                    </div>
+                    {remitter.is_default && (
+                      <span style={{ padding: '4px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
+                        DEFAULT
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                    <div>
+                      <span style={{ color: '#6b7280' }}>Pending: </span>
+                      <span style={{ fontWeight: '600', color: '#f59e0b' }}>{remitter.pending_orders}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: '#6b7280' }}>Total: </span>
+                      <span style={{ fontWeight: '600' }}>{remitter.total_orders}</span>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                    {!remitter.is_default && remitter.stripe_connected_account_id && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Set "${remitter.name}" as the default remitter?`)) {
+                            setDefaultRemitter(remitter.id);
+                          }
+                        }}
+                        style={{ padding: '6px 12px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        Set Default
+                      </button>
+                    )}
+                    <span style={{
+                      padding: '6px 12px',
+                      backgroundColor: remitter.status === 'active' ? '#dcfce7' : '#fee2e2',
+                      color: remitter.status === 'active' ? '#166534' : '#991b1b',
+                      borderRadius: '4px',
+                      fontSize: '12px'
+                    }}>
+                      {remitter.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Orders for Selected Remitter */}
+            {selectedRemitterId && (
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                  Orders for {remitters.find(r => r.id === selectedRemitterId)?.name}
+                </h2>
+                {remitterOrders.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px', backgroundColor: 'white', borderRadius: '8px' }}>
+                    No orders for this remitter
+                  </p>
+                ) : (
+                  <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f9fafb' }}>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Order</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Customer</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Plate</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Status</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {remitterOrders.map((order) => (
+                          <tr key={order.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '12px' }}>{order.order_number}</td>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: '500', fontSize: '13px' }}>{order.customer_name}</div>
+                              <div style={{ fontSize: '12px', color: '#6b7280' }}>{order.customer_email}</div>
+                            </td>
+                            <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: '600' }}>{order.license_plate}</td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{
+                                padding: '4px 8px',
+                                backgroundColor: order.sticker_type === 'P' || order.order_number.startsWith('AUTO-') ? '#dbeafe' : '#fef3c7',
+                                color: order.sticker_type === 'P' || order.order_number.startsWith('AUTO-') ? '#1e40af' : '#92400e',
+                                borderRadius: '4px',
+                                fontSize: '11px'
+                              }}>
+                                {order.order_number.startsWith('LP-') ? 'License Plate' : 'City Sticker'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{
+                                padding: '4px 8px',
+                                backgroundColor: order.status === 'completed' ? '#dcfce7' : order.status === 'pending' ? '#fef3c7' : '#e5e7eb',
+                                color: order.status === 'completed' ? '#166534' : order.status === 'pending' ? '#92400e' : '#374151',
+                                borderRadius: '4px',
+                                fontSize: '11px'
+                              }}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '13px' }}>${order.total_amount?.toFixed(2)}</td>
+                            <td style={{ padding: '12px' }}>
+                              <button
+                                onClick={() => {
+                                  setTransferringOrder(order);
+                                  setTransferTargetId('');
+                                }}
+                                style={{ padding: '6px 12px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                              >
+                                Transfer
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Transfer Order Modal */}
+      {transferringOrder && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '450px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>Transfer Order</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>
+              Transfer order <strong>{transferringOrder.order_number}</strong> to another remitter.
+            </p>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Select Remitter</label>
+              <select
+                value={transferTargetId}
+                onChange={(e) => setTransferTargetId(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+              >
+                <option value="">Choose a remitter...</option>
+                {remitters.filter(r => r.id !== transferringOrder.partner_id && r.stripe_connected_account_id).map(r => (
+                  <option key={r.id} value={r.id}>{r.name} {r.is_default ? '(Default)' : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setTransferringOrder(null); setTransferTargetId(''); }}
+                style={{ padding: '10px 20px', backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={transferOrder}
+                disabled={!transferTargetId}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: transferTargetId ? '#3b82f6' : '#d1d5db',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: transferTargetId ? 'pointer' : 'not-allowed',
+                  fontSize: '14px'
+                }}
+              >
+                Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {confirmingCharge && (
