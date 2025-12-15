@@ -4,8 +4,8 @@
  * Combines all admin functionality into one place:
  * - Document Review (residency proofs, permit docs)
  * - Property Tax Queue (homeowner bill fetching)
- * - Renewals (city payment confirmation, charges)
- * - System (users, notifications)
+ * - Upcoming Renewals (customer renewal management)
+ * - Remitters (third-party renewal partners)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -80,29 +80,6 @@ interface PropertyTaxUser {
   property_tax_needs_refresh: boolean;
   property_tax_fetch_failed: boolean;
   property_tax_fetch_notes: string | null;
-}
-
-interface RenewalCharge {
-  id: string;
-  user_id: string;
-  charge_type: string;
-  amount: number;
-  status: string;
-  stripe_payment_intent_id: string | null;
-  failure_reason: string | null;
-  remitter_received_amount: number | null;
-  platform_fee_amount: number | null;
-  renewal_type: string;
-  renewal_due_date: string;
-  succeeded_at: string | null;
-  created_at: string;
-  user_email: string;
-  user_name: string;
-  license_plate: string;
-  phone: string;
-  street_address: string;
-  city_payment_status: string;
-  city_confirmation_number: string | null;
 }
 
 interface MissingDocUser {
@@ -205,12 +182,6 @@ export default function AdminPortal() {
   const [uploadNotes, setUploadNotes] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Renewals state
-  const [charges, setCharges] = useState<RenewalCharge[]>([]);
-  const [renewalStats, setRenewalStats] = useState<any>(null);
-  const [confirmingCharge, setConfirmingCharge] = useState<RenewalCharge | null>(null);
-  const [confirmationNumber, setConfirmationNumber] = useState('');
-
   // Missing docs state
   const [missingDocUsers, setMissingDocUsers] = useState<MissingDocUser[]>([]);
   const [missingDocCounts, setMissingDocCounts] = useState({ total: 0, noUpload: 0, rejected: 0, pendingReview: 0 });
@@ -230,6 +201,10 @@ export default function AdminPortal() {
   const [transferTargetId, setTransferTargetId] = useState<string>('');
   const [revealedApiKeys, setRevealedApiKeys] = useState<Set<string>>(new Set());
 
+  // Transfer requests state
+  const [transferRequests, setTransferRequests] = useState<any[]>([]);
+  const [transferRequestsCount, setTransferRequestsCount] = useState(0);
+
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
   useEffect(() => {
@@ -243,9 +218,11 @@ export default function AdminPortal() {
       if (activeSection === 'documents') fetchDocuments();
       if (activeSection === 'missing-docs') fetchMissingDocs();
       if (activeSection === 'property-tax') fetchPropertyTaxQueue();
-      if (activeSection === 'renewals') fetchRenewals();
       if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals();
       if (activeSection === 'remitters') fetchRemitters();
+      if (activeSection === 'transfer-requests') fetchTransferRequests();
+      // Always fetch transfer request count for badge
+      fetchTransferRequestsCount();
     }
   }, [authenticated, activeSection, docFilter, propertyTaxFilter]);
 
@@ -561,6 +538,91 @@ export default function AdminPortal() {
     }
   };
 
+  // ============ Transfer Requests Functions ============
+
+  const fetchTransferRequestsCount = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/transfer-requests?countOnly=true', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTransferRequestsCount(result.count || 0);
+      }
+    } catch (error: any) {
+      console.error('Error fetching transfer count:', error);
+    }
+  };
+
+  const fetchTransferRequests = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/transfer-requests', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTransferRequests(result.orders || []);
+        setTransferRequestsCount(result.orders?.length || 0);
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignTransfer = async (orderId: string, newPartnerId: string) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/transfer-order', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId, newPartnerId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage(`Order reassigned successfully`);
+        fetchTransferRequests();
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const handleConfirmPaymentTransfer = async (orderId: string) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('/api/admin/confirm-payment-transfer', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage('Payment transfer confirmed');
+        fetchTransferRequests();
+        if (selectedRemitterId) fetchRemitterOrders(selectedRemitterId);
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
   // ============ Property Tax Functions ============
 
   const fetchPropertyTaxQueue = async () => {
@@ -632,59 +694,6 @@ export default function AdminPortal() {
     }
   };
 
-  // ============ Renewals Functions ============
-
-  const fetchRenewals = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/admin/renewals?days=30', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const result = await response.json();
-      if (result.success) {
-        setCharges(result.charges || []);
-        setRenewalStats(result.stats);
-      }
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmCityPayment = async () => {
-    if (!confirmingCharge) return;
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/admin/renewals', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'confirm_city_payment',
-          userId: confirmingCharge.user_id,
-          renewalType: confirmingCharge.renewal_type,
-          dueDate: confirmingCharge.renewal_due_date,
-          confirmationNumber
-        })
-      });
-      const result = await response.json();
-      if (result.success) {
-        setMessage(`City payment confirmed!`);
-        setConfirmingCharge(null);
-        setConfirmationNumber('');
-        fetchRenewals();
-      } else {
-        setMessage(`Error: ${result.error}`);
-      }
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setMessage(`Copied: ${text}`);
@@ -694,7 +703,6 @@ export default function AdminPortal() {
   // Get pending counts for badge
   const pendingResidencyCount = residencyDocs.filter(d => d.verification_status !== 'approved').length;
   const pendingPermitCount = permitDocs.filter(d => d.verification_status === 'pending').length;
-  const pendingCityPaymentCount = charges.filter(c => c.status === 'succeeded' && c.city_payment_status === 'pending').length;
   const missingDocsCount = missingDocCounts.noUpload + missingDocCounts.rejected;
 
   // ============ Render ============
@@ -731,7 +739,7 @@ export default function AdminPortal() {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Admin Portal</h1>
           <button
-            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'renewals') fetchRenewals(); if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals(); }, 0); }}
+            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals(); if (activeSection === 'transfer-requests') fetchTransferRequests(); if (activeSection === 'remitters') fetchRemitters(); }, 0); }}
             style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
           >
             Refresh
@@ -836,25 +844,25 @@ export default function AdminPortal() {
             )}
           </button>
           <button
-            onClick={() => setActiveSection('renewals')}
+            onClick={() => setActiveSection('transfer-requests')}
             style={{
               padding: '16px 24px',
               border: 'none',
               background: 'none',
               fontSize: '14px',
               fontWeight: '500',
-              color: activeSection === 'renewals' ? '#3b82f6' : '#6b7280',
-              borderBottom: activeSection === 'renewals' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: activeSection === 'transfer-requests' ? '#3b82f6' : '#6b7280',
+              borderBottom: activeSection === 'transfer-requests' ? '2px solid #3b82f6' : '2px solid transparent',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
             }}
           >
-            Renewals
-            {pendingCityPaymentCount > 0 && (
-              <span style={{ backgroundColor: '#f59e0b', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
-                {pendingCityPaymentCount}
+            Transfer Requests
+            {transferRequestsCount > 0 && (
+              <span style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
+                {transferRequestsCount}
               </span>
             )}
           </button>
@@ -1431,69 +1439,110 @@ export default function AdminPortal() {
           </div>
         )}
 
-        {/* ============ Renewals Section ============ */}
-        {activeSection === 'renewals' && !loading && (
+        {/* ============ Transfer Requests Section ============ */}
+        {activeSection === 'transfer-requests' && !loading && (
           <div>
-            {/* Stats */}
-            {renewalStats && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Successful</div>
-                  <div style={{ fontSize: '28px', fontWeight: '700' }}>{renewalStats.succeededCharges}</div>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>${renewalStats.totalRevenue?.toFixed(2) || '0.00'}</div>
-                </div>
-                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Pending City Payment</div>
-                  <div style={{ fontSize: '28px', fontWeight: '700' }}>{renewalStats.pendingCityPayment}</div>
-                </div>
-                <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280' }}>Failed</div>
-                  <div style={{ fontSize: '28px', fontWeight: '700' }}>{renewalStats.failedCharges}</div>
-                </div>
-              </div>
-            )}
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>Transfer Requests</h2>
+              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                Orders flagged by remitters who cannot complete them. Reassign to another remitter and track payment reconciliation.
+              </p>
+            </div>
 
-            {/* Pending City Payment */}
-            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Pending City Payment</h2>
-            {charges.filter(c => c.status === 'succeeded' && c.city_payment_status === 'pending').length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px', backgroundColor: 'white', borderRadius: '8px' }}>No pending city payments</p>
+            {transferRequests.length === 0 ? (
+              <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                No pending transfer requests
+              </div>
             ) : (
-              <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f9fafb' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Customer</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Plate</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Type</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Due</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Amount</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {charges.filter(c => c.status === 'succeeded' && c.city_payment_status === 'pending').map((charge) => (
-                      <tr key={charge.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '12px' }}>
-                          <div style={{ fontWeight: '500' }}>{charge.user_name}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>{charge.user_email}</div>
-                        </td>
-                        <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: '600' }}>{charge.license_plate}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ padding: '4px 8px', backgroundColor: charge.renewal_type === 'city_sticker' ? '#dbeafe' : '#fef3c7', color: charge.renewal_type === 'city_sticker' ? '#1e40af' : '#92400e', borderRadius: '4px', fontSize: '12px' }}>
-                            {charge.renewal_type === 'city_sticker' ? 'City Sticker' : 'License Plate'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '13px' }}>{charge.renewal_due_date}</td>
-                        <td style={{ padding: '12px', fontSize: '13px' }}>${charge.amount?.toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>
-                          <button onClick={() => setConfirmingCharge(charge)} style={{ padding: '6px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                            Confirm
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {transferRequests.map((order: any) => (
+                  <div key={order.id} style={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ fontFamily: 'monospace', fontWeight: '600', fontSize: '16px' }}>{order.order_number}</span>
+                        <span style={{ marginLeft: '12px', padding: '4px 8px', backgroundColor: order.status === 'transfer_requested' ? '#fef3c7' : '#dbeafe', color: order.status === 'transfer_requested' ? '#92400e' : '#1e40af', borderRadius: '4px', fontSize: '12px' }}>
+                          {order.status === 'transfer_requested' ? 'Needs Reassignment' : order.payment_transfer_status === 'pending' ? 'Awaiting Payment Transfer' : 'Transferred'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                        Requested: {new Date(order.payment_transfer_requested_at).toLocaleDateString()}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                      {/* Customer Info */}
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Customer</div>
+                        <div style={{ fontWeight: '500' }}>{order.customer_name}</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{order.customer_email}</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{order.customer_phone}</div>
+                      </div>
+
+                      {/* Order Info */}
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Order Details</div>
+                        <div style={{ fontFamily: 'monospace', fontWeight: '600' }}>{order.license_plate}</div>
+                        <div style={{ fontSize: '13px' }}>{order.sticker_type} - ${order.total_amount?.toFixed(2)}</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{order.street_address}</div>
+                      </div>
+
+                      {/* Remitter Info */}
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Original Remitter</div>
+                        <div style={{ fontWeight: '500' }}>{order.original_partner_name || order.partner_name || 'Unknown'}</div>
+                        {order.remitter_notes && (
+                          <div style={{ fontSize: '13px', color: '#dc2626', marginTop: '4px' }}>
+                            {order.remitter_notes.split('\n').slice(-1)[0]}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
+                      {order.status === 'transfer_requested' ? (
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '14px', fontWeight: '500' }}>Reassign to:</span>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleAssignTransfer(order.id, e.target.value);
+                              }
+                            }}
+                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+                          >
+                            <option value="">Choose remitter...</option>
+                            {remitters.filter((r: Remitter) => r.id !== order.partner_id && r.stripe_connected_account_id).map((r: Remitter) => (
+                              <option key={r.id} value={r.id}>{r.name} {r.is_default ? '(Default)' : ''}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : order.payment_transfer_status === 'pending' ? (
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div>
+                            <span style={{ fontSize: '14px' }}>Transferred to: </span>
+                            <span style={{ fontWeight: '500' }}>{order.new_partner_name || 'New Remitter'}</span>
+                            <span style={{ marginLeft: '8px', fontSize: '13px', color: '#6b7280' }}>
+                              (Original remitter needs to send ${order.total_amount?.toFixed(2)} to new remitter)
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleConfirmPaymentTransfer(order.id)}
+                            style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
+                          >
+                            Confirm Payment Received
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      ) : (
+                        <div style={{ color: '#10b981', fontWeight: '500' }}>
+                          Payment transfer confirmed - Order ready for processing
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1811,25 +1860,6 @@ export default function AdminPortal() {
         </div>
       )}
 
-      {/* Confirmation Modal */}
-      {confirmingCharge && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '450px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>Confirm City Payment</h3>
-            <div style={{ backgroundColor: '#f9fafb', padding: '12px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px', lineHeight: '1.8' }}>
-              <div><strong>Customer:</strong> {confirmingCharge.user_name}</div>
-              <div><strong>Plate:</strong> {confirmingCharge.license_plate}</div>
-              <div><strong>Type:</strong> {confirmingCharge.renewal_type === 'city_sticker' ? 'City Sticker' : 'License Plate'}</div>
-              <div><strong>Address:</strong> {confirmingCharge.street_address}</div>
-            </div>
-            <input type="text" value={confirmationNumber} onChange={(e) => setConfirmationNumber(e.target.value)} placeholder="City confirmation number (optional)" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', marginBottom: '16px' }} />
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setConfirmingCharge(null); setConfirmationNumber(''); }} style={{ padding: '10px 20px', backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={confirmCityPayment} style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Confirm Payment</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

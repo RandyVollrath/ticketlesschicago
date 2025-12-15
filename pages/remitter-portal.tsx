@@ -81,6 +81,11 @@ export default function RemitterPortal() {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [processingOrder, setProcessingOrder] = useState(false);
 
+  // Transfer request state
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferReason, setTransferReason] = useState('');
+  const [requestingTransfer, setRequestingTransfer] = useState(false);
+
   useEffect(() => {
     const savedApiKey = localStorage.getItem('remitter_api_key');
     if (savedApiKey) {
@@ -324,6 +329,46 @@ export default function RemitterPortal() {
   const closeOrderModal = () => {
     setSelectedOrder(null);
     setOrderDocuments(null);
+    setShowTransferModal(false);
+    setTransferReason('');
+  };
+
+  const handleRequestTransfer = async () => {
+    if (!selectedOrder || !transferReason.trim()) return;
+
+    setRequestingTransfer(true);
+    try {
+      const response = await fetch('/api/remitter/request-transfer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+        body: JSON.stringify({
+          orderId: selectedOrder.id,
+          reason: transferReason.trim(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to request transfer');
+      }
+
+      // Success - close everything and refresh
+      setShowTransferModal(false);
+      setTransferReason('');
+      setSelectedOrder(null);
+      setOrderDocuments(null);
+      loadPendingReview();
+      setError(''); // Clear any errors
+      alert('Transfer request submitted successfully. Admin will reassign this order.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to request transfer');
+    } finally {
+      setRequestingTransfer(false);
+    }
   };
 
   const exportPDF = async () => {
@@ -692,6 +737,12 @@ export default function RemitterPortal() {
                         <p className="text-gray-600">{order.address.city}, {order.address.zip}</p>
                       </div>
                       <div>
+                        <p className="text-gray-600">Due Date</p>
+                        <p className={`font-medium ${order.renewalDueDate && new Date(order.renewalDueDate) < new Date() ? 'text-red-600' : ''}`}>
+                          {order.renewalDueDate ? new Date(order.renewalDueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                        </p>
+                      </div>
+                      <div>
                         <p className="text-gray-600">You Receive</p>
                         <p className="font-medium text-green-700">${order.amount.total?.toFixed(2)}</p>
                         <p className="text-gray-500 text-xs">
@@ -852,6 +903,12 @@ export default function RemitterPortal() {
                         <p className="text-gray-600">Address</p>
                         <p className="font-medium">{order.address.street}</p>
                         <p className="text-gray-600">{order.address.city}, {order.address.zip}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Due Date</p>
+                        <p className={`font-medium ${order.renewalDueDate && new Date(order.renewalDueDate) < new Date() ? 'text-red-600' : ''}`}>
+                          {order.renewalDueDate ? new Date(order.renewalDueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-600">You Receive</p>
@@ -1088,6 +1145,58 @@ export default function RemitterPortal() {
                   This will notify the customer via SMS that their sticker has been submitted.
                 </p>
               </div>
+
+              {/* Transfer Request Section */}
+              {(selectedOrder.status === 'pending' || selectedOrder.status === 'processing') && (
+                <div className="mt-6 pt-4 border-t">
+                  {!showTransferModal ? (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Can't complete this order?</p>
+                      </div>
+                      <button
+                        onClick={() => setShowTransferModal(true)}
+                        className="px-4 py-2 text-orange-600 border border-orange-300 rounded-md hover:bg-orange-50 text-sm"
+                      >
+                        Request Transfer
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-orange-800 mb-2">Request Order Transfer</h4>
+                      <p className="text-sm text-orange-700 mb-3">
+                        This will flag the order for admin to reassign to another remitter.
+                        You will need to send the funds directly to them (Zelle, bank transfer, etc.).
+                      </p>
+                      <textarea
+                        value={transferReason}
+                        onChange={(e) => setTransferReason(e.target.value)}
+                        placeholder="Why can't you complete this order? (e.g., wrong sticker type, customer moved, etc.)"
+                        rows={3}
+                        className="w-full px-3 py-2 border border-orange-300 rounded-md text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 mb-3"
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => {
+                            setShowTransferModal(false);
+                            setTransferReason('');
+                          }}
+                          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleRequestTransfer}
+                          disabled={requestingTransfer || transferReason.trim().length < 10}
+                          className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
+                        >
+                          {requestingTransfer ? 'Submitting...' : 'Submit Transfer Request'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Print Button */}
               <div className="mt-6 pt-4 border-t flex justify-end">

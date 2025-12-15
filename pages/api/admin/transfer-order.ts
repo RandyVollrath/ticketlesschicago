@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get the order
     const { data: order, error: orderError } = await supabase
       .from('renewal_orders')
-      .select('id, order_number, partner_id, status, customer_email')
+      .select('id, order_number, partner_id, status, customer_email, original_partner_id')
       .eq('id', orderId)
       .single();
 
@@ -73,18 +73,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Transfer the order - track original partner for payment reconciliation
     const transferNote = `Transferred from "${oldPartner?.name || 'Unknown'}" to "${newPartner.name}" by admin on ${new Date().toLocaleString()}. PAYMENT RECONCILIATION REQUIRED.`;
 
+    // Build update object - only set original_partner_id if not already set (preserve original)
+    const updateData: any = {
+      partner_id: newPartnerId,
+      updated_at: new Date().toISOString(),
+      internal_notes: transferNote,
+      payment_transfer_status: 'pending', // pending, requested, confirmed
+      transferred_at: new Date().toISOString()
+    };
+
+    // If this was a transfer_requested order, track the original partner and keep status as pending for payment
+    // Don't overwrite original_partner_id if already set (for chained transfers)
+    if (!order.original_partner_id) {
+      updateData.original_partner_id = order.partner_id;
+      updateData.original_partner_name = oldPartner?.name || 'Unknown';
+    }
+
+    // If status was transfer_requested, keep it in limbo until payment confirmed
+    // Otherwise leave status as-is
+    if (order.status === 'transfer_requested') {
+      // Don't change status yet - stays as transfer_requested until payment confirmed
+      // But we need to track that reassignment happened
+      updateData.status = 'pending'; // Actually set to pending so new remitter sees it
+    }
+
     const { error: updateError } = await supabase
       .from('renewal_orders')
-      .update({
-        partner_id: newPartnerId,
-        updated_at: new Date().toISOString(),
-        internal_notes: transferNote,
-        // Track payment transfer status
-        original_partner_id: order.partner_id,
-        original_partner_name: oldPartner?.name || 'Unknown',
-        payment_transfer_status: 'pending', // pending, requested, confirmed
-        transferred_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', orderId);
 
     if (updateError) {
