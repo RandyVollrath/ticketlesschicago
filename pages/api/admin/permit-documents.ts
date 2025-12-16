@@ -123,11 +123,18 @@ export default withAdminAuth(async (req, res, adminUser) => {
     // ALSO fetch residency proof documents from user_profiles (lease/mortgage/property tax)
     let residencyProofDocs: any[] = [];
     try {
+      console.log('[permit-documents] Fetching residency proof documents...');
       const { data: profiles, error: profileError } = await supabaseAdmin
         .from('user_profiles')
         .select('user_id, email, phone, street_address, home_address_full, city_sticker_expiry, residency_proof_type, residency_proof_path, residency_proof_uploaded_at, residency_proof_verified')
         .not('residency_proof_path', 'is', null)
         .order('residency_proof_uploaded_at', { ascending: false });
+
+      console.log('[permit-documents] Profiles query result:', {
+        profileCount: profiles?.length || 0,
+        profileError: profileError?.message || null,
+        firstProfile: profiles?.[0] ? { user_id: profiles[0].user_id, residency_proof_path: profiles[0].residency_proof_path } : null
+      });
 
       if (!profileError && profiles) {
         // Fetch user data for these profiles from auth.users
@@ -205,6 +212,12 @@ export default withAdminAuth(async (req, res, adminUser) => {
       console.error('Error fetching residency proof documents:', error);
       // Continue without residency proof docs
     }
+
+    console.log('[permit-documents] Final response:', {
+      documentsCount: formattedDocuments.length,
+      residencyProofDocsCount: residencyProofDocs.length,
+      residencyProofDocs: residencyProofDocs.map(d => ({ id: d.id, user_email: d.user_email, verification_status: d.verification_status }))
+    });
 
     return res.status(200).json({
       success: true,
