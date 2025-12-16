@@ -58,15 +58,11 @@ export default withAdminAuth(async (req, res, adminUser) => {
       throw new Error(`Failed to query documents: ${dbError.message}`);
     }
 
-    if (!documents || documents.length === 0) {
-      return res.status(200).json({
-        success: true,
-        documents: []
-      });
-    }
+    // Don't return early - we still need to fetch residency proofs even if no permit docs
+    const permitDocs = documents || [];
 
-    // Get user IDs to fetch user data
-    const userIds = [...new Set(documents.map(d => d.user_id))];
+    // Get user IDs to fetch user data (only if we have permit docs)
+    const userIds = permitDocs.length > 0 ? [...new Set(permitDocs.map(d => d.user_id))] : [];
 
     // Fetch user data from auth.users (more reliable than public.users)
     const { data: authUsers, error: authUserError } = await supabaseAdmin.auth.admin.listUsers();
@@ -100,7 +96,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     }
 
     // Format the response
-    const formattedDocuments = documents.map((doc: any) => {
+    const formattedDocuments = permitDocs.map((doc: any) => {
       const user = userMap.get(doc.user_id);
       return {
         id: doc.id,
