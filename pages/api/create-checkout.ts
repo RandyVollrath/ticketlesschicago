@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 import { validateClientReferenceId } from '../../lib/webhook-validator';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import stripeConfig from '../../lib/stripe-config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -33,25 +34,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log('Create checkout API called with referralId:', referralId);
 
   try {
+    // Get Stripe price ID from env vars
+    const isAnnual = billingPlan === 'annual';
+    const stripePriceId = isAnnual
+      ? stripeConfig.protectionAnnualPriceId
+      : stripeConfig.protectionMonthlyPriceId;
+
+    if (!stripePriceId) {
+      const envVar = isAnnual ? 'STRIPE_PROTECTION_ANNUAL_PRICE_ID' : 'STRIPE_PROTECTION_MONTHLY_PRICE_ID';
+      console.error(`Missing Stripe price ID: ${envVar}`);
+      return res.status(500).json({ error: `Missing Stripe configuration: ${envVar}` });
+    }
+
+    const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = {
+      price: stripePriceId,
+      quantity: 1
+    };
+
     // Create Stripe checkout session
-    const checkoutParams: any = {
+    const checkoutParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'TicketlessAmerica PRO - Complete Vehicle Compliance Service',
-              description: `Hands-off vehicle compliance: We handle city sticker & license renewals, plus all alerts for ${licensePlate}`
-            },
-            unit_amount: billingPlan === 'annual' ? 12000 : 1200, // $120/year or $12/month
-            recurring: {
-              interval: billingPlan === 'annual' ? 'year' : 'month'
-            }
-          },
-          quantity: 1
-        }
-      ],
+      line_items: [lineItem],
       mode: 'subscription',
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/auth/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/`,
