@@ -8,6 +8,19 @@ import { validateClientReferenceId } from '../../../lib/webhook-validator';
 import { maskEmail } from '../../../lib/mask-pii';
 import { sanitizeErrorMessage, isValidUSPhone, validateAndNormalizePhone } from '../../../lib/error-utils';
 
+// Get site URL with Vercel preview fallback
+function getSiteUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
+  }
+  // Vercel provides VERCEL_URL for preview deployments
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // Fallback for local development
+  return 'http://localhost:3000';
+}
+
 // Input validation schema
 const checkoutSchema = z.object({
   billingPlan: z.enum(['monthly', 'annual'], {
@@ -32,6 +45,17 @@ const checkoutSchema = z.object({
     licensePlate: z.union([
       z.object({
         date: z.string().optional(),
+        // New plateType field (preferred) - supports all IL plate types
+        plateType: z.enum([
+          'passenger_standard', 'passenger_personalized', 'passenger_vanity',
+          'motorcycle_standard', 'motorcycle_personalized', 'motorcycle_vanity',
+          'btruck_standard', 'btruck_personalized', 'btruck_vanity',
+          'ctruck',
+          'disability_standard', 'disability_personalized', 'disability_vanity',
+          // Legacy values for backward compatibility
+          'standard', 'personalized', 'vanity'
+        ]).optional(),
+        // Legacy isVanity field (deprecated, for backward compatibility)
         isVanity: z.boolean().optional(),
       }),
       z.null(),
@@ -41,7 +65,17 @@ const checkoutSchema = z.object({
   hasPermitZone: z.boolean().optional(),
   streetAddress: z.string().max(500).optional().nullable(),
   vin: z.string().max(17).optional().nullable(),
-  permitZones: z.array(z.string().max(50)).optional().nullable(),
+  permitZones: z.array(
+    z.union([
+      z.string().max(50),
+      z.object({
+        ward: z.string().optional(),
+        zone: z.string().optional(),
+        status: z.string().optional(),
+        addressRange: z.string().optional(),
+      })
+    ])
+  ).optional().nullable(),
   vehicleType: z.enum(['MB', 'P', 'LP', 'ST', 'LT', 'standard', 'large']).optional(),
   permitRequested: z.boolean().optional(),
   smsConsent: z.boolean().optional(),
@@ -146,8 +180,8 @@ export default async function handler(
       // IMPORTANT: Save payment method for future renewal charges
       // With 'always', Stripe automatically saves the payment method to the subscription
       payment_method_collection: 'always',
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/alerts/success?protection=true&existing=${userId ? 'true' : 'false'}&email=${encodeURIComponent(email)}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/protection`,
+      success_url: `${getSiteUrl()}/alerts/success?protection=true&existing=${userId ? 'true' : 'false'}&email=${encodeURIComponent(email)}`,
+      cancel_url: `${getSiteUrl()}/protection`,
       metadata: {
         userId: userId || '',
         email: email,
@@ -157,7 +191,14 @@ export default async function handler(
         vehicleType: vehicleType || 'P',
         citySticker: renewals?.citySticker ? renewals.citySticker.date : '',
         licensePlate: renewals?.licensePlate ? renewals.licensePlate.date : '',
-        isVanityPlate: renewals?.licensePlate?.isVanity ? 'true' : 'false',
+        // License plate type: standard, personalized, vanity, or electric
+        licensePlateType: renewals?.licensePlate?.plateType || 'standard',
+        // Legacy isVanity flag for backward compatibility (derived from plateType)
+        isVanityPlate: (renewals?.licensePlate?.plateType === 'vanity' || renewals?.licensePlate?.isVanity) ? 'true' : 'false',
+        // Is personalized plate (letters + numbers)
+        isPersonalizedPlate: renewals?.licensePlate?.plateType === 'personalized' ? 'true' : 'false',
+        // Is electric vehicle plate
+        isElectricPlate: renewals?.licensePlate?.plateType === 'electric' ? 'true' : 'false',
         streetAddress: streetAddress || '',
         vin: vin || '',
         hasPermitZone: hasPermitZone ? 'true' : 'false',
@@ -186,7 +227,10 @@ export default async function handler(
         renewals: {
           citySticker: renewals?.citySticker ? true : false,
           licensePlate: renewals?.licensePlate ? true : false,
-          isVanity: renewals?.licensePlate?.isVanity || false,
+          licensePlateType: renewals?.licensePlate?.plateType || 'standard',
+          isVanity: renewals?.licensePlate?.plateType === 'vanity' || renewals?.licensePlate?.isVanity || false,
+          isPersonalized: renewals?.licensePlate?.plateType === 'personalized' || false,
+          isElectric: renewals?.licensePlate?.plateType === 'electric' || false,
         },
         rewardfulReferral,
       },
