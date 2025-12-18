@@ -127,10 +127,8 @@ export default async function handler(
             continue;
           }
 
-          // Check if today matches any of their reminder days for THIS renewal
-          const matchingReminderDay = reminderDays.find(day =>
-            daysUntilRenewal >= day && daysUntilRenewal <= day + 1
-          );
+          // Check if today matches any of their reminder days for THIS renewal (exact match)
+          const matchingReminderDay = reminderDays.find(day => daysUntilRenewal === day);
 
           if (!matchingReminderDay) {
             continue;
