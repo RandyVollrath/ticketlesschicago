@@ -280,11 +280,6 @@ export default async function handler(
       console.error('Failed to log audit event:', logError);
     }
 
-    // DEBUG: Show actual error in Preview only
-    const isPreview = process.env.VERCEL_ENV === 'preview';
-    return res.status(500).json({
-      error: isPreview ? `DEBUG: ${error.message}` : sanitizeErrorMessage(error),
-      stack: isPreview ? error.stack?.split('\n').slice(0, 5) : undefined
-    });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
