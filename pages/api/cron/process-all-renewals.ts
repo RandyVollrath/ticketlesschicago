@@ -439,6 +439,128 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
+        // PROFILE CONFIRMATION CHECK
+        // User must confirm their profile for the current renewal year before we process
+        // This ensures their address, vehicle info, and VIN are up to date
+        const currentYear = new Date().getFullYear();
+        const renewalYear = new Date(customer.city_sticker_expiry).getFullYear();
+        const requiredConfirmationYear = renewalYear; // Must confirm for the year their sticker expires
+
+        if (customer.profile_confirmed_for_year !== requiredConfirmationYear) {
+          console.log(`⏳ WAITING: Profile not confirmed for ${requiredConfirmationYear} - ${customer.email}`);
+          console.log(`   Current confirmation year: ${customer.profile_confirmed_for_year || 'never'}`);
+          console.log(`   Required confirmation year: ${requiredConfirmationYear}`);
+          console.log(`   Days until expiry: ${daysUntilExpiry}`);
+
+          // Check if we already sent a confirmation reminder recently (within 3 days)
+          const { data: recentReminder } = await supabase
+            .from('renewal_charges')
+            .select('*')
+            .eq('user_id', customer.user_id)
+            .eq('charge_type', 'sticker_renewal')
+            .eq('failure_code', 'profile_not_confirmed')
+            .eq('renewal_due_date', customer.city_sticker_expiry)
+            .gte('failed_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+            .single();
+
+          if (!recentReminder) {
+            // Log the waiting status
+            await supabase.from('renewal_charges').insert({
+              user_id: customer.user_id,
+              charge_type: 'sticker_renewal',
+              amount: 0,
+              status: 'blocked',
+              failure_reason: `Profile not confirmed for ${requiredConfirmationYear}`,
+              failure_code: 'profile_not_confirmed',
+              renewal_type: 'city_sticker',
+              renewal_due_date: customer.city_sticker_expiry,
+              failed_at: new Date().toISOString(),
+            });
+
+            // Send confirmation reminder
+            const expiryStr = new Date(customer.city_sticker_expiry).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            });
+
+            if (customer.email) {
+              const confirmHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+                    <h1 style="margin: 0; font-size: 24px;">📋 Please Confirm Your ${requiredConfirmationYear} Profile</h1>
+                  </div>
+                  <div style="padding: 24px; background: #f9fafb; border-radius: 0 0 8px 8px;">
+                    <p>Hi ${customer.first_name || 'there'},</p>
+
+                    <div style="background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                      <strong style="font-size: 16px; color: #1e40af;">Your city sticker renewal is ready to process, but we need you to confirm your information is correct.</strong>
+                    </div>
+
+                    <p>Before we can renew your city sticker, please review and confirm your profile details are accurate for ${requiredConfirmationYear}.</p>
+
+                    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                      <div style="margin-bottom: 8px;">
+                        <span style="color: #6b7280;">License Plate:</span>
+                        <strong>${customer.license_plate}</strong>
+                      </div>
+                      <div style="margin-bottom: 8px;">
+                        <span style="color: #6b7280;">City Sticker Expires:</span>
+                        <strong style="color: #dc2626;">${expiryStr}</strong>
+                      </div>
+                      <div>
+                        <span style="color: #6b7280;">Days Until Expiry:</span>
+                        <strong style="color: ${daysUntilExpiry <= 14 ? '#dc2626' : '#059669'};">${daysUntilExpiry} days</strong>
+                      </div>
+                    </div>
+
+                    <p><strong>What to do now:</strong></p>
+                    <ol style="line-height: 1.8;">
+                      <li>Log in at <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/protection" style="color: #2563eb;">Your Protection Dashboard</a></li>
+                      <li>Review your address, vehicle info, and VIN</li>
+                      <li>Click "Confirm Profile for ${requiredConfirmationYear}"</li>
+                      <li>We'll automatically process your renewal once confirmed</li>
+                    </ol>
+
+                    <div style="text-align: center; margin: 24px 0;">
+                      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/protection"
+                         style="background-color: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                        Confirm My Profile
+                      </a>
+                    </div>
+
+                    ${daysUntilExpiry <= 14 ? `
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                      <strong style="color: #dc2626;">⏰ Urgent!</strong>
+                      <p style="margin: 8px 0 0 0; color: #7f1d1d;">
+                        Your city sticker expires in ${daysUntilExpiry} days. Please confirm your profile immediately to avoid parking tickets.
+                      </p>
+                    </div>
+                    ` : ''}
+
+                    <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                      Questions? Reply to this email or contact support@autopilotamerica.com
+                    </p>
+                  </div>
+                </div>
+              `;
+              await sendEmail(customer.email, `📋 Action Required: Confirm Your ${requiredConfirmationYear} Profile for City Sticker Renewal`, confirmHtml);
+              console.log(`📧 Sent profile confirmation reminder to ${customer.email}`);
+            }
+
+            // SMS reminder for urgent cases
+            if (customer.phone_number && daysUntilExpiry <= 14) {
+              const smsMessage = `URGENT: Your city sticker expires in ${daysUntilExpiry} days! Please confirm your profile at autopilotamerica.com/protection so we can process your renewal. Reply HELP for assistance.`;
+              await sendClickSendSMS(customer.phone_number, smsMessage);
+              console.log(`📱 Sent profile confirmation SMS to ${customer.phone_number}`);
+            }
+          }
+
+          // Skip to next customer - don't process until confirmed
+          continue;
+        }
+
         // VIN REQUIRED CHECK
         // City clerk requires VIN for city sticker renewals: "Renewal Notice OR (Plate + VIN)"
         // Block processing if VIN is missing
@@ -981,6 +1103,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (existingCharge) {
           console.log(`Already processed license plate renewal for customer ${customer.user_id}`);
+          continue;
+        }
+
+        // PROFILE CONFIRMATION CHECK FOR LICENSE PLATES
+        // User must confirm their profile for the renewal year before we process
+        const plateRenewalYear = new Date(customer.license_plate_expiry).getFullYear();
+
+        if (customer.profile_confirmed_for_year !== plateRenewalYear) {
+          console.log(`⏳ WAITING: Profile not confirmed for ${plateRenewalYear} (license plate) - ${customer.email}`);
+
+          // Check if we already sent a confirmation reminder recently (within 3 days)
+          const { data: recentPlateReminder } = await supabase
+            .from('renewal_charges')
+            .select('*')
+            .eq('user_id', customer.user_id)
+            .eq('charge_type', 'license_plate_renewal')
+            .eq('failure_code', 'profile_not_confirmed')
+            .eq('renewal_due_date', customer.license_plate_expiry)
+            .gte('failed_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+            .single();
+
+          if (!recentPlateReminder) {
+            await supabase.from('renewal_charges').insert({
+              user_id: customer.user_id,
+              charge_type: 'license_plate_renewal',
+              amount: 0,
+              status: 'blocked',
+              failure_reason: `Profile not confirmed for ${plateRenewalYear}`,
+              failure_code: 'profile_not_confirmed',
+              renewal_type: 'license_plate',
+              renewal_due_date: customer.license_plate_expiry,
+              failed_at: new Date().toISOString(),
+            });
+
+            // Send SMS reminder for urgent cases (email handled by city sticker flow)
+            if (customer.phone_number && daysUntilExpiry <= 14) {
+              const smsMessage = `URGENT: Your license plate expires in ${daysUntilExpiry} days! Please confirm your profile at autopilotamerica.com/protection so we can process your renewal.`;
+              await sendClickSendSMS(customer.phone_number, smsMessage);
+              console.log(`📱 Sent plate profile confirmation SMS to ${customer.phone_number}`);
+            }
+          }
+
           continue;
         }
 
