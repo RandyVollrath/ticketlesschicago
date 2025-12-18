@@ -143,14 +143,6 @@
       "schedule": "0 16 * * *"
     },
     {
-      "path": "/api/cron/sync-winter-ban-streets",
-      "schedule": "0 6 15 11 *"
-    },
-    {
-      "path": "/api/cron/sync-snow-routes",
-      "schedule": "0 6 1 11 *"
-    },
-    {
       "path": "/api/cron/mobile-parking-reminders",
       "schedule": "0 3,4,10,11,12,13 * * *"
     },
