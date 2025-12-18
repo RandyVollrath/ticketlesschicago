@@ -97,7 +97,7 @@ export default function Pricing() {
                 fontSize: '14px', 
                 fontWeight: '600' 
               }}>
-                Save $24
+                Save $16
               </span>
             </button>
           </div>
@@ -167,7 +167,7 @@ export default function Pricing() {
                 fontWeight: 'bold', 
                 color: '#111827' 
               }}>
-                ${billingCycle === 'monthly' ? '12' : '120'}
+                ${billingCycle === 'monthly' ? '8' : '80'}
               </span>
               <span style={{ 
                 color: '#6b7280', 
@@ -181,7 +181,7 @@ export default function Pricing() {
                   fontSize: '14px', 
                   marginTop: '4px' 
                 }}>
-                  Save $24/year
+                  Save $16/year
                 </div>
               )}
             </div>
@@ -316,8 +316,8 @@ export default function Pricing() {
                 listStyle: 'none',
                 color: '#6b7280'
               }}>
-                <li style={{ marginBottom: '8px' }}>• Monthly cost: $12</li>
-                <li style={{ marginBottom: '8px' }}>• Annual cost: $120 (save 2 months with annual)</li>
+                <li style={{ marginBottom: '8px' }}>• Monthly cost: $8</li>
+                <li style={{ marginBottom: '8px' }}>• Annual cost: $80 (save 2 months with annual)</li>
                 <li style={{ marginBottom: '8px' }}>• Coverage: 80% of eligible tickets up to $200/year</li>
                 <li>• Your savings: <span style={{ fontWeight: 'bold', color: '#16a34a' }}>$350+/year</span></li>
               </ul>

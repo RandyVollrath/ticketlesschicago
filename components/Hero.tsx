@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
+import { posthog } from '../lib/posthog';
 
 interface HeroProps {
   onPrimaryCTA?: () => void;
@@ -10,8 +11,8 @@ export default function Hero({ onPrimaryCTA, onSecondaryCTA }: HeroProps) {
   const router = useRouter();
 
   const handlePrimaryCTA = () => {
-    // Log telemetry
-    console.log('hero_cta_clicked', { cta_type: 'primary', destination: '/alerts/signup' });
+    // Track with PostHog
+    posthog?.capture('hero_cta_clicked', { cta_type: 'primary', destination: '/alerts/signup' });
 
     if (onPrimaryCTA) {
       onPrimaryCTA();
@@ -21,8 +22,8 @@ export default function Hero({ onPrimaryCTA, onSecondaryCTA }: HeroProps) {
   };
 
   const handleSecondaryCTA = () => {
-    // Log telemetry
-    console.log('hero_cta_clicked', { cta_type: 'secondary', destination: '/protection' });
+    // Track with PostHog
+    posthog?.capture('hero_cta_clicked', { cta_type: 'secondary', destination: '/protection' });
 
     if (onSecondaryCTA) {
       onSecondaryCTA();

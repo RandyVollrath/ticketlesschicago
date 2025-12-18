@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
+import { posthog } from '../lib/posthog';
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -21,7 +22,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
   const router = useRouter();
 
   const handleUpgradeClick = () => {
-    console.log('upgrade_card_clicked');
+    posthog?.capture('upgrade_card_clicked');
     router.push('/protection');
   };
 
@@ -309,7 +310,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             marginBottom: '4px',
             fontFamily: '"Space Grotesk", sans-serif'
           }}>
-            $12
+            $8
           </div>
           <div style={{
             fontSize: '13px',
