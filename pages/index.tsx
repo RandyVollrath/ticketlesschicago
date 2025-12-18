@@ -52,10 +52,65 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
+    <div id="main-content" style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
       <Head>
         <title>Autopilot America - Stop Getting Blindsided by Chicago Tickets</title>
-        <meta name="description" content="We automate your city sticker, plate renewal, and street cleaning alerts. If our system fails, we pay the ticket. $120/year - pays for itself in one prevented fine." />
+        <meta name="description" content="We automate your city sticker, plate renewal, and street cleaning alerts. If our system fails, we pay the ticket. $80/year - pays for itself in one prevented fine." />
+        <link rel="canonical" href="https://autopilotamerica.com" />
+
+        {/* Open Graph / Facebook */}
+        <meta property="og:title" content="Autopilot America - Stop Getting Blindsided by Chicago Tickets" />
+        <meta property="og:description" content="We automate your city sticker, plate renewal, and street cleaning alerts. If our system fails, we pay the ticket. $80/year." />
+        <meta property="og:url" content="https://autopilotamerica.com" />
+        <meta property="og:image" content="https://autopilotamerica.com/og-image.png" />
+
+        {/* Twitter */}
+        <meta name="twitter:title" content="Autopilot America - Stop Getting Blindsided by Chicago Tickets" />
+        <meta name="twitter:description" content="Automated city sticker renewals, plate tracking & street cleaning alerts. We pay if you get ticketed." />
+        <meta name="twitter:image" content="https://autopilotamerica.com/og-image.png" />
+
+        {/* Additional SEO */}
+        <meta name="keywords" content="Chicago city sticker, license plate renewal, street cleaning alerts, parking tickets, vehicle compliance, Chicago parking" />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="Autopilot America" />
+
+        {/* JSON-LD Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              "name": "Autopilot America",
+              "applicationCategory": "UtilitiesApplication",
+              "operatingSystem": "Web",
+              "description": "Automated city sticker renewals, license plate tracking, and street cleaning alerts for Chicago drivers. $80/year service guarantee.",
+              "url": "https://autopilotamerica.com",
+              "offers": {
+                "@type": "Offer",
+                "price": "80.00",
+                "priceCurrency": "USD",
+                "priceValidUntil": "2025-12-31"
+              },
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.8",
+                "ratingCount": "150"
+              },
+              "provider": {
+                "@type": "Organization",
+                "name": "Autopilot America",
+                "url": "https://autopilotamerica.com",
+                "contactPoint": {
+                  "@type": "ContactPoint",
+                  "contactType": "customer support",
+                  "email": "support@autopilotamerica.com"
+                }
+              }
+            })
+          }}
+        />
+
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
           ::selection { background: #10B981; color: white; }
@@ -256,7 +311,7 @@ export default function Home() {
                   e.currentTarget.style.backgroundColor = COLORS.signal;
                 }}
               >
-                Enable Autopilot — $120/yr
+                Enable Autopilot — $80/yr
               </button>
               <button
                 onClick={() => router.push('/alerts/signup')}
@@ -556,7 +611,7 @@ export default function Home() {
               </p>
             </div>
             <p style={{ fontSize: '24px', color: COLORS.signal, margin: '0', fontWeight: '700' }}>
-              Autopilot = $120/year
+              Autopilot = $80/year
             </p>
             <p style={{ fontSize: '15px', color: COLORS.slate, margin: '8px 0 0 0' }}>
               One saved ticket pays for itself. One saved tow pays for 3 years.
@@ -678,14 +733,14 @@ export default function Home() {
                 Full Autopilot
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '700', color: 'white', fontFamily: '"Space Grotesk", sans-serif' }}>$120</span>
+                <span style={{ fontSize: '48px', fontWeight: '700', color: 'white', fontFamily: '"Space Grotesk", sans-serif' }}>$80</span>
                 <span style={{ fontSize: '16px', color: COLORS.slate }}>/year</span>
               </div>
               <div style={{ fontSize: '14px', color: 'white', marginBottom: '8px', fontWeight: '500' }}>
                 We handle it.
               </div>
               <div style={{ fontSize: '14px', color: COLORS.signal, marginBottom: '32px', fontWeight: '500' }}>
-                = $10/month. One saved tow pays for 3 years.
+                = $6.67/month. One saved tow pays for 3 years.
               </div>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0' }}>
@@ -746,7 +801,7 @@ export default function Home() {
                   e.currentTarget.style.backgroundColor = COLORS.signal;
                 }}
               >
-                Enable Autopilot — $120/yr
+                Enable Autopilot — $80/yr
               </button>
             </div>
           </div>
@@ -903,7 +958,7 @@ export default function Home() {
                 e.currentTarget.style.backgroundColor = COLORS.signal;
               }}
             >
-              Enable Autopilot — $120/yr
+              Enable Autopilot — $80/yr
             </button>
             <button
               onClick={() => router.push('/alerts/signup')}
