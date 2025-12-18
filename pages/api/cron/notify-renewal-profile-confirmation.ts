@@ -62,7 +62,7 @@ export default async function handler(
         license_image_path,
         license_image_path_back,
         residency_proof_path,
-        email_forwarding_configured,
+        residency_forwarding_enabled,
         notification_preferences,
         profile_confirmed_at
       `)
@@ -198,7 +198,7 @@ function getProfileIssues(user: any): ProfileIssues {
     issues.missingDates.push('license plate expiration');
     issues.allGood = false;
   }
-  if (!user.emissions_test_due) {
+  if (!user.emissions_date) {
     issues.missingDates.push('emissions test due date');
     issues.allGood = false;
   }
@@ -209,7 +209,7 @@ function getProfileIssues(user: any): ProfileIssues {
       issues.missingPermitDocs = true;
       issues.allGood = false;
     }
-    if (!user.email_forwarding_configured && !user.residency_proof_path) {
+    if (!user.residency_forwarding_enabled && !user.residency_proof_path) {
       issues.missingResidencyProof = true;
       issues.allGood = false;
     }
