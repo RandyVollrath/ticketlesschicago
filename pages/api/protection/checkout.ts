@@ -170,9 +170,22 @@ export default async function handler(
     // SECURITY: Validate client_reference_id
     const validatedReferralId = validateClientReferenceId(rewardfulReferral);
 
+    // Create or get Stripe customer (required for Accounts V2 in test mode)
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    let customerId = customers.data[0]?.id;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email,
+        phone: phone || undefined,
+        metadata: { userId: userId || '' }
+      });
+      customerId = customer.id;
+    }
+
     // Create Stripe Checkout session with mixed line items
     const session = await stripe.checkout.sessions.create({
-      customer_email: email,
+      customer: customerId,
       // Use validated Rewardful referral ID as client_reference_id for tracking conversions
       client_reference_id: validatedReferralId || userId || undefined,
       mode: 'subscription',
