@@ -11,7 +11,7 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  *
  * Only sends to users who have:
  * - has_protection = false (free users)
- * - At least one renewal date set (city_sticker_expiry, license_plate_expiry, or emissions_test_due)
+ * - At least one renewal date set (city_sticker_expiry, license_plate_expiry, or emissions_date)
  *
  * Different from paid user notifications:
  * - Simple "heads up" reminder about upcoming expiration

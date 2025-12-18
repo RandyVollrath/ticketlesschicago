@@ -35,7 +35,7 @@ export default async function handler(
     // Get Protection users with permit zones and upcoming renewals
     const { data: users, error: usersError } = await supabaseAdmin
       .from('user_profiles')
-      .select('user_id, email, first_name, last_name, city_sticker_expiry, residency_proof_path, email_forwarding_configured')
+      .select('user_id, email, first_name, last_name, city_sticker_expiry, residency_proof_path, residency_forwarding_enabled')
       .eq('has_protection', true)
       .eq('has_permit_zone', true)
       .eq('permit_requested', true)
@@ -59,7 +59,7 @@ export default async function handler(
         const daysUntilRenewal = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
         // Skip if they already have email forwarding configured OR residency proof uploaded
-        if (user.email_forwarding_configured || user.residency_proof_path) {
+        if (user.residency_forwarding_enabled || user.residency_proof_path) {
           console.log(`User ${user.user_id}: Already has proof or forwarding configured, skipping`);
           continue;
         }
