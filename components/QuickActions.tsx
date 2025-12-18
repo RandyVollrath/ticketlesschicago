@@ -293,7 +293,7 @@ export function QuickActionsInline({ hasProtection = false }: { hasProtection?: 
     {
       id: 'refer',
       label: 'Refer Friends',
-      description: 'Earn $24 credit',
+      description: 'Earn $16 credit',
       color: COLORS.purple,
       href: '/settings#referral',
       icon: (

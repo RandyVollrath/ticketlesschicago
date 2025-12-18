@@ -770,8 +770,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           idempotencyKey: stickerIdempotencyKey,
         });
 
-        // Send $12 service fee from platform balance to remitter
-        // This comes from the $12/mo or $120/year collected in subscription
+        // Send $6 service fee from platform balance to remitter
+        // This comes from the $8/mo or $80/year collected in subscription
         // Non-blocking: if platform balance insufficient, log and continue
         let serviceFeeTransferId: string | null = null;
         try {
@@ -805,7 +805,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           stripe_charge_id: paymentIntent.latest_charge as string,
           status: 'succeeded',
           remitter_partner_id: remitter.id,
-          remitter_received_amount: stickerPrice + permitFee + REMITTER_SERVICE_FEE, // Sticker + permit + $12 service fee
+          remitter_received_amount: stickerPrice + permitFee + REMITTER_SERVICE_FEE, // Sticker + permit + $6 service fee
           platform_fee_amount: serviceFee, // $2.50 platform keeps
           renewal_type: 'city_sticker',
           renewal_due_date: customer.city_sticker_expiry,
@@ -835,7 +835,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           sticker_price: stickerPrice,
           permit_fee: permitFee, // $30 if permit requested, $0 otherwise
           permit_requested: needsPermit,
-          service_fee: REMITTER_SERVICE_FEE, // $12 processing fee to remitter
+          service_fee: REMITTER_SERVICE_FEE, // $6 processing fee to remitter
           total_amount: stickerPrice + permitFee + REMITTER_SERVICE_FEE, // Total remitter receives
           payment_status: 'paid',
           status: 'pending', // Awaiting remitter to process and submit to city
@@ -1235,7 +1235,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             idempotencyKey: plateIdempotencyKey,
           });
 
-          // Transfer $12 service fee (non-blocking)
+          // Transfer $6 service fee (non-blocking)
           try {
             await stripe.transfers.create({
               amount: Math.round(REMITTER_SERVICE_FEE * 100),

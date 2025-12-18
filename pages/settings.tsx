@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { supabase } from '../lib/supabase'
+import { analytics } from '../lib/analytics'
 import type { User } from '@supabase/supabase-js'
 import Accordion from '../components/Accordion'
 import Tooltip from '../components/Tooltip'
@@ -216,7 +217,7 @@ export default function ProfileNew() {
     }
   }, [user, profile.user_id, profile.has_protection, router.query.protection])
 
-  // Handle hash navigation (e.g., #referral from "Earn $24 credit" button)
+  // Handle hash navigation (e.g., #referral from "Earn $16 credit" button)
   useEffect(() => {
     if (typeof window === 'undefined' || loading) return
 
@@ -269,6 +270,16 @@ export default function ProfileNew() {
       setFormData({
         ...userProfile,
         phone: userProfile.phone_number ? formatPhoneForDisplay(userProfile.phone_number) : ''
+      })
+
+      // Track settings page view with user context
+      analytics.settingsViewed('main')
+      analytics.setUserProperties({
+        planType: userProfile.has_protection ? 'protection' : 'free',
+        hasCitySticker: !!userProfile.city_sticker_expiry,
+        hasPermitZone: userProfile.has_permit_zone || false,
+        hasLicenseUploaded: !!userProfile.license_image_path,
+        hasResidencyProof: !!userProfile.residency_proof_path
       })
 
       // Check if mailing address differs from home address
@@ -628,6 +639,11 @@ export default function ProfileNew() {
         .eq('user_id', user!.id)
 
       toast.success('License uploaded successfully!', 'Documents Updated')
+
+      // Track license upload (both sides completed)
+      analytics.licenseUploaded({ side: 'front', hasOcrSuccess: !!extractedExpiry, autofilledExpiry: !!extractedExpiry })
+      analytics.licenseUploaded({ side: 'back', hasOcrSuccess: false, autofilledExpiry: false })
+
       // Note: ref reset not needed here because page reloads
       window.location.reload()
     } catch (error: any) {
@@ -693,6 +709,9 @@ export default function ProfileNew() {
       }))
 
       setMessage({ type: 'success', text: 'Document uploaded successfully! It will be reviewed shortly.' })
+
+      // Track residency proof upload
+      analytics.residencyProofUploaded(formData.residency_proof_type)
     } catch (error: any) {
       console.error('Upload error:', error)
       toast.error(error.message, 'Upload Failed')
