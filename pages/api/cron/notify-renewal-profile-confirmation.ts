@@ -56,7 +56,7 @@ export default async function handler(
         last_name,
         city_sticker_expiry,
         license_plate_expiry,
-        emissions_test_due,
+        emissions_date,
         has_permit_zone,
         permit_requested,
         license_image_path,
@@ -100,10 +100,10 @@ export default async function handler(
             label: 'License Plates'
           });
         }
-        if (user.emissions_test_due) {
+        if (user.emissions_date) {
           renewalDates.push({
             type: 'emissions',
-            date: new Date(user.emissions_test_due),
+            date: new Date(user.emissions_date),
             label: 'Emissions Test'
           });
         }
@@ -255,7 +255,7 @@ async function sendProfileConfirmationEmail(
     }
 
     // Add emissions reminder for plate renewals
-    if (renewal.type === 'license_plate' && !user.emissions_test_due) {
+    if (renewal.type === 'license_plate' && !user.emissions_date) {
       items.push('Add your emissions test due date (required for plate renewal)');
     }
 
