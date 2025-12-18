@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 import Footer from '../../components/Footer';
+import { analytics } from '../../lib/analytics';
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -23,6 +24,8 @@ export default function AlertsSignup() {
   const [message, setMessage] = useState('');
   const [prefilledData, setPrefilledData] = useState<any>(null);
   const [loadingToken, setLoadingToken] = useState(false);
+  const formStartedRef = useRef(false);
+  const pageViewTrackedRef = useRef(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -39,6 +42,16 @@ export default function AlertsSignup() {
     smsConsent: true,
     marketingConsent: true
   });
+
+  // Track page view on mount
+  useEffect(() => {
+    if (!pageViewTrackedRef.current) {
+      pageViewTrackedRef.current = true;
+      const source = (router.query.ref as string) || (router.query.utm_source as string) || 'direct';
+      const hasPrefillToken = !!router.query.token;
+      analytics.signupPageViewed(source, hasPrefillToken);
+    }
+  }, [router.query]);
 
   useEffect(() => {
     const error = router.query.error as string;
@@ -94,6 +107,12 @@ export default function AlertsSignup() {
   }, [router.query.token, prefilledData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    // Track form started on first interaction
+    if (!formStartedRef.current) {
+      formStartedRef.current = true;
+      analytics.signupFormStarted();
+    }
+
     const target = e.target as HTMLInputElement;
     const { name, value, type } = target;
     const checked = type === 'checkbox' ? target.checked : false;
@@ -104,30 +123,47 @@ export default function AlertsSignup() {
   };
 
   const handleGoogleSignup = async () => {
+    const failedFields: string[] = [];
+
     if (!formData.smsConsent) {
       setMessage('SMS alerts are required to use Autopilot America. Please check the box to receive text alerts.');
+      analytics.signupFormError('validation', ['smsConsent']);
       return;
     }
 
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.licensePlate || !formData.address || !formData.zip) {
+    if (!formData.firstName) failedFields.push('firstName');
+    if (!formData.lastName) failedFields.push('lastName');
+    if (!formData.email) failedFields.push('email');
+    if (!formData.phone) failedFields.push('phone');
+    if (!formData.licensePlate) failedFields.push('licensePlate');
+    if (!formData.address) failedFields.push('address');
+    if (!formData.zip) failedFields.push('zip');
+
+    if (failedFields.length > 0) {
       setMessage('Please fill out ALL required fields before continuing with Google');
+      analytics.signupFormError('validation', failedFields);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setMessage('Please enter a valid email address');
+      analytics.signupFormError('validation', ['email']);
       return;
     }
 
     const phoneDigits = formData.phone.replace(/\D/g, '');
     if (phoneDigits.length !== 10) {
       setMessage('Please enter a valid 10-digit phone number');
+      analytics.signupFormError('validation', ['phone']);
       return;
     }
 
     setGoogleAuthLoading(true);
     setMessage('');
+
+    // Track Google auth started
+    analytics.googleAuthStarted('signup');
 
     try {
       const response = await fetch('/api/alerts/create', {
@@ -145,6 +181,14 @@ export default function AlertsSignup() {
         throw new Error(result.error || 'Failed to create account');
       }
 
+      // Track successful signup submission
+      analytics.signupSubmitted({
+        authMethod: 'google',
+        city: formData.city,
+        hasCitySticker: !!formData.citySticker,
+        hasVehicleInfo: !!(formData.licensePlate && formData.make && formData.model)
+      });
+
       sessionStorage.setItem('expectedGoogleEmail', formData.email);
 
       const { error } = await supabase.auth.signInWithOAuth({
@@ -157,6 +201,7 @@ export default function AlertsSignup() {
       if (error) throw error;
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
+      analytics.signupFormError('api_error', [error.message]);
       setGoogleAuthLoading(false);
     }
   };
@@ -166,18 +211,21 @@ export default function AlertsSignup() {
 
     if (!formData.smsConsent) {
       setMessage('SMS alerts are required to use Autopilot America. Please check the box to receive text alerts.');
+      analytics.signupFormError('validation', ['smsConsent']);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setMessage('Please enter a valid email address');
+      analytics.signupFormError('validation', ['email']);
       return;
     }
 
     const phoneDigits = formData.phone.replace(/\D/g, '');
     if (phoneDigits.length !== 10) {
       setMessage('Please enter a valid 10-digit phone number');
+      analytics.signupFormError('validation', ['phone']);
       return;
     }
 
@@ -201,9 +249,18 @@ export default function AlertsSignup() {
         throw new Error(result.error || 'Failed to create account');
       }
 
+      // Track successful signup submission
+      analytics.signupSubmitted({
+        authMethod: 'email',
+        city: formData.city,
+        hasCitySticker: !!formData.citySticker,
+        hasVehicleInfo: !!(formData.licensePlate && formData.make && formData.model)
+      });
+
       router.push('/alerts/success');
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
+      analytics.signupFormError('api_error', [error.message]);
       setLoading(false);
     }
   };
@@ -804,7 +861,7 @@ export default function AlertsSignup() {
                 cursor: 'pointer'
               }}
             >
-              Upgrade to Full Protection - $12/mo
+              Upgrade to Full Protection - $8/mo
             </button>
           </div>
         </div>
