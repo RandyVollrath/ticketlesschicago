@@ -7,7 +7,11 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  * Cron Job: Remind PAID Protection users to confirm their profile before renewal
  *
  * Sends reminders at days specified in user's notification_preferences.reminder_days
- * Default: [60, 45, 37, 30] days before their earliest upcoming renewal date
+ * Default: [60, 45, 37, 30] days before EACH upcoming renewal date
+ *
+ * For each renewal type (city sticker, plates, emissions) that the user has set,
+ * we check if today matches one of their reminder days and send a notification
+ * specific to that renewal.
  *
  * Only sends to users who have:
  * - has_protection = true (paid users)
@@ -79,25 +83,28 @@ export default async function handler(
         const reminderDays: number[] =
           user.notification_preferences?.reminder_days || DEFAULT_REMINDER_DAYS;
 
-        // Find earliest upcoming renewal date
-        const renewalDates: { type: string; date: Date }[] = [];
+        // Build list of all renewal dates the user has set
+        const renewalDates: { type: string; date: Date; label: string }[] = [];
 
         if (user.city_sticker_expiry) {
           renewalDates.push({
             type: 'city_sticker',
-            date: new Date(user.city_sticker_expiry)
+            date: new Date(user.city_sticker_expiry),
+            label: 'City Sticker'
           });
         }
         if (user.license_plate_expiry) {
           renewalDates.push({
             type: 'license_plate',
-            date: new Date(user.license_plate_expiry)
+            date: new Date(user.license_plate_expiry),
+            label: 'License Plates'
           });
         }
         if (user.emissions_test_due) {
           renewalDates.push({
             type: 'emissions',
-            date: new Date(user.emissions_test_due)
+            date: new Date(user.emissions_test_due),
+            label: 'Emissions Test'
           });
         }
 
@@ -106,40 +113,42 @@ export default async function handler(
           continue;
         }
 
-        // Find earliest renewal
-        renewalDates.sort((a, b) => a.date.getTime() - b.date.getTime());
-        const earliestRenewal = renewalDates[0];
-
-        // Calculate days until renewal
-        const daysUntilRenewal = Math.ceil(
-          (earliestRenewal.date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        // Check if today matches any of their reminder days
-        const matchingReminderDay = reminderDays.find(day =>
-          daysUntilRenewal >= day && daysUntilRenewal <= day + 1
-        );
-
-        if (!matchingReminderDay) {
-          continue;
-        }
-
-        // Check what needs attention in their profile
+        // Check what needs attention in their profile (once per user)
         const profileIssues = getProfileIssues(user);
 
-        console.log(`User ${user.user_id}: ${daysUntilRenewal} days until ${earliestRenewal.type} renewal, sending ${matchingReminderDay}-day reminder`);
+        // Check EACH renewal date independently
+        for (const renewal of renewalDates) {
+          const daysUntilRenewal = Math.ceil(
+            (renewal.date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
 
-        const emailSent = await sendProfileConfirmationEmail(
-          user,
-          earliestRenewal,
-          daysUntilRenewal,
-          matchingReminderDay,
-          profileIssues,
-          renewalDates
-        );
+          // Skip if already passed
+          if (daysUntilRenewal < 0) {
+            continue;
+          }
 
-        if (emailSent) {
-          notificationsSent[matchingReminderDay] = (notificationsSent[matchingReminderDay] || 0) + 1;
+          // Check if today matches any of their reminder days for THIS renewal
+          const matchingReminderDay = reminderDays.find(day =>
+            daysUntilRenewal >= day && daysUntilRenewal <= day + 1
+          );
+
+          if (!matchingReminderDay) {
+            continue;
+          }
+
+          console.log(`User ${user.user_id}: ${daysUntilRenewal} days until ${renewal.type} renewal, sending ${matchingReminderDay}-day reminder`);
+
+          const emailSent = await sendProfileConfirmationEmail(
+            user,
+            renewal,
+            daysUntilRenewal,
+            matchingReminderDay,
+            profileIssues
+          );
+
+          if (emailSent) {
+            notificationsSent[matchingReminderDay] = (notificationsSent[matchingReminderDay] || 0) + 1;
+          }
         }
       } catch (error: any) {
         console.error(`Error processing user ${user.user_id}:`, error);
@@ -213,72 +222,58 @@ function getProfileIssues(user: any): ProfileIssues {
 
 async function sendProfileConfirmationEmail(
   user: any,
-  earliestRenewal: { type: string; date: Date },
+  renewal: { type: string; date: Date; label: string },
   daysUntilRenewal: number,
   reminderDay: number,
-  issues: ProfileIssues,
-  allRenewals: { type: string; date: Date }[]
+  issues: ProfileIssues
 ): Promise<boolean> {
   try {
     const name = user.first_name || 'there';
-    const renewalDate = earliestRenewal.date.toLocaleDateString('en-US', {
+    const renewalDate = renewal.date.toLocaleDateString('en-US', {
       month: 'long',
       day: 'numeric',
       year: 'numeric',
     });
 
-    const renewalTypeLabel = {
-      city_sticker: 'city sticker',
-      license_plate: 'license plate',
-      emissions: 'emissions test',
-    }[earliestRenewal.type] || 'renewal';
+    const renewalTypeLabel = renewal.label.toLowerCase();
 
-    // Build upcoming renewals list
-    const upcomingList = allRenewals
-      .map(r => {
-        const label = {
-          city_sticker: 'City Sticker',
-          license_plate: 'License Plates',
-          emissions: 'Emissions Test',
-        }[r.type] || r.type;
-        const dateStr = r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        return `  - ${label}: ${dateStr}`;
-      })
-      .join('\n');
-
-    // Build action items if there are issues
+    // Build action items specific to this renewal type
     let actionItems = '';
-    if (!issues.allGood) {
-      const items: string[] = [];
-      if (issues.missingDates.length > 0) {
-        items.push(`Add missing dates: ${issues.missingDates.join(', ')}`);
+    const items: string[] = [];
+
+    // Always ask to confirm the date is accurate
+    items.push(`Confirm your ${renewalTypeLabel} expiration date is correct`);
+
+    // Add permit-specific items for city sticker renewals
+    if (renewal.type === 'city_sticker') {
+      if (user.has_permit_zone && user.permit_requested) {
+        if (issues.missingPermitDocs) {
+          items.push('Upload driver\'s license (front and back) for permit renewal');
+        }
+        if (issues.missingResidencyProof) {
+          items.push('Set up proof of residency (email forwarding recommended)');
+        }
       }
-      if (issues.missingPermitDocs) {
-        items.push('Upload driver\'s license (front and back) for permit renewal');
-      }
-      if (issues.missingResidencyProof) {
-        items.push('Set up proof of residency (email forwarding recommended)');
-      }
-      actionItems = `
-Action needed:
-${items.map(item => `  - ${item}`).join('\n')}
-`;
     }
 
+    // Add emissions reminder for plate renewals
+    if (renewal.type === 'license_plate' && !user.emissions_test_due) {
+      items.push('Add your emissions test due date (required for plate renewal)');
+    }
+
+    actionItems = items.map(item => `  - ${item}`).join('\n');
+
     // Determine urgency based on days
-    let urgencyPrefix = '';
     let subject = '';
 
     if (reminderDay >= 60) {
-      subject = `Upcoming Renewal: Please Confirm Your Profile (${daysUntilRenewal} days)`;
+      subject = `${renewal.label} Renewal: ${daysUntilRenewal} Days - Please Confirm Profile`;
     } else if (reminderDay >= 45) {
-      subject = `Renewal Reminder: Confirm Your Profile is Up to Date`;
+      subject = `${renewal.label} Reminder: Confirm Your Profile (${daysUntilRenewal} days)`;
     } else if (reminderDay >= 37) {
-      urgencyPrefix = '⏰ ';
-      subject = `${urgencyPrefix}${daysUntilRenewal} Days Until Renewal - Please Confirm Profile`;
+      subject = `⏰ ${daysUntilRenewal} Days Until ${renewal.label} Renewal`;
     } else {
-      urgencyPrefix = '🚨 ';
-      subject = `${urgencyPrefix}${daysUntilRenewal} Days Until Renewal - Action Required`;
+      subject = `🚨 ${daysUntilRenewal} Days: ${renewal.label} Renewal - Action Required`;
     }
 
     const body = `
@@ -288,22 +283,13 @@ Your ${renewalTypeLabel} renewal is coming up on ${renewalDate} (${daysUntilRene
 
 Please take a moment to confirm your profile information is current so we can process your renewal smoothly.
 
-📅 Your Upcoming Renewals:
-${upcomingList}
+📋 Please confirm:
 ${actionItems}
-${issues.allGood ? `
-✅ Your profile looks complete! Just confirm everything is still accurate.
-` : ''}
+
 ⚡ Review Your Profile:
 → https://autopilotamerica.com/settings
 
-What we check:
-✓ Renewal dates are accurate
-✓ Vehicle information is current
-✓ Contact information is up to date
-${user.has_permit_zone && user.permit_requested ? '✓ Permit documents are ready (license + residency proof)' : ''}
-
-We'll handle everything else automatically. If you've recently updated your profile, you're all set!
+We'll handle the actual renewal automatically. Just make sure your information is up to date!
 
 Questions? Reply to this email.
 
