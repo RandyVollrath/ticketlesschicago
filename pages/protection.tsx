@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
@@ -6,6 +6,13 @@ import { usePermitZoneCheck } from '../hooks/usePermitZoneCheck';
 import Footer from '../components/Footer';
 import { PermitZoneWarning } from '../components/PermitZoneWarning';
 import MobileNav from '../components/MobileNav';
+import { analytics } from '../lib/analytics';
+import {
+  CITY_STICKER_PRICES,
+  LICENSE_PLATE_TYPE_INFO,
+  type LicensePlateType,
+  PLATFORM_FEES,
+} from '../lib/pricing-config';
 
 // Phone validation - must match backend validation
 function isValidUSPhone(phone: string): boolean {
@@ -42,7 +49,7 @@ export default function Protection() {
   // Renewal information
   const [needsCitySticker, setNeedsCitySticker] = useState(true);
   const [needsLicensePlate, setNeedsLicensePlate] = useState(true);
-  const [hasVanityPlate, setHasVanityPlate] = useState(false);
+  const [licensePlateType, setLicensePlateType] = useState<LicensePlateType>('passenger_standard');
   const [cityStickerDate, setCityStickerDate] = useState('');
   const [licensePlateDate, setLicensePlateDate] = useState('');
   const [vehicleType, setVehicleType] = useState<'MB' | 'P' | 'LP' | 'ST' | 'LT'>('P');
@@ -69,7 +76,21 @@ export default function Protection() {
   // Google auth loading state
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
 
+  // Analytics refs
+  const pageViewTrackedRef = useRef(false);
+
   const isWaitlistMode = false;
+
+  // Track page view on mount
+  useEffect(() => {
+    if (!pageViewTrackedRef.current) {
+      pageViewTrackedRef.current = true;
+      // Wait for user check to complete
+      supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+        analytics.protectionPageViewed(!!authUser, document.referrer || 'direct');
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -156,6 +177,16 @@ export default function Protection() {
     setLoading(true);
     setMessage('');
 
+    // Track checkout initiated
+    analytics.checkoutInitiated({
+      plan: checkoutData.billingPlan,
+      needsCitySticker: !!checkoutData.renewals?.citySticker,
+      needsLicensePlate: !!checkoutData.renewals?.licensePlate,
+      hasPermitZone: checkoutData.hasPermitZone || false,
+      hasVanityPlate: checkoutData.renewals?.licensePlate?.plateType === 'vanity',
+      licensePlateType: checkoutData.renewals?.licensePlate?.plateType || 'passenger_standard'
+    });
+
     try {
       const response = await fetch('/api/protection/checkout', {
         method: 'POST',
@@ -203,11 +234,6 @@ export default function Protection() {
       return;
     }
 
-    if (needsCitySticker && (!vin || vin.trim().length !== 17)) {
-      setMessage('Please enter a valid 17-character VIN - required for city sticker renewal');
-      return;
-    }
-
     if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
       setMessage('Please select a billing plan (monthly or annual)');
       return;
@@ -230,7 +256,7 @@ export default function Protection() {
       smsConsent: smsConsent, // TCPA compliance - pass SMS consent to backend
       renewals: {
         citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
-        licensePlate: needsLicensePlate ? { date: licensePlateDate, isVanity: hasVanityPlate } : null
+        licensePlate: needsLicensePlate ? { date: licensePlateDate, plateType: licensePlateType } : null
       }
     };
 
@@ -240,6 +266,12 @@ export default function Protection() {
   const handleGoogleCheckout = async () => {
     if (!consentGiven) {
       setMessage('Please review and agree to the authorization terms');
+      return;
+    }
+
+    // Require email for Google checkout (needed to save pending checkout to database)
+    if (!email || email.trim() === '') {
+      setMessage('Please enter your email address');
       return;
     }
 
@@ -253,11 +285,6 @@ export default function Protection() {
       return;
     }
 
-    if (needsCitySticker && (!vin || vin.trim().length !== 17)) {
-      setMessage('Please enter a valid 17-character VIN - required for city sticker renewal');
-      return;
-    }
-
     if (!billingPlan || (billingPlan !== 'monthly' && billingPlan !== 'annual')) {
       setMessage('Please select a billing plan (monthly or annual)');
       return;
@@ -266,10 +293,13 @@ export default function Protection() {
     setGoogleAuthLoading(true);
     setMessage('');
 
+    // Track Google auth started
+    analytics.googleAuthStarted('protection');
+
     try {
       const rewardfulReferral = typeof window !== 'undefined' && (window as any).Rewardful?.referral || null;
 
-      // Store checkout data in sessionStorage for after Google auth
+      // Build checkout data
       const checkoutData = {
         billingPlan,
         phone: phone,
@@ -283,13 +313,20 @@ export default function Protection() {
         smsConsent: smsConsent, // TCPA compliance - pass SMS consent to backend
         renewals: {
           citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
-          licensePlate: needsLicensePlate ? { date: licensePlateDate, isVanity: hasVanityPlate } : null
+          licensePlate: needsLicensePlate ? { date: licensePlateDate, plateType: licensePlateType } : null
         }
       };
 
-      sessionStorage.setItem('pendingProtectionCheckout', JSON.stringify(checkoutData));
-      // Also store the flow indicator separately for reliability
-      sessionStorage.setItem('pendingProtectionFlow', 'protection-google');
+      // Save checkout data to database (survives OAuth redirects)
+      const saveResponse = await fetch('/api/pending-checkout/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim(), checkoutData })
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save checkout data');
+      }
 
       // Redirect to Google OAuth
       const { error } = await supabase.auth.signInWithOAuth({
@@ -306,16 +343,20 @@ export default function Protection() {
     }
   };
 
+  // City sticker vehicle type info - uses pricing config
   const vehicleTypeInfo: Record<'MB' | 'P' | 'LP' | 'ST' | 'LT', { label: string; price: number; description: string }> = {
-    MB: { label: 'Motorbike', price: 53.04, description: 'Motorbike' },
-    P: { label: 'Passenger', price: 100.17, description: 'Vehicle ≤4,500 lbs curb weight, ≤2,499 lbs payload' },
-    LP: { label: 'Large Passenger', price: 159.12, description: 'Vehicle ≥4,501 lbs curb weight, ≤2,499 lbs payload' },
-    ST: { label: 'Small Truck', price: 235.71, description: 'Truck/Van ≤16,000 lbs or ≥2,500 lbs payload' },
-    LT: { label: 'Large Truck', price: 530.40, description: 'Truck/Vehicle ≥16,001 lbs or ≥2,500 lbs payload' }
+    MB: { label: 'Motorbike', price: CITY_STICKER_PRICES.MB.amount, description: CITY_STICKER_PRICES.MB.label },
+    P: { label: 'Passenger', price: CITY_STICKER_PRICES.P.amount, description: 'Vehicle ≤4,500 lbs curb weight, ≤2,499 lbs payload' },
+    LP: { label: 'Large Passenger', price: CITY_STICKER_PRICES.LP.amount, description: 'Vehicle ≥4,501 lbs curb weight, ≤2,499 lbs payload' },
+    ST: { label: 'Small Truck', price: CITY_STICKER_PRICES.ST.amount, description: 'Truck/Van ≤16,000 lbs or ≥2,500 lbs payload' },
+    LT: { label: 'Large Truck', price: CITY_STICKER_PRICES.LT.amount, description: 'Truck/Vehicle ≥16,001 lbs or ≥2,500 lbs payload' }
   };
 
+  // License plate renewal cost based on selected plate type
+  const licensePlateRenewalCost = LICENSE_PLATE_TYPE_INFO[licensePlateType].totalRenewal + PLATFORM_FEES.SERVICE_FEE;
+
   const calculateTotal = () => {
-    const subscriptionPrice = billingPlan === 'monthly' ? 12 : 120;
+    const subscriptionPrice = billingPlan === 'monthly' ? 8 : 80;
     return subscriptionPrice;
   };
 
@@ -458,7 +499,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              $12/month or $120/year. Automated renewals + up to $200/year ticket reimbursement.
+              $8/month or $80/year. Automated renewals + up to $200/year ticket reimbursement.
             </p>
           </div>
 
@@ -571,7 +612,10 @@ export default function Protection() {
                     padding: '4px'
                   }}>
                     <button
-                      onClick={() => setBillingPlan('monthly')}
+                      onClick={() => {
+                        setBillingPlan('monthly');
+                        analytics.billingPlanSelected('monthly');
+                      }}
                       style={{
                         padding: '12px 24px',
                         borderRadius: '8px',
@@ -584,10 +628,13 @@ export default function Protection() {
                         boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                       }}
                     >
-                      Monthly ($12/mo)
+                      Monthly ($8/mo)
                     </button>
                     <button
-                      onClick={() => setBillingPlan('annual')}
+                      onClick={() => {
+                        setBillingPlan('annual');
+                        analytics.billingPlanSelected('annual');
+                      }}
                       style={{
                         padding: '12px 24px',
                         borderRadius: '8px',
@@ -600,7 +647,7 @@ export default function Protection() {
                         boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                       }}
                     >
-                      Annual ($120/yr)
+                      Annual ($80/yr)
                     </button>
                   </div>
                 </div>
@@ -615,7 +662,7 @@ export default function Protection() {
                     textAlign: 'center'
                   }}>
                     <span style={{ fontSize: '14px', fontWeight: '600', color: COLORS.signal }}>
-                      Save $24/year with annual billing
+                      Save $16/year with annual billing
                     </span>
                   </div>
                 )}
@@ -771,7 +818,7 @@ export default function Protection() {
                     Track your city sticker and license plate renewal deadlines.
                   </p>
                   <p style={{ fontSize: '12px', color: '#b45309', backgroundColor: '#fef3c7', padding: '8px 12px', borderRadius: '6px', marginBottom: '20px', lineHeight: '1.4' }}>
-                    Prices shown are 2024 rates set by the City of Chicago and Illinois Secretary of State. Renewal fees are subject to change and you will be charged the official rate at the time of your renewal.
+                    Prices shown are 2025 rates set by the City of Chicago and Illinois Secretary of State. Renewal fees are subject to change and you will be charged the official rate at the time of your renewal.
                   </p>
 
                   {/* City Sticker */}
@@ -859,20 +906,53 @@ export default function Protection() {
                         License Plate Renewal
                       </label>
                       <span style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite }}>
-                        ${hasVanityPlate && needsLicensePlate ? '164' : '155'}
+                        ${needsLicensePlate ? licensePlateRenewalCost.toFixed(2) : LICENSE_PLATE_TYPE_INFO.passenger_standard.totalRenewal + PLATFORM_FEES.SERVICE_FEE}
                       </span>
                     </div>
                     {needsLicensePlate && (
                       <div style={{ paddingLeft: '26px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '12px', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={hasVanityPlate}
-                            onChange={(e) => setHasVanityPlate(e.target.checked)}
-                            style={{ width: '16px', height: '16px' }}
-                          />
-                          I have a vanity/personalized plate (+$9)
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
+                          Plate type
+                          <span
+                            title="What's the difference? Vanity plates contain up to 3 numbers only or 1-7 letters only. Personalized plates contain both letters and numbers."
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '14px',
+                              height: '14px',
+                              borderRadius: '50%',
+                              backgroundColor: COLORS.slate,
+                              color: 'white',
+                              fontSize: '10px',
+                              fontWeight: '600',
+                              cursor: 'help'
+                            }}
+                          >?</span>
                         </label>
+                        <select
+                          value={licensePlateType}
+                          onChange={(e) => setLicensePlateType(e.target.value as LicensePlateType)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: `1px solid ${COLORS.border}`,
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            marginBottom: '12px',
+                            boxSizing: 'border-box',
+                            backgroundColor: 'white'
+                          }}
+                        >
+                          {(Object.keys(LICENSE_PLATE_TYPE_INFO) as LicensePlateType[]).map((type) => (
+                            <option key={type} value={type}>
+                              {LICENSE_PLATE_TYPE_INFO[type].label} - ${(LICENSE_PLATE_TYPE_INFO[type].totalRenewal + PLATFORM_FEES.SERVICE_FEE).toFixed(2)}
+                            </option>
+                          ))}
+                        </select>
+                        <div style={{ fontSize: '11px', color: COLORS.slate, marginBottom: '12px' }}>
+                          {LICENSE_PLATE_TYPE_INFO[licensePlateType].description}
+                        </div>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
                           Current expiration date (optional)
                         </label>
@@ -893,37 +973,6 @@ export default function Protection() {
                     )}
                   </div>
 
-                  {/* VIN - Required for city sticker */}
-                  <div style={{
-                    padding: '16px',
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: `1px solid ${!vin && needsCitySticker ? '#dc2626' : COLORS.border}`
-                  }}>
-                    <label style={{ display: 'block', fontSize: '15px', fontWeight: '600', color: COLORS.graphite, marginBottom: '8px' }}>
-                      Vehicle Identification Number (VIN) <span style={{ color: '#dc2626' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={vin}
-                      onChange={(e) => setVin(e.target.value.toUpperCase())}
-                      placeholder="1HGBH41JXMN109186"
-                      maxLength={17}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: `1px solid ${!vin && needsCitySticker ? '#dc2626' : COLORS.border}`,
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        boxSizing: 'border-box',
-                        textTransform: 'uppercase',
-                        fontFamily: 'monospace'
-                      }}
-                    />
-                    <p style={{ fontSize: '12px', color: COLORS.slate, marginTop: '6px', margin: '6px 0 0 0' }}>
-                      Required for city sticker renewal. Find on your registration or driver's side door jamb.
-                    </p>
-                  </div>
                 </div>
 
                 {/* Price Summary */}
@@ -943,7 +992,7 @@ export default function Protection() {
                     textAlign: 'center'
                   }}>
                     <div style={{ fontSize: '15px', color: COLORS.regulatory, fontWeight: '700', marginBottom: '4px' }}>
-                      Due today: ${billingPlan === 'monthly' ? '12' : '120'}
+                      Due today: ${billingPlan === 'monthly' ? '8' : '80'}
                     </div>
                     <div style={{ fontSize: '12px', color: COLORS.slate }}>
                       Renewal fees billed only when due (30 days before expiration)
@@ -952,7 +1001,7 @@ export default function Protection() {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '15px', color: COLORS.graphite, fontWeight: '600' }}>
                     <span>Protection subscription ({billingPlan})</span>
-                    <span>${billingPlan === 'monthly' ? '12' : '120'}</span>
+                    <span>${billingPlan === 'monthly' ? '8' : '80'}</span>
                   </div>
 
                   {needsCitySticker && (
@@ -964,8 +1013,8 @@ export default function Protection() {
 
                   {needsLicensePlate && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: COLORS.slate }}>
-                      <span>License plate (billed later)</span>
-                      <span>${hasVanityPlate ? '164' : '155'}</span>
+                      <span>License plate - {LICENSE_PLATE_TYPE_INFO[licensePlateType].label} (billed later)</span>
+                      <span>${licensePlateRenewalCost.toFixed(2)}</span>
                     </div>
                   )}
 
@@ -1142,45 +1191,6 @@ export default function Protection() {
             )}
           </div>
 
-          {/* Questions Link */}
-          <div style={{
-            marginTop: '48px',
-            textAlign: 'center',
-            padding: '24px',
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: `1px solid ${COLORS.border}`,
-            maxWidth: '600px',
-            margin: '48px auto 0 auto'
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: COLORS.graphite,
-              marginBottom: '12px',
-              fontFamily: '"Space Grotesk", sans-serif'
-            }}>
-              Questions about coverage?
-            </h3>
-            <p style={{ fontSize: '15px', color: COLORS.slate, marginBottom: '16px', lineHeight: '1.5' }}>
-              See what's covered, how it works, and full guarantee conditions
-            </p>
-            <button
-              onClick={() => router.push('/protection/guarantee')}
-              style={{
-                backgroundColor: 'white',
-                color: COLORS.regulatory,
-                border: `2px solid ${COLORS.regulatory}`,
-                borderRadius: '8px',
-                padding: '12px 24px',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              View Service Guarantee & FAQ
-            </button>
-          </div>
         </div>
       </section>
 
@@ -1307,6 +1317,47 @@ export default function Protection() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Questions Link - After What's Included */}
+      <section style={{ padding: '48px 24px', backgroundColor: COLORS.concrete }}>
+        <div style={{
+          textAlign: 'center',
+          padding: '32px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          border: `1px solid ${COLORS.border}`,
+          maxWidth: '600px',
+          margin: '0 auto'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: COLORS.graphite,
+            marginBottom: '12px',
+            fontFamily: '"Space Grotesk", sans-serif'
+          }}>
+            Questions about coverage?
+          </h3>
+          <p style={{ fontSize: '15px', color: COLORS.slate, marginBottom: '16px', lineHeight: '1.5' }}>
+            See what's covered, how it works, and full guarantee conditions
+          </p>
+          <button
+            onClick={() => router.push('/protection/guarantee')}
+            style={{
+              backgroundColor: 'white',
+              color: COLORS.regulatory,
+              border: `2px solid ${COLORS.regulatory}`,
+              borderRadius: '8px',
+              padding: '12px 24px',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            View Service Guarantee & FAQ
+          </button>
         </div>
       </section>
 
