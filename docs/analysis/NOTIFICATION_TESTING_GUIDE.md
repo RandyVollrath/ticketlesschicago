@@ -61,7 +61,7 @@ psql -c "UPDATE user_profiles SET
   created_at = NOW() - INTERVAL '2 days',
   has_permit_zone = true,
   permit_requested = true,
-  email_forwarding_configured = false,
+  residency_forwarding_enabled = false,
   residency_proof_path = NULL
 WHERE email = 'test@example.com'"
 
@@ -90,7 +90,7 @@ psql -c "UPDATE user_profiles SET
   city_sticker_expiry = (NOW() + INTERVAL '30 days')::date,
   has_permit_zone = true,
   permit_requested = true,
-  email_forwarding_configured = false,
+  residency_forwarding_enabled = false,
   residency_proof_path = NULL
 WHERE email = 'test@example.com'"
 
