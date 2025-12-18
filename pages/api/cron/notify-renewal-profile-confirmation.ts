@@ -15,7 +15,7 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  *
  * Only sends to users who have:
  * - has_protection = true (paid users)
- * - At least one renewal date set (city_sticker_expiry, license_plate_expiry, or emissions_test_due)
+ * - At least one renewal date set (city_sticker_expiry, license_plate_expiry, or emissions_date)
  *
  * Schedule: Daily at 9 AM CT
  */

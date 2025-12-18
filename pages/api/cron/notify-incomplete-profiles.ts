@@ -47,7 +47,7 @@ export default async function handler(
         license_image_path_back,
         has_permit_zone,
         permit_requested,
-        email_forwarding_configured,
+        residency_forwarding_enabled,
         residency_proof_path
       `)
       .eq('has_protection', true)
@@ -74,7 +74,7 @@ export default async function handler(
           citySticker: !user.city_sticker_expiry,
           licensePlate: !user.license_plate_expiry,
           driverLicense: user.has_permit_zone && user.permit_requested && (!user.license_image_path || !user.license_image_path_back),
-          residencyProof: user.has_permit_zone && user.permit_requested && !user.email_forwarding_configured && !user.residency_proof_path,
+          residencyProof: user.has_permit_zone && user.permit_requested && !user.residency_forwarding_enabled && !user.residency_proof_path,
         };
 
         const hasMissingFields = Object.values(missingFields).some(missing => missing);

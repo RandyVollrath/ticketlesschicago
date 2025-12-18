@@ -43,7 +43,7 @@ export default async function handler(
       .eq('has_protection', true)
       .eq('has_permit_zone', true)
       .eq('permit_requested', true)
-      .eq('email_forwarding_configured', false)
+      .eq('residency_forwarding_enabled', false)
       .gte('created_at', tenDaysAgo.toISOString());
 
     if (usersError) {
