@@ -188,7 +188,7 @@ export const LICENSE_PLATE_PRICES = {
 export const TICKET_AMOUNTS = {
   STREET_CLEANING: { amount: 75, displayAmount: '$75' },
   EXPIRED_STICKER: { amount: 200, displayAmount: '$200' },
-  EXPIRED_PLATES: { amount: 120, displayAmount: '$120' },
+  EXPIRED_PLATES: { amount: 100, displayAmount: '$100+' },
   NO_PERMIT: { amount: 75, displayAmount: '$75' },
   SNOW_BAN_TICKET: { amount: 60, displayAmount: '$60' },
   SNOW_BAN_TOW: { amount: 150, displayAmount: '$150' },

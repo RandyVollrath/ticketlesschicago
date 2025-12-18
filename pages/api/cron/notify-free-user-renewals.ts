@@ -188,7 +188,7 @@ How to renew:
 4. Display new sticker before ${renewalDate}
       `.trim();
     } else if (renewal.type === 'license_plate') {
-      ticketWarning = 'Expired plates result in $120+ tickets and potential towing.';
+      ticketWarning = 'Expired plates result in $100+ tickets and potential towing.';
       actionSteps = `
 How to renew:
 1. Visit ilsos.gov or any Secretary of State facility

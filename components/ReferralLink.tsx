@@ -167,8 +167,8 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
           }}>
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>$24</div>
-                <div style={{ fontSize: '13px', color: '#3b82f6' }}>per referral (20% of $120)</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>$16</div>
+                <div style={{ fontSize: '13px', color: '#3b82f6' }}>per referral (20% of $80)</div>
               </div>
             </div>
             <p style={{ fontSize: '14px', color: '#1e40af', margin: 0 }}>
@@ -189,7 +189,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             <ul style={{ fontSize: '13px', color: '#78350f', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
               <li>Share your link with friends who might benefit from Autopilot</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
-              <li>Earn <strong>$24</strong> for each annual subscriber you refer (20% of $120)</li>
+              <li>Earn <strong>$16</strong> for each annual subscriber you refer (20% of $80)</li>
               <li>Rewards are paid out monthly via PayPal or bank transfer</li>
               <li>If a referred customer cancels, monthly payments will stop</li>
               <li>Program terms may be modified with notice to participants</li>
@@ -237,10 +237,10 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             </p>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#166534' }}>
-                $24
+                $16
               </div>
               <div style={{ fontSize: '13px', color: '#15803d' }}>
-                per referral (20% of $120)
+                per referral (20% of $80)
               </div>
             </div>
           </div>
@@ -303,7 +303,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
               <li>Share your link with friends who might benefit from Autopilot</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
-              <li>You earn <strong>$24</strong> for each annual subscriber (20% of $120)</li>
+              <li>You earn <strong>$16</strong> for each annual subscriber (20% of $80)</li>
               <li>Rewards are paid out monthly via PayPal or bank transfer</li>
               <li>If a referred customer cancels, monthly payments will stop</li>
               <li>Program terms may be modified with notice to participants</li>
