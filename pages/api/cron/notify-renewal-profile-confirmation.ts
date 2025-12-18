@@ -57,6 +57,7 @@ export default async function handler(
         city_sticker_expiry,
         license_plate_expiry,
         emissions_date,
+        emissions_completed,
         has_permit_zone,
         permit_requested,
         license_image_path,
@@ -254,9 +255,13 @@ async function sendProfileConfirmationEmail(
       }
     }
 
-    // Add emissions reminder for plate renewals
-    if (renewal.type === 'license_plate' && !user.emissions_date) {
-      items.push('Add your emissions test due date (required for plate renewal)');
+    // Add emissions warnings for plate renewals
+    if (renewal.type === 'license_plate') {
+      if (!user.emissions_completed) {
+        items.push('⚠️ COMPLETE YOUR EMISSIONS TEST - We cannot renew your plates until this is done!');
+      } else if (!user.emissions_date) {
+        items.push('Add your emissions test due date');
+      }
     }
 
     actionItems = items.map(item => `  - ${item}`).join('\n');

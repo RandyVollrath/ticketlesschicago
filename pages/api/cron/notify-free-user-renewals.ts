@@ -54,6 +54,7 @@ export default async function handler(
         city_sticker_expiry,
         license_plate_expiry,
         emissions_date,
+        emissions_completed,
         notification_preferences
       `)
       .eq('has_protection', false);
@@ -188,14 +189,34 @@ How to renew:
 4. Display new sticker before ${renewalDate}
       `.trim();
     } else if (renewal.type === 'license_plate') {
-      ticketWarning = 'Expired plates result in $100+ tickets and potential towing.';
-      actionSteps = `
+      ticketWarning = 'Expired plates result in $120+ tickets and potential towing.';
+
+      // Check if emissions is blocking their renewal
+      const emissionsBlocking = !user.emissions_completed;
+
+      if (emissionsBlocking) {
+        actionSteps = `
+⚠️ IMPORTANT: You must complete your emissions test FIRST!
+
+Step 1 - Emissions Test (REQUIRED):
+1. Visit any Illinois emissions testing station (airteam.app)
+2. Bring your vehicle registration
+3. Test takes about 10 minutes
+4. Results are sent electronically to the state
+
+Step 2 - Then Renew Plates:
+1. Visit ilsos.gov or any Secretary of State facility
+2. Pay renewal fee ($151 for most vehicles)
+3. New sticker must be displayed before ${renewalDate}
+        `.trim();
+      } else {
+        actionSteps = `
 How to renew:
 1. Visit ilsos.gov or any Secretary of State facility
-2. Complete emissions test if required
-3. Pay renewal fee ($151 for most vehicles)
-4. New sticker must be displayed before ${renewalDate}
-      `.trim();
+2. Pay renewal fee ($151 for most vehicles)
+3. New sticker must be displayed before ${renewalDate}
+        `.trim();
+      }
     } else if (renewal.type === 'emissions') {
       ticketWarning = 'You cannot renew your plates without a valid emissions test.';
       actionSteps = `
