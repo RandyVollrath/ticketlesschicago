@@ -53,7 +53,7 @@ export default async function handler(
         last_name,
         city_sticker_expiry,
         license_plate_expiry,
-        emissions_test_due,
+        emissions_date,
         notification_preferences
       `)
       .eq('has_protection', false);
@@ -90,10 +90,10 @@ export default async function handler(
             label: 'License Plates'
           });
         }
-        if (user.emissions_test_due) {
+        if (user.emissions_date) {
           renewalDates.push({
             type: 'emissions',
-            date: new Date(user.emissions_test_due),
+            date: new Date(user.emissions_date),
             label: 'Emissions Test'
           });
         }
