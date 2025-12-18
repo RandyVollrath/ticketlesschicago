@@ -56,6 +56,21 @@
     },
     "pages/api/cron/send-sticker-reminders.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/sync-winter-ban-streets.ts": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/sync-snow-routes.ts": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/mobile-parking-reminders.ts": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/notify-renewal-profile-confirmation.ts": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/notify-free-user-renewals.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -124,15 +139,27 @@
       "schedule": "0 15 * * *"
     },
     {
-      "path": "/api/cron/notify-sticker-purchased",
+      "path": "/api/cron/send-sticker-reminders",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/sync-winter-ban-streets",
+      "schedule": "0 6 15 11 *"
+    },
+    {
+      "path": "/api/cron/sync-snow-routes",
+      "schedule": "0 6 1 11 *"
+    },
+    {
+      "path": "/api/cron/mobile-parking-reminders",
+      "schedule": "0 3,4,10,11,12,13 * * *"
+    },
+    {
+      "path": "/api/cron/notify-renewal-profile-confirmation",
       "schedule": "0 15 * * *"
     },
     {
-      "path": "/api/cron/send-winter-ban-reminder",
-      "schedule": "0 15 30 11 *"
-    },
-    {
-      "path": "/api/cron/send-sticker-reminders",
+      "path": "/api/cron/notify-free-user-renewals",
       "schedule": "0 16 * * *"
     }
   ],

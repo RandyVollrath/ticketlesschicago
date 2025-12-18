@@ -12,17 +12,17 @@
 // ==========================================
 export const SUBSCRIPTION_PRICING = {
   monthly: {
-    amount: 12,
-    displayAmount: '$12',
+    amount: 8,
+    displayAmount: '$8',
     interval: 'month',
     stripePriceEnvKey: 'STRIPE_PROTECTION_MONTHLY_PRICE_ID',
   },
   annual: {
-    amount: 120,
-    displayAmount: '$120',
+    amount: 80,
+    displayAmount: '$80',
     interval: 'year',
     stripePriceEnvKey: 'STRIPE_PROTECTION_ANNUAL_PRICE_ID',
-    savings: '$24', // 2 months free
+    savings: '$16', // 2 months free
   },
 } as const;
 
@@ -36,7 +36,7 @@ export const PLATFORM_FEES = {
 
   // Remitter processing fee (paid from subscription revenue)
   // Sent to remitter for each renewal they process
-  REMITTER_SERVICE_FEE: 12.00,
+  REMITTER_SERVICE_FEE: 6.00,
 
   // Residential parking permit filing fee
   PERMIT_FEE: 30.00,
@@ -51,38 +51,134 @@ export const STRIPE_FEES = {
 } as const;
 
 // ==========================================
-// CITY STICKER PRICING (Chicago 2024-2025)
-// These are the actual costs the city charges
-// Our Stripe prices should match these
+// CITY STICKER PRICING (Chicago 2025)
+// Official prices from chicityclerk.com
 // ==========================================
 export const CITY_STICKER_PRICES = {
   // Motorcycles and motorized bicycles
-  MB: { amount: 75, displayAmount: '$75', label: 'Motorcycle/Motorized Bicycle' },
+  MB: { amount: 53.04, displayAmount: '$53.04', label: 'Motorcycle/Motorized Bicycle' },
 
-  // Passenger vehicles (most common)
-  P: { amount: 151, displayAmount: '$151', label: 'Passenger Vehicle' },
+  // Passenger vehicles (most common) - ≤4,500 lbs curb weight, ≤2,499 lbs payload
+  P: { amount: 100.17, displayAmount: '$100.17', label: 'Passenger Vehicle' },
 
-  // Large passenger vehicles (SUVs, vans)
-  LP: { amount: 151, displayAmount: '$151', label: 'Large Passenger Vehicle' },
+  // Large passenger vehicles - ≥4,501 lbs curb weight, ≤2,499 lbs payload
+  LP: { amount: 159.12, displayAmount: '$159.12', label: 'Large Passenger Vehicle' },
 
-  // Small trucks (under 4,500 lbs)
-  ST: { amount: 151, displayAmount: '$151', label: 'Small Truck' },
+  // Small trucks - ≤16,000 lbs or ≥2,500 lbs payload
+  ST: { amount: 235.71, displayAmount: '$235.71', label: 'Small Truck' },
 
-  // Large trucks (4,500+ lbs)
-  LT: { amount: 151, displayAmount: '$151', label: 'Large Truck' },
+  // Large trucks - ≥16,001 lbs or ≥2,500 lbs payload
+  LT: { amount: 530.40, displayAmount: '$530.40', label: 'Large Truck' },
 } as const;
 
 // ==========================================
-// LICENSE PLATE PRICING (Illinois SOS 2024-2025)
+// LICENSE PLATE PRICING (Illinois SOS 2025)
+// Official fees from ilsos.gov
 // ==========================================
+
+// License plate type definitions for UI
+export type LicensePlateType =
+  | 'passenger_standard' | 'passenger_personalized' | 'passenger_vanity'
+  | 'motorcycle_standard' | 'motorcycle_personalized' | 'motorcycle_vanity'
+  | 'btruck_standard' | 'btruck_personalized' | 'btruck_vanity'
+  | 'ctruck'
+  | 'disability_standard' | 'disability_personalized' | 'disability_vanity';
+
+export const LICENSE_PLATE_TYPE_INFO: Record<LicensePlateType, {
+  label: string;
+  description: string;
+  totalRenewal: number;
+  category: string;
+}> = {
+  // Passenger vehicles
+  passenger_standard: {
+    label: 'Passenger - Standard',
+    description: 'Regular passenger vehicle plates',
+    totalRenewal: 151,
+    category: 'Passenger',
+  },
+  passenger_personalized: {
+    label: 'Passenger - Personalized',
+    description: 'Passenger plates with letters AND numbers',
+    totalRenewal: 158,
+    category: 'Passenger',
+  },
+  passenger_vanity: {
+    label: 'Passenger - Vanity',
+    description: 'Passenger plates with letters only or numbers only',
+    totalRenewal: 164,
+    category: 'Passenger',
+  },
+  // Motorcycle
+  motorcycle_standard: {
+    label: 'Motorcycle - Standard',
+    description: 'Regular motorcycle plates',
+    totalRenewal: 41,
+    category: 'Motorcycle',
+  },
+  motorcycle_personalized: {
+    label: 'Motorcycle - Personalized',
+    description: 'Motorcycle plates with letters AND numbers',
+    totalRenewal: 48,
+    category: 'Motorcycle',
+  },
+  motorcycle_vanity: {
+    label: 'Motorcycle - Vanity',
+    description: 'Motorcycle plates with letters only or numbers only',
+    totalRenewal: 54,
+    category: 'Motorcycle',
+  },
+  // B-Truck
+  btruck_standard: {
+    label: 'B-Truck - Standard',
+    description: 'Light truck plates (8,000 lbs or less)',
+    totalRenewal: 151,
+    category: 'B-Truck',
+  },
+  btruck_personalized: {
+    label: 'B-Truck - Personalized',
+    description: 'B-Truck plates with letters AND numbers',
+    totalRenewal: 158,
+    category: 'B-Truck',
+  },
+  btruck_vanity: {
+    label: 'B-Truck - Vanity',
+    description: 'B-Truck plates with letters only or numbers only',
+    totalRenewal: 164,
+    category: 'B-Truck',
+  },
+  // C-Truck
+  ctruck: {
+    label: 'C-Truck - Standard',
+    description: 'Medium truck plates (8,001-16,000 lbs)',
+    totalRenewal: 218,
+    category: 'C-Truck',
+  },
+  // Persons with Disabilities
+  disability_standard: {
+    label: 'Disability - Standard',
+    description: 'Persons with disabilities plates',
+    totalRenewal: 151,
+    category: 'Disability',
+  },
+  disability_personalized: {
+    label: 'Disability - Personalized',
+    description: 'Disability plates with letters AND numbers',
+    totalRenewal: 158,
+    category: 'Disability',
+  },
+  disability_vanity: {
+    label: 'Disability - Vanity',
+    description: 'Disability plates with letters only or numbers only',
+    totalRenewal: 164,
+    category: 'Disability',
+  },
+} as const;
+
+// Legacy constants for backward compatibility
 export const LICENSE_PLATE_PRICES = {
-  // Standard registration renewal
-  STANDARD: { amount: 151, displayAmount: '$151', label: 'Standard Renewal' },
-
-  // Vanity/personalized plate additional fee
+  BASE_RENEWAL: { amount: 151, displayAmount: '$151', label: 'Registration Renewal' },
   VANITY_ADDITIONAL: { amount: 13, displayAmount: '+$13', label: 'Vanity Plate Fee' },
-
-  // Personalized plate fee
   PERSONALIZED_ADDITIONAL: { amount: 7, displayAmount: '+$7', label: 'Personalized Plate Fee' },
 } as const;
 
@@ -131,4 +227,18 @@ export function formatCentsToDollars(cents: number): string {
  */
 export function formatDollars(amount: number): string {
   return `$${amount.toFixed(2)}`;
+}
+
+/**
+ * Get license plate renewal cost by plate type
+ */
+export function getLicensePlateRenewalCost(plateType: LicensePlateType): number {
+  return LICENSE_PLATE_TYPE_INFO[plateType]?.totalRenewal || LICENSE_PLATE_PRICES.BASE_RENEWAL.amount;
+}
+
+/**
+ * Get license plate renewal cost with service fee
+ */
+export function getLicensePlateRenewalCostWithFee(plateType: LicensePlateType): number {
+  return getLicensePlateRenewalCost(plateType) + PLATFORM_FEES.SERVICE_FEE;
 }
