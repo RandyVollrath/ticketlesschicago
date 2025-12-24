@@ -3,6 +3,19 @@ import { supabase } from '../lib/supabase';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import FOIATicketInsights from './FOIATicketInsights';
+import {
+  trackContestPageViewed,
+  trackContestPhotoUploaded,
+  trackContestDataExtracted,
+  trackContestDataEdited,
+  trackContestGroundsSelected,
+  trackContestLetterGenerated,
+  trackContestLetterCopied,
+  trackContestLetterDownloaded,
+  trackContestMailingStarted,
+  trackContestSignatureAdded,
+  trackContestMailingPaid
+} from '../lib/analytics';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -64,6 +77,11 @@ export default function TicketContester({ userId }: TicketContesterProps) {
     'Ticket issued in error (wrong vehicle/plate)'
   ];
 
+  // Track page view on mount
+  useEffect(() => {
+    trackContestPageViewed();
+  }, []);
+
   // Signature canvas handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -121,6 +139,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
     const signatureImage = canvas.toDataURL('image/png');
     setSignature(signatureImage);
+    trackContestSignatureAdded();
     setShowSignatureModal(false);
   };
 
@@ -134,6 +153,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
     }
 
     setTicketPhoto(file);
+    trackContestPhotoUploaded();
     const reader = new FileReader();
     reader.onloadend = () => {
       setTicketPhotoPreview(reader.result as string);
@@ -195,6 +215,15 @@ export default function TicketContester({ userId }: TicketContesterProps) {
           setExtractedData(result.extractedData || {});
           setMessage('✅ Ticket uploaded and analyzed successfully!');
 
+          // Track data extraction
+          const extracted = result.extractedData || {};
+          trackContestDataExtracted({
+            hasTicketNumber: !!extracted.ticketNumber,
+            hasViolationCode: !!extracted.violationCode,
+            hasAmount: !!extracted.ticketAmount,
+            extractionSuccess: Object.keys(extracted).length > 0
+          });
+
           // If extraction failed but upload succeeded, still proceed
           if (!result.extractedData || Object.keys(result.extractedData).length === 0) {
             setMessage('✅ Ticket uploaded! (Note: Could not auto-extract data, please enter manually)');
@@ -253,6 +282,14 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
     setContestGrounds(newGrounds);
     calculateWinProbability(newGrounds);
+
+    // Track grounds selection
+    if (newGrounds.length > 0) {
+      trackContestGroundsSelected({
+        grounds: newGrounds,
+        winProbability: winProbability?.probability
+      });
+    }
   }
 
   async function handleGenerateLetter() {
@@ -303,6 +340,13 @@ export default function TicketContester({ userId }: TicketContesterProps) {
       if (!result.contestLetter) {
         throw new Error('Letter generation failed. Please try again.');
       }
+
+      // Track letter generation
+      trackContestLetterGenerated({
+        violationCode: extractedData?.violationCode,
+        groundCount: contestGrounds.length,
+        winProbability: winProbability?.probability
+      });
 
       setMessage('✅ Contest letter generated successfully!');
       setStep(4);
@@ -494,14 +538,17 @@ export default function TicketContester({ userId }: TicketContesterProps) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
-                    Ticket Amount ($)
+                    Ticket Amount (Optional)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={extractedData.ticketAmount || ''}
-                    onChange={(e) => setExtractedData({ ...extractedData, ticketAmount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9.]/g, '');
+                      setExtractedData({ ...extractedData, ticketAmount: parseFloat(value) || 0 });
+                    }}
                     placeholder="0.00"
-                    step="0.01"
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -797,6 +844,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(contestLetter);
+                  trackContestLetterCopied();
                   setMessage('✅ Letter copied to clipboard!');
                 }}
                 style={{
@@ -823,6 +871,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                   a.download = `ticket-contest-${extractedData?.ticketNumber || Date.now()}.txt`;
                   a.click();
                   URL.revokeObjectURL(url);
+                  trackContestLetterDownloaded();
                   setMessage('✅ Letter downloaded!');
                 }}
                 style={{
@@ -841,7 +890,10 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                 💾 Download
               </button>
               <button
-                onClick={() => setShowMailModal(true)}
+                onClick={() => {
+                  trackContestMailingStarted();
+                  setShowMailModal(true);
+                }}
                 style={{
                   flex: '1 1 calc(33.33% - 8px)',
                   minWidth: '140px',
@@ -958,7 +1010,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             }}>
               <p style={{ fontSize: '14px', color: '#92400e', margin: 0, textAlign: 'center' }}>
                 Average Chicago driver: <strong>$1,000/year in tickets</strong><br/>
-                Autopilot Protection: <strong>$120/year</strong><br/>
+                Autopilot Protection: <strong>$80/year</strong><br/>
                 <span style={{ fontSize: '16px', fontWeight: '700' }}>Save up to $1,000 per year</span>
               </p>
             </div>
@@ -985,7 +1037,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                 e.currentTarget.style.backgroundColor = '#2563eb';
               }}
             >
-              Get Protection - $120/year →
+              Get Protection - $80/year →
             </button>
 
             <p style={{
@@ -1270,6 +1322,10 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                   <PaymentForm
                     contestId={contestId}
                     onSuccess={() => {
+                      trackContestMailingPaid({
+                        violationCode: extractedData?.violationCode,
+                        ticketAmount: extractedData?.ticketAmount
+                      });
                       setMessage('✅ Payment successful! Letter will be mailed within 24 hours. Check your email for tracking.');
                       setShowMailModal(false);
                       setPaymentStep('address');

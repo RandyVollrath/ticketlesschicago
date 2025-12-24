@@ -179,6 +179,89 @@ export const trackTicketContestCompleted = (data: {
 };
 
 // ============================================
+// TICKET CONTESTER FUNNEL EVENTS
+// ============================================
+
+export const trackContestPageViewed = () => {
+  capture('contest_page_viewed');
+};
+
+export const trackContestPhotoUploaded = () => {
+  capture('contest_photo_uploaded');
+};
+
+export const trackContestDataExtracted = (data: {
+  hasTicketNumber: boolean;
+  hasViolationCode: boolean;
+  hasAmount: boolean;
+  extractionSuccess: boolean;
+}) => {
+  capture('contest_data_extracted', {
+    has_ticket_number: data.hasTicketNumber,
+    has_violation_code: data.hasViolationCode,
+    has_amount: data.hasAmount,
+    extraction_success: data.extractionSuccess
+  });
+};
+
+export const trackContestDataEdited = (fieldsEdited: string[]) => {
+  capture('contest_data_edited', {
+    fields_edited: fieldsEdited,
+    field_count: fieldsEdited.length
+  });
+};
+
+export const trackContestGroundsSelected = (data: {
+  grounds: string[];
+  winProbability?: number;
+}) => {
+  capture('contest_grounds_selected', {
+    grounds: data.grounds,
+    ground_count: data.grounds.length,
+    win_probability: data.winProbability
+  });
+};
+
+export const trackContestLetterGenerated = (data: {
+  violationCode?: string;
+  groundCount: number;
+  winProbability?: number;
+}) => {
+  capture('contest_letter_generated', {
+    violation_code: data.violationCode,
+    ground_count: data.groundCount,
+    win_probability: data.winProbability
+  });
+};
+
+export const trackContestLetterCopied = () => {
+  capture('contest_letter_copied');
+};
+
+export const trackContestLetterDownloaded = () => {
+  capture('contest_letter_downloaded');
+};
+
+export const trackContestMailingStarted = () => {
+  capture('contest_mailing_started');
+};
+
+export const trackContestSignatureAdded = () => {
+  capture('contest_signature_added');
+};
+
+export const trackContestMailingPaid = (data: {
+  violationCode?: string;
+  ticketAmount?: number;
+}) => {
+  capture('contest_mailing_paid', {
+    violation_code: data.violationCode,
+    ticket_amount: data.ticketAmount,
+    revenue: 5
+  });
+};
+
+// ============================================
 // SETTINGS & ENGAGEMENT EVENTS
 // ============================================
 
@@ -304,6 +387,19 @@ export const analytics = {
   ticketSubmitted: trackTicketSubmitted,
   ticketContestStarted: trackTicketContestStarted,
   ticketContestCompleted: trackTicketContestCompleted,
+
+  // Ticket Contester Funnel
+  contestPageViewed: trackContestPageViewed,
+  contestPhotoUploaded: trackContestPhotoUploaded,
+  contestDataExtracted: trackContestDataExtracted,
+  contestDataEdited: trackContestDataEdited,
+  contestGroundsSelected: trackContestGroundsSelected,
+  contestLetterGenerated: trackContestLetterGenerated,
+  contestLetterCopied: trackContestLetterCopied,
+  contestLetterDownloaded: trackContestLetterDownloaded,
+  contestMailingStarted: trackContestMailingStarted,
+  contestSignatureAdded: trackContestSignatureAdded,
+  contestMailingPaid: trackContestMailingPaid,
 
   // Settings
   settingsViewed: trackSettingsViewed,
