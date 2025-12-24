@@ -304,11 +304,11 @@ export default function CheckTicket() {
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: '16px', top: '14px', fontSize: '16px', color: COLORS.slate }}>$</span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={ticketAmount}
-                    onChange={(e) => setTicketAmount(e.target.value)}
+                    onChange={(e) => setTicketAmount(e.target.value.replace(/[^0-9.]/g, ''))}
                     placeholder="60.00"
-                    step="0.01"
                     style={{
                       width: '100%',
                       padding: '14px 16px 14px 32px',
