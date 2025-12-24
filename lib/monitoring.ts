@@ -351,9 +351,25 @@ export interface MissingPermitDoc {
   urgency: 'critical' | 'urgent' | 'reminder';
 }
 
+export interface TicketContesterStats {
+  totalContests: number;
+  last24Hours: number;
+  lettersGenerated: number;
+  lettersMailed: number;
+  mailRevenue: number; // in dollars
+  topViolationCodes: Array<{ code: string; count: number }>;
+  recentContests: Array<{
+    createdAt: string;
+    violationCode: string | null;
+    status: string;
+    mailStatus: string | null;
+  }>;
+}
+
 export interface AdminActionItems {
   upcomingRenewals: UpcomingRenewal[];
   missingPermitDocs: MissingPermitDoc[];
+  ticketContester: TicketContesterStats;
   systemHealth: {
     notificationsWorking: boolean;
     lastNotificationRun: string | null;
@@ -577,18 +593,102 @@ export async function getSystemHealth(): Promise<AdminActionItems['systemHealth'
 }
 
 /**
+ * Get ticket contester statistics
+ */
+export async function getTicketContesterStats(): Promise<TicketContesterStats> {
+  try {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Get all contests - use any type since mail_status may not be in generated types
+    const { data: contests, error } = await supabaseAdmin
+      .from('ticket_contests')
+      .select('id, created_at, violation_code, status, mail_service_payment_status, mail_service_amount, contest_letter')
+      .order('created_at', { ascending: false }) as { data: any[] | null; error: any };
+
+    if (error) {
+      console.error('Error fetching ticket contests:', error);
+      return getEmptyContesterStats();
+    }
+
+    if (!contests || contests.length === 0) {
+      return getEmptyContesterStats();
+    }
+
+    // Calculate stats
+    const totalContests = contests.length;
+    const last24Hours = contests.filter((c: any) =>
+      new Date(c.created_at) >= yesterday
+    ).length;
+    const lettersGenerated = contests.filter((c: any) => c.contest_letter).length;
+    const lettersMailed = contests.filter((c: any) =>
+      c.mail_service_payment_status === 'paid'
+    ).length;
+    const mailRevenue = contests
+      .filter((c: any) => c.mail_service_amount)
+      .reduce((sum: number, c: any) => sum + (c.mail_service_amount || 0), 0);
+
+    // Top violation codes
+    const violationCounts: Record<string, number> = {};
+    contests.forEach((c: any) => {
+      if (c.violation_code) {
+        violationCounts[c.violation_code] = (violationCounts[c.violation_code] || 0) + 1;
+      }
+    });
+    const topViolationCodes = Object.entries(violationCounts)
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Recent contests (last 10)
+    const recentContests = contests.slice(0, 10).map((c: any) => ({
+      createdAt: c.created_at,
+      violationCode: c.violation_code,
+      status: c.status || 'draft',
+      mailStatus: c.mail_service_payment_status || null
+    }));
+
+    return {
+      totalContests,
+      last24Hours,
+      lettersGenerated,
+      lettersMailed,
+      mailRevenue,
+      topViolationCodes,
+      recentContests
+    };
+  } catch (error) {
+    console.error('Error in getTicketContesterStats:', error);
+    return getEmptyContesterStats();
+  }
+}
+
+function getEmptyContesterStats(): TicketContesterStats {
+  return {
+    totalContests: 0,
+    last24Hours: 0,
+    lettersGenerated: 0,
+    lettersMailed: 0,
+    mailRevenue: 0,
+    topViolationCodes: [],
+    recentContests: []
+  };
+}
+
+/**
  * Get all admin action items (consolidated)
  */
 export async function getAdminActionItems(): Promise<AdminActionItems> {
-  const [upcomingRenewals, missingPermitDocs, systemHealth] = await Promise.all([
+  const [upcomingRenewals, missingPermitDocs, systemHealth, ticketContester] = await Promise.all([
     getUpcomingRenewals(30),
     getMissingPermitDocs(),
-    getSystemHealth()
+    getSystemHealth(),
+    getTicketContesterStats()
   ]);
 
   return {
     upcomingRenewals,
     missingPermitDocs,
+    ticketContester,
     systemHealth
   };
 }

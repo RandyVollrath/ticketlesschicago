@@ -58,6 +58,33 @@ export async function sendDailyDigest(options: DigestOptions = {}): Promise<{
     // Build admin action items section
     let adminSection = '';
 
+    // Ticket Contester stats (show prominently if there's activity)
+    if (adminItems.ticketContester && adminItems.ticketContester.totalContests > 0) {
+      const tc = adminItems.ticketContester;
+      adminSection += `\n\n⚖️ TICKET CONTESTER ACTIVITY\n`;
+      adminSection += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      adminSection += `  📊 Total Contests: ${tc.totalContests}\n`;
+      adminSection += `  🆕 Last 24 Hours: ${tc.last24Hours}\n`;
+      adminSection += `  📝 Letters Generated: ${tc.lettersGenerated}\n`;
+      adminSection += `  📮 Letters Mailed: ${tc.lettersMailed}\n`;
+      adminSection += `  💰 Mail Revenue: $${tc.mailRevenue.toFixed(2)}\n`;
+
+      if (tc.topViolationCodes.length > 0) {
+        adminSection += `\n  Top Violation Codes:\n`;
+        tc.topViolationCodes.forEach(v => {
+          adminSection += `    • ${v.code}: ${v.count} contests\n`;
+        });
+      }
+
+      if (tc.recentContests.length > 0 && tc.last24Hours > 0) {
+        adminSection += `\n  Recent Activity:\n`;
+        tc.recentContests.slice(0, 5).forEach(c => {
+          const date = new Date(c.createdAt).toLocaleString();
+          adminSection += `    • ${date} - ${c.violationCode || 'Unknown'} (${c.status}${c.mailStatus ? `, mail: ${c.mailStatus}` : ''})\n`;
+        });
+      }
+    }
+
     // System health alerts (show first if issues)
     if (adminItems.systemHealth.issues.length > 0) {
       adminSection += `\n\n⚠️ SYSTEM HEALTH ISSUES\n`;
@@ -202,6 +229,46 @@ function generateDigestHTML(digest: string, stats: any, adminItems?: AdminAction
   let adminHTML = '';
 
   if (adminItems) {
+    // Ticket Contester stats
+    if (adminItems.ticketContester && adminItems.ticketContester.totalContests > 0) {
+      const tc = adminItems.ticketContester;
+      adminHTML += `
+        <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
+          <h3 style="margin: 0 0 12px; color: #065f46; font-size: 16px;">⚖️ Ticket Contester Activity</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; margin-bottom: 12px;">
+            <div style="background: white; padding: 12px; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: bold; color: #065f46;">${tc.totalContests}</div>
+              <div style="font-size: 11px; color: #6b7280;">Total Contests</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: bold; color: #2563eb;">${tc.last24Hours}</div>
+              <div style="font-size: 11px; color: #6b7280;">Last 24h</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: bold; color: #7c3aed;">${tc.lettersGenerated}</div>
+              <div style="font-size: 11px; color: #6b7280;">Letters Generated</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: bold; color: #059669;">${tc.lettersMailed}</div>
+              <div style="font-size: 11px; color: #6b7280;">Letters Mailed</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: bold; color: #16a34a;">$${tc.mailRevenue.toFixed(0)}</div>
+              <div style="font-size: 11px; color: #6b7280;">Mail Revenue</div>
+            </div>
+          </div>
+          ${tc.topViolationCodes.length > 0 ? `
+            <div style="background: white; padding: 12px; border-radius: 6px; margin-top: 12px;">
+              <strong style="color: #065f46; font-size: 13px;">Top Violation Codes:</strong>
+              <div style="margin-top: 8px; font-size: 13px; color: #374151;">
+                ${tc.topViolationCodes.map(v => `${v.code} (${v.count})`).join(', ')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
     // System health issues
     if (adminItems.systemHealth.issues.length > 0) {
       adminHTML += `
