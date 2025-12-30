@@ -161,7 +161,20 @@ export default function AdminPortal() {
   const [message, setMessage] = useState('');
 
   // Active section
-  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals' | 'remitters'>('upcoming-renewals');
+  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals' | 'remitters' | 'ticket-contesting'>('ticket-contesting');
+
+  // Ticket contesting state
+  const [ticketContestingEmail, setTicketContestingEmail] = useState<string>('');
+  const [ticketContestingEmailSaved, setTicketContestingEmailSaved] = useState<string>('');
+  const [paidUsersCount, setPaidUsersCount] = useState<number>(0);
+  const [exportingPlates, setExportingPlates] = useState(false);
+  const [uploadingFindings, setUploadingFindings] = useState(false);
+  const [uploadResults, setUploadResults] = useState<any>(null);
+  const vaFileInputRef = useRef<HTMLInputElement>(null);
+  const [generatingLetters, setGeneratingLetters] = useState(false);
+  const [letterResults, setLetterResults] = useState<any>(null);
+  const [pendingTickets, setPendingTickets] = useState<any[]>([]);
+  const [pendingTicketsCount, setPendingTicketsCount] = useState(0);
 
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
@@ -221,6 +234,7 @@ export default function AdminPortal() {
       if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals();
       if (activeSection === 'remitters') fetchRemitters();
       if (activeSection === 'transfer-requests') fetchTransferRequests();
+      if (activeSection === 'ticket-contesting') fetchTicketContestingData();
       // Always fetch transfer request count for badge
       fetchTransferRequestsCount();
     }
@@ -623,6 +637,177 @@ export default function AdminPortal() {
     }
   };
 
+  // ============ Ticket Contesting Functions ============
+
+  const fetchTicketContestingData = async () => {
+    setLoading(true);
+    try {
+      // Fetch settings
+      const settingsRes = await fetch('/api/admin/ticket-contesting/settings');
+      const settingsData = await settingsRes.json();
+      if (settingsData.success && settingsData.settings?.ticket_contesting_email) {
+        const email = settingsData.settings.ticket_contesting_email.value || '';
+        setTicketContestingEmail(email);
+        setTicketContestingEmailSaved(email);
+      }
+
+      // Fetch plate count
+      const platesRes = await fetch('/api/admin/ticket-contesting/export-plates');
+      const platesData = await platesRes.json();
+      if (platesData.success) {
+        setPaidUsersCount(platesData.totalPlates || 0);
+      }
+
+      // Fetch pending tickets
+      try {
+        const pendingRes = await fetch('/api/admin/ticket-contesting/pending-tickets');
+        const pendingData = await pendingRes.json();
+        if (pendingData.success) {
+          setPendingTickets(pendingData.tickets || []);
+          setPendingTicketsCount(pendingData.count || 0);
+        }
+      } catch (e) {
+        console.log('Pending tickets API not available');
+      }
+    } catch (error: any) {
+      console.error('Error fetching ticket contesting data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveTicketContestingEmail = async () => {
+    try {
+      const response = await fetch('/api/admin/ticket-contesting/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_contesting_email: ticketContestingEmail })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTicketContestingEmailSaved(ticketContestingEmail);
+        setMessage('Email address saved successfully!');
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const exportLicensePlates = async (format: 'json' | 'csv') => {
+    setExportingPlates(true);
+    try {
+      const response = await fetch(`/api/admin/ticket-contesting/export-plates?format=${format}`);
+      if (format === 'csv') {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `paid-users-plates-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        setMessage('License plates exported successfully!');
+      } else {
+        const data = await response.json();
+        setMessage(`Exported ${data.totalPlates} license plates`);
+      }
+    } catch (error: any) {
+      setMessage(`Error exporting: ${error.message}`);
+    } finally {
+      setExportingPlates(false);
+    }
+  };
+
+  const handleVAFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFindings(true);
+    setUploadResults(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/admin/ticket-contesting/upload-findings', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setUploadResults(result.results);
+        setMessage(result.message);
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error uploading: ${error.message}`);
+    } finally {
+      setUploadingFindings(false);
+      if (vaFileInputRef.current) {
+        vaFileInputRef.current.value = '';
+      }
+      fetchTicketContestingData();
+    }
+  };
+
+  const generateContestLetters = async (mode: 'all_pending' | 'batch', batchId?: string) => {
+    setGeneratingLetters(true);
+    setLetterResults(null);
+    setMessage('');
+
+    try {
+      const body: any = { mode };
+      if (batchId) {
+        body.batch_id = batchId;
+      }
+
+      const response = await fetch('/api/admin/ticket-contesting/generate-letters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setLetterResults(result);
+        setMessage(`Generated ${result.processed} contest letters!`);
+
+        // If PDF was generated, trigger download
+        if (result.pdf) {
+          const byteCharacters = atob(result.pdf);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = result.pdfFilename || 'contest-letters.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }
+
+        fetchTicketContestingData();
+      } else {
+        setMessage(`Error: ${result.error}`);
+      }
+    } catch (error: any) {
+      setMessage(`Error generating letters: ${error.message}`);
+    } finally {
+      setGeneratingLetters(false);
+    }
+  };
+
   // ============ Property Tax Functions ============
 
   const fetchPropertyTaxQueue = async () => {
@@ -739,7 +924,7 @@ export default function AdminPortal() {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Admin Portal</h1>
           <button
-            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals(); if (activeSection === 'transfer-requests') fetchTransferRequests(); if (activeSection === 'remitters') fetchRemitters(); }, 0); }}
+            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals(); if (activeSection === 'transfer-requests') fetchTransferRequests(); if (activeSection === 'remitters') fetchRemitters(); if (activeSection === 'ticket-contesting') fetchTicketContestingData(); }, 0); }}
             style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
           >
             Refresh
@@ -750,6 +935,30 @@ export default function AdminPortal() {
       {/* Navigation Tabs */}
       <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '4px', padding: '0 24px', overflowX: 'auto' }}>
+          <button
+            onClick={() => setActiveSection('ticket-contesting')}
+            style={{
+              padding: '16px 24px',
+              border: 'none',
+              background: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: activeSection === 'ticket-contesting' ? '#7c3aed' : '#6b7280',
+              borderBottom: activeSection === 'ticket-contesting' ? '2px solid #7c3aed' : '2px solid transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Ticket Contesting
+            {pendingTicketsCount > 0 && (
+              <span style={{ backgroundColor: '#7c3aed', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>
+                {pendingTicketsCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setActiveSection('upcoming-renewals')}
             style={{
@@ -905,6 +1114,310 @@ export default function AdminPortal() {
       {/* Content */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
         {loading && <p>Loading...</p>}
+
+        {/* ============ Ticket Contesting Section ============ */}
+        {activeSection === 'ticket-contesting' && !loading && (
+          <div>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Ticket Contesting Workflow
+              </h2>
+
+              <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #3b82f6', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+                <div style={{ fontWeight: '600', color: '#1e40af', marginBottom: '8px' }}>
+                  How This Works
+                </div>
+                <ol style={{ margin: 0, paddingLeft: '20px', color: '#1e3a5f', lineHeight: '1.8', fontSize: '14px' }}>
+                  <li>Export the list of paid users&apos; license plates below</li>
+                  <li>Send the list to your VA at the configured email address</li>
+                  <li>VA searches for tickets against each license plate on the Chicago portal</li>
+                  <li>VA uploads their findings using the upload form below</li>
+                  <li>Click &quot;Generate All Letters&quot; to create AI-powered contest letters</li>
+                </ol>
+              </div>
+
+              {/* Settings Section */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                  VA Email Settings
+                </h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
+                  Configure the email address that will receive the license plate export for ticket checking.
+                </p>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input
+                    type="email"
+                    value={ticketContestingEmail}
+                    onChange={(e) => setTicketContestingEmail(e.target.value)}
+                    placeholder="va@example.com"
+                    style={{
+                      flex: 1,
+                      maxWidth: '400px',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid #d1d5db',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <button
+                    onClick={saveTicketContestingEmail}
+                    disabled={ticketContestingEmail === ticketContestingEmailSaved}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: ticketContestingEmail === ticketContestingEmailSaved ? '#d1d5db' : '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: ticketContestingEmail === ticketContestingEmailSaved ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Save Email
+                  </button>
+                </div>
+                {ticketContestingEmailSaved && (
+                  <p style={{ fontSize: '12px', color: '#10b981', marginTop: '8px' }}>
+                    Currently configured: {ticketContestingEmailSaved}
+                  </p>
+                )}
+              </div>
+
+              {/* Export Section */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                  Step 1: Export License Plates
+                </h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
+                  Generate a list of all paid Protection users&apos; license plates and states.
+                </p>
+                <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    <strong>{paidUsersCount}</strong> paid users with license plates
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => exportLicensePlates('csv')}
+                    disabled={exportingPlates}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: exportingPlates ? '#d1d5db' : '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: exportingPlates ? 'wait' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {exportingPlates ? 'Exporting...' : 'Download CSV'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Upload Section */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                  Step 2: Upload VA Findings
+                </h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
+                  Upload the CSV file from the VA containing tickets found for your users.
+                </p>
+
+                <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                  <div style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px', fontSize: '14px' }}>
+                    Expected CSV Format
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#78350f', marginBottom: '8px' }}>
+                    The CSV should have a header row with these columns (order doesn&apos;t matter):
+                  </p>
+                  <code style={{ fontSize: '12px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px 12px', borderRadius: '4px', display: 'block' }}>
+                    license_plate, license_state, ticket_number, issue_date, violation_code, violation_description, violation_location, amount
+                  </code>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input
+                    type="file"
+                    ref={vaFileInputRef}
+                    accept=".csv"
+                    onChange={handleVAFileUpload}
+                    disabled={uploadingFindings}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    onClick={() => vaFileInputRef.current?.click()}
+                    disabled={uploadingFindings}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: uploadingFindings ? '#d1d5db' : '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: uploadingFindings ? 'wait' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {uploadingFindings ? 'Uploading...' : 'Upload CSV File'}
+                  </button>
+                </div>
+
+                {/* Upload Results */}
+                {uploadResults && (
+                  <div style={{ marginTop: '16px', backgroundColor: '#f0fdf4', border: '1px solid #10b981', borderRadius: '8px', padding: '16px' }}>
+                    <div style={{ fontWeight: '600', color: '#166534', marginBottom: '12px' }}>
+                      Upload Results
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#374151' }}>{uploadResults.total}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Records</div>
+                      </div>
+                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{uploadResults.inserted}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Inserted</div>
+                      </div>
+                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#3b82f6' }}>{uploadResults.matchedToUser}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Matched to Users</div>
+                      </div>
+                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b' }}>{uploadResults.skipped}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Skipped</div>
+                      </div>
+                    </div>
+                    {uploadResults.errors && uploadResults.errors.length > 0 && (
+                      <div style={{ marginTop: '12px' }}>
+                        <div style={{ fontWeight: '500', color: '#dc2626', marginBottom: '4px', fontSize: '13px' }}>Errors:</div>
+                        <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#991b1b', maxHeight: '100px', overflowY: 'auto' }}>
+                          {uploadResults.errors.slice(0, 10).map((err: string, i: number) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                          {uploadResults.errors.length > 10 && (
+                            <li>...and {uploadResults.errors.length - 10} more errors</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Step 3: Generate Contest Letters */}
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                  Step 3: Generate AI Contest Letters
+                </h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                  Generate professional contest letters using Claude Sonnet 4.5. Letters are optimized based on 1.2M+ historical Chicago contest outcomes.
+                </p>
+
+                {pendingTicketsCount > 0 ? (
+                  <div>
+                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #10b981', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{pendingTicketsCount}</div>
+                          <div style={{ fontSize: '13px', color: '#166534' }}>Pending Tickets Ready for Letters</div>
+                        </div>
+                        <button
+                          onClick={() => generateContestLetters('all_pending')}
+                          disabled={generatingLetters}
+                          style={{
+                            padding: '12px 24px',
+                            backgroundColor: generatingLetters ? '#d1d5db' : '#7c3aed',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: generatingLetters ? 'wait' : 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}
+                        >
+                          {generatingLetters ? 'Generating Letters...' : 'Generate All Letters'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Pending Tickets List */}
+                    {pendingTickets.length > 0 && (
+                      <div style={{ marginTop: '16px' }}>
+                        <div style={{ fontWeight: '500', fontSize: '14px', marginBottom: '8px' }}>Recent Pending Tickets:</div>
+                        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                          <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ backgroundColor: '#f9fafb' }}>
+                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plate</th>
+                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ticket #</th>
+                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Violation</th>
+                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
+                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {pendingTickets.slice(0, 10).map((ticket: any, i: number) => (
+                                <tr key={ticket.id || i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '8px', fontFamily: 'monospace' }}>{ticket.license_plate}</td>
+                                  <td style={{ padding: '8px' }}>{ticket.ticket_number || '-'}</td>
+                                  <td style={{ padding: '8px' }}>{ticket.violation_code || '-'}</td>
+                                  <td style={{ padding: '8px' }}>${ticket.amount || ticket.fine_amount || '-'}</td>
+                                  <td style={{ padding: '8px' }}>{ticket.issue_date || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {pendingTickets.length > 10 && (
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                            ...and {pendingTickets.length - 10} more tickets
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ backgroundColor: '#f9fafb', padding: '24px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                      No pending tickets to generate letters for. Upload VA findings above to get started.
+                    </div>
+                  </div>
+                )}
+
+                {/* Letter Generation Results */}
+                {letterResults && (
+                  <div style={{ marginTop: '16px', backgroundColor: '#ede9fe', border: '1px solid #7c3aed', borderRadius: '8px', padding: '16px' }}>
+                    <div style={{ fontWeight: '600', color: '#5b21b6', marginBottom: '12px' }}>
+                      Letter Generation Results
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
+                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{letterResults.processed}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Letters Generated</div>
+                      </div>
+                      {letterResults.failed > 0 && (
+                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444' }}>{letterResults.failed}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Failed</div>
+                        </div>
+                      )}
+                    </div>
+                    {letterResults.pdf && (
+                      <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'white', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '13px', color: '#5b21b6', fontWeight: '500' }}>
+                          PDF Downloaded: {letterResults.pdfFilename}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ============ Upcoming Renewals Section ============ */}
         {activeSection === 'upcoming-renewals' && !loading && (
