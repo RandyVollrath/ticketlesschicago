@@ -1,747 +1,523 @@
-import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
-import Head from 'next/head'
-import { supabase } from '../lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import React, { useState, useEffect } from 'react';
+import Head from 'next/head';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabase';
+import { DashboardLayout } from './dashboard';
 
-// Brand Colors - Municipal Fintech
 const COLORS = {
   deepHarbor: '#0F172A',
   regulatory: '#2563EB',
-  regulatoryDark: '#1d4ed8',
   concrete: '#F8FAFC',
   signal: '#10B981',
   graphite: '#1E293B',
   slate: '#64748B',
   border: '#E2E8F0',
+  white: '#FFFFFF',
+  danger: '#DC2626',
+  warning: '#F59E0B',
+};
+
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+];
+
+interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  mailing_address_line1: string | null;
+  mailing_address_line2: string | null;
+  mailing_city: string | null;
+  mailing_state: string | null;
+  mailing_zip: string | null;
 }
 
-interface UserProfile {
-  id: string
-  email: string
-  phone: string | null
-  first_name: string | null
-  last_name: string | null
-  notification_preferences: {
-    sms: boolean
-    email: boolean
-    voice: boolean
-    reminder_days: number[]
-  }
-  email_verified: boolean
-  phone_verified: boolean
+interface Subscription {
+  status: string;
+  current_period_end: string | null;
+  letters_used_this_period: number;
+  letters_included: number;
 }
 
-export default function Profile() {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const router = useRouter()
+export default function ProfilePage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Form state
+  const [fullName, setFullName] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('IL');
+  const [zip, setZip] = useState('');
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+    loadProfile();
+  }, []);
 
-      if (!user) {
-        router.push('/')
-        return
-      }
-
-      setUser(user)
-
-      // Fetch user profile from new users table
-      const { data: userProfile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', user.email)
-        .single()
-
-      if (error) {
-        console.error('Error fetching user profile:', error)
-        setMessage({ type: 'error', text: 'Failed to load profile' })
-      } else if (userProfile) {
-        setProfile(userProfile)
-      }
-
-      setLoading(false)
+  const loadProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/get-started');
+      return;
     }
 
-    getUser()
-  }, [router])
+    setEmail(session.user.email || '');
 
-  const updateProfile = async (updatedData: Partial<UserProfile>) => {
-    if (!profile) return
+    // Load profile
+    const { data: profileData } = await supabase
+      .from('autopilot_profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single();
 
-    setSaving(true)
-    setMessage(null)
-
-    try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: profile.id,
-          ...updatedData
-        })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update profile')
-      }
-
-      setProfile({ ...profile, ...updatedData })
-      setMessage({ type: 'success', text: 'Profile updated successfully!' })
-    } catch (error: any) {
-      console.error('Error updating profile:', error)
-      setMessage({ type: 'error', text: error.message || 'Failed to update profile' })
+    if (profileData) {
+      setProfile(profileData);
+      setFullName(profileData.full_name || '');
+      setAddressLine1(profileData.mailing_address_line1 || '');
+      setAddressLine2(profileData.mailing_address_line2 || '');
+      setCity(profileData.mailing_city || '');
+      setState(profileData.mailing_state || 'IL');
+      setZip(profileData.mailing_zip || '');
     }
 
-    setSaving(false)
-  }
+    // Load subscription
+    const { data: subData } = await supabase
+      .from('autopilot_subscriptions')
+      .select('status, current_period_end, letters_used_this_period, letters_included')
+      .eq('user_id', session.user.id)
+      .single();
 
-  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!profile) return
-
-    const formData = new FormData(e.currentTarget)
-    const updatedData = {
-      first_name: formData.get('first_name') as string || null,
-      last_name: formData.get('last_name') as string || null,
-      phone: formData.get('phone') as string || null,
+    if (subData) {
+      setSubscription(subData);
     }
 
-    await updateProfile(updatedData)
-  }
+    setLoading(false);
+  };
 
-  const updateNotificationPreferences = async (newPrefs: UserProfile['notification_preferences']) => {
-    await updateProfile({ notification_preferences: newPrefs })
-  }
+  const saveProfile = async () => {
+    setSaving(true);
+    setMessage(null);
 
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase
+      .from('autopilot_profiles')
+      .upsert({
+        user_id: session.user.id,
+        full_name: fullName || null,
+        mailing_address_line1: addressLine1 || null,
+        mailing_address_line2: addressLine2 || null,
+        mailing_city: city || null,
+        mailing_state: state || null,
+        mailing_zip: zip || null,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      setMessage({ type: 'error', text: 'Failed to save profile. Please try again.' });
+    } else {
+      setMessage({ type: 'success', text: 'Profile saved successfully.' });
+      setTimeout(() => setMessage(null), 3000);
+    }
+
+    setSaving(false);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const configs: Record<string, { label: string; color: string; bg: string }> = {
+      active: { label: 'Active', color: COLORS.signal, bg: 'rgba(16, 185, 129, 0.1)' },
+      pending: { label: 'Pending', color: COLORS.warning, bg: 'rgba(245, 158, 11, 0.1)' },
+      canceled: { label: 'Canceled', color: COLORS.danger, bg: 'rgba(220, 38, 38, 0.1)' },
+      past_due: { label: 'Past Due', color: COLORS.danger, bg: 'rgba(220, 38, 38, 0.1)' },
+    };
+    const config = configs[status] || configs.pending;
+    return (
+      <span style={{
+        padding: '4px 12px',
+        borderRadius: 20,
+        fontSize: 13,
+        fontWeight: 500,
+        backgroundColor: config.bg,
+        color: config.color,
+      }}>
+        {config.label}
+      </span>
+    );
+  };
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: COLORS.concrete,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: `3px solid ${COLORS.border}`,
-          borderTopColor: COLORS.regulatory,
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
-  }
-
-  if (!profile) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: COLORS.concrete,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      }}>
-        <div style={{
-          textAlign: 'center',
-          backgroundColor: 'white',
-          padding: '48px',
-          borderRadius: '16px',
-          border: `1px solid ${COLORS.border}`
-        }}>
-          <h2 style={{
-            fontSize: '20px',
-            fontWeight: '600',
-            color: COLORS.graphite,
-            marginBottom: '12px',
-            margin: '0 0 12px 0',
-            fontFamily: '"Space Grotesk", sans-serif'
-          }}>
-            Profile not found
-          </h2>
-          <p style={{ color: COLORS.slate, marginBottom: '24px', margin: '0 0 24px 0' }}>
-            Unable to load your profile information.
-          </p>
-          <button
-            onClick={() => router.push('/dashboard')}
-            style={{
-              backgroundColor: COLORS.regulatory,
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '12px 24px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    )
+      <DashboardLayout activePage="profile">
+        <main style={{ padding: 48, textAlign: 'center' }}>Loading...</main>
+      </DashboardLayout>
+    );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: COLORS.concrete,
-      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
+    <DashboardLayout activePage="profile">
       <Head>
-        <title>Profile Settings - Autopilot America</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+        <title>Profile - Autopilot America</title>
       </Head>
 
-      {/* Navigation */}
-      <nav style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '72px',
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: `1px solid ${COLORS.border}`,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 32px'
-      }}>
-        <div
-          onClick={() => router.push('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
-        >
-          <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: COLORS.regulatory,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </div>
-          <span style={{
-            fontSize: '18px',
-            fontWeight: '700',
-            color: COLORS.graphite,
-            fontFamily: '"Space Grotesk", sans-serif',
-            letterSpacing: '-0.5px'
-          }}>
-            Autopilot America
-          </span>
-        </div>
+      <main style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+          Profile
+        </h1>
+        <p style={{ fontSize: 15, color: COLORS.slate, margin: '0 0 32px 0' }}>
+          Manage your account and mailing information for contest letters.
+        </p>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button
-            onClick={() => router.push('/dashboard')}
-            style={{
-              color: COLORS.slate,
-              backgroundColor: 'transparent',
-              border: 'none',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            Dashboard
-          </button>
-          <span style={{ fontSize: '14px', color: COLORS.slate }}>{user?.email}</span>
-          <button
-            onClick={signOut}
-            style={{
-              backgroundColor: 'transparent',
-              color: COLORS.slate,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: '8px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            Sign Out
-          </button>
-        </div>
-      </nav>
-
-      <main style={{
-        maxWidth: '900px',
-        margin: '0 auto',
-        padding: '104px 32px 60px 32px'
-      }}>
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{
-            fontSize: '32px',
-            fontWeight: '700',
-            color: COLORS.graphite,
-            marginBottom: '8px',
-            margin: '0 0 8px 0',
-            fontFamily: '"Space Grotesk", sans-serif',
-            letterSpacing: '-1px'
-          }}>
-            Profile Settings
-          </h1>
-          <p style={{ color: COLORS.slate, margin: 0 }}>
-            Manage your account information and notification preferences.
-          </p>
-        </div>
-
-        {message && (
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px 20px',
-            borderRadius: '12px',
-            backgroundColor: message.type === 'success' ? `${COLORS.signal}10` : '#fef2f2',
-            color: message.type === 'success' ? COLORS.signal : '#dc2626',
-            border: `1px solid ${message.type === 'success' ? `${COLORS.signal}30` : '#fecaca'}`,
-            fontSize: '14px'
-          }}>
-            {message.text}
-          </div>
-        )}
-
-        <div style={{
-          display: 'grid',
-          gap: '24px',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))'
+        {/* Subscription Status */}
+        <section style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 12,
+          border: `1px solid ${COLORS.border}`,
+          padding: 24,
+          marginBottom: 24,
         }}>
-          {/* Personal Information */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            border: `1px solid ${COLORS.border}`
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: COLORS.graphite,
-              marginBottom: '24px',
-              margin: '0 0 24px 0',
-              fontFamily: '"Space Grotesk", sans-serif'
-            }}>
-              Personal Information
-            </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: 0 }}>
+              Subscription
+            </h2>
+            {subscription && getStatusBadge(subscription.status)}
+          </div>
 
-            <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {subscription ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <div>
-                <label htmlFor="email" style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: COLORS.graphite,
-                  marginBottom: '6px'
-                }}>
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={profile.email}
-                  disabled
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: '8px',
-                    backgroundColor: COLORS.concrete,
-                    color: COLORS.slate,
-                    fontSize: '15px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <p style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px', margin: '4px 0 0 0' }}>
-                  Email cannot be changed
+                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Plan</p>
+                <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
+                  Autopilot Annual ($24/year)
                 </p>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label htmlFor="first_name" style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: COLORS.graphite,
-                    marginBottom: '6px'
-                  }}>
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    defaultValue={profile.first_name || ''}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: '8px',
-                      fontSize: '15px',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="last_name" style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: COLORS.graphite,
-                    marginBottom: '6px'
-                  }}>
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    defaultValue={profile.last_name || ''}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: '8px',
-                      fontSize: '15px',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-              </div>
-
               <div>
-                <label htmlFor="phone" style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: COLORS.graphite,
-                  marginBottom: '6px'
-                }}>
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  defaultValue={profile.phone || ''}
-                  placeholder="(555) 123-4567"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    boxSizing: 'border-box'
-                  }}
-                />
+                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Renews</p>
+                <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
+                  {subscription.current_period_end
+                    ? new Date(subscription.current_period_end).toLocaleDateString()
+                    : 'N/A'}
+                </p>
               </div>
+              <div>
+                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Letters Used</p>
+                <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
+                  {subscription.letters_used_this_period} / {subscription.letters_included} included
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Additional Letters</p>
+                <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
+                  $12 each
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ fontSize: 15, color: COLORS.slate, margin: '0 0 16px 0' }}>
+                No active subscription found.
+              </p>
+              <Link href="/get-started" style={{
+                display: 'inline-block',
+                padding: '12px 24px',
+                backgroundColor: COLORS.regulatory,
+                color: COLORS.white,
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}>
+                Subscribe Now
+              </Link>
+            </div>
+          )}
+        </section>
 
-              <button
-                type="submit"
-                disabled={saving}
+        {/* Account Info */}
+        <section style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 12,
+          border: `1px solid ${COLORS.border}`,
+          padding: 24,
+          marginBottom: 24,
+        }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 20px 0' }}>
+            Account
+          </h2>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              disabled
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+                backgroundColor: COLORS.concrete,
+                fontSize: 15,
+                color: COLORS.slate,
+                boxSizing: 'border-box',
+              }}
+            />
+            <p style={{ fontSize: 12, color: COLORS.slate, margin: '4px 0 0 0' }}>
+              Contact support to change your email address.
+            </p>
+          </div>
+        </section>
+
+        {/* Mailing Information */}
+        <section style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 12,
+          border: `1px solid ${COLORS.border}`,
+          padding: 24,
+          marginBottom: 24,
+        }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+            Mailing Information
+          </h2>
+          <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 20px 0' }}>
+            This information appears on your contest letters. Required for letter generation.
+          </p>
+
+          {message && (
+            <div style={{
+              padding: 12,
+              borderRadius: 8,
+              marginBottom: 20,
+              backgroundColor: message.type === 'success' ? '#F0FDF4' : '#FEF2F2',
+              border: `1px solid ${message.type === 'success' ? '#BBF7D0' : '#FECACA'}`,
+              color: message.type === 'success' ? '#166534' : COLORS.danger,
+              fontSize: 14,
+            }}>
+              {message.text}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                Full Name (as it appears on registration)
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="John Smith"
                 style={{
                   width: '100%',
-                  backgroundColor: saving ? COLORS.slate : COLORS.regulatory,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  padding: '14px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: saving ? 'not-allowed' : 'pointer'
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 15,
+                  boxSizing: 'border-box',
                 }}
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </form>
-          </div>
+              />
+            </div>
 
-          {/* Notification Preferences */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            border: `1px solid ${COLORS.border}`
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: COLORS.graphite,
-              marginBottom: '24px',
-              margin: '0 0 24px 0',
-              fontFamily: '"Space Grotesk", sans-serif'
-            }}>
-              Notification Preferences
-            </h3>
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                Address Line 1
+              </label>
+              <input
+                type="text"
+                value={addressLine1}
+                onChange={(e) => setAddressLine1(e.target.value)}
+                placeholder="123 Main Street"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 15,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                Address Line 2 (optional)
+              </label>
+              <input
+                type="text"
+                value={addressLine2}
+                onChange={(e) => setAddressLine2(e.target.value)}
+                placeholder="Apt 4B"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 15,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
               <div>
-                <h4 style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: COLORS.graphite,
-                  marginBottom: '12px',
-                  margin: '0 0 12px 0'
-                }}>
-                  Notification Methods
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    cursor: 'pointer',
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Chicago"
+                  style={{
+                    width: '100%',
                     padding: '12px 16px',
-                    backgroundColor: COLORS.concrete,
-                    borderRadius: '8px',
-                    border: `1px solid ${COLORS.border}`
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={profile.notification_preferences.email}
-                      onChange={(e) => updateNotificationPreferences({
-                        ...profile.notification_preferences,
-                        email: e.target.checked
-                      })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <span style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>Email notifications</span>
-                      <p style={{ fontSize: '12px', color: COLORS.slate, margin: '2px 0 0 0' }}>
-                        Receive alerts via email
-                      </p>
-                    </div>
-                  </label>
-
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    cursor: 'pointer',
-                    padding: '12px 16px',
-                    backgroundColor: COLORS.concrete,
-                    borderRadius: '8px',
-                    border: `1px solid ${COLORS.border}`
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={profile.notification_preferences.sms}
-                      onChange={(e) => updateNotificationPreferences({
-                        ...profile.notification_preferences,
-                        sms: e.target.checked
-                      })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <span style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>SMS notifications</span>
-                      <p style={{ fontSize: '12px', color: COLORS.slate, margin: '2px 0 0 0' }}>
-                        Receive text message alerts
-                      </p>
-                    </div>
-                  </label>
-
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    cursor: 'pointer',
-                    padding: '12px 16px',
-                    backgroundColor: COLORS.concrete,
-                    borderRadius: '8px',
-                    border: `1px solid ${COLORS.border}`
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={profile.notification_preferences.voice}
-                      onChange={(e) => updateNotificationPreferences({
-                        ...profile.notification_preferences,
-                        voice: e.target.checked
-                      })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <span style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>Voice call notifications</span>
-                      <p style={{ fontSize: '12px', color: COLORS.slate, margin: '2px 0 0 0' }}>
-                        Receive phone call alerts
-                      </p>
-                    </div>
-                  </label>
-                </div>
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 15,
+                    boxSizing: 'border-box',
+                  }}
+                />
               </div>
-
               <div>
-                <h4 style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: COLORS.graphite,
-                  marginBottom: '8px',
-                  margin: '0 0 8px 0'
-                }}>
-                  Reminder Schedule
-                </h4>
-                <p style={{ fontSize: '13px', color: COLORS.slate, marginBottom: '12px', margin: '0 0 12px 0' }}>
-                  Choose when you want to be reminded before your deadlines
-                </p>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '8px'
-                }}>
-                  {[60, 30, 14, 7, 3, 1, 0].map((days) => (
-                    <label key={days} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      padding: '10px 12px',
-                      backgroundColor: profile.notification_preferences.reminder_days.includes(days)
-                        ? `${COLORS.regulatory}08`
-                        : COLORS.concrete,
-                      borderRadius: '6px',
-                      border: `1px solid ${profile.notification_preferences.reminder_days.includes(days)
-                        ? COLORS.regulatory
-                        : COLORS.border}`
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={profile.notification_preferences.reminder_days.includes(days)}
-                        onChange={(e) => {
-                          const currentDays = profile.notification_preferences.reminder_days
-                          const newDays = e.target.checked
-                            ? [...currentDays, days].sort((a, b) => b - a)
-                            : currentDays.filter(d => d !== days)
-
-                          updateNotificationPreferences({
-                            ...profile.notification_preferences,
-                            reminder_days: newDays
-                          })
-                        }}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: '13px', color: COLORS.graphite }}>
-                        {days === 0 ? 'Day of deadline' : `${days} days before`}
-                      </span>
-                    </label>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                  State
+                </label>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 15,
+                    backgroundColor: COLORS.white,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {US_STATES.map(s => (
+                    <option key={s} value={s}>{s}</option>
                   ))}
-                </div>
+                </select>
               </div>
-
-              <div style={{
-                backgroundColor: `${COLORS.regulatory}08`,
-                border: `1px solid ${COLORS.regulatory}20`,
-                padding: '16px',
-                borderRadius: '8px'
-              }}>
-                <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0, lineHeight: '1.6' }}>
-                  <strong>Note:</strong> You need at least one notification method enabled to receive reminders.
-                  {!profile.phone && profile.notification_preferences.sms && (
-                    <span style={{ display: 'block', marginTop: '8px', color: '#f59e0b' }}>
-                      Add your phone number to receive SMS notifications.
-                    </span>
-                  )}
-                </p>
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                  ZIP Code
+                </label>
+                <input
+                  type="text"
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  placeholder="60601"
+                  maxLength={10}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 15,
+                    boxSizing: 'border-box',
+                  }}
+                />
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Account Status */}
-        <div style={{
-          marginTop: '24px',
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          padding: '32px',
-          border: `1px solid ${COLORS.border}`
+            <button
+              onClick={saveProfile}
+              disabled={saving}
+              style={{
+                padding: '14px 32px',
+                borderRadius: 8,
+                border: 'none',
+                backgroundColor: COLORS.regulatory,
+                color: COLORS.white,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.7 : 1,
+                alignSelf: 'flex-start',
+              }}
+            >
+              {saving ? 'Saving...' : 'Save Profile'}
+            </button>
+          </div>
+        </section>
+
+        {/* Quick Links */}
+        <section style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 12,
+          border: `1px solid ${COLORS.border}`,
+          padding: 24,
         }}>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: COLORS.graphite,
-            marginBottom: '20px',
-            margin: '0 0 20px 0',
-            fontFamily: '"Space Grotesk", sans-serif'
-          }}>
-            Account Status
-          </h3>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 16px 0' }}>
+            Quick Links
+          </h2>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px'
-          }}>
-            <div style={{
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Link href="/settings" style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '16px 20px',
+              padding: '14px 16px',
               backgroundColor: COLORS.concrete,
-              borderRadius: '10px',
-              border: `1px solid ${COLORS.border}`
+              borderRadius: 8,
+              textDecoration: 'none',
+              color: COLORS.graphite,
+              fontSize: 14,
+              fontWeight: 500,
             }}>
-              <span style={{ fontSize: '14px', color: COLORS.graphite }}>Email Verification</span>
-              <span style={{
-                padding: '4px 12px',
-                borderRadius: '100px',
-                fontSize: '12px',
-                fontWeight: '600',
-                backgroundColor: profile.email_verified ? `${COLORS.signal}15` : '#fef3c7',
-                color: profile.email_verified ? COLORS.signal : '#92400e'
-              }}>
-                {profile.email_verified ? 'Verified' : 'Pending'}
-              </span>
-            </div>
+              <span>Auto-mail & notification settings</span>
+              <span style={{ color: COLORS.slate }}>→</span>
+            </Link>
 
-            <div style={{
+            <Link href="/plates" style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '16px 20px',
+              padding: '14px 16px',
               backgroundColor: COLORS.concrete,
-              borderRadius: '10px',
-              border: `1px solid ${COLORS.border}`
+              borderRadius: 8,
+              textDecoration: 'none',
+              color: COLORS.graphite,
+              fontSize: 14,
+              fontWeight: 500,
             }}>
-              <span style={{ fontSize: '14px', color: COLORS.graphite }}>Phone Verification</span>
-              <span style={{
-                padding: '4px 12px',
-                borderRadius: '100px',
-                fontSize: '12px',
-                fontWeight: '600',
-                backgroundColor: profile.phone_verified ? `${COLORS.signal}15` : '#fef3c7',
-                color: profile.phone_verified ? COLORS.signal : '#92400e'
-              }}>
-                {profile.phone_verified ? 'Verified' : 'Pending'}
-              </span>
-            </div>
+              <span>Manage monitored plates</span>
+              <span style={{ color: COLORS.slate }}>→</span>
+            </Link>
+
+            <Link href="/tickets" style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 16px',
+              backgroundColor: COLORS.concrete,
+              borderRadius: 8,
+              textDecoration: 'none',
+              color: COLORS.graphite,
+              fontSize: 14,
+              fontWeight: 500,
+            }}>
+              <span>View all tickets</span>
+              <span style={{ color: COLORS.slate }}>→</span>
+            </Link>
           </div>
-        </div>
+        </section>
       </main>
-    </div>
-  )
+    </DashboardLayout>
+  );
 }

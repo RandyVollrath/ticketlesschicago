@@ -60,7 +60,7 @@ function DashboardLayout({ children, activePage }: { children: React.ReactNode; 
     { id: 'dashboard', label: 'Dashboard', href: '/dashboard' },
     { id: 'plates', label: 'Plates', href: '/plates' },
     { id: 'tickets', label: 'Tickets', href: '/tickets' },
-    { id: 'billing', label: 'Billing', href: '/billing' },
+    { id: 'profile', label: 'Profile', href: '/profile' },
     { id: 'settings', label: 'Settings', href: '/settings' },
   ];
 
