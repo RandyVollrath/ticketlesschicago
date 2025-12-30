@@ -541,13 +541,13 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <StepCard
               number={1}
-              title="Add your license plate(s)"
-              description="Enter your plates and select which ticket types you want us to auto-contest."
+              title="Add your license plate"
+              description="Enter your plate and mailing address. Select which ticket types you want us to auto-contest."
             />
             <StepCard
               number={2}
-              title="We check for tickets on a schedule"
-              description="Every week, we scan Chicago's ticket database for new violations on your plates."
+              title="We check for tickets weekly"
+              description="Every week, we scan Chicago's ticket database for new violations on your plate."
             />
             <StepCard
               number={3}
@@ -618,23 +618,11 @@ export default function Home() {
               </div>
 
               <div style={{ marginBottom: 24 }}>
+                <FeatureBullet>Monitor 1 license plate</FeatureBullet>
                 <FeatureBullet>Weekly ticket checks</FeatureBullet>
+                <FeatureBullet>Unlimited contest letters</FeatureBullet>
                 <FeatureBullet>Dashboard log of all actions</FeatureBullet>
-                <FeatureBullet>1 mailed contest letter included per year</FeatureBullet>
               </div>
-
-              <p style={{
-                fontSize: 14,
-                color: COLORS.slate,
-                textAlign: 'center',
-                marginBottom: 24,
-                padding: '12px 16px',
-                backgroundColor: COLORS.concrete,
-                borderRadius: 8,
-              }}>
-                Additional mailed letters: <strong>$12 each</strong><br />
-                <span style={{ fontSize: 13 }}>(only sent with your approval settings)</span>
-              </p>
 
               <Link href="/get-started" style={{
                 display: 'block',
@@ -742,12 +730,12 @@ export default function Home() {
               answer="You can enable 'Require approval before mailing' in your settings. We'll notify you when a letter is ready, and it won't be sent until you approve it."
             />
             <FAQItem
-              question="Can I add multiple vehicles?"
-              answer="Yes. Add as many license plates as you need. All plates are checked on the same weekly schedule."
+              question="How many plates can I monitor?"
+              answer="Each $24/year subscription covers 1 license plate with unlimited contest letters. Need to monitor more plates? You can subscribe separately for each vehicle."
             />
             <FAQItem
-              question="What if I get more than one ticket per year?"
-              answer="Your plan includes 1 mailed letter per year. Additional letters are $12 each, and only sent according to your approval settings."
+              question="What if I get multiple tickets?"
+              answer="All tickets on your monitored plate are covered. We'll automatically generate and mail contest letters for each one at no additional cost."
             />
           </div>
         </div>

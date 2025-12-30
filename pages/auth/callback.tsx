@@ -184,10 +184,11 @@ export default function AuthCallback() {
 
           if (!userProfile) {
             // New user signed in with OAuth but hasn't completed signup
-            console.log('🆕 New OAuth user detected - redirecting to free alerts signup');
-            setDebugInfo(`🆕 New user! Redirecting to signup...`);
-            await new Promise(r => setTimeout(r, 1000));
-            router.push('/alerts/signup?flow=oauth&email=' + encodeURIComponent(user.email || ''));
+            // Route to ticket contesting checkout flow
+            console.log('🆕 New OAuth user detected - redirecting to ticket contesting signup');
+            setDebugInfo(`🆕 New user! Redirecting to checkout...`);
+            await new Promise(r => setTimeout(r, 500));
+            router.push('/get-started');
             return;
           }
 
