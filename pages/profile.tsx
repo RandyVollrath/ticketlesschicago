@@ -318,35 +318,61 @@ export default function ProfilePage() {
         <section style={{
           backgroundColor: COLORS.white,
           borderRadius: 12,
-          border: `1px solid ${COLORS.border}`,
+          border: `1px solid ${!isProfileComplete ? COLORS.warning : COLORS.border}`,
           padding: 24,
           marginBottom: 24,
         }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
-            Mailing Information
-          </h2>
-          <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 20px 0' }}>
-            This information appears on your contest letters. Required for letter generation.
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+                Mailing Address
+              </h2>
+              <p style={{ fontSize: 14, color: COLORS.slate, margin: 0 }}>
+                Required for contest letters. Changes save automatically.
+              </p>
+            </div>
+            <div style={{
+              padding: '6px 12px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 500,
+              backgroundColor: saveStatus === 'saving' ? COLORS.regulatoryLight :
+                             saveStatus === 'saved' ? COLORS.signalLight :
+                             saveStatus === 'error' ? COLORS.dangerLight : 'transparent',
+              color: saveStatus === 'saving' ? COLORS.regulatory :
+                     saveStatus === 'saved' ? COLORS.signal :
+                     saveStatus === 'error' ? COLORS.danger : 'transparent',
+            }}>
+              {saveStatus === 'saving' && 'Saving...'}
+              {saveStatus === 'saved' && 'Saved'}
+              {saveStatus === 'error' && 'Error saving'}
+            </div>
+          </div>
 
-          {message && (
+          {!isProfileComplete && (
             <div style={{
               padding: 12,
               borderRadius: 8,
               marginBottom: 20,
-              backgroundColor: message.type === 'success' ? '#F0FDF4' : '#FEF2F2',
-              border: `1px solid ${message.type === 'success' ? '#BBF7D0' : '#FECACA'}`,
-              color: message.type === 'success' ? '#166534' : COLORS.danger,
+              backgroundColor: COLORS.warningLight,
+              border: `1px solid ${COLORS.warning}`,
+              color: '#92400E',
               fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
             }}>
-              {message.text}
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Complete your mailing address to enable automatic contest letters.
             </div>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                Full Name (as it appears on registration)
+                Full Name <span style={{ color: COLORS.danger }}>*</span>
               </label>
               <input
                 type="text"
@@ -357,16 +383,20 @@ export default function ProfilePage() {
                   width: '100%',
                   padding: '12px 16px',
                   borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
+                  border: `1px solid ${!fullName.trim() ? COLORS.warning : COLORS.border}`,
                   fontSize: 15,
                   boxSizing: 'border-box',
+                  outline: 'none',
                 }}
               />
+              <p style={{ fontSize: 12, color: COLORS.slate, margin: '4px 0 0 0' }}>
+                As it appears on your vehicle registration
+              </p>
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                Address Line 1
+                Street Address <span style={{ color: COLORS.danger }}>*</span>
               </label>
               <input
                 type="text"
@@ -377,16 +407,17 @@ export default function ProfilePage() {
                   width: '100%',
                   padding: '12px 16px',
                   borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
+                  border: `1px solid ${!addressLine1.trim() ? COLORS.warning : COLORS.border}`,
                   fontSize: 15,
                   boxSizing: 'border-box',
+                  outline: 'none',
                 }}
               />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                Address Line 2 (optional)
+                Apt, Suite, Unit <span style={{ color: COLORS.slate, fontWeight: 400 }}>(optional)</span>
               </label>
               <input
                 type="text"
@@ -400,6 +431,7 @@ export default function ProfilePage() {
                   border: `1px solid ${COLORS.border}`,
                   fontSize: 15,
                   boxSizing: 'border-box',
+                  outline: 'none',
                 }}
               />
             </div>
@@ -407,7 +439,7 @@ export default function ProfilePage() {
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                  City
+                  City <span style={{ color: COLORS.danger }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -418,15 +450,16 @@ export default function ProfilePage() {
                     width: '100%',
                     padding: '12px 16px',
                     borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
+                    border: `1px solid ${!city.trim() ? COLORS.warning : COLORS.border}`,
                     fontSize: 15,
                     boxSizing: 'border-box',
+                    outline: 'none',
                   }}
                 />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                  State
+                  State <span style={{ color: COLORS.danger }}>*</span>
                 </label>
                 <select
                   value={state}
@@ -439,6 +472,7 @@ export default function ProfilePage() {
                     fontSize: 15,
                     backgroundColor: COLORS.white,
                     boxSizing: 'border-box',
+                    outline: 'none',
                   }}
                 >
                   {US_STATES.map(s => (
@@ -448,7 +482,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                  ZIP Code
+                  ZIP <span style={{ color: COLORS.danger }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -460,32 +494,14 @@ export default function ProfilePage() {
                     width: '100%',
                     padding: '12px 16px',
                     borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
+                    border: `1px solid ${!zip.trim() ? COLORS.warning : COLORS.border}`,
                     fontSize: 15,
                     boxSizing: 'border-box',
+                    outline: 'none',
                   }}
                 />
               </div>
             </div>
-
-            <button
-              onClick={saveProfile}
-              disabled={saving}
-              style={{
-                padding: '14px 32px',
-                borderRadius: 8,
-                border: 'none',
-                backgroundColor: COLORS.regulatory,
-                color: COLORS.white,
-                fontSize: 15,
-                fontWeight: 600,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: saving ? 0.7 : 1,
-                alignSelf: 'flex-start',
-              }}
-            >
-              {saving ? 'Saving...' : 'Save Profile'}
-            </button>
           </div>
         </section>
 

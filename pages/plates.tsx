@@ -55,10 +55,19 @@ export default function PlatesPage() {
   const [newPlate, setNewPlate] = useState({ plate: '', state: 'IL', isLeased: false });
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+  const [isNewCheckout, setIsNewCheckout] = useState(false);
 
   useEffect(() => {
+    // Check if this is a new checkout success
+    const checkoutSuccess = router.query.checkout === 'success';
+    if (checkoutSuccess) {
+      setIsNewCheckout(true);
+      setShowAddModal(true);
+      // Remove query param from URL
+      router.replace('/plates', undefined, { shallow: true });
+    }
     loadPlates();
-  }, []);
+  }, [router.query.checkout]);
 
   const loadPlates = async () => {
     const { data: { session } } = await supabase.auth.getSession();
