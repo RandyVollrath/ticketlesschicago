@@ -95,6 +95,13 @@ export default function PlatesPage() {
       return;
     }
 
+    // Enforce 1 plate limit per subscription
+    if (plates.length >= 1) {
+      setAddError('Your plan includes 1 license plate. Remove your current plate to add a different one.');
+      setAddLoading(false);
+      return;
+    }
+
     // Check if plate already exists
     const existing = plates.find(p => p.plate === plateUpper && p.state === newPlate.state);
     if (existing) {
@@ -186,7 +193,7 @@ export default function PlatesPage() {
               Plates
             </h1>
             <p style={{ fontSize: 15, color: COLORS.slate, margin: 0 }}>
-              We check these plates for new tickets.
+              Your plan includes monitoring for 1 license plate.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -204,24 +211,26 @@ export default function PlatesPage() {
                   cursor: 'pointer',
                 }}
               >
-                {plates.every(p => p.status === 'active') ? 'Pause all checks' : 'Resume all checks'}
+                {plates.every(p => p.status === 'active') ? 'Pause checks' : 'Resume checks'}
               </button>
             )}
-            <button
-              onClick={() => setShowAddModal(true)}
-              style={{
-                padding: '10px 20px',
-                borderRadius: 8,
-                border: 'none',
-                backgroundColor: COLORS.regulatory,
-                color: COLORS.white,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Add plate
-            </button>
+            {plates.length === 0 && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: COLORS.regulatory,
+                  color: COLORS.white,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Add plate
+              </button>
+            )}
           </div>
         </div>
 
