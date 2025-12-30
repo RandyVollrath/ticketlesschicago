@@ -1125,6 +1125,97 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
 
+        // Handle Autopilot America subscription checkouts
+        const supabaseUserId = metadata.supabase_user_id;
+        if (supabaseUserId && session.mode === 'subscription') {
+          // Check if this is an autopilot subscription by looking for the user_id metadata
+          const subscriptionId = session.subscription as string;
+
+          console.log('🤖 Checking for Autopilot subscription:', { supabaseUserId, subscriptionId });
+
+          // Update autopilot_subscriptions to active
+          const { data: existingSub, error: subCheckError } = await supabaseAdmin
+            .from('autopilot_subscriptions')
+            .select('id')
+            .eq('user_id', supabaseUserId)
+            .single();
+
+          if (existingSub) {
+            console.log('🤖 Found Autopilot subscription, updating to active');
+
+            // Get subscription details from Stripe
+            let periodEnd = null;
+            if (subscriptionId) {
+              const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+              periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+            }
+
+            const { error: updateError } = await supabaseAdmin
+              .from('autopilot_subscriptions')
+              .update({
+                status: 'active',
+                stripe_subscription_id: subscriptionId,
+                current_period_end: periodEnd,
+                letters_included: 999, // Unlimited
+                letters_used_this_period: 0,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('user_id', supabaseUserId);
+
+            if (updateError) {
+              console.error('❌ Error updating Autopilot subscription:', updateError);
+            } else {
+              console.log('✅ Autopilot subscription activated for user:', supabaseUserId);
+
+              // Also ensure autopilot_profiles record exists
+              await supabaseAdmin
+                .from('autopilot_profiles')
+                .upsert({
+                  user_id: supabaseUserId,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'user_id' });
+
+              // Send welcome email
+              const userEmail = session.customer_details?.email || metadata.email;
+              if (userEmail) {
+                try {
+                  await resend.emails.send({
+                    from: 'Autopilot America <hello@autopilotamerica.com>',
+                    to: userEmail,
+                    subject: 'Welcome to Autopilot America!',
+                    html: `
+                      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                          Your subscription is now active. Here's what happens next:
+                        </p>
+                        <ol style="color: #374151; font-size: 16px; line-height: 1.8;">
+                          <li><strong>Add your license plate</strong> - We'll start monitoring it for tickets</li>
+                          <li><strong>Complete your profile</strong> - Add your mailing address for contest letters</li>
+                          <li><strong>Sit back and relax</strong> - We'll automatically contest any tickets we find</li>
+                        </ol>
+                        <div style="margin: 32px 0; text-align: center;">
+                          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard"
+                             style="background-color: #2563EB; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                            Go to Dashboard
+                          </a>
+                        </div>
+                        <p style="color: #666; font-size: 14px;">Questions? Reply to this email or contact support@autopilotamerica.com</p>
+                      </div>
+                    `
+                  });
+                  console.log('✅ Welcome email sent');
+                } catch (emailErr) {
+                  console.error('Failed to send welcome email:', emailErr);
+                }
+              }
+            }
+
+            // Exit - this was an autopilot subscription
+            break;
+          }
+        }
+
         // Regular signup flow continues below
         // Parse form data from split metadata fields
         console.log('Webhook metadata received:', {

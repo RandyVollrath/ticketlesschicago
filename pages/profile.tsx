@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -8,14 +8,18 @@ import { DashboardLayout } from './dashboard';
 const COLORS = {
   deepHarbor: '#0F172A',
   regulatory: '#2563EB',
+  regulatoryLight: '#DBEAFE',
   concrete: '#F8FAFC',
   signal: '#10B981',
+  signalLight: '#D1FAE5',
   graphite: '#1E293B',
   slate: '#64748B',
   border: '#E2E8F0',
   white: '#FFFFFF',
   danger: '#DC2626',
+  dangerLight: '#FEE2E2',
   warning: '#F59E0B',
+  warningLight: '#FEF3C7',
 };
 
 const US_STATES = [
@@ -47,11 +51,11 @@ interface Subscription {
 export default function ProfilePage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // Form state
   const [fullName, setFullName] = useState('');
@@ -60,6 +64,64 @@ export default function ProfilePage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('IL');
   const [zip, setZip] = useState('');
+
+  // Track if profile is complete
+  const isProfileComplete = fullName.trim() && addressLine1.trim() && city.trim() && state && zip.trim();
+
+  // Debounced auto-save
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const autoSave = useCallback(async (data: {
+    fullName: string;
+    addressLine1: string;
+    addressLine2: string;
+    city: string;
+    state: string;
+    zip: string;
+  }) => {
+    if (!userId) return;
+
+    setSaveStatus('saving');
+
+    const { error } = await supabase
+      .from('autopilot_profiles')
+      .upsert({
+        user_id: userId,
+        full_name: data.fullName || null,
+        mailing_address_line1: data.addressLine1 || null,
+        mailing_address_line2: data.addressLine2 || null,
+        mailing_city: data.city || null,
+        mailing_state: data.state || null,
+        mailing_zip: data.zip || null,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      setSaveStatus('error');
+    } else {
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  }, [userId]);
+
+  // Trigger auto-save on field changes
+  useEffect(() => {
+    if (!userId || loading) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave({ fullName, addressLine1, addressLine2, city, state, zip });
+    }, 1000); // 1 second debounce
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [fullName, addressLine1, addressLine2, city, state, zip, userId, loading, autoSave]);
 
   useEffect(() => {
     loadProfile();
@@ -73,6 +135,7 @@ export default function ProfilePage() {
     }
 
     setEmail(session.user.email || '');
+    setUserId(session.user.id);
 
     // Load profile
     const { data: profileData } = await supabase
@@ -103,36 +166,6 @@ export default function ProfilePage() {
     }
 
     setLoading(false);
-  };
-
-  const saveProfile = async () => {
-    setSaving(true);
-    setMessage(null);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    const { error } = await supabase
-      .from('autopilot_profiles')
-      .upsert({
-        user_id: session.user.id,
-        full_name: fullName || null,
-        mailing_address_line1: addressLine1 || null,
-        mailing_address_line2: addressLine2 || null,
-        mailing_city: city || null,
-        mailing_state: state || null,
-        mailing_zip: zip || null,
-        updated_at: new Date().toISOString(),
-      });
-
-    if (error) {
-      setMessage({ type: 'error', text: 'Failed to save profile. Please try again.' });
-    } else {
-      setMessage({ type: 'success', text: 'Profile saved successfully.' });
-      setTimeout(() => setMessage(null), 3000);
-    }
-
-    setSaving(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -211,15 +244,15 @@ export default function ProfilePage() {
                 </p>
               </div>
               <div>
-                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Letters Used</p>
+                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Plates Monitored</p>
                 <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
-                  {subscription.letters_used_this_period} / {subscription.letters_included} included
+                  1 plate included
                 </p>
               </div>
               <div>
-                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Additional Letters</p>
+                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Contest Letters</p>
                 <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
-                  $12 each
+                  Unlimited
                 </p>
               </div>
             </div>
