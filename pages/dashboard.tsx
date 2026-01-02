@@ -72,16 +72,25 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   failed: { label: 'Failed', color: COLORS.danger, bg: 'rgba(239, 68, 68, 0.1)' },
 };
 
+// Based on 1.2M contested tickets from Chicago FOIA data
 const TICKET_TYPES = [
+  // High volume, high win rate (checked by default)
   { id: 'expired_plates', label: 'Expired Plates', winRate: 75 },
   { id: 'no_city_sticker', label: 'No City Sticker', winRate: 70 },
   { id: 'expired_meter', label: 'Expired Meter', winRate: 67 },
   { id: 'disabled_zone', label: 'Disabled Zone', winRate: 68 },
-  { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
-  { id: 'rush_hour', label: 'Rush Hour', winRate: 37 },
+  { id: 'no_standing_time_restricted', label: 'No Standing/Time Restricted', winRate: 58 },
+  { id: 'parking_prohibited', label: 'Parking/Standing Prohibited', winRate: 55 },
+  { id: 'residential_permit', label: 'Residential Permit Parking', winRate: 54 },
+  { id: 'missing_plate', label: 'Missing/Noncompliant Plate', winRate: 54 },
+  { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 59 },
+  // Medium win rate
   { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
-  { id: 'speed_camera', label: 'Speed Camera', winRate: 20 },
-  { id: 'red_light', label: 'Red Light Camera', winRate: 16 },
+  { id: 'rush_hour', label: 'Rush Hour Parking', winRate: 37 },
+  { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
+  // Low win rate (unchecked by default)
+  { id: 'red_light', label: 'Red Light Camera', winRate: 20 },
+  { id: 'speed_camera', label: 'Speed Camera', winRate: 18 },
 ];
 
 interface Plate {
@@ -371,11 +380,15 @@ export default function Dashboard() {
   // Subscription
   const [subscription, setSubscription] = useState<Subscription | null>(null);
 
-  // Settings
+  // Settings - default to all ticket types with 50%+ win rate
   const [settings, setSettings] = useState<Settings>({
     auto_mail_enabled: true,
     require_approval: false,
-    allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone'],
+    allowed_ticket_types: [
+      'expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
+      'no_standing_time_restricted', 'parking_prohibited', 'residential_permit',
+      'missing_plate', 'commercial_loading'
+    ],
     never_auto_mail_unknown: true,
     email_on_ticket_found: true,
     email_on_letter_mailed: true,
