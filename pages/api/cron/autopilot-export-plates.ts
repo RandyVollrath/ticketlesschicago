@@ -78,12 +78,19 @@ async function sendEmailWithAttachment(
   }
 }
 
+// Chicago ticket search URL
+const CHICAGO_TICKET_SEARCH_URL = 'https://webapps1.chicago.gov/payments-web/#/validatedFlow?cityServiceId=1';
+
 /**
  * Generate CSV content for VA
+ * Includes: last_name, plate, state (required for VA to search)
+ * Plus: first_name, user_id for reference
  */
 function generateCSV(plates: any[]): string {
-  // CSV header with columns VA needs to fill
+  // CSV header - last_name, plate, state are the key fields for searching
   const csvHeader = [
+    'last_name',
+    'first_name',
     'plate',
     'state',
     'user_id',
@@ -101,12 +108,21 @@ function generateCSV(plates: any[]): string {
 # Generated: ${new Date().toISOString()}
 # Total Plates: ${plates.length}
 #
+# CHICAGO TICKET SEARCH URL:
+# ${CHICAGO_TICKET_SEARCH_URL}
+#
 # INSTRUCTIONS:
-# 1. For each plate, check the Chicago parking ticket portal
-# 2. If tickets are found, fill in the ticket columns (columns D-J)
-# 3. If multiple tickets for one plate, duplicate the row
-# 4. Leave ticket columns empty if no tickets found
-# 5. Upload completed file to the Autopilot Admin portal
+# 1. Go to the Chicago ticket search URL above
+# 2. For each row, search by LAST NAME and LICENSE PLATE
+# 3. If tickets are found, fill in columns F-L (ticket_number through location)
+# 4. If multiple tickets for one plate, duplicate that row
+# 5. Leave ticket columns empty if no tickets found
+# 6. Upload completed file to the Autopilot Admin portal
+#
+# KEY COLUMNS FOR SEARCHING:
+# - last_name (Column A) - Use this for the name search
+# - plate (Column C) - Use this for the license plate search
+# - state (Column D) - License plate state
 #
 # Valid violation_type values: expired_plates, no_city_sticker, expired_meter, disabled_zone, street_cleaning, rush_hour, fire_hydrant, other_unknown
 # violation_date format: YYYY-MM-DD
@@ -114,9 +130,11 @@ function generateCSV(plates: any[]): string {
 #
 `;
 
-  // Generate CSV rows - pre-fill plate info, leave ticket columns empty
+  // Generate CSV rows - pre-fill user/plate info, leave ticket columns empty
   const csvRows = plates.map((p: any) => {
     return [
+      `"${p.last_name || ''}"`,
+      `"${p.first_name || ''}"`,
       `"${p.plate}"`,
       `"${p.state}"`,
       `"${p.user_id}"`,
@@ -147,7 +165,7 @@ function generateEmailHTML(plateCount: number, dayOfWeek: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0; font-size: 24px;">Autopilot Plate Check</h1>
+        <h1 style="margin: 0; font-size: 24px;">Autopilot Plate Check - ${dayOfWeek}</h1>
         <p style="margin: 8px 0 0; opacity: 0.9;">${dayOfWeek} Export - ${today}</p>
       </div>
 
@@ -157,11 +175,20 @@ function generateEmailHTML(plateCount: number, dayOfWeek: string): string {
           <div style="color: #1e40af; font-size: 16px;">License Plates to Check</div>
         </div>
 
+        <!-- Quick Action Button -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="${CHICAGO_TICKET_SEARCH_URL}"
+             style="display: inline-block; background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+            Open Chicago Ticket Search
+          </a>
+        </div>
+
         <h2 style="margin: 0 0 16px; color: #374151; font-size: 18px;">Instructions:</h2>
         <ol style="color: #4b5563; line-height: 1.8; padding-left: 20px;">
           <li>Download the attached CSV file</li>
-          <li>For each plate, check the <a href="https://www.chicago.gov/city/en/depts/fin/supp_info/revenue/parking_702702702702702702702702702702702702702702.html" style="color: #2563eb;">Chicago parking ticket portal</a></li>
-          <li>If tickets are found, fill in columns D-J (ticket_number through location)</li>
+          <li>Go to the <a href="${CHICAGO_TICKET_SEARCH_URL}" style="color: #2563eb; font-weight: 600;">Chicago Ticket Search</a></li>
+          <li>For each row, search by <strong>Last Name</strong> (Column A) and <strong>License Plate</strong> (Column C)</li>
+          <li>If tickets are found, fill in columns F-L (ticket_number through location)</li>
           <li>If multiple tickets exist for one plate, duplicate that row</li>
           <li>Leave ticket columns empty if no tickets found</li>
           <li>Upload the completed file to the <a href="https://autopilotamerica.com/admin/autopilot" style="color: #2563eb;">Autopilot Admin portal</a></li>
@@ -270,8 +297,40 @@ export default async function handler(
       });
     }
 
+    // Get user profiles to get first/last names
+    const { data: profiles } = await supabase
+      .from('autopilot_profiles')
+      .select('user_id, first_name, last_name, full_name')
+      .in('user_id', activeUserIds);
+
+    // Create a map of user_id to profile
+    const profileMap = new Map();
+    profiles?.forEach(p => {
+      profileMap.set(p.user_id, p);
+    });
+
+    // Merge plate data with profile data
+    const platesWithNames = plates.map(plate => {
+      const profile = profileMap.get(plate.user_id);
+      let firstName = profile?.first_name || '';
+      let lastName = profile?.last_name || '';
+
+      // Fall back to parsing full_name if first/last not set
+      if (!firstName && !lastName && profile?.full_name) {
+        const nameParts = profile.full_name.trim().split(' ');
+        firstName = nameParts[0] || '';
+        lastName = nameParts.slice(1).join(' ') || '';
+      }
+
+      return {
+        ...plate,
+        first_name: firstName,
+        last_name: lastName,
+      };
+    });
+
     // Generate CSV
-    const csvContent = generateCSV(plates);
+    const csvContent = generateCSV(platesWithNames);
     const filename = `autopilot-plates-${new Date().toISOString().split('T')[0]}.csv`;
 
     // Determine day of week for email subject
