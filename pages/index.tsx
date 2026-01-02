@@ -4,318 +4,39 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 
-// Brand Colors - Clean, competent, no hype
+// Modern color palette
 const COLORS = {
-  deepHarbor: '#0F172A',
-  regulatory: '#2563EB',
-  regulatoryDark: '#1d4ed8',
-  concrete: '#F8FAFC',
-  signal: '#10B981',
-  graphite: '#1E293B',
-  slate: '#64748B',
-  border: '#E2E8F0',
+  // Primary
+  primary: '#0066FF',
+  primaryDark: '#0052CC',
+  primaryLight: '#E6F0FF',
+
+  // Neutrals
+  black: '#0A0A0A',
+  gray900: '#171717',
+  gray800: '#262626',
+  gray700: '#404040',
+  gray600: '#525252',
+  gray500: '#737373',
+  gray400: '#A3A3A3',
+  gray300: '#D4D4D4',
+  gray200: '#E5E5E5',
+  gray100: '#F5F5F5',
   white: '#FFFFFF',
+
+  // Accents
+  green: '#00C853',
+  greenLight: '#E8F5E9',
+  red: '#FF3B30',
+  redLight: '#FFEBEE',
+  amber: '#FFB300',
+  amberLight: '#FFF8E1',
 };
-
-// Navigation component
-function Navigation({ user }: { user: any }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  return (
-    <nav style={{
-      backgroundColor: COLORS.white,
-      borderBottom: `1px solid ${COLORS.border}`,
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-    }}>
-      <div style={{
-        maxWidth: 1200,
-        margin: '0 auto',
-        padding: '16px 24px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        {/* Logo */}
-        <Link href="/" style={{ textDecoration: 'none' }}>
-          <span style={{
-            fontSize: 20,
-            fontWeight: 700,
-            color: COLORS.deepHarbor,
-            letterSpacing: '-0.5px',
-          }}>
-            Autopilot America
-          </span>
-        </Link>
-
-        {/* Desktop Nav */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 32,
-        }} className="desktop-nav">
-          <a href="#how-it-works" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>How it works</a>
-          <a href="#pricing" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Pricing</a>
-          <a href="#faq" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
-
-          {user ? (
-            <Link href="/dashboard" style={{
-              backgroundColor: COLORS.regulatory,
-              color: COLORS.white,
-              padding: '10px 20px',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontSize: 14,
-              fontWeight: 600,
-            }}>
-              Dashboard
-            </Link>
-          ) : (
-            <>
-              <Link href="/auth/signin" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</Link>
-              <Link href="/get-started" style={{
-                backgroundColor: COLORS.regulatory,
-                color: COLORS.white,
-                padding: '10px 20px',
-                borderRadius: 8,
-                textDecoration: 'none',
-                fontSize: 14,
-                fontWeight: 600,
-              }}>
-                Start for $24/year
-              </Link>
-            </>
-          )}
-        </div>
-
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="mobile-menu-btn"
-          style={{
-            display: 'none',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 8,
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.deepHarbor} strokeWidth="2">
-            {mobileMenuOpen ? (
-              <path d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path d="M3 12h18M3 6h18M3 18h18" />
-            )}
-          </svg>
-        </button>
-      </div>
-
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="mobile-menu" style={{
-          backgroundColor: COLORS.white,
-          borderTop: `1px solid ${COLORS.border}`,
-          padding: '16px 24px',
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <a href="#how-it-works" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 16 }}>How it works</a>
-            <a href="#pricing" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 16 }}>Pricing</a>
-            <a href="#faq" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 16 }}>FAQ</a>
-            {user ? (
-              <Link href="/dashboard" style={{ color: COLORS.regulatory, textDecoration: 'none', fontSize: 16, fontWeight: 600 }}>Dashboard</Link>
-            ) : (
-              <>
-                <Link href="/auth/signin" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: 16 }}>Sign in</Link>
-                <Link href="/get-started" style={{ color: COLORS.regulatory, textDecoration: 'none', fontSize: 16, fontWeight: 600 }}>Start for $24/year</Link>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <style jsx global>{`
-        @media (max-width: 768px) {
-          .desktop-nav { display: none !important; }
-          .mobile-menu-btn { display: block !important; }
-        }
-      `}</style>
-    </nav>
-  );
-}
-
-// Step card component
-function StepCard({ number, title, description }: { number: number; title: string; description: string }) {
-  return (
-    <div style={{
-      display: 'flex',
-      gap: 16,
-      alignItems: 'flex-start',
-    }}>
-      <div style={{
-        width: 40,
-        height: 40,
-        borderRadius: '50%',
-        backgroundColor: COLORS.regulatory,
-        color: COLORS.white,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 700,
-        fontSize: 16,
-        flexShrink: 0,
-      }}>
-        {number}
-      </div>
-      <div>
-        <h3 style={{
-          fontSize: 18,
-          fontWeight: 600,
-          color: COLORS.deepHarbor,
-          margin: '0 0 4px 0',
-        }}>
-          {title}
-        </h3>
-        <p style={{
-          fontSize: 15,
-          color: COLORS.slate,
-          margin: 0,
-          lineHeight: 1.5,
-        }}>
-          {description}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Feature bullet
-function FeatureBullet({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      display: 'flex',
-      gap: 12,
-      alignItems: 'flex-start',
-      marginBottom: 16,
-    }}>
-      <svg width="20" height="20" viewBox="0 0 20 20" fill={COLORS.signal} style={{ flexShrink: 0, marginTop: 2 }}>
-        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-      </svg>
-      <span style={{ fontSize: 16, color: COLORS.graphite, lineHeight: 1.5 }}>{children}</span>
-    </div>
-  );
-}
-
-// FAQ Item
-function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div style={{
-      borderBottom: `1px solid ${COLORS.border}`,
-      padding: '20px 0',
-    }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          textAlign: 'left',
-          padding: 0,
-        }}
-      >
-        <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor }}>{question}</span>
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
-          fill={COLORS.slate}
-          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-        >
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
-      {open && (
-        <p style={{
-          marginTop: 12,
-          fontSize: 15,
-          color: COLORS.slate,
-          lineHeight: 1.6,
-        }}>
-          {answer}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// Footer
-function Footer() {
-  return (
-    <footer style={{
-      backgroundColor: COLORS.deepHarbor,
-      color: COLORS.white,
-      padding: '48px 24px',
-    }}>
-      <div style={{
-        maxWidth: 1200,
-        margin: '0 auto',
-      }}>
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          gap: 32,
-          marginBottom: 32,
-        }}>
-          <div>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>Autopilot America</span>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 8, maxWidth: 300 }}>
-              Automatic ticket contesting for Chicago drivers.
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 48 }}>
-            <div>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'rgba(255,255,255,0.8)' }}>Legal</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Link href="/privacy" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: 14 }}>Privacy</Link>
-                <Link href="/terms" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: 14 }}>Terms</Link>
-              </div>
-            </div>
-            <div>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'rgba(255,255,255,0.8)' }}>Support</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Link href="/support" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: 14 }}>Contact</Link>
-                <a href="#faq" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: 14 }}>FAQ</a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          paddingTop: 24,
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          gap: 16,
-          fontSize: 13,
-          color: 'rgba(255,255,255,0.5)',
-        }}>
-          <span>&copy; {new Date().getFullYear()} Autopilot America. All rights reserved.</span>
-          <span>Autopilot America is not a law firm and does not provide legal advice.</span>
-        </div>
-      </div>
-    </footer>
-  );
-}
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -333,488 +54,637 @@ export default function Home() {
     return () => authListener?.subscription.unsubscribe();
   }, []);
 
+  const faqs = [
+    {
+      q: "How does it work?",
+      a: "Add your license plate, and we check Chicago's database weekly. When we find a ticket, we automatically generate and mail a contest letter on your behalf."
+    },
+    {
+      q: "What's the success rate?",
+      a: "Based on 1.2M contested tickets: expired plates have 75% dismissal, no city sticker 70%, expired meters 67%. Camera tickets are lower at 16-20%."
+    },
+    {
+      q: "Can I review letters before they're sent?",
+      a: "Yes. Enable 'Require approval' in settings and we'll notify you before mailing anything."
+    },
+    {
+      q: "How many plates can I monitor?",
+      a: "Each $24/year subscription covers 1 plate with unlimited contest letters. Subscribe separately for additional vehicles."
+    },
+    {
+      q: "Do you guarantee tickets will be dismissed?",
+      a: "No. We maximize your odds using proven contest strategies, but outcomes depend on the city's review process."
+    },
+  ];
+
   return (
-    <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div style={{
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      color: COLORS.gray900,
+      backgroundColor: COLORS.white,
+    }}>
       <Head>
-        <title>Autopilot America - Chicago Parking Tickets? We Contest Them Automatically</title>
-        <meta name="description" content="Weekly ticket checks. When we find a ticket, we generate and mail a contest letter for you. $24/year. Based on 1.2M contested ticket outcomes." />
+        <title>Autopilot America - Auto-Contest Chicago Parking Tickets</title>
+        <meta name="description" content="We monitor your plate, find tickets, and mail contest letters automatically. $24/year. Based on 1.2M contested ticket outcomes." />
         <link rel="canonical" href="https://autopilotamerica.com" />
-        <meta property="og:title" content="Autopilot America - Auto-Contest Chicago Parking Tickets" />
-        <meta property="og:description" content="Weekly ticket checks. Automatic contest letters. 54% of contested tickets are dismissed." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <Navigation user={user} />
-
-      {/* Hero Section */}
-      <section style={{
-        backgroundColor: COLORS.white,
-        padding: '80px 24px',
-        borderBottom: `1px solid ${COLORS.border}`,
+      {/* Navigation */}
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: `1px solid ${COLORS.gray200}`,
+        zIndex: 1000,
       }}>
         <div style={{
-          maxWidth: 800,
+          maxWidth: 1200,
           margin: '0 auto',
-          textAlign: 'center',
+          padding: '16px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}>
-          <h1 style={{
-            fontSize: 'clamp(32px, 5vw, 48px)',
-            fontWeight: 700,
-            color: COLORS.deepHarbor,
-            lineHeight: 1.2,
-            margin: '0 0 20px 0',
-            letterSpacing: '-1px',
-          }}>
-            Chicago parking tickets?<br />
-            We contest them automatically.
-          </h1>
-          <p style={{
-            fontSize: 'clamp(16px, 2vw, 20px)',
-            color: COLORS.slate,
-            lineHeight: 1.6,
-            margin: '0 0 32px 0',
-            maxWidth: 600,
-            marginLeft: 'auto',
-            marginRight: 'auto',
-          }}>
-            Weekly ticket checks. When we find a ticket, we generate and mail a contest letter for you. You can review every action in your dashboard.
-          </p>
-          <div style={{
-            display: 'flex',
-            gap: 16,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-          }}>
-            <Link href="/get-started" style={{
-              backgroundColor: COLORS.regulatory,
-              color: COLORS.white,
-              padding: '16px 32px',
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              backgroundColor: COLORS.primary,
               borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span style={{ fontSize: 18, fontWeight: 700, color: COLORS.black }}>Autopilot</span>
+          </Link>
+
+          {/* Desktop nav */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }} className="desktop-nav">
+            <a href="#how-it-works" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>How it works</a>
+            <a href="#pricing" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Pricing</a>
+            <a href="#faq" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
+            {user ? (
+              <Link href="/dashboard" style={{
+                backgroundColor: COLORS.primary,
+                color: COLORS.white,
+                padding: '10px 20px',
+                borderRadius: 8,
+                textDecoration: 'none',
+                fontSize: 14,
+                fontWeight: 600,
+              }}>
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/signin" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</Link>
+                <Link href="/get-started" style={{
+                  backgroundColor: COLORS.primary,
+                  color: COLORS.white,
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}>
+                  Get Started
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="mobile-menu-btn"
+            style={{
+              display: 'none',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 8,
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.black} strokeWidth="2">
+              {mobileMenuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M3 12h18M3 6h18M3 18h18" />}
+            </svg>
+          </button>
+        </div>
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div style={{ backgroundColor: COLORS.white, borderTop: `1px solid ${COLORS.gray200}`, padding: '16px 24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <a href="#how-it-works" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>How it works</a>
+              <a href="#pricing" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>Pricing</a>
+              <a href="#faq" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>FAQ</a>
+              {user ? (
+                <Link href="/dashboard" style={{ color: COLORS.primary, textDecoration: 'none', fontSize: 16, fontWeight: 600 }}>Dashboard</Link>
+              ) : (
+                <>
+                  <Link href="/auth/signin" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>Sign in</Link>
+                  <Link href="/get-started" style={{ color: COLORS.primary, textDecoration: 'none', fontSize: 16, fontWeight: 600 }}>Get Started</Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Hero */}
+      <section style={{
+        paddingTop: 140,
+        paddingBottom: 100,
+        background: `linear-gradient(180deg, ${COLORS.white} 0%, ${COLORS.gray100} 100%)`,
+      }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
+          {/* Badge */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            backgroundColor: COLORS.greenLight,
+            color: '#1B5E20',
+            padding: '8px 16px',
+            borderRadius: 100,
+            fontSize: 13,
+            fontWeight: 600,
+            marginBottom: 24,
+          }}>
+            <span style={{ width: 6, height: 6, backgroundColor: COLORS.green, borderRadius: '50%' }} />
+            54% of contested tickets are dismissed
+          </div>
+
+          <h1 style={{
+            fontSize: 'clamp(36px, 6vw, 64px)',
+            fontWeight: 800,
+            lineHeight: 1.1,
+            margin: '0 0 24px 0',
+            letterSpacing: '-0.02em',
+            color: COLORS.black,
+          }}>
+            Chicago parking tickets?
+            <br />
+            <span style={{ color: COLORS.primary }}>We contest them for you.</span>
+          </h1>
+
+          <p style={{
+            fontSize: 'clamp(18px, 2.5vw, 22px)',
+            color: COLORS.gray600,
+            lineHeight: 1.6,
+            maxWidth: 600,
+            margin: '0 auto 40px',
+          }}>
+            We monitor your plate weekly, detect new tickets, and automatically mail contest letters. You just add your plate.
+          </p>
+
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/get-started" style={{
+              backgroundColor: COLORS.primary,
+              color: COLORS.white,
+              padding: '18px 36px',
+              borderRadius: 12,
               textDecoration: 'none',
-              fontSize: 16,
+              fontSize: 17,
               fontWeight: 600,
-              display: 'inline-block',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 4px 14px rgba(0, 102, 255, 0.4)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
             }}>
               Start for $24/year
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
             </Link>
             <a href="#how-it-works" style={{
-              backgroundColor: COLORS.concrete,
-              color: COLORS.graphite,
-              padding: '16px 32px',
-              borderRadius: 8,
+              backgroundColor: COLORS.white,
+              color: COLORS.gray800,
+              padding: '18px 36px',
+              borderRadius: 12,
               textDecoration: 'none',
-              fontSize: 16,
+              fontSize: 17,
               fontWeight: 600,
-              border: `1px solid ${COLORS.border}`,
-              display: 'inline-block',
+              border: `2px solid ${COLORS.gray200}`,
             }}>
               See how it works
             </a>
           </div>
 
-          {/* Trust stat */}
-          <div style={{
-            marginTop: 48,
-            padding: 20,
-            backgroundColor: COLORS.concrete,
-            borderRadius: 12,
-            display: 'inline-block',
-          }}>
-            <p style={{
-              fontSize: 14,
-              color: COLORS.slate,
-              margin: 0,
-            }}>
-              Based on analysis of <strong style={{ color: COLORS.deepHarbor }}>1.2 million</strong> contested Chicago tickets
+          {/* Social proof */}
+          <div style={{ marginTop: 64, display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.black }}>1.2M+</div>
+              <div style={{ fontSize: 14, color: COLORS.gray500, marginTop: 4 }}>Tickets analyzed</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.black }}>54%</div>
+              <div style={{ fontSize: 14, color: COLORS.gray500, marginTop: 4 }}>Average dismissal rate</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.black }}>$24</div>
+              <div style={{ fontSize: 14, color: COLORS.gray500, marginTop: 4 }}>Per year, unlimited letters</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how-it-works" style={{ padding: '100px 24px', backgroundColor: COLORS.white }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
+              How it works
+            </h2>
+            <p style={{ fontSize: 18, color: COLORS.gray500, maxWidth: 500, margin: '0 auto' }}>
+              Set it up once. We handle everything automatically.
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* Key Bullets */}
-      <section style={{
-        backgroundColor: COLORS.concrete,
-        padding: '64px 24px',
-      }}>
-        <div style={{
-          maxWidth: 900,
-          margin: '0 auto',
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 32,
-          }}>
-            <div style={{
-              backgroundColor: COLORS.white,
-              padding: 24,
-              borderRadius: 12,
-              border: `1px solid ${COLORS.border}`,
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                borderRadius: 12,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 32 }}>
+            {[
+              {
+                step: '01',
+                title: 'Add your plate',
+                desc: 'Enter your license plate and mailing address. Takes 2 minutes.',
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
+                    <rect x="3" y="8" width="18" height="8" rx="2" />
+                    <path d="M7 12h.01M12 12h.01M17 12h.01" />
+                  </svg>
+                ),
+              },
+              {
+                step: '02',
+                title: 'We scan weekly',
+                desc: "Every week, we check Chicago's database for new tickets on your plate.",
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                ),
+              },
+              {
+                step: '03',
+                title: 'Auto-contest',
+                desc: 'When we find a ticket, we generate and mail a contest letter via USPS.',
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                ),
+              },
+              {
+                step: '04',
+                title: 'Track everything',
+                desc: 'View all tickets and letters in your dashboard. Full transparency.',
+                icon: (
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
+                    <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                ),
+              },
+            ].map((item, i) => (
+              <div key={i} style={{
+                backgroundColor: COLORS.gray100,
+                borderRadius: 16,
+                padding: 32,
+                position: 'relative',
               }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
-                  <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <div style={{
+                  position: 'absolute',
+                  top: 24,
+                  right: 24,
+                  fontSize: 48,
+                  fontWeight: 800,
+                  color: COLORS.gray200,
+                  lineHeight: 1,
+                }}>
+                  {item.step}
+                </div>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  backgroundColor: COLORS.primaryLight,
+                  borderRadius: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 20,
+                }}>
+                  {item.icon}
+                </div>
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: COLORS.black, margin: '0 0 8px' }}>
+                  {item.title}
+                </h3>
+                <p style={{ fontSize: 15, color: COLORS.gray600, margin: 0, lineHeight: 1.6 }}>
+                  {item.desc}
+                </p>
               </div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>Weekly plate checks</h3>
-              <p style={{ fontSize: 15, color: COLORS.slate, margin: 0, lineHeight: 1.5 }}>We scan for new tickets every week so you never miss a deadline to contest.</p>
-            </div>
-
-            <div style={{
-              backgroundColor: COLORS.white,
-              padding: 24,
-              borderRadius: 12,
-              border: `1px solid ${COLORS.border}`,
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                borderRadius: 12,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
-                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>Auto-generated contest letter</h3>
-              <p style={{ fontSize: 15, color: COLORS.slate, margin: 0, lineHeight: 1.5 }}>Based on ticket type and best practices from historical outcomes.</p>
-            </div>
-
-            <div style={{
-              backgroundColor: COLORS.white,
-              padding: 24,
-              borderRadius: 12,
-              border: `1px solid ${COLORS.border}`,
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                borderRadius: 12,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
-                  <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>Mailed via USPS</h3>
-              <p style={{ fontSize: 15, color: COLORS.slate, margin: 0, lineHeight: 1.5 }}>Tracked delivery, logged in your account. You stay in control.</p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* How it Works */}
-      <section id="how-it-works" style={{
-        backgroundColor: COLORS.white,
-        padding: '80px 24px',
-      }}>
-        <div style={{
-          maxWidth: 600,
-          margin: '0 auto',
-        }}>
-          <h2 style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: COLORS.deepHarbor,
-            textAlign: 'center',
-            margin: '0 0 48px 0',
-          }}>
-            How it works
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            <StepCard
-              number={1}
-              title="Add your license plate"
-              description="Enter your plate and mailing address. Select which ticket types you want us to auto-contest."
-            />
-            <StepCard
-              number={2}
-              title="We check for tickets weekly"
-              description="Every week, we scan Chicago's ticket database for new violations on your plate."
-            />
-            <StepCard
-              number={3}
-              title="If a ticket is found, we generate a contest letter"
-              description="We create a personalized letter using the approach most likely to succeed for that violation type."
-            />
-            <StepCard
-              number={4}
-              title="We mail it and notify you"
-              description="The letter is sent via USPS with tracking. You get an email and can see everything in your dashboard."
-            />
+      {/* Success rates */}
+      <section style={{ padding: '100px 24px', backgroundColor: COLORS.gray100 }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
+              Dismissal rates by ticket type
+            </h2>
+            <p style={{ fontSize: 18, color: COLORS.gray500 }}>
+              Based on analysis of 1.2 million contested Chicago tickets
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gap: 16 }}>
+            {[
+              { type: 'Expired plates', rate: 75, color: COLORS.green },
+              { type: 'No city sticker', rate: 70, color: COLORS.green },
+              { type: 'Expired meter', rate: 67, color: COLORS.green },
+              { type: 'Street cleaning', rate: 45, color: COLORS.amber },
+              { type: 'Speed camera', rate: 20, color: COLORS.red },
+              { type: 'Red light camera', rate: 16, color: COLORS.red },
+            ].map((item, i) => (
+              <div key={i} style={{
+                backgroundColor: COLORS.white,
+                borderRadius: 12,
+                padding: '20px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 24,
+              }}>
+                <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.gray800 }}>{item.type}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, maxWidth: 400 }}>
+                  <div style={{
+                    flex: 1,
+                    height: 8,
+                    backgroundColor: COLORS.gray200,
+                    borderRadius: 100,
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      width: `${item.rate}%`,
+                      height: '100%',
+                      backgroundColor: item.color,
+                      borderRadius: 100,
+                    }} />
+                  </div>
+                  <span style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: item.color,
+                    minWidth: 50,
+                    textAlign: 'right',
+                  }}>
+                    {item.rate}%
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={{
-        backgroundColor: COLORS.concrete,
-        padding: '80px 24px',
-      }}>
-        <div style={{
-          maxWidth: 500,
-          margin: '0 auto',
-        }}>
-          <h2 style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: COLORS.deepHarbor,
-            textAlign: 'center',
-            margin: '0 0 16px 0',
-          }}>
+      <section id="pricing" style={{ padding: '100px 24px', backgroundColor: COLORS.white }}>
+        <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
             Simple pricing
           </h2>
-          <p style={{
-            fontSize: 16,
-            color: COLORS.slate,
-            textAlign: 'center',
-            margin: '0 0 40px 0',
-          }}>
-            One plan. Everything included.
+          <p style={{ fontSize: 18, color: COLORS.gray500, marginBottom: 48 }}>
+            One plan. Everything included. Cancel anytime.
           </p>
 
           <div style={{
             backgroundColor: COLORS.white,
-            borderRadius: 16,
-            border: `2px solid ${COLORS.regulatory}`,
+            borderRadius: 24,
+            border: `2px solid ${COLORS.primary}`,
             overflow: 'hidden',
+            boxShadow: '0 20px 50px rgba(0, 102, 255, 0.15)',
           }}>
             <div style={{
-              backgroundColor: COLORS.regulatory,
+              backgroundColor: COLORS.primary,
               color: COLORS.white,
-              padding: '12px 24px',
-              textAlign: 'center',
+              padding: '16px',
               fontSize: 14,
-              fontWeight: 600,
+              fontWeight: 700,
+              letterSpacing: '0.05em',
             }}>
-              AUTO-CONTEST
+              AUTOPILOT
             </div>
-            <div style={{ padding: 32 }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'center',
-                marginBottom: 24,
-              }}>
-                <span style={{ fontSize: 48, fontWeight: 700, color: COLORS.deepHarbor }}>$24</span>
-                <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
+            <div style={{ padding: 40 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', marginBottom: 32 }}>
+                <span style={{ fontSize: 64, fontWeight: 800, color: COLORS.black }}>$24</span>
+                <span style={{ fontSize: 18, color: COLORS.gray500, marginLeft: 8 }}>/year</span>
               </div>
 
-              <div style={{ marginBottom: 24 }}>
-                <FeatureBullet>Monitor 1 license plate</FeatureBullet>
-                <FeatureBullet>Weekly ticket checks</FeatureBullet>
-                <FeatureBullet>Unlimited contest letters</FeatureBullet>
-                <FeatureBullet>Dashboard log of all actions</FeatureBullet>
+              <div style={{ textAlign: 'left', marginBottom: 32 }}>
+                {[
+                  'Monitor 1 license plate',
+                  'Weekly ticket checks',
+                  'Unlimited contest letters',
+                  'USPS mail with tracking',
+                  'Full dashboard access',
+                  'Email notifications',
+                ].map((feature, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{
+                      width: 24,
+                      height: 24,
+                      backgroundColor: COLORS.greenLight,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.green} strokeWidth="3">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: 16, color: COLORS.gray700 }}>{feature}</span>
+                  </div>
+                ))}
               </div>
 
               <Link href="/get-started" style={{
                 display: 'block',
-                backgroundColor: COLORS.regulatory,
+                backgroundColor: COLORS.primary,
                 color: COLORS.white,
-                padding: '16px 24px',
-                borderRadius: 8,
+                padding: '18px 24px',
+                borderRadius: 12,
                 textDecoration: 'none',
-                fontSize: 16,
+                fontSize: 17,
                 fontWeight: 600,
                 textAlign: 'center',
               }}>
-                Get started
+                Get started now
               </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Transparency */}
-      <section style={{
-        backgroundColor: COLORS.white,
-        padding: '80px 24px',
-      }}>
-        <div style={{
-          maxWidth: 700,
-          margin: '0 auto',
-          textAlign: 'center',
-        }}>
-          <h2 style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: COLORS.deepHarbor,
-            margin: '0 0 24px 0',
-          }}>
-            No black box.
-          </h2>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-            textAlign: 'left',
-            backgroundColor: COLORS.concrete,
-            padding: 32,
-            borderRadius: 12,
-          }}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
-                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              <span style={{ fontSize: 16, color: COLORS.graphite }}>
-                You can see every ticket we detect, every letter we generate, and every letter we mail.
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.signal} strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
-                <path d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span style={{ fontSize: 16, color: COLORS.graphite }}>
-                You can pause mail at any time. Require manual approval for any or all ticket types.
-              </span>
+              <p style={{ fontSize: 13, color: COLORS.gray400, marginTop: 16 }}>
+                No hidden fees. Cancel anytime.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section id="faq" style={{
-        backgroundColor: COLORS.concrete,
-        padding: '80px 24px',
-      }}>
-        <div style={{
-          maxWidth: 700,
-          margin: '0 auto',
-        }}>
-          <h2 style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: COLORS.deepHarbor,
-            textAlign: 'center',
-            margin: '0 0 40px 0',
-          }}>
-            Frequently asked questions
-          </h2>
-          <div style={{
-            backgroundColor: COLORS.white,
-            borderRadius: 12,
-            padding: '0 24px',
-          }}>
-            <FAQItem
-              question="How long does contesting take?"
-              answer="It depends on the city's processing time. Most cases take 4-8 weeks for a decision. We log the submission date so you have proof you contested within the deadline."
-            />
-            <FAQItem
-              question="Do you guarantee wins?"
-              answer="No. Outcomes vary by ticket type and circumstances. Based on historical data, about 54% of contested tickets are dismissed. We help you contest reliably and maximize your odds."
-            />
-            <FAQItem
-              question="Which ticket types have the best odds?"
-              answer="Expired plates (75% win rate), no city sticker (70%), and expired meters (67%) have the highest success rates. Camera violations (speed/red light) have much lower success rates (16-20%)."
-            />
-            <FAQItem
-              question="What if I want to review letters before they're sent?"
-              answer="You can enable 'Require approval before mailing' in your settings. We'll notify you when a letter is ready, and it won't be sent until you approve it."
-            />
-            <FAQItem
-              question="How many plates can I monitor?"
-              answer="Each $24/year subscription covers 1 license plate with unlimited contest letters. Need to monitor more plates? You can subscribe separately for each vehicle."
-            />
-            <FAQItem
-              question="What if I get multiple tickets?"
-              answer="All tickets on your monitored plate are covered. We'll automatically generate and mail contest letters for each one at no additional cost."
-            />
+      <section id="faq" style={{ padding: '100px 24px', backgroundColor: COLORS.gray100 }}>
+        <div style={{ maxWidth: 700, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
+              Questions? Answers.
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {faqs.map((faq, i) => (
+              <div key={i} style={{
+                backgroundColor: COLORS.white,
+                borderRadius: 12,
+                overflow: 'hidden',
+              }}>
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  style={{
+                    width: '100%',
+                    padding: '20px 24px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 17, fontWeight: 600, color: COLORS.black }}>{faq.q}</span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={COLORS.gray400}
+                    strokeWidth="2"
+                    style={{ transform: openFaq === i ? 'rotate(180deg)' : 'none', transition: '0.2s' }}
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+                {openFaq === i && (
+                  <div style={{ padding: '0 24px 20px', fontSize: 15, color: COLORS.gray600, lineHeight: 1.7 }}>
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Important Disclaimer */}
+      {/* CTA */}
       <section style={{
-        backgroundColor: COLORS.white,
-        padding: '48px 24px',
-        borderTop: `1px solid ${COLORS.border}`,
-      }}>
-        <div style={{
-          maxWidth: 700,
-          margin: '0 auto',
-        }}>
-          <h3 style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: COLORS.deepHarbor,
-            margin: '0 0 16px 0',
-          }}>
-            Important
-          </h3>
-          <ul style={{
-            margin: 0,
-            paddingLeft: 20,
-            color: COLORS.slate,
-            fontSize: 14,
-            lineHeight: 1.8,
-          }}>
-            <li>Autopilot America is not a law firm and does not provide legal advice.</li>
-            <li>We provide administrative assistance and document preparation tools.</li>
-            <li>We submit contest letters on your behalf with your permission.</li>
-            <li>Outcomes vary; contesting does not guarantee dismissal.</li>
-          </ul>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section style={{
-        backgroundColor: COLORS.deepHarbor,
-        padding: '80px 24px',
+        padding: '100px 24px',
+        background: `linear-gradient(135deg, ${COLORS.primary} 0%, #0052CC 100%)`,
         textAlign: 'center',
       }}>
-        <div style={{
-          maxWidth: 600,
-          margin: '0 auto',
-        }}>
-          <h2 style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: COLORS.white,
-            margin: '0 0 16px 0',
-          }}>
-            Stop paying tickets you could contest.
+        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.white, margin: '0 0 16px' }}>
+            Stop paying tickets you could contest
           </h2>
-          <p style={{
-            fontSize: 18,
-            color: 'rgba(255,255,255,0.7)',
-            margin: '0 0 32px 0',
-          }}>
-            Add your plate and let us handle the rest.
+          <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.8)', marginBottom: 32 }}>
+            Join thousands of Chicago drivers who let us handle their parking tickets automatically.
           </p>
           <Link href="/get-started" style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
             backgroundColor: COLORS.white,
-            color: COLORS.deepHarbor,
-            padding: '16px 40px',
-            borderRadius: 8,
+            color: COLORS.primary,
+            padding: '18px 36px',
+            borderRadius: 12,
             textDecoration: 'none',
-            fontSize: 16,
-            fontWeight: 600,
-            display: 'inline-block',
+            fontSize: 17,
+            fontWeight: 700,
           }}>
-            Start for $24/year
+            Get started for $24/year
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
           </Link>
         </div>
       </section>
 
-      <Footer />
+      {/* Footer */}
+      <footer style={{ backgroundColor: COLORS.black, color: COLORS.white, padding: '64px 24px 32px' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 48, marginBottom: 48 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: COLORS.primary,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 700 }}>Autopilot</span>
+              </div>
+              <p style={{ color: COLORS.gray500, fontSize: 14, maxWidth: 280 }}>
+                Automatic ticket contesting for Chicago drivers. Set it and forget it.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 64 }}>
+              <div>
+                <h4 style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray400, marginBottom: 16, letterSpacing: '0.05em' }}>LEGAL</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Link href="/privacy" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>Privacy</Link>
+                  <Link href="/terms" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>Terms</Link>
+                </div>
+              </div>
+              <div>
+                <h4 style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray400, marginBottom: 16, letterSpacing: '0.05em' }}>SUPPORT</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Link href="/support" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>Contact</Link>
+                  <a href="#faq" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>FAQ</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ borderTop: `1px solid ${COLORS.gray800}`, paddingTop: 24, fontSize: 13, color: COLORS.gray500 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+              <span>&copy; {new Date().getFullYear()} Autopilot America. All rights reserved.</span>
+              <span>Not a law firm. Does not provide legal advice.</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .mobile-menu-btn { display: block !important; }
+        }
+      `}</style>
     </div>
   );
 }
