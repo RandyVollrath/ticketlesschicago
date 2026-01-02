@@ -74,6 +74,12 @@
     },
     "pages/api/cron/autopilot-export-plates.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/autopilot-generate-letters.ts": {
+      "maxDuration": 120
+    },
+    "pages/api/cron/autopilot-mail-letters.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -140,6 +146,14 @@
     {
       "path": "/api/cron/autopilot-export-plates",
       "schedule": "0 14 * * 1,4"
+    },
+    {
+      "path": "/api/cron/autopilot-generate-letters",
+      "schedule": "30 14 * * 1,4"
+    },
+    {
+      "path": "/api/cron/autopilot-mail-letters",
+      "schedule": "0 15 * * 1,4"
     }
   ],
   "github": {
