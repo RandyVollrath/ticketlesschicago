@@ -1840,9 +1840,43 @@ export default function AdminPortal() {
                   <p style={{ fontSize: '13px', color: '#78350f', marginBottom: '8px' }}>
                     The CSV should have a header row with these columns (order doesn&apos;t matter):
                   </p>
-                  <code style={{ fontSize: '12px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px 12px', borderRadius: '4px', display: 'block' }}>
+                  <code style={{ fontSize: '12px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px 12px', borderRadius: '4px', display: 'block', marginBottom: '12px' }}>
                     license_plate, license_state, ticket_number, issue_date, violation_code, violation_description, violation_location, amount
                   </code>
+                  <button
+                    onClick={() => {
+                      // Generate example CSV content
+                      const exampleCSV = `license_plate,license_state,ticket_number,issue_date,violation_code,violation_description,violation_location,amount
+ABC1234,IL,123456789,2025-01-15,0964125F,EXPIRED PLATES/STICKER,1234 N STATE ST,100.00
+XYZ5678,IL,987654321,2025-01-14,0964125D,NO CITY STICKER,5678 W MADISON ST,250.00
+DEF9012,IL,555666777,2025-01-13,0976160F,EXPIRED METER,321 S MICHIGAN AVE,75.00
+GHI3456,IL,,,,,,(no ticket found - leave empty)
+JKL7890,IL,444333222,2025-01-12,0964130,RESIDENTIAL PERMIT PARKING,999 W BELMONT AVE,65.00`;
+
+                      const blob = new Blob([exampleCSV], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'va-upload-example.csv';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    Download Example CSV
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
