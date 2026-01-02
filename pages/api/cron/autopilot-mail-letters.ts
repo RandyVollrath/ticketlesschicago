@@ -12,11 +12,14 @@ interface LetterToMail {
   ticket_id: string;
   user_id: string;
   letter_content: string;
+  letter_text: string;
   defense_type: string | null;
 }
 
 interface UserProfile {
   full_name: string;
+  first_name: string | null;
+  last_name: string | null;
   mailing_address_line1: string;
   mailing_address_line2: string | null;
   mailing_city: string;
@@ -35,15 +38,12 @@ interface Subscription {
 async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string }> {
   const { data: settings } = await supabaseAdmin
     .from('autopilot_admin_settings')
-    .select('setting_key, setting_value')
-    .in('setting_key', ['kill_all_mailing', 'maintenance_mode']);
+    .select('key, value')
+    .in('key', ['pause_all_mail', 'pause_ticket_processing']);
 
   for (const setting of settings || []) {
-    if (setting.setting_key === 'kill_all_mailing' && setting.setting_value?.enabled) {
+    if (setting.key === 'pause_all_mail' && setting.value?.enabled) {
       return { proceed: false, message: 'Kill switch active: mailing disabled' };
-    }
-    if (setting.setting_key === 'maintenance_mode' && setting.setting_value?.enabled) {
-      return { proceed: false, message: `Maintenance mode: ${setting.setting_value.message}` };
     }
   }
 
@@ -61,9 +61,14 @@ async function mailLetter(
   console.log(`  Mailing letter ${letter.id} for ticket ${ticketNumber}...`);
 
   try {
+    // Build sender name
+    const senderName = profile.full_name ||
+      `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
+      'Vehicle Owner';
+
     // Build sender address
     const fromAddress = {
-      name: profile.full_name,
+      name: senderName,
       address: profile.mailing_address_line2
         ? `${profile.mailing_address_line1}, ${profile.mailing_address_line2}`
         : profile.mailing_address_line1,
@@ -72,8 +77,14 @@ async function mailLetter(
       zip: profile.mailing_zip,
     };
 
+    // Get letter content (prefer letter_content, fall back to letter_text)
+    const letterText = letter.letter_content || letter.letter_text;
+    if (!letterText) {
+      throw new Error('No letter content found');
+    }
+
     // Format letter as HTML
-    const htmlContent = formatLetterAsHTML(letter.letter_content);
+    const htmlContent = formatLetterAsHTML(letterText);
 
     // Send via Lob
     const result = await sendLetter({
@@ -99,6 +110,7 @@ async function mailLetter(
         letter_pdf_url: result.url,
         tracking_number: result.tracking_number || null,
         mailed_at: new Date().toISOString(),
+        sent_at: new Date().toISOString(),
       })
       .eq('id', letter.id);
 
@@ -211,7 +223,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Get all letters ready to mail (approved or auto-approved)
+    const now = new Date().toISOString();
+
+    // Get all tickets where evidence deadline has passed and status is pending_evidence
+    // These are ready to mail
+    const { data: readyTickets } = await supabaseAdmin
+      .from('detected_tickets')
+      .select('id')
+      .eq('status', 'pending_evidence')
+      .lt('evidence_deadline', now);
+
+    const readyTicketIds = readyTickets?.map(t => t.id) || [];
+
+    // Get letters for these tickets, plus any already approved letters
     const { data: letters } = await supabaseAdmin
       .from('contest_letters')
       .select(`
@@ -219,18 +243,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ticket_id,
         user_id,
         letter_content,
+        letter_text,
         defense_type,
         detected_tickets!inner (
+          id,
           ticket_number,
-          status
+          status,
+          evidence_deadline
         )
       `)
-      .in('status', ['approved', 'draft'])
+      .or(`status.eq.pending_evidence,status.eq.approved,status.eq.draft`)
       .order('created_at', { ascending: true })
       .limit(20); // Process in batches
 
     if (!letters || letters.length === 0) {
-      console.log('No letters ready to mail');
+      console.log('No letters to process');
       return res.status(200).json({
         success: true,
         message: 'No letters to mail',
@@ -238,22 +265,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Filter to only letters where ticket status is letter_generated or approved
+    // Filter to only letters where:
+    // 1. Ticket status is pending_evidence AND evidence_deadline has passed, OR
+    // 2. Letter status is approved/draft AND ticket status allows mailing
     const readyLetters = letters.filter((l: any) => {
-      const ticketStatus = l.detected_tickets?.status;
-      return ticketStatus === 'letter_generated' || ticketStatus === 'approved';
+      const ticket = l.detected_tickets;
+      if (!ticket) return false;
+
+      // If evidence deadline has passed, it's ready
+      if (ticket.status === 'pending_evidence' && ticket.evidence_deadline) {
+        const deadline = new Date(ticket.evidence_deadline);
+        if (deadline <= new Date()) {
+          return true;
+        }
+      }
+
+      // If already approved, it's ready
+      if (ticket.status === 'approved' || ticket.status === 'letter_generated') {
+        return true;
+      }
+
+      return false;
     });
 
     if (readyLetters.length === 0) {
-      console.log('No approved letters to mail');
+      console.log('No letters ready to mail (waiting for evidence deadline)');
       return res.status(200).json({
         success: true,
-        message: 'No approved letters',
+        message: 'No letters ready (waiting for evidence deadlines)',
         lettersMailed: 0,
+        pendingEvidence: letters.length,
       });
     }
 
-    console.log(`📋 Processing ${readyLetters.length} letters`);
+    console.log(`📋 Processing ${readyLetters.length} letters (${letters.length - readyLetters.length} still waiting for evidence)`);
 
     let lettersMailed = 0;
     let errors = 0;
@@ -266,10 +311,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('user_id', letter.user_id)
         .single();
 
-      if (!profile || !profile.full_name || !profile.mailing_address_line1) {
-        console.log(`  Skipping letter ${letter.id}: Missing profile info`);
+      if (!profile || !profile.mailing_address_line1) {
+        console.log(`  Skipping letter ${letter.id}: Missing profile/address info`);
         errors++;
         continue;
+      }
+
+      // Build full name if not present
+      if (!profile.full_name) {
+        profile.full_name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
       }
 
       const ticketNumber = (letter as any).detected_tickets?.ticket_number || 'Unknown';

@@ -148,12 +148,8 @@
       "schedule": "0 14 * * 1,4"
     },
     {
-      "path": "/api/cron/autopilot-generate-letters",
-      "schedule": "30 14 * * 1,4"
-    },
-    {
       "path": "/api/cron/autopilot-mail-letters",
-      "schedule": "0 15 * * 1,4"
+      "schedule": "0 15 * * *"
     }
   ],
   "github": {
