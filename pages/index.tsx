@@ -124,13 +124,20 @@ export default function LandingPage() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
+  // Based on 1.2M contested tickets from Chicago FOIA data
   const dismissalRates = [
     { label: 'Expired Plates', pct: 75 },
     { label: 'No City Sticker', pct: 70 },
+    { label: 'Disabled Zone', pct: 68 },
     { label: 'Expired Meter', pct: 67 },
-    { label: 'Street Cleaning', pct: 45 },
-    { label: 'Speed Camera', pct: 20 },
-    { label: 'Red Light Camera', pct: 16 },
+    { label: 'Commercial Loading Zone', pct: 59 },
+    { label: 'No Standing/Time Restricted', pct: 58 },
+    { label: 'Residential Permit Parking', pct: 54 },
+    { label: 'Fire Hydrant', pct: 44 },
+    { label: 'Rush Hour Parking', pct: 37 },
+    { label: 'Street Cleaning', pct: 34 },
+    { label: 'Red Light Camera', pct: 20 },
+    { label: 'Speed Camera', pct: 18 },
   ];
 
   const faqs = [
