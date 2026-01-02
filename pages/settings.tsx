@@ -128,7 +128,7 @@ export default function SettingsPage() {
         user_id: session.user.id,
         ...settings,
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: 'user_id' });
 
     if (updateError) {
       setError('Failed to save settings. Please try again.');
@@ -218,7 +218,11 @@ export default function SettingsPage() {
             </div>
             <Toggle
               checked={settings.auto_mail_enabled}
-              onChange={(checked) => setSettings({ ...settings, auto_mail_enabled: checked })}
+              onChange={(checked) => setSettings({
+                ...settings,
+                auto_mail_enabled: checked,
+                require_approval: !checked
+              })}
             />
           </div>
 
@@ -240,7 +244,11 @@ export default function SettingsPage() {
             </div>
             <Toggle
               checked={settings.require_approval}
-              onChange={(checked) => setSettings({ ...settings, require_approval: checked })}
+              onChange={(checked) => setSettings({
+                ...settings,
+                require_approval: checked,
+                auto_mail_enabled: !checked
+              })}
             />
           </div>
 

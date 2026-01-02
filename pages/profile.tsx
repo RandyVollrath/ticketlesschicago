@@ -94,7 +94,7 @@ export default function ProfilePage() {
         mailing_state: data.state || null,
         mailing_zip: data.zip || null,
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: 'user_id' });
 
     if (error) {
       setSaveStatus('error');
