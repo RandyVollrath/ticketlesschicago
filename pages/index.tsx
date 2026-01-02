@@ -324,7 +324,7 @@ export default function LandingPage() {
           margin: '0 auto 40px',
           lineHeight: 1.6
         }}>
-          Autopilot monitors your Chicago license plate daily. When a ticket hits, we automatically mail the contest letter. <strong style={{ color: '#fff' }}>54% average dismissal rate.</strong>
+          Autopilot monitors your Chicago license plate weekly. When a ticket hits, we automatically mail the contest letter. <strong style={{ color: '#fff' }}>54% average dismissal rate.</strong>
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -366,7 +366,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
           {[
             { title: '1. Connect', text: 'Enter your license plate. We scan Chicago databases instantly.', icon: '🔗' },
-            { title: '2. Monitor', text: 'Our system checks for new violations every single day.', icon: '👀' },
+            { title: '2. Monitor', text: 'Our system checks for new violations every week.', icon: '👀' },
             { title: '3. Fight', text: 'We auto-generate and mail the best legal defense based on 1.2M records.', icon: '⚖️' },
             { title: '4. Relax', text: 'You get a notification when the ticket is dismissed. Total peace of mind.', icon: '🍹' }
           ].map((step, i) => (
