@@ -145,7 +145,18 @@ export default function Home() {
               </Link>
             ) : (
               <>
-                <Link href="/auth/signin" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</Link>
+                <Link href="/auth/signin" style={{
+                  color: COLORS.primary,
+                  textDecoration: 'none',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  padding: '10px 16px',
+                  border: `1px solid ${COLORS.primary}`,
+                  borderRadius: 8,
+                  backgroundColor: COLORS.white,
+                }}>
+                  Already a user?
+                </Link>
                 <Link href="/get-started" style={{
                   backgroundColor: COLORS.primary,
                   color: COLORS.white,
@@ -155,7 +166,7 @@ export default function Home() {
                   fontSize: 14,
                   fontWeight: 600,
                 }}>
-                  Get Started
+                  Start Saving Now
                 </Link>
               </>
             )}
@@ -190,8 +201,21 @@ export default function Home() {
                 <Link href="/dashboard" style={{ color: COLORS.primary, textDecoration: 'none', fontSize: 16, fontWeight: 600 }}>Dashboard</Link>
               ) : (
                 <>
-                  <Link href="/auth/signin" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>Sign in</Link>
-                  <Link href="/get-started" style={{ color: COLORS.primary, textDecoration: 'none', fontSize: 16, fontWeight: 600 }}>Get Started</Link>
+                  <Link href="/auth/signin" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>Already a user? Sign in</Link>
+                  <Link href="/get-started" style={{
+                    display: 'block',
+                    backgroundColor: COLORS.primary,
+                    color: COLORS.white,
+                    padding: '12px 20px',
+                    borderRadius: 8,
+                    textDecoration: 'none',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    textAlign: 'center',
+                    marginTop: 8,
+                  }}>
+                    Start Saving Now
+                  </Link>
                 </>
               )}
             </div>
@@ -211,16 +235,16 @@ export default function Home() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            backgroundColor: COLORS.greenLight,
-            color: '#1B5E20',
+            backgroundColor: COLORS.amberLight,
+            color: '#E65100',
             padding: '8px 16px',
             borderRadius: 100,
             fontSize: 13,
             fontWeight: 600,
             marginBottom: 24,
           }}>
-            <span style={{ width: 6, height: 6, backgroundColor: COLORS.green, borderRadius: '50%' }} />
-            54% of contested tickets are dismissed
+            <span style={{ width: 6, height: 6, backgroundColor: COLORS.amber, borderRadius: '50%' }} />
+            Chicago issues 3M+ tickets/year - don't pay unfairly
           </div>
 
           <h1 style={{
@@ -231,37 +255,37 @@ export default function Home() {
             letterSpacing: '-0.02em',
             color: COLORS.black,
           }}>
-            Chicago parking tickets?
+            Stop Paying Unfair
             <br />
-            <span style={{ color: COLORS.primary }}>We contest them for you.</span>
+            <span style={{ color: COLORS.primary }}>Chicago Parking Tickets</span>
           </h1>
 
           <p style={{
             fontSize: 'clamp(18px, 2.5vw, 22px)',
             color: COLORS.gray600,
             lineHeight: 1.6,
-            maxWidth: 600,
+            maxWidth: 620,
             margin: '0 auto 40px',
           }}>
-            We monitor your plate weekly, detect new tickets, and automatically mail contest letters. You just add your plate.
+            We monitor your plate, find tickets before you do, and automatically mail contest letters. <strong style={{ color: COLORS.black }}>54% of contested tickets are dismissed.</strong>
           </p>
 
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/get-started" style={{
-              backgroundColor: COLORS.primary,
+              backgroundColor: COLORS.green,
               color: COLORS.white,
-              padding: '18px 36px',
+              padding: '18px 40px',
               borderRadius: 12,
               textDecoration: 'none',
-              fontSize: 17,
-              fontWeight: 600,
+              fontSize: 18,
+              fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 4px 14px rgba(0, 102, 255, 0.4)',
+              boxShadow: '0 4px 14px rgba(0, 200, 83, 0.4)',
               transition: 'transform 0.2s, box-shadow 0.2s',
             }}>
-              Start for $24/year
+              Start Saving Now - $24/year
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
@@ -279,6 +303,16 @@ export default function Home() {
               See how it works
             </a>
           </div>
+
+          {/* Urgency message */}
+          <p style={{
+            marginTop: 24,
+            fontSize: 14,
+            color: COLORS.gray500,
+            fontWeight: 500,
+          }}>
+            Less than $2/month to protect yourself from $100+ tickets
+          </p>
 
           {/* Social proof */}
           <div style={{ marginTop: 64, display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>

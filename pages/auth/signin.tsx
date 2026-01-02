@@ -114,12 +114,15 @@ export default function SignIn() {
             <span style={{ fontSize: 18, fontWeight: 700, color: COLORS.deepHarbor }}>Autopilot America</span>
           </Link>
           <Link href="/get-started" style={{
-            color: COLORS.regulatory,
+            color: COLORS.white,
             textDecoration: 'none',
             fontSize: 14,
-            fontWeight: 500,
+            fontWeight: 600,
+            backgroundColor: COLORS.regulatory,
+            padding: '10px 20px',
+            borderRadius: 8,
           }}>
-            Start for $24/year
+            Start Saving Now
           </Link>
         </div>
       </header>
@@ -143,7 +146,7 @@ export default function SignIn() {
             margin: '0 0 8px 0',
             textAlign: 'center',
           }}>
-            Welcome back
+            Welcome Back!
           </h1>
           <p style={{
             fontSize: 15,
@@ -151,7 +154,7 @@ export default function SignIn() {
             margin: '0 0 32px 0',
             textAlign: 'center',
           }}>
-            Sign in to manage your tickets and plates.
+            Sign in to your Autopilot America account and keep avoiding those parking tickets.
           </p>
 
           {/* Google Sign-In Button */}
@@ -280,7 +283,7 @@ export default function SignIn() {
           }}>
             Don't have an account?{' '}
             <Link href="/get-started" style={{ color: COLORS.regulatory, textDecoration: 'none', fontWeight: 500 }}>
-              Get started
+              Sign up for just $24/year
             </Link>
           </p>
         </div>

@@ -151,8 +151,8 @@ export default function GetStarted() {
   return (
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete, minHeight: '100vh' }}>
       <Head>
-        <title>Get Started - Autopilot America</title>
-        <meta name="description" content="Start auto-contesting Chicago parking tickets for $24/year" />
+        <title>Start Saving - Autopilot America</title>
+        <meta name="description" content="Stop paying unfair parking tickets. Autopilot America automatically contests your tickets for just $24/year." />
       </Head>
 
       {/* Header */}
@@ -184,32 +184,39 @@ export default function GetStarted() {
               padding: '12px 24px',
               fontSize: 14,
               fontWeight: 600,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}>
-              AUTO-CONTEST PLAN
+              <span>AUTO-CONTEST PLAN</span>
+              <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>BEST VALUE</span>
             </div>
             <div style={{ padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
                 <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$24</span>
                 <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
               </div>
-              <div style={{ fontSize: 14, color: COLORS.slate, lineHeight: 1.8 }}>
+              <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
+                That's less than $2/month to protect yourself from tickets
+              </p>
+              <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                     <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                   </svg>
-                  Weekly ticket checks
+                  <strong>Weekly</strong> plate monitoring
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                     <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                   </svg>
-                  Monitor 1 license plate
+                  <strong>Automatic</strong> contest letters mailed
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                     <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                   </svg>
-                  Auto-contest letters mailed for you
+                  <strong>Win rate:</strong> 60-75% on eligible tickets
                 </div>
               </div>
             </div>
@@ -224,11 +231,11 @@ export default function GetStarted() {
           }}>
             {!user ? (
               <>
-                <h2 style={{ fontSize: 20, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
-                  {authMode === 'signup' ? 'Create your account' : 'Sign in'}
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+                  {authMode === 'signup' ? 'Get Started with Autopilot America!' : 'Welcome Back!'}
                 </h2>
                 <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
-                  {authMode === 'signup' ? 'Enter your email to get started.' : 'Welcome back! Enter your email to sign in.'}
+                  {authMode === 'signup' ? 'Stop paying unfair parking tickets. We\'ll contest them for you automatically.' : 'Sign in to continue protecting your wallet from parking tickets.'}
                 </p>
 
                 {/* Google Sign-In Button */}
@@ -340,7 +347,7 @@ export default function GetStarted() {
                       opacity: authLoading ? 0.7 : 1,
                     }}
                   >
-                    {authLoading ? 'Sending...' : 'Continue with email'}
+                    {authLoading ? 'Sending...' : 'Start Protecting My Wallet'}
                   </button>
                 </form>
 
@@ -405,18 +412,18 @@ export default function GetStarted() {
                   disabled={checkoutLoading || !consentChecked}
                   style={{
                     width: '100%',
-                    backgroundColor: consentChecked ? COLORS.regulatory : COLORS.slate,
+                    backgroundColor: consentChecked ? COLORS.signal : COLORS.slate,
                     color: COLORS.white,
-                    padding: '14px 24px',
+                    padding: '16px 24px',
                     borderRadius: 8,
                     border: 'none',
-                    fontSize: 16,
+                    fontSize: 17,
                     fontWeight: 600,
                     cursor: (checkoutLoading || !consentChecked) ? 'not-allowed' : 'pointer',
                     opacity: (checkoutLoading || !consentChecked) ? 0.7 : 1,
                   }}
                 >
-                  {checkoutLoading ? 'Loading...' : 'Subscribe & continue'}
+                  {checkoutLoading ? 'Loading...' : 'Start Saving Money Now'}
                 </button>
 
                 <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 16, textAlign: 'center' }}>
