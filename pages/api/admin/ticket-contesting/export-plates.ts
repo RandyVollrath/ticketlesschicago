@@ -36,10 +36,10 @@ export default withAdminAuth(async (req, res, adminUser) => {
     // Get all paid users with license plates
     const { data: users, error } = await supabase
       .from('user_profiles')
-      .select('user_id, name, license_plate, license_state')
+      .select('user_id, first_name, last_name, license_plate, license_state')
       .eq('has_protection', true)
       .not('license_plate', 'is', null)
-      .order('name');
+      .order('last_name');
 
     if (error) {
       throw error;
@@ -61,17 +61,20 @@ export default withAdminAuth(async (req, res, adminUser) => {
         'amount'
       ];
 
-      const rows = plates.map(u => [
-        u.license_plate || '',
-        u.license_state || 'IL',
-        (u.name || '').replace(/,/g, ' '), // Remove commas from names
-        '', // ticket_number - VA fills in
-        '', // issue_date - VA fills in
-        '', // violation_code - VA fills in
-        '', // violation_description - VA fills in
-        '', // violation_location - VA fills in
-        '', // amount - VA fills in
-      ]);
+      const rows = plates.map(u => {
+        const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+        return [
+          u.license_plate || '',
+          u.license_state || 'IL',
+          fullName.replace(/,/g, ' '), // Remove commas from names
+          '', // ticket_number - VA fills in
+          '', // issue_date - VA fills in
+          '', // violation_code - VA fills in
+          '', // violation_description - VA fills in
+          '', // violation_location - VA fills in
+          '', // amount - VA fills in
+        ];
+      });
 
       const csv = [
         headers.join(','),
@@ -90,7 +93,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
       plates: plates.map(u => ({
         license_plate: u.license_plate,
         license_state: u.license_state || 'IL',
-        user_name: u.name,
+        user_name: [u.first_name, u.last_name].filter(Boolean).join(' '),
       })),
     });
 
