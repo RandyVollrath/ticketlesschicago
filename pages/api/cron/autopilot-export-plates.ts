@@ -236,7 +236,7 @@ export default async function handler(
     const { data: emailSetting } = await supabase
       .from('autopilot_admin_settings')
       .select('value')
-      .eq('key', 'va_email_recipient')
+      .eq('key', 'va_email')
       .single();
 
     const vaEmail = emailSetting?.value?.email;
