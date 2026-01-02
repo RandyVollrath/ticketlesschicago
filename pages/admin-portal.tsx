@@ -152,6 +152,615 @@ const PERMIT_REJECTION_REASONS = {
   OTHER: 'Other issue (see details below)',
 };
 
+// ============ Letter Templates Data ============
+
+const DEFENSE_TEMPLATES: Record<string, { type: string; description: string; template: string }> = {
+  expired_plates: {
+    type: 'registration_renewed',
+    description: 'Expired Registration / Plates',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for expired registration.
+
+At the time this ticket was issued, my vehicle registration had recently been renewed. I have attached documentation showing that my registration was valid at the time of the citation, or that I renewed it within the grace period allowed by Illinois law.
+
+Under Chicago Municipal Code, a vehicle owner has a reasonable period to update their registration after renewal. I believe this citation was issued in error.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  no_city_sticker: {
+    type: 'sticker_purchased',
+    description: 'Missing City Sticker',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
+
+At the time this ticket was issued, I had purchased my city sticker but had not yet received it in the mail / had not yet affixed it to my vehicle. I have attached proof of purchase showing the sticker was purchased prior to the citation.
+
+Under Chicago Municipal Code Section 3-56-030, the city allows a grace period for displaying newly purchased stickers. I believe this citation was issued during that grace period.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  expired_meter: {
+    type: 'meter_malfunction',
+    description: 'Expired Meter',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for an expired parking meter.
+
+I believe the parking meter at this location was malfunctioning at the time of this citation. The meter may not have properly displayed the time remaining, or may have failed to accept payment correctly.
+
+Additionally, signage at this location may have been unclear or obscured, making it difficult to determine the correct parking regulations.
+
+I respectfully request that this ticket be dismissed or reduced due to the possibility of meter malfunction.`,
+  },
+  disabled_zone: {
+    type: 'disability_documentation',
+    description: 'Disabled Zone Parking',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a disabled zone.
+
+I am a person with a disability and possess a valid disability parking placard/plate. At the time this ticket was issued, my placard may not have been visible to the parking enforcement officer, but it was present in my vehicle.
+
+I have attached documentation of my valid disability parking authorization.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  street_cleaning: {
+    type: 'signage_issue',
+    description: 'Street Cleaning Violation',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
+
+I believe the signage indicating street cleaning restrictions at this location was either missing, obscured, damaged, or contradictory. I made a good faith effort to comply with posted regulations but the signage was not clear.
+
+Additionally, I would note that street cleaning schedules can be difficult to track and the city's notification systems may not have adequately informed residents of the scheduled cleaning.
+
+I respectfully request that this ticket be dismissed or reduced.`,
+  },
+  rush_hour: {
+    type: 'emergency_situation',
+    description: 'Rush Hour Parking Violation',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
+
+At the time this ticket was issued, I was dealing with an emergency situation that required me to briefly stop my vehicle. I was not parking but rather attending to an urgent matter.
+
+The signage at this location may also have been unclear about the specific hours of restriction.
+
+I respectfully request that this ticket be dismissed or reduced given the circumstances.`,
+  },
+  fire_hydrant: {
+    type: 'distance_dispute',
+    description: 'Parking Near Fire Hydrant',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking too close to a fire hydrant.
+
+I believe my vehicle was parked at least 15 feet from the fire hydrant as required by law. The distance may have been misjudged by the parking enforcement officer.
+
+I would request photographic evidence of the violation if available, and ask that this ticket be reviewed.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  residential_permit: {
+    type: 'permit_displayed',
+    description: 'Residential Permit Parking',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a residential permit zone.
+
+At the time this ticket was issued, I had a valid residential parking permit displayed in my vehicle. The permit may not have been visible to the parking enforcement officer due to lighting conditions or placement, but it was present.
+
+I have attached documentation of my valid residential parking permit.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  no_standing: {
+    type: 'brief_stop',
+    description: 'No Standing/Stopping Zone',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a no standing/stopping violation.
+
+At the time this ticket was issued, I was briefly stopped for an essential purpose such as loading/unloading passengers or responding to an emergency. My vehicle was not parked or left unattended.
+
+The signage at this location may also have been unclear or contradictory.
+
+I respectfully request that this ticket be dismissed or reduced.`,
+  },
+  bus_stop: {
+    type: 'signage_unclear',
+    description: 'Bus Stop/Stand Violation',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a bus stop zone.
+
+I believe the bus stop signage at this location was either missing, faded, or not clearly visible. The curb markings may have been worn or obscured by weather conditions.
+
+I made a good faith effort to comply with parking regulations but was unable to identify this location as a bus stop.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  other_unknown: {
+    type: 'general_contest',
+    description: 'Other/Unknown Violation (General Template)',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date}.
+
+I believe this ticket was issued in error for the following reasons:
+1. The signage at this location may have been unclear, missing, or contradictory
+2. There may have been extenuating circumstances at the time
+3. The violation may not have occurred as described
+
+I respectfully request a hearing to present my case and ask that this ticket be dismissed or reduced.`,
+  },
+};
+
+// Generate sample letter for preview
+function generateSampleLetter(template: string): string {
+  const today = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  let content = template
+    .replace(/{ticket_number}/g, 'ABC1234567')
+    .replace(/{violation_date}/g, 'December 15, 2025');
+
+  return `${today}
+
+John Smith
+123 Main Street, Apt 4B
+Chicago, IL 60614
+
+City of Chicago
+Department of Finance
+Parking Ticket Contests
+P.O. Box 88292
+Chicago, IL 60680-1292
+
+RE: Contest of Parking Ticket ABC1234567
+License Plate: IL ABC123
+Violation Date: December 15, 2025
+Amount: $65.00
+
+To Whom It May Concern:
+
+${content}
+
+Thank you for your consideration of this matter.
+
+Sincerely,
+
+John Smith
+123 Main Street, Apt 4B
+Chicago, IL 60614`;
+}
+
+// Letter Templates Component
+function LetterTemplatesSection() {
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generatedPdf, setGeneratedPdf] = useState<string | null>(null);
+
+  // Form fields for generating letter
+  const [formData, setFormData] = useState({
+    fullName: 'John Smith',
+    addressLine1: '123 Main Street',
+    addressLine2: 'Apt 4B',
+    city: 'Chicago',
+    state: 'IL',
+    zip: '60614',
+    ticketNumber: '',
+    violationDate: '',
+    amount: '',
+    location: '',
+    licensePlate: '',
+    plateState: 'IL',
+  });
+
+  const templateList = Object.entries(DEFENSE_TEMPLATES);
+  const selected = selectedTemplate ? DEFENSE_TEMPLATES[selectedTemplate] : null;
+
+  // Generate a complete letter with form data
+  const generateFullLetter = (template: string): string => {
+    const today = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const violationDate = formData.violationDate
+      ? new Date(formData.violationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : 'the date indicated';
+
+    let content = template
+      .replace(/{ticket_number}/g, formData.ticketNumber || '[TICKET NUMBER]')
+      .replace(/{violation_date}/g, violationDate)
+      .replace(/{violation_description}/g, selected?.description || 'parking violation')
+      .replace(/{amount}/g, formData.amount ? `$${formData.amount}` : '[AMOUNT]')
+      .replace(/{location}/g, formData.location || '[LOCATION]')
+      .replace(/{plate}/g, formData.licensePlate || '[LICENSE PLATE]')
+      .replace(/{state}/g, formData.plateState);
+
+    const addressLines = [
+      formData.addressLine1,
+      formData.addressLine2,
+      `${formData.city}, ${formData.state} ${formData.zip}`,
+    ].filter(Boolean);
+
+    return `${today}
+
+${formData.fullName}
+${addressLines.join('\n')}
+
+City of Chicago
+Department of Finance
+Parking Ticket Contests
+P.O. Box 88292
+Chicago, IL 60680-1292
+
+RE: Contest of Parking Ticket ${formData.ticketNumber || '[TICKET NUMBER]'}
+License Plate: ${formData.licensePlate || '[LICENSE PLATE]'} (${formData.plateState})
+Violation Date: ${violationDate}
+Amount: ${formData.amount ? `$${formData.amount}` : '[AMOUNT]'}
+
+To Whom It May Concern:
+
+${content}
+
+Thank you for your consideration of this matter.
+
+Sincerely,
+
+${formData.fullName}
+${addressLines.join('\n')}`;
+  };
+
+  // Download as PDF
+  const downloadPdf = async () => {
+    if (!selected || !selectedTemplate) return;
+
+    setGenerating(true);
+    try {
+      const letterContent = generateFullLetter(selected.template);
+
+      // Call the PDF generation API
+      const response = await fetch('/api/admin/generate-sample-letter-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          letterContent,
+          violationType: selectedTemplate,
+          ticketNumber: formData.ticketNumber || 'SAMPLE',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to generate PDF');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contest-letter-${selectedTemplate}-${formData.ticketNumber || 'sample'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Download as text file
+  const downloadText = () => {
+    if (!selected) return;
+
+    const letterContent = generateFullLetter(selected.template);
+    const blob = new Blob([letterContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contest-letter-${selectedTemplate}-${formData.ticketNumber || 'sample'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = () => {
+    if (!selected) return;
+    const letterContent = generateFullLetter(selected.template);
+    navigator.clipboard.writeText(letterContent);
+    alert('Letter copied to clipboard!');
+  };
+
+  return (
+    <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginTop: '24px' }}>
+      <div
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+      >
+        <h2 style={{ fontSize: '20px', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '24px' }}>&#128220;</span>
+          Letter Templates &amp; Generator
+          <span style={{ fontSize: '13px', fontWeight: '400', color: '#6b7280', marginLeft: '8px' }}>
+            ({templateList.length} templates)
+          </span>
+        </h2>
+        <span style={{ fontSize: '20px', color: '#6b7280', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+          &#9660;
+        </span>
+      </div>
+
+      {isExpanded && (
+        <div style={{ marginTop: '20px' }}>
+          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>
+            Select a violation type, fill in the details, and generate a contest letter. You can download as PDF or text.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '20px' }}>
+            {/* Template List */}
+            <div style={{ borderRight: '1px solid #e5e7eb', paddingRight: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                Violation Types
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '600px', overflowY: 'auto' }}>
+                {templateList.map(([key, template]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedTemplate(key)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      textAlign: 'left',
+                      backgroundColor: selectedTemplate === key ? '#eff6ff' : 'transparent',
+                      border: selectedTemplate === key ? '1px solid #3b82f6' : '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: '500', color: selectedTemplate === key ? '#1d4ed8' : '#111827' }}>
+                      {template.description}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                      {template.type.replace(/_/g, ' ')}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form & Preview */}
+            <div>
+              {!selected ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: '#6b7280', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>&#128221;</div>
+                  <p style={{ fontSize: '14px' }}>Select a violation type to generate a letter</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>{selected.description}</div>
+                    <span style={{ display: 'inline-block', padding: '3px 10px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '10px', fontSize: '11px', fontWeight: '500' }}>
+                      Defense: {selected.type.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+
+                  {/* Input Form */}
+                  <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                      Letter Details
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Full Name</label>
+                        <input
+                          type="text"
+                          value={formData.fullName}
+                          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Ticket Number</label>
+                        <input
+                          type="text"
+                          value={formData.ticketNumber}
+                          onChange={(e) => setFormData({ ...formData, ticketNumber: e.target.value })}
+                          placeholder="e.g. ABC1234567"
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Address Line 1</label>
+                        <input
+                          type="text"
+                          value={formData.addressLine1}
+                          onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Violation Date</label>
+                        <input
+                          type="date"
+                          value={formData.violationDate}
+                          onChange={(e) => setFormData({ ...formData, violationDate: e.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Address Line 2</label>
+                        <input
+                          type="text"
+                          value={formData.addressLine2}
+                          onChange={(e) => setFormData({ ...formData, addressLine2: e.target.value })}
+                          placeholder="Apt, Suite, etc."
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Amount ($)</label>
+                        <input
+                          type="text"
+                          value={formData.amount}
+                          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                          placeholder="e.g. 65.00"
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>City</label>
+                        <input
+                          type="text"
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Location (where ticket was issued)</label>
+                        <input
+                          type="text"
+                          value={formData.location}
+                          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                          placeholder="e.g. 1234 W. Main St"
+                          style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>State</label>
+                          <input
+                            type="text"
+                            value={formData.state}
+                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>ZIP</label>
+                          <input
+                            type="text"
+                            value={formData.zip}
+                            onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>License Plate</label>
+                          <input
+                            type="text"
+                            value={formData.licensePlate}
+                            onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
+                            placeholder="e.g. ABC123"
+                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>State</label>
+                          <input
+                            type="text"
+                            value={formData.plateState}
+                            onChange={(e) => setFormData({ ...formData, plateState: e.target.value })}
+                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                    <button
+                      onClick={downloadPdf}
+                      disabled={generating}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: generating ? '#d1d5db' : '#7c3aed',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: generating ? 'wait' : 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      {generating ? 'Generating...' : 'Download PDF'}
+                    </button>
+                    <button
+                      onClick={downloadText}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      Download Text
+                    </button>
+                    <button
+                      onClick={copyToClipboard}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#f3f4f6',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      Copy to Clipboard
+                    </button>
+                  </div>
+
+                  {/* Letter Preview */}
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                    Letter Preview
+                  </div>
+                  <div style={{
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    padding: '20px',
+                    fontFamily: 'Georgia, serif',
+                    fontSize: '13px',
+                    lineHeight: '1.7',
+                    whiteSpace: 'pre-wrap',
+                    color: '#374151',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    {generateFullLetter(selected.template)}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+            <div>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>{templateList.length}</span>
+              <span style={{ fontSize: '13px', color: '#6b7280', marginLeft: '8px' }}>Total Templates</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: '#10b981' }}>10</span>
+              <span style={{ fontSize: '13px', color: '#6b7280', marginLeft: '8px' }}>Violation-Specific</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: '#f59e0b' }}>1</span>
+              <span style={{ fontSize: '13px', color: '#6b7280', marginLeft: '8px' }}>General Fallback</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ============ Main Component ============
 
 export default function AdminPortal() {
@@ -1416,6 +2025,9 @@ export default function AdminPortal() {
                 )}
               </div>
             </div>
+
+            {/* Letter Templates Section */}
+            <LetterTemplatesSection />
           </div>
         )}
 
