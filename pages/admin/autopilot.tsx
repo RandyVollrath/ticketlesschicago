@@ -50,6 +50,11 @@ export default function AutopilotAdmin() {
     require_approval_all: false,
   });
 
+  // VA email recipient
+  const [vaEmail, setVaEmail] = useState('');
+  const [vaEmailSaving, setVaEmailSaving] = useState(false);
+  const [vaEmailSaved, setVaEmailSaved] = useState(false);
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -119,7 +124,7 @@ export default function AutopilotAdmin() {
       lettersSent: lettersCount || 0,
     });
 
-    // Load kill switches
+    // Load kill switches and VA email
     const { data: settings } = await supabase
       .from('autopilot_admin_settings')
       .select('key, value');
@@ -127,10 +132,34 @@ export default function AutopilotAdmin() {
     if (settings) {
       const switches: any = {};
       settings.forEach(s => {
-        switches[s.key] = s.value?.enabled || false;
+        if (s.key === 'va_email_recipient') {
+          setVaEmail(s.value?.email || '');
+        } else {
+          switches[s.key] = s.value?.enabled || false;
+        }
       });
       setKillSwitches(switches);
     }
+  };
+
+  const saveVaEmail = async () => {
+    setVaEmailSaving(true);
+    setVaEmailSaved(false);
+
+    const { error } = await supabase
+      .from('autopilot_admin_settings')
+      .upsert({
+        key: 'va_email_recipient',
+        value: { email: vaEmail },
+        updated_by: user?.id,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+
+    if (!error) {
+      setVaEmailSaved(true);
+      setTimeout(() => setVaEmailSaved(false), 3000);
+    }
+    setVaEmailSaving(false);
   };
 
   const runExport = async () => {
@@ -470,6 +499,49 @@ export default function AutopilotAdmin() {
         {/* Settings Tab (Kill Switches) */}
         {activeTab === 'settings' && (
           <div style={{ backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
+            {/* VA Email Recipient */}
+            <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+                VA Plate Check Email
+              </h2>
+              <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 16px 0' }}>
+                This email receives the CSV of all monitored plates every Monday and Thursday at 8am Chicago time.
+              </p>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <input
+                  type="email"
+                  value={vaEmail}
+                  onChange={(e) => setVaEmail(e.target.value)}
+                  placeholder="va@example.com"
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={saveVaEmail}
+                  disabled={vaEmailSaving}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: 8,
+                    border: 'none',
+                    backgroundColor: COLORS.regulatory,
+                    color: COLORS.white,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: vaEmailSaving ? 'not-allowed' : 'pointer',
+                    opacity: vaEmailSaving ? 0.7 : 1,
+                  }}
+                >
+                  {vaEmailSaving ? 'Saving...' : vaEmailSaved ? 'Saved!' : 'Save'}
+                </button>
+              </div>
+            </div>
+
             <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 24px 0' }}>
               Emergency Controls
             </h2>
