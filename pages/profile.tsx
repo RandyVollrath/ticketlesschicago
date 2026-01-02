@@ -1,28 +1,30 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { DashboardLayout } from './dashboard';
 
 const COLORS = {
-  primary: '#0066FF',
-  primaryLight: '#E6F0FF',
-  deepHarbor: '#0F172A',
-  graphite: '#1E293B',
-  slate: '#64748B',
-  slateLight: '#94A3B8',
+  primary: '#0F172A',
+  accent: '#10B981',
+  highlight: '#F97316',
+  bgDark: '#020617',
+  bgLight: '#F8FAFC',
+  bgSection: '#F1F5F9',
+  textDark: '#1E293B',
+  textLight: '#FFFFFF',
+  textMuted: '#64748B',
   border: '#E2E8F0',
-  borderLight: '#F1F5F9',
-  white: '#FFFFFF',
-  background: '#F8FAFC',
-  success: '#10B981',
-  successLight: '#D1FAE5',
-  successDark: '#059669',
   danger: '#EF4444',
   dangerLight: '#FEE2E2',
-  warning: '#F59E0B',
+  successLight: '#D1FAE5',
   warningLight: '#FEF3C7',
-  warningDark: '#D97706',
+};
+
+const FONTS = {
+  heading: '"Space Grotesk", sans-serif',
+  body: '"Inter", sans-serif',
 };
 
 const US_STATES = [
@@ -90,7 +92,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
         width: 48,
         height: 26,
         borderRadius: 26,
-        backgroundColor: checked ? COLORS.success : COLORS.slateLight,
+        backgroundColor: checked ? COLORS.accent : '#CBD5E1',
         border: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
         position: 'relative',
@@ -104,100 +106,81 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
         width: 20,
         left: checked ? 25 : 3,
         top: 3,
-        backgroundColor: COLORS.white,
+        backgroundColor: COLORS.textLight,
         borderRadius: '50%',
         transition: 'left 0.2s',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
       }} />
     </button>
   );
 }
 
-// Expandable Section component
-function ExpandableSection({
+// Card component
+function Card({
   title,
-  subtitle,
-  icon,
   children,
-  defaultOpen = false,
+  isOpen,
+  onToggle,
+  warning,
   badge,
+  alwaysOpen = false,
 }: {
   title: string;
-  subtitle?: string;
-  icon: React.ReactNode;
   children: React.ReactNode;
-  defaultOpen?: boolean;
+  isOpen?: boolean;
+  onToggle?: () => void;
+  warning?: boolean;
   badge?: React.ReactNode;
+  alwaysOpen?: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
   return (
     <div style={{
-      backgroundColor: COLORS.white,
+      backgroundColor: '#fff',
       borderRadius: 12,
-      border: `1px solid ${COLORS.border}`,
-      marginBottom: 16,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+      border: warning ? `2px solid ${COLORS.highlight}` : `1px solid ${COLORS.border}`,
+      marginBottom: 20,
       overflow: 'hidden',
     }}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
+      <div
+        onClick={onToggle}
         style={{
-          width: '100%',
-          padding: '18px 20px',
+          padding: '20px 24px',
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: 14,
-          backgroundColor: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          textAlign: 'left',
+          cursor: onToggle ? 'pointer' : 'default',
+          backgroundColor: warning ? '#FFF7ED' : '#fff',
         }}
       >
-        <div style={{
-          width: 36,
-          height: 36,
-          borderRadius: 8,
-          backgroundColor: COLORS.primaryLight,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: COLORS.primary,
-          flexShrink: 0,
-        }}>
-          {icon}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h3 style={{
+            margin: 0,
+            fontFamily: FONTS.heading,
+            fontSize: 18,
+            color: COLORS.primary,
+            fontWeight: 600,
+          }}>
+            {title}
+          </h3>
+          {badge}
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor }}>
-              {title}
-            </span>
-            {badge}
-          </div>
-          {subtitle && (
-            <span style={{ fontSize: 13, color: COLORS.slate, marginTop: 2, display: 'block' }}>
-              {subtitle}
-            </span>
-          )}
-        </div>
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={COLORS.slate}
-          strokeWidth="2"
-          style={{
-            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+        {onToggle && (
+          <span style={{
+            color: COLORS.textMuted,
+            fontSize: 20,
+            fontWeight: 300,
             transition: 'transform 0.2s',
-          }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-      {isOpen && (
+          }}>
+            {isOpen ? '−' : '+'}
+          </span>
+        )}
+      </div>
+      {(isOpen || alwaysOpen) && (
         <div style={{
-          padding: '0 20px 20px 20px',
-          borderTop: `1px solid ${COLORS.borderLight}`,
+          padding: '0 24px 24px',
+          borderTop: onToggle ? `1px solid ${COLORS.bgSection}` : 'none',
+          paddingTop: onToggle ? 24 : 0,
         }}>
           {children}
         </div>
@@ -206,61 +189,62 @@ function ExpandableSection({
   );
 }
 
-// Icons
-const UserIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-    <circle cx="12" cy="7" r="4"/>
-  </svg>
-);
-
-const CarIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C1.4 11.3 1 12.2 1 13.1V16c0 .6.4 1 1 1h2"/>
-    <circle cx="7" cy="17" r="2"/>
-    <circle cx="17" cy="17" r="2"/>
-  </svg>
-);
-
-const MapPinIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-    <circle cx="12" cy="10" r="3"/>
-  </svg>
-);
-
-const MailIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-    <polyline points="22,6 12,13 2,6"/>
-  </svg>
-);
-
-const BellIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
-);
-
-const CreditCardIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-    <line x1="1" y1="10" x2="23" y2="10"/>
-  </svg>
-);
-
-const CheckCircleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-  </svg>
-);
-
-const WarningIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-  </svg>
-);
+// Input component
+function Input({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  required,
+  error,
+  style,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+  error?: boolean;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div style={{ marginBottom: 16, flex: '1 1 200px', ...style }}>
+      <label style={{
+        display: 'block',
+        fontSize: 13,
+        fontWeight: 600,
+        color: COLORS.textMuted,
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: '0.03em',
+      }}>
+        {label}
+        {required && <span style={{ color: COLORS.danger, marginLeft: 4 }}>*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          borderRadius: 8,
+          border: `1.5px solid ${error ? COLORS.highlight : COLORS.border}`,
+          fontSize: 16,
+          fontFamily: FONTS.body,
+          color: COLORS.primary,
+          outline: 'none',
+          backgroundColor: COLORS.bgLight,
+          transition: 'border-color 0.2s, box-shadow 0.2s',
+          boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -301,12 +285,25 @@ export default function ProfilePage() {
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
 
+  // Expandable sections
+  const [sections, setSections] = useState({
+    address: false,
+    prefs: false,
+    notifs: false,
+    sub: false,
+  });
+
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if required fields are complete
   const isProfileComplete = firstName.trim() && lastName.trim();
   const hasPlate = plate !== null;
+  const hasAddress = addressLine1.trim() && city.trim() && zip.trim();
   const isSetupComplete = isProfileComplete && hasPlate;
+
+  const toggleSection = (key: keyof typeof sections) => {
+    setSections({ ...sections, [key]: !sections[key] });
+  };
 
   // Debounced auto-save for profile
   const autoSaveProfile = useCallback(async (data: {
@@ -522,23 +519,11 @@ export default function ProfilePage() {
     }
   };
 
-  const inputStyle = (hasError: boolean = false): React.CSSProperties => ({
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: 8,
-    border: `1.5px solid ${hasError ? COLORS.warning : COLORS.border}`,
-    fontSize: 15,
-    boxSizing: 'border-box' as const,
-    outline: 'none',
-    transition: 'border-color 0.2s, box-shadow 0.2s',
-    backgroundColor: COLORS.white,
-  });
-
   if (loading) {
     return (
       <DashboardLayout activePage="profile">
         <main style={{ padding: 48, textAlign: 'center' }}>
-          <p style={{ color: COLORS.slate }}>Loading...</p>
+          <p style={{ color: COLORS.textMuted, fontFamily: FONTS.body }}>Loading...</p>
         </main>
       </DashboardLayout>
     );
@@ -547,63 +532,90 @@ export default function ProfilePage() {
   return (
     <DashboardLayout activePage="profile">
       <Head>
-        <title>Profile - Autopilot America</title>
+        <title>My Controller - Autopilot America</title>
         <style>{`
           input:focus, select:focus {
-            border-color: ${COLORS.primary} !important;
-            box-shadow: 0 0 0 3px ${COLORS.primaryLight} !important;
+            border-color: ${COLORS.accent} !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
           }
         `}</style>
       </Head>
 
-      <main style={{ maxWidth: 700, margin: '0 auto', padding: '32px 24px' }}>
-        {/* Header with subscription status */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: COLORS.deepHarbor, margin: 0 }}>
-              Profile
+      {/* Header */}
+      <div style={{
+        backgroundColor: COLORS.primary,
+        padding: '32px 5% 80px',
+        color: COLORS.textLight,
+        marginBottom: -50,
+      }}>
+        <div style={{
+          maxWidth: 800,
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          flexWrap: 'wrap',
+          gap: 20,
+        }}>
+          <div>
+            <h1 style={{
+              fontFamily: FONTS.heading,
+              fontSize: 32,
+              fontWeight: 700,
+              margin: '0 0 8px',
+            }}>
+              My Controller
             </h1>
-            {subscription && (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 20,
-                fontSize: 13,
-                fontWeight: 600,
-                backgroundColor: subscription.status === 'active' ? COLORS.successLight : COLORS.warningLight,
-                color: subscription.status === 'active' ? COLORS.successDark : COLORS.warningDark,
-              }}>
-                {subscription.status === 'active' && <CheckCircleIcon />}
-                {subscription.status === 'active' ? 'Active' : 'Pending'}
-              </span>
-            )}
+            <p style={{ margin: 0, opacity: 0.7, fontSize: 15 }}>{email}</p>
           </div>
-          <p style={{ fontSize: 15, color: COLORS.slate, margin: 0 }}>
-            {email}
-          </p>
+          {subscription && (
+            <div style={{
+              padding: '8px 16px',
+              borderRadius: 20,
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              backgroundColor: subscription.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(249, 115, 22, 0.2)',
+              color: subscription.status === 'active' ? COLORS.accent : COLORS.highlight,
+              border: `1px solid ${subscription.status === 'active' ? COLORS.accent : COLORS.highlight}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+              <span style={{ fontSize: 10 }}>●</span>
+              {subscription.status === 'active' ? 'Monitoring Active' : 'Setup Required'}
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Setup Progress Warning */}
+      <main style={{
+        maxWidth: 800,
+        margin: '0 auto',
+        padding: '0 20px 40px',
+        position: 'relative',
+        zIndex: 1,
+      }}>
+        {/* Setup Warning */}
         {!isSetupComplete && (
           <div style={{
-            padding: 16,
+            backgroundColor: '#FFF7ED',
+            border: `1px solid ${COLORS.highlight}`,
             borderRadius: 12,
-            marginBottom: 20,
-            backgroundColor: COLORS.warningLight,
+            padding: '16px 20px',
+            marginBottom: 24,
             display: 'flex',
-            alignItems: 'flex-start',
-            gap: 12,
+            alignItems: 'center',
+            gap: 15,
+            boxShadow: '0 4px 12px rgba(249, 115, 22, 0.15)',
           }}>
-            <div style={{ color: COLORS.warningDark, flexShrink: 0, marginTop: 2 }}>
-              <WarningIcon />
-            </div>
+            <div style={{ fontSize: 28 }}>⚠️</div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: COLORS.warningDark, margin: '0 0 4px 0' }}>
-                Complete your setup
-              </p>
-              <p style={{ fontSize: 13, color: '#92400E', margin: 0, lineHeight: 1.5 }}>
+              <h4 style={{ margin: '0 0 4px', color: '#9A3412', fontWeight: 700, fontFamily: FONTS.heading }}>
+                Setup Incomplete
+              </h4>
+              <p style={{ margin: 0, fontSize: 14, color: '#C2410C' }}>
                 {!isProfileComplete && !hasPlate && 'Enter your name and license plate to start monitoring for tickets.'}
                 {!isProfileComplete && hasPlate && 'Enter your name to complete your profile.'}
                 {isProfileComplete && !hasPlate && 'Add your license plate to start monitoring for tickets.'}
@@ -612,511 +624,498 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* REQUIRED: Name Section - Always visible, not collapsible */}
-        <div style={{
-          backgroundColor: COLORS.white,
-          borderRadius: 12,
-          border: `1.5px solid ${!isProfileComplete ? COLORS.warning : COLORS.border}`,
-          marginBottom: 16,
-          padding: 20,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              backgroundColor: COLORS.primaryLight,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: COLORS.primary,
+        {/* Primary Settings Card - Always Visible */}
+        <Card title="Vehicle & Owner" alwaysOpen badge={
+          saveStatus !== 'idle' && (
+            <span style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: saveStatus === 'saving' ? COLORS.accent : saveStatus === 'saved' ? COLORS.accent : COLORS.danger,
+              marginLeft: 8,
             }}>
-              <UserIcon />
-            </div>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor }}>
-                Your Name
-              </span>
-              <span style={{
-                marginLeft: 8,
-                padding: '2px 8px',
-                fontSize: 11,
-                fontWeight: 600,
-                backgroundColor: COLORS.dangerLight,
-                color: COLORS.danger,
-                borderRadius: 4,
-              }}>
-                REQUIRED
-              </span>
-            </div>
-            {saveStatus !== 'idle' && (
-              <span style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: saveStatus === 'saving' ? COLORS.primary : saveStatus === 'saved' ? COLORS.successDark : COLORS.danger,
-              }}>
-                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Error'}
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                First Name
-              </label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="John"
-                style={inputStyle(!firstName.trim())}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                Last Name
-              </label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Smith"
-                style={inputStyle(!lastName.trim())}
-              />
-            </div>
-          </div>
-          <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '8px 0 0 0' }}>
-            As it appears on your vehicle registration
-          </p>
-        </div>
-
-        {/* REQUIRED: License Plate Section - Always visible, not collapsible */}
-        <div style={{
-          backgroundColor: COLORS.white,
-          borderRadius: 12,
-          border: `1.5px solid ${!hasPlate ? COLORS.warning : COLORS.border}`,
-          marginBottom: 16,
-          padding: 20,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              backgroundColor: COLORS.primaryLight,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: COLORS.primary,
+              {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : 'Error'}
+            </span>
+          )
+        }>
+          {/* License Plate */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{
+              display: 'block',
+              fontSize: 13,
+              fontWeight: 600,
+              color: COLORS.textMuted,
+              marginBottom: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.03em',
             }}>
-              <CarIcon />
-            </div>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor }}>
-                License Plate
-              </span>
-              <span style={{
-                marginLeft: 8,
-                padding: '2px 8px',
-                fontSize: 11,
-                fontWeight: 600,
-                backgroundColor: COLORS.dangerLight,
-                color: COLORS.danger,
-                borderRadius: 4,
-              }}>
-                REQUIRED
-              </span>
-            </div>
-            {plate && (
-              <span style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: plate.status === 'active' ? COLORS.successDark : COLORS.slate,
-              }}>
-                {plate.status === 'active' ? 'Monitoring' : 'Paused'}
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                Plate Number
-              </label>
+              Vehicle to Protect <span style={{ color: COLORS.danger }}>*</span>
+            </label>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              border: `2px solid ${COLORS.primary}`,
+              borderRadius: 8,
+              padding: 4,
+              backgroundColor: '#fff',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            }}>
+              <select
+                value={plateState}
+                onChange={(e) => setPlateState(e.target.value)}
+                style={{
+                  backgroundColor: COLORS.primary,
+                  color: '#fff',
+                  fontSize: 11,
+                  padding: '6px 8px',
+                  borderRadius: 4,
+                  border: 'none',
+                  fontWeight: 700,
+                  marginRight: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                {US_STATES.map(s => (
+                  <option key={s.code} value={s.code}>{s.code}</option>
+                ))}
+              </select>
               <input
                 type="text"
                 value={plateNumber}
                 onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                 placeholder="ABC1234"
                 style={{
-                  ...inputStyle(!plateNumber.trim()),
+                  border: 'none',
+                  fontSize: 24,
                   fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: COLORS.primary,
+                  width: 140,
+                  outline: 'none',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
                 }}
               />
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              cursor: 'pointer',
+              marginTop: 12,
+              fontSize: 14,
+              color: COLORS.textMuted,
+            }}>
+              <input
+                type="checkbox"
+                checked={plateIsLeased}
+                onChange={(e) => setPlateIsLeased(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: COLORS.primary }}
+              />
+              This is a leased or company vehicle
+            </label>
+
+            {plateError && (
+              <div style={{
+                padding: 10,
+                borderRadius: 8,
+                backgroundColor: COLORS.dangerLight,
+                color: COLORS.danger,
+                fontSize: 13,
+                marginTop: 12,
+              }}>
+                {plateError}
+              </div>
+            )}
+
+            <button
+              onClick={savePlate}
+              disabled={plateSaving || !plateNumber.trim()}
+              style={{
+                marginTop: 16,
+                padding: '12px 24px',
+                borderRadius: 8,
+                border: 'none',
+                backgroundColor: plateSaving || !plateNumber.trim() ? '#CBD5E1' : COLORS.primary,
+                color: COLORS.textLight,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: plateSaving || !plateNumber.trim() ? 'not-allowed' : 'pointer',
+                fontFamily: FONTS.body,
+              }}
+            >
+              {plateSaving ? 'Saving...' : plate ? 'Update Plate' : 'Save Plate'}
+            </button>
+          </div>
+
+          {/* Name Fields */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+            <Input
+              label="First Name"
+              value={firstName}
+              onChange={setFirstName}
+              placeholder="John"
+              required
+              error={!firstName.trim()}
+            />
+            <Input
+              label="Last Name"
+              value={lastName}
+              onChange={setLastName}
+              placeholder="Smith"
+              required
+              error={!lastName.trim()}
+            />
+          </div>
+          <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '4px 0 0' }}>
+            As it appears on your vehicle registration
+          </p>
+        </Card>
+
+        {/* Mailing Address - Expandable */}
+        <Card
+          title="Mailing Address"
+          isOpen={sections.address}
+          onToggle={() => toggleSection('address')}
+          warning={!hasAddress}
+          badge={!hasAddress && (
+            <span style={{
+              fontSize: 11,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 4,
+              backgroundColor: COLORS.warningLight,
+              color: '#92400E',
+            }}>
+              NEEDED FOR LETTERS
+            </span>
+          )}
+        >
+          <Input
+            label="Street Address"
+            value={addressLine1}
+            onChange={setAddressLine1}
+            placeholder="123 Main Street"
+          />
+          <Input
+            label="Apt, Suite, Unit"
+            value={addressLine2}
+            onChange={setAddressLine2}
+            placeholder="Apt 4B"
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+            <Input
+              label="City"
+              value={city}
+              onChange={setCity}
+              placeholder="Chicago"
+              style={{ flex: '2 1 150px' }}
+            />
+            <div style={{ marginBottom: 16, flex: '1 1 100px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: 13,
+                fontWeight: 600,
+                color: COLORS.textMuted,
+                marginBottom: 6,
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+              }}>
                 State
               </label>
               <select
-                value={plateState}
-                onChange={(e) => setPlateState(e.target.value)}
-                style={{ ...inputStyle(), cursor: 'pointer' }}
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  border: `1.5px solid ${COLORS.border}`,
+                  fontSize: 16,
+                  fontFamily: FONTS.body,
+                  color: COLORS.primary,
+                  outline: 'none',
+                  backgroundColor: COLORS.bgLight,
+                  cursor: 'pointer',
+                }}
               >
-                {US_STATES.map(s => (
-                  <option key={s.code} value={s.code}>{s.name}</option>
+                {STATE_CODES.map(s => (
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
+            <Input
+              label="ZIP Code"
+              value={zip}
+              onChange={setZip}
+              placeholder="60601"
+              style={{ flex: '1 1 100px' }}
+            />
+          </div>
+          <p style={{ fontSize: 12, color: COLORS.textMuted, margin: 0 }}>
+            Changes save automatically
+          </p>
+        </Card>
+
+        {/* Defense Preferences - Expandable */}
+        <Card
+          title="Defense Preferences"
+          isOpen={sections.prefs}
+          onToggle={() => toggleSection('prefs')}
+        >
+          {/* Autopilot Mode Toggle */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+            paddingBottom: 20,
+            borderBottom: `1px solid ${COLORS.bgSection}`,
+          }}>
+            <div>
+              <h4 style={{
+                margin: '0 0 4px',
+                fontSize: 16,
+                fontWeight: 600,
+                color: COLORS.primary,
+                fontFamily: FONTS.heading,
+              }}>
+                Autopilot Mode
+              </h4>
+              <p style={{ margin: 0, fontSize: 14, color: COLORS.textMuted }}>
+                Automatically mail letters for new tickets
+              </p>
+            </div>
+            <Toggle
+              checked={settings.auto_mail_enabled}
+              onChange={(checked) => setSettings({
+                ...settings,
+                auto_mail_enabled: checked,
+                require_approval: !checked,
+              })}
+            />
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 16 }}>
-            <input
-              type="checkbox"
-              checked={plateIsLeased}
-              onChange={(e) => setPlateIsLeased(e.target.checked)}
-              style={{ width: 16, height: 16, accentColor: COLORS.primary }}
-            />
-            <span style={{ fontSize: 13, color: COLORS.graphite }}>
-              This is a leased or company vehicle
-            </span>
-          </label>
-
-          {plateError && (
-            <div style={{
-              padding: 10,
-              borderRadius: 8,
-              backgroundColor: COLORS.dangerLight,
-              color: COLORS.danger,
-              fontSize: 13,
-              marginBottom: 12,
-            }}>
-              {plateError}
+          {/* Require Approval Toggle */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 24,
+            paddingBottom: 20,
+            borderBottom: `1px solid ${COLORS.bgSection}`,
+          }}>
+            <div>
+              <h4 style={{
+                margin: '0 0 4px',
+                fontSize: 16,
+                fontWeight: 600,
+                color: COLORS.primary,
+                fontFamily: FONTS.heading,
+              }}>
+                Require Approval
+              </h4>
+              <p style={{ margin: 0, fontSize: 14, color: COLORS.textMuted }}>
+                Review letters before they're mailed
+              </p>
             </div>
-          )}
+            <Toggle
+              checked={settings.require_approval}
+              onChange={(checked) => setSettings({
+                ...settings,
+                require_approval: checked,
+                auto_mail_enabled: !checked,
+              })}
+            />
+          </div>
+
+          {/* Ticket Types */}
+          <label style={{
+            display: 'block',
+            fontSize: 13,
+            fontWeight: 600,
+            color: COLORS.textMuted,
+            marginBottom: 15,
+            textTransform: 'uppercase',
+            letterSpacing: '0.03em',
+          }}>
+            Contest these ticket types:
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+            {TICKET_TYPES.map(type => (
+              <label key={type.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                fontSize: 15,
+                cursor: 'pointer',
+                color: COLORS.textDark,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={settings.allowed_ticket_types.includes(type.id)}
+                  onChange={() => toggleTicketType(type.id)}
+                  style={{ width: 18, height: 18, accentColor: COLORS.primary }}
+                />
+                <span style={{ flex: 1 }}>{type.label}</span>
+                <span style={{
+                  fontSize: 12,
+                  color: type.winRate >= 60 ? COLORS.accent : COLORS.textMuted,
+                  fontWeight: 600,
+                }}>
+                  {type.winRate}% win rate
+                </span>
+              </label>
+            ))}
+          </div>
 
           <button
-            onClick={savePlate}
-            disabled={plateSaving || !plateNumber.trim()}
+            onClick={saveSettings}
+            disabled={settingsSaving}
             style={{
-              width: '100%',
-              padding: '12px 20px',
+              padding: '12px 24px',
               borderRadius: 8,
               border: 'none',
-              backgroundColor: plateSaving || !plateNumber.trim() ? COLORS.slateLight : COLORS.primary,
-              color: COLORS.white,
+              backgroundColor: COLORS.primary,
+              color: COLORS.textLight,
               fontSize: 14,
               fontWeight: 600,
-              cursor: plateSaving || !plateNumber.trim() ? 'not-allowed' : 'pointer',
+              cursor: settingsSaving ? 'not-allowed' : 'pointer',
+              opacity: settingsSaving ? 0.7 : 1,
+              fontFamily: FONTS.body,
             }}
           >
-            {plateSaving ? 'Saving...' : plate ? 'Update Plate' : 'Save Plate'}
+            {settingsSaving ? 'Saving...' : 'Save Preferences'}
           </button>
-        </div>
-
-        {/* Mailing Address - Expandable */}
-        <ExpandableSection
-          title="Mailing Address"
-          subtitle="For contest letters"
-          icon={<MapPinIcon />}
-          defaultOpen={false}
-        >
-          <div style={{ paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                Street Address
-              </label>
-              <input
-                type="text"
-                value={addressLine1}
-                onChange={(e) => setAddressLine1(e.target.value)}
-                placeholder="123 Main Street"
-                style={inputStyle()}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                Apt, Suite, Unit (optional)
-              </label>
-              <input
-                type="text"
-                value={addressLine2}
-                onChange={(e) => setAddressLine2(e.target.value)}
-                placeholder="Apt 4B"
-                style={inputStyle()}
-              />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                  City
-                </label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Chicago"
-                  style={inputStyle()}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                  State
-                </label>
-                <select
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  style={{ ...inputStyle(), cursor: 'pointer' }}
-                >
-                  {STATE_CODES.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
-                  ZIP
-                </label>
-                <input
-                  type="text"
-                  value={zip}
-                  onChange={(e) => setZip(e.target.value)}
-                  placeholder="60601"
-                  maxLength={10}
-                  style={inputStyle()}
-                />
-              </div>
-            </div>
-            <p style={{ fontSize: 12, color: COLORS.slateLight, margin: 0 }}>
-              Changes save automatically
-            </p>
-          </div>
-        </ExpandableSection>
-
-        {/* Letter Preferences - Expandable */}
-        <ExpandableSection
-          title="Letter Preferences"
-          subtitle="Auto-mail and contest settings"
-          icon={<MailIcon />}
-          defaultOpen={false}
-        >
-          <div style={{ paddingTop: 16 }}>
-            {/* Auto-mail toggle */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 0',
-              borderBottom: `1px solid ${COLORS.borderLight}`,
-            }}>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.graphite, margin: '0 0 2px 0' }}>
-                  Auto-mail contest letters
-                </p>
-                <p style={{ fontSize: 12, color: COLORS.slate, margin: 0 }}>
-                  Automatically send letters when tickets are found
-                </p>
-              </div>
-              <Toggle
-                checked={settings.auto_mail_enabled}
-                onChange={(checked) => setSettings({
-                  ...settings,
-                  auto_mail_enabled: checked,
-                  require_approval: !checked
-                })}
-              />
-            </div>
-
-            {/* Require approval */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 0',
-              borderBottom: `1px solid ${COLORS.borderLight}`,
-            }}>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.graphite, margin: '0 0 2px 0' }}>
-                  Require my approval first
-                </p>
-                <p style={{ fontSize: 12, color: COLORS.slate, margin: 0 }}>
-                  Review letters before they're mailed
-                </p>
-              </div>
-              <Toggle
-                checked={settings.require_approval}
-                onChange={(checked) => setSettings({
-                  ...settings,
-                  require_approval: checked,
-                  auto_mail_enabled: !checked
-                })}
-              />
-            </div>
-
-            {/* Ticket types */}
-            <div style={{ padding: '16px 0' }}>
-              <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.graphite, margin: '0 0 12px 0' }}>
-                Allowed ticket types for auto-mail
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {TICKET_TYPES.map(type => (
-                  <label key={type.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={settings.allowed_ticket_types.includes(type.id)}
-                      onChange={() => toggleTicketType(type.id)}
-                      style={{ width: 16, height: 16, accentColor: COLORS.primary }}
-                    />
-                    <span style={{ flex: 1, fontSize: 13, color: COLORS.graphite }}>{type.label}</span>
-                    <span style={{
-                      fontSize: 11,
-                      color: type.winRate >= 60 ? COLORS.successDark : COLORS.slate,
-                      fontWeight: 500,
-                    }}>
-                      {type.winRate}% win rate
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={saveSettings}
-              disabled={settingsSaving}
-              style={{
-                padding: '10px 20px',
-                borderRadius: 8,
-                border: 'none',
-                backgroundColor: COLORS.primary,
-                color: COLORS.white,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: settingsSaving ? 'not-allowed' : 'pointer',
-                opacity: settingsSaving ? 0.7 : 1,
-              }}
-            >
-              {settingsSaving ? 'Saving...' : 'Save Preferences'}
-            </button>
-          </div>
-        </ExpandableSection>
+        </Card>
 
         {/* Notifications - Expandable */}
-        <ExpandableSection
+        <Card
           title="Notifications"
-          subtitle="Email alerts"
-          icon={<BellIcon />}
-          defaultOpen={false}
+          isOpen={sections.notifs}
+          onToggle={() => toggleSection('notifs')}
         >
-          <div style={{ paddingTop: 16 }}>
-            {[
-              { key: 'email_on_ticket_found', label: 'Email me when a ticket is found' },
-              { key: 'email_on_letter_mailed', label: 'Email me when a letter is mailed' },
-              { key: 'email_on_approval_needed', label: 'Email me when approval is needed' },
-            ].map(({ key, label }, index, arr) => (
-              <div key={key} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 0',
-                borderBottom: index < arr.length - 1 ? `1px solid ${COLORS.borderLight}` : 'none',
-              }}>
-                <span style={{ fontSize: 14, color: COLORS.graphite }}>{label}</span>
-                <Toggle
-                  checked={(settings as any)[key]}
-                  onChange={(checked) => setSettings({ ...settings, [key]: checked })}
-                />
-              </div>
-            ))}
+          {[
+            { key: 'email_on_ticket_found', label: 'Email me when a ticket is found' },
+            { key: 'email_on_letter_mailed', label: 'Email me when a letter is mailed' },
+            { key: 'email_on_approval_needed', label: 'Email me when approval is needed' },
+          ].map(({ key, label }, index, arr) => (
+            <div key={key} style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '14px 0',
+              borderBottom: index < arr.length - 1 ? `1px solid ${COLORS.bgSection}` : 'none',
+            }}>
+              <span style={{ fontSize: 15, color: COLORS.textDark }}>{label}</span>
+              <Toggle
+                checked={(settings as any)[key]}
+                onChange={(checked) => setSettings({ ...settings, [key]: checked })}
+              />
+            </div>
+          ))}
 
-            <button
-              onClick={saveSettings}
-              disabled={settingsSaving}
-              style={{
-                marginTop: 16,
-                padding: '10px 20px',
-                borderRadius: 8,
-                border: 'none',
-                backgroundColor: COLORS.primary,
-                color: COLORS.white,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: settingsSaving ? 'not-allowed' : 'pointer',
-                opacity: settingsSaving ? 0.7 : 1,
-              }}
-            >
-              {settingsSaving ? 'Saving...' : 'Save Notifications'}
-            </button>
-          </div>
-        </ExpandableSection>
+          <button
+            onClick={saveSettings}
+            disabled={settingsSaving}
+            style={{
+              marginTop: 20,
+              padding: '12px 24px',
+              borderRadius: 8,
+              border: 'none',
+              backgroundColor: COLORS.primary,
+              color: COLORS.textLight,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: settingsSaving ? 'not-allowed' : 'pointer',
+              opacity: settingsSaving ? 0.7 : 1,
+              fontFamily: FONTS.body,
+            }}
+          >
+            {settingsSaving ? 'Saving...' : 'Save Notifications'}
+          </button>
+        </Card>
 
         {/* Subscription - Expandable */}
-        <ExpandableSection
+        <Card
           title="Subscription"
-          subtitle={subscription?.status === 'active' ? '$24/year' : 'Manage your plan'}
-          icon={<CreditCardIcon />}
-          defaultOpen={false}
+          isOpen={sections.sub}
+          onToggle={() => toggleSection('sub')}
           badge={subscription?.status === 'active' && (
             <span style={{
               padding: '2px 8px',
               fontSize: 11,
               fontWeight: 600,
               backgroundColor: COLORS.successLight,
-              color: COLORS.successDark,
+              color: COLORS.accent,
               borderRadius: 4,
             }}>
               ACTIVE
             </span>
           )}
         >
-          <div style={{ paddingTop: 16 }}>
-            {subscription ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div style={{ padding: 14, backgroundColor: COLORS.background, borderRadius: 8 }}>
-                  <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Plan</p>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite, margin: 0 }}>Autopilot Annual</p>
+          {subscription ? (
+            <>
+              <div style={{
+                backgroundColor: COLORS.bgSection,
+                padding: 16,
+                borderRadius: 8,
+                marginBottom: 20,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600, color: COLORS.textDark }}>Annual Protection</span>
+                  <span style={{ fontWeight: 700, color: COLORS.primary }}>$24.00/yr</span>
                 </div>
-                <div style={{ padding: 14, backgroundColor: COLORS.background, borderRadius: 8 }}>
-                  <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Renews</p>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite, margin: 0 }}>
-                    {subscription.current_period_end
-                      ? new Date(subscription.current_period_end).toLocaleDateString()
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div style={{ padding: 14, backgroundColor: COLORS.background, borderRadius: 8 }}>
-                  <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Plates</p>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite, margin: 0 }}>1 included</p>
-                </div>
-                <div style={{ padding: 14, backgroundColor: COLORS.successLight, borderRadius: 8 }}>
-                  <p style={{ fontSize: 12, color: COLORS.successDark, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Letters</p>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.successDark, margin: 0 }}>Unlimited</p>
+                <div style={{ fontSize: 14, color: COLORS.textMuted }}>
+                  Next billing: {subscription.current_period_end
+                    ? new Date(subscription.current_period_end).toLocaleDateString()
+                    : 'N/A'}
                 </div>
               </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 16px 0' }}>No active subscription</p>
-                <a
-                  href="/get-started"
-                  style={{
-                    display: 'inline-block',
-                    padding: '12px 24px',
-                    backgroundColor: COLORS.primary,
-                    color: COLORS.white,
-                    borderRadius: 8,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                  }}
-                >
-                  Subscribe Now
-                </a>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{
+                  flex: '1 1 120px',
+                  padding: 12,
+                  backgroundColor: COLORS.bgLight,
+                  borderRadius: 8,
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 4 }}>PLATES</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.primary }}>1</div>
+                </div>
+                <div style={{
+                  flex: '1 1 120px',
+                  padding: 12,
+                  backgroundColor: COLORS.successLight,
+                  borderRadius: 8,
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 12, color: COLORS.accent, marginBottom: 4 }}>LETTERS</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.accent }}>Unlimited</div>
+                </div>
               </div>
-            )}
-          </div>
-        </ExpandableSection>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ fontSize: 14, color: COLORS.textMuted, margin: '0 0 16px' }}>No active subscription</p>
+              <Link
+                href="/get-started"
+                style={{
+                  display: 'inline-block',
+                  padding: '12px 24px',
+                  backgroundColor: COLORS.accent,
+                  color: COLORS.primary,
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                }}
+              >
+                Subscribe Now
+              </Link>
+            </div>
+          )}
+        </Card>
       </main>
     </DashboardLayout>
   );
