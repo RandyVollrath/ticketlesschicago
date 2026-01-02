@@ -80,6 +80,8 @@ const TICKET_TYPES = [
   { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
   { id: 'rush_hour', label: 'Rush Hour', winRate: 37 },
   { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
+  { id: 'speed_camera', label: 'Speed Camera', winRate: 20 },
+  { id: 'red_light', label: 'Red Light Camera', winRate: 16 },
 ];
 
 interface Plate {
@@ -379,13 +381,14 @@ export default function Dashboard() {
     email_on_letter_mailed: true,
     email_on_approval_needed: true,
   });
-  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaveStatus, setSettingsSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // Stats
   const [nextCheckDate, setNextCheckDate] = useState('');
 
   const profileTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const plateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const settingsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
 
   // Check if required fields are complete
@@ -616,20 +619,36 @@ export default function Dashboard() {
     setTimeout(() => { initialLoadRef.current = false; }, 100);
   };
 
-  const saveSettings = async () => {
+  // Auto-save settings
+  const autoSaveSettings = useCallback(async (settingsData: Settings) => {
     if (!userId) return;
-    setSettingsSaving(true);
+    setSettingsSaveStatus('saving');
 
-    await supabase
+    const { error } = await supabase
       .from('autopilot_settings')
       .upsert({
         user_id: userId,
-        ...settings,
+        ...settingsData,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
-    setSettingsSaving(false);
-  };
+    if (!error) {
+      setSettingsSaveStatus('saved');
+      setTimeout(() => setSettingsSaveStatus('idle'), 2000);
+    }
+  }, [userId]);
+
+  // Watch settings for auto-save
+  useEffect(() => {
+    if (!userId || loading || initialLoadRef.current) return;
+    if (settingsTimeoutRef.current) clearTimeout(settingsTimeoutRef.current);
+    settingsTimeoutRef.current = setTimeout(() => {
+      autoSaveSettings(settings);
+    }, 1000);
+    return () => {
+      if (settingsTimeoutRef.current) clearTimeout(settingsTimeoutRef.current);
+    };
+  }, [settings, userId, loading, autoSaveSettings]);
 
   const toggleTicketType = (typeId: string) => {
     if (settings.allowed_ticket_types.includes(typeId)) {
@@ -1189,7 +1208,17 @@ export default function Dashboard() {
         </Card>
 
         {/* Settings Card */}
-        <Card title="Autopilot Settings">
+        <Card title="Autopilot Settings" badge={
+          settingsSaveStatus !== 'idle' && (
+            <span style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: COLORS.accent,
+            }}>
+              {settingsSaveStatus === 'saving' ? 'Saving...' : '✓ Saved'}
+            </span>
+          )
+        }>
           {/* Autopilot Mode Toggle */}
           <div style={{
             display: 'flex',
@@ -1249,7 +1278,7 @@ export default function Dashboard() {
           </div>
 
           {/* Ticket Types */}
-          <div style={{ marginBottom: 20 }}>
+          <div>
             <label style={{
               display: 'block',
               fontSize: 12,
@@ -1279,7 +1308,7 @@ export default function Dashboard() {
                   <span>{type.label}</span>
                   <span style={{
                     fontSize: 11,
-                    color: type.winRate >= 60 ? COLORS.accent : COLORS.textMuted,
+                    color: type.winRate >= 60 ? COLORS.accent : type.winRate <= 20 ? COLORS.danger : COLORS.textMuted,
                     fontWeight: 600,
                     marginLeft: 'auto',
                   }}>
@@ -1288,25 +1317,10 @@ export default function Dashboard() {
                 </label>
               ))}
             </div>
+            <p style={{ fontSize: 11, color: COLORS.textMuted, margin: '12px 0 0' }}>
+              Changes save automatically.
+            </p>
           </div>
-
-          <button
-            onClick={saveSettings}
-            disabled={settingsSaving}
-            style={{
-              padding: '10px 20px',
-              borderRadius: 8,
-              border: 'none',
-              backgroundColor: COLORS.primary,
-              color: COLORS.textLight,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: settingsSaving ? 'not-allowed' : 'pointer',
-              opacity: settingsSaving ? 0.7 : 1,
-            }}
-          >
-            {settingsSaving ? 'Saving...' : 'Save Settings'}
-          </button>
         </Card>
 
         {/* Subscription Card */}
