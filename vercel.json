@@ -153,10 +153,6 @@
     {
       "path": "/api/cron/notify-free-user-renewals",
       "schedule": "0 16 * * *"
-    },
-    {
-      "path": "/api/cron/autopilot-export-plates",
-      "schedule": "0 14 * * 1,4"
     }
   ],
   "github": {

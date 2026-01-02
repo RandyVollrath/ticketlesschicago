@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { DashboardLayout } from './dashboard';
@@ -27,113 +26,250 @@ const COLORS = {
 };
 
 const US_STATES = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+  { code: 'AL', name: 'Alabama' }, { code: 'AK', name: 'Alaska' }, { code: 'AZ', name: 'Arizona' },
+  { code: 'AR', name: 'Arkansas' }, { code: 'CA', name: 'California' }, { code: 'CO', name: 'Colorado' },
+  { code: 'CT', name: 'Connecticut' }, { code: 'DE', name: 'Delaware' }, { code: 'FL', name: 'Florida' },
+  { code: 'GA', name: 'Georgia' }, { code: 'HI', name: 'Hawaii' }, { code: 'ID', name: 'Idaho' },
+  { code: 'IL', name: 'Illinois' }, { code: 'IN', name: 'Indiana' }, { code: 'IA', name: 'Iowa' },
+  { code: 'KS', name: 'Kansas' }, { code: 'KY', name: 'Kentucky' }, { code: 'LA', name: 'Louisiana' },
+  { code: 'ME', name: 'Maine' }, { code: 'MD', name: 'Maryland' }, { code: 'MA', name: 'Massachusetts' },
+  { code: 'MI', name: 'Michigan' }, { code: 'MN', name: 'Minnesota' }, { code: 'MS', name: 'Mississippi' },
+  { code: 'MO', name: 'Missouri' }, { code: 'MT', name: 'Montana' }, { code: 'NE', name: 'Nebraska' },
+  { code: 'NV', name: 'Nevada' }, { code: 'NH', name: 'New Hampshire' }, { code: 'NJ', name: 'New Jersey' },
+  { code: 'NM', name: 'New Mexico' }, { code: 'NY', name: 'New York' }, { code: 'NC', name: 'North Carolina' },
+  { code: 'ND', name: 'North Dakota' }, { code: 'OH', name: 'Ohio' }, { code: 'OK', name: 'Oklahoma' },
+  { code: 'OR', name: 'Oregon' }, { code: 'PA', name: 'Pennsylvania' }, { code: 'RI', name: 'Rhode Island' },
+  { code: 'SC', name: 'South Carolina' }, { code: 'SD', name: 'South Dakota' }, { code: 'TN', name: 'Tennessee' },
+  { code: 'TX', name: 'Texas' }, { code: 'UT', name: 'Utah' }, { code: 'VT', name: 'Vermont' },
+  { code: 'VA', name: 'Virginia' }, { code: 'WA', name: 'Washington' }, { code: 'WV', name: 'West Virginia' },
+  { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' }, { code: 'DC', name: 'Washington DC' },
 ];
 
-interface Profile {
+const STATE_CODES = US_STATES.map(s => s.code);
+
+const TICKET_TYPES = [
+  { id: 'expired_plates', label: 'Expired Plates', winRate: 75 },
+  { id: 'no_city_sticker', label: 'No City Sticker', winRate: 70 },
+  { id: 'expired_meter', label: 'Expired Meter', winRate: 67 },
+  { id: 'disabled_zone', label: 'Disabled Zone', winRate: 68 },
+  { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
+  { id: 'rush_hour', label: 'Rush Hour', winRate: 37 },
+  { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
+];
+
+interface Plate {
   id: string;
-  user_id: string;
-  first_name: string | null;
-  last_name: string | null;
-  full_name: string | null; // Legacy field, will be deprecated
-  mailing_address_line1: string | null;
-  mailing_address_line2: string | null;
-  mailing_city: string | null;
-  mailing_state: string | null;
-  mailing_zip: string | null;
+  plate: string;
+  state: string;
+  status: 'active' | 'paused';
+  is_leased_or_company: boolean;
+}
+
+interface Settings {
+  auto_mail_enabled: boolean;
+  require_approval: boolean;
+  allowed_ticket_types: string[];
+  never_auto_mail_unknown: boolean;
+  email_on_ticket_found: boolean;
+  email_on_letter_mailed: boolean;
+  email_on_approval_needed: boolean;
 }
 
 interface Subscription {
   status: string;
   current_period_end: string | null;
-  letters_used_this_period: number;
-  letters_included: number;
 }
 
-// Icon components
-const CheckCircleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/>
-  </svg>
-);
+// Toggle component
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
+      style={{
+        width: 48,
+        height: 26,
+        borderRadius: 26,
+        backgroundColor: checked ? COLORS.success : COLORS.slateLight,
+        border: 'none',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        position: 'relative',
+        transition: 'background-color 0.2s',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <span style={{
+        position: 'absolute',
+        height: 20,
+        width: 20,
+        left: checked ? 25 : 3,
+        top: 3,
+        backgroundColor: COLORS.white,
+        borderRadius: '50%',
+        transition: 'left 0.2s',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+      }} />
+    </button>
+  );
+}
 
-const WarningIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-  </svg>
-);
+// Expandable Section component
+function ExpandableSection({
+  title,
+  subtitle,
+  icon,
+  children,
+  defaultOpen = false,
+  badge,
+}: {
+  title: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  badge?: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
-const CreditCardIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-    <line x1="1" y1="10" x2="23" y2="10"/>
-  </svg>
-);
+  return (
+    <div style={{
+      backgroundColor: COLORS.white,
+      borderRadius: 12,
+      border: `1px solid ${COLORS.border}`,
+      marginBottom: 16,
+      overflow: 'hidden',
+    }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          padding: '18px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          backgroundColor: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        <div style={{
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          backgroundColor: COLORS.primaryLight,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: COLORS.primary,
+          flexShrink: 0,
+        }}>
+          {icon}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor }}>
+              {title}
+            </span>
+            {badge}
+          </div>
+          {subtitle && (
+            <span style={{ fontSize: 13, color: COLORS.slate, marginTop: 2, display: 'block' }}>
+              {subtitle}
+            </span>
+          )}
+        </div>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={COLORS.slate}
+          strokeWidth="2"
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s',
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div style={{
+          padding: '0 20px 20px 20px',
+          borderTop: `1px solid ${COLORS.borderLight}`,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
+// Icons
 const UserIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
     <circle cx="12" cy="7" r="4"/>
   </svg>
 );
 
-const MapPinIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-    <circle cx="12" cy="10" r="3"/>
-  </svg>
-);
-
-const SettingsIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-  </svg>
-);
-
 const CarIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C1.4 11.3 1 12.2 1 13.1V16c0 .6.4 1 1 1h2"/>
     <circle cx="7" cy="17" r="2"/>
     <circle cx="17" cy="17" r="2"/>
   </svg>
 );
 
-const TicketIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/>
-    <path d="M13 5v2"/>
-    <path d="M13 17v2"/>
-    <path d="M13 11v2"/>
+const MapPinIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+    <circle cx="12" cy="10" r="3"/>
   </svg>
 );
 
-const ChevronRightIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6"/>
+const MailIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
   </svg>
 );
 
-const LoaderIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
-    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+const BellIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+  </svg>
+);
+
+const CreditCardIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+    <line x1="1" y1="10" x2="23" y2="10"/>
+  </svg>
+);
+
+const CheckCircleIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+  </svg>
+);
+
+const WarningIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
   </svg>
 );
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  // Form state
+  // Profile fields
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
@@ -142,13 +278,38 @@ export default function ProfilePage() {
   const [state, setState] = useState('IL');
   const [zip, setZip] = useState('');
 
-  // Track if profile is complete - last name is required for ticket lookup
-  const isProfileComplete = firstName.trim() && lastName.trim() && addressLine1.trim() && city.trim() && state && zip.trim();
+  // Plate
+  const [plate, setPlate] = useState<Plate | null>(null);
+  const [plateNumber, setPlateNumber] = useState('');
+  const [plateState, setPlateState] = useState('IL');
+  const [plateIsLeased, setPlateIsLeased] = useState(false);
+  const [plateSaving, setPlateSaving] = useState(false);
+  const [plateError, setPlateError] = useState('');
 
-  // Debounced auto-save
+  // Subscription
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+
+  // Settings
+  const [settings, setSettings] = useState<Settings>({
+    auto_mail_enabled: true,
+    require_approval: false,
+    allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone'],
+    never_auto_mail_unknown: true,
+    email_on_ticket_found: true,
+    email_on_letter_mailed: true,
+    email_on_approval_needed: true,
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const autoSave = useCallback(async (data: {
+  // Check if required fields are complete
+  const isProfileComplete = firstName.trim() && lastName.trim();
+  const hasPlate = plate !== null;
+  const isSetupComplete = isProfileComplete && hasPlate;
+
+  // Debounced auto-save for profile
+  const autoSaveProfile = useCallback(async (data: {
     firstName: string;
     lastName: string;
     addressLine1: string;
@@ -158,7 +319,6 @@ export default function ProfilePage() {
     zip: string;
   }) => {
     if (!userId) return;
-
     setSaveStatus('saving');
 
     const { error } = await supabase
@@ -167,7 +327,7 @@ export default function ProfilePage() {
         user_id: userId,
         first_name: data.firstName || null,
         last_name: data.lastName || null,
-        full_name: `${data.firstName} ${data.lastName}`.trim() || null, // Keep for backwards compatibility
+        full_name: `${data.firstName} ${data.lastName}`.trim() || null,
         mailing_address_line1: data.addressLine1 || null,
         mailing_address_line2: data.addressLine2 || null,
         mailing_city: data.city || null,
@@ -184,30 +344,22 @@ export default function ProfilePage() {
     }
   }, [userId]);
 
-  // Trigger auto-save on field changes
   useEffect(() => {
     if (!userId || loading) return;
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      autoSave({ firstName, lastName, addressLine1, addressLine2, city, state, zip });
-    }, 1000); // 1 second debounce
-
+      autoSaveProfile({ firstName, lastName, addressLine1, addressLine2, city, state, zip });
+    }, 1000);
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [firstName, lastName, addressLine1, addressLine2, city, state, zip, userId, loading, autoSave]);
+  }, [firstName, lastName, addressLine1, addressLine2, city, state, zip, userId, loading, autoSaveProfile]);
 
   useEffect(() => {
-    loadProfile();
+    loadAll();
   }, []);
 
-  const loadProfile = async () => {
+  const loadAll = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       router.push('/get-started');
@@ -225,13 +377,10 @@ export default function ProfilePage() {
       .single();
 
     if (profileData) {
-      setProfile(profileData);
-      // Try to use first/last name, fall back to parsing full_name for legacy users
       if (profileData.first_name || profileData.last_name) {
         setFirstName(profileData.first_name || '');
         setLastName(profileData.last_name || '');
       } else if (profileData.full_name) {
-        // Parse legacy full_name into first/last
         const nameParts = profileData.full_name.trim().split(' ');
         setFirstName(nameParts[0] || '');
         setLastName(nameParts.slice(1).join(' ') || '');
@@ -243,70 +392,140 @@ export default function ProfilePage() {
       setZip(profileData.mailing_zip || '');
     }
 
-    // Load subscription
-    const { data: subData } = await supabase
-      .from('autopilot_subscriptions')
-      .select('status, current_period_end, letters_used_this_period, letters_included')
+    // Load plate
+    const { data: plateData } = await supabase
+      .from('monitored_plates')
+      .select('*')
       .eq('user_id', session.user.id)
       .single();
 
-    if (subData) {
-      setSubscription(subData);
+    if (plateData) {
+      setPlate(plateData);
+      setPlateNumber(plateData.plate);
+      setPlateState(plateData.state);
+      setPlateIsLeased(plateData.is_leased_or_company);
+    }
+
+    // Load subscription
+    const { data: subData } = await supabase
+      .from('autopilot_subscriptions')
+      .select('status, current_period_end')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (subData) setSubscription(subData);
+
+    // Load settings
+    const { data: settingsData } = await supabase
+      .from('autopilot_settings')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (settingsData) {
+      setSettings({
+        auto_mail_enabled: settingsData.auto_mail_enabled,
+        require_approval: settingsData.require_approval,
+        allowed_ticket_types: settingsData.allowed_ticket_types || [],
+        never_auto_mail_unknown: settingsData.never_auto_mail_unknown,
+        email_on_ticket_found: settingsData.email_on_ticket_found,
+        email_on_letter_mailed: settingsData.email_on_letter_mailed,
+        email_on_approval_needed: settingsData.email_on_approval_needed,
+      });
     }
 
     setLoading(false);
   };
 
-  const getStatusBadge = (status: string) => {
-    const configs: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-      active: {
-        label: 'Active',
-        color: COLORS.successDark,
-        bg: COLORS.successLight,
-        icon: <CheckCircleIcon />
-      },
-      pending: {
-        label: 'Pending',
-        color: COLORS.warningDark,
-        bg: COLORS.warningLight,
-        icon: <LoaderIcon />
-      },
-      canceled: {
-        label: 'Canceled',
-        color: COLORS.danger,
-        bg: COLORS.dangerLight,
-        icon: null
-      },
-      past_due: {
-        label: 'Past Due',
-        color: COLORS.danger,
-        bg: COLORS.dangerLight,
-        icon: <WarningIcon />
-      },
-    };
-    const config = configs[status] || configs.pending;
-    return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 12px',
-        borderRadius: 20,
-        fontSize: 13,
-        fontWeight: 600,
-        backgroundColor: config.bg,
-        color: config.color,
-      }}>
-        {config.icon}
-        {config.label}
-      </span>
-    );
+  const savePlate = async () => {
+    if (!userId) return;
+    setPlateError('');
+    setPlateSaving(true);
+
+    const plateUpper = plateNumber.toUpperCase().trim();
+    if (!plateUpper) {
+      setPlateError('Please enter your license plate number.');
+      setPlateSaving(false);
+      return;
+    }
+
+    if (plate) {
+      // Update existing
+      const { error } = await supabase
+        .from('monitored_plates')
+        .update({
+          plate: plateUpper,
+          state: plateState,
+          is_leased_or_company: plateIsLeased,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', plate.id);
+
+      if (error) {
+        setPlateError('Failed to update plate.');
+      } else {
+        setPlate({ ...plate, plate: plateUpper, state: plateState, is_leased_or_company: plateIsLeased });
+      }
+    } else {
+      // Create new
+      const { data, error } = await supabase
+        .from('monitored_plates')
+        .insert({
+          user_id: userId,
+          plate: plateUpper,
+          state: plateState,
+          is_leased_or_company: plateIsLeased,
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          setPlateError('This plate is already registered.');
+        } else {
+          setPlateError('Failed to add plate.');
+        }
+      } else if (data) {
+        setPlate(data);
+      }
+    }
+    setPlateSaving(false);
+  };
+
+  const saveSettings = async () => {
+    if (!userId) return;
+    setSettingsSaving(true);
+
+    await supabase
+      .from('autopilot_settings')
+      .upsert({
+        user_id: userId,
+        ...settings,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+
+    setSettingsSaving(false);
+  };
+
+  const toggleTicketType = (typeId: string) => {
+    if (settings.allowed_ticket_types.includes(typeId)) {
+      setSettings({
+        ...settings,
+        allowed_ticket_types: settings.allowed_ticket_types.filter(t => t !== typeId),
+      });
+    } else {
+      setSettings({
+        ...settings,
+        allowed_ticket_types: [...settings.allowed_ticket_types, typeId],
+      });
+    }
   };
 
   const inputStyle = (hasError: boolean = false): React.CSSProperties => ({
     width: '100%',
-    padding: '14px 16px',
-    borderRadius: 10,
+    padding: '12px 14px',
+    borderRadius: 8,
     border: `1.5px solid ${hasError ? COLORS.warning : COLORS.border}`,
     fontSize: 15,
     boxSizing: 'border-box' as const,
@@ -315,30 +534,11 @@ export default function ProfilePage() {
     backgroundColor: COLORS.white,
   });
 
-  const cardStyle: React.CSSProperties = {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    border: `1px solid ${COLORS.border}`,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    overflow: 'hidden',
-  };
-
   if (loading) {
     return (
       <DashboardLayout activePage="profile">
-        <main style={{
-          padding: 48,
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 400,
-        }}>
-          <div style={{ color: COLORS.primary, marginBottom: 16 }}>
-            <LoaderIcon />
-          </div>
-          <p style={{ color: COLORS.slate, fontSize: 15 }}>Loading profile...</p>
+        <main style={{ padding: 48, textAlign: 'center' }}>
+          <p style={{ color: COLORS.slate }}>Loading...</p>
         </main>
       </DashboardLayout>
     );
@@ -349,10 +549,6 @@ export default function ProfilePage() {
       <Head>
         <title>Profile - Autopilot America</title>
         <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
           input:focus, select:focus {
             border-color: ${COLORS.primary} !important;
             box-shadow: 0 0 0 3px ${COLORS.primaryLight} !important;
@@ -360,253 +556,75 @@ export default function ProfilePage() {
         `}</style>
       </Head>
 
-      <main style={{
-        maxWidth: 800,
-        margin: '0 auto',
-        padding: '40px 24px',
-        minHeight: '100vh',
-      }}>
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: COLORS.deepHarbor,
-            margin: '0 0 8px 0',
-            letterSpacing: '-0.02em',
-          }}>
-            Profile
-          </h1>
-          <p style={{
-            fontSize: 16,
-            color: COLORS.slate,
-            margin: 0,
-            lineHeight: 1.5,
-          }}>
-            Manage your account and mailing information for contest letters.
+      <main style={{ maxWidth: 700, margin: '0 auto', padding: '32px 24px' }}>
+        {/* Header with subscription status */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: COLORS.deepHarbor, margin: 0 }}>
+              Profile
+            </h1>
+            {subscription && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 600,
+                backgroundColor: subscription.status === 'active' ? COLORS.successLight : COLORS.warningLight,
+                color: subscription.status === 'active' ? COLORS.successDark : COLORS.warningDark,
+              }}>
+                {subscription.status === 'active' && <CheckCircleIcon />}
+                {subscription.status === 'active' ? 'Active' : 'Pending'}
+              </span>
+            )}
+          </div>
+          <p style={{ fontSize: 15, color: COLORS.slate, margin: 0 }}>
+            {email}
           </p>
         </div>
 
-        {/* Subscription Status Card */}
-        <section style={{ ...cardStyle, marginBottom: 24 }}>
+        {/* Setup Progress Warning */}
+        {!isSetupComplete && (
           <div style={{
-            padding: '20px 24px',
-            borderBottom: `1px solid ${COLORS.borderLight}`,
+            padding: 16,
+            borderRadius: 12,
+            marginBottom: 20,
+            backgroundColor: COLORS.warningLight,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: 12,
           }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              backgroundColor: COLORS.primaryLight,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: COLORS.primary,
-            }}>
-              <CreditCardIcon />
+            <div style={{ color: COLORS.warningDark, flexShrink: 0, marginTop: 2 }}>
+              <WarningIcon />
             </div>
-            <div style={{ flex: 1 }}>
-              <h2 style={{
-                fontSize: 18,
-                fontWeight: 600,
-                color: COLORS.deepHarbor,
-                margin: 0
-              }}>
-                Subscription
-              </h2>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: COLORS.warningDark, margin: '0 0 4px 0' }}>
+                Complete your setup
+              </p>
+              <p style={{ fontSize: 13, color: '#92400E', margin: 0, lineHeight: 1.5 }}>
+                {!isProfileComplete && !hasPlate && 'Enter your name and license plate to start monitoring for tickets.'}
+                {!isProfileComplete && hasPlate && 'Enter your name to complete your profile.'}
+                {isProfileComplete && !hasPlate && 'Add your license plate to start monitoring for tickets.'}
+              </p>
             </div>
-            {subscription && getStatusBadge(subscription.status)}
           </div>
+        )}
 
-          <div style={{ padding: 24 }}>
-            {subscription ? (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: 24,
-              }}>
-                <div style={{
-                  padding: 16,
-                  backgroundColor: COLORS.background,
-                  borderRadius: 12,
-                }}>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.slateLight,
-                    margin: '0 0 6px 0',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    fontWeight: 500,
-                  }}>
-                    Plan
-                  </p>
-                  <p style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: COLORS.graphite,
-                    margin: 0
-                  }}>
-                    Autopilot Annual
-                  </p>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.slate,
-                    margin: '4px 0 0 0'
-                  }}>
-                    $24/year
-                  </p>
-                </div>
-                <div style={{
-                  padding: 16,
-                  backgroundColor: COLORS.background,
-                  borderRadius: 12,
-                }}>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.slateLight,
-                    margin: '0 0 6px 0',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    fontWeight: 500,
-                  }}>
-                    Renews
-                  </p>
-                  <p style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: COLORS.graphite,
-                    margin: 0
-                  }}>
-                    {subscription.current_period_end
-                      ? new Date(subscription.current_period_end).toLocaleDateString('en-US', {
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div style={{
-                  padding: 16,
-                  backgroundColor: COLORS.background,
-                  borderRadius: 12,
-                }}>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.slateLight,
-                    margin: '0 0 6px 0',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    fontWeight: 500,
-                  }}>
-                    Plates Monitored
-                  </p>
-                  <p style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: COLORS.graphite,
-                    margin: 0
-                  }}>
-                    1 plate included
-                  </p>
-                </div>
-                <div style={{
-                  padding: 16,
-                  backgroundColor: COLORS.successLight,
-                  borderRadius: 12,
-                }}>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.successDark,
-                    margin: '0 0 6px 0',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    fontWeight: 500,
-                  }}>
-                    Contest Letters
-                  </p>
-                  <p style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: COLORS.successDark,
-                    margin: 0
-                  }}>
-                    Unlimited
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '32px 20px',
-                backgroundColor: COLORS.background,
-                borderRadius: 12,
-              }}>
-                <div style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: '50%',
-                  backgroundColor: COLORS.primaryLight,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                  color: COLORS.primary,
-                }}>
-                  <CreditCardIcon />
-                </div>
-                <p style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  color: COLORS.graphite,
-                  margin: '0 0 8px 0'
-                }}>
-                  No active subscription
-                </p>
-                <p style={{
-                  fontSize: 14,
-                  color: COLORS.slate,
-                  margin: '0 0 20px 0'
-                }}>
-                  Subscribe to start monitoring your plates automatically.
-                </p>
-                <Link href="/get-started" style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '14px 28px',
-                  backgroundColor: COLORS.primary,
-                  color: COLORS.white,
-                  borderRadius: 10,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  transition: 'transform 0.1s, box-shadow 0.2s',
-                }}>
-                  Subscribe Now
-                  <ChevronRightIcon />
-                </Link>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Account Info Card */}
-        <section style={{ ...cardStyle, marginBottom: 24 }}>
-          <div style={{
-            padding: '20px 24px',
-            borderBottom: `1px solid ${COLORS.borderLight}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
+        {/* REQUIRED: Name Section - Always visible, not collapsible */}
+        <div style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 12,
+          border: `1.5px solid ${!isProfileComplete ? COLORS.warning : COLORS.border}`,
+          marginBottom: 16,
+          padding: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
+              width: 36,
+              height: 36,
+              borderRadius: 8,
               backgroundColor: COLORS.primaryLight,
               display: 'flex',
               alignItems: 'center',
@@ -615,479 +633,490 @@ export default function ProfilePage() {
             }}>
               <UserIcon />
             </div>
-            <h2 style={{
-              fontSize: 18,
-              fontWeight: 600,
-              color: COLORS.deepHarbor,
-              margin: 0
-            }}>
-              Account
-            </h2>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor }}>
+                Your Name
+              </span>
+              <span style={{
+                marginLeft: 8,
+                padding: '2px 8px',
+                fontSize: 11,
+                fontWeight: 600,
+                backgroundColor: COLORS.dangerLight,
+                color: COLORS.danger,
+                borderRadius: 4,
+              }}>
+                REQUIRED
+              </span>
+            </div>
+            {saveStatus !== 'idle' && (
+              <span style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: saveStatus === 'saving' ? COLORS.primary : saveStatus === 'saved' ? COLORS.successDark : COLORS.danger,
+              }}>
+                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Error'}
+              </span>
+            )}
           </div>
 
-          <div style={{ padding: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: 14,
-                fontWeight: 500,
-                color: COLORS.graphite,
-                marginBottom: 8
-              }}>
-                Email Address
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                First Name
               </label>
               <input
-                type="email"
-                value={email}
-                disabled
-                style={{
-                  ...inputStyle(),
-                  backgroundColor: COLORS.background,
-                  color: COLORS.slate,
-                  cursor: 'not-allowed',
-                }}
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="John"
+                style={inputStyle(!firstName.trim())}
               />
-              <p style={{
-                fontSize: 13,
-                color: COLORS.slateLight,
-                margin: '8px 0 0 0'
-              }}>
-                Contact support to change your email address.
-              </p>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                Last Name
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Smith"
+                style={inputStyle(!lastName.trim())}
+              />
             </div>
           </div>
-        </section>
+          <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '8px 0 0 0' }}>
+            As it appears on your vehicle registration
+          </p>
+        </div>
 
-        {/* Mailing Information Card */}
-        <section style={{
-          ...cardStyle,
-          marginBottom: 24,
-          border: !isProfileComplete
-            ? `2px solid ${COLORS.warning}`
-            : `1px solid ${COLORS.border}`,
+        {/* REQUIRED: License Plate Section - Always visible, not collapsible */}
+        <div style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 12,
+          border: `1.5px solid ${!hasPlate ? COLORS.warning : COLORS.border}`,
+          marginBottom: 16,
+          padding: 20,
         }}>
-          <div style={{
-            padding: '20px 24px',
-            borderBottom: `1px solid ${COLORS.borderLight}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                backgroundColor: COLORS.primaryLight,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: COLORS.primary,
-              }}>
-                <MapPinIcon />
-              </div>
-              <div>
-                <h2 style={{
-                  fontSize: 18,
-                  fontWeight: 600,
-                  color: COLORS.deepHarbor,
-                  margin: 0
-                }}>
-                  Mailing Address
-                </h2>
-                <p style={{
-                  fontSize: 13,
-                  color: COLORS.slate,
-                  margin: '2px 0 0 0'
-                }}>
-                  Required for contest letters
-                </p>
-              </div>
-            </div>
-
-            {/* Save Status Indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              backgroundColor: COLORS.primaryLight,
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 500,
-              backgroundColor:
-                saveStatus === 'saving' ? COLORS.primaryLight :
-                saveStatus === 'saved' ? COLORS.successLight :
-                saveStatus === 'error' ? COLORS.dangerLight : 'transparent',
-              color:
-                saveStatus === 'saving' ? COLORS.primary :
-                saveStatus === 'saved' ? COLORS.successDark :
-                saveStatus === 'error' ? COLORS.danger : 'transparent',
-              transition: 'all 0.2s',
-              opacity: saveStatus === 'idle' ? 0 : 1,
+              justifyContent: 'center',
+              color: COLORS.primary,
             }}>
-              {saveStatus === 'saving' && <LoaderIcon />}
-              {saveStatus === 'saved' && <CheckCircleIcon />}
-              {saveStatus === 'error' && <WarningIcon />}
-              {saveStatus === 'saving' && 'Saving...'}
-              {saveStatus === 'saved' && 'Saved'}
-              {saveStatus === 'error' && 'Error'}
+              <CarIcon />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor }}>
+                License Plate
+              </span>
+              <span style={{
+                marginLeft: 8,
+                padding: '2px 8px',
+                fontSize: 11,
+                fontWeight: 600,
+                backgroundColor: COLORS.dangerLight,
+                color: COLORS.danger,
+                borderRadius: 4,
+              }}>
+                REQUIRED
+              </span>
+            </div>
+            {plate && (
+              <span style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: plate.status === 'active' ? COLORS.successDark : COLORS.slate,
+              }}>
+                {plate.status === 'active' ? 'Monitoring' : 'Paused'}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                Plate Number
+              </label>
+              <input
+                type="text"
+                value={plateNumber}
+                onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+                placeholder="ABC1234"
+                style={{
+                  ...inputStyle(!plateNumber.trim()),
+                  fontFamily: 'monospace',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                State
+              </label>
+              <select
+                value={plateState}
+                onChange={(e) => setPlateState(e.target.value)}
+                style={{ ...inputStyle(), cursor: 'pointer' }}
+              >
+                {US_STATES.map(s => (
+                  <option key={s.code} value={s.code}>{s.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div style={{ padding: 24 }}>
-            {/* Incomplete Profile Warning */}
-            {!isProfileComplete && (
-              <div style={{
-                padding: 16,
-                borderRadius: 12,
-                marginBottom: 24,
-                backgroundColor: COLORS.warningLight,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 12,
-              }}>
-                <div style={{ color: COLORS.warningDark, flexShrink: 0, marginTop: 2 }}>
-                  <WarningIcon />
-                </div>
-                <div>
-                  <p style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: COLORS.warningDark,
-                    margin: '0 0 4px 0',
-                  }}>
-                    Complete your mailing address
-                  </p>
-                  <p style={{
-                    fontSize: 13,
-                    color: '#92400E',
-                    margin: 0,
-                    lineHeight: 1.5,
-                  }}>
-                    Your mailing address is required to automatically send contest letters on your behalf.
-                  </p>
-                </div>
-              </div>
-            )}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 16 }}>
+            <input
+              type="checkbox"
+              checked={plateIsLeased}
+              onChange={(e) => setPlateIsLeased(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: COLORS.primary }}
+            />
+            <span style={{ fontSize: 13, color: COLORS.graphite }}>
+              This is a leased or company vehicle
+            </span>
+          </label>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* First Name and Last Name */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: COLORS.graphite,
-                    marginBottom: 8
-                  }}>
-                    First Name <span style={{ color: COLORS.danger }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="John"
-                    style={inputStyle(!firstName.trim())}
-                  />
-                </div>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: COLORS.graphite,
-                    marginBottom: 8
-                  }}>
-                    Last Name <span style={{ color: COLORS.danger }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Smith"
-                    style={inputStyle(!lastName.trim())}
-                  />
-                </div>
-              </div>
-              <p style={{
-                fontSize: 12,
-                color: COLORS.slateLight,
-                margin: '-12px 0 0 0'
-              }}>
-                As it appears on your vehicle registration
-              </p>
+          {plateError && (
+            <div style={{
+              padding: 10,
+              borderRadius: 8,
+              backgroundColor: COLORS.dangerLight,
+              color: COLORS.danger,
+              fontSize: 13,
+              marginBottom: 12,
+            }}>
+              {plateError}
+            </div>
+          )}
 
-              {/* Street Address */}
+          <button
+            onClick={savePlate}
+            disabled={plateSaving || !plateNumber.trim()}
+            style={{
+              width: '100%',
+              padding: '12px 20px',
+              borderRadius: 8,
+              border: 'none',
+              backgroundColor: plateSaving || !plateNumber.trim() ? COLORS.slateLight : COLORS.primary,
+              color: COLORS.white,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: plateSaving || !plateNumber.trim() ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {plateSaving ? 'Saving...' : plate ? 'Update Plate' : 'Save Plate'}
+          </button>
+        </div>
+
+        {/* Mailing Address - Expandable */}
+        <ExpandableSection
+          title="Mailing Address"
+          subtitle="For contest letters"
+          icon={<MapPinIcon />}
+          defaultOpen={false}
+        >
+          <div style={{ paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                Street Address
+              </label>
+              <input
+                type="text"
+                value={addressLine1}
+                onChange={(e) => setAddressLine1(e.target.value)}
+                placeholder="123 Main Street"
+                style={inputStyle()}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                Apt, Suite, Unit (optional)
+              </label>
+              <input
+                type="text"
+                value={addressLine2}
+                onChange={(e) => setAddressLine2(e.target.value)}
+                placeholder="Apt 4B"
+                style={inputStyle()}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: COLORS.graphite,
-                  marginBottom: 8
-                }}>
-                  Street Address <span style={{ color: COLORS.danger }}>*</span>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                  City
                 </label>
                 <input
                   type="text"
-                  value={addressLine1}
-                  onChange={(e) => setAddressLine1(e.target.value)}
-                  placeholder="123 Main Street"
-                  style={inputStyle(!addressLine1.trim())}
-                />
-              </div>
-
-              {/* Apt/Suite */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: COLORS.graphite,
-                  marginBottom: 8
-                }}>
-                  Apt, Suite, Unit{' '}
-                  <span style={{ color: COLORS.slateLight, fontWeight: 400 }}>(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={addressLine2}
-                  onChange={(e) => setAddressLine2(e.target.value)}
-                  placeholder="Apt 4B"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Chicago"
                   style={inputStyle()}
                 />
               </div>
-
-              {/* City, State, ZIP */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '2fr 1fr 1fr',
-                gap: 16
-              }}>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: COLORS.graphite,
-                    marginBottom: 8
-                  }}>
-                    City <span style={{ color: COLORS.danger }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Chicago"
-                    style={inputStyle(!city.trim())}
-                  />
-                </div>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: COLORS.graphite,
-                    marginBottom: 8
-                  }}>
-                    State <span style={{ color: COLORS.danger }}>*</span>
-                  </label>
-                  <select
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    style={{
-                      ...inputStyle(),
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {US_STATES.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: COLORS.graphite,
-                    marginBottom: 8
-                  }}>
-                    ZIP <span style={{ color: COLORS.danger }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={zip}
-                    onChange={(e) => setZip(e.target.value)}
-                    placeholder="60601"
-                    maxLength={10}
-                    style={inputStyle(!zip.trim())}
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                  State
+                </label>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  style={{ ...inputStyle(), cursor: 'pointer' }}
+                >
+                  {STATE_CODES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: COLORS.graphite, marginBottom: 6 }}>
+                  ZIP
+                </label>
+                <input
+                  type="text"
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  placeholder="60601"
+                  maxLength={10}
+                  style={inputStyle()}
+                />
               </div>
             </div>
+            <p style={{ fontSize: 12, color: COLORS.slateLight, margin: 0 }}>
+              Changes save automatically
+            </p>
           </div>
-        </section>
+        </ExpandableSection>
 
-        {/* Quick Links Card */}
-        <section style={cardStyle}>
-          <div style={{
-            padding: '20px 24px',
-            borderBottom: `1px solid ${COLORS.borderLight}`,
-          }}>
-            <h2 style={{
-              fontSize: 18,
-              fontWeight: 600,
-              color: COLORS.deepHarbor,
-              margin: 0
+        {/* Letter Preferences - Expandable */}
+        <ExpandableSection
+          title="Letter Preferences"
+          subtitle="Auto-mail and contest settings"
+          icon={<MailIcon />}
+          defaultOpen={false}
+        >
+          <div style={{ paddingTop: 16 }}>
+            {/* Auto-mail toggle */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 0',
+              borderBottom: `1px solid ${COLORS.borderLight}`,
             }}>
-              Quick Links
-            </h2>
-          </div>
-
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Link href="/settings" style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '16px 20px',
-                backgroundColor: COLORS.background,
-                borderRadius: 12,
-                textDecoration: 'none',
-                color: COLORS.graphite,
-                transition: 'background-color 0.15s',
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  backgroundColor: COLORS.white,
-                  border: `1px solid ${COLORS.border}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: COLORS.slate,
-                  marginRight: 14,
-                }}>
-                  <SettingsIcon />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{
-                    fontSize: 15,
-                    fontWeight: 500,
-                    margin: 0,
-                    color: COLORS.graphite,
-                  }}>
-                    Auto-mail & Notifications
-                  </p>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.slateLight,
-                    margin: '2px 0 0 0'
-                  }}>
-                    Configure automatic mailing preferences
-                  </p>
-                </div>
-                <div style={{ color: COLORS.slateLight }}>
-                  <ChevronRightIcon />
-                </div>
-              </Link>
-
-              <Link href="/plates" style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '16px 20px',
-                backgroundColor: COLORS.background,
-                borderRadius: 12,
-                textDecoration: 'none',
-                color: COLORS.graphite,
-                transition: 'background-color 0.15s',
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  backgroundColor: COLORS.white,
-                  border: `1px solid ${COLORS.border}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: COLORS.slate,
-                  marginRight: 14,
-                }}>
-                  <CarIcon />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{
-                    fontSize: 15,
-                    fontWeight: 500,
-                    margin: 0,
-                    color: COLORS.graphite,
-                  }}>
-                    Monitored Plates
-                  </p>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.slateLight,
-                    margin: '2px 0 0 0'
-                  }}>
-                    Add or manage your license plate
-                  </p>
-                </div>
-                <div style={{ color: COLORS.slateLight }}>
-                  <ChevronRightIcon />
-                </div>
-              </Link>
-
-              <Link href="/tickets" style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '16px 20px',
-                backgroundColor: COLORS.background,
-                borderRadius: 12,
-                textDecoration: 'none',
-                color: COLORS.graphite,
-                transition: 'background-color 0.15s',
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  backgroundColor: COLORS.white,
-                  border: `1px solid ${COLORS.border}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: COLORS.slate,
-                  marginRight: 14,
-                }}>
-                  <TicketIcon />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{
-                    fontSize: 15,
-                    fontWeight: 500,
-                    margin: 0,
-                    color: COLORS.graphite,
-                  }}>
-                    View All Tickets
-                  </p>
-                  <p style={{
-                    fontSize: 13,
-                    color: COLORS.slateLight,
-                    margin: '2px 0 0 0'
-                  }}>
-                    See detected tickets and contest status
-                  </p>
-                </div>
-                <div style={{ color: COLORS.slateLight }}>
-                  <ChevronRightIcon />
-                </div>
-              </Link>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.graphite, margin: '0 0 2px 0' }}>
+                  Auto-mail contest letters
+                </p>
+                <p style={{ fontSize: 12, color: COLORS.slate, margin: 0 }}>
+                  Automatically send letters when tickets are found
+                </p>
+              </div>
+              <Toggle
+                checked={settings.auto_mail_enabled}
+                onChange={(checked) => setSettings({
+                  ...settings,
+                  auto_mail_enabled: checked,
+                  require_approval: !checked
+                })}
+              />
             </div>
+
+            {/* Require approval */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 0',
+              borderBottom: `1px solid ${COLORS.borderLight}`,
+            }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.graphite, margin: '0 0 2px 0' }}>
+                  Require my approval first
+                </p>
+                <p style={{ fontSize: 12, color: COLORS.slate, margin: 0 }}>
+                  Review letters before they're mailed
+                </p>
+              </div>
+              <Toggle
+                checked={settings.require_approval}
+                onChange={(checked) => setSettings({
+                  ...settings,
+                  require_approval: checked,
+                  auto_mail_enabled: !checked
+                })}
+              />
+            </div>
+
+            {/* Ticket types */}
+            <div style={{ padding: '16px 0' }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.graphite, margin: '0 0 12px 0' }}>
+                Allowed ticket types for auto-mail
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {TICKET_TYPES.map(type => (
+                  <label key={type.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={settings.allowed_ticket_types.includes(type.id)}
+                      onChange={() => toggleTicketType(type.id)}
+                      style={{ width: 16, height: 16, accentColor: COLORS.primary }}
+                    />
+                    <span style={{ flex: 1, fontSize: 13, color: COLORS.graphite }}>{type.label}</span>
+                    <span style={{
+                      fontSize: 11,
+                      color: type.winRate >= 60 ? COLORS.successDark : COLORS.slate,
+                      fontWeight: 500,
+                    }}>
+                      {type.winRate}% win rate
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={saveSettings}
+              disabled={settingsSaving}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                border: 'none',
+                backgroundColor: COLORS.primary,
+                color: COLORS.white,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: settingsSaving ? 'not-allowed' : 'pointer',
+                opacity: settingsSaving ? 0.7 : 1,
+              }}
+            >
+              {settingsSaving ? 'Saving...' : 'Save Preferences'}
+            </button>
           </div>
-        </section>
+        </ExpandableSection>
+
+        {/* Notifications - Expandable */}
+        <ExpandableSection
+          title="Notifications"
+          subtitle="Email alerts"
+          icon={<BellIcon />}
+          defaultOpen={false}
+        >
+          <div style={{ paddingTop: 16 }}>
+            {[
+              { key: 'email_on_ticket_found', label: 'Email me when a ticket is found' },
+              { key: 'email_on_letter_mailed', label: 'Email me when a letter is mailed' },
+              { key: 'email_on_approval_needed', label: 'Email me when approval is needed' },
+            ].map(({ key, label }, index, arr) => (
+              <div key={key} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 0',
+                borderBottom: index < arr.length - 1 ? `1px solid ${COLORS.borderLight}` : 'none',
+              }}>
+                <span style={{ fontSize: 14, color: COLORS.graphite }}>{label}</span>
+                <Toggle
+                  checked={(settings as any)[key]}
+                  onChange={(checked) => setSettings({ ...settings, [key]: checked })}
+                />
+              </div>
+            ))}
+
+            <button
+              onClick={saveSettings}
+              disabled={settingsSaving}
+              style={{
+                marginTop: 16,
+                padding: '10px 20px',
+                borderRadius: 8,
+                border: 'none',
+                backgroundColor: COLORS.primary,
+                color: COLORS.white,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: settingsSaving ? 'not-allowed' : 'pointer',
+                opacity: settingsSaving ? 0.7 : 1,
+              }}
+            >
+              {settingsSaving ? 'Saving...' : 'Save Notifications'}
+            </button>
+          </div>
+        </ExpandableSection>
+
+        {/* Subscription - Expandable */}
+        <ExpandableSection
+          title="Subscription"
+          subtitle={subscription?.status === 'active' ? '$24/year' : 'Manage your plan'}
+          icon={<CreditCardIcon />}
+          defaultOpen={false}
+          badge={subscription?.status === 'active' && (
+            <span style={{
+              padding: '2px 8px',
+              fontSize: 11,
+              fontWeight: 600,
+              backgroundColor: COLORS.successLight,
+              color: COLORS.successDark,
+              borderRadius: 4,
+            }}>
+              ACTIVE
+            </span>
+          )}
+        >
+          <div style={{ paddingTop: 16 }}>
+            {subscription ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={{ padding: 14, backgroundColor: COLORS.background, borderRadius: 8 }}>
+                  <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Plan</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite, margin: 0 }}>Autopilot Annual</p>
+                </div>
+                <div style={{ padding: 14, backgroundColor: COLORS.background, borderRadius: 8 }}>
+                  <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Renews</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite, margin: 0 }}>
+                    {subscription.current_period_end
+                      ? new Date(subscription.current_period_end).toLocaleDateString()
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div style={{ padding: 14, backgroundColor: COLORS.background, borderRadius: 8 }}>
+                  <p style={{ fontSize: 12, color: COLORS.slateLight, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Plates</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite, margin: 0 }}>1 included</p>
+                </div>
+                <div style={{ padding: 14, backgroundColor: COLORS.successLight, borderRadius: 8 }}>
+                  <p style={{ fontSize: 12, color: COLORS.successDark, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Letters</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: COLORS.successDark, margin: 0 }}>Unlimited</p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 16px 0' }}>No active subscription</p>
+                <a
+                  href="/get-started"
+                  style={{
+                    display: 'inline-block',
+                    padding: '12px 24px',
+                    backgroundColor: COLORS.primary,
+                    color: COLORS.white,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                  }}
+                >
+                  Subscribe Now
+                </a>
+              </div>
+            )}
+          </div>
+        </ExpandableSection>
       </main>
     </DashboardLayout>
   );
