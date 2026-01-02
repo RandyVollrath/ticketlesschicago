@@ -108,6 +108,84 @@ I would request photographic evidence of the violation if available, and ask tha
 
 I respectfully request that this ticket be dismissed.`,
   },
+  residential_permit: {
+    type: 'permit_valid',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a residential permit zone.
+
+At the time this ticket was issued, I was either a resident of the zone with a valid permit, or I was visiting a resident and had a valid guest pass. The permit/pass may not have been clearly visible to the parking enforcement officer.
+
+Additionally, the signage indicating the residential permit parking restrictions at this location may have been unclear, obscured, or contradictory.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  parking_prohibited: {
+    type: 'signage_issue',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a prohibited area.
+
+I believe the signage at this location was unclear, missing, contradictory, or obscured at the time I parked. I made a good faith effort to comply with posted regulations but could not determine that parking was prohibited.
+
+Additionally, there may have been temporary conditions or circumstances that made the restrictions unclear.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  no_standing_time_restricted: {
+    type: 'time_dispute',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a no standing/time restricted violation.
+
+I believe the signage at this location was unclear about the specific hours of restriction. The posted times may have been difficult to read, contradictory with other signs, or the time indicated on this ticket may be inaccurate.
+
+I was making a brief stop and was not standing for an extended period.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  missing_plate: {
+    type: 'plate_present',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a missing or noncompliant license plate.
+
+At the time this ticket was issued, my license plate was properly displayed on my vehicle. The plate may have been temporarily obscured by weather conditions, or the enforcement officer may have viewed the vehicle from an angle where the plate was not visible.
+
+I have attached documentation showing my vehicle registration was valid at the time of citation.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  commercial_loading: {
+    type: 'loading_activity',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a commercial loading zone.
+
+At the time this ticket was issued, I was actively loading or unloading goods from my vehicle for a nearby business. This is the intended purpose of commercial loading zones. I may have been briefly away from my vehicle but was in the process of completing a legitimate loading/unloading activity.
+
+The signage at this location may also have been unclear about the specific regulations.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  red_light: {
+    type: 'camera_error',
+    template: `I am writing to contest red light camera ticket #{ticket_number} issued on {violation_date}.
+
+I believe this ticket was issued in error for one or more of the following reasons:
+1. I was already in the intersection when the light turned red and it was safer to proceed than to stop abruptly
+2. The camera system may have malfunctioned or captured my vehicle incorrectly
+3. The yellow light duration at this intersection may not meet minimum timing standards
+4. Road conditions or traffic circumstances made it unsafe to stop
+
+I request access to the full video evidence and camera calibration records for this intersection.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  speed_camera: {
+    type: 'speed_dispute',
+    template: `I am writing to contest speed camera ticket #{ticket_number} issued on {violation_date}.
+
+I believe this ticket was issued in error for one or more of the following reasons:
+1. The camera system may have malfunctioned or misread my vehicle's speed
+2. My vehicle's actual speed may have been within an acceptable margin of error
+3. The speed limit signage at this location may have been unclear or obscured
+4. Traffic conditions or road circumstances may have affected the camera's accuracy
+
+I request access to the camera calibration records and certification for this device.
+
+I respectfully request that this ticket be dismissed or reduced.`,
+  },
   other_unknown: {
     type: 'general_contest',
     template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date}.
@@ -326,7 +404,11 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify cron secret
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const keyParam = req.query.key as string | undefined;
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}` || keyParam === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
