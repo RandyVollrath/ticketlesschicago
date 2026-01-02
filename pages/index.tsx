@@ -4,39 +4,105 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 
-// Modern color palette
 const COLORS = {
-  // Primary
-  primary: '#0066FF',
-  primaryDark: '#0052CC',
-  primaryLight: '#E6F0FF',
-
-  // Neutrals
-  black: '#0A0A0A',
-  gray900: '#171717',
-  gray800: '#262626',
-  gray700: '#404040',
-  gray600: '#525252',
-  gray500: '#737373',
-  gray400: '#A3A3A3',
-  gray300: '#D4D4D4',
-  gray200: '#E5E5E5',
-  gray100: '#F5F5F5',
-  white: '#FFFFFF',
-
-  // Accents
-  green: '#00C853',
-  greenLight: '#E8F5E9',
-  red: '#FF3B30',
-  redLight: '#FFEBEE',
-  amber: '#FFB300',
-  amberLight: '#FFF8E1',
+  primary: '#0F172A',
+  accent: '#10B981',
+  highlight: '#F97316',
+  bgDark: '#020617',
+  bgLight: '#F8FAFC',
+  bgSection: '#F1F5F9',
+  textDark: '#1E293B',
+  textLight: '#FFFFFF',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  danger: '#EF4444',
 };
 
-export default function Home() {
+const FONTS = {
+  heading: '"Space Grotesk", sans-serif',
+  body: '"Inter", sans-serif',
+};
+
+// Icons (Inline SVG)
+const ShieldIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+const CheckIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
+const ChevronDown = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>;
+const ArrowRight = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>;
+const MenuIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>;
+const CloseIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>;
+
+// Reusable Button Component
+const Button = ({ children, primary = false, onClick, style, fullWidth = false, variant = 'solid', href }: {
+  children: React.ReactNode;
+  primary?: boolean;
+  onClick?: () => void;
+  style?: React.CSSProperties;
+  fullWidth?: boolean;
+  variant?: 'solid' | 'outline';
+  href?: string;
+}) => {
+  const [hover, setHover] = useState(false);
+
+  let bg = variant === 'solid' ? (primary ? COLORS.accent : COLORS.primary) : 'transparent';
+  let color = variant === 'solid' ? COLORS.primary : COLORS.textLight;
+  let border = variant === 'outline' ? `2px solid ${COLORS.textLight}` : 'none';
+
+  if (primary && variant === 'solid') {
+    bg = COLORS.accent;
+    color = COLORS.primary;
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    padding: '16px 32px',
+    borderRadius: '8px',
+    border: border,
+    backgroundColor: bg,
+    color: color,
+    cursor: 'pointer',
+    fontFamily: FONTS.body,
+    fontWeight: 700,
+    fontSize: '16px',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    width: fullWidth ? '100%' : 'auto',
+    transform: hover ? 'translateY(-2px)' : 'translateY(0)',
+    boxShadow: hover ? `0 10px 20px -5px ${primary ? 'rgba(16, 185, 129, 0.4)' : 'rgba(15, 23, 42, 0.2)'}` : 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    textDecoration: 'none',
+    ...style,
+  };
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={buttonStyle}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={onClick}
+      style={buttonStyle}
+    >
+      {children}
+    </button>
+  );
+};
+
+export default function LandingPage() {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -54,10 +120,27 @@ export default function Home() {
     return () => authListener?.subscription.unsubscribe();
   }, []);
 
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const dismissalRates = [
+    { label: 'Expired Plates', pct: 75 },
+    { label: 'No City Sticker', pct: 70 },
+    { label: 'Expired Meter', pct: 67 },
+    { label: 'Street Cleaning', pct: 45 },
+    { label: 'Speed Camera', pct: 20 },
+    { label: 'Red Light Camera', pct: 16 },
+  ];
+
   const faqs = [
     {
       q: "How does it work?",
       a: "Add your license plate, and we check Chicago's database weekly. When we find a ticket, we automatically generate and mail a contest letter on your behalf."
+    },
+    {
+      q: "Is this legal?",
+      a: "100%. We are simply automating the standard mail-in contest process provided by the City of Chicago. Every citizen has the right to contest tickets."
     },
     {
       q: "What's the success rate?",
@@ -68,20 +151,19 @@ export default function Home() {
       a: "Yes. Enable 'Require approval' in settings and we'll notify you before mailing anything."
     },
     {
-      q: "How many plates can I monitor?",
-      a: "Each $24/year subscription covers 1 plate with unlimited contest letters. Subscribe separately for additional vehicles."
-    },
-    {
-      q: "Do you guarantee tickets will be dismissed?",
-      a: "No. We maximize your odds using proven contest strategies, but outcomes depend on the city's review process."
+      q: "What if the ticket isn't dismissed?",
+      a: "While we have a high success rate, we can't guarantee every dismissal. If lost, you simply pay the original fine. We ensure you never miss a deadline."
     },
   ];
 
   return (
     <div style={{
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      color: COLORS.gray900,
-      backgroundColor: COLORS.white,
+      fontFamily: FONTS.body,
+      color: COLORS.textDark,
+      backgroundColor: COLORS.bgLight,
+      margin: 0,
+      padding: 0,
+      overflowX: 'hidden'
     }}>
       <Head>
         <title>Autopilot America - Auto-Contest Chicago Parking Tickets</title>
@@ -92,399 +174,274 @@ export default function Home() {
 
       {/* Navigation */}
       <nav style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: `1px solid ${COLORS.gray200}`,
-        zIndex: 1000,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '20px 5%',
+        backgroundColor: COLORS.bgDark,
+        color: COLORS.textLight,
+        position: 'relative',
       }}>
-        <div style={{
-          maxWidth: 1200,
-          margin: '0 auto',
-          padding: '16px 24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+        <Link href="/" style={{
+          fontFamily: FONTS.heading,
+          fontSize: '24px',
+          fontWeight: 800,
+          letterSpacing: '-0.5px',
+          textDecoration: 'none',
+          color: COLORS.textLight,
         }}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32,
-              height: 32,
-              backgroundColor: COLORS.primary,
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: COLORS.black }}>Autopilot</span>
-          </Link>
+          AUTOPILOT<span style={{color: COLORS.accent}}>.</span>
+        </Link>
 
-          {/* Desktop nav */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }} className="desktop-nav">
-            <a href="#how-it-works" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>How it works</a>
-            <a href="#pricing" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Pricing</a>
-            <a href="#faq" style={{ color: COLORS.gray600, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
-            {user ? (
-              <Link href="/dashboard" style={{
-                backgroundColor: COLORS.primary,
-                color: COLORS.white,
-                padding: '10px 20px',
-                borderRadius: 8,
-                textDecoration: 'none',
-                fontSize: 14,
-                fontWeight: 600,
-              }}>
-                Dashboard
-              </Link>
-            ) : (
-              <>
-                <Link href="/auth/signin" style={{
-                  color: COLORS.primary,
-                  textDecoration: 'none',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  padding: '10px 16px',
-                  border: `1px solid ${COLORS.primary}`,
-                  borderRadius: 8,
-                  backgroundColor: COLORS.white,
-                }}>
-                  Already a user?
-                </Link>
-                <Link href="/get-started" style={{
-                  backgroundColor: COLORS.primary,
-                  color: COLORS.white,
-                  padding: '10px 20px',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                  fontSize: 14,
-                  fontWeight: 600,
-                }}>
-                  Start Saving Now
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="mobile-menu-btn"
-            style={{
-              display: 'none',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 8,
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.black} strokeWidth="2">
-              {mobileMenuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M3 12h18M3 6h18M3 18h18" />}
-            </svg>
-          </button>
+        {/* Desktop Nav */}
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }} className="desktop-nav">
+          <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>How it works</a>
+          <a href="#pricing" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Pricing</a>
+          <a href="#faq" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>FAQ</a>
+          {user ? (
+            <Button primary href="/dashboard" style={{ padding: '10px 20px', fontSize: '14px' }}>Dashboard</Button>
+          ) : (
+            <>
+              <Link href="/auth/signin" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Login</Link>
+              <Button primary href="/get-started" style={{ padding: '10px 20px', fontSize: '14px' }}>Get Started</Button>
+            </>
+          )}
         </div>
 
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div style={{ backgroundColor: COLORS.white, borderTop: `1px solid ${COLORS.gray200}`, padding: '16px 24px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <a href="#how-it-works" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>How it works</a>
-              <a href="#pricing" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>Pricing</a>
-              <a href="#faq" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>FAQ</a>
-              {user ? (
-                <Link href="/dashboard" style={{ color: COLORS.primary, textDecoration: 'none', fontSize: 16, fontWeight: 600 }}>Dashboard</Link>
-              ) : (
-                <>
-                  <Link href="/auth/signin" style={{ color: COLORS.gray700, textDecoration: 'none', fontSize: 16 }}>Already a user? Sign in</Link>
-                  <Link href="/get-started" style={{
-                    display: 'block',
-                    backgroundColor: COLORS.primary,
-                    color: COLORS.white,
-                    padding: '12px 20px',
-                    borderRadius: 8,
-                    textDecoration: 'none',
-                    fontSize: 16,
-                    fontWeight: 600,
-                    textAlign: 'center',
-                    marginTop: 8,
-                  }}>
-                    Start Saving Now
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="mobile-menu-btn"
+          style={{
+            display: 'none',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: COLORS.textLight,
+          }}
+        >
+          {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
+        </button>
       </nav>
 
-      {/* Hero */}
-      <section style={{
-        paddingTop: 140,
-        paddingBottom: 100,
-        background: `linear-gradient(180deg, ${COLORS.white} 0%, ${COLORS.gray100} 100%)`,
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div style={{
+          backgroundColor: COLORS.bgDark,
+          padding: '20px 5%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}>
+          <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>How it works</a>
+          <a href="#pricing" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Pricing</a>
+          <a href="#faq" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>FAQ</a>
+          {user ? (
+            <Link href="/dashboard" style={{ color: COLORS.accent, textDecoration: 'none', fontWeight: 600 }}>Dashboard</Link>
+          ) : (
+            <>
+              <Link href="/auth/signin" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Login</Link>
+              <Button primary href="/get-started" fullWidth style={{ marginTop: '8px' }}>Get Started</Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Hero Section */}
+      <header style={{
+        backgroundColor: COLORS.bgDark,
+        color: COLORS.textLight,
+        padding: '80px 5% 120px',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
-          {/* Badge */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            backgroundColor: COLORS.amberLight,
-            color: '#E65100',
-            padding: '8px 16px',
-            borderRadius: 100,
-            fontSize: 13,
-            fontWeight: 600,
-            marginBottom: 24,
-          }}>
-            <span style={{ width: 6, height: 6, backgroundColor: COLORS.amber, borderRadius: '50%' }} />
-            Chicago issues 3M+ tickets/year - don't pay unfairly
-          </div>
+        {/* Background glow effect */}
+        <div style={{
+          position: 'absolute',
+          top: '20%',
+          left: '10%',
+          width: '300px',
+          height: '300px',
+          background: COLORS.accent,
+          borderRadius: '50%',
+          filter: 'blur(120px)',
+          opacity: '0.15',
+          pointerEvents: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '10%',
+          right: '15%',
+          width: '200px',
+          height: '200px',
+          background: COLORS.highlight,
+          borderRadius: '50%',
+          filter: 'blur(100px)',
+          opacity: '0.1',
+          pointerEvents: 'none'
+        }} />
 
-          <h1 style={{
-            fontSize: 'clamp(36px, 6vw, 64px)',
-            fontWeight: 800,
-            lineHeight: 1.1,
-            margin: '0 0 24px 0',
-            letterSpacing: '-0.02em',
-            color: COLORS.black,
-          }}>
-            Stop Paying Unfair
-            <br />
-            <span style={{ color: COLORS.primary }}>Chicago Parking Tickets</span>
-          </h1>
+        {/* Badge */}
+        <div style={{
+          display: 'inline-block',
+          padding: '8px 16px',
+          backgroundColor: 'rgba(255,255,255,0.1)',
+          borderRadius: '50px',
+          marginBottom: '30px',
+          fontSize: '14px',
+          fontWeight: 600,
+          border: '1px solid rgba(255,255,255,0.2)'
+        }}>
+          <span style={{color: COLORS.accent}}>●</span> 1.2M+ Tickets Analyzed
+        </div>
 
-          <p style={{
-            fontSize: 'clamp(18px, 2.5vw, 22px)',
-            color: COLORS.gray600,
-            lineHeight: 1.6,
-            maxWidth: 620,
-            margin: '0 auto 40px',
+        <h1 style={{
+          fontFamily: FONTS.heading,
+          fontSize: 'clamp(40px, 6vw, 72px)',
+          lineHeight: 1.1,
+          fontWeight: 800,
+          marginBottom: '24px',
+          maxWidth: '900px',
+          margin: '0 auto 24px',
+          position: 'relative',
+        }}>
+          The city has a system.<br/>
+          <span style={{
+            background: `linear-gradient(to right, ${COLORS.accent}, #fff)`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
           }}>
-            We monitor your plate, find tickets before you do, and automatically mail contest letters. <strong style={{ color: COLORS.black }}>54% of contested tickets are dismissed.</strong>
-          </p>
+            Now, so do you.
+          </span>
+        </h1>
 
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/get-started" style={{
-              backgroundColor: COLORS.green,
-              color: COLORS.white,
-              padding: '18px 40px',
-              borderRadius: 12,
-              textDecoration: 'none',
-              fontSize: 18,
-              fontWeight: 700,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              boxShadow: '0 4px 14px rgba(0, 200, 83, 0.4)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
+        <p style={{
+          fontSize: 'clamp(18px, 3vw, 22px)',
+          color: '#94A3B8',
+          maxWidth: '600px',
+          margin: '0 auto 40px',
+          lineHeight: 1.6
+        }}>
+          Autopilot monitors your Chicago license plate daily. When a ticket hits, we automatically mail the contest letter. <strong style={{ color: '#fff' }}>54% average dismissal rate.</strong>
+        </p>
+
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Button primary href="/get-started">
+            Protect My Plate <ArrowRight />
+          </Button>
+          <Button variant="outline" href="#how-it-works">
+            See How It Works
+          </Button>
+        </div>
+
+        <p style={{ marginTop: '24px', fontSize: '14px', color: '#64748B' }}>
+          Less than $2/month to protect yourself from $100+ tickets
+        </p>
+
+        {/* Stats */}
+        <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'center', gap: '48px', flexWrap: 'wrap' }}>
+          {[
+            { value: '1.2M+', label: 'Tickets analyzed' },
+            { value: '54%', label: 'Average dismissal' },
+            { value: '$24', label: 'Per year' },
+          ].map((stat, i) => (
+            <div key={i} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '36px', fontWeight: 800, fontFamily: FONTS.heading }}>{stat.value}</div>
+              <div style={{ fontSize: '14px', color: '#64748B', marginTop: '4px' }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </header>
+
+      {/* How it Works */}
+      <section id="how-it-works" style={{
+        padding: '80px 5%',
+        maxWidth: '1200px',
+        margin: '-60px auto 0',
+        position: 'relative',
+        zIndex: 2
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
+          {[
+            { title: '1. Connect', text: 'Enter your license plate. We scan Chicago databases instantly.', icon: '🔗' },
+            { title: '2. Monitor', text: 'Our system checks for new violations every single day.', icon: '👀' },
+            { title: '3. Fight', text: 'We auto-generate and mail the best legal defense based on 1.2M records.', icon: '⚖️' },
+            { title: '4. Relax', text: 'You get a notification when the ticket is dismissed. Total peace of mind.', icon: '🍹' }
+          ].map((step, i) => (
+            <div key={i} style={{
+              flex: '1 1 250px',
+              backgroundColor: '#fff',
+              padding: '32px',
+              borderRadius: '16px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: `1px solid ${COLORS.border}`,
             }}>
-              Start Saving Now - $24/year
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-            <a href="#how-it-works" style={{
-              backgroundColor: COLORS.white,
-              color: COLORS.gray800,
-              padding: '18px 36px',
-              borderRadius: 12,
-              textDecoration: 'none',
-              fontSize: 17,
-              fontWeight: 600,
-              border: `2px solid ${COLORS.gray200}`,
-            }}>
-              See how it works
-            </a>
-          </div>
-
-          {/* Urgency message */}
-          <p style={{
-            marginTop: 24,
-            fontSize: 14,
-            color: COLORS.gray500,
-            fontWeight: 500,
-          }}>
-            Less than $2/month to protect yourself from $100+ tickets
-          </p>
-
-          {/* Social proof */}
-          <div style={{ marginTop: 64, display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.black }}>1.2M+</div>
-              <div style={{ fontSize: 14, color: COLORS.gray500, marginTop: 4 }}>Tickets analyzed</div>
+              <div style={{ fontSize: '40px', marginBottom: '16px' }}>{step.icon}</div>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: '20px', marginBottom: '10px', color: COLORS.primary }}>{step.title}</h3>
+              <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0 }}>{step.text}</p>
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.black }}>54%</div>
-              <div style={{ fontSize: 14, color: COLORS.gray500, marginTop: 4 }}>Average dismissal rate</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.black }}>$24</div>
-              <div style={{ fontSize: 14, color: COLORS.gray500, marginTop: 4 }}>Per year, unlimited letters</div>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how-it-works" style={{ padding: '100px 24px', backgroundColor: COLORS.white }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 64 }}>
-            <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
-              How it works
-            </h2>
-            <p style={{ fontSize: 18, color: COLORS.gray500, maxWidth: 500, margin: '0 auto' }}>
-              Set it up once. We handle everything automatically.
+      {/* Data Section */}
+      <section style={{
+        margin: '40px 5%',
+        backgroundColor: COLORS.bgSection,
+        borderRadius: '24px',
+        padding: '60px 5%',
+        maxWidth: '1100px',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+      }}>
+        <h2 style={{
+          fontFamily: FONTS.heading,
+          fontSize: '36px',
+          fontWeight: 700,
+          textAlign: 'center',
+          marginBottom: '16px',
+          color: COLORS.primary
+        }}>
+          Data-Driven Defense
+        </h2>
+        <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '48px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+          Based on analysis of 1.2 million contested Chicago tickets
+        </p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '50px', alignItems: 'center' }}>
+          <div style={{ flex: '1 1 300px' }}>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '28px', marginBottom: '20px', color: COLORS.primary }}>
+              Know Your Odds
+            </h3>
+            <p style={{ color: COLORS.textMuted, marginBottom: '30px', lineHeight: 1.7 }}>
+              Most people pay because they don't know the specific codes to contest. We do. We've analyzed over a million tickets to find what works.
             </p>
+            <Button primary href="/get-started">Start Protecting</Button>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 32 }}>
-            {[
-              {
-                step: '01',
-                title: 'Add your plate',
-                desc: 'Enter your license plate and mailing address. Takes 2 minutes.',
-                icon: (
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
-                    <rect x="3" y="8" width="18" height="8" rx="2" />
-                    <path d="M7 12h.01M12 12h.01M17 12h.01" />
-                  </svg>
-                ),
-              },
-              {
-                step: '02',
-                title: 'We scan weekly',
-                desc: "Every week, we check Chicago's database for new tickets on your plate.",
-                icon: (
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="M21 21l-4.35-4.35" />
-                  </svg>
-                ),
-              },
-              {
-                step: '03',
-                title: 'Auto-contest',
-                desc: 'When we find a ticket, we generate and mail a contest letter via USPS.',
-                icon: (
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
-                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                ),
-              },
-              {
-                step: '04',
-                title: 'Track everything',
-                desc: 'View all tickets and letters in your dashboard. Full transparency.',
-                icon: (
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2">
-                    <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                ),
-              },
-            ].map((item, i) => (
-              <div key={i} style={{
-                backgroundColor: COLORS.gray100,
-                borderRadius: 16,
-                padding: 32,
-                position: 'relative',
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  top: 24,
-                  right: 24,
-                  fontSize: 48,
-                  fontWeight: 800,
-                  color: COLORS.gray200,
-                  lineHeight: 1,
-                }}>
-                  {item.step}
-                </div>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  backgroundColor: COLORS.primaryLight,
-                  borderRadius: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 20,
-                }}>
-                  {item.icon}
-                </div>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: COLORS.black, margin: '0 0 8px' }}>
-                  {item.title}
-                </h3>
-                <p style={{ fontSize: 15, color: COLORS.gray600, margin: 0, lineHeight: 1.6 }}>
-                  {item.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Success rates */}
-      <section style={{ padding: '100px 24px', backgroundColor: COLORS.gray100 }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
-              Dismissal rates by ticket type
-            </h2>
-            <p style={{ fontSize: 18, color: COLORS.gray500 }}>
-              Based on analysis of 1.2 million contested Chicago tickets
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gap: 16 }}>
-            {[
-              { type: 'Expired plates', rate: 75, color: COLORS.green },
-              { type: 'No city sticker', rate: 70, color: COLORS.green },
-              { type: 'Expired meter', rate: 67, color: COLORS.green },
-              { type: 'Street cleaning', rate: 45, color: COLORS.amber },
-              { type: 'Speed camera', rate: 20, color: COLORS.red },
-              { type: 'Red light camera', rate: 16, color: COLORS.red },
-            ].map((item, i) => (
-              <div key={i} style={{
-                backgroundColor: COLORS.white,
-                borderRadius: 12,
-                padding: '20px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 24,
-              }}>
-                <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.gray800 }}>{item.type}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, maxWidth: 400 }}>
-                  <div style={{
-                    flex: 1,
-                    height: 8,
-                    backgroundColor: COLORS.gray200,
-                    borderRadius: 100,
-                    overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      width: `${item.rate}%`,
-                      height: '100%',
-                      backgroundColor: item.color,
-                      borderRadius: 100,
-                    }} />
-                  </div>
+          <div style={{ flex: '1 1 350px' }}>
+            {dismissalRates.map((stat, i) => (
+              <div key={i} style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: '6px', fontSize: '15px' }}>
+                  <span style={{ color: COLORS.textDark }}>{stat.label}</span>
                   <span style={{
-                    fontSize: 18,
-                    fontWeight: 700,
-                    color: item.color,
-                    minWidth: 50,
-                    textAlign: 'right',
-                  }}>
-                    {item.rate}%
-                  </span>
+                    color: stat.pct >= 60 ? COLORS.accent : stat.pct >= 40 ? COLORS.highlight : COLORS.danger
+                  }}>{stat.pct}%</span>
+                </div>
+                <div style={{
+                  height: '10px',
+                  backgroundColor: '#E2E8F0',
+                  borderRadius: '6px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${stat.pct}%`,
+                    backgroundColor: stat.pct >= 60 ? COLORS.accent : stat.pct >= 40 ? COLORS.highlight : '#EF4444',
+                    borderRadius: '6px',
+                    transition: 'width 0.5s ease',
+                  }} />
                 </div>
               </div>
             ))}
@@ -493,219 +450,182 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={{ padding: '100px 24px', backgroundColor: COLORS.white }}>
-        <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
-            Simple pricing
-          </h2>
-          <p style={{ fontSize: 18, color: COLORS.gray500, marginBottom: 48 }}>
-            One plan. Everything included. Cancel anytime.
-          </p>
-
+      <section id="pricing" style={{ padding: '80px 5%', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{
+          maxWidth: '420px',
+          margin: '0 auto',
+          backgroundColor: COLORS.primary,
+          color: COLORS.textLight,
+          padding: '48px 40px',
+          borderRadius: '24px',
+          textAlign: 'center',
+          boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
+        }}>
           <div style={{
-            backgroundColor: COLORS.white,
-            borderRadius: 24,
-            border: `2px solid ${COLORS.primary}`,
-            overflow: 'hidden',
-            boxShadow: '0 20px 50px rgba(0, 102, 255, 0.15)',
+            color: COLORS.accent,
+            fontWeight: 700,
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            marginBottom: '10px',
+            fontSize: '14px',
           }}>
-            <div style={{
-              backgroundColor: COLORS.primary,
-              color: COLORS.white,
-              padding: '16px',
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-            }}>
-              AUTOPILOT
-            </div>
-            <div style={{ padding: 40 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', marginBottom: 32 }}>
-                <span style={{ fontSize: 64, fontWeight: 800, color: COLORS.black }}>$24</span>
-                <span style={{ fontSize: 18, color: COLORS.gray500, marginLeft: 8 }}>/year</span>
-              </div>
-
-              <div style={{ textAlign: 'left', marginBottom: 32 }}>
-                {[
-                  'Monitor 1 license plate',
-                  'Weekly ticket checks',
-                  'Unlimited contest letters',
-                  'USPS mail with tracking',
-                  'Full dashboard access',
-                  'Email notifications',
-                ].map((feature, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <div style={{
-                      width: 24,
-                      height: 24,
-                      backgroundColor: COLORS.greenLight,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.green} strokeWidth="3">
-                        <path d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span style={{ fontSize: 16, color: COLORS.gray700 }}>{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Link href="/get-started" style={{
-                display: 'block',
-                backgroundColor: COLORS.primary,
-                color: COLORS.white,
-                padding: '18px 24px',
-                borderRadius: 12,
-                textDecoration: 'none',
-                fontSize: 17,
-                fontWeight: 600,
-                textAlign: 'center',
-              }}>
-                Get started now
-              </Link>
-
-              <p style={{ fontSize: 13, color: COLORS.gray400, marginTop: 16 }}>
-                No hidden fees. Cancel anytime.
-              </p>
-            </div>
+            Peace of Mind
           </div>
+          <h2 style={{
+            fontFamily: FONTS.heading,
+            fontSize: '64px',
+            margin: '0 0 10px 0',
+            color: '#fff'
+          }}>
+            $24<span style={{fontSize: '20px', color: '#94A3B8'}}>/year</span>
+          </h2>
+          <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>Less than the cost of one late fee.</p>
+
+          <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              'Monitor 1 license plate',
+              'Weekly ticket checks',
+              'Unlimited contest letters mailed',
+              'USPS mail with tracking',
+              'Full dashboard access',
+              'Email notifications',
+              'Cancel anytime',
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
+                <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
+              </div>
+            ))}
+          </div>
+
+          <Button
+            fullWidth
+            href="/get-started"
+            style={{ backgroundColor: '#fff', color: COLORS.primary }}
+          >
+            Start Protection
+          </Button>
+
+          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
+            No hidden fees. Cancel anytime.
+          </p>
         </div>
       </section>
 
       {/* FAQ */}
-      <section id="faq" style={{ padding: '100px 24px', backgroundColor: COLORS.gray100 }}>
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.black, margin: '0 0 16px' }}>
-              Questions? Answers.
-            </h2>
-          </div>
+      <section id="faq" style={{ padding: '80px 5%', maxWidth: '800px', margin: '0 auto' }}>
+        <h2 style={{
+          fontFamily: FONTS.heading,
+          fontSize: '36px',
+          fontWeight: 700,
+          textAlign: 'center',
+          marginBottom: '48px',
+          color: COLORS.primary
+        }}>
+          Frequently Asked Questions
+        </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {faqs.map((faq, i) => (
-              <div key={i} style={{
-                backgroundColor: COLORS.white,
-                borderRadius: 12,
-                overflow: 'hidden',
+        {faqs.map((item, i) => (
+          <div key={i} style={{
+            borderBottom: `1px solid ${COLORS.border}`,
+            padding: '20px 0'
+          }}>
+            <div
+              onClick={() => toggleFaq(i)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '18px',
+                color: COLORS.primary,
+              }}
+            >
+              {item.q}
+              <span style={{
+                transform: openFaq === i ? 'rotate(180deg)' : 'rotate(0)',
+                transition: '0.2s',
+                color: COLORS.textMuted,
               }}>
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  style={{
-                    width: '100%',
-                    padding: '20px 24px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: 17, fontWeight: 600, color: COLORS.black }}>{faq.q}</span>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke={COLORS.gray400}
-                    strokeWidth="2"
-                    style={{ transform: openFaq === i ? 'rotate(180deg)' : 'none', transition: '0.2s' }}
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-                {openFaq === i && (
-                  <div style={{ padding: '0 24px 20px', fontSize: 15, color: COLORS.gray600, lineHeight: 1.7 }}>
-                    {faq.a}
-                  </div>
-                )}
-              </div>
-            ))}
+                <ChevronDown />
+              </span>
+            </div>
+            {openFaq === i && (
+              <p style={{ marginTop: '16px', color: COLORS.textMuted, lineHeight: 1.7, fontSize: '15px' }}>
+                {item.a}
+              </p>
+            )}
           </div>
-        </div>
+        ))}
       </section>
 
-      {/* CTA */}
+      {/* Final CTA */}
       <section style={{
-        padding: '100px 24px',
-        background: `linear-gradient(135deg, ${COLORS.primary} 0%, #0052CC 100%)`,
+        backgroundColor: COLORS.primary,
+        padding: '80px 5%',
         textAlign: 'center',
+        color: COLORS.textLight,
       }}>
-        <div style={{ maxWidth: 600, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 40, fontWeight: 800, color: COLORS.white, margin: '0 0 16px' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <h2 style={{
+            fontFamily: FONTS.heading,
+            fontSize: '36px',
+            fontWeight: 700,
+            marginBottom: '16px'
+          }}>
             Stop paying tickets you could contest
           </h2>
-          <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.8)', marginBottom: 32 }}>
-            Join thousands of Chicago drivers who let us handle their parking tickets automatically.
+          <p style={{ color: '#94A3B8', marginBottom: '32px', fontSize: '18px' }}>
+            Join Chicago drivers who let us handle their parking tickets automatically.
           </p>
-          <Link href="/get-started" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            backgroundColor: COLORS.white,
-            color: COLORS.primary,
-            padding: '18px 36px',
-            borderRadius: 12,
-            textDecoration: 'none',
-            fontSize: 17,
-            fontWeight: 700,
-          }}>
-            Get started for $24/year
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </Link>
+          <Button primary href="/get-started">
+            Get Started for $24/year <ArrowRight />
+          </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer style={{ backgroundColor: COLORS.black, color: COLORS.white, padding: '64px 24px 32px' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 48, marginBottom: 48 }}>
+      <footer style={{
+        backgroundColor: COLORS.bgDark,
+        color: '#64748B',
+        padding: '60px 5%',
+        fontSize: '14px'
+      }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '40px', marginBottom: '40px' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <div style={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: COLORS.primary,
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <span style={{ fontSize: 18, fontWeight: 700 }}>Autopilot</span>
+              <div style={{
+                fontFamily: FONTS.heading,
+                fontSize: '20px',
+                fontWeight: 800,
+                color: '#fff',
+                marginBottom: '12px'
+              }}>
+                AUTOPILOT<span style={{color: COLORS.accent}}>.</span>
               </div>
-              <p style={{ color: COLORS.gray500, fontSize: 14, maxWidth: 280 }}>
+              <p style={{ maxWidth: '280px', lineHeight: 1.6 }}>
                 Automatic ticket contesting for Chicago drivers. Set it and forget it.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 64 }}>
+            <div style={{ display: 'flex', gap: '48px' }}>
               <div>
-                <h4 style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray400, marginBottom: 16, letterSpacing: '0.05em' }}>LEGAL</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <Link href="/privacy" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>Privacy</Link>
-                  <Link href="/terms" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>Terms</Link>
+                <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', marginBottom: '12px', letterSpacing: '0.05em' }}>LEGAL</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Link href="/privacy" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy</Link>
+                  <Link href="/terms" style={{ color: '#64748B', textDecoration: 'none' }}>Terms</Link>
                 </div>
               </div>
               <div>
-                <h4 style={{ fontSize: 13, fontWeight: 700, color: COLORS.gray400, marginBottom: 16, letterSpacing: '0.05em' }}>SUPPORT</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <Link href="/support" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>Contact</Link>
-                  <a href="#faq" style={{ color: COLORS.gray400, textDecoration: 'none', fontSize: 14 }}>FAQ</a>
+                <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', marginBottom: '12px', letterSpacing: '0.05em' }}>SUPPORT</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Link href="/support" style={{ color: '#64748B', textDecoration: 'none' }}>Contact</Link>
+                  <a href="#faq" style={{ color: '#64748B', textDecoration: 'none' }}>FAQ</a>
                 </div>
               </div>
             </div>
           </div>
-          <div style={{ borderTop: `1px solid ${COLORS.gray800}`, paddingTop: 24, fontSize: 13, color: COLORS.gray500 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ borderTop: '1px solid #1E293B', paddingTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
               <span>&copy; {new Date().getFullYear()} Autopilot America. All rights reserved.</span>
               <span>Not a law firm. Does not provide legal advice.</span>
             </div>
