@@ -132,7 +132,7 @@ export default function AutopilotAdmin() {
     if (settings) {
       const switches: any = {};
       settings.forEach(s => {
-        if (s.key === 'va_email_recipient') {
+        if (s.key === 'va_email') {
           setVaEmail(s.value?.email || '');
         } else {
           switches[s.key] = s.value?.enabled || false;
@@ -149,7 +149,7 @@ export default function AutopilotAdmin() {
     const { error } = await supabase
       .from('autopilot_admin_settings')
       .upsert({
-        key: 'va_email_recipient',
+        key: 'va_email',
         value: { email: vaEmail },
         updated_by: user?.id,
         updated_at: new Date().toISOString(),
@@ -606,7 +606,87 @@ export default function AutopilotAdmin() {
             <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
               View and manage all generated contest letters.
             </p>
-            <p style={{ color: COLORS.slate }}>Letter management coming soon...</p>
+
+            {/* Quick Links */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
+              <a
+                href="/admin/contest-templates"
+                style={{
+                  display: 'block',
+                  padding: 20,
+                  backgroundColor: '#F0F9FF',
+                  borderRadius: 12,
+                  border: '1px solid #BAE6FD',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 8 }}>&#128220;</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, marginBottom: 4 }}>
+                  View Letter Templates
+                </div>
+                <div style={{ fontSize: 13, color: COLORS.slate }}>
+                  Preview all violation-specific templates used by the autopilot system
+                </div>
+              </a>
+
+              <a
+                href="/admin/contests"
+                style={{
+                  display: 'block',
+                  padding: 20,
+                  backgroundColor: '#F0FDF4',
+                  borderRadius: 12,
+                  border: '1px solid #BBF7D0',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 8 }}>&#128203;</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, marginBottom: 4 }}>
+                  Manage Contests
+                </div>
+                <div style={{ fontSize: 13, color: COLORS.slate }}>
+                  Review, approve, or deny user-submitted contest letters
+                </div>
+              </a>
+
+              <a
+                href="/admin/add-court-outcome"
+                style={{
+                  display: 'block',
+                  padding: 20,
+                  backgroundColor: '#FEF3C7',
+                  borderRadius: 12,
+                  border: '1px solid #FDE68A',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 8 }}>&#9878;</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, marginBottom: 4 }}>
+                  Add Court Outcome
+                </div>
+                <div style={{ fontSize: 13, color: COLORS.slate }}>
+                  Record the result of a contested ticket (won, lost, reduced)
+                </div>
+              </a>
+            </div>
+
+            {/* Template Info */}
+            <div style={{
+              padding: 16,
+              backgroundColor: COLORS.concrete,
+              borderRadius: 8,
+              fontSize: 13,
+              color: COLORS.slate,
+              lineHeight: 1.6
+            }}>
+              <strong style={{ color: COLORS.graphite }}>About Templates:</strong> The autopilot system uses
+              violation-specific templates for common ticket types (street cleaning, expired plates, etc.).
+              These are static templates with placeholders for user data. For AI-generated letters (via Claude),
+              the content may vary based on historical FOIA data and user-specific context.
+            </div>
           </div>
         )}
       </main>
