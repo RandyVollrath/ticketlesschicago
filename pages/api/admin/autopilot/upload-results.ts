@@ -300,6 +300,134 @@ ${addressLines.join('\n')}`;
   return fullLetter;
 }
 
+// Evidence questions tailored to each violation type
+const EVIDENCE_QUESTIONS: Record<string, { title: string; questions: string[] }> = {
+  expired_plates: {
+    title: 'Questions About Your Expired Plates Ticket',
+    questions: [
+      'Did you renew your registration BEFORE the ticket date? If so, please provide a screenshot of the renewal confirmation email or receipt showing the renewal date.',
+      'Was your renewed sticker in the mail at the time of the ticket? If so, when did you receive it?',
+      'Do you have any documentation showing your registration was valid (e.g., IL SOS confirmation, renewal receipt)?',
+    ],
+  },
+  no_city_sticker: {
+    title: 'Questions About Your City Sticker Ticket',
+    questions: [
+      'Did you purchase your city sticker BEFORE the ticket date? If so, please provide a screenshot of the purchase confirmation email or receipt.',
+      'Was your sticker purchased but not yet displayed on your vehicle? Please explain.',
+      'Do you have proof showing when you purchased the sticker (email confirmation, credit card statement)?',
+    ],
+  },
+  expired_meter: {
+    title: 'Questions About Your Expired Meter Ticket',
+    questions: [
+      'Did the parking meter appear to be malfunctioning? Please describe what happened.',
+      'Did you pay via a parking app (ParkChicago, SpotHero, etc.)? If so, please provide a screenshot showing your payment and time.',
+      'Was the meter signage unclear or confusing? Do you have any photos?',
+    ],
+  },
+  street_cleaning: {
+    title: 'Questions About Your Street Cleaning Ticket',
+    questions: [
+      'Do you have any photos showing your car was NOT on the street during the posted cleaning hours?',
+      'Was the street cleaning signage missing, damaged, or obscured? Do you have photos?',
+      'Do you have any evidence (dashcam, security camera, photos) showing your car was parked elsewhere during that time?',
+      'Were the posted hours confusing or contradictory with other signs nearby?',
+    ],
+  },
+  fire_hydrant: {
+    title: 'Questions About Your Fire Hydrant Ticket',
+    questions: [
+      'Do you have any photos showing how far your car was parked from the hydrant?',
+      'Was the hydrant obscured by snow, vegetation, or other objects?',
+      'Do you believe you were parked at least 15 feet away? Any evidence to support this?',
+    ],
+  },
+  rush_hour: {
+    title: 'Questions About Your Rush Hour Parking Ticket',
+    questions: [
+      'Were you dealing with an emergency situation? Please describe what happened.',
+      'Was the rush hour signage unclear about the specific hours of restriction?',
+      'Were you actively loading/unloading or briefly stopped (not parked)?',
+    ],
+  },
+  disabled_zone: {
+    title: 'Questions About Your Disabled Zone Ticket',
+    questions: [
+      'Do you have a valid disability placard or plate? Please provide documentation.',
+      'Was your placard displayed but perhaps not visible to the officer?',
+      'Were you picking up or dropping off someone with a disability?',
+    ],
+  },
+  residential_permit: {
+    title: 'Questions About Your Residential Permit Parking Ticket',
+    questions: [
+      'Do you have a valid residential parking permit for this zone? Please provide a photo or documentation.',
+      'Were you visiting a resident who gave you a guest pass?',
+      'Was the permit zone signage unclear or contradictory?',
+    ],
+  },
+  parking_prohibited: {
+    title: 'Questions About Your Parking Prohibited Ticket',
+    questions: [
+      'Was the "No Parking" signage missing, obscured, or confusing? Do you have photos?',
+      'Was this a temporary restriction (construction, event)? Was it properly posted?',
+      'Were there contradictory signs in the area?',
+    ],
+  },
+  no_standing_time_restricted: {
+    title: 'Questions About Your No Standing/Time Restricted Ticket',
+    questions: [
+      'Were the posted restriction hours unclear or hard to read?',
+      'Were you actively loading/unloading passengers or goods?',
+      'Do you have any evidence showing the signage was confusing or contradictory?',
+    ],
+  },
+  missing_plate: {
+    title: 'Questions About Your Missing/Noncompliant Plate Ticket',
+    questions: [
+      'Was your plate actually on the vehicle but perhaps obscured by dirt, snow, or a bike rack?',
+      'Did your plate fall off recently? Do you have any documentation of this?',
+      'Do you have photos showing your plate was properly displayed?',
+    ],
+  },
+  commercial_loading: {
+    title: 'Questions About Your Commercial Loading Zone Ticket',
+    questions: [
+      'Were you actively loading or unloading goods for a nearby business? Please describe.',
+      'Do you have any receipts or documentation showing you were making a delivery?',
+      'Was the loading zone signage unclear about allowed times or activities?',
+    ],
+  },
+  red_light: {
+    title: 'Questions About Your Red Light Camera Ticket',
+    questions: [
+      'Were you already in the intersection when the light turned red and it was unsafe to stop?',
+      'Was the yellow light unusually short at this intersection?',
+      'Were road conditions (ice, rain, heavy traffic) a factor in your decision to proceed?',
+      'Was your vehicle not the one that ran the light (wrong plate captured)?',
+    ],
+  },
+  speed_camera: {
+    title: 'Questions About Your Speed Camera Ticket',
+    questions: [
+      'Was the speed limit signage unclear or obscured at this location?',
+      'Do you believe the camera may have malfunctioned or misread your speed?',
+      'Were there road conditions that affected traffic flow (construction, emergency vehicle)?',
+      'Was your vehicle not the one speeding (wrong plate captured)?',
+    ],
+  },
+  other_unknown: {
+    title: 'Questions About Your Ticket',
+    questions: [
+      'Please describe what happened and why you believe this ticket was issued in error.',
+      'Was there any signage that was missing, unclear, or confusing?',
+      'Do you have any photos, receipts, or documentation that could help your case?',
+      'Were there any extenuating circumstances we should know about?',
+    ],
+  },
+};
+
 /**
  * Send email to user about detected ticket
  */
@@ -336,6 +464,14 @@ async function sendTicketDetectedEmail(
   const violationTypeDisplay = violationType
     .replace(/_/g, ' ')
     .replace(/\b\w/g, l => l.toUpperCase());
+
+  // Get ticket-specific evidence questions
+  const evidenceInfo = EVIDENCE_QUESTIONS[violationType] || EVIDENCE_QUESTIONS.other_unknown;
+
+  // Build the questions HTML
+  const questionsHtml = evidenceInfo.questions
+    .map((q, i) => `<li style="margin-bottom: 12px;">${q}</li>`)
+    .join('');
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -382,17 +518,23 @@ async function sendTicketDetectedEmail(
           </table>
         </div>
 
-        <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="margin: 0 0 8px; color: #92400e; font-size: 16px;">Do You Have Evidence?</h3>
-          <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-            If you have any evidence that could help contest this ticket, please <strong>reply to this email</strong> with:
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 12px; color: #92400e; font-size: 18px;">${evidenceInfo.title}</h3>
+          <p style="margin: 0 0 16px; color: #92400e; font-size: 14px; line-height: 1.6;">
+            <strong>Evidence can significantly increase your chances of winning.</strong> Please <strong>reply to this email</strong> with answers to these questions:
           </p>
-          <ul style="margin: 12px 0 0; padding-left: 20px; color: #92400e; font-size: 14px; line-height: 1.8;">
-            <li>Proof of registration renewal (for expired plates)</li>
-            <li>Receipt showing city sticker purchase date</li>
-            <li>Photos of missing or unclear signage</li>
-            <li>Any other relevant documentation</li>
-            <li>Your explanation of what happened</li>
+          <ol style="margin: 0; padding-left: 20px; color: #78350f; font-size: 14px; line-height: 1.7;">
+            ${questionsHtml}
+          </ol>
+        </div>
+
+        <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <h4 style="margin: 0 0 8px; color: #065f46; font-size: 14px;">What Evidence Helps Most?</h4>
+          <ul style="margin: 0; padding-left: 20px; color: #065f46; font-size: 13px; line-height: 1.7;">
+            <li><strong>Screenshots</strong> of email confirmations, receipts, or app payments</li>
+            <li><strong>Photos</strong> of unclear/missing signage, your parked car, or the location</li>
+            <li><strong>Documentation</strong> like registration renewals or permit receipts</li>
+            <li><strong>Your written explanation</strong> of what happened</li>
           </ul>
         </div>
 
