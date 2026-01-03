@@ -1836,7 +1836,7 @@ export default function AdminPortal() {
                   Step 1: Export License Plates
                 </h3>
                 <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
-                  Export all monitored plates for active subscribers. The CSV will be emailed to your VA.
+                  Exports automatically run every <strong>Monday and Thursday at 9 AM CT</strong>. Use the button below to manually trigger an export.
                 </p>
                 <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
                   <p style={{ fontSize: '14px', margin: 0 }}>
@@ -1864,43 +1864,6 @@ export default function AdminPortal() {
                     <span style={{ fontSize: '13px', color: '#ef4444' }}>Please configure VA email first</span>
                   )}
                 </div>
-
-                {/* Export History */}
-                {exportJobs.length > 0 && (
-                  <div style={{ marginTop: '16px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Recent Exports:</div>
-                    <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ backgroundColor: '#f9fafb' }}>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plates</th>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {exportJobs.slice(0, 5).map((job: any) => (
-                            <tr key={job.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '8px' }}>{new Date(job.created_at).toLocaleString()}</td>
-                              <td style={{ padding: '8px' }}>{job.plate_count}</td>
-                              <td style={{ padding: '8px' }}>
-                                <span style={{
-                                  padding: '2px 8px',
-                                  borderRadius: '10px',
-                                  fontSize: '11px',
-                                  backgroundColor: job.status === 'complete' ? '#dcfce7' : '#fef3c7',
-                                  color: job.status === 'complete' ? '#166534' : '#92400e',
-                                }}>
-                                  {job.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Upload Section */}
