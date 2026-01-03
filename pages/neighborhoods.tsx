@@ -1,15 +1,25 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Footer from '../components/Footer';
-import type { SpeedCamera } from '../components/SpeedCameraMap';
+import { RED_LIGHT_CAMERAS, RedLightCamera } from '../lib/red-light-cameras';
+import type { SpeedCamera, UserLocation } from '../components/CameraMap';
+import {
+  ViolationBlock,
+  ViolationsData,
+  parseViolationsData,
+  VIOLATION_CATEGORIES,
+  ViolationCategoryKey,
+  aggregateBlockStats,
+  getBlocksNearLocation
+} from '../lib/violations';
 
-const SpeedCameraMap = dynamic(() => import('../components/SpeedCameraMap'), {
+const CameraMap = dynamic(() => import('../components/CameraMap'), {
   ssr: false,
   loading: () => (
     <div style={{
-      height: '500px',
+      height: '600px',
       backgroundColor: '#f3f4f6',
       borderRadius: '12px',
       display: 'flex',
@@ -20,6 +30,10 @@ const SpeedCameraMap = dynamic(() => import('../components/SpeedCameraMap'), {
     </div>
   )
 });
+
+type CameraFilter = 'all' | 'speed' | 'redlight';
+type StatusFilter = 'all' | 'active' | 'upcoming';
+type LayerToggle = 'cameras' | 'violations' | 'both';
 
 // Speed camera data from Chicago Data Portal
 const SPEED_CAMERAS: SpeedCamera[] = [
@@ -239,9 +253,37 @@ const SPEED_CAMERAS: SpeedCamera[] = [
 
 export default function Neighborhoods() {
   const router = useRouter();
-  const [selectedCamera, setSelectedCamera] = useState<SpeedCamera | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'upcoming'>('all');
+  const [selectedSpeedCamera, setSelectedSpeedCamera] = useState<SpeedCamera | null>(null);
+  const [selectedRedLightCamera, setSelectedRedLightCamera] = useState<RedLightCamera | null>(null);
+  const [cameraSearchQuery, setCameraSearchQuery] = useState('');
+  const [addressSearchQuery, setAddressSearchQuery] = useState('');
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [cameraFilter, setCameraFilter] = useState<CameraFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  // Violations layer state
+  const [violationBlocks, setViolationBlocks] = useState<ViolationBlock[]>([]);
+  const [layerToggle, setLayerToggle] = useState<LayerToggle>('cameras');
+  const [violationCategory, setViolationCategory] = useState<ViolationCategoryKey | 'all'>('all');
+  const [violationsLoaded, setViolationsLoaded] = useState(false);
+
+  // Load violations data
+  useEffect(() => {
+    if (layerToggle !== 'cameras' && !violationsLoaded) {
+      fetch('/violations-data.json')
+        .then(res => res.json())
+        .then((data: ViolationsData) => {
+          const blocks = parseViolationsData(data);
+          setViolationBlocks(blocks);
+          setViolationsLoaded(true);
+        })
+        .catch(err => {
+          console.error('Failed to load violations data:', err);
+        });
+    }
+  }, [layerToggle, violationsLoaded]);
 
   const today = new Date();
 
@@ -250,29 +292,179 @@ export default function Neighborhoods() {
     return goLive <= today;
   };
 
-  const filteredCameras = useMemo(() => {
+  // Geocode address using Nominatim (free OpenStreetMap geocoding)
+  const geocodeAddress = useCallback(async (address: string) => {
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      // Add Chicago, IL to help with geocoding accuracy
+      const searchAddress = address.toLowerCase().includes('chicago')
+        ? address
+        : `${address}, Chicago, IL`;
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddress)}&limit=1&countrycodes=us`
+      );
+
+      if (!response.ok) {
+        throw new Error('Geocoding service unavailable');
+      }
+
+      const results = await response.json();
+
+      if (results.length === 0) {
+        setSearchError('Address not found. Try a more specific address.');
+        setUserLocation(null);
+        return;
+      }
+
+      const result = results[0];
+      setUserLocation({
+        latitude: parseFloat(result.lat),
+        longitude: parseFloat(result.lon),
+        address: result.display_name
+      });
+
+      // Clear selected cameras when searching for a new address
+      setSelectedSpeedCamera(null);
+      setSelectedRedLightCamera(null);
+
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      setSearchError('Failed to search address. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleAddressSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (addressSearchQuery.trim()) {
+      geocodeAddress(addressSearchQuery.trim());
+    }
+  }, [addressSearchQuery, geocodeAddress]);
+
+  const clearUserLocation = useCallback(() => {
+    setUserLocation(null);
+    setAddressSearchQuery('');
+    setSearchError(null);
+  }, []);
+
+  // Filter speed cameras
+  const filteredSpeedCameras = useMemo(() => {
+    if (cameraFilter === 'redlight') return [];
+
     return SPEED_CAMERAS.filter(camera => {
       // Search filter
-      const matchesSearch = searchQuery === '' ||
-        camera.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        camera.locationId.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = cameraSearchQuery === '' ||
+        camera.address.toLowerCase().includes(cameraSearchQuery.toLowerCase()) ||
+        camera.locationId.toLowerCase().includes(cameraSearchQuery.toLowerCase());
 
       // Status filter
       let matchesStatus = true;
-      if (filterStatus === 'active') {
+      if (statusFilter === 'active') {
         matchesStatus = isLive(camera.goLiveDate);
-      } else if (filterStatus === 'upcoming') {
+      } else if (statusFilter === 'upcoming') {
         matchesStatus = !isLive(camera.goLiveDate);
       }
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, filterStatus]);
+  }, [cameraSearchQuery, statusFilter, cameraFilter]);
+
+  // Filter red light cameras
+  const filteredRedLightCameras = useMemo(() => {
+    if (cameraFilter === 'speed') return [];
+
+    return RED_LIGHT_CAMERAS.filter(camera => {
+      // Search filter
+      const matchesSearch = cameraSearchQuery === '' ||
+        camera.intersection.toLowerCase().includes(cameraSearchQuery.toLowerCase());
+
+      // Red light cameras are all active (no upcoming status)
+      const matchesStatus = statusFilter !== 'upcoming';
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [cameraSearchQuery, statusFilter, cameraFilter]);
+
+  // Calculate nearby cameras when user location is set
+  const nearbyCameras = useMemo(() => {
+    if (!userLocation) return { speed: 0, redLight: 0, total: 0 };
+
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 3959; // Earth's radius in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const speedNearby = SPEED_CAMERAS.filter(c =>
+      calculateDistance(userLocation.latitude, userLocation.longitude, c.latitude, c.longitude) <= 1
+    ).length;
+
+    const redLightNearby = RED_LIGHT_CAMERAS.filter(c =>
+      calculateDistance(userLocation.latitude, userLocation.longitude, c.latitude, c.longitude) <= 1
+    ).length;
+
+    return {
+      speed: speedNearby,
+      redLight: redLightNearby,
+      total: speedNearby + redLightNearby
+    };
+  }, [userLocation]);
+
+  // Calculate nearby violations when user location is set
+  const nearbyViolations = useMemo(() => {
+    if (!userLocation || violationBlocks.length === 0) {
+      return { blocks: 0, violations: 0, highRisk: 0 };
+    }
+
+    const nearbyBlocks = getBlocksNearLocation(
+      violationBlocks,
+      userLocation.latitude,
+      userLocation.longitude,
+      1  // 1 mile radius
+    );
+
+    const stats = aggregateBlockStats(nearbyBlocks);
+    return {
+      blocks: stats.totalBlocks,
+      violations: stats.totalViolations,
+      highRisk: stats.highSeverityCount
+    };
+  }, [userLocation, violationBlocks]);
+
+  // Filter violations by category
+  const filteredViolationBlocks = useMemo(() => {
+    if (violationCategory === 'all') return violationBlocks;
+    return violationBlocks.filter(block =>
+      (block.categories[violationCategory] || 0) > 0
+    );
+  }, [violationBlocks, violationCategory]);
+
+  // Violation stats
+  const violationStats = useMemo(() => {
+    if (violationBlocks.length === 0) return null;
+    return aggregateBlockStats(violationBlocks);
+  }, [violationBlocks]);
 
   const stats = useMemo(() => {
-    const active = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
-    const upcoming = SPEED_CAMERAS.length - active;
-    return { active, upcoming, total: SPEED_CAMERAS.length };
+    const activeSpeed = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
+    const upcomingSpeed = SPEED_CAMERAS.length - activeSpeed;
+    const redLight = RED_LIGHT_CAMERAS.length;
+    return {
+      activeSpeed,
+      upcomingSpeed,
+      totalSpeed: SPEED_CAMERAS.length,
+      redLight,
+      total: SPEED_CAMERAS.length + redLight
+    };
   }, []);
 
   const formatDate = (dateStr: string) => {
@@ -287,8 +479,8 @@ export default function Neighborhoods() {
   return (
     <>
       <Head>
-        <title>Chicago Speed Camera Map | Autopilot America</title>
-        <meta name="description" content="Interactive map of all photo-enforced speed camera locations in Chicago. Know where the cameras are and avoid speeding tickets." />
+        <title>Chicago Camera Map - Speed & Red Light Cameras | Autopilot America</title>
+        <meta name="description" content="Interactive map of all speed camera and red light camera locations in Chicago. Search your address to find nearby cameras and avoid tickets." />
       </Head>
 
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '60px' }}>
@@ -309,10 +501,10 @@ export default function Neighborhoods() {
               &larr; Back to Home
             </button>
             <h1 style={{ margin: '0', fontSize: '32px', fontWeight: 'bold', color: '#111827' }}>
-              Chicago Speed Camera Map
+              Chicago Camera Map
             </h1>
             <p style={{ margin: '10px 0 0 0', color: '#6b7280', fontSize: '16px' }}>
-              All {stats.total} photo-enforced speed camera locations in Chicago
+              All {stats.total} photo-enforced camera locations in Chicago
             </p>
           </div>
         </div>
@@ -321,97 +513,360 @@ export default function Neighborhoods() {
           {/* Stats Cards */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
             gap: '16px',
             marginBottom: '24px'
           }}>
             <div style={{
               backgroundColor: 'white',
-              padding: '20px',
+              padding: '16px',
               borderRadius: '12px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>TOTAL CAMERAS</p>
-              <p style={{ margin: '8px 0 0 0', fontSize: '32px', fontWeight: 'bold', color: '#111827' }}>
+              <p style={{ margin: '0', fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>TOTAL CAMERAS</p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#111827' }}>
                 {stats.total}
               </p>
             </div>
             <div style={{
               backgroundColor: 'white',
-              padding: '20px',
+              padding: '16px',
               borderRadius: '12px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               borderLeft: '4px solid #dc2626'
             }}>
-              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>ACTIVE</p>
-              <p style={{ margin: '8px 0 0 0', fontSize: '32px', fontWeight: 'bold', color: '#dc2626' }}>
-                {stats.active}
+              <p style={{ margin: '0', fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>SPEED (ACTIVE)</p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#dc2626' }}>
+                {stats.activeSpeed}
               </p>
             </div>
             <div style={{
               backgroundColor: 'white',
-              padding: '20px',
+              padding: '16px',
               borderRadius: '12px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               borderLeft: '4px solid #f59e0b'
             }}>
-              <p style={{ margin: '0', fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>COMING SOON</p>
-              <p style={{ margin: '8px 0 0 0', fontSize: '32px', fontWeight: 'bold', color: '#f59e0b' }}>
-                {stats.upcoming}
+              <p style={{ margin: '0', fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>SPEED (SOON)</p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#f59e0b' }}>
+                {stats.upcomingSpeed}
+              </p>
+            </div>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '16px',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              borderLeft: '4px solid #7c3aed'
+            }}>
+              <p style={{ margin: '0', fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>RED LIGHT</p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: 'bold', color: '#7c3aed' }}>
+                {stats.redLight}
               </p>
             </div>
           </div>
 
-          {/* Info Banner */}
+          {/* Address Search */}
           <div style={{
-            backgroundColor: '#fef3c7',
-            border: '1px solid #f59e0b',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #3b82f6',
             borderRadius: '12px',
             padding: '16px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px'
+            marginBottom: '24px'
           }}>
-            <span style={{ fontSize: '24px' }}>&#9888;&#65039;</span>
-            <div>
-              <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#92400e' }}>
-                Speed Camera Fines in Chicago
-              </p>
-              <p style={{ margin: '0', fontSize: '14px', color: '#92400e' }}>
-                Speeding 6-10 mph over: <strong>$35</strong> | 11+ mph over: <strong>$100</strong>
-                <br />
-                Cameras are active in school and park zones. Second violations within 12 months double the fine.
-              </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#2563eb">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <span style={{ fontWeight: '600', color: '#1e40af' }}>Find Cameras Near Your Address</span>
+            </div>
+            <form onSubmit={handleAddressSearch} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Enter your address (e.g., 1234 N State St)"
+                value={addressSearchQuery}
+                onChange={(e) => setAddressSearchQuery(e.target.value)}
+                style={{
+                  flex: '1',
+                  minWidth: '250px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #93c5fd',
+                  fontSize: '14px'
+                }}
+              />
+              <button
+                type="submit"
+                disabled={isSearching || !addressSearchQuery.trim()}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: isSearching ? 'wait' : 'pointer',
+                  opacity: isSearching || !addressSearchQuery.trim() ? 0.7 : 1
+                }}
+              >
+                {isSearching ? 'Searching...' : 'Search'}
+              </button>
+              {userLocation && (
+                <button
+                  type="button"
+                  onClick={clearUserLocation}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    backgroundColor: 'white',
+                    color: '#6b7280',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </form>
+            {searchError && (
+              <p style={{ margin: '8px 0 0 0', color: '#dc2626', fontSize: '14px' }}>{searchError}</p>
+            )}
+            {userLocation && (
+              <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'white', borderRadius: '8px' }}>
+                <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#111827' }}>
+                  <strong>Showing cameras near:</strong> {userLocation.address}
+                </p>
+                <p style={{ margin: '0', fontSize: '14px', color: '#2563eb', fontWeight: '600' }}>
+                  {nearbyCameras.total} camera{nearbyCameras.total !== 1 ? 's' : ''} within 1 mile
+                  ({nearbyCameras.speed} speed, {nearbyCameras.redLight} red light)
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Layer Toggle */}
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            marginBottom: '16px',
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>Show:</span>
+            <div style={{
+              display: 'flex',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '1px solid #d1d5db'
+            }}>
+              <button
+                onClick={() => setLayerToggle('cameras')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  backgroundColor: layerToggle === 'cameras' ? '#111827' : 'white',
+                  color: layerToggle === 'cameras' ? 'white' : '#374151',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Cameras Only
+              </button>
+              <button
+                onClick={() => setLayerToggle('violations')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  borderLeft: '1px solid #d1d5db',
+                  backgroundColor: layerToggle === 'violations' ? '#111827' : 'white',
+                  color: layerToggle === 'violations' ? 'white' : '#374151',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Building Violations
+              </button>
+              <button
+                onClick={() => setLayerToggle('both')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  borderLeft: '1px solid #d1d5db',
+                  backgroundColor: layerToggle === 'both' ? '#111827' : 'white',
+                  color: layerToggle === 'both' ? 'white' : '#374151',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Both
+              </button>
             </div>
           </div>
 
-          {/* Search and Filter */}
+          {/* Violations Stats & Filter (when violations layer active) */}
+          {(layerToggle === 'violations' || layerToggle === 'both') && (
+            <div style={{
+              backgroundColor: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#d97706">
+                  <path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+                </svg>
+                <span style={{ fontWeight: '600', color: '#92400e' }}>Building Violations Heat Map</span>
+                {violationsLoaded && violationStats && (
+                  <span style={{ fontSize: '12px', color: '#b45309', marginLeft: 'auto' }}>
+                    {violationStats.totalViolations.toLocaleString()} violations across {violationStats.totalBlocks.toLocaleString()} areas
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#92400e' }}>Filter by type:</span>
+                <select
+                  value={violationCategory}
+                  onChange={(e) => setViolationCategory(e.target.value as ViolationCategoryKey | 'all')}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #fbbf24',
+                    fontSize: '13px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="all">All Categories</option>
+                  {Object.entries(VIOLATION_CATEGORIES).map(([key, cat]) => (
+                    <option key={key} value={key}>{cat.name}</option>
+                  ))}
+                </select>
+
+                {userLocation && nearbyViolations.violations > 0 && (
+                  <div style={{
+                    marginLeft: 'auto',
+                    padding: '8px 12px',
+                    backgroundColor: nearbyViolations.highRisk > 0 ? '#fef2f2' : '#f0fdf4',
+                    border: `1px solid ${nearbyViolations.highRisk > 0 ? '#fecaca' : '#bbf7d0'}`,
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    color: nearbyViolations.highRisk > 0 ? '#991b1b' : '#166534'
+                  }}>
+                    <strong>{nearbyViolations.violations.toLocaleString()}</strong> violations nearby
+                    {nearbyViolations.highRisk > 0 && (
+                      <span> ({nearbyViolations.highRisk} high-risk areas)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                marginTop: '12px',
+                flexWrap: 'wrap'
+              }}>
+                {Object.entries(VIOLATION_CATEGORIES).slice(0, 6).map(([key, cat]) => (
+                  <div
+                    key={key}
+                    onClick={() => setViolationCategory(violationCategory === key ? 'all' : key as ViolationCategoryKey)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      backgroundColor: violationCategory === key ? cat.color : 'white',
+                      color: violationCategory === key ? 'white' : '#374151',
+                      border: `1px solid ${cat.color}`,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '2px',
+                      backgroundColor: violationCategory === key ? 'white' : cat.color
+                    }} />
+                    {cat.shortName}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Camera Type Filter & Search */}
+          {(layerToggle === 'cameras' || layerToggle === 'both') && (
           <div style={{
             display: 'flex',
             gap: '12px',
             marginBottom: '24px',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            alignItems: 'center'
           }}>
-            <input
-              type="text"
-              placeholder="Search by address or camera ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                flex: '1',
-                minWidth: '250px',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px'
-              }}
-            />
+            <div style={{
+              display: 'flex',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '1px solid #d1d5db'
+            }}>
+              <button
+                onClick={() => setCameraFilter('all')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  backgroundColor: cameraFilter === 'all' ? '#111827' : 'white',
+                  color: cameraFilter === 'all' ? 'white' : '#374151',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                All Cameras
+              </button>
+              <button
+                onClick={() => setCameraFilter('speed')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  borderLeft: '1px solid #d1d5db',
+                  backgroundColor: cameraFilter === 'speed' ? '#dc2626' : 'white',
+                  color: cameraFilter === 'speed' ? 'white' : '#374151',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Speed
+              </button>
+              <button
+                onClick={() => setCameraFilter('redlight')}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  borderLeft: '1px solid #d1d5db',
+                  backgroundColor: cameraFilter === 'redlight' ? '#7c3aed' : 'white',
+                  color: cameraFilter === 'redlight' ? 'white' : '#374151',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Red Light
+              </button>
+            </div>
+
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'upcoming')}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               style={{
-                padding: '12px 16px',
+                padding: '10px 16px',
                 borderRadius: '8px',
                 border: '1px solid #d1d5db',
                 fontSize: '14px',
@@ -419,18 +874,68 @@ export default function Neighborhoods() {
                 cursor: 'pointer'
               }}
             >
-              <option value="all">All Cameras</option>
+              <option value="all">All Status</option>
               <option value="active">Active Only</option>
               <option value="upcoming">Coming Soon</option>
             </select>
+
+            <input
+              type="text"
+              placeholder="Search camera locations..."
+              value={cameraSearchQuery}
+              onChange={(e) => setCameraSearchQuery(e.target.value)}
+              style={{
+                flex: '1',
+                minWidth: '200px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                border: '1px solid #d1d5db',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+          )}
+
+          {/* Info Banners */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#991b1b', fontSize: '14px' }}>
+                Speed Camera Fines
+              </p>
+              <p style={{ margin: '0', fontSize: '13px', color: '#991b1b' }}>
+                6-10 mph over: <strong>$35</strong> | 11+ mph over: <strong>$100</strong>
+                <br />
+                <span style={{ fontSize: '12px' }}>Active in school/park zones. 2nd violation doubles fine.</span>
+              </p>
+            </div>
+            <div style={{
+              backgroundColor: '#f5f3ff',
+              border: '1px solid #ddd6fe',
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#5b21b6', fontSize: '14px' }}>
+                Red Light Camera Fines
+              </p>
+              <p style={{ margin: '0', fontSize: '13px', color: '#5b21b6' }}>
+                Standard: <strong>$100</strong> | School zone: <strong>$200+</strong>
+                <br />
+                <span style={{ fontSize: '12px' }}>Applies to running red lights at intersections.</span>
+              </p>
+            </div>
           </div>
 
           {/* Map and List Container */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 400px',
+            gridTemplateColumns: '1fr 380px',
             gap: '24px'
-          }}>
+          }} className="map-list-container">
             {/* Map */}
             <div style={{
               backgroundColor: 'white',
@@ -439,10 +944,25 @@ export default function Neighborhoods() {
               overflow: 'hidden',
               height: '600px'
             }}>
-              <SpeedCameraMap
-                cameras={filteredCameras}
-                selectedCamera={selectedCamera}
-                onCameraSelect={setSelectedCamera}
+              <CameraMap
+                speedCameras={filteredSpeedCameras}
+                redLightCameras={filteredRedLightCameras}
+                selectedSpeedCamera={selectedSpeedCamera}
+                selectedRedLightCamera={selectedRedLightCamera}
+                userLocation={userLocation}
+                onSpeedCameraSelect={(camera) => {
+                  setSelectedSpeedCamera(camera);
+                  setSelectedRedLightCamera(null);
+                }}
+                onRedLightCameraSelect={(camera) => {
+                  setSelectedRedLightCamera(camera);
+                  setSelectedSpeedCamera(null);
+                }}
+                showSpeedCameras={layerToggle !== 'violations' && cameraFilter !== 'redlight'}
+                showRedLightCameras={layerToggle !== 'violations' && cameraFilter !== 'speed'}
+                violationBlocks={filteredViolationBlocks}
+                showViolations={layerToggle === 'violations' || layerToggle === 'both'}
+                selectedViolationCategory={violationCategory}
               />
             </div>
 
@@ -462,59 +982,146 @@ export default function Neighborhoods() {
                 backgroundColor: '#f9fafb'
               }}>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
-                  Camera Locations ({filteredCameras.length})
+                  Camera Locations ({filteredSpeedCameras.length + filteredRedLightCameras.length})
                 </h3>
               </div>
               <div style={{
                 flex: 1,
                 overflowY: 'auto'
               }}>
-                {filteredCameras.map((camera) => (
+                {/* Speed Cameras */}
+                {filteredSpeedCameras.map((camera) => (
                   <div
-                    key={camera.id}
-                    onClick={() => setSelectedCamera(camera)}
+                    key={`speed-${camera.id}`}
+                    onClick={() => {
+                      setSelectedSpeedCamera(camera);
+                      setSelectedRedLightCamera(null);
+                    }}
                     style={{
                       padding: '12px 16px',
                       borderBottom: '1px solid #e5e7eb',
                       cursor: 'pointer',
-                      backgroundColor: selectedCamera?.id === camera.id ? '#eff6ff' : 'transparent',
+                      backgroundColor: selectedSpeedCamera?.id === camera.id ? '#fef2f2' : 'transparent',
                       transition: 'background-color 0.15s'
                     }}
                     onMouseEnter={(e) => {
-                      if (selectedCamera?.id !== camera.id) {
+                      if (selectedSpeedCamera?.id !== camera.id) {
                         e.currentTarget.style.backgroundColor = '#f9fafb';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (selectedCamera?.id !== camera.id) {
+                      if (selectedSpeedCamera?.id !== camera.id) {
                         e.currentTarget.style.backgroundColor = 'transparent';
                       }
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '600', fontSize: '14px', color: '#111827' }}>
-                          {camera.address}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                          <span style={{
+                            backgroundColor: '#dc2626',
+                            color: 'white',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            fontSize: '9px',
+                            fontWeight: 'bold'
+                          }}>
+                            SPEED
+                          </span>
+                          <span style={{ fontWeight: '600', fontSize: '13px', color: '#111827' }}>
+                            {camera.address}
+                          </span>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>
                           {camera.locationId} | {camera.firstApproach}
                           {camera.secondApproach && `, ${camera.secondApproach}`}
                         </div>
                       </div>
                       <span style={{
-                        fontSize: '10px',
+                        fontSize: '9px',
                         fontWeight: '600',
                         color: isLive(camera.goLiveDate) ? '#dc2626' : '#f59e0b',
                         backgroundColor: isLive(camera.goLiveDate) ? '#fef2f2' : '#fffbeb',
-                        padding: '2px 8px',
+                        padding: '2px 6px',
                         borderRadius: '4px',
-                        marginLeft: '8px'
+                        marginLeft: '8px',
+                        whiteSpace: 'nowrap'
                       }}>
                         {isLive(camera.goLiveDate) ? 'ACTIVE' : formatDate(camera.goLiveDate)}
                       </span>
                     </div>
                   </div>
                 ))}
+
+                {/* Red Light Cameras */}
+                {filteredRedLightCameras.map((camera) => (
+                  <div
+                    key={`redlight-${camera.id}`}
+                    onClick={() => {
+                      setSelectedRedLightCamera(camera);
+                      setSelectedSpeedCamera(null);
+                    }}
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      backgroundColor: selectedRedLightCamera?.id === camera.id ? '#f5f3ff' : 'transparent',
+                      transition: 'background-color 0.15s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedRedLightCamera?.id !== camera.id) {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedRedLightCamera?.id !== camera.id) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                          <span style={{
+                            backgroundColor: '#7c3aed',
+                            color: 'white',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            fontSize: '9px',
+                            fontWeight: 'bold'
+                          }}>
+                            RED LIGHT
+                          </span>
+                          <span style={{ fontWeight: '600', fontSize: '13px', color: '#111827' }}>
+                            {camera.intersection}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                          {camera.firstApproach || 'N/A'}
+                          {camera.secondApproach && `, ${camera.secondApproach}`}
+                          {camera.thirdApproach && `, ${camera.thirdApproach}`}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: '600',
+                        color: '#7c3aed',
+                        backgroundColor: '#f5f3ff',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        marginLeft: '8px'
+                      }}>
+                        ACTIVE
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {filteredSpeedCameras.length === 0 && filteredRedLightCameras.length === 0 && (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: '#6b7280' }}>
+                    No cameras match your filters
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -529,7 +1136,7 @@ export default function Neighborhoods() {
             fontSize: '12px',
             color: '#6b7280'
           }}>
-            <strong>Data Source:</strong> Chicago Data Portal - Speed Camera Locations.
+            <strong>Data Source:</strong> Chicago Data Portal - Speed Camera Locations & Red Light Camera Locations.
             Last updated: December 2024. Data is provided by the City of Chicago.
           </div>
         </div>
