@@ -33,7 +33,24 @@ import {
   SERVICE_REQUEST_CATEGORIES,
   ServiceRequestCategoryKey,
   aggregateServiceRequestStats,
-  getBlocksNearLocation as getBlocksNear
+  getBlocksNearLocation as getBlocksNear,
+  // New data types
+  PermitBlock,
+  PermitsData,
+  parsePermitsData,
+  PERMIT_CATEGORIES,
+  PermitCategoryKey,
+  aggregatePermitStats,
+  LicenseBlock,
+  LicensesData,
+  parseLicensesData,
+  LICENSE_CATEGORIES,
+  LicenseCategoryKey,
+  aggregateLicenseStats,
+  PotholeBlock,
+  PotholesData,
+  parsePotholesData,
+  aggregatePotholeStats,
 } from '../lib/neighborhood-data';
 
 const CameraMap = dynamic(() => import('../components/CameraMap'), {
@@ -54,7 +71,7 @@ const CameraMap = dynamic(() => import('../components/CameraMap'), {
 
 type CameraFilter = 'all' | 'speed' | 'redlight';
 type StatusFilter = 'all' | 'active' | 'upcoming';
-type DataLayer = 'cameras' | 'violations' | 'crimes' | 'crashes' | '311';
+type DataLayer = 'cameras' | 'violations' | 'crimes' | 'crashes' | '311' | 'permits' | 'licenses' | 'potholes';
 
 // Speed camera data from Chicago Data Portal
 const SPEED_CAMERAS: SpeedCamera[] = [
@@ -306,6 +323,20 @@ export default function Neighborhoods() {
   const [serviceCategory, setServiceCategory] = useState<ServiceRequestCategoryKey | 'all'>('all');
   const [servicesLoaded, setServicesLoaded] = useState(false);
 
+  // Building Permits
+  const [permitBlocks, setPermitBlocks] = useState<PermitBlock[]>([]);
+  const [permitCategory, setPermitCategory] = useState<PermitCategoryKey | 'all'>('all');
+  const [permitsLoaded, setPermitsLoaded] = useState(false);
+
+  // Business Licenses
+  const [licenseBlocks, setLicenseBlocks] = useState<LicenseBlock[]>([]);
+  const [licenseCategory, setLicenseCategory] = useState<LicenseCategoryKey | 'all'>('all');
+  const [licensesLoaded, setLicensesLoaded] = useState(false);
+
+  // Potholes Patched
+  const [potholeBlocks, setPotholeBlocks] = useState<PotholeBlock[]>([]);
+  const [potholesLoaded, setPotholesLoaded] = useState(false);
+
   // Load data based on active layer
   useEffect(() => {
     if (activeLayer === 'violations' && !violationsLoaded) {
@@ -344,7 +375,34 @@ export default function Neighborhoods() {
         })
         .catch(err => console.error('Failed to load 311 data:', err));
     }
-  }, [activeLayer, violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded]);
+    if (activeLayer === 'permits' && !permitsLoaded) {
+      fetch('/permits-data.json')
+        .then(res => res.json())
+        .then((data: PermitsData) => {
+          setPermitBlocks(parsePermitsData(data));
+          setPermitsLoaded(true);
+        })
+        .catch(err => console.error('Failed to load permits data:', err));
+    }
+    if (activeLayer === 'licenses' && !licensesLoaded) {
+      fetch('/licenses-data.json')
+        .then(res => res.json())
+        .then((data: LicensesData) => {
+          setLicenseBlocks(parseLicensesData(data));
+          setLicensesLoaded(true);
+        })
+        .catch(err => console.error('Failed to load licenses data:', err));
+    }
+    if (activeLayer === 'potholes' && !potholesLoaded) {
+      fetch('/potholes-data.json')
+        .then(res => res.json())
+        .then((data: PotholesData) => {
+          setPotholeBlocks(parsePotholesData(data));
+          setPotholesLoaded(true);
+        })
+        .catch(err => console.error('Failed to load potholes data:', err));
+    }
+  }, [activeLayer, violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded, permitsLoaded, licensesLoaded, potholesLoaded]);
 
   const today = new Date();
 
@@ -579,6 +637,70 @@ export default function Neighborhoods() {
     return aggregateServiceRequestStats(serviceBlocks);
   }, [serviceBlocks]);
 
+  // Calculate nearby permits
+  const nearbyPermits = useMemo(() => {
+    if (!userLocation || permitBlocks.length === 0) {
+      return { total: 0, cost: 0, recent: 0 };
+    }
+    const nearby = getBlocksNear(permitBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const stats = aggregatePermitStats(nearby);
+    return { total: stats.totalPermits, cost: stats.totalCost, recent: stats.recentPermits };
+  }, [userLocation, permitBlocks]);
+
+  // Calculate nearby licenses
+  const nearbyLicenses = useMemo(() => {
+    if (!userLocation || licenseBlocks.length === 0) {
+      return { total: 0, active: 0 };
+    }
+    const nearby = getBlocksNear(licenseBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const stats = aggregateLicenseStats(nearby);
+    return { total: stats.totalLicenses, active: stats.activeLicenses };
+  }, [userLocation, licenseBlocks]);
+
+  // Calculate nearby potholes
+  const nearbyPotholes = useMemo(() => {
+    if (!userLocation || potholeBlocks.length === 0) {
+      return { repairs: 0, potholes: 0, recent: 0 };
+    }
+    const nearby = getBlocksNear(potholeBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const stats = aggregatePotholeStats(nearby);
+    return { repairs: stats.totalRepairs, potholes: stats.totalPotholes, recent: stats.recentRepairs };
+  }, [userLocation, potholeBlocks]);
+
+  // Filter permits by category
+  const filteredPermitBlocks = useMemo(() => {
+    if (permitCategory === 'all') return permitBlocks;
+    return permitBlocks.filter(block =>
+      (block.categories[permitCategory] || 0) > 0
+    );
+  }, [permitBlocks, permitCategory]);
+
+  // Filter licenses by category
+  const filteredLicenseBlocks = useMemo(() => {
+    if (licenseCategory === 'all') return licenseBlocks;
+    return licenseBlocks.filter(block =>
+      (block.categories[licenseCategory] || 0) > 0
+    );
+  }, [licenseBlocks, licenseCategory]);
+
+  // Permit stats
+  const permitStats = useMemo(() => {
+    if (permitBlocks.length === 0) return null;
+    return aggregatePermitStats(permitBlocks);
+  }, [permitBlocks]);
+
+  // License stats
+  const licenseStats = useMemo(() => {
+    if (licenseBlocks.length === 0) return null;
+    return aggregateLicenseStats(licenseBlocks);
+  }, [licenseBlocks]);
+
+  // Pothole stats
+  const potholeStats = useMemo(() => {
+    if (potholeBlocks.length === 0) return null;
+    return aggregatePotholeStats(potholeBlocks);
+  }, [potholeBlocks]);
+
   const stats = useMemo(() => {
     const activeSpeed = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
     const upcomingSpeed = SPEED_CAMERAS.length - activeSpeed;
@@ -691,84 +813,6 @@ export default function Neighborhoods() {
             </div>
           </div>
 
-          {/* Address Search */}
-          <div style={{
-            backgroundColor: '#eff6ff',
-            border: '1px solid #3b82f6',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '24px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#2563eb">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-              </svg>
-              <span style={{ fontWeight: '600', color: '#1e40af' }}>Find Cameras Near Your Address</span>
-            </div>
-            <form onSubmit={handleAddressSearch} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                placeholder="Enter your address (e.g., 1234 N State St)"
-                value={addressSearchQuery}
-                onChange={(e) => setAddressSearchQuery(e.target.value)}
-                style={{
-                  flex: '1',
-                  minWidth: '250px',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #93c5fd',
-                  fontSize: '14px'
-                }}
-              />
-              <button
-                type="submit"
-                disabled={isSearching || !addressSearchQuery.trim()}
-                style={{
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  fontWeight: '600',
-                  cursor: isSearching ? 'wait' : 'pointer',
-                  opacity: isSearching || !addressSearchQuery.trim() ? 0.7 : 1
-                }}
-              >
-                {isSearching ? 'Searching...' : 'Search'}
-              </button>
-              {userLocation && (
-                <button
-                  type="button"
-                  onClick={clearUserLocation}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                    backgroundColor: 'white',
-                    color: '#6b7280',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Clear
-                </button>
-              )}
-            </form>
-            {searchError && (
-              <p style={{ margin: '8px 0 0 0', color: '#dc2626', fontSize: '14px' }}>{searchError}</p>
-            )}
-            {userLocation && (
-              <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'white', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#111827' }}>
-                  <strong>Showing cameras near:</strong> {userLocation.address}
-                </p>
-                <p style={{ margin: '0', fontSize: '14px', color: '#2563eb', fontWeight: '600' }}>
-                  {nearbyCameras.total} camera{nearbyCameras.total !== 1 ? 's' : ''} within 1 mile
-                  ({nearbyCameras.speed} speed, {nearbyCameras.redLight} red light)
-                </p>
-              </div>
-            )}
-          </div>
-
           {/* Data Layer Selector */}
           <div style={{
             display: 'flex',
@@ -782,8 +826,11 @@ export default function Neighborhoods() {
               { key: 'cameras', label: 'Cameras', color: '#dc2626' },
               { key: 'violations', label: 'Building Violations', color: '#f59e0b' },
               { key: 'crimes', label: 'Crime', color: '#7c3aed' },
-              { key: 'crashes', label: 'Traffic Crashes', color: '#0ea5e9' },
-              { key: '311', label: '311 Requests', color: '#22c55e' },
+              { key: 'crashes', label: 'Crashes', color: '#0ea5e9' },
+              { key: '311', label: '311', color: '#22c55e' },
+              { key: 'permits', label: 'Permits', color: '#10b981' },
+              { key: 'licenses', label: 'Businesses', color: '#f97316' },
+              { key: 'potholes', label: 'Potholes', color: '#6b7280' },
             ].map(layer => (
               <button
                 key={layer.key}
@@ -970,6 +1017,125 @@ export default function Neighborhoods() {
             </div>
           )}
 
+          {/* Building Permits Stats */}
+          {activeLayer === 'permits' && (
+            <div style={{
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #10b981',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#065f46' }}>Building Permits Heat Map</span>
+                {permitsLoaded && permitStats && (
+                  <span style={{ fontSize: '12px', color: '#10b981', marginLeft: 'auto' }}>
+                    {permitStats.totalPermits.toLocaleString()} permits | ${(permitStats.totalCost / 1000000000).toFixed(1)}B total value
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Object.entries(PERMIT_CATEGORIES).map(([key, cat]) => (
+                  <button
+                    key={key}
+                    onClick={() => setPermitCategory(permitCategory === key ? 'all' : key as PermitCategoryKey)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      backgroundColor: permitCategory === key ? cat.color : 'white',
+                      color: permitCategory === key ? 'white' : '#374151',
+                      border: `1px solid ${cat.color}`,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cat.shortName}
+                  </button>
+                ))}
+              </div>
+              {userLocation && nearbyPermits.total > 0 && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0fdf9', borderRadius: '8px', fontSize: '12px' }}>
+                  <strong>{nearbyPermits.total.toLocaleString()}</strong> permits within 1 mile
+                  {nearbyPermits.recent > 0 && <span> ({nearbyPermits.recent} in last year)</span>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Business Licenses Stats */}
+          {activeLayer === 'licenses' && (
+            <div style={{
+              backgroundColor: '#fff7ed',
+              border: '1px solid #f97316',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#c2410c' }}>Business Licenses Heat Map</span>
+                {licensesLoaded && licenseStats && (
+                  <span style={{ fontSize: '12px', color: '#f97316', marginLeft: 'auto' }}>
+                    {licenseStats.totalLicenses.toLocaleString()} licenses | {licenseStats.activeLicenses.toLocaleString()} active
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Object.entries(LICENSE_CATEGORIES).map(([key, cat]) => (
+                  <button
+                    key={key}
+                    onClick={() => setLicenseCategory(licenseCategory === key ? 'all' : key as LicenseCategoryKey)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      backgroundColor: licenseCategory === key ? cat.color : 'white',
+                      color: licenseCategory === key ? 'white' : '#374151',
+                      border: `1px solid ${cat.color}`,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cat.shortName}
+                  </button>
+                ))}
+              </div>
+              {userLocation && nearbyLicenses.total > 0 && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: '8px', fontSize: '12px' }}>
+                  <strong>{nearbyLicenses.total.toLocaleString()}</strong> business licenses within 1 mile
+                  {nearbyLicenses.active > 0 && <span> ({nearbyLicenses.active} active)</span>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Potholes Stats */}
+          {activeLayer === 'potholes' && (
+            <div style={{
+              backgroundColor: '#f9fafb',
+              border: '1px solid #6b7280',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#374151' }}>Potholes Patched Heat Map</span>
+                {potholesLoaded && potholeStats && (
+                  <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>
+                    {potholeStats.totalPotholes.toLocaleString()} potholes filled | {potholeStats.totalRepairs.toLocaleString()} repair visits
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Shows road maintenance activity - larger circles = more repairs needed
+              </div>
+              {userLocation && nearbyPotholes.potholes > 0 && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f3f4f6', borderRadius: '8px', fontSize: '12px' }}>
+                  <strong>{nearbyPotholes.potholes.toLocaleString()}</strong> potholes filled within 1 mile
+                  {nearbyPotholes.recent > 0 && <span> ({nearbyPotholes.recent} in last 90 days)</span>}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Camera Type Filter & Search */}
           {activeLayer === 'cameras' && (
           <div style={{
@@ -1140,6 +1306,14 @@ export default function Neighborhoods() {
                 serviceBlocks={filteredServiceBlocks}
                 showServices={activeLayer === '311'}
                 selectedServiceCategory={serviceCategory}
+                permitBlocks={filteredPermitBlocks}
+                showPermits={activeLayer === 'permits'}
+                selectedPermitCategory={permitCategory}
+                licenseBlocks={filteredLicenseBlocks}
+                showLicenses={activeLayer === 'licenses'}
+                selectedLicenseCategory={licenseCategory}
+                potholeBlocks={potholeBlocks}
+                showPotholes={activeLayer === 'potholes'}
               />
             </div>
 
