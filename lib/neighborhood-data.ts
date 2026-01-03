@@ -336,3 +336,344 @@ export function aggregateServiceRequestStats(blocks: ServiceRequestBlock[]): {
     topCategory,
   };
 }
+
+// ============================================
+// BUILDING PERMITS
+// ============================================
+export interface PermitBlock {
+  lat: number;
+  lng: number;
+  count: number;
+  score: number;
+  categories: Record<string, number>;
+  ward: string;
+  address: string;
+  totalCost: number;
+  recentCount: number;
+}
+
+export interface PermitsData {
+  meta: {
+    date: string;
+    total: number;
+    blocks: number;
+  };
+  cats: Record<string, { n: string; c: string }>;
+  data: [number, number, number, number, Record<string, number>, string, string, number, number][];
+}
+
+export const PERMIT_CATEGORIES = {
+  new_construction: {
+    name: "New Construction",
+    shortName: "New Build",
+    description: "New building construction",
+    color: "#22c55e",
+    priority: 1,
+  },
+  renovation: {
+    name: "Renovation",
+    shortName: "Renovation",
+    description: "Renovation and alteration work",
+    color: "#3b82f6",
+    priority: 2,
+  },
+  electrical: {
+    name: "Electrical",
+    shortName: "Electrical",
+    description: "Electrical permits",
+    color: "#eab308",
+    priority: 3,
+  },
+  plumbing: {
+    name: "Plumbing",
+    shortName: "Plumbing",
+    description: "Plumbing permits",
+    color: "#0ea5e9",
+    priority: 4,
+  },
+  signs: {
+    name: "Signs",
+    shortName: "Signs",
+    description: "Sign permits",
+    color: "#8b5cf6",
+    priority: 5,
+  },
+  demolition: {
+    name: "Demolition",
+    shortName: "Demo",
+    description: "Demolition permits",
+    color: "#ef4444",
+    priority: 6,
+  },
+  other: {
+    name: "Other",
+    shortName: "Other",
+    description: "Other permits",
+    color: "#6b7280",
+    priority: 7,
+  },
+} as const;
+
+export type PermitCategoryKey = keyof typeof PERMIT_CATEGORIES;
+
+export function parsePermitsData(raw: PermitsData): PermitBlock[] {
+  return raw.data.map(([lat, lng, count, score, categories, ward, address, totalCost, recentCount]) => ({
+    lat,
+    lng,
+    count,
+    score,
+    categories,
+    ward,
+    address,
+    totalCost,
+    recentCount,
+  }));
+}
+
+// ============================================
+// BUSINESS LICENSES
+// ============================================
+export interface LicenseBlock {
+  lat: number;
+  lng: number;
+  count: number;
+  score: number;
+  categories: Record<string, number>;
+  ward: string;
+  address: string;
+  activeCount: number;
+}
+
+export interface LicensesData {
+  meta: {
+    date: string;
+    total: number;
+    blocks: number;
+  };
+  cats: Record<string, { n: string; c: string }>;
+  data: [number, number, number, number, Record<string, number>, string, string, number][];
+}
+
+export const LICENSE_CATEGORIES = {
+  food: {
+    name: "Food/Restaurant",
+    shortName: "Food",
+    description: "Food service, restaurants, taverns",
+    color: "#f97316",
+    priority: 1,
+  },
+  retail: {
+    name: "Retail",
+    shortName: "Retail",
+    description: "Retail sales",
+    color: "#3b82f6",
+    priority: 2,
+  },
+  service: {
+    name: "Services",
+    shortName: "Services",
+    description: "Service businesses, salons, repairs",
+    color: "#22c55e",
+    priority: 3,
+  },
+  entertainment: {
+    name: "Entertainment",
+    shortName: "Entertainment",
+    description: "Entertainment venues",
+    color: "#8b5cf6",
+    priority: 4,
+  },
+  tobacco: {
+    name: "Tobacco",
+    shortName: "Tobacco",
+    description: "Tobacco retailers",
+    color: "#6b7280",
+    priority: 5,
+  },
+  other: {
+    name: "Other",
+    shortName: "Other",
+    description: "Other business types",
+    color: "#94a3b8",
+    priority: 6,
+  },
+} as const;
+
+export type LicenseCategoryKey = keyof typeof LICENSE_CATEGORIES;
+
+export function parseLicensesData(raw: LicensesData): LicenseBlock[] {
+  return raw.data.map(([lat, lng, count, score, categories, ward, address, activeCount]) => ({
+    lat,
+    lng,
+    count,
+    score,
+    categories,
+    ward,
+    address,
+    activeCount,
+  }));
+}
+
+// ============================================
+// POTHOLES PATCHED
+// ============================================
+export interface PotholeBlock {
+  lat: number;
+  lng: number;
+  repairCount: number;
+  potholesFilled: number;
+  score: number;
+  address: string;
+  recentCount: number;
+}
+
+export interface PotholesData {
+  meta: {
+    date: string;
+    total_repairs: number;
+    total_potholes: number;
+    blocks: number;
+  };
+  data: [number, number, number, number, number, string, number][];
+}
+
+export function parsePotholesData(raw: PotholesData): PotholeBlock[] {
+  return raw.data.map(([lat, lng, repairCount, potholesFilled, score, address, recentCount]) => ({
+    lat,
+    lng,
+    repairCount,
+    potholesFilled,
+    score,
+    address,
+    recentCount,
+  }));
+}
+
+// ============================================
+// CAMERA VIOLATIONS (Red Light + Speed)
+// ============================================
+export interface CameraViolation {
+  lat: number;
+  lng: number;
+  violations: number;
+  cameraId: string;
+  location: string;
+}
+
+export interface CameraViolationsData {
+  meta: {
+    date: string;
+    cameras: number;
+    total_violations: number;
+  };
+  data: [number, number, number, string, string][];
+}
+
+export function parseCameraViolationsData(raw: CameraViolationsData): CameraViolation[] {
+  return raw.data.map(([lat, lng, violations, cameraId, location]) => ({
+    lat,
+    lng,
+    violations,
+    cameraId,
+    location,
+  }));
+}
+
+// ============================================
+// AGGREGATE FUNCTIONS FOR NEW DATA
+// ============================================
+
+export function aggregatePermitStats(blocks: PermitBlock[]): {
+  totalPermits: number;
+  totalBlocks: number;
+  totalCost: number;
+  recentPermits: number;
+} {
+  let totalPermits = 0;
+  let totalCost = 0;
+  let recentPermits = 0;
+
+  for (const block of blocks) {
+    totalPermits += block.count;
+    totalCost += block.totalCost;
+    recentPermits += block.recentCount;
+  }
+
+  return {
+    totalPermits,
+    totalBlocks: blocks.length,
+    totalCost,
+    recentPermits,
+  };
+}
+
+export function aggregateLicenseStats(blocks: LicenseBlock[]): {
+  totalLicenses: number;
+  totalBlocks: number;
+  activeLicenses: number;
+  topCategory: string;
+} {
+  let totalLicenses = 0;
+  let activeLicenses = 0;
+  const categoryTotals: Record<string, number> = {};
+
+  for (const block of blocks) {
+    totalLicenses += block.count;
+    activeLicenses += block.activeCount;
+    for (const [cat, count] of Object.entries(block.categories)) {
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + count;
+    }
+  }
+
+  const topCategory = Object.entries(categoryTotals)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+
+  return {
+    totalLicenses,
+    totalBlocks: blocks.length,
+    activeLicenses,
+    topCategory,
+  };
+}
+
+export function aggregatePotholeStats(blocks: PotholeBlock[]): {
+  totalRepairs: number;
+  totalPotholes: number;
+  totalBlocks: number;
+  recentRepairs: number;
+} {
+  let totalRepairs = 0;
+  let totalPotholes = 0;
+  let recentRepairs = 0;
+
+  for (const block of blocks) {
+    totalRepairs += block.repairCount;
+    totalPotholes += block.potholesFilled;
+    recentRepairs += block.recentCount;
+  }
+
+  return {
+    totalRepairs,
+    totalPotholes,
+    totalBlocks: blocks.length,
+    recentRepairs,
+  };
+}
+
+export function getPermitScoreColor(score: number): string {
+  if (score >= 70) return '#22c55e';  // green - high development
+  if (score >= 40) return '#3b82f6';  // blue - moderate
+  return '#94a3b8';  // gray - lower activity
+}
+
+export function getLicenseScoreColor(score: number): string {
+  if (score >= 70) return '#f97316';  // orange - high business density
+  if (score >= 40) return '#3b82f6';  // blue - moderate
+  return '#94a3b8';  // gray - lower density
+}
+
+export function getPotholeScoreColor(score: number): string {
+  if (score >= 70) return '#dc2626';  // red - many potholes
+  if (score >= 40) return '#f59e0b';  // amber - moderate
+  return '#22c55e';  // green - fewer issues
+}

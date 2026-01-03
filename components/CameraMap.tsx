@@ -11,7 +11,15 @@ import {
   getCrashScoreColor,
   ServiceRequestBlock,
   SERVICE_REQUEST_CATEGORIES,
-  getScoreColor
+  getScoreColor,
+  PermitBlock,
+  PERMIT_CATEGORIES,
+  getPermitScoreColor,
+  LicenseBlock,
+  LICENSE_CATEGORIES,
+  getLicenseScoreColor,
+  PotholeBlock,
+  getPotholeScoreColor,
 } from '../lib/neighborhood-data';
 
 // Speed camera icons
@@ -159,6 +167,17 @@ interface CameraMapProps {
   serviceBlocks?: ServiceRequestBlock[];
   showServices?: boolean;
   selectedServiceCategory?: string | 'all';
+  // Permits layer
+  permitBlocks?: PermitBlock[];
+  showPermits?: boolean;
+  selectedPermitCategory?: string | 'all';
+  // Licenses layer
+  licenseBlocks?: LicenseBlock[];
+  showLicenses?: boolean;
+  selectedLicenseCategory?: string | 'all';
+  // Potholes layer
+  potholeBlocks?: PotholeBlock[];
+  showPotholes?: boolean;
 }
 
 // Component to handle map view changes
@@ -224,7 +243,15 @@ const CameraMap: React.FC<CameraMapProps> = ({
   showCrashes = false,
   serviceBlocks = [],
   showServices = false,
-  selectedServiceCategory = 'all'
+  selectedServiceCategory = 'all',
+  permitBlocks = [],
+  showPermits = false,
+  selectedPermitCategory = 'all',
+  licenseBlocks = [],
+  showLicenses = false,
+  selectedLicenseCategory = 'all',
+  potholeBlocks = [],
+  showPotholes = false,
 }) => {
   const chicagoCenter: L.LatLngTuple = [41.8781, -87.6298];
   const today = new Date();
@@ -656,6 +683,153 @@ const CameraMap: React.FC<CameraMapProps> = ({
                     {block.recentCount} in last 90 days
                   </div>
                 )}
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+
+      {/* Permit blocks */}
+      {showPermits && permitBlocks.map((block, idx) => {
+        if (selectedPermitCategory !== 'all') {
+          const catCount = block.categories[selectedPermitCategory] || 0;
+          if (catCount === 0) return null;
+        }
+        const radius = Math.min(40, Math.max(8, Math.sqrt(block.count) * 1.5));
+        const color = getPermitScoreColor(block.score);
+        const topCats = Object.entries(block.categories)
+          .filter(([key]) => key in PERMIT_CATEGORIES)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+
+        return (
+          <CircleMarker
+            key={`permit-${idx}`}
+            center={[block.lat, block.lng]}
+            radius={radius}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.5, weight: 2, opacity: 0.8 }}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ backgroundColor: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                    PERMITS
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>Ward {block.ward || 'N/A'}</span>
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                  {block.count.toLocaleString()} Permits
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{block.address}</div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Types:</div>
+                  {topCats.map(([key, count]) => {
+                    const cat = PERMIT_CATEGORIES[key as keyof typeof PERMIT_CATEGORIES];
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', marginBottom: '2px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: cat?.color || '#6b7280' }} />
+                        <span style={{ color: '#374151' }}>{cat?.shortName || key}</span>
+                        <span style={{ color: '#9ca3af' }}>({count})</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {block.totalCost > 0 && (
+                  <div style={{ fontSize: '10px', color: '#10b981', marginTop: '8px' }}>
+                    Total value: ${(block.totalCost / 1000000).toFixed(1)}M
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+
+      {/* License blocks */}
+      {showLicenses && licenseBlocks.map((block, idx) => {
+        if (selectedLicenseCategory !== 'all') {
+          const catCount = block.categories[selectedLicenseCategory] || 0;
+          if (catCount === 0) return null;
+        }
+        const radius = Math.min(40, Math.max(8, Math.sqrt(block.count) * 2));
+        const color = getLicenseScoreColor(block.score);
+        const topCats = Object.entries(block.categories)
+          .filter(([key]) => key in LICENSE_CATEGORIES)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+
+        return (
+          <CircleMarker
+            key={`license-${idx}`}
+            center={[block.lat, block.lng]}
+            radius={radius}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.5, weight: 2, opacity: 0.8 }}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ backgroundColor: '#f97316', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                    BUSINESSES
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>Ward {block.ward || 'N/A'}</span>
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                  {block.count.toLocaleString()} Licenses
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{block.address}</div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Types:</div>
+                  {topCats.map(([key, count]) => {
+                    const cat = LICENSE_CATEGORIES[key as keyof typeof LICENSE_CATEGORIES];
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', marginBottom: '2px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: cat?.color || '#6b7280' }} />
+                        <span style={{ color: '#374151' }}>{cat?.shortName || key}</span>
+                        <span style={{ color: '#9ca3af' }}>({count})</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '10px', color: '#f97316', marginTop: '8px' }}>
+                  {block.activeCount} active licenses
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+
+      {/* Pothole blocks */}
+      {showPotholes && potholeBlocks.map((block, idx) => {
+        const radius = Math.min(40, Math.max(8, Math.sqrt(block.potholesFilled) * 1.5));
+        const color = getPotholeScoreColor(block.score);
+
+        return (
+          <CircleMarker
+            key={`pothole-${idx}`}
+            center={[block.lat, block.lng]}
+            radius={radius}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.5, weight: 2, opacity: 0.8 }}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ backgroundColor: '#6b7280', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                    POTHOLES
+                  </span>
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                  {block.potholesFilled.toLocaleString()} Potholes Filled
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{block.address}</div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px', fontSize: '12px' }}>
+                  <div><strong>Repair visits:</strong> {block.repairCount}</div>
+                  {block.recentCount > 0 && (
+                    <div style={{ color: '#6b7280', marginTop: '4px' }}>
+                      {block.recentCount} in last 90 days
+                    </div>
+                  )}
+                </div>
               </div>
             </Popup>
           </CircleMarker>
