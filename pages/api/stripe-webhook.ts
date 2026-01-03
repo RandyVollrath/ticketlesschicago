@@ -180,9 +180,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!userId) {
             console.log('No userId provided - creating new user account for:', email);
 
-            // Check if user already exists
-            const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-            const existingUser = existingUsers?.users?.find(u => u.email === email);
+            // Check if user already exists using proper email lookup
+            // IMPORTANT: Use getUserByEmail instead of listUsers to avoid pagination issues
+            let existingUser = null;
+            try {
+              const { data: userByEmail } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+              if (userByEmail) {
+                existingUser = userByEmail;
+              }
+            } catch (lookupError: any) {
+              // getUserByEmail throws if user not found - that's OK, we'll create a new user
+              if (!lookupError.message?.includes('User not found')) {
+                console.error('Error looking up user by email:', lookupError);
+              }
+            }
 
             if (existingUser) {
               console.log('User already exists:', existingUser.id);
@@ -1353,9 +1364,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         
         // Check if user already exists (in case they signed up via Google first)
-        const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-        const userExists = existingUser?.users?.find(u => u.email === email);
-        
+        // IMPORTANT: Use getUserByEmail instead of listUsers to avoid pagination issues
+        let userExists = null;
+        try {
+          const { data: userByEmail } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+          if (userByEmail) {
+            userExists = userByEmail;
+          }
+        } catch (lookupError: any) {
+          // getUserByEmail throws if user not found - that's OK, we'll create a new user
+          if (!lookupError.message?.includes('User not found')) {
+            console.error('Error looking up user by email:', lookupError);
+          }
+        }
+
         let authData;
         if (userExists) {
           console.log('User already exists, using existing account:', userExists.id);

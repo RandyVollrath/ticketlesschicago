@@ -14,6 +14,27 @@ import {
   aggregateBlockStats,
   getBlocksNearLocation
 } from '../lib/violations';
+import {
+  CrimeBlock,
+  CrimesData,
+  parseCrimesData,
+  CRIME_CATEGORIES,
+  CrimeCategoryKey,
+  aggregateCrimeStats,
+  getCrimeScoreColor,
+  CrashBlock,
+  CrashesData,
+  parseCrashesData,
+  aggregateCrashStats,
+  getCrashScoreColor,
+  ServiceRequestBlock,
+  ServiceRequestsData,
+  parseServiceRequestsData,
+  SERVICE_REQUEST_CATEGORIES,
+  ServiceRequestCategoryKey,
+  aggregateServiceRequestStats,
+  getBlocksNearLocation as getBlocksNear
+} from '../lib/neighborhood-data';
 
 const CameraMap = dynamic(() => import('../components/CameraMap'), {
   ssr: false,
@@ -33,7 +54,7 @@ const CameraMap = dynamic(() => import('../components/CameraMap'), {
 
 type CameraFilter = 'all' | 'speed' | 'redlight';
 type StatusFilter = 'all' | 'active' | 'upcoming';
-type LayerToggle = 'cameras' | 'violations' | 'both';
+type DataLayer = 'cameras' | 'violations' | 'crimes' | 'crashes' | '311';
 
 // Speed camera data from Chicago Data Portal
 const SPEED_CAMERAS: SpeedCamera[] = [
@@ -263,27 +284,67 @@ export default function Neighborhoods() {
   const [cameraFilter, setCameraFilter] = useState<CameraFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  // Violations layer state
+  // Data layer state
+  const [activeLayer, setActiveLayer] = useState<DataLayer>('cameras');
+
+  // Violations
   const [violationBlocks, setViolationBlocks] = useState<ViolationBlock[]>([]);
-  const [layerToggle, setLayerToggle] = useState<LayerToggle>('cameras');
   const [violationCategory, setViolationCategory] = useState<ViolationCategoryKey | 'all'>('all');
   const [violationsLoaded, setViolationsLoaded] = useState(false);
 
-  // Load violations data
+  // Crimes
+  const [crimeBlocks, setCrimeBlocks] = useState<CrimeBlock[]>([]);
+  const [crimeCategory, setCrimeCategory] = useState<CrimeCategoryKey | 'all'>('all');
+  const [crimesLoaded, setCrimesLoaded] = useState(false);
+
+  // Crashes
+  const [crashBlocks, setCrashBlocks] = useState<CrashBlock[]>([]);
+  const [crashesLoaded, setCrashesLoaded] = useState(false);
+
+  // 311 Service Requests
+  const [serviceBlocks, setServiceBlocks] = useState<ServiceRequestBlock[]>([]);
+  const [serviceCategory, setServiceCategory] = useState<ServiceRequestCategoryKey | 'all'>('all');
+  const [servicesLoaded, setServicesLoaded] = useState(false);
+
+  // Load data based on active layer
   useEffect(() => {
-    if (layerToggle !== 'cameras' && !violationsLoaded) {
+    if (activeLayer === 'violations' && !violationsLoaded) {
       fetch('/violations-data.json')
         .then(res => res.json())
         .then((data: ViolationsData) => {
-          const blocks = parseViolationsData(data);
-          setViolationBlocks(blocks);
+          setViolationBlocks(parseViolationsData(data));
           setViolationsLoaded(true);
         })
-        .catch(err => {
-          console.error('Failed to load violations data:', err);
-        });
+        .catch(err => console.error('Failed to load violations data:', err));
     }
-  }, [layerToggle, violationsLoaded]);
+    if (activeLayer === 'crimes' && !crimesLoaded) {
+      fetch('/crimes-data.json')
+        .then(res => res.json())
+        .then((data: CrimesData) => {
+          setCrimeBlocks(parseCrimesData(data));
+          setCrimesLoaded(true);
+        })
+        .catch(err => console.error('Failed to load crimes data:', err));
+    }
+    if (activeLayer === 'crashes' && !crashesLoaded) {
+      fetch('/crashes-data.json')
+        .then(res => res.json())
+        .then((data: CrashesData) => {
+          setCrashBlocks(parseCrashesData(data));
+          setCrashesLoaded(true);
+        })
+        .catch(err => console.error('Failed to load crashes data:', err));
+    }
+    if (activeLayer === '311' && !servicesLoaded) {
+      fetch('/311-data.json')
+        .then(res => res.json())
+        .then((data: ServiceRequestsData) => {
+          setServiceBlocks(parseServiceRequestsData(data));
+          setServicesLoaded(true);
+        })
+        .catch(err => console.error('Failed to load 311 data:', err));
+    }
+  }, [activeLayer, violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded]);
 
   const today = new Date();
 
@@ -440,6 +501,36 @@ export default function Neighborhoods() {
     };
   }, [userLocation, violationBlocks]);
 
+  // Calculate nearby crimes
+  const nearbyCrimes = useMemo(() => {
+    if (!userLocation || crimeBlocks.length === 0) {
+      return { total: 0, violent: 0, property: 0 };
+    }
+    const nearby = getBlocksNear(crimeBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const stats = aggregateCrimeStats(nearby);
+    return { total: stats.totalCrimes, violent: stats.violentCount, property: stats.propertyCount };
+  }, [userLocation, crimeBlocks]);
+
+  // Calculate nearby crashes
+  const nearbyCrashes = useMemo(() => {
+    if (!userLocation || crashBlocks.length === 0) {
+      return { total: 0, injuries: 0, fatal: 0 };
+    }
+    const nearby = getBlocksNear(crashBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const stats = aggregateCrashStats(nearby);
+    return { total: stats.totalCrashes, injuries: stats.totalInjuries, fatal: stats.totalFatal };
+  }, [userLocation, crashBlocks]);
+
+  // Calculate nearby 311 requests
+  const nearbyServices = useMemo(() => {
+    if (!userLocation || serviceBlocks.length === 0) {
+      return { total: 0, recent: 0 };
+    }
+    const nearby = getBlocksNear(serviceBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const stats = aggregateServiceRequestStats(nearby);
+    return { total: stats.totalRequests, recent: stats.recentRequests };
+  }, [userLocation, serviceBlocks]);
+
   // Filter violations by category
   const filteredViolationBlocks = useMemo(() => {
     if (violationCategory === 'all') return violationBlocks;
@@ -448,11 +539,45 @@ export default function Neighborhoods() {
     );
   }, [violationBlocks, violationCategory]);
 
+  // Filter crimes by category
+  const filteredCrimeBlocks = useMemo(() => {
+    if (crimeCategory === 'all') return crimeBlocks;
+    return crimeBlocks.filter(block =>
+      (block.categories[crimeCategory] || 0) > 0
+    );
+  }, [crimeBlocks, crimeCategory]);
+
+  // Filter services by category
+  const filteredServiceBlocks = useMemo(() => {
+    if (serviceCategory === 'all') return serviceBlocks;
+    return serviceBlocks.filter(block =>
+      (block.categories[serviceCategory] || 0) > 0
+    );
+  }, [serviceBlocks, serviceCategory]);
+
   // Violation stats
   const violationStats = useMemo(() => {
     if (violationBlocks.length === 0) return null;
     return aggregateBlockStats(violationBlocks);
   }, [violationBlocks]);
+
+  // Crime stats
+  const crimeStats = useMemo(() => {
+    if (crimeBlocks.length === 0) return null;
+    return aggregateCrimeStats(crimeBlocks);
+  }, [crimeBlocks]);
+
+  // Crash stats
+  const crashStats = useMemo(() => {
+    if (crashBlocks.length === 0) return null;
+    return aggregateCrashStats(crashBlocks);
+  }, [crashBlocks]);
+
+  // Service stats
+  const serviceStats = useMemo(() => {
+    if (serviceBlocks.length === 0) return null;
+    return aggregateServiceRequestStats(serviceBlocks);
+  }, [serviceBlocks]);
 
   const stats = useMemo(() => {
     const activeSpeed = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
@@ -644,70 +769,44 @@ export default function Neighborhoods() {
             )}
           </div>
 
-          {/* Layer Toggle */}
+          {/* Data Layer Selector */}
           <div style={{
             display: 'flex',
-            gap: '12px',
+            gap: '8px',
             marginBottom: '16px',
             flexWrap: 'wrap',
             alignItems: 'center'
           }}>
-            <span style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>Show:</span>
-            <div style={{
-              display: 'flex',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              border: '1px solid #d1d5db'
-            }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>View:</span>
+            {[
+              { key: 'cameras', label: 'Cameras', color: '#dc2626' },
+              { key: 'violations', label: 'Building Violations', color: '#f59e0b' },
+              { key: 'crimes', label: 'Crime', color: '#7c3aed' },
+              { key: 'crashes', label: 'Traffic Crashes', color: '#0ea5e9' },
+              { key: '311', label: '311 Requests', color: '#22c55e' },
+            ].map(layer => (
               <button
-                onClick={() => setLayerToggle('cameras')}
+                key={layer.key}
+                onClick={() => setActiveLayer(layer.key as DataLayer)}
                 style={{
-                  padding: '10px 16px',
-                  border: 'none',
-                  backgroundColor: layerToggle === 'cameras' ? '#111827' : 'white',
-                  color: layerToggle === 'cameras' ? 'white' : '#374151',
+                  padding: '8px 14px',
+                  borderRadius: '20px',
+                  border: activeLayer === layer.key ? `2px solid ${layer.color}` : '1px solid #d1d5db',
+                  backgroundColor: activeLayer === layer.key ? layer.color : 'white',
+                  color: activeLayer === layer.key ? 'white' : '#374151',
                   fontWeight: '500',
                   cursor: 'pointer',
-                  fontSize: '14px'
+                  fontSize: '13px',
+                  transition: 'all 0.2s'
                 }}
               >
-                Cameras Only
+                {layer.label}
               </button>
-              <button
-                onClick={() => setLayerToggle('violations')}
-                style={{
-                  padding: '10px 16px',
-                  border: 'none',
-                  borderLeft: '1px solid #d1d5db',
-                  backgroundColor: layerToggle === 'violations' ? '#111827' : 'white',
-                  color: layerToggle === 'violations' ? 'white' : '#374151',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Building Violations
-              </button>
-              <button
-                onClick={() => setLayerToggle('both')}
-                style={{
-                  padding: '10px 16px',
-                  border: 'none',
-                  borderLeft: '1px solid #d1d5db',
-                  backgroundColor: layerToggle === 'both' ? '#111827' : 'white',
-                  color: layerToggle === 'both' ? 'white' : '#374151',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Both
-              </button>
-            </div>
+            ))}
           </div>
 
-          {/* Violations Stats & Filter (when violations layer active) */}
-          {(layerToggle === 'violations' || layerToggle === 'both') && (
+          {/* Violations Stats & Filter */}
+          {activeLayer === 'violations' && (
             <div style={{
               backgroundColor: '#fef3c7',
               border: '1px solid #f59e0b',
@@ -716,9 +815,6 @@ export default function Neighborhoods() {
               marginBottom: '16px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#d97706">
-                  <path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
-                </svg>
                 <span style={{ fontWeight: '600', color: '#92400e' }}>Building Violations Heat Map</span>
                 {violationsLoaded && violationStats && (
                   <span style={{ fontSize: '12px', color: '#b45309', marginLeft: 'auto' }}>
@@ -726,61 +822,14 @@ export default function Neighborhoods() {
                   </span>
                 )}
               </div>
-
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#92400e' }}>Filter by type:</span>
-                <select
-                  value={violationCategory}
-                  onChange={(e) => setViolationCategory(e.target.value as ViolationCategoryKey | 'all')}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #fbbf24',
-                    fontSize: '13px',
-                    backgroundColor: 'white',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="all">All Categories</option>
-                  {Object.entries(VIOLATION_CATEGORIES).map(([key, cat]) => (
-                    <option key={key} value={key}>{cat.name}</option>
-                  ))}
-                </select>
-
-                {userLocation && nearbyViolations.violations > 0 && (
-                  <div style={{
-                    marginLeft: 'auto',
-                    padding: '8px 12px',
-                    backgroundColor: nearbyViolations.highRisk > 0 ? '#fef2f2' : '#f0fdf4',
-                    border: `1px solid ${nearbyViolations.highRisk > 0 ? '#fecaca' : '#bbf7d0'}`,
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    color: nearbyViolations.highRisk > 0 ? '#991b1b' : '#166534'
-                  }}>
-                    <strong>{nearbyViolations.violations.toLocaleString()}</strong> violations nearby
-                    {nearbyViolations.highRisk > 0 && (
-                      <span> ({nearbyViolations.highRisk} high-risk areas)</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                marginTop: '12px',
-                flexWrap: 'wrap'
-              }}>
-                {Object.entries(VIOLATION_CATEGORIES).slice(0, 6).map(([key, cat]) => (
-                  <div
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Object.entries(VIOLATION_CATEGORIES).map(([key, cat]) => (
+                  <button
                     key={key}
                     onClick={() => setViolationCategory(violationCategory === key ? 'all' : key as ViolationCategoryKey)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
+                      padding: '4px 10px',
+                      borderRadius: '12px',
                       fontSize: '11px',
                       backgroundColor: violationCategory === key ? cat.color : 'white',
                       color: violationCategory === key ? 'white' : '#374151',
@@ -788,21 +837,141 @@ export default function Neighborhoods() {
                       cursor: 'pointer'
                     }}
                   >
-                    <div style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '2px',
-                      backgroundColor: violationCategory === key ? 'white' : cat.color
-                    }} />
                     {cat.shortName}
-                  </div>
+                  </button>
                 ))}
               </div>
+              {userLocation && nearbyViolations.violations > 0 && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: '8px', fontSize: '12px' }}>
+                  <strong>{nearbyViolations.violations.toLocaleString()}</strong> violations within 1 mile
+                  {nearbyViolations.highRisk > 0 && <span style={{ color: '#dc2626' }}> ({nearbyViolations.highRisk} high-risk areas)</span>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Crimes Stats & Filter */}
+          {activeLayer === 'crimes' && (
+            <div style={{
+              backgroundColor: '#f3e8ff',
+              border: '1px solid #7c3aed',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#5b21b6' }}>Crime Heat Map (Last 12 Months)</span>
+                {crimesLoaded && crimeStats && (
+                  <span style={{ fontSize: '12px', color: '#7c3aed', marginLeft: 'auto' }}>
+                    {crimeStats.totalCrimes.toLocaleString()} crimes across {crimeStats.totalBlocks.toLocaleString()} areas
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Object.entries(CRIME_CATEGORIES).map(([key, cat]) => (
+                  <button
+                    key={key}
+                    onClick={() => setCrimeCategory(crimeCategory === key ? 'all' : key as CrimeCategoryKey)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      backgroundColor: crimeCategory === key ? cat.color : 'white',
+                      color: crimeCategory === key ? 'white' : '#374151',
+                      border: `1px solid ${cat.color}`,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cat.shortName}
+                  </button>
+                ))}
+              </div>
+              {userLocation && nearbyCrimes.total > 0 && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#faf5ff', borderRadius: '8px', fontSize: '12px' }}>
+                  <strong>{nearbyCrimes.total.toLocaleString()}</strong> crimes within 1 mile
+                  {nearbyCrimes.violent > 0 && <span style={{ color: '#dc2626' }}> ({nearbyCrimes.violent} violent)</span>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Crashes Stats */}
+          {activeLayer === 'crashes' && (
+            <div style={{
+              backgroundColor: '#ecfeff',
+              border: '1px solid #0ea5e9',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#0369a1' }}>Traffic Crash Heat Map</span>
+                {crashesLoaded && crashStats && (
+                  <span style={{ fontSize: '12px', color: '#0ea5e9', marginLeft: 'auto' }}>
+                    {crashStats.totalCrashes.toLocaleString()} crashes | {crashStats.totalInjuries.toLocaleString()} injuries | {crashStats.totalFatal} fatal
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '12px', color: '#0369a1' }}>
+                Circles sized by crash count, colored by danger score (injuries, fatalities)
+              </div>
+              {userLocation && nearbyCrashes.total > 0 && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0f9ff', borderRadius: '8px', fontSize: '12px' }}>
+                  <strong>{nearbyCrashes.total.toLocaleString()}</strong> crashes within 1 mile
+                  {nearbyCrashes.injuries > 0 && <span> ({nearbyCrashes.injuries} injuries)</span>}
+                  {nearbyCrashes.fatal > 0 && <span style={{ color: '#dc2626' }}> ({nearbyCrashes.fatal} fatal)</span>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 311 Service Requests Stats */}
+          {activeLayer === '311' && (
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #22c55e',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#166534' }}>311 Service Requests Heat Map</span>
+                {servicesLoaded && serviceStats && (
+                  <span style={{ fontSize: '12px', color: '#22c55e', marginLeft: 'auto' }}>
+                    {serviceStats.totalRequests.toLocaleString()} requests across {serviceStats.totalBlocks.toLocaleString()} areas
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Object.entries(SERVICE_REQUEST_CATEGORIES).map(([key, cat]) => (
+                  <button
+                    key={key}
+                    onClick={() => setServiceCategory(serviceCategory === key ? 'all' : key as ServiceRequestCategoryKey)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      backgroundColor: serviceCategory === key ? cat.color : 'white',
+                      color: serviceCategory === key ? 'white' : '#374151',
+                      border: `1px solid ${cat.color}`,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cat.shortName}
+                  </button>
+                ))}
+              </div>
+              {userLocation && nearbyServices.total > 0 && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '8px', fontSize: '12px' }}>
+                  <strong>{nearbyServices.total.toLocaleString()}</strong> service requests within 1 mile
+                  {nearbyServices.recent > 0 && <span> ({nearbyServices.recent} in last 90 days)</span>}
+                </div>
+              )}
             </div>
           )}
 
           {/* Camera Type Filter & Search */}
-          {(layerToggle === 'cameras' || layerToggle === 'both') && (
+          {activeLayer === 'cameras' && (
           <div style={{
             display: 'flex',
             gap: '12px',
@@ -958,11 +1127,19 @@ export default function Neighborhoods() {
                   setSelectedRedLightCamera(camera);
                   setSelectedSpeedCamera(null);
                 }}
-                showSpeedCameras={layerToggle !== 'violations' && cameraFilter !== 'redlight'}
-                showRedLightCameras={layerToggle !== 'violations' && cameraFilter !== 'speed'}
+                showSpeedCameras={activeLayer === 'cameras' && cameraFilter !== 'redlight'}
+                showRedLightCameras={activeLayer === 'cameras' && cameraFilter !== 'speed'}
                 violationBlocks={filteredViolationBlocks}
-                showViolations={layerToggle === 'violations' || layerToggle === 'both'}
+                showViolations={activeLayer === 'violations'}
                 selectedViolationCategory={violationCategory}
+                crimeBlocks={filteredCrimeBlocks}
+                showCrimes={activeLayer === 'crimes'}
+                selectedCrimeCategory={crimeCategory}
+                crashBlocks={crashBlocks}
+                showCrashes={activeLayer === 'crashes'}
+                serviceBlocks={filteredServiceBlocks}
+                showServices={activeLayer === '311'}
+                selectedServiceCategory={serviceCategory}
               />
             </div>
 

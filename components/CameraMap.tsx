@@ -3,6 +3,16 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ViolationBlock, VIOLATION_CATEGORIES, getTopCategories, getSeverityColor, getSeverityLevel } from '../lib/violations';
+import {
+  CrimeBlock,
+  CRIME_CATEGORIES,
+  getCrimeScoreColor,
+  CrashBlock,
+  getCrashScoreColor,
+  ServiceRequestBlock,
+  SERVICE_REQUEST_CATEGORIES,
+  getScoreColor
+} from '../lib/neighborhood-data';
 
 // Speed camera icons
 const speedCameraIcon = L.divIcon({
@@ -138,6 +148,17 @@ interface CameraMapProps {
   showViolations?: boolean;
   selectedViolationCategory?: string | 'all';
   onViolationBlockClick?: (block: ViolationBlock) => void;
+  // Crimes layer
+  crimeBlocks?: CrimeBlock[];
+  showCrimes?: boolean;
+  selectedCrimeCategory?: string | 'all';
+  // Crashes layer
+  crashBlocks?: CrashBlock[];
+  showCrashes?: boolean;
+  // 311 Service Requests layer
+  serviceBlocks?: ServiceRequestBlock[];
+  showServices?: boolean;
+  selectedServiceCategory?: string | 'all';
 }
 
 // Component to handle map view changes
@@ -195,7 +216,15 @@ const CameraMap: React.FC<CameraMapProps> = ({
   violationBlocks = [],
   showViolations = false,
   selectedViolationCategory = 'all',
-  onViolationBlockClick
+  onViolationBlockClick,
+  crimeBlocks = [],
+  showCrimes = false,
+  selectedCrimeCategory = 'all',
+  crashBlocks = [],
+  showCrashes = false,
+  serviceBlocks = [],
+  showServices = false,
+  selectedServiceCategory = 'all'
 }) => {
   const chicagoCenter: L.LatLngTuple = [41.8781, -87.6298];
   const today = new Date();
@@ -483,6 +512,150 @@ const CameraMap: React.FC<CameraMapProps> = ({
                 }}>
                   Severity Score: {block.severity}/100
                 </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+
+      {/* Crime blocks */}
+      {showCrimes && crimeBlocks.map((block, idx) => {
+        if (selectedCrimeCategory !== 'all') {
+          const catCount = block.categories[selectedCrimeCategory] || 0;
+          if (catCount === 0) return null;
+        }
+        const radius = Math.min(40, Math.max(8, Math.sqrt(block.count) * 3));
+        const color = getCrimeScoreColor(block.score);
+        const topCats = Object.entries(block.categories)
+          .filter(([key]) => key in CRIME_CATEGORIES)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+
+        return (
+          <CircleMarker
+            key={`crime-${idx}`}
+            center={[block.lat, block.lng]}
+            radius={radius}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.5, weight: 2, opacity: 0.8 }}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ backgroundColor: color, color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                    {block.score >= 70 ? 'HIGH' : block.score >= 40 ? 'MEDIUM' : 'LOWER'} CRIME
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>Ward {block.ward || 'N/A'}</span>
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                  {block.count.toLocaleString()} Crimes (12mo)
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{block.address}</div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Breakdown:</div>
+                  {topCats.map(([key, count]) => {
+                    const cat = CRIME_CATEGORIES[key as keyof typeof CRIME_CATEGORIES];
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', marginBottom: '2px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: cat?.color || '#6b7280' }} />
+                        <span style={{ color: '#374151' }}>{cat?.shortName || key}</span>
+                        <span style={{ color: '#9ca3af' }}>({count})</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '8px' }}>
+                  Arrests: {block.arrests} ({block.count > 0 ? Math.round(block.arrests / block.count * 100) : 0}% rate)
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+
+      {/* Crash blocks */}
+      {showCrashes && crashBlocks.map((block, idx) => {
+        const radius = Math.min(40, Math.max(8, Math.sqrt(block.count) * 2));
+        const color = getCrashScoreColor(block.score);
+
+        return (
+          <CircleMarker
+            key={`crash-${idx}`}
+            center={[block.lat, block.lng]}
+            radius={radius}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.5, weight: 2, opacity: 0.8 }}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ backgroundColor: color, color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                    {block.score >= 70 ? 'DANGEROUS' : block.score >= 40 ? 'MODERATE' : 'SAFER'} AREA
+                  </span>
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                  {block.count.toLocaleString()} Crashes
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{block.address}</div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px', fontSize: '12px' }}>
+                  <div><strong>Injuries:</strong> {block.injuries}</div>
+                  {block.fatal > 0 && <div style={{ color: '#dc2626' }}><strong>Fatal:</strong> {block.fatal}</div>}
+                  <div><strong>Hit & Run:</strong> {block.hitAndRun}</div>
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+
+      {/* 311 Service Request blocks */}
+      {showServices && serviceBlocks.map((block, idx) => {
+        if (selectedServiceCategory !== 'all') {
+          const catCount = block.categories[selectedServiceCategory] || 0;
+          if (catCount === 0) return null;
+        }
+        const radius = Math.min(40, Math.max(8, Math.sqrt(block.count) * 1.5));
+        const color = getScoreColor(block.score);
+        const topCats = Object.entries(block.categories)
+          .filter(([key]) => key in SERVICE_REQUEST_CATEGORIES)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+
+        return (
+          <CircleMarker
+            key={`service-${idx}`}
+            center={[block.lat, block.lng]}
+            radius={radius}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.5, weight: 2, opacity: 0.8 }}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ backgroundColor: '#22c55e', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                    311 REQUESTS
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>Ward {block.ward || 'N/A'}</span>
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                  {block.count.toLocaleString()} Requests
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{block.address}</div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Top Issues:</div>
+                  {topCats.map(([key, count]) => {
+                    const cat = SERVICE_REQUEST_CATEGORIES[key as keyof typeof SERVICE_REQUEST_CATEGORIES];
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', marginBottom: '2px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: cat?.color || '#6b7280' }} />
+                        <span style={{ color: '#374151' }}>{cat?.shortName || key}</span>
+                        <span style={{ color: '#9ca3af' }}>({count})</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {block.recentCount > 0 && (
+                  <div style={{ fontSize: '10px', color: '#22c55e', marginTop: '8px' }}>
+                    {block.recentCount} in last 90 days
+                  </div>
+                )}
               </div>
             </Popup>
           </CircleMarker>
