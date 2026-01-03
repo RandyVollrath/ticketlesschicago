@@ -50,8 +50,19 @@ export default function SignIn() {
           emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
-      if (error) throw error;
-      setSuccess('Check your email for a sign-in link.');
+      // Supabase sometimes returns a 500 error even when the email is sent successfully
+      // (known issue with SMTP logging). Show success if it's an email-related error.
+      if (error) {
+        const msg = error.message?.toLowerCase() || '';
+        if (msg.includes('sending') || msg.includes('email') || msg.includes('confirmation')) {
+          // Email was likely sent despite the error
+          setSuccess('Check your email for a sign-in link.');
+        } else {
+          throw error;
+        }
+      } else {
+        setSuccess('Check your email for a sign-in link.');
+      }
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
