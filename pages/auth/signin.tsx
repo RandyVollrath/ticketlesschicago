@@ -51,11 +51,11 @@ export default function SignIn() {
         },
       });
       // Supabase sometimes returns a 500 error even when the email is sent successfully
-      // (known issue with SMTP logging). Show success if it's an email-related error.
+      // (known SMTP race condition bug). Only suppress the exact known error.
       if (error) {
         const msg = error.message?.toLowerCase() || '';
-        if (msg.includes('sending') || msg.includes('email') || msg.includes('confirmation')) {
-          // Email was likely sent despite the error
+        // This specific error occurs when email is sent but Supabase logging fails
+        if (msg.includes('error sending confirmation email')) {
           setSuccess('Check your email for a sign-in link.');
         } else {
           throw error;
