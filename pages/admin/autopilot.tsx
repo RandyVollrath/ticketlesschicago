@@ -16,7 +16,7 @@ const COLORS = {
   warning: '#F59E0B',
 };
 
-const ADMIN_EMAILS = ['randy@autopilotamerica.com', 'admin@autopilotamerica.com'];
+const ADMIN_EMAILS = ['randy@autopilotamerica.com', 'admin@autopilotamerica.com', 'randyvollrath@gmail.com'];
 
 export default function AutopilotAdmin() {
   const router = useRouter();
@@ -41,7 +41,12 @@ export default function AutopilotAdmin() {
     totalPlates: 0,
     pendingTickets: 0,
     lettersSent: 0,
+    pendingEvidence: 0,
   });
+
+  // Pending evidence tickets
+  const [pendingEvidenceTickets, setPendingEvidenceTickets] = useState<any[]>([]);
+  const [selectedLetter, setSelectedLetter] = useState<any>(null);
 
   // Kill switches
   const [killSwitches, setKillSwitches] = useState({
@@ -117,12 +122,45 @@ export default function AutopilotAdmin() {
       .select('*', { count: 'exact', head: true })
       .in('status', ['sent', 'delivered']);
 
+    // Count pending evidence tickets
+    const { count: pendingEvidenceCount } = await supabase
+      .from('detected_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending_evidence');
+
     setStats({
       totalUsers: usersCount || 0,
       totalPlates: platesCount || 0,
       pendingTickets: ticketsCount || 0,
       lettersSent: lettersCount || 0,
+      pendingEvidence: pendingEvidenceCount || 0,
     });
+
+    // Load pending evidence tickets with their letters
+    const { data: pendingTickets } = await supabase
+      .from('detected_tickets')
+      .select(`
+        *,
+        contest_letters (
+          id,
+          letter_content,
+          letter_text,
+          defense_type,
+          status,
+          created_at
+        ),
+        autopilot_profiles!detected_tickets_user_id_fkey (
+          first_name,
+          last_name,
+          full_name
+        )
+      `)
+      .eq('status', 'pending_evidence')
+      .order('evidence_deadline', { ascending: true });
+
+    if (pendingTickets) {
+      setPendingEvidenceTickets(pendingTickets);
+    }
 
     // Load kill switches and VA email
     const { data: settings } = await supabase
@@ -263,17 +301,17 @@ export default function AutopilotAdmin() {
           {[
             { label: 'Active Users', value: stats.totalUsers },
             { label: 'Monitored Plates', value: stats.totalPlates },
-            { label: 'Pending Tickets', value: stats.pendingTickets },
+            { label: 'Pending Evidence', value: stats.pendingEvidence, highlight: true },
             { label: 'Letters Sent', value: stats.lettersSent },
-          ].map(stat => (
+          ].map((stat: any) => (
             <div key={stat.label} style={{
-              backgroundColor: COLORS.white,
+              backgroundColor: stat.highlight && stat.value > 0 ? '#FEF3C7' : COLORS.white,
               padding: 20,
               borderRadius: 12,
-              border: `1px solid ${COLORS.border}`,
+              border: `1px solid ${stat.highlight && stat.value > 0 ? COLORS.warning : COLORS.border}`,
             }}>
               <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>{stat.label}</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: COLORS.deepHarbor, margin: 0 }}>{stat.value}</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: stat.highlight && stat.value > 0 ? COLORS.warning : COLORS.deepHarbor, margin: 0 }}>{stat.value}</p>
             </div>
           ))}
         </div>
@@ -599,14 +637,133 @@ export default function AutopilotAdmin() {
 
         {/* Letters Tab */}
         {activeTab === 'letters' && (
-          <div style={{ backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
-              Contest Letters
-            </h2>
-            <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
-              View and manage all generated contest letters.
-            </p>
-            <p style={{ color: COLORS.slate }}>Letter management coming soon...</p>
+          <div style={{ display: 'flex', gap: 24 }}>
+            {/* Left: Pending Evidence List */}
+            <div style={{ flex: 1, backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+                Awaiting Evidence ({pendingEvidenceTickets.length})
+              </h2>
+              <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
+                Users have 72 hours to submit evidence before letters are mailed.
+              </p>
+
+              {pendingEvidenceTickets.length === 0 ? (
+                <p style={{ color: COLORS.slate, textAlign: 'center', padding: 32 }}>
+                  No tickets pending evidence
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {pendingEvidenceTickets.map((ticket: any) => {
+                    const deadline = ticket.evidence_deadline ? new Date(ticket.evidence_deadline) : null;
+                    const now = new Date();
+                    const hoursLeft = deadline ? Math.max(0, Math.round((deadline.getTime() - now.getTime()) / (1000 * 60 * 60))) : 0;
+                    const isUrgent = hoursLeft < 24;
+                    const userName = ticket.autopilot_profiles?.full_name ||
+                      `${ticket.autopilot_profiles?.first_name || ''} ${ticket.autopilot_profiles?.last_name || ''}`.trim() ||
+                      'Unknown';
+                    const letter = ticket.contest_letters?.[0];
+
+                    return (
+                      <div
+                        key={ticket.id}
+                        onClick={() => setSelectedLetter({ ticket, letter })}
+                        style={{
+                          padding: 16,
+                          borderRadius: 8,
+                          border: `1px solid ${selectedLetter?.ticket?.id === ticket.id ? COLORS.regulatory : COLORS.border}`,
+                          backgroundColor: selectedLetter?.ticket?.id === ticket.id ? '#EFF6FF' : COLORS.concrete,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <span style={{ fontWeight: 600, color: COLORS.deepHarbor }}>
+                            {ticket.ticket_number}
+                          </span>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            fontSize: 12,
+                            fontWeight: 500,
+                            backgroundColor: isUrgent ? 'rgba(220, 38, 38, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            color: isUrgent ? COLORS.danger : COLORS.warning,
+                          }}>
+                            {hoursLeft}h left
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>
+                          {userName} - {ticket.plate} ({ticket.plate_state})
+                        </p>
+                        <p style={{ fontSize: 13, color: COLORS.slate, margin: 0 }}>
+                          {ticket.violation_description || ticket.violation_type || 'Unknown violation'}
+                        </p>
+                        {letter && (
+                          <p style={{ fontSize: 12, color: COLORS.regulatory, margin: '8px 0 0 0' }}>
+                            Letter: {letter.defense_type || 'generated'}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Letter Preview */}
+            <div style={{ flex: 1, backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+                Letter Preview
+              </h2>
+              {selectedLetter ? (
+                <>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 16,
+                    paddingBottom: 16,
+                    borderBottom: `1px solid ${COLORS.border}`,
+                  }}>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: COLORS.deepHarbor, margin: 0 }}>
+                        Ticket: {selectedLetter.ticket.ticket_number}
+                      </p>
+                      <p style={{ fontSize: 13, color: COLORS.slate, margin: '4px 0 0 0' }}>
+                        Defense: {selectedLetter.letter?.defense_type || 'Standard'}
+                      </p>
+                    </div>
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                      color: COLORS.warning,
+                    }}>
+                      Draft - Awaiting Evidence
+                    </span>
+                  </div>
+                  <div style={{
+                    backgroundColor: COLORS.concrete,
+                    padding: 20,
+                    borderRadius: 8,
+                    fontFamily: '"Courier New", monospace',
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: 500,
+                    overflow: 'auto',
+                  }}>
+                    {selectedLetter.letter?.letter_content || selectedLetter.letter?.letter_text || 'No letter content available'}
+                  </div>
+                  <p style={{ fontSize: 12, color: COLORS.slate, marginTop: 16, fontStyle: 'italic' }}>
+                    This letter will be finalized and mailed after the evidence deadline passes or if the user submits evidence.
+                  </p>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 48, color: COLORS.slate }}>
+                  <p>Select a ticket to preview its contest letter</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>

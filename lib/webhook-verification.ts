@@ -116,7 +116,7 @@ export function verifyClickSendWebhook(
  * Generic webhook verification wrapper
  */
 export function verifyWebhook(
-  provider: 'resend' | 'clicksend',
+  provider: 'resend' | 'resend-evidence' | 'clicksend',
   req: NextApiRequest
 ): boolean {
   switch (provider) {
@@ -124,6 +124,15 @@ export function verifyWebhook(
       const secret = process.env.RESEND_WEBHOOK_SECRET;
       if (!secret) {
         console.warn('RESEND_WEBHOOK_SECRET not set - webhook verification disabled');
+        return true; // Allow in development, but log warning
+      }
+      return verifyResendWebhook(req, secret);
+    }
+
+    case 'resend-evidence': {
+      const secret = process.env.RESEND_EVIDENCE_WEBHOOK_SECRET;
+      if (!secret) {
+        console.warn('RESEND_EVIDENCE_WEBHOOK_SECRET not set - webhook verification disabled');
         return true; // Allow in development, but log warning
       }
       return verifyResendWebhook(req, secret);

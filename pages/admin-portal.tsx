@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
+import { supabase } from '../lib/supabase';
 
 // ============ Types ============
 
@@ -772,10 +773,16 @@ export default function AdminPortal() {
   // Active section
   const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals' | 'remitters' | 'ticket-contesting'>('ticket-contesting');
 
-  // Ticket contesting state
+  // Ticket contesting state (uses autopilot tables - monitored_plates, autopilot_subscriptions, etc.)
   const [ticketContestingEmail, setTicketContestingEmail] = useState<string>('');
   const [ticketContestingEmailSaved, setTicketContestingEmailSaved] = useState<string>('');
-  const [paidUsersCount, setPaidUsersCount] = useState<number>(0);
+  const [autopilotStats, setAutopilotStats] = useState({
+    totalUsers: 0,
+    totalPlates: 0,
+    pendingTickets: 0,
+    pendingEvidence: 0,
+    lettersSent: 0,
+  });
   const [exportingPlates, setExportingPlates] = useState(false);
   const [uploadingFindings, setUploadingFindings] = useState(false);
   const [uploadResults, setUploadResults] = useState<any>(null);
@@ -784,6 +791,9 @@ export default function AdminPortal() {
   const [letterResults, setLetterResults] = useState<any>(null);
   const [pendingTickets, setPendingTickets] = useState<any[]>([]);
   const [pendingTicketsCount, setPendingTicketsCount] = useState(0);
+  const [pendingEvidenceTickets, setPendingEvidenceTickets] = useState<any[]>([]);
+  const [exportJobs, setExportJobs] = useState<any[]>([]);
+  const [vaUploads, setVaUploads] = useState<any[]>([]);
 
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
@@ -1251,32 +1261,33 @@ export default function AdminPortal() {
   const fetchTicketContestingData = async () => {
     setLoading(true);
     try {
-      // Fetch settings
-      const settingsRes = await fetch('/api/admin/ticket-contesting/settings');
-      const settingsData = await settingsRes.json();
-      if (settingsData.success && settingsData.settings?.ticket_contesting_email) {
-        const email = settingsData.settings.ticket_contesting_email.value || '';
-        setTicketContestingEmail(email);
-        setTicketContestingEmailSaved(email);
-      }
+      // Use the API endpoint which has service role access (bypasses RLS)
+      const response = await fetch('/api/admin/autopilot/stats');
+      const data = await response.json();
 
-      // Fetch plate count
-      const platesRes = await fetch('/api/admin/ticket-contesting/export-plates');
-      const platesData = await platesRes.json();
-      if (platesData.success) {
-        setPaidUsersCount(platesData.totalPlates || 0);
-      }
-
-      // Fetch pending tickets
-      try {
-        const pendingRes = await fetch('/api/admin/ticket-contesting/pending-tickets');
-        const pendingData = await pendingRes.json();
-        if (pendingData.success) {
-          setPendingTickets(pendingData.tickets || []);
-          setPendingTicketsCount(pendingData.count || 0);
+      if (data.success) {
+        // Set VA email
+        if (data.vaEmail) {
+          setTicketContestingEmail(data.vaEmail);
+          setTicketContestingEmailSaved(data.vaEmail);
         }
-      } catch (e) {
-        console.log('Pending tickets API not available');
+
+        // Set stats
+        setAutopilotStats(data.stats);
+
+        // Set pending evidence tickets
+        setPendingEvidenceTickets(data.pendingEvidenceTickets || []);
+
+        // Set pending tickets count from stats
+        setPendingTicketsCount(data.stats.pendingTickets || 0);
+
+        // Set export jobs
+        setExportJobs(data.exportJobs || []);
+
+        // Set VA uploads
+        setVaUploads(data.vaUploads || []);
+      } else {
+        console.error('Error fetching autopilot stats:', data.error);
       }
     } catch (error: any) {
       console.error('Error fetching ticket contesting data:', error);
@@ -1287,41 +1298,38 @@ export default function AdminPortal() {
 
   const saveTicketContestingEmail = async () => {
     try {
-      const response = await fetch('/api/admin/ticket-contesting/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticket_contesting_email: ticketContestingEmail })
-      });
-      const result = await response.json();
-      if (result.success) {
+      const { error } = await supabase
+        .from('autopilot_admin_settings')
+        .upsert({
+          key: 'va_email',
+          value: { email: ticketContestingEmail },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'key' });
+
+      if (!error) {
         setTicketContestingEmailSaved(ticketContestingEmail);
-        setMessage('Email address saved successfully!');
+        setMessage('VA email address saved successfully!');
       } else {
-        setMessage(`Error: ${result.error}`);
+        setMessage(`Error: ${error.message}`);
       }
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
     }
   };
 
-  const exportLicensePlates = async (format: 'json' | 'csv') => {
+  const exportLicensePlates = async () => {
     setExportingPlates(true);
     try {
-      const response = await fetch(`/api/admin/ticket-contesting/export-plates?format=${format}`);
-      if (format === 'csv') {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `paid-users-plates-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        setMessage('License plates exported successfully!');
+      // Use the new autopilot export endpoint (POST, sends email to VA)
+      const response = await fetch('/api/admin/autopilot/export-plates', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMessage(`Export sent! ${data.plateCount} plates emailed to ${data.recipientEmail}`);
+        fetchTicketContestingData(); // Refresh to show new export job
       } else {
-        const data = await response.json();
-        setMessage(`Exported ${data.totalPlates} license plates`);
+        setMessage(`Error: ${data.error}`);
       }
     } catch (error: any) {
       setMessage(`Error exporting: ${error.message}`);
@@ -1341,15 +1349,22 @@ export default function AdminPortal() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/admin/ticket-contesting/upload-findings', {
+      // Use the new autopilot upload endpoint
+      const response = await fetch('/api/admin/autopilot/upload-results', {
         method: 'POST',
         body: formData
       });
 
       const result = await response.json();
       if (result.success) {
-        setUploadResults(result.results);
-        setMessage(result.message);
+        setUploadResults({
+          total: result.processed,
+          inserted: result.ticketsCreated,
+          matchedToUser: result.ticketsCreated, // All tickets are matched in the new system
+          skipped: result.skipped,
+          errors: result.errors || [],
+        });
+        setMessage(`Processed ${result.processed} rows: ${result.ticketsCreated} tickets created, ${result.lettersGenerated} letters generated, ${result.emailsSent} emails sent`);
       } else {
         setMessage(`Error: ${result.error}`);
       }
@@ -1727,6 +1742,30 @@ export default function AdminPortal() {
         {/* ============ Ticket Contesting Section ============ */}
         {activeSection === 'ticket-contesting' && !loading && (
           <div>
+            {/* Stats Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Active Users</p>
+                <p style={{ fontSize: '28px', fontWeight: '700', color: '#1e293b', margin: 0 }}>{autopilotStats.totalUsers}</p>
+              </div>
+              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Monitored Plates</p>
+                <p style={{ fontSize: '28px', fontWeight: '700', color: '#1e293b', margin: 0 }}>{autopilotStats.totalPlates}</p>
+              </div>
+              <div style={{ backgroundColor: autopilotStats.pendingEvidence > 0 ? '#fef3c7' : 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${autopilotStats.pendingEvidence > 0 ? '#f59e0b' : '#e5e7eb'}` }}>
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Pending Evidence</p>
+                <p style={{ fontSize: '28px', fontWeight: '700', color: autopilotStats.pendingEvidence > 0 ? '#f59e0b' : '#1e293b', margin: 0 }}>{autopilotStats.pendingEvidence}</p>
+              </div>
+              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Pending Tickets</p>
+                <p style={{ fontSize: '28px', fontWeight: '700', color: '#1e293b', margin: 0 }}>{autopilotStats.pendingTickets}</p>
+              </div>
+              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Letters Sent</p>
+                <p style={{ fontSize: '28px', fontWeight: '700', color: '#10b981', margin: 0 }}>{autopilotStats.lettersSent}</p>
+              </div>
+            </div>
+
             <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 Ticket Contesting Workflow
@@ -1737,11 +1776,11 @@ export default function AdminPortal() {
                   How This Works
                 </div>
                 <ol style={{ margin: 0, paddingLeft: '20px', color: '#1e3a5f', lineHeight: '1.8', fontSize: '14px' }}>
-                  <li>Export the list of paid users&apos; license plates below</li>
-                  <li>Send the list to your VA at the configured email address</li>
+                  <li>Click &quot;Email Export to VA&quot; - this sends the plate list to your VA&apos;s email</li>
                   <li>VA searches for tickets against each license plate on the Chicago portal</li>
-                  <li>VA uploads their findings using the upload form below</li>
-                  <li>Click &quot;Generate All Letters&quot; to create AI-powered contest letters</li>
+                  <li>VA fills in ticket details in the CSV and uploads it below</li>
+                  <li>System automatically creates tickets, generates letters, and emails users for evidence</li>
+                  <li>After 72 hours, letters are ready to mail via Lob</li>
                 </ol>
               </div>
 
@@ -1797,31 +1836,71 @@ export default function AdminPortal() {
                   Step 1: Export License Plates
                 </h3>
                 <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
-                  Generate a list of all paid Protection users&apos; license plates and states.
+                  Export all monitored plates for active subscribers. The CSV will be emailed to your VA.
                 </p>
                 <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    <strong>{paidUsersCount}</strong> paid users with license plates
+                    <strong>{autopilotStats.totalPlates}</strong> active monitored plates from <strong>{autopilotStats.totalUsers}</strong> subscribers
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <button
-                    onClick={() => exportLicensePlates('csv')}
-                    disabled={exportingPlates}
+                    onClick={() => exportLicensePlates()}
+                    disabled={exportingPlates || !ticketContestingEmailSaved}
                     style={{
                       padding: '12px 24px',
-                      backgroundColor: exportingPlates ? '#d1d5db' : '#3b82f6',
+                      backgroundColor: (exportingPlates || !ticketContestingEmailSaved) ? '#d1d5db' : '#3b82f6',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
-                      cursor: exportingPlates ? 'wait' : 'pointer',
+                      cursor: (exportingPlates || !ticketContestingEmailSaved) ? 'not-allowed' : 'pointer',
                       fontSize: '14px',
                       fontWeight: '500'
                     }}
                   >
-                    {exportingPlates ? 'Exporting...' : 'Download CSV'}
+                    {exportingPlates ? 'Exporting...' : 'Email Export to VA'}
                   </button>
+                  {!ticketContestingEmailSaved && (
+                    <span style={{ fontSize: '13px', color: '#ef4444' }}>Please configure VA email first</span>
+                  )}
                 </div>
+
+                {/* Export History */}
+                {exportJobs.length > 0 && (
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Recent Exports:</div>
+                    <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb' }}>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plates</th>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {exportJobs.slice(0, 5).map((job: any) => (
+                            <tr key={job.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '8px' }}>{new Date(job.created_at).toLocaleString()}</td>
+                              <td style={{ padding: '8px' }}>{job.plate_count}</td>
+                              <td style={{ padding: '8px' }}>
+                                <span style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '10px',
+                                  fontSize: '11px',
+                                  backgroundColor: job.status === 'complete' ? '#dcfce7' : '#fef3c7',
+                                  color: job.status === 'complete' ? '#166534' : '#92400e',
+                                }}>
+                                  {job.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Upload Section */}
@@ -1835,23 +1914,25 @@ export default function AdminPortal() {
 
                 <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
                   <div style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px', fontSize: '14px' }}>
-                    Expected CSV Format
+                    Expected CSV Format (from plate export email)
                   </div>
                   <p style={{ fontSize: '13px', color: '#78350f', marginBottom: '8px' }}>
-                    The CSV should have a header row with these columns (order doesn&apos;t matter):
+                    Use the same CSV that was emailed to the VA. Fill in columns F-L for each ticket found:
                   </p>
-                  <code style={{ fontSize: '12px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px 12px', borderRadius: '4px', display: 'block', marginBottom: '12px' }}>
-                    license_plate, license_state, ticket_number, issue_date, violation_code, violation_description, violation_location, amount
+                  <code style={{ fontSize: '11px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px 12px', borderRadius: '4px', display: 'block', marginBottom: '8px', wordBreak: 'break-all' }}>
+                    last_name, first_name, plate, state, user_id, ticket_number, violation_code, violation_type, violation_description, violation_date, amount, location
                   </code>
+                  <p style={{ fontSize: '12px', color: '#78350f', margin: '8px 0' }}>
+                    Valid violation_type values: expired_plates, no_city_sticker, expired_meter, disabled_zone, street_cleaning, rush_hour, fire_hydrant, other_unknown
+                  </p>
                   <button
                     onClick={() => {
-                      // Generate example CSV content
-                      const exampleCSV = `license_plate,license_state,ticket_number,issue_date,violation_code,violation_description,violation_location,amount
-ABC1234,IL,123456789,2025-01-15,0964125F,EXPIRED PLATES/STICKER,1234 N STATE ST,100.00
-XYZ5678,IL,987654321,2025-01-14,0964125D,NO CITY STICKER,5678 W MADISON ST,250.00
-DEF9012,IL,555666777,2025-01-13,0976160F,EXPIRED METER,321 S MICHIGAN AVE,75.00
-GHI3456,IL,,,,,,(no ticket found - leave empty)
-JKL7890,IL,444333222,2025-01-12,0964130,RESIDENTIAL PERMIT PARKING,999 W BELMONT AVE,65.00`;
+                      // Generate example CSV content matching the export format
+                      const exampleCSV = `last_name,first_name,plate,state,user_id,ticket_number,violation_code,violation_type,violation_description,violation_date,amount,location
+Smith,John,ABC1234,IL,user-id-123,987654321,0964125F,expired_plates,EXPIRED PLATES/STICKER,2025-01-15,100.00,1234 N STATE ST
+Doe,Jane,XYZ5678,IL,user-id-456,123456789,0964125D,no_city_sticker,NO CITY STICKER,2025-01-14,250.00,5678 W MADISON ST
+Brown,Bob,DEF9012,IL,user-id-789,,,,,,(no ticket found - leave empty)
+Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER,2025-01-13,75.00,321 S MICHIGAN AVE`;
 
                       const blob = new Blob([exampleCSV], { type: 'text/csv' });
                       const url = URL.createObjectURL(blob);
@@ -1947,117 +2028,112 @@ JKL7890,IL,444333222,2025-01-12,0964130,RESIDENTIAL PERMIT PARKING,999 W BELMONT
                 )}
               </div>
 
-              {/* Step 3: Generate Contest Letters */}
-              <div>
+              {/* Step 3: Pending Evidence */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-                  Step 3: Generate AI Contest Letters
+                  Step 3: Evidence Collection
                 </h3>
                 <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
-                  Generate professional contest letters using Claude Sonnet 4.5. Letters are optimized based on 1.2M+ historical Chicago contest outcomes.
+                  After upload, users are automatically emailed asking for evidence within 72 hours. Letters are generated and ready for mailing after the deadline.
                 </p>
 
-                {pendingTicketsCount > 0 ? (
+                {pendingEvidenceTickets.length > 0 ? (
                   <div>
-                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #10b981', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{pendingTicketsCount}</div>
-                          <div style={{ fontSize: '13px', color: '#166534' }}>Pending Tickets Ready for Letters</div>
-                        </div>
-                        <button
-                          onClick={() => generateContestLetters('all_pending')}
-                          disabled={generatingLetters}
-                          style={{
-                            padding: '12px 24px',
-                            backgroundColor: generatingLetters ? '#d1d5db' : '#7c3aed',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: generatingLetters ? 'wait' : 'pointer',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}
-                        >
-                          {generatingLetters ? 'Generating Letters...' : 'Generate All Letters'}
-                        </button>
-                      </div>
+                    <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b' }}>{pendingEvidenceTickets.length}</div>
+                      <div style={{ fontSize: '13px', color: '#92400e' }}>Tickets Awaiting Evidence</div>
                     </div>
 
-                    {/* Pending Tickets List */}
-                    {pendingTickets.length > 0 && (
-                      <div style={{ marginTop: '16px' }}>
-                        <div style={{ fontWeight: '500', fontSize: '14px', marginBottom: '8px' }}>Recent Pending Tickets:</div>
-                        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                          <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ backgroundColor: '#f9fafb' }}>
-                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plate</th>
-                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ticket #</th>
-                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Violation</th>
-                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                                <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                    <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb' }}>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plate</th>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ticket #</th>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
+                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Deadline</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingEvidenceTickets.slice(0, 15).map((ticket: any) => {
+                            const profile = ticket.autopilot_profiles;
+                            const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'Unknown';
+                            const deadline = ticket.evidence_deadline ? new Date(ticket.evidence_deadline) : null;
+                            const isOverdue = deadline && deadline < new Date();
+                            return (
+                              <tr key={ticket.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '8px' }}>{userName}</td>
+                                <td style={{ padding: '8px', fontFamily: 'monospace' }}>{ticket.plate}</td>
+                                <td style={{ padding: '8px' }}>{ticket.ticket_number || '-'}</td>
+                                <td style={{ padding: '8px' }}>{(ticket.violation_type || 'unknown').replace(/_/g, ' ')}</td>
+                                <td style={{ padding: '8px', color: isOverdue ? '#ef4444' : '#6b7280' }}>
+                                  {deadline ? deadline.toLocaleDateString() : '-'}
+                                  {isOverdue && <span style={{ marginLeft: '4px', fontSize: '10px', color: '#ef4444' }}>OVERDUE</span>}
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody>
-                              {pendingTickets.slice(0, 10).map((ticket: any, i: number) => (
-                                <tr key={ticket.id || i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                  <td style={{ padding: '8px', fontFamily: 'monospace' }}>{ticket.license_plate}</td>
-                                  <td style={{ padding: '8px' }}>{ticket.ticket_number || '-'}</td>
-                                  <td style={{ padding: '8px' }}>{ticket.violation_code || '-'}</td>
-                                  <td style={{ padding: '8px' }}>${ticket.amount || ticket.fine_amount || '-'}</td>
-                                  <td style={{ padding: '8px' }}>{ticket.issue_date || '-'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        {pendingTickets.length > 10 && (
-                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                            ...and {pendingTickets.length - 10} more tickets
-                          </div>
-                        )}
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {pendingEvidenceTickets.length > 15 && (
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                        ...and {pendingEvidenceTickets.length - 15} more tickets
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div style={{ backgroundColor: '#f9fafb', padding: '24px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      No pending tickets to generate letters for. Upload VA findings above to get started.
+                  <div style={{ backgroundColor: '#f0fdf4', padding: '24px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '14px', color: '#166534' }}>
+                      No tickets currently awaiting evidence. All clear!
                     </div>
-                  </div>
-                )}
-
-                {/* Letter Generation Results */}
-                {letterResults && (
-                  <div style={{ marginTop: '16px', backgroundColor: '#ede9fe', border: '1px solid #7c3aed', borderRadius: '8px', padding: '16px' }}>
-                    <div style={{ fontWeight: '600', color: '#5b21b6', marginBottom: '12px' }}>
-                      Letter Generation Results
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
-                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{letterResults.processed}</div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Letters Generated</div>
-                      </div>
-                      {letterResults.failed > 0 && (
-                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444' }}>{letterResults.failed}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Failed</div>
-                        </div>
-                      )}
-                    </div>
-                    {letterResults.pdf && (
-                      <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'white', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '13px', color: '#5b21b6', fontWeight: '500' }}>
-                          PDF Downloaded: {letterResults.pdfFilename}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
+
+              {/* Recent VA Uploads */}
+              {vaUploads.length > 0 && (
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                    Recent VA Uploads
+                  </h3>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f9fafb' }}>
+                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Rows</th>
+                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Tickets</th>
+                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Letters</th>
+                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vaUploads.map((upload: any) => (
+                          <tr key={upload.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '8px' }}>{new Date(upload.created_at).toLocaleString()}</td>
+                            <td style={{ padding: '8px' }}>{upload.row_count}</td>
+                            <td style={{ padding: '8px' }}>{upload.tickets_created}</td>
+                            <td style={{ padding: '8px' }}>{upload.letters_generated}</td>
+                            <td style={{ padding: '8px' }}>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                fontSize: '11px',
+                                backgroundColor: upload.status === 'complete' ? '#dcfce7' : '#fef3c7',
+                                color: upload.status === 'complete' ? '#166534' : '#92400e',
+                              }}>
+                                {upload.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Letter Templates Section */}

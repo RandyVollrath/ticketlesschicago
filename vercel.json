@@ -149,7 +149,7 @@
     },
     {
       "path": "/api/cron/autopilot-mail-letters",
-      "schedule": "0 15 * * *"
+      "schedule": "0 15 * * 1,4"
     }
   ],
   "github": {
