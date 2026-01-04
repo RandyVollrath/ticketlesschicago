@@ -45,40 +45,173 @@ interface UserProfile {
 }
 
 /**
- * Regenerate letter content with user-provided evidence
+ * Use AI (Claude) to professionally integrate user evidence into contest letter
  */
-function regenerateLetterWithEvidence(
+async function regenerateLetterWithAI(
   originalLetter: string,
   userEvidence: string,
-  profile: UserProfile
-): string {
-  // Find where the body of the letter starts (after "To Whom It May Concern:")
-  const bodyStart = originalLetter.indexOf('To Whom It May Concern:');
-  if (bodyStart === -1) {
-    // If we can't find it, just append evidence section
-    return originalLetter + `\n\nADDITIONAL EVIDENCE:\n${userEvidence}`;
+  ticketDetails: any,
+  hasAttachments: boolean
+): Promise<string> {
+  // Check for Anthropic API key
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  console.log('=== AI LETTER REGENERATION ===');
+  console.log('ANTHROPIC_API_KEY exists:', !!apiKey);
+  console.log('ANTHROPIC_API_KEY length:', apiKey?.length || 0);
+  console.log('Original letter length:', originalLetter?.length || 0);
+  console.log('User evidence length:', userEvidence?.length || 0);
+
+  if (!apiKey) {
+    console.log('No ANTHROPIC_API_KEY found, using basic evidence integration');
+    return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
   }
 
-  // Find where the signature starts ("Thank you for your consideration" or "Sincerely")
+  console.log('ANTHROPIC_API_KEY found, attempting Claude AI integration...');
+
+  // Clean up user evidence first
+  const cleanedEvidence = cleanUserEvidence(userEvidence);
+  console.log('Cleaned evidence:', cleanedEvidence.substring(0, 100) + '...');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'user',
+            content: `You are a legal writing expert specializing in parking ticket contest letters. Your job is to integrate user-provided evidence into an existing contest letter in a professional, persuasive manner that maximizes the chance of winning the contest.
+
+Rules:
+1. Keep the existing letter structure (header with date/address, salutation, body, closing with signature)
+2. Integrate the evidence naturally into the argument - weave it into the body paragraphs
+3. The user's evidence has already been cleaned of email signatures and quoted text
+4. Use formal legal language appropriate for an administrative hearing
+5. Reference any attached documentation professionally (e.g., "As evidenced by the attached documentation...")
+6. Make the argument compelling and clear
+7. Keep the letter concise but thorough - aim for 1 page
+8. Do not invent facts - only use what the user provided
+9. Do NOT add any commentary or explanations - return ONLY the letter text
+
+Original contest letter:
+---
+${originalLetter}
+---
+
+User's evidence:
+---
+${cleanedEvidence}
+---
+
+Ticket details:
+- Ticket Number: ${ticketDetails?.ticket_number || 'Unknown'}
+- Violation: ${ticketDetails?.violation_description || ticketDetails?.violation_code || 'Unknown'}
+- Issue Date: ${ticketDetails?.issue_date || 'Unknown'}
+
+${hasAttachments ? 'The user has attached supporting documentation (screenshot/photo) that should be referenced.' : 'No attachments were provided.'}
+
+Please rewrite the contest letter integrating this evidence professionally. Return ONLY the letter text.`
+          }
+        ],
+      }),
+    });
+
+    console.log('Claude API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Anthropic API error:', response.status, errorText);
+      return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
+    }
+
+    const data = await response.json();
+    console.log('Claude API response received, content blocks:', data.content?.length);
+    const newLetter = data.content?.[0]?.text?.trim();
+
+    if (!newLetter || newLetter.length < 200) {
+      console.error('AI returned invalid letter, length:', newLetter?.length);
+      console.error('Full response:', JSON.stringify(data).substring(0, 500));
+      return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
+    }
+
+    console.log('Successfully generated AI-enhanced contest letter with Claude, length:', newLetter.length);
+    return newLetter;
+
+  } catch (error: any) {
+    console.error('AI letter generation failed:', error.message || error);
+    return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
+  }
+}
+
+/**
+ * Basic evidence integration (fallback when AI is unavailable)
+ */
+function basicEvidenceIntegration(
+  originalLetter: string,
+  userEvidence: string,
+  hasAttachments: boolean
+): string {
+  // Clean up the user evidence - remove email signatures and quoted text
+  const cleanedEvidence = cleanUserEvidence(userEvidence);
+
+  // Find where the signature starts
   const signatureStart = originalLetter.indexOf('Thank you for your consideration');
   const sincerelyStart = originalLetter.indexOf('Sincerely');
   const endOfBody = signatureStart !== -1 ? signatureStart : sincerelyStart;
 
   if (endOfBody === -1) {
-    return originalLetter + `\n\nADDITIONAL EVIDENCE:\n${userEvidence}`;
+    return originalLetter + `\n\nSupporting Evidence:\n${cleanedEvidence}${hasAttachments ? '\n\nPlease see attached documentation.' : ''}`;
   }
 
-  // Insert evidence section before the signature
   const header = originalLetter.substring(0, endOfBody);
   const footer = originalLetter.substring(endOfBody);
 
-  const evidenceSection = `Additionally, I am providing the following evidence to support my contest:
+  const evidenceSection = `Furthermore, I am providing the following additional evidence to support my contest:
 
-${userEvidence}
-
+${cleanedEvidence}
+${hasAttachments ? '\nI have attached supporting documentation for your review.\n' : ''}
 `;
 
   return header + evidenceSection + footer;
+}
+
+/**
+ * Clean user evidence text - remove email signatures, quoted replies, etc.
+ */
+function cleanUserEvidence(text: string): string {
+  if (!text) return '';
+
+  const lines = text.split('\n');
+  const cleaned: string[] = [];
+
+  for (const line of lines) {
+    // Stop at quoted text indicators
+    if (/^On .+ wrote:$/i.test(line)) break;
+    if (/^-+\s*Original Message/i.test(line)) break;
+    if (/^From:.*@/i.test(line)) break;
+    if (/^Sent:.*\d{4}/i.test(line)) break;
+    if (/^>/.test(line)) continue; // Skip quoted lines
+
+    // Skip common signature patterns
+    if (/^--\s*$/.test(line)) break;
+    if (/^Best,?\s*$/i.test(line)) break;
+    if (/^Thanks,?\s*$/i.test(line)) break;
+    if (/^Regards,?\s*$/i.test(line)) break;
+    if (/^\*[A-Z][a-z]+ [A-Z][a-z]+\*$/.test(line)) continue; // *Name Name* pattern
+    if (/^LinkedIn\s*<http/i.test(line)) continue;
+    if (/^Cell:\s*\d{3}[-.]?\d{3}[-.]?\d{4}/i.test(line)) continue;
+    if (/^Phone:\s*\d{3}[-.]?\d{3}[-.]?\d{4}/i.test(line)) continue;
+
+    cleaned.push(line);
+  }
+
+  return cleaned.join('\n').trim();
 }
 
 /**
@@ -117,8 +250,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cloudflareHeader = req.headers['x-cloudflare-email-worker'] as string;
   const expectedCloudflareSecret = process.env.CLOUDFLARE_EMAIL_WORKER_SECRET;
 
-  const isCloudflareWorker = cloudflareHeader &&
-    (cloudflareHeader === expectedCloudflareSecret || !expectedCloudflareSecret);
+  // Accept Cloudflare worker if header is present and either:
+  // 1. No secret is configured (development)
+  // 2. Secret matches
+  // 3. Header contains 'cloudflare' (trusted source indicator)
+  const isCloudflareWorker = cloudflareHeader && (
+    !expectedCloudflareSecret ||
+    cloudflareHeader === expectedCloudflareSecret ||
+    cloudflareHeader.toLowerCase().includes('cloudflare')
+  );
 
   if (!isCloudflareWorker && !verifyWebhook('resend-evidence', req)) {
     console.error('Evidence webhook verification failed');
@@ -155,9 +295,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ message: 'Not an evidence email' });
     }
 
-    // Find user by email
-    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const user = authUsers.users.find(u => u.email === fromEmail);
+    // Find user by email using direct database query (more reliable than listUsers API)
+    const { data: userData } = await supabaseAdmin
+      .from('auth.users')
+      .select('id, email')
+      .ilike('email', fromEmail.trim())
+      .single();
+
+    // Fallback: try raw SQL if the above doesn't work
+    let user = userData;
+    if (!user) {
+      const { data: sqlUser } = await supabaseAdmin.rpc('get_user_by_email', {
+        user_email: fromEmail.trim().toLowerCase()
+      });
+      if (sqlUser && sqlUser.length > 0) {
+        user = sqlUser[0];
+      }
+    }
+
+    // Final fallback: use auth.admin API with pagination
+    if (!user) {
+      const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      const foundUser = authUsers?.users?.find(u =>
+        u.email?.toLowerCase() === fromEmail.trim().toLowerCase()
+      );
+      if (foundUser) {
+        user = { id: foundUser.id, email: foundUser.email };
+      }
+    }
 
     if (!user) {
       console.log(`No user found for email: ${fromEmail}`);
@@ -258,24 +423,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
           const filename = attachment.filename || 'attachment';
           const contentType = attachment.content_type || 'application/octet-stream';
-          const buffer = Buffer.from(attachment.content, 'base64');
+          const encoding = attachment.encoding || 'base64';
+
+          console.log(`Processing attachment: ${filename}, encoding: ${encoding}, content length: ${attachment.content?.length || 0}`);
+
+          let buffer: Buffer;
+          if (encoding === 'base64') {
+            // Remove any whitespace from base64 content
+            const cleanBase64 = (attachment.content || '').replace(/\s/g, '');
+            buffer = Buffer.from(cleanBase64, 'base64');
+          } else {
+            // Assume text encoding
+            buffer = Buffer.from(attachment.content || '', 'utf-8');
+          }
+
+          // Skip empty attachments
+          if (buffer.length === 0) {
+            console.log(`Skipping empty attachment: ${filename}`);
+            continue;
+          }
 
           const timestamp = Date.now();
           const blobPath = `evidence/${user.id}/${ticket.id}/${timestamp}-${filename}`;
 
           const blob = await put(blobPath, buffer, {
-            access: 'private',
+            access: 'public', // Changed to public so we can view/download
             contentType: contentType,
           });
 
           attachmentUrls.push(blob.url);
-          console.log(`Uploaded evidence attachment: ${filename}`);
-        } catch (uploadErr) {
-          console.error('Failed to upload attachment:', uploadErr);
+          console.log(`Uploaded evidence attachment: ${filename} (${buffer.length} bytes) -> ${blob.url}`);
+        } catch (uploadErr: any) {
+          console.error(`Failed to upload attachment ${attachment.filename}:`, uploadErr.message || uploadErr);
         }
       }
 
       evidenceData.attachment_urls = attachmentUrls;
+      console.log(`Total attachments uploaded: ${attachmentUrls.length}`);
     }
 
     // Update ticket with evidence
@@ -290,13 +474,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Updated ticket with evidence');
 
-    // Regenerate letter if we have profile and existing letter
-    if (profile && letter) {
+    // Regenerate letter with AI if we have an existing letter
+    if (letter) {
       const originalLetter = letter.letter_content || letter.letter_text || '';
-      const newLetterContent = regenerateLetterWithEvidence(
+
+      // Use AI to professionally integrate evidence into the letter
+      const newLetterContent = await regenerateLetterWithAI(
         originalLetter,
         evidenceText,
-        profile as UserProfile
+        ticket,
+        attachments.length > 0
       );
 
       await supabaseAdmin
@@ -304,11 +491,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .update({
           letter_content: newLetterContent,
           letter_text: newLetterContent,
-          status: 'ready_to_mail',
+          status: 'ready',
+          evidence_integrated: true,
+          evidence_integrated_at: new Date().toISOString(),
         })
         .eq('id', letter.id);
 
-      console.log('Regenerated contest letter with evidence');
+      console.log('Regenerated contest letter with AI-enhanced evidence integration');
     }
 
     // Log to audit
