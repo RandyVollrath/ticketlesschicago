@@ -1,10 +1,135 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import jwt from 'jsonwebtoken';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const JWT_SECRET = process.env.APPROVAL_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com';
+
+// Generate a secure approval token
+function generateApprovalToken(ticketId: string, userId: string, letterId: string): string {
+  return jwt.sign(
+    { ticket_id: ticketId, user_id: userId, letter_id: letterId },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+
+// Send approval request email
+async function sendApprovalEmail(
+  userEmail: string,
+  userName: string,
+  ticket: DetectedTicket,
+  letterId: string,
+  letterContent: string
+): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('    RESEND_API_KEY not configured, skipping approval email');
+    return false;
+  }
+
+  const token = generateApprovalToken(ticket.id, ticket.user_id, letterId);
+  const approveUrl = `${BASE_URL}/api/autopilot/approve-letter?token=${token}&action=approve`;
+  const skipUrl = `${BASE_URL}/api/autopilot/approve-letter?token=${token}&action=skip`;
+  const viewUrl = `${BASE_URL}/tickets/${ticket.id}`;
+
+  const violationDate = ticket.violation_date
+    ? new Date(ticket.violation_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Unknown date';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 22px;">Letter Ready for Review</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Your approval is needed before we mail this contest letter</p>
+      </div>
+
+      <div style="background: white; border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <p style="margin: 0; font-size: 14px; color: #92400e;">
+            <strong>Action Required:</strong> You've enabled "Require approval" in your settings. Please review and approve this letter before it can be mailed.
+          </p>
+        </div>
+
+        <h2 style="font-size: 16px; color: #374151; margin: 0 0 16px;">Ticket Details</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Ticket #</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${ticket.ticket_number}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Violation</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${ticket.violation_description || ticket.violation_type}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Date</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${violationDate}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Amount</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">$${ticket.amount || 'Unknown'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">License Plate</td>
+            <td style="padding: 8px 0; font-weight: 600; font-size: 14px;">${ticket.plate} (${ticket.state})</td>
+          </tr>
+        </table>
+
+        <h2 style="font-size: 16px; color: #374151; margin: 0 0 12px;">Contest Letter Preview</h2>
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 13px; line-height: 1.6; color: #374151; white-space: pre-wrap; font-family: 'Georgia', serif;">${letterContent.substring(0, 800)}${letterContent.length > 800 ? '...' : ''}</div>
+
+        <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+          <a href="${approveUrl}" style="display: inline-block; background: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+            ✓ Approve & Mail
+          </a>
+          <a href="${skipUrl}" style="display: inline-block; background: #6b7280; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+            Skip This Ticket
+          </a>
+        </div>
+
+        <p style="font-size: 13px; color: #6b7280; margin: 0;">
+          <a href="${viewUrl}" style="color: #2563eb;">View full letter and ticket details</a> on your dashboard.
+        </p>
+      </div>
+
+      <p style="text-align: center; font-size: 12px; color: #9ca3af; margin-top: 20px;">
+        Autopilot America • Automatic Parking Ticket Defense
+      </p>
+    </div>
+  `;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: [userEmail],
+        subject: `Action Required: Approve contest letter for ticket #${ticket.ticket_number}`,
+        html,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('    Failed to send approval email:', error);
+      return false;
+    }
+
+    console.log(`    Sent approval email to ${userEmail}`);
+    return true;
+  } catch (error) {
+    console.error('    Error sending approval email:', error);
+    return false;
+  }
+}
 
 interface DetectedTicket {
   id: string;
@@ -303,6 +428,10 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
     .eq('user_id', ticket.user_id)
     .single();
 
+  // Get user email from auth.users
+  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(ticket.user_id);
+  const userEmail = authUser?.user?.email;
+
   if (!profile || !profile.full_name || !profile.mailing_address_line1) {
     console.log(`    Skipping: Missing profile/address info`);
     await supabaseAdmin
@@ -397,6 +526,17 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
     });
 
   console.log(`    Letter generated (${needsApproval ? 'needs approval' : 'ready to mail'})`);
+
+  // If approval is needed and we have user's email, send approval request email
+  if (needsApproval && userEmail && letter) {
+    await sendApprovalEmail(
+      userEmail,
+      profile.full_name || 'Customer',
+      ticket,
+      letter.id,
+      letterContent
+    );
+  }
 
   return { success: true, status: newStatus };
 }
