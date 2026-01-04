@@ -29,10 +29,8 @@ function generateCSV(plates: any[]): string {
     'ticket_number',
     'violation_code',
     'violation_type',
-    'violation_description',
     'violation_date',
-    'amount',
-    'location'
+    'amount'
   ].join(',');
 
   const instructions = `# AUTOPILOT AMERICA - PLATE CHECK TEMPLATE
@@ -45,7 +43,7 @@ function generateCSV(plates: any[]): string {
 # INSTRUCTIONS:
 # 1. Go to the Chicago ticket search URL above
 # 2. For each row, search by LAST NAME and LICENSE PLATE
-# 3. If tickets are found, fill in columns F-L (ticket_number through location)
+# 3. If tickets are found, fill in columns F-J (ticket_number through amount)
 # 4. If multiple tickets for one plate, duplicate that row
 # 5. Leave ticket columns empty if no tickets found
 # 6. Upload completed file to the Autopilot Admin portal
@@ -66,10 +64,8 @@ function generateCSV(plates: any[]): string {
       '', // ticket_number
       '', // violation_code
       '', // violation_type
-      '', // violation_description
       '', // violation_date
       '', // amount
-      '', // location
     ].join(',');
   });
 
