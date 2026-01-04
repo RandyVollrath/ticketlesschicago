@@ -917,9 +917,27 @@ export default function Neighborhoods() {
     });
   }, [userLocation, nearbyLicenses, nearbyPermits]);
 
-  // City average comparisons
+  // City average comparisons - adjust based on time range
+  // For "recent" mode, we scale down the averages proportionally since recent data is a subset
   const comparisons = useMemo(() => {
     if (!userLocation) return null;
+
+    // When in recent mode, compare recent values to scaled-down averages
+    // Rough estimate: recent (12 months) is about 1/10th of all-time data
+    const recentScaleFactor = 0.1;
+
+    if (timeRange === 'recent') {
+      return {
+        crimes: getComparisonToAverage(nearbyCrimes.total, CITY_AVERAGES.crimes), // crimes is already 12 months
+        crashes: getComparisonToAverage(nearbyCrashes.total, CITY_AVERAGES.crashes), // crashes needs work but keeping as is
+        violations: getComparisonToAverage(nearbyViolations.violations, CITY_AVERAGES.violations), // violations is 12 months
+        potholes: getComparisonToAverage(nearbyPotholes.recent, CITY_AVERAGES.potholes * recentScaleFactor),
+        services: getComparisonToAverage(nearbyServices.recent, CITY_AVERAGES.serviceRequests * recentScaleFactor),
+        businesses: getComparisonToAverage(nearbyLicenses.active, CITY_AVERAGES.businesses), // active vs avg businesses
+      };
+    }
+
+    // All-time mode uses all-time values
     return {
       crimes: getComparisonToAverage(nearbyCrimes.total, CITY_AVERAGES.crimes),
       crashes: getComparisonToAverage(nearbyCrashes.total, CITY_AVERAGES.crashes),
@@ -928,7 +946,7 @@ export default function Neighborhoods() {
       services: getComparisonToAverage(nearbyServices.total, CITY_AVERAGES.serviceRequests),
       businesses: getComparisonToAverage(nearbyLicenses.total, CITY_AVERAGES.businesses),
     };
-  }, [userLocation, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyPotholes, nearbyServices, nearbyLicenses]);
+  }, [userLocation, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyPotholes, nearbyServices, nearbyLicenses, timeRange]);
 
   const stats = useMemo(() => {
     const activeSpeed = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
