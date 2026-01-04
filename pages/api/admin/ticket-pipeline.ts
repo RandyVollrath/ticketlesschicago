@@ -110,7 +110,9 @@ export default withAdminAuth(async (req, res, adminUser) => {
         evidence_integrated_at,
         mailed_at,
         lob_status,
-        lob_expected_delivery
+        lob_expected_delivery,
+        letter_content,
+        defense_type
       `)
       .in('ticket_id', ticketIds);
 
@@ -173,6 +175,8 @@ export default withAdminAuth(async (req, res, adminUser) => {
         created_at: ticket.created_at,
         letter_id: letter?.id || null,
         letter_status: letter?.status || null,
+        letter_content: letter?.letter_content || null,
+        defense_type: letter?.defense_type || null,
         has_evidence: hasEvidence,
         evidence_integrated: letter?.evidence_integrated || false,
         evidence_integrated_at: letter?.evidence_integrated_at || null,

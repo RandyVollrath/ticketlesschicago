@@ -800,6 +800,8 @@ export default function AdminPortal() {
   const [pipelineStats, setPipelineStats] = useState<any>({ total: 0, ticket_detected: 0, letter_generated: 0, evidence_letter_generated: 0, letter_sent: 0 });
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'ticket_detected' | 'letter_generated' | 'evidence_letter_generated' | 'letter_sent'>('all');
   const [selectedPipelineTicket, setSelectedPipelineTicket] = useState<any>(null);
+  const [showLetterModal, setShowLetterModal] = useState(false);
+  const [viewingLetter, setViewingLetter] = useState<{ content: string; ticketNumber: string; defenseType: string | null; evidenceIntegrated: boolean } | null>(null);
 
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
@@ -2319,6 +2321,7 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Lob Status</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Created</th>
+                        <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Letter</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2379,6 +2382,34 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
                           </td>
                           <td style={{ padding: '12px', fontSize: '12px', color: '#6b7280' }}>
                             {new Date(ticket.created_at).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            {ticket.letter_content ? (
+                              <button
+                                onClick={() => {
+                                  setViewingLetter({
+                                    content: ticket.letter_content,
+                                    ticketNumber: ticket.ticket_number,
+                                    defenseType: ticket.defense_type,
+                                    evidenceIntegrated: ticket.evidence_integrated,
+                                  });
+                                  setShowLetterModal(true);
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: ticket.evidence_integrated ? '#7c3aed' : '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {ticket.evidence_integrated ? 'AI Letter' : 'View'}
+                              </button>
+                            ) : (
+                              <span style={{ color: '#9ca3af', fontSize: '12px' }}>No letter</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -3347,6 +3378,145 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
                 }}
               >
                 Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Letter View Modal */}
+      {showLetterModal && viewingLetter && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '800px',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                  Contest Letter - Ticket #{viewingLetter.ticketNumber}
+                </h3>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  {viewingLetter.evidenceIntegrated ? (
+                    <span style={{
+                      padding: '4px 10px',
+                      backgroundColor: '#f3e8ff',
+                      color: '#7c3aed',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                    }}>
+                      AI-Enhanced with Evidence
+                    </span>
+                  ) : (
+                    <span style={{
+                      padding: '4px 10px',
+                      backgroundColor: '#dbeafe',
+                      color: '#1e40af',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                    }}>
+                      Template Letter
+                    </span>
+                  )}
+                  {viewingLetter.defenseType && (
+                    <span style={{
+                      padding: '4px 10px',
+                      backgroundColor: '#f3f4f6',
+                      color: '#374151',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                    }}>
+                      Defense: {viewingLetter.defenseType}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowLetterModal(false);
+                  setViewingLetter(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '4px',
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{
+              padding: '24px',
+              overflow: 'auto',
+              flex: 1,
+            }}>
+              <pre style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: '14px',
+                lineHeight: '1.8',
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                margin: 0,
+                color: '#1f2937',
+              }}>
+                {viewingLetter.content}
+              </pre>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => {
+                  setShowLetterModal(false);
+                  setViewingLetter(null);
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                Close
               </button>
             </div>
           </div>
