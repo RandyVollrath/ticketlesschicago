@@ -22,11 +22,11 @@ import {
   getPotholeScoreColor,
 } from '../lib/neighborhood-data';
 
-// Speed camera icons
+// Speed camera icons (purple)
 const speedCameraIcon = L.divIcon({
   className: 'speed-camera-marker',
   html: `<div style="
-    background-color: #dc2626;
+    background-color: #7c3aed;
     width: 24px;
     height: 24px;
     border-radius: 50%;
@@ -48,7 +48,7 @@ const speedCameraIcon = L.divIcon({
 const speedCameraFutureIcon = L.divIcon({
   className: 'speed-camera-marker-future',
   html: `<div style="
-    background-color: #f59e0b;
+    background-color: #a78bfa;
     width: 24px;
     height: 24px;
     border-radius: 50%;
@@ -67,11 +67,11 @@ const speedCameraFutureIcon = L.divIcon({
   popupAnchor: [0, -12]
 });
 
-// Red light camera icons
+// Red light camera icons (red)
 const redLightCameraIcon = L.divIcon({
   className: 'red-light-camera-marker',
   html: `<div style="
-    background-color: #7c3aed;
+    background-color: #dc2626;
     width: 24px;
     height: 24px;
     border-radius: 50%;
@@ -178,6 +178,8 @@ interface CameraMapProps {
   // Potholes layer
   potholeBlocks?: PotholeBlock[];
   showPotholes?: boolean;
+  // Search radius in blocks (1 block ≈ 400 feet / 122 meters)
+  searchRadiusBlocks?: number;
 }
 
 // Component to handle map view changes
@@ -252,8 +254,11 @@ const CameraMap: React.FC<CameraMapProps> = ({
   selectedLicenseCategory = 'all',
   potholeBlocks = [],
   showPotholes = false,
+  searchRadiusBlocks = 2,
 }) => {
   const chicagoCenter: L.LatLngTuple = [41.8781, -87.6298];
+  // Convert blocks to meters (1 block ≈ 400 feet ≈ 122 meters)
+  const searchRadiusMeters = searchRadiusBlocks * 122;
   const today = new Date();
 
   const formatDate = (dateStr: string) => {
@@ -290,7 +295,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
         <>
           <Circle
             center={[userLocation.latitude, userLocation.longitude]}
-            radius={1609} // 1 mile in meters
+            radius={searchRadiusMeters}
             pathOptions={{
               color: '#2563eb',
               fillColor: '#3b82f6',
@@ -317,7 +322,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
                   {userLocation.address}
                 </div>
                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-                  Circle shows 1 mile radius
+                  Search radius: {searchRadiusBlocks} block{searchRadiusBlocks !== 1 ? 's' : ''} (~{Math.round(searchRadiusBlocks * 400)} ft)
                 </div>
               </div>
             </Popup>
@@ -344,7 +349,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
                 marginBottom: '8px'
               }}>
                 <span style={{
-                  backgroundColor: '#dc2626',
+                  backgroundColor: '#7c3aed',
                   color: 'white',
                   padding: '2px 6px',
                   borderRadius: '4px',
@@ -371,7 +376,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
               <div style={{ fontSize: '12px', marginBottom: '4px' }}>
                 <strong>Status:</strong>{' '}
                 <span style={{
-                  color: isLive(camera.goLiveDate) ? '#dc2626' : '#f59e0b',
+                  color: isLive(camera.goLiveDate) ? '#7c3aed' : '#a78bfa',
                   fontWeight: '600'
                 }}>
                   {isLive(camera.goLiveDate) ? 'ACTIVE' : 'COMING SOON'}
@@ -407,7 +412,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
                 marginBottom: '8px'
               }}>
                 <span style={{
-                  backgroundColor: '#7c3aed',
+                  backgroundColor: '#dc2626',
                   color: 'white',
                   padding: '2px 6px',
                   borderRadius: '4px',
@@ -431,7 +436,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
               </div>
               <div style={{ fontSize: '12px', marginBottom: '4px' }}>
                 <strong>Status:</strong>{' '}
-                <span style={{ color: '#7c3aed', fontWeight: '600' }}>ACTIVE</span>
+                <span style={{ color: '#dc2626', fontWeight: '600' }}>ACTIVE</span>
               </div>
               <div style={{ fontSize: '12px', color: '#6b7280' }}>
                 <strong>Active Since:</strong> {formatDate(camera.goLiveDate)}
@@ -474,7 +479,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
             }}
           >
             <Popup>
-              <div style={{ minWidth: '220px' }}>
+              <div style={{ minWidth: '260px' }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -492,52 +497,72 @@ const CameraMap: React.FC<CameraMapProps> = ({
                   }}>
                     {getSeverityLevel(block.severity)} Risk
                   </span>
-                  <span style={{ fontSize: '11px', color: '#6b7280' }}>
-                    Ward {block.ward || 'N/A'}
-                  </span>
+                  {block.ward && (
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                      Ward {block.ward}
+                    </span>
+                  )}
                 </div>
 
-                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
-                  {block.count.toLocaleString()} Violations
+                <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#111827', marginBottom: '4px' }}>
+                  {block.count.toLocaleString()} Building Violations
                 </div>
 
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '10px' }}>
                   {block.address}
                 </div>
 
-                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
-                    Top Issues:
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                    Violation Types in This Area:
                   </div>
-                  {topCats.map(cat => (
-                    <div key={cat.key} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '11px',
-                      marginBottom: '2px'
-                    }}>
-                      <div style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '2px',
-                        backgroundColor: cat.color,
-                        flexShrink: 0
-                      }} />
-                      <span style={{ color: '#374151' }}>{cat.name}</span>
-                      <span style={{ color: '#9ca3af' }}>({cat.count})</span>
-                    </div>
-                  ))}
+                  {topCats.map(cat => {
+                    const catInfo = VIOLATION_CATEGORIES[cat.key as keyof typeof VIOLATION_CATEGORIES];
+                    return (
+                      <div key={cat.key} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px',
+                        fontSize: '11px',
+                        marginBottom: '6px',
+                        padding: '4px 6px',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '4px'
+                      }}>
+                        <div style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '3px',
+                          backgroundColor: cat.color,
+                          flexShrink: 0,
+                          marginTop: '2px'
+                        }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', color: '#374151' }}>
+                            {cat.name}: {cat.count}
+                          </div>
+                          {catInfo?.description && (
+                            <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>
+                              {catInfo.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div style={{
                   fontSize: '10px',
-                  color: '#9ca3af',
+                  color: '#6b7280',
                   marginTop: '8px',
                   paddingTop: '8px',
-                  borderTop: '1px solid #e5e7eb'
+                  borderTop: '1px solid #e5e7eb',
+                  display: 'flex',
+                  justifyContent: 'space-between'
                 }}>
-                  Severity Score: {block.severity}/100
+                  <span>Risk Score: {block.severity}/100</span>
+                  <span>Source: Chicago Data Portal</span>
                 </div>
               </div>
             </Popup>
@@ -866,7 +891,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
                   <div style={{
                     width: '14px',
                     height: '14px',
-                    backgroundColor: '#dc2626',
+                    backgroundColor: '#7c3aed',
                     borderRadius: '50%',
                     marginRight: '8px',
                     flexShrink: 0
@@ -877,7 +902,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
                   <div style={{
                     width: '14px',
                     height: '14px',
-                    backgroundColor: '#f59e0b',
+                    backgroundColor: '#a78bfa',
                     borderRadius: '50%',
                     marginRight: '8px',
                     flexShrink: 0
@@ -891,7 +916,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
                 <div style={{
                   width: '14px',
                   height: '14px',
-                  backgroundColor: '#7c3aed',
+                  backgroundColor: '#dc2626',
                   borderRadius: '50%',
                   marginRight: '8px',
                   flexShrink: 0

@@ -51,6 +51,14 @@ import {
   PotholesData,
   parsePotholesData,
   aggregatePotholeStats,
+  // Neighborhood report utilities
+  CITY_AVERAGES,
+  getComparisonToAverage,
+  calculateNeighborhoodScore,
+  calculateBusinessVitality,
+  getRiskAlerts,
+  calculateDistance,
+  formatDistance,
 } from '../lib/neighborhood-data';
 
 const CameraMap = dynamic(() => import('../components/CameraMap'), {
@@ -337,6 +345,12 @@ export default function Neighborhoods() {
   const [potholeBlocks, setPotholeBlocks] = useState<PotholeBlock[]>([]);
   const [potholesLoaded, setPotholesLoaded] = useState(false);
 
+  // Radius slider state (in blocks, 1 block ≈ 0.075 miles)
+  const [radiusBlocks, setRadiusBlocks] = useState(2);
+
+  // Time range toggle: 'recent' (last 12 months) or 'alltime'
+  const [timeRange, setTimeRange] = useState<'recent' | 'alltime'>('recent');
+
   // Load data based on active layer
   useEffect(() => {
     if (activeLayer === 'violations' && !violationsLoaded) {
@@ -403,6 +417,76 @@ export default function Neighborhoods() {
         .catch(err => console.error('Failed to load potholes data:', err));
     }
   }, [activeLayer, violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded, permitsLoaded, licensesLoaded, potholesLoaded]);
+
+  // Load ALL data when user searches an address (for neighborhood report)
+  useEffect(() => {
+    if (userLocation) {
+      // Load all data sources in parallel when user searches
+      if (!violationsLoaded) {
+        fetch('/violations-data.json')
+          .then(res => res.json())
+          .then((data: ViolationsData) => {
+            setViolationBlocks(parseViolationsData(data));
+            setViolationsLoaded(true);
+          })
+          .catch(err => console.error('Failed to load violations data:', err));
+      }
+      if (!crimesLoaded) {
+        fetch('/crimes-data.json')
+          .then(res => res.json())
+          .then((data: CrimesData) => {
+            setCrimeBlocks(parseCrimesData(data));
+            setCrimesLoaded(true);
+          })
+          .catch(err => console.error('Failed to load crimes data:', err));
+      }
+      if (!crashesLoaded) {
+        fetch('/crashes-data.json')
+          .then(res => res.json())
+          .then((data: CrashesData) => {
+            setCrashBlocks(parseCrashesData(data));
+            setCrashesLoaded(true);
+          })
+          .catch(err => console.error('Failed to load crashes data:', err));
+      }
+      if (!servicesLoaded) {
+        fetch('/311-data.json')
+          .then(res => res.json())
+          .then((data: ServiceRequestsData) => {
+            setServiceBlocks(parseServiceRequestsData(data));
+            setServicesLoaded(true);
+          })
+          .catch(err => console.error('Failed to load 311 data:', err));
+      }
+      if (!permitsLoaded) {
+        fetch('/permits-data.json')
+          .then(res => res.json())
+          .then((data: PermitsData) => {
+            setPermitBlocks(parsePermitsData(data));
+            setPermitsLoaded(true);
+          })
+          .catch(err => console.error('Failed to load permits data:', err));
+      }
+      if (!licensesLoaded) {
+        fetch('/licenses-data.json')
+          .then(res => res.json())
+          .then((data: LicensesData) => {
+            setLicenseBlocks(parseLicensesData(data));
+            setLicensesLoaded(true);
+          })
+          .catch(err => console.error('Failed to load licenses data:', err));
+      }
+      if (!potholesLoaded) {
+        fetch('/potholes-data.json')
+          .then(res => res.json())
+          .then((data: PotholesData) => {
+            setPotholeBlocks(parsePotholesData(data));
+            setPotholesLoaded(true);
+          })
+          .catch(err => console.error('Failed to load potholes data:', err));
+      }
+    }
+  }, [userLocation, violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded, permitsLoaded, licensesLoaded, potholesLoaded]);
 
   const today = new Date();
 
@@ -508,86 +592,148 @@ export default function Neighborhoods() {
     });
   }, [cameraSearchQuery, statusFilter, cameraFilter]);
 
-  // Calculate nearby cameras when user location is set
-  const nearbyCameras = useMemo(() => {
-    if (!userLocation) return { speed: 0, redLight: 0, total: 0 };
+  // Block radius for nearby calculations (1 block ≈ 0.075 miles / 400 feet)
+  const NEARBY_RADIUS = useMemo(() => radiusBlocks * 0.075, [radiusBlocks]);
 
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-      const R = 3959; // Earth's radius in miles
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
+  // Calculate nearby cameras when user location is set (uses same radius as other data)
+  const nearbyCameras = useMemo(() => {
+    if (!userLocation) return {
+      speed: 0,
+      redLight: 0,
+      total: 0,
+      speedList: [] as (SpeedCamera & { distance: number })[],
+      redLightList: [] as (RedLightCamera & { distance: number })[],
+      nearestSpeed: null as (SpeedCamera & { distance: number }) | null,
+      nearestRedLight: null as (RedLightCamera & { distance: number }) | null,
     };
 
-    const speedNearby = SPEED_CAMERAS.filter(c =>
-      calculateDistance(userLocation.latitude, userLocation.longitude, c.latitude, c.longitude) <= 1
-    ).length;
+    // Find all cameras with distance
+    const speedWithDist = SPEED_CAMERAS.map(c => ({
+      ...c,
+      distance: calculateDistance(userLocation.latitude, userLocation.longitude, c.latitude, c.longitude)
+    })).sort((a, b) => a.distance - b.distance);
 
-    const redLightNearby = RED_LIGHT_CAMERAS.filter(c =>
-      calculateDistance(userLocation.latitude, userLocation.longitude, c.latitude, c.longitude) <= 1
-    ).length;
+    const redLightWithDist = RED_LIGHT_CAMERAS.map(c => ({
+      ...c,
+      distance: calculateDistance(userLocation.latitude, userLocation.longitude, c.latitude, c.longitude)
+    })).sort((a, b) => a.distance - b.distance);
+
+    // Use same radius as other data (based on user's slider selection)
+    const speedList = speedWithDist.filter(c => c.distance <= NEARBY_RADIUS);
+    const redLightList = redLightWithDist.filter(c => c.distance <= NEARBY_RADIUS);
 
     return {
-      speed: speedNearby,
-      redLight: redLightNearby,
-      total: speedNearby + redLightNearby
+      speed: speedList.length,
+      redLight: redLightList.length,
+      total: speedList.length + redLightList.length,
+      speedList,
+      redLightList,
+      nearestSpeed: speedWithDist[0] || null,
+      nearestRedLight: redLightWithDist[0] || null,
     };
-  }, [userLocation]);
+  }, [userLocation, NEARBY_RADIUS]);
 
   // Calculate nearby violations when user location is set
   const nearbyViolations = useMemo(() => {
     if (!userLocation || violationBlocks.length === 0) {
-      return { blocks: 0, violations: 0, highRisk: 0 };
+      return { blocks: 0, violations: 0, highRisk: 0, topCategories: [] as { key: string; count: number }[] };
     }
 
     const nearbyBlocks = getBlocksNearLocation(
       violationBlocks,
       userLocation.latitude,
       userLocation.longitude,
-      1  // 1 mile radius
+      NEARBY_RADIUS
     );
 
     const stats = aggregateBlockStats(nearbyBlocks);
+
+    // Get top categories
+    const catTotals: Record<string, number> = {};
+    nearbyBlocks.forEach(b => {
+      Object.entries(b.categories).forEach(([k, v]) => {
+        catTotals[k] = (catTotals[k] || 0) + v;
+      });
+    });
+    const topCategories = Object.entries(catTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key, count]) => ({ key, count }));
+
     return {
       blocks: stats.totalBlocks,
       violations: stats.totalViolations,
-      highRisk: stats.highSeverityCount
+      highRisk: stats.highSeverityCount,
+      topCategories
     };
-  }, [userLocation, violationBlocks]);
+  }, [userLocation, violationBlocks, NEARBY_RADIUS]);
 
   // Calculate nearby crimes
   const nearbyCrimes = useMemo(() => {
     if (!userLocation || crimeBlocks.length === 0) {
-      return { total: 0, violent: 0, property: 0 };
+      return { total: 0, violent: 0, property: 0, drugs: 0, topCategories: [] as { key: string; count: number }[] };
     }
-    const nearby = getBlocksNear(crimeBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const nearby = getBlocksNear(crimeBlocks, userLocation.latitude, userLocation.longitude, NEARBY_RADIUS);
     const stats = aggregateCrimeStats(nearby);
-    return { total: stats.totalCrimes, violent: stats.violentCount, property: stats.propertyCount };
-  }, [userLocation, crimeBlocks]);
+
+    // Get top categories
+    const catTotals: Record<string, number> = {};
+    nearby.forEach(b => {
+      Object.entries(b.categories).forEach(([k, v]) => {
+        catTotals[k] = (catTotals[k] || 0) + v;
+      });
+    });
+    const topCategories = Object.entries(catTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key, count]) => ({ key, count }));
+
+    return {
+      total: stats.totalCrimes,
+      violent: stats.violentCount,
+      property: stats.propertyCount,
+      drugs: catTotals['drugs'] || 0,
+      topCategories
+    };
+  }, [userLocation, crimeBlocks, NEARBY_RADIUS]);
 
   // Calculate nearby crashes
   const nearbyCrashes = useMemo(() => {
     if (!userLocation || crashBlocks.length === 0) {
-      return { total: 0, injuries: 0, fatal: 0 };
+      return { total: 0, injuries: 0, fatal: 0, hitAndRun: 0 };
     }
-    const nearby = getBlocksNear(crashBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const nearby = getBlocksNear(crashBlocks, userLocation.latitude, userLocation.longitude, NEARBY_RADIUS);
     const stats = aggregateCrashStats(nearby);
-    return { total: stats.totalCrashes, injuries: stats.totalInjuries, fatal: stats.totalFatal };
-  }, [userLocation, crashBlocks]);
+    return {
+      total: stats.totalCrashes,
+      injuries: stats.totalInjuries,
+      fatal: stats.totalFatal,
+      hitAndRun: stats.hitAndRunCount
+    };
+  }, [userLocation, crashBlocks, NEARBY_RADIUS]);
 
   // Calculate nearby 311 requests
   const nearbyServices = useMemo(() => {
     if (!userLocation || serviceBlocks.length === 0) {
-      return { total: 0, recent: 0 };
+      return { total: 0, recent: 0, topCategories: [] as { key: string; count: number }[] };
     }
-    const nearby = getBlocksNear(serviceBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const nearby = getBlocksNear(serviceBlocks, userLocation.latitude, userLocation.longitude, NEARBY_RADIUS);
     const stats = aggregateServiceRequestStats(nearby);
-    return { total: stats.totalRequests, recent: stats.recentRequests };
-  }, [userLocation, serviceBlocks]);
+
+    // Get top categories
+    const catTotals: Record<string, number> = {};
+    nearby.forEach(b => {
+      Object.entries(b.categories).forEach(([k, v]) => {
+        catTotals[k] = (catTotals[k] || 0) + v;
+      });
+    });
+    const topCategories = Object.entries(catTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key, count]) => ({ key, count }));
+
+    return { total: stats.totalRequests, recent: stats.recentRequests, topCategories };
+  }, [userLocation, serviceBlocks, NEARBY_RADIUS]);
 
   // Filter violations by category
   const filteredViolationBlocks = useMemo(() => {
@@ -640,32 +786,58 @@ export default function Neighborhoods() {
   // Calculate nearby permits
   const nearbyPermits = useMemo(() => {
     if (!userLocation || permitBlocks.length === 0) {
-      return { total: 0, cost: 0, recent: 0 };
+      return { total: 0, cost: 0, recent: 0, topCategories: [] as { key: string; count: number }[] };
     }
-    const nearby = getBlocksNear(permitBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const nearby = getBlocksNear(permitBlocks, userLocation.latitude, userLocation.longitude, NEARBY_RADIUS);
     const stats = aggregatePermitStats(nearby);
-    return { total: stats.totalPermits, cost: stats.totalCost, recent: stats.recentPermits };
-  }, [userLocation, permitBlocks]);
+
+    // Get top categories
+    const catTotals: Record<string, number> = {};
+    nearby.forEach(b => {
+      Object.entries(b.categories).forEach(([k, v]) => {
+        catTotals[k] = (catTotals[k] || 0) + v;
+      });
+    });
+    const topCategories = Object.entries(catTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key, count]) => ({ key, count }));
+
+    return { total: stats.totalPermits, cost: stats.totalCost, recent: stats.recentPermits, topCategories };
+  }, [userLocation, permitBlocks, NEARBY_RADIUS]);
 
   // Calculate nearby licenses
   const nearbyLicenses = useMemo(() => {
     if (!userLocation || licenseBlocks.length === 0) {
-      return { total: 0, active: 0 };
+      return { total: 0, active: 0, topCategories: [] as { key: string; count: number }[] };
     }
-    const nearby = getBlocksNear(licenseBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const nearby = getBlocksNear(licenseBlocks, userLocation.latitude, userLocation.longitude, NEARBY_RADIUS);
     const stats = aggregateLicenseStats(nearby);
-    return { total: stats.totalLicenses, active: stats.activeLicenses };
-  }, [userLocation, licenseBlocks]);
+
+    // Get top categories
+    const catTotals: Record<string, number> = {};
+    nearby.forEach(b => {
+      Object.entries(b.categories).forEach(([k, v]) => {
+        catTotals[k] = (catTotals[k] || 0) + v;
+      });
+    });
+    const topCategories = Object.entries(catTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key, count]) => ({ key, count }));
+
+    return { total: stats.totalLicenses, active: stats.activeLicenses, topCategories };
+  }, [userLocation, licenseBlocks, NEARBY_RADIUS]);
 
   // Calculate nearby potholes
   const nearbyPotholes = useMemo(() => {
     if (!userLocation || potholeBlocks.length === 0) {
       return { repairs: 0, potholes: 0, recent: 0 };
     }
-    const nearby = getBlocksNear(potholeBlocks, userLocation.latitude, userLocation.longitude, 1);
+    const nearby = getBlocksNear(potholeBlocks, userLocation.latitude, userLocation.longitude, NEARBY_RADIUS);
     const stats = aggregatePotholeStats(nearby);
     return { repairs: stats.totalRepairs, potholes: stats.totalPotholes, recent: stats.recentRepairs };
-  }, [userLocation, potholeBlocks]);
+  }, [userLocation, potholeBlocks, NEARBY_RADIUS]);
 
   // Filter permits by category
   const filteredPermitBlocks = useMemo(() => {
@@ -701,6 +873,63 @@ export default function Neighborhoods() {
     return aggregatePotholeStats(potholeBlocks);
   }, [potholeBlocks]);
 
+  // Calculate neighborhood score
+  const neighborhoodScore = useMemo(() => {
+    if (!userLocation) return null;
+    return calculateNeighborhoodScore({
+      crimes: nearbyCrimes.total,
+      violentCrimes: nearbyCrimes.violent,
+      crashes: nearbyCrashes.total,
+      fatalCrashes: nearbyCrashes.fatal,
+      violations: nearbyViolations.violations,
+      potholes: nearbyPotholes.potholes,
+    });
+  }, [userLocation, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyPotholes]);
+
+  // Calculate risk alerts
+  const riskAlerts = useMemo(() => {
+    if (!userLocation) return [];
+    return getRiskAlerts({
+      crimes: nearbyCrimes.total,
+      violentCrimes: nearbyCrimes.violent,
+      crashes: nearbyCrashes.total,
+      fatalCrashes: nearbyCrashes.fatal,
+      hitAndRun: nearbyCrashes.hitAndRun,
+      violations: nearbyViolations.violations,
+      highRiskViolations: nearbyViolations.highRisk,
+      cameras: nearbyCameras.total,
+    });
+  }, [userLocation, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyCameras]);
+
+  // Calculate business vitality
+  const businessVitality = useMemo(() => {
+    if (!userLocation) return null;
+
+    // Get demolitions from permit categories
+    const demolitions = nearbyPermits.topCategories.find(c => c.key === 'demolition')?.count || 0;
+    const newConstruction = nearbyPermits.topCategories.find(c => c.key === 'new_construction')?.count || 0;
+
+    return calculateBusinessVitality({
+      totalLicenses: nearbyLicenses.total,
+      activeLicenses: nearbyLicenses.active,
+      newPermits: newConstruction + nearbyPermits.recent,
+      demolitions,
+    });
+  }, [userLocation, nearbyLicenses, nearbyPermits]);
+
+  // City average comparisons
+  const comparisons = useMemo(() => {
+    if (!userLocation) return null;
+    return {
+      crimes: getComparisonToAverage(nearbyCrimes.total, CITY_AVERAGES.crimes),
+      crashes: getComparisonToAverage(nearbyCrashes.total, CITY_AVERAGES.crashes),
+      violations: getComparisonToAverage(nearbyViolations.violations, CITY_AVERAGES.violations),
+      potholes: getComparisonToAverage(nearbyPotholes.potholes, CITY_AVERAGES.potholes),
+      services: getComparisonToAverage(nearbyServices.total, CITY_AVERAGES.serviceRequests),
+      businesses: getComparisonToAverage(nearbyLicenses.total, CITY_AVERAGES.businesses),
+    };
+  }, [userLocation, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyPotholes, nearbyServices, nearbyLicenses]);
+
   const stats = useMemo(() => {
     const activeSpeed = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
     const upcomingSpeed = SPEED_CAMERAS.length - activeSpeed;
@@ -726,8 +955,8 @@ export default function Neighborhoods() {
   return (
     <>
       <Head>
-        <title>Chicago Camera Map - Speed & Red Light Cameras | Autopilot America</title>
-        <meta name="description" content="Interactive map of all speed camera and red light camera locations in Chicago. Search your address to find nearby cameras and avoid tickets." />
+        <title>Chicago Neighborhood Data Map | Autopilot America</title>
+        <meta name="description" content="Interactive map of Chicago neighborhood data including cameras, building violations, crime, crashes, permits, business licenses, and more." />
       </Head>
 
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '60px' }}>
@@ -748,10 +977,10 @@ export default function Neighborhoods() {
               &larr; Back to Home
             </button>
             <h1 style={{ margin: '0', fontSize: '32px', fontWeight: 'bold', color: '#111827' }}>
-              Chicago Camera Map
+              Chicago Neighborhood Data
             </h1>
             <p style={{ margin: '10px 0 0 0', color: '#6b7280', fontSize: '16px' }}>
-              All {stats.total} photo-enforced camera locations in Chicago
+              Explore cameras, violations, crime, crashes, permits, businesses, and more
             </p>
           </div>
         </div>
@@ -811,6 +1040,538 @@ export default function Neighborhoods() {
                 {stats.redLight}
               </p>
             </div>
+          </div>
+
+          {/* Address Search */}
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '1px solid #3b82f6',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#2563eb">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <span style={{ fontWeight: '600', color: '#1e40af' }}>Explore Your Neighborhood</span>
+            </div>
+            <form onSubmit={handleAddressSearch} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Enter your address (e.g., 1234 N State St, Chicago)"
+                value={addressSearchQuery}
+                onChange={(e) => setAddressSearchQuery(e.target.value)}
+                style={{
+                  flex: '1',
+                  minWidth: '250px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #93c5fd',
+                  fontSize: '14px'
+                }}
+              />
+              <button
+                type="submit"
+                disabled={isSearching || !addressSearchQuery.trim()}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: isSearching ? 'wait' : 'pointer',
+                  opacity: isSearching || !addressSearchQuery.trim() ? 0.7 : 1
+                }}
+              >
+                {isSearching ? 'Searching...' : 'Search'}
+              </button>
+              {userLocation && (
+                <button
+                  type="button"
+                  onClick={clearUserLocation}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    backgroundColor: 'white',
+                    color: '#6b7280',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </form>
+            {searchError && (
+              <p style={{ margin: '8px 0 0 0', color: '#dc2626', fontSize: '14px' }}>{searchError}</p>
+            )}
+            {userLocation && (
+              <div id="neighborhood-report" style={{ marginTop: '12px', padding: '20px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                {/* Header with Score */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#111827' }}>
+                      Neighborhood Report
+                    </h3>
+                    <p style={{ margin: '0', fontSize: '13px', color: '#6b7280' }}>
+                      {userLocation.address}
+                    </p>
+                  </div>
+
+                  {/* Neighborhood Grade */}
+                  {neighborhoodScore && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 16px',
+                      backgroundColor: `${neighborhoodScore.color}15`,
+                      borderRadius: '12px',
+                      border: `2px solid ${neighborhoodScore.color}`
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        backgroundColor: neighborhoodScore.color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '24px',
+                        fontWeight: 'bold'
+                      }}>
+                        {neighborhoodScore.grade}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: neighborhoodScore.color }}>
+                          {neighborhoodScore.label}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                          Safety Score: {neighborhoodScore.score}/100
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Radius Slider & Time Range Toggle */}
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  marginBottom: '16px'
+                }}>
+                  {/* Radius Slider */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '8px',
+                    flex: '1 1 250px'
+                  }}>
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
+                      Search Radius:
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={radiusBlocks}
+                      onChange={(e) => setRadiusBlocks(parseInt(e.target.value))}
+                      style={{ flex: 1, cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#2563eb', minWidth: '80px' }}>
+                      {radiusBlocks} block{radiusBlocks > 1 ? 's' : ''} (~{Math.round(radiusBlocks * 400)} ft)
+                    </span>
+                  </div>
+
+                  {/* Time Range Toggle */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '8px'
+                  }}>
+                    <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
+                      Time Range:
+                    </label>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        onClick={() => setTimeRange('recent')}
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          border: 'none',
+                          cursor: 'pointer',
+                          backgroundColor: timeRange === 'recent' ? '#2563eb' : '#e5e7eb',
+                          color: timeRange === 'recent' ? 'white' : '#4b5563'
+                        }}
+                      >
+                        Last 12 Months
+                      </button>
+                      <button
+                        onClick={() => setTimeRange('alltime')}
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          border: 'none',
+                          cursor: 'pointer',
+                          backgroundColor: timeRange === 'alltime' ? '#2563eb' : '#e5e7eb',
+                          color: timeRange === 'alltime' ? 'white' : '#4b5563'
+                        }}
+                      >
+                        All Time
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Risk Alerts */}
+                {riskAlerts.length > 0 && (
+                  <div style={{ marginBottom: '16px' }}>
+                    {riskAlerts.slice(0, 3).map((alert, i) => (
+                      <div key={i} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        backgroundColor: `${alert.color}10`,
+                        borderLeft: `3px solid ${alert.color}`,
+                        borderRadius: '0 6px 6px 0',
+                        marginBottom: '6px',
+                        fontSize: '13px',
+                        color: alert.color
+                      }}>
+                        <span>{alert.icon}</span>
+                        <span>{alert.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Loading indicator */}
+                {(!violationsLoaded || !crimesLoaded || !crashesLoaded || !servicesLoaded || !permitsLoaded || !licensesLoaded || !potholesLoaded) && (
+                  <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#2563eb' }}>
+                    Loading neighborhood data...
+                  </p>
+                )}
+
+                {/* Cameras Within 1 Mile */}
+                {nearbyCameras.total > 0 && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '12px',
+                    backgroundColor: '#fef2f2',
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#991b1b', marginBottom: '8px' }}>
+                      CAMERAS IN RADIUS ({nearbyCameras.total})
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                      gap: '6px',
+                      maxHeight: '200px',
+                      overflowY: 'auto'
+                    }}>
+                      {nearbyCameras.speedList.slice(0, 10).map((cam, i) => (
+                        <div key={`speed-${i}`} style={{ fontSize: '11px', color: '#374151', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ backgroundColor: '#7c3aed', color: 'white', padding: '1px 4px', borderRadius: '2px', fontSize: '9px', fontWeight: 'bold' }}>SPD</span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cam.address}</span>
+                          <span style={{ color: '#6b7280', fontSize: '10px' }}>{formatDistance(cam.distance)}</span>
+                        </div>
+                      ))}
+                      {nearbyCameras.redLightList.slice(0, 10).map((cam, i) => (
+                        <div key={`rl-${i}`} style={{ fontSize: '11px', color: '#374151', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ backgroundColor: '#dc2626', color: 'white', padding: '1px 4px', borderRadius: '2px', fontSize: '9px', fontWeight: 'bold' }}>RL</span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cam.intersection}</span>
+                          <span style={{ color: '#6b7280', fontSize: '10px' }}>{formatDistance(cam.distance)}</span>
+                        </div>
+                      ))}
+                      {(nearbyCameras.speedList.length > 10 || nearbyCameras.redLightList.length > 10) && (
+                        <div style={{ fontSize: '10px', color: '#6b7280', fontStyle: 'italic' }}>
+                          +{Math.max(0, nearbyCameras.speedList.length - 10) + Math.max(0, nearbyCameras.redLightList.length - 10)} more cameras...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Data Grid with Comparisons */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                  {/* Crimes */}
+                  <div style={{ padding: '12px', backgroundColor: '#f3e8ff', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '11px', color: '#5b21b6', fontWeight: '600' }}>CRIMES</div>
+                      {comparisons?.crimes && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          backgroundColor: comparisons.crimes.direction === 'lower' ? '#dcfce7' : comparisons.crimes.direction === 'higher' ? '#fef2f2' : '#f3f4f6',
+                          color: comparisons.crimes.direction === 'lower' ? '#166534' : comparisons.crimes.direction === 'higher' ? '#991b1b' : '#6b7280'
+                        }}
+                          title={`${comparisons.crimes.percentile}th percentile - ${comparisons.crimes.label}`}
+                        >
+                          {comparisons.crimes.percentileLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Last 12 months</div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>{nearbyCrimes.total}</div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {nearbyCrimes.violent > 0 && <span style={{ color: '#dc2626' }}>{nearbyCrimes.violent} violent</span>}
+                      {nearbyCrimes.violent > 0 && nearbyCrimes.property > 0 && ', '}
+                      {nearbyCrimes.property > 0 && <span>{nearbyCrimes.property} property</span>}
+                    </div>
+                  </div>
+
+                  {/* Crashes */}
+                  <div style={{ padding: '12px', backgroundColor: '#ecfeff', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '11px', color: '#155e75', fontWeight: '600' }}>TRAFFIC CRASHES</div>
+                      {comparisons?.crashes && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          backgroundColor: comparisons.crashes.direction === 'lower' ? '#dcfce7' : comparisons.crashes.direction === 'higher' ? '#fef2f2' : '#f3f4f6',
+                          color: comparisons.crashes.direction === 'lower' ? '#166534' : comparisons.crashes.direction === 'higher' ? '#991b1b' : '#6b7280'
+                        }}
+                          title={`${comparisons.crashes.percentile}th percentile - ${comparisons.crashes.label}`}
+                        >
+                          {comparisons.crashes.percentileLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                      {timeRange === 'recent' ? 'Last 12 months (approx)' : 'All-time total'}
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0891b2' }}>{nearbyCrashes.total}</div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {nearbyCrashes.injuries > 0 && <span>{nearbyCrashes.injuries} injuries</span>}
+                      {nearbyCrashes.fatal > 0 && <span style={{ color: '#dc2626' }}>, {nearbyCrashes.fatal} fatal</span>}
+                      {nearbyCrashes.hitAndRun > 0 && <span>, {nearbyCrashes.hitAndRun} hit & run</span>}
+                    </div>
+                  </div>
+
+                  {/* 311 Requests */}
+                  <div style={{ padding: '12px', backgroundColor: '#ecfdf5', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '11px', color: '#166534', fontWeight: '600' }}>311 REQUESTS</div>
+                      {comparisons?.services && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          backgroundColor: '#f3f4f6',
+                          color: '#6b7280'
+                        }}
+                          title={`${comparisons.services.percentile}th percentile - ${comparisons.services.label}`}
+                        >
+                          {comparisons.services.percentileLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                      {timeRange === 'recent' ? 'Last 12 months' : 'All-time total'}
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#22c55e' }}>
+                      {timeRange === 'recent' ? nearbyServices.recent : nearbyServices.total}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {timeRange === 'alltime' && nearbyServices.recent > 0 && (
+                        <span style={{ fontWeight: '600', color: '#166534' }}>{nearbyServices.recent} recent</span>
+                      )}
+                      {timeRange === 'recent' && nearbyServices.total > 0 && (
+                        <span>{nearbyServices.total} all-time</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Building Violations */}
+                  <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '11px', color: '#92400e', fontWeight: '600' }}>BUILDING CODE VIOLATIONS</div>
+                      {comparisons?.violations && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          backgroundColor: comparisons.violations.direction === 'lower' ? '#dcfce7' : comparisons.violations.direction === 'higher' ? '#fef2f2' : '#f3f4f6',
+                          color: comparisons.violations.direction === 'lower' ? '#166534' : comparisons.violations.direction === 'higher' ? '#991b1b' : '#6b7280'
+                        }}
+                          title={`${comparisons.violations.percentile}th percentile - ${comparisons.violations.label}`}
+                        >
+                          {comparisons.violations.percentileLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Last 12 months</div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{nearbyViolations.violations}</div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {nearbyViolations.highRisk > 0 && <span style={{ color: '#dc2626' }}>{nearbyViolations.highRisk} high risk</span>}
+                    </div>
+                  </div>
+
+                  {/* Cameras */}
+                  <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#991b1b', fontWeight: '600' }}>CAMERAS</div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Within {radiusBlocks} block{radiusBlocks > 1 ? 's' : ''}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626' }}>{nearbyCameras.total}</div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {nearbyCameras.speed} speed, {nearbyCameras.redLight} red light
+                    </div>
+                  </div>
+
+                  {/* Potholes */}
+                  <div style={{ padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '11px', color: '#374151', fontWeight: '600' }}>POTHOLES PATCHED</div>
+                      {comparisons?.potholes && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          backgroundColor: '#f3f4f6',
+                          color: '#6b7280'
+                        }}
+                          title={`${comparisons.potholes.percentile}th percentile - ${comparisons.potholes.label}`}
+                        >
+                          {comparisons.potholes.percentileLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                      {timeRange === 'recent' ? 'Last 12 months' : 'All-time patched'}
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#6b7280' }}>
+                      {timeRange === 'recent' ? nearbyPotholes.recent : nearbyPotholes.potholes}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {timeRange === 'alltime' && nearbyPotholes.recent > 0 && (
+                        <span style={{ fontWeight: '600', color: '#374151' }}>{nearbyPotholes.recent} recent</span>
+                      )}
+                      {timeRange === 'recent' && nearbyPotholes.potholes > 0 && (
+                        <span>{nearbyPotholes.potholes} all-time</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Permits with Business Vitality */}
+                  <div style={{ padding: '12px', backgroundColor: '#d1fae5', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '11px', color: '#047857', fontWeight: '600' }}>BUILDING PERMITS</div>
+                      {businessVitality && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          backgroundColor: `${businessVitality.color}20`,
+                          color: businessVitality.color
+                        }}>
+                          {businessVitality.score === 'growing' ? '📈' : businessVitality.score === 'declining' ? '📉' : '➖'} {businessVitality.label}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                      {timeRange === 'recent' ? 'Last 12 months' : 'All-time total'}
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>
+                      {timeRange === 'recent' ? nearbyPermits.recent : nearbyPermits.total}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {timeRange === 'alltime' && nearbyPermits.recent > 0 && (
+                        <span style={{ fontWeight: '600', color: '#047857' }}>{nearbyPermits.recent} in last year</span>
+                      )}
+                      {timeRange === 'recent' && nearbyPermits.total > 0 && (
+                        <span>{nearbyPermits.total} all-time</span>
+                      )}
+                      {nearbyPermits.cost > 0 && <span>, ${(nearbyPermits.cost / 1000000).toFixed(1)}M value</span>}
+                    </div>
+                  </div>
+
+                  {/* Businesses */}
+                  <div style={{ padding: '12px', backgroundColor: '#fff7ed', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '11px', color: '#c2410c', fontWeight: '600' }}>BUSINESS LICENSES</div>
+                      {comparisons?.businesses && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          backgroundColor: comparisons.businesses.direction === 'higher' ? '#dcfce7' : comparisons.businesses.direction === 'lower' ? '#fef2f2' : '#f3f4f6',
+                          color: comparisons.businesses.direction === 'higher' ? '#166534' : comparisons.businesses.direction === 'lower' ? '#991b1b' : '#6b7280'
+                        }}
+                          title={`${comparisons.businesses.percentile}th percentile - ${comparisons.businesses.label}`}
+                        >
+                          {comparisons.businesses.percentileLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                      {timeRange === 'recent' ? 'Currently active' : 'All-time licensed'}
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f97316' }}>
+                      {timeRange === 'recent' ? nearbyLicenses.active : nearbyLicenses.total}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {timeRange === 'alltime' && nearbyLicenses.active > 0 && (
+                        <span style={{ fontWeight: '600', color: '#c2410c' }}>{nearbyLicenses.active} currently active</span>
+                      )}
+                      {timeRange === 'recent' && nearbyLicenses.total > 0 && (
+                        <span>{nearbyLicenses.total} all-time</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer with explanation */}
+                <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
+                    <strong>Note:</strong> Data is aggregated from city blocks (~1400ft each) that overlap your {radiusBlocks}-block search radius.
+                    {timeRange === 'recent' ? ' Showing recent activity (last 12 months where available).' : ' Showing all-time historical data.'}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>
+                      Search radius: {radiusBlocks} block{radiusBlocks > 1 ? 's' : ''} (~{Math.round(radiusBlocks * 400)} feet) from your address
+                    </p>
+                    <button
+                      onClick={() => {
+                        const report = document.getElementById('neighborhood-report');
+                        if (report) {
+                          const text = `Neighborhood Report for ${userLocation.address}\n\nSafety Grade: ${neighborhoodScore?.grade || 'N/A'} (${neighborhoodScore?.score || 0}/100)\n\nCrimes (12 mo): ${nearbyCrimes.total}\nCrashes: ${nearbyCrashes.total}\n311 Requests: ${nearbyServices.total}\nViolations: ${nearbyViolations.violations}\nCameras nearby: ${nearbyCameras.total}\n\nGenerated by Autopilot America`;
+                          navigator.clipboard.writeText(text);
+                          alert('Report copied to clipboard!');
+                        }
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '11px',
+                        backgroundColor: '#2563eb',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Copy Report
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Data Layer Selector */}
@@ -888,12 +1649,6 @@ export default function Neighborhoods() {
                   </button>
                 ))}
               </div>
-              {userLocation && nearbyViolations.violations > 0 && (
-                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: '8px', fontSize: '12px' }}>
-                  <strong>{nearbyViolations.violations.toLocaleString()}</strong> violations within 1 mile
-                  {nearbyViolations.highRisk > 0 && <span style={{ color: '#dc2626' }}> ({nearbyViolations.highRisk} high-risk areas)</span>}
-                </div>
-              )}
             </div>
           )}
 
@@ -933,12 +1688,6 @@ export default function Neighborhoods() {
                   </button>
                 ))}
               </div>
-              {userLocation && nearbyCrimes.total > 0 && (
-                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#faf5ff', borderRadius: '8px', fontSize: '12px' }}>
-                  <strong>{nearbyCrimes.total.toLocaleString()}</strong> crimes within 1 mile
-                  {nearbyCrimes.violent > 0 && <span style={{ color: '#dc2626' }}> ({nearbyCrimes.violent} violent)</span>}
-                </div>
-              )}
             </div>
           )}
 
@@ -962,13 +1711,6 @@ export default function Neighborhoods() {
               <div style={{ fontSize: '12px', color: '#0369a1' }}>
                 Circles sized by crash count, colored by danger score (injuries, fatalities)
               </div>
-              {userLocation && nearbyCrashes.total > 0 && (
-                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0f9ff', borderRadius: '8px', fontSize: '12px' }}>
-                  <strong>{nearbyCrashes.total.toLocaleString()}</strong> crashes within 1 mile
-                  {nearbyCrashes.injuries > 0 && <span> ({nearbyCrashes.injuries} injuries)</span>}
-                  {nearbyCrashes.fatal > 0 && <span style={{ color: '#dc2626' }}> ({nearbyCrashes.fatal} fatal)</span>}
-                </div>
-              )}
             </div>
           )}
 
@@ -1008,12 +1750,6 @@ export default function Neighborhoods() {
                   </button>
                 ))}
               </div>
-              {userLocation && nearbyServices.total > 0 && (
-                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0fdf4', borderRadius: '8px', fontSize: '12px' }}>
-                  <strong>{nearbyServices.total.toLocaleString()}</strong> service requests within 1 mile
-                  {nearbyServices.recent > 0 && <span> ({nearbyServices.recent} in last 90 days)</span>}
-                </div>
-              )}
             </div>
           )}
 
@@ -1053,12 +1789,6 @@ export default function Neighborhoods() {
                   </button>
                 ))}
               </div>
-              {userLocation && nearbyPermits.total > 0 && (
-                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f0fdf9', borderRadius: '8px', fontSize: '12px' }}>
-                  <strong>{nearbyPermits.total.toLocaleString()}</strong> permits within 1 mile
-                  {nearbyPermits.recent > 0 && <span> ({nearbyPermits.recent} in last year)</span>}
-                </div>
-              )}
             </div>
           )}
 
@@ -1098,12 +1828,6 @@ export default function Neighborhoods() {
                   </button>
                 ))}
               </div>
-              {userLocation && nearbyLicenses.total > 0 && (
-                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: '8px', fontSize: '12px' }}>
-                  <strong>{nearbyLicenses.total.toLocaleString()}</strong> business licenses within 1 mile
-                  {nearbyLicenses.active > 0 && <span> ({nearbyLicenses.active} active)</span>}
-                </div>
-              )}
             </div>
           )}
 
@@ -1127,127 +1851,12 @@ export default function Neighborhoods() {
               <div style={{ fontSize: '12px', color: '#6b7280' }}>
                 Shows road maintenance activity - larger circles = more repairs needed
               </div>
-              {userLocation && nearbyPotholes.potholes > 0 && (
-                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: '#f3f4f6', borderRadius: '8px', fontSize: '12px' }}>
-                  <strong>{nearbyPotholes.potholes.toLocaleString()}</strong> potholes filled within 1 mile
-                  {nearbyPotholes.recent > 0 && <span> ({nearbyPotholes.recent} in last 90 days)</span>}
-                </div>
-              )}
             </div>
           )}
 
-          {/* Camera Type Filter & Search */}
-          {activeLayer === 'cameras' && (
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            marginBottom: '24px',
-            flexWrap: 'wrap',
-            alignItems: 'center'
-          }}>
-            <div style={{
-              display: 'flex',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              border: '1px solid #d1d5db'
-            }}>
-              <button
-                onClick={() => setCameraFilter('all')}
-                style={{
-                  padding: '10px 16px',
-                  border: 'none',
-                  backgroundColor: cameraFilter === 'all' ? '#111827' : 'white',
-                  color: cameraFilter === 'all' ? 'white' : '#374151',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                All Cameras
-              </button>
-              <button
-                onClick={() => setCameraFilter('speed')}
-                style={{
-                  padding: '10px 16px',
-                  border: 'none',
-                  borderLeft: '1px solid #d1d5db',
-                  backgroundColor: cameraFilter === 'speed' ? '#dc2626' : 'white',
-                  color: cameraFilter === 'speed' ? 'white' : '#374151',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Speed
-              </button>
-              <button
-                onClick={() => setCameraFilter('redlight')}
-                style={{
-                  padding: '10px 16px',
-                  border: 'none',
-                  borderLeft: '1px solid #d1d5db',
-                  backgroundColor: cameraFilter === 'redlight' ? '#7c3aed' : 'white',
-                  color: cameraFilter === 'redlight' ? 'white' : '#374151',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Red Light
-              </button>
-            </div>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active Only</option>
-              <option value="upcoming">Coming Soon</option>
-            </select>
-
-            <input
-              type="text"
-              placeholder="Search camera locations..."
-              value={cameraSearchQuery}
-              onChange={(e) => setCameraSearchQuery(e.target.value)}
-              style={{
-                flex: '1',
-                minWidth: '200px',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: '1px solid #d1d5db',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-          )}
 
           {/* Info Banners */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-            <div style={{
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '12px',
-              padding: '16px'
-            }}>
-              <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#991b1b', fontSize: '14px' }}>
-                Speed Camera Fines
-              </p>
-              <p style={{ margin: '0', fontSize: '13px', color: '#991b1b' }}>
-                6-10 mph over: <strong>$35</strong> | 11+ mph over: <strong>$100</strong>
-                <br />
-                <span style={{ fontSize: '12px' }}>Active in school/park zones. 2nd violation doubles fine.</span>
-              </p>
-            </div>
             <div style={{
               backgroundColor: '#f5f3ff',
               border: '1px solid #ddd6fe',
@@ -1255,9 +1864,24 @@ export default function Neighborhoods() {
               padding: '16px'
             }}>
               <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#5b21b6', fontSize: '14px' }}>
-                Red Light Camera Fines
+                Speed Camera Fines (purple dots)
               </p>
               <p style={{ margin: '0', fontSize: '13px', color: '#5b21b6' }}>
+                6-10 mph over: <strong>$35</strong> | 11+ mph over: <strong>$100</strong>
+                <br />
+                <span style={{ fontSize: '12px' }}>Active in school/park zones. 2nd violation doubles fine.</span>
+              </p>
+            </div>
+            <div style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: '#991b1b', fontSize: '14px' }}>
+                Red Light Camera Fines (red dots)
+              </p>
+              <p style={{ margin: '0', fontSize: '13px', color: '#991b1b' }}>
                 Standard: <strong>$100</strong> | School zone: <strong>$200+</strong>
                 <br />
                 <span style={{ fontSize: '12px' }}>Applies to running red lights at intersections.</span>
@@ -1267,10 +1891,8 @@ export default function Neighborhoods() {
 
           {/* Map and List Container */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 380px',
-            gap: '24px'
-          }} className="map-list-container">
+            display: 'block'
+          }}>
             {/* Map */}
             <div style={{
               backgroundColor: 'white',
@@ -1314,167 +1936,10 @@ export default function Neighborhoods() {
                 selectedLicenseCategory={licenseCategory}
                 potholeBlocks={potholeBlocks}
                 showPotholes={activeLayer === 'potholes'}
+                searchRadiusBlocks={radiusBlocks}
               />
             </div>
 
-            {/* Camera List */}
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              height: '600px'
-            }}>
-              <div style={{
-                padding: '16px',
-                borderBottom: '1px solid #e5e7eb',
-                backgroundColor: '#f9fafb'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
-                  Camera Locations ({filteredSpeedCameras.length + filteredRedLightCameras.length})
-                </h3>
-              </div>
-              <div style={{
-                flex: 1,
-                overflowY: 'auto'
-              }}>
-                {/* Speed Cameras */}
-                {filteredSpeedCameras.map((camera) => (
-                  <div
-                    key={`speed-${camera.id}`}
-                    onClick={() => {
-                      setSelectedSpeedCamera(camera);
-                      setSelectedRedLightCamera(null);
-                    }}
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      backgroundColor: selectedSpeedCamera?.id === camera.id ? '#fef2f2' : 'transparent',
-                      transition: 'background-color 0.15s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedSpeedCamera?.id !== camera.id) {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedSpeedCamera?.id !== camera.id) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                          <span style={{
-                            backgroundColor: '#dc2626',
-                            color: 'white',
-                            padding: '1px 5px',
-                            borderRadius: '3px',
-                            fontSize: '9px',
-                            fontWeight: 'bold'
-                          }}>
-                            SPEED
-                          </span>
-                          <span style={{ fontWeight: '600', fontSize: '13px', color: '#111827' }}>
-                            {camera.address}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                          {camera.locationId} | {camera.firstApproach}
-                          {camera.secondApproach && `, ${camera.secondApproach}`}
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: '9px',
-                        fontWeight: '600',
-                        color: isLive(camera.goLiveDate) ? '#dc2626' : '#f59e0b',
-                        backgroundColor: isLive(camera.goLiveDate) ? '#fef2f2' : '#fffbeb',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        marginLeft: '8px',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {isLive(camera.goLiveDate) ? 'ACTIVE' : formatDate(camera.goLiveDate)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Red Light Cameras */}
-                {filteredRedLightCameras.map((camera) => (
-                  <div
-                    key={`redlight-${camera.id}`}
-                    onClick={() => {
-                      setSelectedRedLightCamera(camera);
-                      setSelectedSpeedCamera(null);
-                    }}
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      backgroundColor: selectedRedLightCamera?.id === camera.id ? '#f5f3ff' : 'transparent',
-                      transition: 'background-color 0.15s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedRedLightCamera?.id !== camera.id) {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedRedLightCamera?.id !== camera.id) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                          <span style={{
-                            backgroundColor: '#7c3aed',
-                            color: 'white',
-                            padding: '1px 5px',
-                            borderRadius: '3px',
-                            fontSize: '9px',
-                            fontWeight: 'bold'
-                          }}>
-                            RED LIGHT
-                          </span>
-                          <span style={{ fontWeight: '600', fontSize: '13px', color: '#111827' }}>
-                            {camera.intersection}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                          {camera.firstApproach || 'N/A'}
-                          {camera.secondApproach && `, ${camera.secondApproach}`}
-                          {camera.thirdApproach && `, ${camera.thirdApproach}`}
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: '9px',
-                        fontWeight: '600',
-                        color: '#7c3aed',
-                        backgroundColor: '#f5f3ff',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        marginLeft: '8px'
-                      }}>
-                        ACTIVE
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {filteredSpeedCameras.length === 0 && filteredRedLightCameras.length === 0 && (
-                  <div style={{ padding: '40px 20px', textAlign: 'center', color: '#6b7280' }}>
-                    No cameras match your filters
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Data Source */}
@@ -1495,13 +1960,6 @@ export default function Neighborhoods() {
 
       <Footer />
 
-      <style jsx global>{`
-        @media (max-width: 900px) {
-          .map-list-container {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </>
   );
 }

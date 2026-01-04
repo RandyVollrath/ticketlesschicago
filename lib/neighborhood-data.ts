@@ -677,3 +677,327 @@ export function getPotholeScoreColor(score: number): string {
   if (score >= 40) return '#f59e0b';  // amber - moderate
   return '#22c55e';  // green - fewer issues
 }
+
+// ============================================
+// NEIGHBORHOOD REPORT UTILITIES
+// ============================================
+
+// City-wide averages per 2-block radius (based on Chicago data)
+// These are rough estimates based on typical Chicago density
+export const CITY_AVERAGES = {
+  crimes: 8,          // avg crimes per 2-block area per year
+  violentCrimes: 1.5, // avg violent crimes
+  crashes: 15,        // avg crashes (historical)
+  fatalCrashes: 0.1,  // avg fatal crashes
+  serviceRequests: 25, // avg 311 requests
+  potholes: 12,       // avg potholes patched
+  violations: 20,     // avg building violations
+  cameras: 0.3,       // avg traffic cameras
+  businesses: 8,      // avg business licenses
+  permits: 15,        // avg building permits
+};
+
+// Calculate percentage difference from city average and percentile ranking
+export function getComparisonToAverage(value: number, average: number): {
+  percentage: number;
+  direction: 'higher' | 'lower' | 'same';
+  label: string;
+  percentile: number;  // 0-100, what percentile this value falls into
+  percentileLabel: string;
+} {
+  if (average === 0) {
+    return { percentage: 0, direction: 'same', label: 'Average', percentile: 50, percentileLabel: '50th percentile' };
+  }
+
+  const diff = ((value - average) / average) * 100;
+
+  // Calculate approximate percentile based on the ratio to average
+  // Using a simplified model: average = 50th percentile
+  // 2x average ≈ 85th, 3x average ≈ 95th, 0.5x average ≈ 25th, etc.
+  const ratio = value / average;
+  let percentile: number;
+  if (ratio <= 0) {
+    percentile = 1;
+  } else if (ratio <= 0.25) {
+    percentile = Math.round(ratio * 40); // 0-10
+  } else if (ratio <= 0.5) {
+    percentile = Math.round(10 + (ratio - 0.25) * 60); // 10-25
+  } else if (ratio <= 1) {
+    percentile = Math.round(25 + (ratio - 0.5) * 50); // 25-50
+  } else if (ratio <= 2) {
+    percentile = Math.round(50 + (ratio - 1) * 35); // 50-85
+  } else if (ratio <= 4) {
+    percentile = Math.round(85 + (ratio - 2) * 5); // 85-95
+  } else {
+    percentile = Math.min(99, Math.round(95 + (ratio - 4))); // 95-99
+  }
+
+  const getPercentileLabel = (p: number) => {
+    if (p <= 20) return `Lower than ${100 - p}% of areas`;
+    if (p <= 40) return `Below avg (${p}th %)`;
+    if (p <= 60) return `Average (${p}th %)`;
+    if (p <= 80) return `Above avg (${p}th %)`;
+    return `Higher than ${p}% of areas`;
+  };
+
+  if (Math.abs(diff) < 10) {
+    return {
+      percentage: Math.round(diff),
+      direction: 'same',
+      label: 'Near average',
+      percentile,
+      percentileLabel: getPercentileLabel(percentile)
+    };
+  }
+
+  if (diff > 0) {
+    return {
+      percentage: Math.round(diff),
+      direction: 'higher',
+      label: `${Math.round(diff)}% above avg`,
+      percentile,
+      percentileLabel: getPercentileLabel(percentile)
+    };
+  }
+
+  return {
+    percentage: Math.round(Math.abs(diff)),
+    direction: 'lower',
+    label: `${Math.round(Math.abs(diff))}% below avg`,
+    percentile,
+    percentileLabel: getPercentileLabel(percentile)
+  };
+}
+
+// Calculate overall neighborhood safety score (0-100, higher = safer)
+export function calculateNeighborhoodScore(data: {
+  crimes: number;
+  violentCrimes: number;
+  crashes: number;
+  fatalCrashes: number;
+  violations: number;
+  potholes: number;
+}): {
+  score: number;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  label: string;
+  color: string;
+} {
+  // Weight factors (higher weight = more impact on score)
+  const weights = {
+    violentCrimes: 30,  // Most important
+    crimes: 20,
+    fatalCrashes: 15,
+    crashes: 15,
+    violations: 10,
+    potholes: 10,
+  };
+
+  // Calculate penalty points (0-100 each)
+  const penalties = {
+    violentCrimes: Math.min(100, (data.violentCrimes / CITY_AVERAGES.violentCrimes) * 50),
+    crimes: Math.min(100, (data.crimes / CITY_AVERAGES.crimes) * 50),
+    fatalCrashes: Math.min(100, data.fatalCrashes * 100), // Any fatal is bad
+    crashes: Math.min(100, (data.crashes / CITY_AVERAGES.crashes) * 50),
+    violations: Math.min(100, (data.violations / CITY_AVERAGES.violations) * 50),
+    potholes: Math.min(100, (data.potholes / CITY_AVERAGES.potholes) * 50),
+  };
+
+  // Calculate weighted penalty
+  let totalWeight = 0;
+  let weightedPenalty = 0;
+
+  for (const [key, weight] of Object.entries(weights)) {
+    totalWeight += weight;
+    weightedPenalty += penalties[key as keyof typeof penalties] * weight;
+  }
+
+  // Score is 100 minus weighted penalty (clamped 0-100)
+  const score = Math.max(0, Math.min(100, 100 - (weightedPenalty / totalWeight)));
+
+  // Convert to grade
+  let grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  let label: string;
+  let color: string;
+
+  if (score >= 80) {
+    grade = 'A';
+    label = 'Excellent';
+    color = '#22c55e';
+  } else if (score >= 65) {
+    grade = 'B';
+    label = 'Good';
+    color = '#84cc16';
+  } else if (score >= 50) {
+    grade = 'C';
+    label = 'Average';
+    color = '#eab308';
+  } else if (score >= 35) {
+    grade = 'D';
+    label = 'Below Average';
+    color = '#f97316';
+  } else {
+    grade = 'F';
+    label = 'Needs Improvement';
+    color = '#dc2626';
+  }
+
+  return { score: Math.round(score), grade, label, color };
+}
+
+// Calculate business vitality score
+export function calculateBusinessVitality(data: {
+  totalLicenses: number;
+  activeLicenses: number;
+  newPermits: number;
+  demolitions: number;
+}): {
+  score: 'growing' | 'stable' | 'declining';
+  label: string;
+  color: string;
+} {
+  const activeRate = data.totalLicenses > 0
+    ? data.activeLicenses / data.totalLicenses
+    : 0;
+
+  const growthIndicator = data.newPermits - (data.demolitions * 2);
+
+  if (activeRate > 0.7 && growthIndicator > 0) {
+    return {
+      score: 'growing',
+      label: 'Growing Area',
+      color: '#22c55e'
+    };
+  }
+
+  if (activeRate < 0.4 || growthIndicator < -2) {
+    return {
+      score: 'declining',
+      label: 'Declining Activity',
+      color: '#f97316'
+    };
+  }
+
+  return {
+    score: 'stable',
+    label: 'Stable',
+    color: '#3b82f6'
+  };
+}
+
+// Get risk alerts based on data
+export function getRiskAlerts(data: {
+  crimes: number;
+  violentCrimes: number;
+  crashes: number;
+  fatalCrashes: number;
+  hitAndRun: number;
+  violations: number;
+  highRiskViolations: number;
+  cameras: number;
+}): Array<{
+  level: 'critical' | 'warning' | 'info';
+  icon: string;
+  message: string;
+  color: string;
+}> {
+  const alerts: Array<{
+    level: 'critical' | 'warning' | 'info';
+    icon: string;
+    message: string;
+    color: string;
+  }> = [];
+
+  // Critical alerts
+  if (data.fatalCrashes > 0) {
+    alerts.push({
+      level: 'critical',
+      icon: '💀',
+      message: `${data.fatalCrashes} fatal crash${data.fatalCrashes > 1 ? 'es' : ''} recorded nearby`,
+      color: '#dc2626',
+    });
+  }
+
+  if (data.violentCrimes >= CITY_AVERAGES.violentCrimes * 3) {
+    alerts.push({
+      level: 'critical',
+      icon: '⚠️',
+      message: `High violent crime area (${Math.round(data.violentCrimes / CITY_AVERAGES.violentCrimes)}x city average)`,
+      color: '#dc2626',
+    });
+  }
+
+  // Warning alerts
+  if (data.crimes >= CITY_AVERAGES.crimes * 2) {
+    alerts.push({
+      level: 'warning',
+      icon: '🚨',
+      message: `Above average crime (${Math.round((data.crimes / CITY_AVERAGES.crimes) * 100)}% of city avg)`,
+      color: '#f97316',
+    });
+  }
+
+  if (data.hitAndRun >= 5) {
+    alerts.push({
+      level: 'warning',
+      icon: '🚗',
+      message: `${data.hitAndRun} hit-and-run incidents recorded`,
+      color: '#f97316',
+    });
+  }
+
+  if (data.highRiskViolations >= 5) {
+    alerts.push({
+      level: 'warning',
+      icon: '🏚️',
+      message: `${data.highRiskViolations} high-risk building violations`,
+      color: '#f97316',
+    });
+  }
+
+  // Info alerts
+  if (data.cameras > 0) {
+    alerts.push({
+      level: 'info',
+      icon: '📷',
+      message: `${data.cameras} traffic camera${data.cameras > 1 ? 's' : ''} nearby - drive carefully`,
+      color: '#3b82f6',
+    });
+  }
+
+  if (data.crimes <= CITY_AVERAGES.crimes * 0.5 && data.violentCrimes <= 1) {
+    alerts.push({
+      level: 'info',
+      icon: '✅',
+      message: 'Low crime area - below city average',
+      color: '#22c55e',
+    });
+  }
+
+  return alerts;
+}
+
+// Calculate distance between two points in miles
+export function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Format distance for display
+export function formatDistance(miles: number): string {
+  if (miles < 0.1) {
+    return `${Math.round(miles * 5280)} ft`;
+  }
+  return `${miles.toFixed(2)} mi`;
+}
