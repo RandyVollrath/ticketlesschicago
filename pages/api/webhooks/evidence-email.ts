@@ -45,7 +45,7 @@ interface UserProfile {
 }
 
 /**
- * Use AI (Claude) to professionally integrate user evidence into contest letter
+ * Use AI (OpenAI GPT-4o-mini) to professionally integrate user evidence into contest letter
  */
 async function regenerateLetterWithAI(
   originalLetter: string,
@@ -53,40 +53,25 @@ async function regenerateLetterWithAI(
   ticketDetails: any,
   hasAttachments: boolean
 ): Promise<string> {
-  // Check for Anthropic API key
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // Check for OpenAI API key
+  const apiKey = process.env.OPENAI_API_KEY;
   console.log('=== AI LETTER REGENERATION ===');
-  console.log('ANTHROPIC_API_KEY exists:', !!apiKey);
-  console.log('ANTHROPIC_API_KEY length:', apiKey?.length || 0);
+  console.log('OPENAI_API_KEY exists:', !!apiKey);
   console.log('Original letter length:', originalLetter?.length || 0);
   console.log('User evidence length:', userEvidence?.length || 0);
 
   if (!apiKey) {
-    console.log('No ANTHROPIC_API_KEY found, using basic evidence integration');
+    console.log('No OPENAI_API_KEY found, using basic evidence integration');
     return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
   }
 
-  console.log('ANTHROPIC_API_KEY found, attempting Claude AI integration...');
+  console.log('OPENAI_API_KEY found, attempting GPT-4o-mini integration...');
 
   // Clean up user evidence first
   const cleanedEvidence = cleanUserEvidence(userEvidence);
   console.log('Cleaned evidence:', cleanedEvidence.substring(0, 100) + '...');
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 2000,
-        messages: [
-          {
-            role: 'user',
-            content: `You are a legal writing expert specializing in parking ticket contest letters. Your job is to integrate user-provided evidence into an existing contest letter in a professional, persuasive manner that maximizes the chance of winning the contest.
+  const prompt = `You are a legal writing expert specializing in parking ticket contest letters. Your job is to integrate user-provided evidence into an existing contest letter in a professional, persuasive manner that maximizes the chance of winning the contest.
 
 Rules:
 1. Keep the existing letter structure (header with date/address, salutation, body, closing with signature)
@@ -116,31 +101,46 @@ Ticket details:
 
 ${hasAttachments ? 'The user has attached supporting documentation (screenshot/photo) that should be referenced.' : 'No attachments were provided.'}
 
-Please rewrite the contest letter integrating this evidence professionally. Return ONLY the letter text.`
+Please rewrite the contest letter integrating this evidence professionally. Return ONLY the letter text.`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
           }
         ],
+        max_tokens: 2000,
+        temperature: 0.7,
       }),
     });
 
-    console.log('Claude API response status:', response.status);
+    console.log('OpenAI API response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Anthropic API error:', response.status, errorText);
+      console.error('OpenAI API error:', response.status, errorText);
       return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
     }
 
     const data = await response.json();
-    console.log('Claude API response received, content blocks:', data.content?.length);
-    const newLetter = data.content?.[0]?.text?.trim();
+    console.log('OpenAI API response received');
+    const newLetter = data.choices?.[0]?.message?.content?.trim();
 
     if (!newLetter || newLetter.length < 200) {
       console.error('AI returned invalid letter, length:', newLetter?.length);
-      console.error('Full response:', JSON.stringify(data).substring(0, 500));
       return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
     }
 
-    console.log('Successfully generated AI-enhanced contest letter with Claude, length:', newLetter.length);
+    console.log('Successfully generated AI-enhanced contest letter with GPT-4o-mini, length:', newLetter.length);
     return newLetter;
 
   } catch (error: any) {
