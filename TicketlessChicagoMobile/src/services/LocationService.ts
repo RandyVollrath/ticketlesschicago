@@ -1,5 +1,5 @@
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
-import Geolocation from '@react-native-community/geolocation';
+import { Platform, PermissionsAndroid, Alert, Linking } from 'react-native';
+import Geolocation, { GeoPosition, GeoError, GeoOptions } from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance, AuthorizationStatus } from '@notifee/react-native';
 import ApiClient, { ApiErrorType } from '../utils/ApiClient';
@@ -19,7 +19,25 @@ export interface ParkingRule {
 export interface Coordinates {
   latitude: number;
   longitude: number;
+  accuracy?: number; // in meters
+  altitude?: number | null;
+  altitudeAccuracy?: number | null;
+  heading?: number | null;
+  speed?: number | null;
 }
+
+export type LocationAccuracy = 'high' | 'balanced' | 'low';
+
+// Watch subscription ID for continuous tracking
+let watchId: number | null = null;
+
+// Last known good location cache
+interface CachedLocation {
+  coords: Coordinates;
+  timestamp: number;
+}
+let lastKnownLocation: CachedLocation | null = null;
+const LOCATION_CACHE_MAX_AGE_MS = 60000; // 1 minute
 
 export interface ParkingCheckResult {
   coords: Coordinates;
@@ -29,45 +47,438 @@ export interface ParkingCheckResult {
 }
 
 class LocationServiceClass {
-  async requestLocationPermission(): Promise<boolean> {
+  /**
+   * Request location permissions with support for background location on Android
+   * @param includeBackground - Whether to request background location (Android 10+)
+   */
+  async requestLocationPermission(includeBackground: boolean = false): Promise<boolean> {
     if (Platform.OS === 'ios') {
-      return true; // iOS permissions handled via Info.plist
+      // iOS: Request authorization through the native Geolocation API
+      return new Promise((resolve) => {
+        Geolocation.requestAuthorization('always');
+        // Give iOS time to process the request
+        setTimeout(() => resolve(true), 500);
+      });
     }
 
     try {
-      const granted = await PermissionsAndroid.request(
+      // First, request fine location permission
+      const fineLocationGranted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
           title: 'Location Permission',
-          message: 'Ticketless Chicago needs access to your location to check parking restrictions',
+          message: 'Ticketless Chicago needs access to your location to check parking restrictions where you park.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
         }
       );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
+
+      if (fineLocationGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+        log.warn('Fine location permission denied');
+        return false;
+      }
+
+      // For Android 10+ (API 29+), request background location separately
+      if (includeBackground && Number(Platform.Version) >= 29) {
+        const backgroundGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+          {
+            title: 'Background Location Permission',
+            message:
+              'Ticketless Chicago needs background location access to automatically check parking restrictions when you disconnect from your car, even when the app is closed.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+
+        if (backgroundGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+          log.warn('Background location permission denied - auto-detection may not work when app is closed');
+          // Still return true since we have foreground permission
+          // Background is optional but recommended
+        }
+      }
+
+      return true;
     } catch (err) {
       log.error('Error requesting location permission', err);
       return false;
     }
   }
 
-  getCurrentLocation(): Promise<Coordinates> {
-    return new Promise((resolve, reject) => {
+  /**
+   * Check if location services are enabled on the device
+   */
+  async checkLocationServicesEnabled(): Promise<boolean> {
+    return new Promise((resolve) => {
       Geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
+        () => resolve(true),
         (error) => {
-          log.error('Error getting location', error);
-          reject(error);
+          // Error code 2 means position unavailable (services disabled)
+          // Error code 1 means permission denied
+          if (error.code === 2) {
+            resolve(false);
+          } else {
+            resolve(true); // Services enabled but other error
+          }
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
       );
     });
+  }
+
+  /**
+   * Prompt user to enable location services
+   */
+  async promptEnableLocationServices(): Promise<void> {
+    Alert.alert(
+      'Location Services Disabled',
+      'Please enable location services in your device settings to use parking detection.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              Linking.openURL('app-settings:');
+            } else {
+              Linking.openSettings();
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  /**
+   * Get current location with high accuracy using native GPS
+   * Uses multiple strategies to get the most accurate position:
+   * 1. Try high accuracy first (uses GPS + network)
+   * 2. Wait for better accuracy if initial reading is poor
+   * 3. Fall back to balanced accuracy if high accuracy fails
+   */
+  getCurrentLocation(accuracy: LocationAccuracy = 'high'): Promise<Coordinates> {
+    const options: GeoOptions = this.getLocationOptions(accuracy);
+
+    return new Promise((resolve, reject) => {
+      Geolocation.getCurrentPosition(
+        (position: GeoPosition) => {
+          const coords: Coordinates = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            altitude: position.coords.altitude,
+            altitudeAccuracy: position.coords.altitudeAccuracy,
+            heading: position.coords.heading,
+            speed: position.coords.speed,
+          };
+
+          log.debug('Location obtained', {
+            lat: coords.latitude.toFixed(6),
+            lng: coords.longitude.toFixed(6),
+            accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
+          });
+
+          resolve(coords);
+        },
+        (error: GeoError) => {
+          log.error('Error getting location', { code: error.code, message: error.message });
+
+          // If high accuracy fails, try balanced accuracy as fallback
+          if (accuracy === 'high') {
+            log.info('Falling back to balanced accuracy');
+            this.getCurrentLocation('balanced')
+              .then(resolve)
+              .catch(reject);
+          } else {
+            reject(error);
+          }
+        },
+        options
+      );
+    });
+  }
+
+  /**
+   * Get location options based on desired accuracy level
+   */
+  private getLocationOptions(accuracy: LocationAccuracy): GeoOptions {
+    switch (accuracy) {
+      case 'high':
+        return {
+          enableHighAccuracy: true,
+          timeout: 20000, // 20 seconds for high accuracy
+          maximumAge: 5000, // Only use cache if < 5 seconds old
+          forceRequestLocation: true, // Force new GPS reading on Android
+          forceLocationManager: false, // Use Google Play Services if available
+          showLocationDialog: true, // Show dialog if location is off (Android)
+        };
+      case 'balanced':
+        return {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 30000, // Accept 30-second old cache
+          forceRequestLocation: false,
+          forceLocationManager: false,
+          showLocationDialog: true,
+        };
+      case 'low':
+        return {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 60000, // Accept 1-minute old cache
+          forceRequestLocation: false,
+          forceLocationManager: true, // Use location manager (faster but less accurate)
+          showLocationDialog: false,
+        };
+    }
+  }
+
+  /**
+   * Get high-accuracy location by waiting for GPS to stabilize
+   * This method waits for a position with accuracy better than the threshold
+   * or times out after the specified duration
+   */
+  async getHighAccuracyLocation(
+    targetAccuracyMeters: number = 20,
+    maxWaitMs: number = 30000
+  ): Promise<Coordinates> {
+    return new Promise((resolve, reject) => {
+      let bestPosition: Coordinates | null = null;
+      let resolved = false;
+      const startTime = Date.now();
+
+      const options = {
+        enableHighAccuracy: true,
+        distanceFilter: 0, // Get all updates
+        interval: 1000, // Android: check every second
+        fastestInterval: 500, // Android: accept faster updates
+        forceRequestLocation: true,
+        forceLocationManager: false,
+        showLocationDialog: true,
+      };
+
+      const id = Geolocation.watchPosition(
+        (position: GeoPosition) => {
+          const coords: Coordinates = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            altitude: position.coords.altitude,
+            altitudeAccuracy: position.coords.altitudeAccuracy,
+            heading: position.coords.heading,
+            speed: position.coords.speed,
+          };
+
+          log.debug('High accuracy update', {
+            accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
+            elapsed: `${Date.now() - startTime}ms`,
+          });
+
+          // Keep track of best position
+          if (!bestPosition || (coords.accuracy && bestPosition.accuracy && coords.accuracy < bestPosition.accuracy)) {
+            bestPosition = coords;
+          }
+
+          // If we've achieved target accuracy, resolve immediately
+          if (coords.accuracy && coords.accuracy <= targetAccuracyMeters && !resolved) {
+            resolved = true;
+            Geolocation.clearWatch(id);
+            log.info(`Achieved target accuracy: ${coords.accuracy.toFixed(1)}m`);
+            resolve(coords);
+          }
+        },
+        (error: GeoError) => {
+          if (!resolved) {
+            Geolocation.clearWatch(id);
+            reject(error);
+          }
+        },
+        options
+      );
+
+      // Timeout handler - return best position we got
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          Geolocation.clearWatch(id);
+
+          if (bestPosition) {
+            log.info(`Timeout reached, using best position: ${bestPosition.accuracy?.toFixed(1)}m accuracy`);
+            resolve(bestPosition);
+          } else {
+            // Fall back to regular getCurrentLocation
+            this.getCurrentLocation('balanced')
+              .then(resolve)
+              .catch(reject);
+          }
+        }
+      }, maxWaitMs);
+    });
+  }
+
+  /**
+   * Start continuous location watching for better accuracy over time
+   * Returns a cleanup function to stop watching
+   */
+  startWatchingLocation(
+    onLocationUpdate: (coords: Coordinates) => void,
+    onError?: (error: GeoError) => void,
+    distanceFilterMeters: number = 10
+  ): () => void {
+    // Clear any existing watch
+    this.stopWatchingLocation();
+
+    const options = {
+      enableHighAccuracy: true,
+      distanceFilter: distanceFilterMeters,
+      interval: 5000, // Android: 5 second intervals
+      fastestInterval: 2000, // Android: accept faster if available
+      forceRequestLocation: true,
+      forceLocationManager: false,
+      showLocationDialog: true,
+    };
+
+    watchId = Geolocation.watchPosition(
+      (position: GeoPosition) => {
+        const coords: Coordinates = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          altitude: position.coords.altitude,
+          altitudeAccuracy: position.coords.altitudeAccuracy,
+          heading: position.coords.heading,
+          speed: position.coords.speed,
+        };
+        onLocationUpdate(coords);
+      },
+      (error: GeoError) => {
+        log.error('Watch position error', error);
+        onError?.(error);
+      },
+      options
+    );
+
+    log.info('Started watching location');
+
+    return () => this.stopWatchingLocation();
+  }
+
+  /**
+   * Stop watching location updates
+   */
+  stopWatchingLocation(): void {
+    if (watchId !== null) {
+      Geolocation.clearWatch(watchId);
+      watchId = null;
+      log.info('Stopped watching location');
+    }
+  }
+
+  /**
+   * Get location with automatic retry on failure
+   * Tries up to maxRetries times with exponential backoff
+   */
+  async getLocationWithRetry(
+    maxRetries: number = 3,
+    onRetry?: (attempt: number, maxAttempts: number) => void
+  ): Promise<Coordinates> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Use high accuracy for first attempt, fall back to balanced for retries
+        const accuracy: LocationAccuracy = attempt === 1 ? 'high' : 'balanced';
+        const coords = await this.getCurrentLocation(accuracy);
+
+        // Cache successful location
+        this.cacheLocation(coords);
+
+        return coords;
+      } catch (error) {
+        lastError = error as Error;
+        log.warn(`Location attempt ${attempt}/${maxRetries} failed`, error);
+
+        if (attempt < maxRetries) {
+          // Notify caller of retry
+          onRetry?.(attempt, maxRetries);
+
+          // Exponential backoff: 1s, 2s, 4s...
+          const delayMs = Math.pow(2, attempt - 1) * 1000;
+          await new Promise<void>(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    // All retries failed - try to return cached location if available
+    const cached = this.getCachedLocation();
+    if (cached) {
+      log.info('Using cached location after retry failures');
+      return cached;
+    }
+
+    throw lastError || new Error('Failed to get location after multiple attempts');
+  }
+
+  /**
+   * Cache a location for later use
+   */
+  private cacheLocation(coords: Coordinates): void {
+    lastKnownLocation = {
+      coords,
+      timestamp: Date.now(),
+    };
+  }
+
+  /**
+   * Get cached location if still valid
+   */
+  getCachedLocation(): Coordinates | null {
+    if (!lastKnownLocation) return null;
+
+    const age = Date.now() - lastKnownLocation.timestamp;
+    if (age > LOCATION_CACHE_MAX_AGE_MS) {
+      lastKnownLocation = null;
+      return null;
+    }
+
+    return lastKnownLocation.coords;
+  }
+
+  /**
+   * Get the last known location regardless of age (useful for showing approximate position)
+   */
+  getLastKnownLocation(): Coordinates | null {
+    return lastKnownLocation?.coords || null;
+  }
+
+  /**
+   * Clear the location cache
+   */
+  clearLocationCache(): void {
+    lastKnownLocation = null;
+  }
+
+  /**
+   * Get accuracy description for UI display
+   */
+  getAccuracyDescription(accuracyMeters?: number): { label: string; color: string } {
+    if (!accuracyMeters) {
+      return { label: 'Unknown', color: '#6B7280' }; // gray
+    }
+
+    if (accuracyMeters <= 10) {
+      return { label: 'Excellent', color: '#10B981' }; // green
+    } else if (accuracyMeters <= 25) {
+      return { label: 'Good', color: '#10B981' }; // green
+    } else if (accuracyMeters <= 50) {
+      return { label: 'Fair', color: '#F59E0B' }; // amber
+    } else if (accuracyMeters <= 100) {
+      return { label: 'Poor', color: '#F59E0B' }; // amber
+    } else {
+      return { label: 'Very Poor', color: '#EF4444' }; // red
+    }
   }
 
   async checkParkingRules(coords: Coordinates): Promise<ParkingRule[]> {
