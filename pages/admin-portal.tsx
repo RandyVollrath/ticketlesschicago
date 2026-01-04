@@ -2321,6 +2321,7 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Violation</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Expected Send</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Lob Status</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Created</th>
                         <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Letter</th>
@@ -2357,6 +2358,22 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
                             }}>
                               {ticket.stage_label}
                             </span>
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '12px' }}>
+                            {ticket.mailed_at ? (
+                              <span style={{ color: '#059669', fontWeight: '500' }}>Sent</span>
+                            ) : ticket.evidence_deadline ? (
+                              <div>
+                                <div style={{ fontWeight: '500' }}>
+                                  {new Date(ticket.evidence_deadline).toLocaleDateString()}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                                  {new Date(ticket.evidence_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#9ca3af' }}>-</span>
+                            )}
                           </td>
                           <td style={{ padding: '12px' }}>
                             {ticket.lob_status ? (

@@ -76,10 +76,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ticket_number,
         status,
         violation_description,
+        violation_code,
         amount,
         user_evidence,
         created_at,
-        user_id
+        user_id,
+        evidence_deadline
       `)
       .order('created_at', { ascending: false })
       .limit(parseInt(limit as string));
@@ -169,9 +171,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user_name: user.first_name && user.last_name
           ? `${user.first_name} ${user.last_name}`
           : user.first_name || null,
-        violation_description: ticket.violation_description,
+        violation_description: ticket.violation_description || ticket.violation_code,
         ticket_amount: ticket.amount,
         created_at: ticket.created_at,
+        evidence_deadline: ticket.evidence_deadline,
         letter_id: letter?.id || null,
         letter_status: letter?.status || null,
         letter_content: letter?.letter_content || null,
