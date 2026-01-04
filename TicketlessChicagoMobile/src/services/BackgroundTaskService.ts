@@ -208,8 +208,17 @@ class BackgroundTaskServiceClass {
     try {
       log.info('Triggering parking check after car disconnection');
 
-      // Get current location
-      const coords = await LocationService.getCurrentLocation();
+      // Get high-accuracy location - this is critical for parking detection
+      // Use getHighAccuracyLocation to wait for GPS to stabilize (target 20m accuracy, max 15s wait)
+      let coords;
+      try {
+        coords = await LocationService.getHighAccuracyLocation(20, 15000);
+        log.info(`Got high-accuracy location: ${coords.accuracy?.toFixed(1)}m accuracy`);
+      } catch (error) {
+        log.warn('High accuracy location failed, trying with retry logic', error);
+        // Fall back to retry logic
+        coords = await LocationService.getLocationWithRetry(3);
+      }
 
       // Check parking rules
       const result = await LocationService.checkParkingLocation(coords);
@@ -223,12 +232,15 @@ class BackgroundTaskServiceClass {
 
       // Send notification if there are restrictions
       if (result.rules.length > 0) {
-        await this.sendParkingNotification(result);
+        await this.sendParkingNotification(result, coords.accuracy);
       } else {
-        await this.sendSafeNotification(result.address);
+        await this.sendSafeNotification(result.address, coords.accuracy);
       }
 
-      log.info('Parking check completed', { rulesFound: result.rules.length });
+      log.info('Parking check completed', {
+        rulesFound: result.rules.length,
+        accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
+      });
     } catch (error) {
       log.error('Failed to perform parking check', error);
       await this.sendErrorNotification();
@@ -238,15 +250,19 @@ class BackgroundTaskServiceClass {
   /**
    * Send notification about parking restrictions
    */
-  private async sendParkingNotification(result: {
-    address: string;
-    rules: Array<{ message: string; severity: string }>;
-  }): Promise<void> {
+  private async sendParkingNotification(
+    result: {
+      address: string;
+      rules: Array<{ message: string; severity: string }>;
+    },
+    accuracy?: number
+  ): Promise<void> {
     const hasCritical = result.rules.some(r => r.severity === 'critical');
+    const accuracyNote = accuracy ? ` (GPS: ${accuracy.toFixed(0)}m)` : '';
 
     await notifee.displayNotification({
       title: hasCritical ? 'Parking Restriction Active!' : 'Parking Alert',
-      body: `At ${result.address}:\n${result.rules.map(r => r.message).join('\n')}`,
+      body: `At ${result.address}${accuracyNote}:\n${result.rules.map(r => r.message).join('\n')}`,
       android: {
         channelId: 'parking-monitoring',
         importance: AndroidImportance.HIGH,
@@ -264,10 +280,11 @@ class BackgroundTaskServiceClass {
   /**
    * Send notification that parking is safe
    */
-  private async sendSafeNotification(address: string): Promise<void> {
+  private async sendSafeNotification(address: string, accuracy?: number): Promise<void> {
+    const accuracyNote = accuracy ? ` (GPS: ${accuracy.toFixed(0)}m)` : '';
     await notifee.displayNotification({
       title: 'Parking Check Complete',
-      body: `No restrictions found at ${address}. You're good to park!`,
+      body: `No restrictions found at ${address}${accuracyNote}. You're good to park!`,
       android: {
         channelId: 'parking-monitoring',
         pressAction: { id: 'default' },

@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { Button, Card, RuleCard, StatusBadge } from '../components';
-import LocationService, { ParkingCheckResult } from '../services/LocationService';
+import LocationService, { ParkingCheckResult, Coordinates } from '../services/LocationService';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import { ParkingHistoryService } from './HistoryScreen';
@@ -39,6 +39,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOffline, setIsOffline] = useState(false);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | undefined>(undefined);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // Update time every minute
   useEffect(() => {
@@ -144,7 +146,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setLoading(true);
 
     try {
-      const hasLocationPermission = await LocationService.requestLocationPermission();
+      // Request location permission with background access for auto-detection
+      const hasLocationPermission = await LocationService.requestLocationPermission(true);
       if (!hasLocationPermission) {
         Alert.alert('Permission Denied', 'Location permission is required to check parking restrictions');
         setLoading(false);
@@ -179,18 +182,41 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   // Core parking check logic - used by both manual check and auto-check
-  const performParkingCheck = useCallback(async (showAllClearAlert: boolean = true) => {
+  const performParkingCheck = useCallback(async (showAllClearAlert: boolean = true, useHighAccuracy: boolean = true) => {
     setLoading(true);
+    setIsGettingLocation(true);
+    setLocationAccuracy(undefined);
 
     try {
       const hasPermission = await LocationService.requestLocationPermission();
       if (!hasPermission) {
         Alert.alert('Permission Required', 'Please enable location access to check parking restrictions');
         setLoading(false);
+        setIsGettingLocation(false);
         return;
       }
 
-      const coords = await LocationService.getCurrentLocation();
+      // Check if location services are enabled
+      const servicesEnabled = await LocationService.checkLocationServicesEnabled();
+      if (!servicesEnabled) {
+        await LocationService.promptEnableLocationServices();
+        setLoading(false);
+        setIsGettingLocation(false);
+        return;
+      }
+
+      // Use high-accuracy location for parking checks to ensure we get the right street
+      let coords: Coordinates;
+      if (useHighAccuracy) {
+        // Wait for GPS to stabilize and get accuracy within 20 meters
+        coords = await LocationService.getHighAccuracyLocation(20, 15000);
+      } else {
+        coords = await LocationService.getCurrentLocation('high');
+      }
+
+      setLocationAccuracy(coords.accuracy);
+      setIsGettingLocation(false);
+
       const result = await LocationService.checkParkingLocation(coords);
       await LocationService.saveParkingCheckResult(result);
       await ParkingHistoryService.addToHistory(result.coords, result.rules, result.address);
@@ -200,13 +226,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       if (result.rules.length > 0) {
         await LocationService.sendParkingAlert(result.rules);
       } else if (showAllClearAlert) {
-        Alert.alert('All Clear!', `No parking restrictions at ${result.address}`);
+        const accuracyInfo = coords.accuracy
+          ? ` (accuracy: ${coords.accuracy.toFixed(0)}m)`
+          : '';
+        Alert.alert('All Clear!', `No parking restrictions at ${result.address}${accuracyInfo}`);
       }
     } catch (error) {
       log.error('Error checking location', error);
       Alert.alert('Error', 'Failed to check parking location. Please try again.');
     } finally {
       setLoading(false);
+      setIsGettingLocation(false);
     }
   }, []);
 
@@ -259,12 +289,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Quick Action */}
         <Button
-          title={loading ? 'Checking...' : 'Check My Parking'}
+          title={isGettingLocation ? 'Getting GPS...' : loading ? 'Checking...' : 'Check My Parking'}
           onPress={checkCurrentLocation}
           loading={loading}
           size="lg"
           style={styles.mainButton}
         />
+
+        {/* Location Accuracy Indicator */}
+        {locationAccuracy !== undefined && (
+          <View style={styles.accuracyContainer}>
+            <View style={[
+              styles.accuracyDot,
+              { backgroundColor: LocationService.getAccuracyDescription(locationAccuracy).color }
+            ]} />
+            <Text style={styles.accuracyText}>
+              GPS Accuracy: {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
+            </Text>
+          </View>
+        )}
 
         {/* Monitoring Status Card */}
         <Card
@@ -415,7 +458,24 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   mainButton: {
+    marginBottom: spacing.sm,
+  },
+  accuracyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.lg,
+    paddingVertical: spacing.xs,
+  },
+  accuracyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.xs,
+  },
+  accuracyText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
   cardDescription: {
     fontSize: typography.sizes.base,
