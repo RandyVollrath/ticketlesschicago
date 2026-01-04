@@ -56,6 +56,50 @@ interface UserProfile {
   mailing_zip: string | null;
 }
 
+// Normalize violation type from various formats to our enum values
+function normalizeViolationType(input: string): string {
+  const normalized = input.toLowerCase().trim();
+
+  // Map common variations to our enum values
+  if (normalized.includes('expired') && (normalized.includes('plate') || normalized.includes('registration') || normalized.includes('sticker'))) {
+    return 'expired_plates';
+  }
+  if (normalized.includes('city sticker') || normalized.includes('no sticker') || normalized.includes('wheel tax')) {
+    return 'no_city_sticker';
+  }
+  if (normalized.includes('meter') || normalized.includes('parking meter')) {
+    return 'expired_meter';
+  }
+  if (normalized.includes('disabled') || normalized.includes('handicap')) {
+    return 'disabled_zone';
+  }
+  if (normalized.includes('street clean') || normalized.includes('sweeping')) {
+    return 'street_cleaning';
+  }
+  if (normalized.includes('rush hour') || normalized.includes('rush-hour') || normalized.includes('tow zone')) {
+    return 'rush_hour';
+  }
+  if (normalized.includes('hydrant') || normalized.includes('fire')) {
+    return 'fire_hydrant';
+  }
+  if (normalized.includes('speed') || normalized.includes('camera')) {
+    return 'speed_camera';
+  }
+  if (normalized.includes('red light')) {
+    return 'red_light_camera';
+  }
+
+  // If already in correct format, return as-is
+  const validTypes = ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
+                      'street_cleaning', 'rush_hour', 'fire_hydrant', 'speed_camera',
+                      'red_light_camera', 'other_unknown'];
+  if (validTypes.includes(normalized)) {
+    return normalized;
+  }
+
+  return 'other_unknown';
+}
+
 // Defense templates by violation type
 const DEFENSE_TEMPLATES: Record<string, { type: string; template: string }> = {
   expired_plates: {
@@ -204,7 +248,7 @@ function parseCSV(content: string): ParsedTicket[] {
       user_id: getValue('user_id'),
       ticket_number: getValue('ticket_number'),
       violation_code: getValue('violation_code'),
-      violation_type: getValue('violation_type'),
+      violation_type: normalizeViolationType(getValue('violation_type')),
       violation_description: getValue('violation_description'),
       violation_date: getValue('violation_date'),
       amount: getValue('amount'),
