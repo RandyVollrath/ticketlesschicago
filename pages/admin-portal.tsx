@@ -795,6 +795,12 @@ export default function AdminPortal() {
   const [exportJobs, setExportJobs] = useState<any[]>([]);
   const [vaUploads, setVaUploads] = useState<any[]>([]);
 
+  // Ticket pipeline state
+  const [pipelineTickets, setPipelineTickets] = useState<any[]>([]);
+  const [pipelineStats, setPipelineStats] = useState<any>({ total: 0, ticket_detected: 0, letter_generated: 0, evidence_letter_generated: 0, letter_sent: 0 });
+  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'ticket_detected' | 'letter_generated' | 'evidence_letter_generated' | 'letter_sent'>('all');
+  const [selectedPipelineTicket, setSelectedPipelineTicket] = useState<any>(null);
+
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
   const [permitDocs, setPermitDocs] = useState<PermitDocument[]>([]);
@@ -1289,10 +1295,38 @@ export default function AdminPortal() {
       } else {
         console.error('Error fetching autopilot stats:', data.error);
       }
+
+      // Also fetch pipeline data
+      await fetchPipelineData();
     } catch (error: any) {
       console.error('Error fetching ticket contesting data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPipelineData = async (stage?: string) => {
+    try {
+      const adminToken = localStorage.getItem('adminToken');
+      const url = new URL('/api/admin/ticket-pipeline', window.location.origin);
+      if (stage && stage !== 'all') {
+        url.searchParams.append('stage', stage);
+      }
+      url.searchParams.append('limit', '100');
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          'x-admin-token': adminToken || ''
+        }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setPipelineTickets(data.tickets || []);
+        setPipelineStats(data.stats || { total: 0, ticket_detected: 0, letter_generated: 0, evidence_letter_generated: 0, letter_sent: 0 });
+      }
+    } catch (error) {
+      console.error('Error fetching pipeline data:', error);
     }
   };
 
@@ -1952,41 +1986,110 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
 
                 {/* Upload Results */}
                 {uploadResults && (
-                  <div style={{ marginTop: '16px', backgroundColor: '#f0fdf4', border: '1px solid #10b981', borderRadius: '8px', padding: '16px' }}>
-                    <div style={{ fontWeight: '600', color: '#166534', marginBottom: '12px' }}>
-                      Upload Results
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
-                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#374151' }}>{uploadResults.total}</div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Records</div>
+                  <div style={{ marginTop: '16px' }}>
+                    {/* Big Status Banner */}
+                    {uploadResults.errors && uploadResults.errors.length > 0 ? (
+                      <div style={{
+                        backgroundColor: '#fef2f2',
+                        border: '2px solid #dc2626',
+                        borderRadius: '8px',
+                        padding: '20px',
+                        marginBottom: '16px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#9888;</div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#dc2626', marginBottom: '4px' }}>
+                          Upload Had Errors
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#991b1b' }}>
+                          {uploadResults.inserted} of {uploadResults.total} tickets created - please review errors below
+                        </div>
                       </div>
-                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{uploadResults.inserted}</div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Inserted</div>
+                    ) : uploadResults.inserted === 0 ? (
+                      <div style={{
+                        backgroundColor: '#fef3c7',
+                        border: '2px solid #f59e0b',
+                        borderRadius: '8px',
+                        padding: '20px',
+                        marginBottom: '16px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#9888;</div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#b45309', marginBottom: '4px' }}>
+                          No Tickets Created
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#92400e' }}>
+                          {uploadResults.skipped} rows skipped (already exist or plate not found)
+                        </div>
                       </div>
-                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#3b82f6' }}>{uploadResults.matchedToUser}</div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Matched to Users</div>
-                      </div>
-                      <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b' }}>{uploadResults.skipped}</div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Skipped</div>
-                      </div>
-                    </div>
-                    {uploadResults.errors && uploadResults.errors.length > 0 && (
-                      <div style={{ marginTop: '12px' }}>
-                        <div style={{ fontWeight: '500', color: '#dc2626', marginBottom: '4px', fontSize: '13px' }}>Errors:</div>
-                        <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#991b1b', maxHeight: '100px', overflowY: 'auto' }}>
-                          {uploadResults.errors.slice(0, 10).map((err: string, i: number) => (
-                            <li key={i}>{err}</li>
-                          ))}
-                          {uploadResults.errors.length > 10 && (
-                            <li>...and {uploadResults.errors.length - 10} more errors</li>
-                          )}
-                        </ul>
+                    ) : (
+                      <div style={{
+                        backgroundColor: '#f0fdf4',
+                        border: '2px solid #10b981',
+                        borderRadius: '8px',
+                        padding: '20px',
+                        marginBottom: '16px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#10004;</div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#166534', marginBottom: '4px' }}>
+                          Upload Successful
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#15803d' }}>
+                          {uploadResults.inserted} ticket{uploadResults.inserted !== 1 ? 's' : ''} created from {uploadResults.total} rows
+                        </div>
                       </div>
                     )}
+
+                    {/* Detailed Stats */}
+                    <div style={{
+                      backgroundColor: uploadResults.errors?.length > 0 ? '#fef2f2' : uploadResults.inserted === 0 ? '#fef3c7' : '#f0fdf4',
+                      border: `1px solid ${uploadResults.errors?.length > 0 ? '#fecaca' : uploadResults.inserted === 0 ? '#fde68a' : '#bbf7d0'}`,
+                      borderRadius: '8px',
+                      padding: '16px'
+                    }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
+                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#374151' }}>{uploadResults.total}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Rows</div>
+                        </div>
+                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: uploadResults.inserted > 0 ? '#10b981' : '#dc2626' }}>{uploadResults.inserted}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Created</div>
+                        </div>
+                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b' }}>{uploadResults.skipped}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Skipped</div>
+                        </div>
+                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: uploadResults.errors?.length > 0 ? '#dc2626' : '#10b981' }}>{uploadResults.errors?.length || 0}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Errors</div>
+                        </div>
+                      </div>
+
+                      {/* Errors List - More Prominent */}
+                      {uploadResults.errors && uploadResults.errors.length > 0 && (
+                        <div style={{
+                          marginTop: '16px',
+                          backgroundColor: '#fff',
+                          border: '2px solid #dc2626',
+                          borderRadius: '8px',
+                          padding: '16px'
+                        }}>
+                          <div style={{ fontWeight: '700', color: '#dc2626', marginBottom: '8px', fontSize: '14px' }}>
+                            &#9888; {uploadResults.errors.length} Error{uploadResults.errors.length !== 1 ? 's' : ''} Found:
+                          </div>
+                          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#991b1b', maxHeight: '200px', overflowY: 'auto' }}>
+                            {uploadResults.errors.slice(0, 20).map((err: string, i: number) => (
+                              <li key={i} style={{ marginBottom: '4px' }}>{err}</li>
+                            ))}
+                            {uploadResults.errors.length > 20 && (
+                              <li style={{ fontWeight: '600' }}>...and {uploadResults.errors.length - 20} more errors</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2094,6 +2197,198 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ============ Ticket Pipeline Section ============ */}
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Ticket Tracking &amp; Contest Letters
+              </h2>
+
+              {/* Pipeline Stage Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '24px' }}>
+                <button
+                  onClick={() => { setPipelineFilter('all'); fetchPipelineData('all'); }}
+                  style={{
+                    backgroundColor: pipelineFilter === 'all' ? '#1e293b' : 'white',
+                    color: pipelineFilter === 'all' ? 'white' : '#1e293b',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    cursor: 'pointer',
+                    textAlign: 'center'
+                  }}
+                >
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{pipelineStats.total}</div>
+                  <div style={{ fontSize: '12px' }}>All Tickets</div>
+                </button>
+                <button
+                  onClick={() => { setPipelineFilter('ticket_detected'); fetchPipelineData('ticket_detected'); }}
+                  style={{
+                    backgroundColor: pipelineFilter === 'ticket_detected' ? '#fef3c7' : 'white',
+                    color: '#92400e',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: pipelineFilter === 'ticket_detected' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+                    cursor: 'pointer',
+                    textAlign: 'center'
+                  }}
+                >
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{pipelineStats.ticket_detected}</div>
+                  <div style={{ fontSize: '11px' }}>Ticket Detected</div>
+                </button>
+                <button
+                  onClick={() => { setPipelineFilter('letter_generated'); fetchPipelineData('letter_generated'); }}
+                  style={{
+                    backgroundColor: pipelineFilter === 'letter_generated' ? '#dbeafe' : 'white',
+                    color: '#1e40af',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: pipelineFilter === 'letter_generated' ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                    cursor: 'pointer',
+                    textAlign: 'center'
+                  }}
+                >
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{pipelineStats.letter_generated}</div>
+                  <div style={{ fontSize: '11px' }}>Letter Generated</div>
+                </button>
+                <button
+                  onClick={() => { setPipelineFilter('evidence_letter_generated'); fetchPipelineData('evidence_letter_generated'); }}
+                  style={{
+                    backgroundColor: pipelineFilter === 'evidence_letter_generated' ? '#f3e8ff' : 'white',
+                    color: '#7c3aed',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: pipelineFilter === 'evidence_letter_generated' ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                    cursor: 'pointer',
+                    textAlign: 'center'
+                  }}
+                >
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{pipelineStats.evidence_letter_generated}</div>
+                  <div style={{ fontSize: '11px' }}>Evidence Letter</div>
+                </button>
+                <button
+                  onClick={() => { setPipelineFilter('letter_sent'); fetchPipelineData('letter_sent'); }}
+                  style={{
+                    backgroundColor: pipelineFilter === 'letter_sent' ? '#dcfce7' : 'white',
+                    color: '#166534',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: pipelineFilter === 'letter_sent' ? '2px solid #10b981' : '1px solid #e5e7eb',
+                    cursor: 'pointer',
+                    textAlign: 'center'
+                  }}
+                >
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{pipelineStats.letter_sent}</div>
+                  <div style={{ fontSize: '11px' }}>Letter Sent</div>
+                </button>
+              </div>
+
+              {/* Stage Workflow Visual */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '24px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <span style={{ padding: '6px 12px', backgroundColor: '#fef3c7', borderRadius: '20px', fontSize: '12px', fontWeight: '500' }}>
+                  Ticket Detected
+                </span>
+                <span style={{ color: '#9ca3af' }}>→</span>
+                <span style={{ padding: '6px 12px', backgroundColor: '#dbeafe', borderRadius: '20px', fontSize: '12px', fontWeight: '500' }}>
+                  Letter Generated
+                </span>
+                <span style={{ color: '#9ca3af' }}>→</span>
+                <span style={{ padding: '6px 12px', backgroundColor: '#f3e8ff', borderRadius: '20px', fontSize: '12px', fontWeight: '500' }}>
+                  Evidence Letter
+                </span>
+                <span style={{ color: '#9ca3af' }}>→</span>
+                <span style={{ padding: '6px 12px', backgroundColor: '#dcfce7', borderRadius: '20px', fontSize: '12px', fontWeight: '500' }}>
+                  Letter Sent
+                </span>
+              </div>
+
+              {/* Pipeline Tickets Table */}
+              {pipelineTickets.length > 0 ? (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f9fafb' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ticket #</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Violation</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Lob Status</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pipelineTickets.map((ticket: any) => (
+                        <tr key={ticket.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '12px' }}>
+                            <div style={{ fontWeight: '500' }}>{ticket.user_name || 'Unknown'}</div>
+                            <div style={{ fontSize: '11px', color: '#6b7280' }}>{ticket.user_email}</div>
+                          </td>
+                          <td style={{ padding: '12px', fontFamily: 'monospace' }}>{ticket.ticket_number}</td>
+                          <td style={{ padding: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {ticket.violation_description || '-'}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {ticket.ticket_amount ? `$${ticket.ticket_amount}` : '-'}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: '500',
+                              backgroundColor:
+                                ticket.stage === 'letter_sent' ? '#dcfce7' :
+                                ticket.stage === 'evidence_letter_generated' ? '#f3e8ff' :
+                                ticket.stage === 'letter_generated' ? '#dbeafe' : '#fef3c7',
+                              color:
+                                ticket.stage === 'letter_sent' ? '#166534' :
+                                ticket.stage === 'evidence_letter_generated' ? '#7c3aed' :
+                                ticket.stage === 'letter_generated' ? '#1e40af' : '#92400e'
+                            }}>
+                              {ticket.stage_label}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {ticket.lob_status ? (
+                              <div>
+                                <span style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '10px',
+                                  fontSize: '11px',
+                                  backgroundColor: ticket.lob_status === 'delivered' ? '#dcfce7' :
+                                    ticket.lob_status === 'in_transit' ? '#dbeafe' : '#fef3c7',
+                                  color: ticket.lob_status === 'delivered' ? '#166534' :
+                                    ticket.lob_status === 'in_transit' ? '#1e40af' : '#92400e'
+                                }}>
+                                  {ticket.lob_status}
+                                </span>
+                                {ticket.lob_expected_delivery && (
+                                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>
+                                    ETA: {new Date(ticket.lob_expected_delivery).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ color: '#9ca3af' }}>-</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px', fontSize: '12px', color: '#6b7280' }}>
+                            {new Date(ticket.created_at).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ backgroundColor: '#f9fafb', padding: '32px', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                    No tickets found. Upload VA findings to start tracking tickets through the pipeline.
                   </div>
                 </div>
               )}
