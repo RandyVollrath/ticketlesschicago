@@ -265,24 +265,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Filter to only letters where:
-    // 1. Ticket status is pending_evidence AND evidence_deadline has passed, OR
-    // 2. Letter status is approved/draft AND ticket status allows mailing
+    // Filter to only letters where evidence_deadline has passed
+    // This is the safest approach - either user provided evidence (letter was regenerated with AI)
+    // or they didn't (they get the original template letter)
     const readyLetters = letters.filter((l: any) => {
       const ticket = l.detected_tickets;
       if (!ticket) return false;
 
-      // If evidence deadline has passed, it's ready
-      if (ticket.status === 'pending_evidence' && ticket.evidence_deadline) {
+      // Only mail if evidence deadline has passed
+      if (ticket.evidence_deadline) {
         const deadline = new Date(ticket.evidence_deadline);
         if (deadline <= new Date()) {
           return true;
         }
-      }
-
-      // If already approved, it's ready
-      if (ticket.status === 'approved' || ticket.status === 'letter_generated') {
-        return true;
       }
 
       return false;
