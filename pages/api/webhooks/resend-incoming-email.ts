@@ -48,12 +48,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const data = event.data;
     const fromEmail = data.from;
+    const toEmail = data.to || '';
     const subject = data.subject || '(no subject)';
     const text = data.text || data.html || '';
     const html = data.html || '';
     const attachments = data.attachments || []; // Resend provides attachments array
 
-    console.log(`📨 Email from ${fromEmail}: "${subject}"`);
+    console.log(`📨 Email from ${fromEmail} to ${toEmail}: "${subject}"`);
     console.log(`📎 Attachments: ${attachments.length}`);
 
     if (!supabaseAdmin) {
@@ -61,21 +62,167 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // Find user by email
-    const { data: users, error: userError } = await supabaseAdmin
+    // Check if this is an evidence reply (sent to evidence@autopilotamerica.com)
+    const isEvidenceReply = toEmail.toLowerCase().includes('evidence@') ||
+                            subject.toLowerCase().includes('evidence') ||
+                            subject.toLowerCase().includes('parking ticket detected');
+
+    // Find user by email - try auth.users first for autopilot users
+    let matchedUserId: string | null = null;
+    let matchedUserEmail: string | null = null;
+
+    // Try to find in auth.users (for autopilot users)
+    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const authUser = authUsers?.users?.find(u => u.email?.toLowerCase() === fromEmail.toLowerCase());
+
+    if (authUser) {
+      matchedUserId = authUser.id;
+      matchedUserEmail = authUser.email || null;
+      console.log(`✅ Matched autopilot user: ${matchedUserEmail}`);
+    }
+
+    // Also check user_profiles as fallback
+    const { data: users } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id, email, phone, phone_number, home_address_full, license_plate')
       .eq('email', fromEmail);
 
     let matchedUser = users?.[0];
+    if (matchedUser && !matchedUserId) {
+      matchedUserId = matchedUser.user_id;
+      matchedUserEmail = matchedUser.email;
+      console.log(`✅ Matched user profile: ${matchedUserEmail}`);
+    }
 
-    if (matchedUser) {
-      console.log(`✅ Matched user: ${matchedUser.email}`);
-    } else {
+    if (!matchedUserId) {
       console.log(`⚠️  No user found for email: ${fromEmail}`);
     }
 
-    // Check for keywords in the reply
+    // Handle evidence replies specially
+    if (isEvidenceReply && matchedUserId) {
+      console.log(`📋 Processing evidence reply from ${fromEmail}`);
+
+      // Find the user's most recent pending_evidence ticket
+      const { data: pendingTicket } = await supabaseAdmin
+        .from('detected_tickets')
+        .select('id, ticket_number, violation_type')
+        .eq('user_id', matchedUserId)
+        .eq('status', 'pending_evidence')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (pendingTicket) {
+        console.log(`🎫 Found pending ticket: ${pendingTicket.ticket_number}`);
+
+        // Process and upload attachments
+        const uploadedAttachments: { url: string; filename: string; content_type: string }[] = [];
+
+        if (attachments.length > 0) {
+          try {
+            const { put } = await import('@vercel/blob');
+
+            for (const attachment of attachments) {
+              const filename = attachment.filename || `evidence-${Date.now()}`;
+              const contentType = attachment.content_type || 'application/octet-stream';
+              const buffer = Buffer.from(attachment.content, 'base64');
+
+              const blobPath = `ticket-evidence/${matchedUserId}/${pendingTicket.id}/${Date.now()}-${filename}`;
+              const blob = await put(blobPath, buffer, {
+                access: 'private',
+                contentType: contentType,
+              });
+
+              uploadedAttachments.push({
+                url: blob.url,
+                filename: filename,
+                content_type: contentType,
+              });
+
+              console.log(`✅ Uploaded evidence file: ${filename}`);
+            }
+          } catch (uploadError) {
+            console.error('❌ Error uploading evidence attachments:', uploadError);
+          }
+        }
+
+        // Store the evidence
+        const { data: evidenceRecord, error: evidenceError } = await supabaseAdmin
+          .from('ticket_evidence')
+          .insert({
+            ticket_id: pendingTicket.id,
+            user_id: matchedUserId,
+            source: 'email_reply',
+            evidence_text: text,
+            attachments: uploadedAttachments,
+          })
+          .select()
+          .single();
+
+        if (evidenceError) {
+          console.error('❌ Error saving evidence:', evidenceError);
+        } else {
+          console.log(`✅ Evidence saved: ${evidenceRecord.id}`);
+
+          // Update ticket to show evidence was received
+          await supabaseAdmin
+            .from('detected_tickets')
+            .update({
+              evidence_received_at: new Date().toISOString(),
+            })
+            .eq('id', pendingTicket.id);
+
+          // Send admin notification about evidence received
+          try {
+            const evidenceNotifHtml = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: #10b981; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                  <h1 style="margin: 0; font-size: 20px;">📋 Evidence Received!</h1>
+                </div>
+                <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <p><strong>Ticket:</strong> ${pendingTicket.ticket_number}</p>
+                  <p><strong>Violation Type:</strong> ${pendingTicket.violation_type}</p>
+                  <p><strong>From:</strong> ${fromEmail}</p>
+                  <p><strong>Attachments:</strong> ${uploadedAttachments.length} file(s)</p>
+                  <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+                  <p><strong>User's Response:</strong></p>
+                  <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${text}</div>
+                </div>
+              </div>
+            `;
+
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                from: 'Autopilot America <alerts@autopilotamerica.com>',
+                to: ['randyvollrath@gmail.com'],
+                subject: `📋 Evidence Received - Ticket ${pendingTicket.ticket_number}`,
+                html: evidenceNotifHtml
+              }),
+            });
+            console.log('✅ Admin notified of evidence');
+          } catch (notifError) {
+            console.error('Failed to send evidence notification:', notifError);
+          }
+        }
+
+        // Return early for evidence replies
+        return res.status(200).json({
+          success: true,
+          message: 'Evidence received and saved',
+          ticket_number: pendingTicket.ticket_number,
+          attachments_count: uploadedAttachments.length,
+        });
+      } else {
+        console.log(`⚠️  No pending_evidence ticket found for user ${matchedUserId}`);
+      }
+    }
+
+    // Check for keywords in the reply (for non-evidence emails)
     const bodyLower = text.toLowerCase();
     const subjectLower = subject.toLowerCase();
     const isYes = bodyLower.includes('yes') || bodyLower.includes('activate');

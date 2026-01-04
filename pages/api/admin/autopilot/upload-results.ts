@@ -203,12 +203,24 @@ function parseCSV(content: string): ParsedTicket[] {
   if (!headerLine) return tickets;
 
   // Parse header to get column indices
-  const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+  // Normalize headers: lowercase, remove quotes, convert spaces to underscores
+  const headers = headerLine.split(',').map(h =>
+    h.trim().toLowerCase().replace(/"/g, '').replace(/\s+/g, '_')
+  );
 
-  // Map expected columns
+  // Map expected columns (also try common alternative names)
   const colIndex: Record<string, number> = {};
   headers.forEach((h, i) => {
     colIndex[h] = i;
+    // Also map alternative column names
+    if (h === 'ticketnumber' || h === 'ticket_num' || h === 'ticket_#') colIndex['ticket_number'] = i;
+    if (h === 'violationtype' || h === 'violation') colIndex['violation_type'] = i;
+    if (h === 'violationcode' || h === 'violation_#' || h === 'code') colIndex['violation_code'] = i;
+    if (h === 'violationdate' || h === 'date') colIndex['violation_date'] = i;
+    if (h === 'lastname') colIndex['last_name'] = i;
+    if (h === 'firstname') colIndex['first_name'] = i;
+    if (h === 'userid') colIndex['user_id'] = i;
+    if (h === 'licenseplate' || h === 'license_plate') colIndex['plate'] = i;
   });
 
   // Process data rows
@@ -472,6 +484,130 @@ const EVIDENCE_QUESTIONS: Record<string, { title: string; questions: string[] }>
     ],
   },
 };
+
+/**
+ * Send email to admin when VA upload has errors
+ */
+async function sendAdminUploadNotification(
+  filename: string,
+  results: {
+    processed: number;
+    ticketsCreated: number;
+    skipped: number;
+    errors: string[];
+  }
+): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not configured, skipping admin notification');
+    return false;
+  }
+
+  const hasErrors = results.errors.length > 0;
+  const hasIssues = hasErrors || results.ticketsCreated === 0;
+
+  // Only send notification if there are issues
+  if (!hasIssues) {
+    return true;
+  }
+
+  const statusColor = hasErrors ? '#dc2626' : '#f59e0b'; // Red for errors, yellow for warnings
+  const statusText = hasErrors ? 'Upload Had Errors' : 'No Tickets Created';
+
+  const errorsHtml = results.errors.length > 0
+    ? `
+      <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 16px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin: 0 0 12px; color: #991b1b; font-size: 16px;">Errors (${results.errors.length})</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 13px; line-height: 1.8;">
+          ${results.errors.map(e => `<li>${e}</li>`).join('')}
+        </ul>
+      </div>
+    `
+    : '';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: ${statusColor}; color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 24px;">VA Upload ${statusText}</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9;">Admin Notification</p>
+      </div>
+
+      <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+          A VA upload was just processed with the following results:
+        </p>
+
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Filename:</td>
+              <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${filename}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Rows Processed:</td>
+              <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${results.processed}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Tickets Created:</td>
+              <td style="padding: 8px 0; color: ${results.ticketsCreated > 0 ? '#059669' : '#dc2626'}; font-size: 14px; font-weight: 600;">${results.ticketsCreated}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Skipped:</td>
+              <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${results.skipped}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Errors:</td>
+              <td style="padding: 8px 0; color: ${results.errors.length > 0 ? '#dc2626' : '#059669'}; font-size: 14px; font-weight: 600;">${results.errors.length}</td>
+            </tr>
+          </table>
+        </div>
+
+        ${errorsHtml}
+
+        <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+          Please review the upload and correct any issues. Common problems include:
+        </p>
+        <ul style="color: #6b7280; font-size: 14px; line-height: 1.8;">
+          <li>Mismatched plate numbers (plate not found in system)</li>
+          <li>Invalid date formats (use YYYY-MM-DD)</li>
+          <li>Missing required columns (ticket_number, plate)</li>
+          <li>Duplicate tickets (already in system)</li>
+        </ul>
+
+        <p style="color: #6b7280; font-size: 12px; margin-top: 24px; text-align: center;">
+          This is an automated notification from Autopilot America Admin.
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: ['randyvollrath@gmail.com'], // Admin email
+        subject: `VA Upload ${statusText} - ${results.errors.length} errors, ${results.ticketsCreated}/${results.processed} tickets created`,
+        html,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Resend error (admin notification):', error);
+      return false;
+    }
+
+    console.log('Admin notification sent');
+    return true;
+  } catch (error) {
+    console.error('Admin notification failed:', error);
+    return false;
+  }
+}
 
 /**
  * Send email to user about detected ticket
@@ -868,6 +1004,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     fs.unlinkSync(file.filepath);
 
     console.log(`✅ VA Upload complete:`, results);
+
+    // Send admin notification if there were any issues
+    await sendAdminUploadNotification(
+      file.originalFilename || 'upload.csv',
+      results
+    );
 
     return res.status(200).json(results);
 
