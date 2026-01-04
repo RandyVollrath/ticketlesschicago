@@ -52,9 +52,6 @@ import {
   parsePotholesData,
   aggregatePotholeStats,
   // Neighborhood report utilities
-  CITY_AVERAGES,
-  getComparisonToAverage,
-  calculateNeighborhoodScore,
   calculateBusinessVitality,
   getRiskAlerts,
   calculateDistance,
@@ -873,19 +870,6 @@ export default function Neighborhoods() {
     return aggregatePotholeStats(potholeBlocks);
   }, [potholeBlocks]);
 
-  // Calculate neighborhood score
-  const neighborhoodScore = useMemo(() => {
-    if (!userLocation) return null;
-    return calculateNeighborhoodScore({
-      crimes: nearbyCrimes.total,
-      violentCrimes: nearbyCrimes.violent,
-      crashes: nearbyCrashes.total,
-      fatalCrashes: nearbyCrashes.fatal,
-      violations: nearbyViolations.violations,
-      potholes: nearbyPotholes.potholes,
-    });
-  }, [userLocation, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyPotholes]);
-
   // Calculate risk alerts
   const riskAlerts = useMemo(() => {
     if (!userLocation) return [];
@@ -916,37 +900,6 @@ export default function Neighborhoods() {
       demolitions,
     });
   }, [userLocation, nearbyLicenses, nearbyPermits]);
-
-  // City average comparisons - adjust based on time range
-  // For "recent" mode, we scale down the averages proportionally since recent data is a subset
-  const comparisons = useMemo(() => {
-    if (!userLocation) return null;
-
-    // When in recent mode, compare recent values to scaled-down averages
-    // Rough estimate: recent (12 months) is about 1/10th of all-time data
-    const recentScaleFactor = 0.1;
-
-    if (timeRange === 'recent') {
-      return {
-        crimes: getComparisonToAverage(nearbyCrimes.total, CITY_AVERAGES.crimes), // crimes is already 12 months
-        crashes: getComparisonToAverage(nearbyCrashes.total, CITY_AVERAGES.crashes), // crashes needs work but keeping as is
-        violations: getComparisonToAverage(nearbyViolations.violations, CITY_AVERAGES.violations), // violations is 12 months
-        potholes: getComparisonToAverage(nearbyPotholes.recent, CITY_AVERAGES.potholes * recentScaleFactor),
-        services: getComparisonToAverage(nearbyServices.recent, CITY_AVERAGES.serviceRequests * recentScaleFactor),
-        businesses: getComparisonToAverage(nearbyLicenses.active, CITY_AVERAGES.businesses), // active vs avg businesses
-      };
-    }
-
-    // All-time mode uses all-time values
-    return {
-      crimes: getComparisonToAverage(nearbyCrimes.total, CITY_AVERAGES.crimes),
-      crashes: getComparisonToAverage(nearbyCrashes.total, CITY_AVERAGES.crashes),
-      violations: getComparisonToAverage(nearbyViolations.violations, CITY_AVERAGES.violations),
-      potholes: getComparisonToAverage(nearbyPotholes.potholes, CITY_AVERAGES.potholes),
-      services: getComparisonToAverage(nearbyServices.total, CITY_AVERAGES.serviceRequests),
-      businesses: getComparisonToAverage(nearbyLicenses.total, CITY_AVERAGES.businesses),
-    };
-  }, [userLocation, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyPotholes, nearbyServices, nearbyLicenses, timeRange]);
 
   const stats = useMemo(() => {
     const activeSpeed = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
@@ -1138,41 +1091,6 @@ export default function Neighborhoods() {
                     </p>
                   </div>
 
-                  {/* Neighborhood Grade */}
-                  {neighborhoodScore && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '12px 16px',
-                      backgroundColor: `${neighborhoodScore.color}15`,
-                      borderRadius: '12px',
-                      border: `2px solid ${neighborhoodScore.color}`
-                    }}>
-                      <div style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        backgroundColor: neighborhoodScore.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '24px',
-                        fontWeight: 'bold'
-                      }}>
-                        {neighborhoodScore.grade}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: neighborhoodScore.color }}>
-                          {neighborhoodScore.label}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                          Safety Score: {neighborhoodScore.score}/100
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Radius Slider & Time Range Toggle */}
@@ -1330,22 +1248,7 @@ export default function Neighborhoods() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                   {/* Crimes */}
                   <div style={{ padding: '12px', backgroundColor: '#f3e8ff', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: '11px', color: '#5b21b6', fontWeight: '600' }}>CRIMES</div>
-                      {comparisons?.crimes && (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '10px',
-                          backgroundColor: comparisons.crimes.direction === 'lower' ? '#dcfce7' : comparisons.crimes.direction === 'higher' ? '#fef2f2' : '#f3f4f6',
-                          color: comparisons.crimes.direction === 'lower' ? '#166534' : comparisons.crimes.direction === 'higher' ? '#991b1b' : '#6b7280'
-                        }}
-                          title={`${comparisons.crimes.percentile}th percentile - ${comparisons.crimes.label}`}
-                        >
-                          {comparisons.crimes.percentileLabel}
-                        </span>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '11px', color: '#5b21b6', fontWeight: '600' }}>CRIMES</div>
                     <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Last 12 months</div>
                     <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>{nearbyCrimes.total}</div>
                     <div style={{ fontSize: '11px', color: '#6b7280' }}>
@@ -1357,22 +1260,7 @@ export default function Neighborhoods() {
 
                   {/* Crashes */}
                   <div style={{ padding: '12px', backgroundColor: '#ecfeff', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: '11px', color: '#155e75', fontWeight: '600' }}>TRAFFIC CRASHES</div>
-                      {comparisons?.crashes && (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '10px',
-                          backgroundColor: comparisons.crashes.direction === 'lower' ? '#dcfce7' : comparisons.crashes.direction === 'higher' ? '#fef2f2' : '#f3f4f6',
-                          color: comparisons.crashes.direction === 'lower' ? '#166534' : comparisons.crashes.direction === 'higher' ? '#991b1b' : '#6b7280'
-                        }}
-                          title={`${comparisons.crashes.percentile}th percentile - ${comparisons.crashes.label}`}
-                        >
-                          {comparisons.crashes.percentileLabel}
-                        </span>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '11px', color: '#155e75', fontWeight: '600' }}>TRAFFIC CRASHES</div>
                     <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
                       {timeRange === 'recent' ? 'Last 12 months (approx)' : 'All-time total'}
                     </div>
@@ -1386,22 +1274,7 @@ export default function Neighborhoods() {
 
                   {/* 311 Requests */}
                   <div style={{ padding: '12px', backgroundColor: '#ecfdf5', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: '11px', color: '#166534', fontWeight: '600' }}>311 REQUESTS</div>
-                      {comparisons?.services && (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '10px',
-                          backgroundColor: '#f3f4f6',
-                          color: '#6b7280'
-                        }}
-                          title={`${comparisons.services.percentile}th percentile - ${comparisons.services.label}`}
-                        >
-                          {comparisons.services.percentileLabel}
-                        </span>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '11px', color: '#166534', fontWeight: '600' }}>311 REQUESTS</div>
                     <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
                       {timeRange === 'recent' ? 'Last 12 months' : 'All-time total'}
                     </div>
@@ -1420,22 +1293,7 @@ export default function Neighborhoods() {
 
                   {/* Building Violations */}
                   <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: '11px', color: '#92400e', fontWeight: '600' }}>BUILDING CODE VIOLATIONS</div>
-                      {comparisons?.violations && (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '10px',
-                          backgroundColor: comparisons.violations.direction === 'lower' ? '#dcfce7' : comparisons.violations.direction === 'higher' ? '#fef2f2' : '#f3f4f6',
-                          color: comparisons.violations.direction === 'lower' ? '#166534' : comparisons.violations.direction === 'higher' ? '#991b1b' : '#6b7280'
-                        }}
-                          title={`${comparisons.violations.percentile}th percentile - ${comparisons.violations.label}`}
-                        >
-                          {comparisons.violations.percentileLabel}
-                        </span>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '11px', color: '#92400e', fontWeight: '600' }}>BUILDING CODE VIOLATIONS</div>
                     <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Last 12 months</div>
                     <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{nearbyViolations.violations}</div>
                     <div style={{ fontSize: '11px', color: '#6b7280' }}>
@@ -1455,22 +1313,7 @@ export default function Neighborhoods() {
 
                   {/* Potholes */}
                   <div style={{ padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: '11px', color: '#374151', fontWeight: '600' }}>POTHOLES PATCHED</div>
-                      {comparisons?.potholes && (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '10px',
-                          backgroundColor: '#f3f4f6',
-                          color: '#6b7280'
-                        }}
-                          title={`${comparisons.potholes.percentile}th percentile - ${comparisons.potholes.label}`}
-                        >
-                          {comparisons.potholes.percentileLabel}
-                        </span>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '11px', color: '#374151', fontWeight: '600' }}>POTHOLES PATCHED</div>
                     <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
                       {timeRange === 'recent' ? 'Last 12 months' : 'All-time patched'}
                     </div>
@@ -1522,22 +1365,7 @@ export default function Neighborhoods() {
 
                   {/* Businesses */}
                   <div style={{ padding: '12px', backgroundColor: '#fff7ed', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: '11px', color: '#c2410c', fontWeight: '600' }}>BUSINESS LICENSES</div>
-                      {comparisons?.businesses && (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '10px',
-                          backgroundColor: comparisons.businesses.direction === 'higher' ? '#dcfce7' : comparisons.businesses.direction === 'lower' ? '#fef2f2' : '#f3f4f6',
-                          color: comparisons.businesses.direction === 'higher' ? '#166534' : comparisons.businesses.direction === 'lower' ? '#991b1b' : '#6b7280'
-                        }}
-                          title={`${comparisons.businesses.percentile}th percentile - ${comparisons.businesses.label}`}
-                        >
-                          {comparisons.businesses.percentileLabel}
-                        </span>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '11px', color: '#c2410c', fontWeight: '600' }}>BUSINESS LICENSES</div>
                     <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
                       {timeRange === 'recent' ? 'Currently active' : 'All-time licensed'}
                     </div>
@@ -1569,7 +1397,7 @@ export default function Neighborhoods() {
                       onClick={() => {
                         const report = document.getElementById('neighborhood-report');
                         if (report) {
-                          const text = `Neighborhood Report for ${userLocation.address}\n\nSafety Grade: ${neighborhoodScore?.grade || 'N/A'} (${neighborhoodScore?.score || 0}/100)\n\nCrimes (12 mo): ${nearbyCrimes.total}\nCrashes: ${nearbyCrashes.total}\n311 Requests: ${nearbyServices.total}\nViolations: ${nearbyViolations.violations}\nCameras nearby: ${nearbyCameras.total}\n\nGenerated by Autopilot America`;
+                          const text = `Neighborhood Report for ${userLocation.address}\n\nCrimes (12 mo): ${nearbyCrimes.total}\nCrashes: ${nearbyCrashes.total}\n311 Requests: ${nearbyServices.total}\nBuilding Code Violations: ${nearbyViolations.violations}\nCameras nearby: ${nearbyCameras.total}\nBusiness Licenses: ${nearbyLicenses.active} active\n\nGenerated by Autopilot America`;
                           navigator.clipboard.writeText(text);
                           alert('Report copied to clipboard!');
                         }
