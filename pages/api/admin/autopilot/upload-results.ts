@@ -2,7 +2,7 @@
  * Admin endpoint to upload VA findings CSV
  *
  * Accepts the CSV format exported by the cron job:
- * last_name, first_name, plate, state, user_id, ticket_number, violation_code, violation_type, violation_description, violation_date, amount, location
+ * last_name, first_name, plate, state, user_id, ticket_number, violation_code, violation_type, violation_date, amount
  *
  * Only processes rows where ticket_number is filled in (indicating VA found a ticket)
  *
@@ -38,10 +38,11 @@ interface ParsedTicket {
   ticket_number: string;
   violation_code: string;
   violation_type: string;
-  violation_description: string;
   violation_date: string;
   amount: string;
-  location: string;
+  // Optional fields (not required in CSV)
+  violation_description?: string;
+  location?: string;
 }
 
 interface UserProfile {
