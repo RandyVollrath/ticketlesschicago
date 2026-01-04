@@ -1326,6 +1326,8 @@ export default function AdminPortal() {
       if (data.success) {
         setPipelineTickets(data.tickets || []);
         setPipelineStats(data.stats || { total: 0, ticket_detected: 0, letter_generated: 0, evidence_letter_generated: 0, letter_sent: 0 });
+      } else {
+        console.error('Pipeline API error:', data.error);
       }
     } catch (error) {
       console.error('Error fetching pipeline data:', error);
