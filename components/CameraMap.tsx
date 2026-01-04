@@ -193,21 +193,17 @@ const MapController = ({
   userLocation?: UserLocation | null;
 }) => {
   const map = useMap();
-  const hasFlownToUser = useRef(false);
+  const lastFlownAddress = useRef<string | null>(null);
 
+  // Fly to user location whenever it changes to a new address
   useEffect(() => {
-    if (userLocation && !hasFlownToUser.current) {
-      map.flyTo([userLocation.latitude, userLocation.longitude], 14, { duration: 0.8 });
-      hasFlownToUser.current = true;
+    if (userLocation && userLocation.address !== lastFlownAddress.current) {
+      map.flyTo([userLocation.latitude, userLocation.longitude], 15, { duration: 0.8 });
+      lastFlownAddress.current = userLocation.address;
+    } else if (!userLocation) {
+      lastFlownAddress.current = null;
     }
   }, [map, userLocation]);
-
-  // Reset the flag when user location changes to a different location
-  useEffect(() => {
-    if (!userLocation) {
-      hasFlownToUser.current = false;
-    }
-  }, [userLocation?.address]);
 
   useEffect(() => {
     if (selectedSpeedCamera) {
