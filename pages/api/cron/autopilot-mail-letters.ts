@@ -236,6 +236,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const readyTicketIds = readyTickets?.map(t => t.id) || [];
 
     // Get letters for these tickets, plus any already approved letters
+    // Exclude test tickets from being mailed
     const { data: letters } = await supabaseAdmin
       .from('contest_letters')
       .select(`
@@ -249,7 +250,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id,
           ticket_number,
           status,
-          evidence_deadline
+          evidence_deadline,
+          is_test
         )
       `)
       .or(`status.eq.pending_evidence,status.eq.approved,status.eq.draft`)
@@ -271,6 +273,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const readyLetters = letters.filter((l: any) => {
       const ticket = l.detected_tickets;
       if (!ticket) return false;
+
+      // Skip test tickets
+      if (ticket.is_test) {
+        console.log(`  Skipping test ticket ${ticket.ticket_number}`);
+        return false;
+      }
 
       // Only mail if evidence deadline has passed
       if (ticket.evidence_deadline) {
