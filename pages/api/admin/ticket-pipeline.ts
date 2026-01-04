@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { withAdminAuth } from '../../../lib/auth-middleware';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
@@ -61,7 +60,7 @@ function computeStage(item: any): { stage: string; stage_label: string } {
   return { stage: 'ticket_detected', stage_label: 'Ticket Detected' };
 }
 
-export default withAdminAuth(async (req, res, adminUser) => {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -219,4 +218,4 @@ export default withAdminAuth(async (req, res, adminUser) => {
     console.error('Ticket pipeline error:', error);
     return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
-});
+}
