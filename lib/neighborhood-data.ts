@@ -908,7 +908,7 @@ export function getRiskAlerts(data: {
     color: string;
   }> = [];
 
-  // Critical alerts
+  // Critical alerts - use absolute thresholds only
   if (data.fatalCrashes > 0) {
     alerts.push({
       level: 'critical',
@@ -918,26 +918,17 @@ export function getRiskAlerts(data: {
     });
   }
 
-  if (data.violentCrimes >= CITY_AVERAGES.violentCrimes * 3) {
+  if (data.violentCrimes >= 10) {
     alerts.push({
       level: 'critical',
       icon: '⚠️',
-      message: `High violent crime area (${Math.round(data.violentCrimes / CITY_AVERAGES.violentCrimes)}x city average)`,
+      message: `${data.violentCrimes} violent crimes recorded in this area`,
       color: '#dc2626',
     });
   }
 
   // Warning alerts
-  if (data.crimes >= CITY_AVERAGES.crimes * 2) {
-    alerts.push({
-      level: 'warning',
-      icon: '🚨',
-      message: `Above average crime (${Math.round((data.crimes / CITY_AVERAGES.crimes) * 100)}% of city avg)`,
-      color: '#f97316',
-    });
-  }
-
-  if (data.hitAndRun >= 5) {
+  if (data.hitAndRun >= 10) {
     alerts.push({
       level: 'warning',
       icon: '🚗',
@@ -962,15 +953,6 @@ export function getRiskAlerts(data: {
       icon: '📷',
       message: `${data.cameras} traffic camera${data.cameras > 1 ? 's' : ''} nearby - drive carefully`,
       color: '#3b82f6',
-    });
-  }
-
-  if (data.crimes <= CITY_AVERAGES.crimes * 0.5 && data.violentCrimes <= 1) {
-    alerts.push({
-      level: 'info',
-      icon: '✅',
-      message: 'Low crime area - below city average',
-      color: '#22c55e',
     });
   }
 
