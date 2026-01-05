@@ -6,6 +6,13 @@ import Footer from '../components/Footer';
 import { RED_LIGHT_CAMERAS, RedLightCamera } from '../lib/red-light-cameras';
 import type { SpeedCamera, UserLocation } from '../components/CameraMap';
 import {
+  calculateOverallScore,
+  getGradeColor,
+  getScoreDescription,
+  SCORING_WEIGHTS,
+  type CategoryScore,
+} from '../lib/neighborhood-scoring';
+import {
   ViolationBlock,
   ViolationsData,
   parseViolationsData,
@@ -1202,6 +1209,81 @@ export default function Neighborhoods() {
     });
   }, [userLocation, nearbyLicenses, nearbyPermits]);
 
+  // Calculate overall neighborhood score
+  const neighborhoodScore = useMemo(() => {
+    if (!userLocation) return null;
+    // Wait for all data to load
+    if (!violationsLoaded || !crimesLoaded || !crashesLoaded || !servicesLoaded || !potholesLoaded || !permitsLoaded || !licensesLoaded) {
+      return null;
+    }
+
+    return calculateOverallScore({
+      crime: nearbyCrimes.total,
+      crashes: nearbyCrashes.total,
+      violations: nearbyViolations.violations,
+      serviceRequests: nearbyServices.total,
+      cameras: nearbyCameras.total,
+      potholes: nearbyPotholes.potholes,
+      permits: nearbyPermits.total,
+      licenses: nearbyLicenses.total,
+    });
+  }, [
+    userLocation,
+    violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded, potholesLoaded, permitsLoaded, licensesLoaded,
+    nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyServices, nearbyCameras, nearbyPotholes, nearbyPermits, nearbyLicenses
+  ]);
+
+  // State for PDF download
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  // Download PDF report
+  const downloadPdfReport = useCallback(async () => {
+    if (!userLocation || !neighborhoodScore) return;
+
+    setIsDownloadingPdf(true);
+    try {
+      const reportData = {
+        address: userLocation.address,
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        radius: radiusTenths * 0.1,
+        crime: { total: nearbyCrimes.total, violent: nearbyCrimes.violent, property: nearbyCrimes.property },
+        crashes: { total: nearbyCrashes.total, injuries: nearbyCrashes.injuries, fatal: nearbyCrashes.fatal, hitAndRun: nearbyCrashes.hitAndRun },
+        violations: { total: nearbyViolations.violations, highRisk: nearbyViolations.highRisk, open: nearbyViolations.open || 0 },
+        serviceRequests: { total: nearbyServices.total, recent: nearbyServices.recent },
+        cameras: { total: nearbyCameras.total, speed: nearbyCameras.speed, redLight: nearbyCameras.redLight },
+        potholes: { total: nearbyPotholes.potholes, filled: nearbyPotholes.repairs },
+        permits: { total: nearbyPermits.total, recent: nearbyPermits.recent, cost: nearbyPermits.cost },
+        licenses: { total: nearbyLicenses.total, active: nearbyLicenses.active },
+      };
+
+      const response = await fetch('/api/neighborhood/generate-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reportData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `neighborhood-report-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }, [userLocation, neighborhoodScore, radiusTenths, nearbyCrimes, nearbyCrashes, nearbyViolations, nearbyServices, nearbyCameras, nearbyPotholes, nearbyPermits, nearbyLicenses]);
+
   const stats = useMemo(() => {
     const activeSpeed = SPEED_CAMERAS.filter(c => isLive(c.goLiveDate)).length;
     const upcomingSpeed = SPEED_CAMERAS.length - activeSpeed;
@@ -1383,7 +1465,7 @@ export default function Neighborhoods() {
               <div id="neighborhood-report" style={{ marginTop: '12px', padding: '20px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                 {/* Header with Score */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                  <div>
+                  <div style={{ flex: '1 1 auto' }}>
                     <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#111827' }}>
                       Neighborhood Report
                     </h3>
@@ -1392,6 +1474,45 @@ export default function Neighborhoods() {
                     </p>
                   </div>
 
+                  {/* Overall Grade Display */}
+                  {neighborhoodScore ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        backgroundColor: getGradeColor(neighborhoodScore.overallGrade),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                      }}>
+                        <span style={{ fontSize: '28px', fontWeight: 'bold', color: 'white' }}>
+                          {neighborhoodScore.overallGrade}
+                        </span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
+                          {neighborhoodScore.overallScore}/100
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', maxWidth: '150px' }}>
+                          {neighborhoodScore.overallScore >= 80 ? 'Good' : neighborhoodScore.overallScore >= 60 ? 'Average' : 'Below Avg'}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '50%',
+                      backgroundColor: '#e5e7eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <span style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Radius Slider & Time Range Toggle */}
@@ -1502,6 +1623,80 @@ export default function Neighborhoods() {
                   <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#2563eb' }}>
                     Loading neighborhood data...
                   </p>
+                )}
+
+                {/* Score Breakdown Section */}
+                {neighborhoodScore && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '12px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>
+                        SCORE BREAKDOWN
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                        {getScoreDescription(neighborhoodScore.overallScore).split('.')[0]}.
+                      </div>
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                      gap: '8px'
+                    }}>
+                      {neighborhoodScore.categoryScores.map((cat) => (
+                        <div key={cat.key} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 8px',
+                          backgroundColor: 'white',
+                          borderRadius: '6px',
+                          border: `1px solid ${getGradeColor(cat.grade)}20`
+                        }}>
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundColor: getGradeColor(cat.grade),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            color: 'white'
+                          }}>
+                            {cat.grade}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '10px', fontWeight: '600', color: '#374151' }}>
+                              {cat.label}
+                            </div>
+                            <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                              {cat.rawValue} {cat.isPositive ? '(positive)' : 'found'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{
+                      marginTop: '10px',
+                      paddingTop: '8px',
+                      borderTop: '1px solid #e5e7eb',
+                      fontSize: '9px',
+                      color: '#9ca3af'
+                    }}>
+                      Scoring weights: Crime 30%, Traffic 15%, Violations 15%, 311 10%, Cameras 10%, Potholes 5%, Permits 7.5%, Licenses 7.5%
+                    </div>
+                  </div>
                 )}
 
                 {/* Cameras Within 1 Mile */}
@@ -2142,27 +2337,49 @@ export default function Neighborhoods() {
                     <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>
                       Search radius: {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`} from your address
                     </p>
-                    <button
-                      onClick={() => {
-                        const report = document.getElementById('neighborhood-report');
-                        if (report) {
-                          const text = `Neighborhood Report for ${userLocation.address}\n\nCrimes (12 mo): ${nearbyCrimes.total}\nCrashes: ${nearbyCrashes.total}\n311 Requests: ${nearbyServices.total}\nBuilding Code Violations: ${nearbyViolations.violations}\nCameras nearby: ${nearbyCameras.total}\nBusiness Licenses: ${nearbyLicenses.active} active\n\nGenerated by Autopilot America`;
-                          navigator.clipboard.writeText(text);
-                          alert('Report copied to clipboard!');
-                        }
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '11px',
-                        backgroundColor: '#2563eb',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Copy Report
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={downloadPdfReport}
+                        disabled={isDownloadingPdf || !neighborhoodScore}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '11px',
+                          backgroundColor: neighborhoodScore ? '#059669' : '#9ca3af',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: neighborhoodScore ? 'pointer' : 'not-allowed',
+                          opacity: isDownloadingPdf ? 0.7 : 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        {isDownloadingPdf ? 'Generating...' : 'Download PDF'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          const report = document.getElementById('neighborhood-report');
+                          if (report) {
+                            const gradeText = neighborhoodScore ? `\nOverall Grade: ${neighborhoodScore.overallGrade} (${neighborhoodScore.overallScore}/100)\n` : '';
+                            const text = `Neighborhood Report for ${userLocation.address}${gradeText}\nCrimes (12 mo): ${nearbyCrimes.total}\nCrashes: ${nearbyCrashes.total}\n311 Requests: ${nearbyServices.total}\nBuilding Code Violations: ${nearbyViolations.violations}\nCameras nearby: ${nearbyCameras.total}\nBusiness Licenses: ${nearbyLicenses.active} active\n\nGenerated by Autopilot America`;
+                            navigator.clipboard.writeText(text);
+                            alert('Report copied to clipboard!');
+                          }
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '11px',
+                          backgroundColor: '#2563eb',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Copy Report
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
