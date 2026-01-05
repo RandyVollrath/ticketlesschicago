@@ -342,8 +342,9 @@ export default function Neighborhoods() {
   const [potholeBlocks, setPotholeBlocks] = useState<PotholeBlock[]>([]);
   const [potholesLoaded, setPotholesLoaded] = useState(false);
 
-  // Radius slider state (in blocks, 1 block ≈ 0.075 miles)
-  const [radiusBlocks, setRadiusBlocks] = useState(2);
+  // Radius slider state - now in tenths of a mile for clarity
+  // 1 = 0.1 miles (~500 ft), 2 = 0.2 miles (~1000 ft), etc.
+  const [radiusTenths, setRadiusTenths] = useState(1);
 
   // Time range toggle: 'recent' (last 12 months) or 'alltime'
   const [timeRange, setTimeRange] = useState<'recent' | 'alltime'>('recent');
@@ -589,8 +590,8 @@ export default function Neighborhoods() {
     });
   }, [cameraSearchQuery, statusFilter, cameraFilter]);
 
-  // Block radius for nearby calculations (1 block ≈ 0.075 miles / 400 feet)
-  const NEARBY_RADIUS = useMemo(() => radiusBlocks * 0.075, [radiusBlocks]);
+  // Radius for nearby calculations in miles (slider is in tenths of a mile)
+  const NEARBY_RADIUS = useMemo(() => radiusTenths * 0.1, [radiusTenths]);
 
   // Calculate nearby cameras when user location is set (uses same radius as other data)
   const nearbyCameras = useMemo(() => {
@@ -1116,13 +1117,13 @@ export default function Neighborhoods() {
                     <input
                       type="range"
                       min="1"
-                      max="10"
-                      value={radiusBlocks}
-                      onChange={(e) => setRadiusBlocks(parseInt(e.target.value))}
+                      max="5"
+                      value={radiusTenths}
+                      onChange={(e) => setRadiusTenths(parseInt(e.target.value))}
                       style={{ flex: 1, cursor: 'pointer' }}
                     />
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#2563eb', minWidth: '80px' }}>
-                      {radiusBlocks} block{radiusBlocks > 1 ? 's' : ''} (~{Math.round(radiusBlocks * 400)} ft)
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#2563eb', minWidth: '100px' }}>
+                      {radiusTenths === 1 ? '500 ft' : radiusTenths === 2 ? '0.2 mi' : radiusTenths === 3 ? '0.3 mi' : radiusTenths === 4 ? '0.4 mi' : '0.5 mi'}
                     </span>
                   </div>
 
@@ -1304,7 +1305,7 @@ export default function Neighborhoods() {
                   {/* Cameras */}
                   <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
                     <div style={{ fontSize: '11px', color: '#991b1b', fontWeight: '600' }}>CAMERAS</div>
-                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Within {radiusBlocks} block{radiusBlocks > 1 ? 's' : ''}</div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>Within {radiusTenths === 1 ? '500 ft' : `${radiusTenths * 0.1} mi`}</div>
                     <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626' }}>{nearbyCameras.total}</div>
                     <div style={{ fontSize: '11px', color: '#6b7280' }}>
                       {nearbyCameras.speed} speed, {nearbyCameras.redLight} red light
@@ -1386,12 +1387,12 @@ export default function Neighborhoods() {
                 {/* Footer with explanation */}
                 <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
-                    <strong>Note:</strong> Data is aggregated from city blocks (~1400ft each) that overlap your {radiusBlocks}-block search radius.
+                    <strong>Note:</strong> Data is aggregated from ~700ft grid cells that overlap your search radius.
                     {timeRange === 'recent' ? ' Showing recent activity (last 12 months where available).' : ' Showing all-time historical data.'}
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                     <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>
-                      Search radius: {radiusBlocks} block{radiusBlocks > 1 ? 's' : ''} (~{Math.round(radiusBlocks * 400)} feet) from your address
+                      Search radius: {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`} from your address
                     </p>
                     <button
                       onClick={() => {
@@ -1782,7 +1783,7 @@ export default function Neighborhoods() {
                 selectedLicenseCategory={licenseCategory}
                 potholeBlocks={potholeBlocks}
                 showPotholes={activeLayer === 'potholes'}
-                searchRadiusBlocks={radiusBlocks}
+                searchRadiusMiles={radiusTenths * 0.1}
               />
             </div>
 

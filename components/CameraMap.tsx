@@ -178,8 +178,8 @@ interface CameraMapProps {
   // Potholes layer
   potholeBlocks?: PotholeBlock[];
   showPotholes?: boolean;
-  // Search radius in blocks (1 block ≈ 400 feet / 122 meters)
-  searchRadiusBlocks?: number;
+  // Search radius in miles
+  searchRadiusMiles?: number;
 }
 
 // Component to handle map view changes
@@ -250,11 +250,11 @@ const CameraMap: React.FC<CameraMapProps> = ({
   selectedLicenseCategory = 'all',
   potholeBlocks = [],
   showPotholes = false,
-  searchRadiusBlocks = 2,
+  searchRadiusMiles = 0.1,
 }) => {
   const chicagoCenter: L.LatLngTuple = [41.8781, -87.6298];
-  // Convert blocks to meters (1 block ≈ 400 feet ≈ 122 meters)
-  const searchRadiusMeters = searchRadiusBlocks * 122;
+  // Convert miles to meters (1 mile = 1609 meters)
+  const searchRadiusMeters = searchRadiusMiles * 1609;
   const today = new Date();
 
   const formatDate = (dateStr: string) => {
@@ -318,7 +318,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
                   {userLocation.address}
                 </div>
                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-                  Search radius: {searchRadiusBlocks} block{searchRadiusBlocks !== 1 ? 's' : ''} (~{Math.round(searchRadiusBlocks * 400)} ft)
+                  Search radius: {searchRadiusMiles < 0.15 ? `${Math.round(searchRadiusMiles * 5280)} ft` : `${searchRadiusMiles.toFixed(1)} mi`}
                 </div>
               </div>
             </Popup>
