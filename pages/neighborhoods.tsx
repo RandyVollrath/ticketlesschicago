@@ -1217,15 +1217,17 @@ export default function Neighborhoods() {
       return null;
     }
 
+    // Use RECENT (12-month) data for scoring, not all-time totals
+    // This provides a fair comparison against 12-month averages
     return calculateOverallScore({
-      crime: nearbyCrimes.total,
-      crashes: nearbyCrashes.total,
-      violations: nearbyViolations.violations,
-      serviceRequests: nearbyServices.total,
-      cameras: nearbyCameras.total,
-      potholes: nearbyPotholes.potholes,
-      permits: nearbyPermits.total,
-      licenses: nearbyLicenses.total,
+      crime: nearbyCrimes.total,           // Already 12-month from API
+      crashes: nearbyCrashes.total,         // Already 12-month from API
+      violations: nearbyViolations.violations, // This may need adjustment - using as-is for now
+      serviceRequests: nearbyServices.recent || nearbyServices.total, // Use recent if available
+      cameras: nearbyCameras.total,         // Not time-based
+      potholes: nearbyPotholes.recent || nearbyPotholes.potholes, // Use recent if available
+      permits: nearbyPermits.recent || nearbyPermits.total, // Use recent if available
+      licenses: nearbyLicenses.active || nearbyLicenses.total, // Use active licenses, not historical
     });
   }, [
     userLocation,
