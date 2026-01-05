@@ -39,3 +39,17 @@ Thumbs.db
 .env.temp
 firebase-admin-key.json
 # trigger rebuild
+
+# Secrets / env
+.env*
+**/.env*
+*.pem
+*.key
+
+# Mobile secrets
+TicketlessChicagoMobile/android/app/google-services.json
+
+# Python cache
+__pycache__/
+*.pyc
+
