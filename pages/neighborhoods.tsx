@@ -78,6 +78,111 @@ type CameraFilter = 'all' | 'speed' | 'redlight';
 type StatusFilter = 'all' | 'active' | 'upcoming';
 type DataLayer = 'cameras' | 'violations' | 'crimes' | 'crashes' | '311' | 'permits' | 'licenses' | 'potholes';
 
+// Detail interfaces for real-time API data
+interface CrimeDetail {
+  id: string;
+  date: string;
+  time: string;
+  type: string;  // maps from primary_type
+  description: string;
+  location: string;  // block address
+  locationType: string;  // e.g., "Street", "Residence"
+  arrest: boolean;
+  domestic: boolean;
+  distance: number;
+  ward: string;
+}
+
+interface CrashDetail {
+  id: string;
+  date: string;
+  time: string;
+  location: string;
+  crashType: string;
+  primaryCause: string;
+  weatherCondition: string;
+  lightingCondition: string;
+  roadCondition: string;
+  speedLimit: number;
+  injuries: number;
+  fatal: number;
+  hitAndRun: boolean;
+  distance: number;
+}
+
+interface ServiceRequestDetail {
+  id: string;
+  type: string;
+  shortCode: string;
+  createdDate: string;
+  createdTime: string;
+  status: string;
+  address: string;
+  ward: string;
+  department: string;
+  distance: number;
+  category: string;
+}
+
+interface ViolationDetail {
+  id: string;
+  date: string;
+  code: string;
+  description: string;
+  status: string;
+  statusDate: string;
+  address: string;
+  inspectorComments: string;
+  category: string;
+  distance: number;
+  severity: 'high' | 'medium' | 'low';
+}
+
+interface PotholeDetail {
+  id: string;
+  createdDate: string;
+  completedDate: string;
+  status: string;
+  potholesFilled: number;
+  address: string;
+  ward: string;
+  distance: number;
+}
+
+interface PermitDetail {
+  id: string;
+  permitNumber: string;
+  type: string;
+  status: string;
+  milestone: string;
+  applicationDate: string;
+  issueDate: string;
+  address: string;
+  workDescription: string;
+  workType: string;
+  reportedCost: number;
+  totalFee: number;
+  ward: string;
+  distance: number;
+}
+
+interface LicenseDetail {
+  id: string;
+  licenseNumber: string;
+  legalName: string;
+  dbaName: string;
+  address: string;
+  licenseType: string;
+  businessActivity: string;
+  status: string;
+  applicationDate: string;
+  issuedDate: string;
+  startDate: string;
+  expirationDate: string;
+  ward: string;
+  distance: number;
+}
+
 // Speed camera data from Chicago Data Portal
 const SPEED_CAMERAS: SpeedCamera[] = [
   { id: "195", locationId: "CHI015", address: "3450 W 71st St", firstApproach: "WB", secondApproach: "EB", goLiveDate: "2013-09-06", latitude: 41.7644, longitude: -87.7097 },
@@ -349,6 +454,42 @@ export default function Neighborhoods() {
   // Time range toggle: 'recent' (last 12 months) or 'alltime'
   const [timeRange, setTimeRange] = useState<'recent' | 'alltime'>('recent');
 
+  // Expandable detail sections state
+  const [crimeDetailsExpanded, setCrimeDetailsExpanded] = useState(false);
+  const [crimeDetails, setCrimeDetails] = useState<CrimeDetail[]>([]);
+  const [crimeDetailsLoading, setCrimeDetailsLoading] = useState(false);
+  const [crimeDetailsError, setCrimeDetailsError] = useState<string | null>(null);
+
+  const [crashDetailsExpanded, setCrashDetailsExpanded] = useState(false);
+  const [crashDetails, setCrashDetails] = useState<CrashDetail[]>([]);
+  const [crashDetailsLoading, setCrashDetailsLoading] = useState(false);
+  const [crashDetailsError, setCrashDetailsError] = useState<string | null>(null);
+
+  const [serviceDetailsExpanded, setServiceDetailsExpanded] = useState(false);
+  const [serviceDetails, setServiceDetails] = useState<ServiceRequestDetail[]>([]);
+  const [serviceDetailsLoading, setServiceDetailsLoading] = useState(false);
+  const [serviceDetailsError, setServiceDetailsError] = useState<string | null>(null);
+
+  const [violationDetailsExpanded, setViolationDetailsExpanded] = useState(false);
+  const [violationDetails, setViolationDetails] = useState<ViolationDetail[]>([]);
+  const [violationDetailsLoading, setViolationDetailsLoading] = useState(false);
+  const [violationDetailsError, setViolationDetailsError] = useState<string | null>(null);
+
+  const [potholeDetailsExpanded, setPotholeDetailsExpanded] = useState(false);
+  const [potholeDetails, setPotholeDetails] = useState<PotholeDetail[]>([]);
+  const [potholeDetailsLoading, setPotholeDetailsLoading] = useState(false);
+  const [potholeDetailsError, setPotholeDetailsError] = useState<string | null>(null);
+
+  const [permitDetailsExpanded, setPermitDetailsExpanded] = useState(false);
+  const [permitDetails, setPermitDetails] = useState<PermitDetail[]>([]);
+  const [permitDetailsLoading, setPermitDetailsLoading] = useState(false);
+  const [permitDetailsError, setPermitDetailsError] = useState<string | null>(null);
+
+  const [licenseDetailsExpanded, setLicenseDetailsExpanded] = useState(false);
+  const [licenseDetails, setLicenseDetails] = useState<LicenseDetail[]>([]);
+  const [licenseDetailsLoading, setLicenseDetailsLoading] = useState(false);
+  const [licenseDetailsError, setLicenseDetailsError] = useState<string | null>(null);
+
   // Load data based on active layer
   useEffect(() => {
     if (activeLayer === 'violations' && !violationsLoaded) {
@@ -551,6 +692,165 @@ export default function Neighborhoods() {
     setAddressSearchQuery('');
     setSearchError(null);
   }, []);
+
+  // Reset detail sections when location or radius changes
+  useEffect(() => {
+    setCrimeDetailsExpanded(false);
+    setCrimeDetails([]);
+    setCrashDetailsExpanded(false);
+    setCrashDetails([]);
+    setServiceDetailsExpanded(false);
+    setServiceDetails([]);
+    setViolationDetailsExpanded(false);
+    setViolationDetails([]);
+    setPotholeDetailsExpanded(false);
+    setPotholeDetails([]);
+    setPermitDetailsExpanded(false);
+    setPermitDetails([]);
+    setLicenseDetailsExpanded(false);
+    setLicenseDetails([]);
+  }, [userLocation, radiusTenths]);
+
+  // Fetch functions for detail data
+  const fetchCrimeDetails = useCallback(async () => {
+    if (!userLocation) return;
+    setCrimeDetailsLoading(true);
+    setCrimeDetailsError(null);
+    try {
+      const radius = radiusTenths * 0.1;
+      const res = await fetch(
+        `/api/neighborhood/crimes?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch crime details');
+      const data = await res.json();
+      setCrimeDetails(data.crimes || []);
+    } catch (err) {
+      console.error('Error fetching crime details:', err);
+      setCrimeDetailsError('Unable to load crime details. Please try again.');
+    } finally {
+      setCrimeDetailsLoading(false);
+    }
+  }, [userLocation, radiusTenths]);
+
+  const fetchCrashDetails = useCallback(async () => {
+    if (!userLocation) return;
+    setCrashDetailsLoading(true);
+    setCrashDetailsError(null);
+    try {
+      const radius = radiusTenths * 0.1;
+      const res = await fetch(
+        `/api/neighborhood/crashes?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch crash details');
+      const data = await res.json();
+      setCrashDetails(data.crashes || []);
+    } catch (err) {
+      console.error('Error fetching crash details:', err);
+      setCrashDetailsError('Unable to load crash details. Please try again.');
+    } finally {
+      setCrashDetailsLoading(false);
+    }
+  }, [userLocation, radiusTenths]);
+
+  const fetchServiceDetails = useCallback(async () => {
+    if (!userLocation) return;
+    setServiceDetailsLoading(true);
+    setServiceDetailsError(null);
+    try {
+      const radius = radiusTenths * 0.1;
+      const res = await fetch(
+        `/api/neighborhood/311?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch 311 details');
+      const data = await res.json();
+      setServiceDetails(data.requests || []);
+    } catch (err) {
+      console.error('Error fetching 311 details:', err);
+      setServiceDetailsError('Unable to load 311 request details. Please try again.');
+    } finally {
+      setServiceDetailsLoading(false);
+    }
+  }, [userLocation, radiusTenths]);
+
+  const fetchViolationDetails = useCallback(async () => {
+    if (!userLocation) return;
+    setViolationDetailsLoading(true);
+    setViolationDetailsError(null);
+    try {
+      const radius = radiusTenths * 0.1;
+      const res = await fetch(
+        `/api/neighborhood/violations?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch violation details');
+      const data = await res.json();
+      setViolationDetails(data.violations || []);
+    } catch (err) {
+      console.error('Error fetching violation details:', err);
+      setViolationDetailsError('Unable to load violation details. Please try again.');
+    } finally {
+      setViolationDetailsLoading(false);
+    }
+  }, [userLocation, radiusTenths]);
+
+  const fetchPotholeDetails = useCallback(async () => {
+    if (!userLocation) return;
+    setPotholeDetailsLoading(true);
+    setPotholeDetailsError(null);
+    try {
+      const radius = radiusTenths * 0.1;
+      const res = await fetch(
+        `/api/neighborhood/potholes?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch pothole details');
+      const data = await res.json();
+      setPotholeDetails(data.potholes || []);
+    } catch (err) {
+      console.error('Error fetching pothole details:', err);
+      setPotholeDetailsError('Unable to load pothole details. Please try again.');
+    } finally {
+      setPotholeDetailsLoading(false);
+    }
+  }, [userLocation, radiusTenths]);
+
+  const fetchPermitDetails = useCallback(async () => {
+    if (!userLocation) return;
+    setPermitDetailsLoading(true);
+    setPermitDetailsError(null);
+    try {
+      const radius = radiusTenths * 0.1;
+      const res = await fetch(
+        `/api/neighborhood/permits?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch permit details');
+      const data = await res.json();
+      setPermitDetails(data.permits || []);
+    } catch (err) {
+      console.error('Error fetching permit details:', err);
+      setPermitDetailsError('Unable to load permit details. Please try again.');
+    } finally {
+      setPermitDetailsLoading(false);
+    }
+  }, [userLocation, radiusTenths]);
+
+  const fetchLicenseDetails = useCallback(async () => {
+    if (!userLocation) return;
+    setLicenseDetailsLoading(true);
+    setLicenseDetailsError(null);
+    try {
+      const radius = radiusTenths * 0.1;
+      const res = await fetch(
+        `/api/neighborhood/licenses?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch license details');
+      const data = await res.json();
+      setLicenseDetails(data.licenses || []);
+    } catch (err) {
+      console.error('Error fetching license details:', err);
+      setLicenseDetailsError('Unable to load license details. Please try again.');
+    } finally {
+      setLicenseDetailsLoading(false);
+    }
+  }, [userLocation, radiusTenths]);
 
   // Filter speed cameras
   const filteredSpeedCameras = useMemo(() => {
@@ -1257,7 +1557,62 @@ export default function Neighborhoods() {
                       {nearbyCrimes.violent > 0 && nearbyCrimes.property > 0 && ', '}
                       {nearbyCrimes.property > 0 && <span>{nearbyCrimes.property} property</span>}
                     </div>
+                    {nearbyCrimes.total > 0 && (
+                      <button
+                        onClick={() => {
+                          if (!crimeDetailsExpanded) fetchCrimeDetails();
+                          setCrimeDetailsExpanded(!crimeDetailsExpanded);
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          backgroundColor: '#7c3aed',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {crimeDetailsExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                    )}
                   </div>
+
+                  {/* Crimes Expanded Details */}
+                  {crimeDetailsExpanded && (
+                    <div style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#faf5ff', borderRadius: '8px', border: '1px solid #c4b5fd' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#5b21b6', marginBottom: '8px' }}>
+                        Crime Details (Last 12 months, within {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`})
+                      </div>
+                      {crimeDetailsLoading && <p style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</p>}
+                      {crimeDetailsError && <p style={{ fontSize: '11px', color: '#dc2626' }}>{crimeDetailsError}</p>}
+                      {!crimeDetailsLoading && !crimeDetailsError && crimeDetails.length === 0 && (
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>No detailed crime data available for this location.</p>
+                      )}
+                      {crimeDetails.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {crimeDetails.map((crime, i) => (
+                            <div key={crime.id || i} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '6px', marginBottom: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '600', color: crime.type?.toUpperCase().includes('BATTERY') || crime.type?.toUpperCase().includes('ASSAULT') || crime.type?.toUpperCase().includes('ROBBERY') || crime.type?.toUpperCase().includes('HOMICIDE') ? '#dc2626' : '#374151' }}>
+                                  {crime.type}
+                                </span>
+                                <span style={{ color: '#6b7280' }}>{crime.distance} ft away</span>
+                              </div>
+                              <div style={{ color: '#6b7280' }}>{crime.description}</div>
+                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                                <span>{crime.date} {crime.time}</span>
+                                <span>{crime.location}</span>
+                                <span style={{ color: '#6b7280' }}>{crime.locationType}</span>
+                                {crime.arrest && <span style={{ color: '#059669' }}>Arrest made</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Crashes */}
                   <div style={{ padding: '12px', backgroundColor: '#ecfeff', borderRadius: '8px' }}>
@@ -1271,7 +1626,64 @@ export default function Neighborhoods() {
                       {nearbyCrashes.fatal > 0 && <span style={{ color: '#dc2626' }}>, {nearbyCrashes.fatal} fatal</span>}
                       {nearbyCrashes.hitAndRun > 0 && <span>, {nearbyCrashes.hitAndRun} hit & run</span>}
                     </div>
+                    {nearbyCrashes.total > 0 && (
+                      <button
+                        onClick={() => {
+                          if (!crashDetailsExpanded) fetchCrashDetails();
+                          setCrashDetailsExpanded(!crashDetailsExpanded);
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          backgroundColor: '#0891b2',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {crashDetailsExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                    )}
                   </div>
+
+                  {/* Crashes Expanded Details */}
+                  {crashDetailsExpanded && (
+                    <div style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#f0fdfa', borderRadius: '8px', border: '1px solid #99f6e4' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#155e75', marginBottom: '8px' }}>
+                        Crash Details (Last 12 months, within {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`})
+                      </div>
+                      {crashDetailsLoading && <p style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</p>}
+                      {crashDetailsError && <p style={{ fontSize: '11px', color: '#dc2626' }}>{crashDetailsError}</p>}
+                      {!crashDetailsLoading && !crashDetailsError && crashDetails.length === 0 && (
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>No detailed crash data available for this location.</p>
+                      )}
+                      {crashDetails.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {crashDetails.map((crash, i) => (
+                            <div key={crash.id || i} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '6px', marginBottom: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '600', color: crash.fatal > 0 ? '#dc2626' : crash.injuries > 0 ? '#f59e0b' : '#374151' }}>
+                                  {crash.crashType}
+                                  {crash.fatal > 0 && <span style={{ color: '#dc2626', marginLeft: '6px' }}>FATAL</span>}
+                                  {crash.hitAndRun && <span style={{ color: '#7c3aed', marginLeft: '6px' }}>Hit & Run</span>}
+                                </span>
+                                <span style={{ color: '#6b7280' }}>{crash.distance} ft away</span>
+                              </div>
+                              <div style={{ color: '#6b7280' }}>{crash.primaryCause}</div>
+                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                                <span>{crash.date} {crash.time}</span>
+                                <span>{crash.location}</span>
+                                {crash.injuries > 0 && <span style={{ color: '#f59e0b' }}>{crash.injuries} injured</span>}
+                                <span>{crash.weatherCondition}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* 311 Requests */}
                   <div style={{ padding: '12px', backgroundColor: '#ecfdf5', borderRadius: '8px' }}>
@@ -1290,7 +1702,65 @@ export default function Neighborhoods() {
                         <span>{nearbyServices.total} all-time</span>
                       )}
                     </div>
+                    {(timeRange === 'recent' ? nearbyServices.recent : nearbyServices.total) > 0 && (
+                      <button
+                        onClick={() => {
+                          if (!serviceDetailsExpanded) fetchServiceDetails();
+                          setServiceDetailsExpanded(!serviceDetailsExpanded);
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          backgroundColor: '#22c55e',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {serviceDetailsExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                    )}
                   </div>
+
+                  {/* 311 Expanded Details */}
+                  {serviceDetailsExpanded && (
+                    <div style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#166534', marginBottom: '8px' }}>
+                        311 Request Details (Last 12 months, within {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`})
+                      </div>
+                      {serviceDetailsLoading && <p style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</p>}
+                      {serviceDetailsError && <p style={{ fontSize: '11px', color: '#dc2626' }}>{serviceDetailsError}</p>}
+                      {!serviceDetailsLoading && !serviceDetailsError && serviceDetails.length === 0 && (
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>No detailed 311 data available for this location.</p>
+                      )}
+                      {serviceDetails.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {serviceDetails.map((req, i) => (
+                            <div key={req.id || i} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '6px', marginBottom: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '600', color: '#374151' }}>{req.type}</span>
+                                <span style={{ color: '#6b7280' }}>{req.distance} ft away</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                                <span>{req.createdDate}</span>
+                                <span style={{
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  backgroundColor: req.status === 'Completed' ? '#dcfce7' : req.status === 'Open' ? '#fef3c7' : '#f3f4f6',
+                                  color: req.status === 'Completed' ? '#166534' : req.status === 'Open' ? '#92400e' : '#374151'
+                                }}>
+                                  {req.status}
+                                </span>
+                                <span>{req.address}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Building Violations */}
                   <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
@@ -1300,7 +1770,77 @@ export default function Neighborhoods() {
                     <div style={{ fontSize: '11px', color: '#6b7280' }}>
                       {nearbyViolations.highRisk > 0 && <span style={{ color: '#dc2626' }}>{nearbyViolations.highRisk} high risk</span>}
                     </div>
+                    {nearbyViolations.violations > 0 && (
+                      <button
+                        onClick={() => {
+                          if (!violationDetailsExpanded) fetchViolationDetails();
+                          setViolationDetailsExpanded(!violationDetailsExpanded);
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {violationDetailsExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                    )}
                   </div>
+
+                  {/* Violations Expanded Details */}
+                  {violationDetailsExpanded && (
+                    <div style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#92400e', marginBottom: '8px' }}>
+                        Violation Details (Last 12 months, within {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`})
+                      </div>
+                      {violationDetailsLoading && <p style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</p>}
+                      {violationDetailsError && <p style={{ fontSize: '11px', color: '#dc2626' }}>{violationDetailsError}</p>}
+                      {!violationDetailsLoading && !violationDetailsError && violationDetails.length === 0 && (
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>No detailed violation data available for this location.</p>
+                      )}
+                      {violationDetails.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {violationDetails.map((v, i) => (
+                            <div key={v.id || i} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '6px', marginBottom: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{
+                                  fontWeight: '600',
+                                  color: v.severity === 'high' ? '#dc2626' : v.severity === 'medium' ? '#f59e0b' : '#374151'
+                                }}>
+                                  {v.code && <span style={{ marginRight: '6px' }}>[{v.code}]</span>}
+                                  {v.severity === 'high' && <span style={{ color: '#dc2626' }}>HIGH RISK - </span>}
+                                  {v.description}
+                                </span>
+                                <span style={{ color: '#6b7280' }}>{v.distance} ft away</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                                <span>{v.date}</span>
+                                <span style={{
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  backgroundColor: v.status === 'Complied' ? '#dcfce7' : v.status === 'Open' ? '#fee2e2' : '#f3f4f6',
+                                  color: v.status === 'Complied' ? '#166534' : v.status === 'Open' ? '#991b1b' : '#374151'
+                                }}>
+                                  {v.status}
+                                </span>
+                                <span>{v.address}</span>
+                              </div>
+                              {v.inspectorComments && (
+                                <div style={{ marginTop: '4px', fontSize: '10px', color: '#6b7280', fontStyle: 'italic' }}>
+                                  {v.inspectorComments.slice(0, 150)}{v.inspectorComments.length > 150 ? '...' : ''}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Cameras */}
                   <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
@@ -1329,7 +1869,72 @@ export default function Neighborhoods() {
                         <span>{nearbyPotholes.potholes} all-time</span>
                       )}
                     </div>
+                    {(nearbyPotholes.recent > 0 || nearbyPotholes.potholes > 0) && (
+                      <button
+                        onClick={() => {
+                          if (!potholeDetailsExpanded) fetchPotholeDetails();
+                          setPotholeDetailsExpanded(!potholeDetailsExpanded);
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          backgroundColor: '#6b7280',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {potholeDetailsExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                    )}
                   </div>
+
+                  {/* Potholes Expanded Details */}
+                  {potholeDetailsExpanded && (
+                    <div style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #d1d5db' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                        Pothole Details (Last 12 months, within {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`})
+                      </div>
+                      {potholeDetailsLoading && <p style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</p>}
+                      {potholeDetailsError && <p style={{ fontSize: '11px', color: '#dc2626' }}>{potholeDetailsError}</p>}
+                      {!potholeDetailsLoading && !potholeDetailsError && potholeDetails.length === 0 && (
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>No detailed pothole data available for this location.</p>
+                      )}
+                      {potholeDetails.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {potholeDetails.map((p, i) => (
+                            <div key={p.id || i} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '6px', marginBottom: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '600', color: '#374151' }}>
+                                  {p.potholesFilled > 1 ? `${p.potholesFilled} potholes filled` : 'Pothole filled'}
+                                </span>
+                                <span style={{ color: '#6b7280' }}>{p.distance} ft away</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                                <span>{p.createdDate}</span>
+                                <span style={{
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  backgroundColor: p.status === 'Completed' ? '#dcfce7' : '#fef3c7',
+                                  color: p.status === 'Completed' ? '#166534' : '#92400e'
+                                }}>
+                                  {p.status}
+                                </span>
+                                <span>{p.address}</span>
+                              </div>
+                              {p.completedDate && (
+                                <div style={{ marginTop: '4px', fontSize: '10px', color: '#6b7280' }}>
+                                  Completed: {p.completedDate}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Permits with Business Vitality */}
                   <div style={{ padding: '12px', backgroundColor: '#d1fae5', borderRadius: '8px' }}>
@@ -1362,7 +1967,77 @@ export default function Neighborhoods() {
                       )}
                       {nearbyPermits.cost > 0 && <span>, ${(nearbyPermits.cost / 1000000).toFixed(1)}M value</span>}
                     </div>
+                    {(nearbyPermits.recent > 0 || nearbyPermits.total > 0) && (
+                      <button
+                        onClick={() => {
+                          if (!permitDetailsExpanded) fetchPermitDetails();
+                          setPermitDetailsExpanded(!permitDetailsExpanded);
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          backgroundColor: '#10b981',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {permitDetailsExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                    )}
                   </div>
+
+                  {/* Permits Expanded Details */}
+                  {permitDetailsExpanded && (
+                    <div style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#ecfdf5', borderRadius: '8px', border: '1px solid #6ee7b7' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#047857', marginBottom: '8px' }}>
+                        Permit Details (Last 12 months, within {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`})
+                      </div>
+                      {permitDetailsLoading && <p style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</p>}
+                      {permitDetailsError && <p style={{ fontSize: '11px', color: '#dc2626' }}>{permitDetailsError}</p>}
+                      {!permitDetailsLoading && !permitDetailsError && permitDetails.length === 0 && (
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>No detailed permit data available for this location.</p>
+                      )}
+                      {permitDetails.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {permitDetails.map((p, i) => (
+                            <div key={p.id || i} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '6px', marginBottom: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '600', color: '#374151' }}>
+                                  {p.type} {p.permitNumber && `#${p.permitNumber}`}
+                                </span>
+                                <span style={{ color: '#6b7280' }}>{p.distance} ft away</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                                <span>{p.applicationDate}</span>
+                                <span style={{
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  backgroundColor: p.status === 'Issued' ? '#dcfce7' : p.status === 'Complete' ? '#dbeafe' : '#fef3c7',
+                                  color: p.status === 'Issued' ? '#166534' : p.status === 'Complete' ? '#1e40af' : '#92400e'
+                                }}>
+                                  {p.status}
+                                </span>
+                                <span>{p.address}</span>
+                              </div>
+                              {p.workDescription && (
+                                <div style={{ marginTop: '4px', fontSize: '10px', color: '#6b7280' }}>
+                                  {p.workDescription.slice(0, 100)}{p.workDescription.length > 100 ? '...' : ''}
+                                </div>
+                              )}
+                              {p.reportedCost > 0 && (
+                                <div style={{ marginTop: '4px', fontSize: '10px', color: '#047857', fontWeight: '500' }}>
+                                  Reported Cost: ${p.reportedCost.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Businesses */}
                   <div style={{ padding: '12px', backgroundColor: '#fff7ed', borderRadius: '8px' }}>
@@ -1381,7 +2056,80 @@ export default function Neighborhoods() {
                         <span>{nearbyLicenses.total} all-time</span>
                       )}
                     </div>
+                    {(nearbyLicenses.active > 0 || nearbyLicenses.total > 0) && (
+                      <button
+                        onClick={() => {
+                          if (!licenseDetailsExpanded) fetchLicenseDetails();
+                          setLicenseDetailsExpanded(!licenseDetailsExpanded);
+                        }}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          backgroundColor: '#f97316',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {licenseDetailsExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                    )}
                   </div>
+
+                  {/* Licenses Expanded Details */}
+                  {licenseDetailsExpanded && (
+                    <div style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#fff7ed', borderRadius: '8px', border: '1px solid #fdba74' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#c2410c', marginBottom: '8px' }}>
+                        Business License Details (Last 12 months issued, within {radiusTenths === 1 ? '500 ft' : `${(radiusTenths * 0.1).toFixed(1)} mi`})
+                      </div>
+                      {licenseDetailsLoading && <p style={{ fontSize: '11px', color: '#6b7280' }}>Loading...</p>}
+                      {licenseDetailsError && <p style={{ fontSize: '11px', color: '#dc2626' }}>{licenseDetailsError}</p>}
+                      {!licenseDetailsLoading && !licenseDetailsError && licenseDetails.length === 0 && (
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>No detailed license data available for this location.</p>
+                      )}
+                      {licenseDetails.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {licenseDetails.map((l, i) => (
+                            <div key={l.id || i} style={{ padding: '8px', backgroundColor: 'white', borderRadius: '6px', marginBottom: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '600', color: '#374151' }}>
+                                  {l.dbaName || l.legalName || 'Business'}
+                                </span>
+                                <span style={{ color: '#6b7280' }}>{l.distance} ft away</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                                <span>{l.licenseType}</span>
+                                <span style={{
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  backgroundColor: l.status === 'Active' ? '#dcfce7' : l.status === 'Expired' ? '#fee2e2' : '#f3f4f6',
+                                  color: l.status === 'Active' ? '#166534' : l.status === 'Expired' ? '#991b1b' : '#374151'
+                                }}>
+                                  {l.status}
+                                </span>
+                              </div>
+                              <div style={{ marginTop: '4px', fontSize: '10px', color: '#6b7280' }}>
+                                {l.address}
+                              </div>
+                              {l.businessActivity && (
+                                <div style={{ marginTop: '4px', fontSize: '10px', color: '#9ca3af' }}>
+                                  {l.businessActivity.slice(0, 80)}{l.businessActivity.length > 80 ? '...' : ''}
+                                </div>
+                              )}
+                              {l.issuedDate && (
+                                <div style={{ marginTop: '4px', fontSize: '10px', color: '#c2410c' }}>
+                                  Issued: {l.issuedDate}
+                                  {l.expirationDate && ` | Expires: ${l.expirationDate}`}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Footer with explanation */}
