@@ -8,8 +8,8 @@ import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-# Block size: ~0.004 degrees ≈ 440m
-BLOCK_SIZE = 0.004
+# Block size: ~0.002 degrees ≈ 220m ≈ 720 ft ≈ 1.5 Chicago blocks
+BLOCK_SIZE = 0.002
 
 def round_to_block(lat, lng):
     """Round coordinates to block grid."""
@@ -122,7 +122,7 @@ def process_311():
     print(f"  Total blocks with data: {len(blocks):,}")
 
     # Filter to blocks with at least 10 requests
-    filtered = {k: v for k, v in blocks.items() if v['count'] >= 10}
+    filtered = {k: v for k, v in blocks.items() if v['count'] >= 3}
     print(f"  Blocks with 10+ requests: {len(filtered):,}")
 
     # Build output data
@@ -232,7 +232,7 @@ def process_crimes():
     print(f"  Total blocks with crimes: {len(blocks):,}")
 
     # Filter to blocks with at least 5 crimes
-    filtered = {k: v for k, v in blocks.items() if v['count'] >= 5}
+    filtered = {k: v for k, v in blocks.items() if v['count'] >= 2}
     print(f"  Blocks with 5+ crimes: {len(filtered):,}")
 
     data = []
@@ -332,7 +332,7 @@ def process_crashes():
     print(f"  Total blocks with crashes: {len(blocks):,}")
 
     # Filter to blocks with at least 10 crashes
-    filtered = {k: v for k, v in blocks.items() if v['count'] >= 10}
+    filtered = {k: v for k, v in blocks.items() if v['count'] >= 3}
     print(f"  Blocks with 10+ crashes: {len(filtered):,}")
 
     data = []

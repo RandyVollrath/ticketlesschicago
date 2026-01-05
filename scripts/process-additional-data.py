@@ -13,7 +13,8 @@ import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-BLOCK_SIZE = 0.004
+# Block size: ~0.002 degrees ≈ 220m ≈ 720 ft ≈ 1.5 Chicago blocks
+BLOCK_SIZE = 0.002
 
 def round_to_block(lat, lng):
     return (round(lat / BLOCK_SIZE) * BLOCK_SIZE, round(lng / BLOCK_SIZE) * BLOCK_SIZE)
@@ -101,7 +102,7 @@ def process_permits():
     print(f"  Total rows: {row_count:,}")
     print(f"  Blocks with permits: {len(blocks):,}")
 
-    filtered = {k: v for k, v in blocks.items() if v['count'] >= 5}
+    filtered = {k: v for k, v in blocks.items() if v['count'] >= 2}
     print(f"  Blocks with 5+ permits: {len(filtered):,}")
 
     data = []
@@ -205,7 +206,7 @@ def process_licenses():
     print(f"  Total rows: {row_count:,}")
     print(f"  Blocks with licenses: {len(blocks):,}")
 
-    filtered = {k: v for k, v in blocks.items() if v['count'] >= 3}
+    filtered = {k: v for k, v in blocks.items() if v['count'] >= 1}
     print(f"  Blocks with 3+ licenses: {len(filtered):,}")
 
     data = []
@@ -388,7 +389,7 @@ def process_potholes():
     print(f"  Total rows: {row_count:,}")
     print(f"  Blocks with potholes: {len(blocks):,}")
 
-    filtered = {k: v for k, v in blocks.items() if v['count'] >= 3}
+    filtered = {k: v for k, v in blocks.items() if v['count'] >= 1}
     print(f"  Blocks with 3+ repairs: {len(filtered):,}")
 
     data = []
