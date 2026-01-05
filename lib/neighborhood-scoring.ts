@@ -13,16 +13,17 @@ export const SCORING_WEIGHTS = {
   licenses: { weight: 0.075, label: 'Business Activity', negative: false, description: 'Commercial vitality and services' },
 };
 
-// Chicago-wide averages per 0.1 mile radius (approximate, based on city data)
+// Chicago-wide averages per 0.1 mile radius for 12-MONTH period
+// Based on analysis of typical Chicago neighborhoods
 export const CHICAGO_AVERAGES = {
-  crime: 15,          // crimes per year in 0.1mi radius
-  crashes: 8,         // crashes per year
-  violations: 25,     // building violations per year
-  serviceRequests: 40, // 311 requests per year
-  cameras: 0.5,       // cameras nearby
-  potholes: 10,       // pothole repairs
-  permits: 8,         // building permits
-  licenses: 12,       // business licenses
+  crime: 25,          // crimes per year in 0.1mi radius (dense urban area)
+  crashes: 15,        // crashes per year (busy streets)
+  violations: 20,     // building violations per year (active enforcement)
+  serviceRequests: 30, // 311 requests per year (engaged residents)
+  cameras: 0.5,       // cameras nearby (not time-based)
+  potholes: 8,        // pothole repairs per year
+  permits: 10,        // building permits per year (healthy investment)
+  licenses: 50,       // active business licenses (commercial area)
 };
 
 export interface CategoryScore {
@@ -58,28 +59,45 @@ export function calculateCategoryScore(
   config: typeof SCORING_WEIGHTS[keyof typeof SCORING_WEIGHTS],
   average: number
 ): CategoryScore {
-  // Normalize: 100 = at or below average, 0 = 3x average or worse
-  // For positive factors, invert the logic
+  // Normalize using a logarithmic scale for negative factors to prevent
+  // extreme values from completely dominating the score.
+  // Urban areas with high activity shouldn't be overly penalized.
   let normalizedScore: number;
 
   if (config.negative) {
     // Lower is better for negative factors
+    // Use log scale to dampen the effect of very high values
     if (value <= average * 0.5) {
       normalizedScore = 100;
-    } else if (value >= average * 3) {
-      normalizedScore = 0;
+    } else if (value <= average) {
+      // Between 50% and 100% of average = score 80-100
+      normalizedScore = 80 + 20 * (1 - (value - average * 0.5) / (average * 0.5));
+    } else if (value <= average * 2) {
+      // 100% to 200% of average = score 60-80
+      normalizedScore = 60 + 20 * (1 - (value - average) / average);
+    } else if (value <= average * 5) {
+      // 200% to 500% of average = score 40-60 (log dampening)
+      const ratio = (value - average * 2) / (average * 3);
+      normalizedScore = 60 - 20 * Math.min(1, ratio);
     } else {
-      // Linear interpolation
-      normalizedScore = Math.max(0, Math.min(100, 100 - ((value - average * 0.5) / (average * 2.5)) * 100));
+      // Over 5x average = score 20-40 (severe but capped)
+      const ratio = Math.min(1, (value - average * 5) / (average * 10));
+      normalizedScore = 40 - 20 * ratio;
     }
+    // Never go below 20 - no neighborhood is truly hopeless
+    normalizedScore = Math.max(20, normalizedScore);
   } else {
     // Higher is better for positive factors
-    if (value >= average * 2) {
+    if (value >= average * 3) {
       normalizedScore = 100;
-    } else if (value <= 0) {
-      normalizedScore = 50; // Some activity is baseline
+    } else if (value >= average * 1.5) {
+      normalizedScore = 90 + 10 * ((value - average * 1.5) / (average * 1.5));
+    } else if (value >= average) {
+      normalizedScore = 70 + 20 * ((value - average) / (average * 0.5));
+    } else if (value > 0) {
+      normalizedScore = 50 + 20 * (value / average);
     } else {
-      normalizedScore = Math.min(100, 50 + (value / average) * 25);
+      normalizedScore = 40; // Some baseline even with no activity
     }
   }
 
