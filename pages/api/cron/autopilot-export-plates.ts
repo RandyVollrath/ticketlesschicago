@@ -252,35 +252,41 @@ export default async function handler(
       });
     }
 
-    // First get users with active subscriptions
-    const { data: activeSubscriptions, error: subError } = await supabase
-      .from('autopilot_subscriptions')
-      .select('user_id')
-      .eq('status', 'active');
+    // Get users with active contesting (has_contesting = true) along with their profiles
+    const { data: paidUsers, error: usersError } = await supabase
+      .from('user_profiles')
+      .select('user_id, first_name, last_name')
+      .eq('has_contesting', true);
 
-    if (subError) {
-      throw subError;
+    if (usersError) {
+      throw usersError;
     }
 
-    const activeUserIds = activeSubscriptions?.map(s => s.user_id) || [];
+    const paidUserIds = paidUsers?.map(u => u.user_id) || [];
 
-    if (activeUserIds.length === 0) {
-      console.log('No active subscriptions found');
+    if (paidUserIds.length === 0) {
+      console.log('No users with active contesting found');
       return res.status(200).json({
         success: true,
         plateCount: 0,
         emailSent: false,
         recipientEmail: vaEmail,
-        error: 'No active subscriptions',
+        error: 'No users with active contesting',
       });
     }
 
-    // Get all active monitored plates from users with active subscriptions
+    // Create a map of user_id to profile for name lookup
+    const profileMap = new Map();
+    paidUsers?.forEach(p => {
+      profileMap.set(p.user_id, p);
+    });
+
+    // Get all active monitored plates from users with active contesting
     const { data: plates, error: platesError } = await supabase
       .from('monitored_plates')
       .select('plate, state, user_id')
       .eq('status', 'active')
-      .in('user_id', activeUserIds)
+      .in('user_id', paidUserIds)
       .order('plate', { ascending: true });
 
     if (platesError) {
@@ -298,35 +304,13 @@ export default async function handler(
       });
     }
 
-    // Get user profiles to get first/last names
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('user_id, first_name, last_name, full_name')
-      .in('user_id', activeUserIds);
-
-    // Create a map of user_id to profile
-    const profileMap = new Map();
-    profiles?.forEach(p => {
-      profileMap.set(p.user_id, p);
-    });
-
     // Merge plate data with profile data
     const platesWithNames = plates.map(plate => {
       const profile = profileMap.get(plate.user_id);
-      let firstName = profile?.first_name || '';
-      let lastName = profile?.last_name || '';
-
-      // Fall back to parsing full_name if first/last not set
-      if (!firstName && !lastName && profile?.full_name) {
-        const nameParts = profile.full_name.trim().split(' ');
-        firstName = nameParts[0] || '';
-        lastName = nameParts.slice(1).join(' ') || '';
-      }
-
       return {
         ...plate,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: profile?.first_name || '',
+        last_name: profile?.last_name || '',
       };
     });
 
