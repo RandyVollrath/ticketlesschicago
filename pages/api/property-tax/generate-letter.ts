@@ -60,6 +60,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'Appeal not found' });
     }
 
+    // REFUND-SAFE GUARDRAIL: Require payment before generating letter
+    if (appeal.status !== 'paid' && appeal.status !== 'letter_generated') {
+      return res.status(402).json({
+        error: 'Payment required',
+        message: 'Please complete payment to generate your appeal letter.',
+        requiresPayment: true
+      });
+    }
+
+    // REFUND-SAFE GUARDRAIL: Prevent re-generation without new payment
+    if (appeal.letter_generated_at && appeal.appeal_letter) {
+      // Letter already exists - return the existing one instead of generating new
+      return res.status(200).json({
+        success: true,
+        letter: appeal.appeal_letter,
+        letterHtml: appeal.appeal_letter_html,
+        appealId,
+        alreadyGenerated: true,
+        generatedAt: appeal.letter_generated_at,
+        message: 'Your appeal letter has already been generated. Contact support if you need changes.'
+      });
+    }
+
     // Get comparables for this appeal
     const { data: comparables } = await supabase
       .from('property_tax_comparables')
@@ -188,13 +211,15 @@ Format the letter properly with date, addresses, salutation, body paragraphs, an
     // Convert to HTML for display
     const letterHtml = convertToHtml(letterText);
 
-    // Update the appeal with the generated letter
+    // Update the appeal with the generated letter and mark as letter_generated
     await supabase
       .from('property_tax_appeals')
       .update({
+        status: 'letter_generated',
         appeal_letter: letterText,
         appeal_letter_html: letterHtml,
         appeal_letter_generated_at: new Date().toISOString(),
+        letter_generated_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', appealId);
@@ -209,6 +234,19 @@ Format the letter properly with date, addresses, salutation, body paragraphs, an
 
   } catch (error) {
     console.error('Generate letter error:', error);
+
+    // Log failed letter generation for debugging
+    try {
+      await supabase
+        .from('property_tax_appeals')
+        .update({
+          status: 'letter_failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', req.body?.appealId);
+    } catch (logError) {
+      console.error('Failed to log letter generation failure:', logError);
+    }
 
     if (error instanceof Error && error.message.includes('rate_limit')) {
       return res.status(429).json({

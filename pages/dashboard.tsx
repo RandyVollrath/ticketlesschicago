@@ -1388,6 +1388,75 @@ export default function Dashboard() {
             </div>
           </Card>
         )}
+
+        {/* Property Tax Appeal Card */}
+        <Card title="Property Tax Appeal" badge={
+          <span style={{
+            padding: '2px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+            backgroundColor: '#DBEAFE',
+            color: '#1D4ED8',
+            borderRadius: 4,
+          }}>
+            NEW
+          </span>
+        }>
+          <p style={{ fontSize: 14, color: COLORS.textMuted, margin: '0 0 16px' }}>
+            Overpaying on property taxes? We analyze your Cook County assessment and prepare a professional appeal letter.
+          </p>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div style={{
+              flex: '1 1 150px',
+              padding: 16,
+              backgroundColor: COLORS.bgLight,
+              borderRadius: 8,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4, textTransform: 'uppercase' }}>Service</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.primary }}>Appeal Package</div>
+            </div>
+            <div style={{
+              flex: '1 1 150px',
+              padding: 16,
+              backgroundColor: COLORS.bgLight,
+              borderRadius: 8,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4, textTransform: 'uppercase' }}>Price</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.primary }}>$179</div>
+            </div>
+            <div style={{
+              flex: '1 1 150px',
+              padding: 16,
+              backgroundColor: '#DBEAFE',
+              borderRadius: 8,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 11, color: '#1D4ED8', marginBottom: 4, textTransform: 'uppercase' }}>Analysis</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1D4ED8' }}>Free</div>
+            </div>
+          </div>
+          <button
+            onClick={() => router.push('/property-tax')}
+            style={{
+              width: '100%',
+              padding: 14,
+              borderRadius: 8,
+              border: 'none',
+              backgroundColor: '#1D4ED8',
+              color: 'white',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1E40AF'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1D4ED8'}
+          >
+            Check My Property
+          </button>
+        </Card>
       </main>
     </DashboardLayout>
   );

@@ -18,6 +18,7 @@ import {
   normalizePin,
   formatPin
 } from '../../../lib/cook-county-api';
+import { DEADLINE_STATUS } from '../cron/sync-property-tax-deadlines';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,6 +86,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const property = analysis.property;
     const stats = analysis.analysis;
+
+    // Check deadline status for this township
+    const currentYear = new Date().getFullYear();
+    const { data: deadline } = await supabase
+      .from('property_tax_deadlines')
+      .select('status, bor_open_date, bor_close_date')
+      .eq('township', property.township)
+      .eq('year', currentYear)
+      .single();
+
+    // Block filing if deadline is unknown
+    if (!deadline || deadline.status === DEADLINE_STATUS.UNKNOWN) {
+      return res.status(400).json({
+        error: 'Checking township deadlines',
+        message: `Filing deadlines for ${property.township} Township are not yet available. ` +
+                 `We're working on getting the official dates. Please check back soon.`,
+        deadlineStatus: 'unknown',
+        township: property.township
+      });
+    }
+
+    // Block if deadline has expired
+    if (deadline.status === DEADLINE_STATUS.EXPIRED ||
+        (deadline.bor_close_date && new Date(deadline.bor_close_date) < new Date())) {
+      return res.status(400).json({
+        error: 'Filing period closed',
+        message: `The ${property.township} Township filing deadline has passed for ${currentYear}. ` +
+                 `Appeals will reopen next year.`,
+        deadlineStatus: 'expired',
+        township: property.township
+      });
+    }
 
     // Use proposed value or calculate from comparables
     const proposedAssessedValue = proposedValue || stats.medianComparableValue;
