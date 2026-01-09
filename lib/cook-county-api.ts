@@ -567,6 +567,35 @@ function calculateAssessmentChange(
 }
 
 /**
+ * Get adjacent township codes for expanded comparable search
+ * Cook County township codes and their neighbors for condo comparables
+ */
+function getAdjacentTownships(townshipCode: string): string[] {
+  // Chicago township adjacency map (codes)
+  // These are approximate - for property tax appeals, nearby townships are valid comparables
+  const adjacencyMap: Record<string, string[]> = {
+    // Lake View (76) - Lincoln Park, Rogers Park, North Chicago
+    '76': ['70', '74', '77'],
+    // Lincoln Park area / Lake (70)
+    '70': ['76', '74', '77'],
+    // Rogers Park (74)
+    '74': ['76', '70', '77'],
+    // Hyde Park (38)
+    '38': ['39', '35', '25'],
+    // South Chicago (39)
+    '39': ['38', '35'],
+    // Jefferson (25)
+    '25': ['38', '26', '35'],
+    // West Chicago (26)
+    '26': ['25', '27', '35'],
+    // North (77)
+    '77': ['76', '70', '74'],
+  };
+
+  return adjacencyMap[townshipCode] || [];
+}
+
+/**
  * Get property class description
  */
 function getPropertyClassDescription(classCode: string): string {
@@ -1065,6 +1094,42 @@ export async function getComparableProperties(
           '$limit': '75'
         }
       ));
+
+      // Query 4: WIDER SEARCH - Same township + same bedrooms, no year filter
+      // This helps find more buildings across the area
+      queries.push(querySODA<CondoCharacteristics>(
+        DATASETS.CONDO_CHARACTERISTICS,
+        {
+          '$where': `township_code = '${subjectProperty.townshipCode}'
+            AND pin != '${subjectProperty.pin}'
+            AND pin10 != '${buildingPin10}'
+            AND is_parking_space = false
+            AND is_common_area = false
+            AND char_bedrooms = '${subjectBedrooms}'`,
+          '$order': 'year DESC',
+          '$limit': '150'
+        }
+      ));
+    }
+
+    // Query 5: ADJACENT TOWNSHIPS - Same bedrooms, similar size
+    // Lincoln Park (70) is adjacent to Lake View (76), etc.
+    // This widens the search significantly for appeal comparables
+    const adjacentTownships = getAdjacentTownships(subjectProperty.townshipCode);
+    if (adjacentTownships.length > 0 && subjectBedrooms !== null) {
+      const townshipList = adjacentTownships.map(t => `'${t}'`).join(',');
+      queries.push(querySODA<CondoCharacteristics>(
+        DATASETS.CONDO_CHARACTERISTICS,
+        {
+          '$where': `township_code in (${townshipList})
+            AND pin != '${subjectProperty.pin}'
+            AND is_parking_space = false
+            AND is_common_area = false
+            AND char_bedrooms = '${subjectBedrooms}'`,
+          '$order': 'year DESC',
+          '$limit': '100'
+        }
+      ));
     }
 
     // Run all queries in parallel with individual error handling
@@ -1162,10 +1227,12 @@ export async function getComparableProperties(
       // Base score starts at 100
       let similarityScore = 100;
 
-      // HIGHEST PRIORITY: Same building gets massive bonus (+50 points)
-      // Units in the same building are best comparables
+      // Same building bonus - REDUCED from 50 to 20
+      // We want to find comparables in OTHER buildings too, not just same building
+      // Same building is good for similarity but doesn't help appeals if all units
+      // are assessed at the same $/sqft rate
       if (condo.pin10 === buildingPin10) {
-        similarityScore += 50;
+        similarityScore += 20;
       }
 
       // Bedroom match is critical
@@ -1207,16 +1274,16 @@ export async function getComparableProperties(
         similarityScore -= Math.min(10, Math.abs(ageDiff) * 0.3);
       }
 
-      // APPEAL STRATEGY: Bonus for units assessed LOWER per sqft
-      // These are the comparables that support our appeal argument
-      // If comp's $/sqft is lower than subject's, this is good evidence
+      // APPEAL STRATEGY: Significant bonus for units assessed LOWER per sqft
+      // These comparables support our appeal argument - they show inconsistency
+      // The bigger the gap, the more valuable this comparable is for the appeal
       const subjectAssessedValue = subjectProperty.assessedValue;
       const subjectValuePerSqft = subjectAssessedValue && sqft && sqft > 0 ? subjectAssessedValue / sqft : null;
       if (valuePerSqft && subjectValuePerSqft && valuePerSqft < subjectValuePerSqft) {
-        // The bigger the gap, the more valuable this comparable is for the appeal
         const percentLower = ((subjectValuePerSqft - valuePerSqft) / subjectValuePerSqft) * 100;
-        // Add up to 15 bonus points for comparables assessed 20%+ lower
-        similarityScore += Math.min(15, percentLower * 0.75);
+        // INCREASED: Add up to 30 bonus points for comparables assessed significantly lower
+        // This ensures lower-assessed comps from other buildings can compete with same-building comps
+        similarityScore += Math.min(30, percentLower * 1.0);
       }
 
       // Extract unit number from PIN for display
@@ -1273,8 +1340,27 @@ export async function getComparableProperties(
     // Sort by similarity score (highest first)
     comparables.sort((a, b) => b.similarityScore - a.similarityScore);
 
+    // BALANCED SELECTION: Ensure mix of same-building and other-building comparables
+    // This provides both legitimacy (same building) and appeal strength (lower-assessed others)
+    const sameBuildingComps = comparables.filter(c => c.address.includes('Same Building'));
+    const otherBuildingComps = comparables.filter(c => !c.address.includes('Same Building'));
+
+    // Take up to 3 from same building, rest from other buildings
+    const maxSameBuilding = Math.min(3, sameBuildingComps.length);
+    const maxOtherBuilding = limit - maxSameBuilding;
+
+    const selectedComps = [
+      ...sameBuildingComps.slice(0, maxSameBuilding),
+      ...otherBuildingComps.slice(0, maxOtherBuilding)
+    ];
+
+    // Re-sort the selected comparables by similarity score
+    selectedComps.sort((a, b) => b.similarityScore - a.similarityScore);
+
+    console.log(`Returning ${selectedComps.length} comparables: ${maxSameBuilding} same-building, ${Math.min(maxOtherBuilding, otherBuildingComps.length)} other-building`);
+
     // Return top comparables, removing the similarityScore field
-    return comparables.slice(0, limit).map(({ similarityScore, ...comp }) => comp);
+    return selectedComps.slice(0, limit).map(({ similarityScore, ...comp }) => comp);
   }
 
   // For non-condos, use original residential search logic
