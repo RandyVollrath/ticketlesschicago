@@ -240,11 +240,12 @@ function getPropertyClassDescription(classCode: string): string {
 
 /**
  * Query the Socrata API
+ * Uses a longer timeout (30s) because Cook County's API can be slow
  */
 async function querySODA<T>(
   dataset: string,
   params: Record<string, string>,
-  timeout: number = DEFAULT_TIMEOUTS.default
+  timeout: number = 30000 // 30 seconds - Cook County API can be slow
 ): Promise<T[]> {
   const queryParams = new URLSearchParams();
 
