@@ -146,6 +146,8 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [isPaidUser, setIsPaidUser] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Account Info
   const [phone, setPhone] = useState('');
@@ -213,6 +215,11 @@ export default function SettingsPage() {
 
     setUserId(session.user.id);
     setEmail(session.user.email || '');
+
+    // Check if this is a new user welcome flow
+    if (router.query.welcome === 'true') {
+      setShowWelcome(true);
+    }
 
     // Load profile from user_profiles - single source of truth
     const { data: profileData } = await supabase
@@ -438,6 +445,26 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpgrade = async () => {
+    if (!userId) return;
+    setCheckoutLoading(true);
+    try {
+      const response = await fetch('/api/autopilot/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ fontFamily: FONTS.body, padding: 48, textAlign: 'center' }}>
@@ -533,6 +560,139 @@ export default function SettingsPage() {
         position: 'relative',
         zIndex: 1,
       }}>
+        {/* Welcome Banner for New Users */}
+        {showWelcome && !isPaidUser && (
+          <div style={{
+            backgroundColor: COLORS.white,
+            borderRadius: 12,
+            border: `2px solid ${COLORS.accent}`,
+            padding: 24,
+            marginBottom: 20,
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
+            position: 'relative',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <h2 style={{
+                  fontFamily: FONTS.heading,
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: COLORS.primary,
+                  margin: '0 0 8px',
+                }}>
+                  Welcome to Autopilot America!
+                </h2>
+                <p style={{ margin: '0 0 12px', fontSize: 15, color: COLORS.textDark }}>
+                  Your free account is ready. You'll receive <strong>free notifications</strong> for:
+                </p>
+                <ul style={{ margin: '0 0 16px', paddingLeft: 20, color: COLORS.textDark, fontSize: 14, lineHeight: 1.8 }}>
+                  <li>New parking tickets on your plate</li>
+                  <li>Street cleaning reminders</li>
+                  <li>City sticker &amp; plate renewal dates</li>
+                  <li>Snow ban alerts</li>
+                </ul>
+                <p style={{ margin: 0, fontSize: 14, color: COLORS.textMuted }}>
+                  Complete your profile below to start receiving alerts.
+                </p>
+              </div>
+              <div style={{
+                flex: '0 0 auto',
+                backgroundColor: COLORS.bgSection,
+                borderRadius: 10,
+                padding: 20,
+                textAlign: 'center',
+                minWidth: 240,
+              }}>
+                <p style={{ margin: '0 0 4px', fontSize: 13, color: COLORS.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>
+                  Want automatic contesting?
+                </p>
+                <p style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 700, color: COLORS.primary }}>
+                  $24<span style={{ fontSize: 16, fontWeight: 500 }}>/year</span>
+                </p>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: COLORS.textMuted }}>
+                  We monitor your plate weekly and mail contest letters automatically. 54% average dismissal rate.
+                </p>
+                <button
+                  onClick={handleUpgrade}
+                  disabled={checkoutLoading}
+                  style={{
+                    width: '100%',
+                    backgroundColor: COLORS.accent,
+                    color: COLORS.white,
+                    padding: '12px 24px',
+                    borderRadius: 8,
+                    border: 'none',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: checkoutLoading ? 'not-allowed' : 'pointer',
+                    opacity: checkoutLoading ? 0.7 : 1,
+                  }}
+                >
+                  {checkoutLoading ? 'Loading...' : 'Upgrade to Autopilot'}
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowWelcome(false)}
+              style={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                background: 'none',
+                border: 'none',
+                fontSize: 20,
+                color: COLORS.textMuted,
+                cursor: 'pointer',
+                padding: 4,
+              }}
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {/* Upgrade CTA for Free Users (persistent, not welcome flow) */}
+        {!showWelcome && !isPaidUser && (
+          <div style={{
+            backgroundColor: '#FFF7ED',
+            borderRadius: 12,
+            border: `1px solid ${COLORS.highlight}`,
+            padding: '16px 24px',
+            marginBottom: 20,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
+                Upgrade to Autopilot - $24/year
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9A3412' }}>
+                Automatic ticket detection &amp; contesting with 54% average dismissal rate
+              </p>
+            </div>
+            <button
+              onClick={handleUpgrade}
+              disabled={checkoutLoading}
+              style={{
+                backgroundColor: COLORS.highlight,
+                color: COLORS.white,
+                padding: '10px 20px',
+                borderRadius: 8,
+                border: 'none',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: checkoutLoading ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {checkoutLoading ? 'Loading...' : 'Upgrade Now'}
+            </button>
+          </div>
+        )}
+
         {/* Account Info */}
         <Card title="Account Info">
           <div style={{ marginBottom: 16 }}>

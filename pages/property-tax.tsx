@@ -473,6 +473,31 @@ export default function PropertyTax() {
     }
   }
 
+  /**
+   * Extract unit number from Cook County PIN for condo buildings.
+   * Cook County condo PINs typically end with a 4-digit suffix where:
+   * - First digit is usually 1 (indicating it's a condo unit)
+   * - Last 3 digits represent the unit number (e.g., 1002 = Unit 2, 1015 = Unit 15)
+   */
+  function extractUnitFromPin(pin: string): string | null {
+    // Normalize PIN to just digits
+    const cleanPin = pin.replace(/\D/g, '');
+    if (cleanPin.length !== 14) return null;
+
+    // Get last 4 digits
+    const suffix = cleanPin.slice(-4);
+
+    // Check if it looks like a condo unit (starts with 1)
+    if (suffix.startsWith('1')) {
+      const unitNum = parseInt(suffix.slice(1), 10); // Remove leading 1 and parse
+      if (unitNum > 0 && unitNum <= 999) {
+        return `Unit ${unitNum}`;
+      }
+    }
+
+    return null;
+  }
+
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -927,61 +952,110 @@ export default function PropertyTax() {
               <div style={{ marginTop: '24px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 16px 0' }}>
                   {searchResults.length === 1 ? 'Property Found' : `${searchResults.length} Properties Found`}
+                  {searchResults.length > 1 && searchResults.some(p => extractUnitFromPin(p.pin)) && (
+                    <span style={{ fontSize: '13px', fontWeight: '400', color: COLORS.slate, marginLeft: '8px' }}>
+                      (Select your unit)
+                    </span>
+                  )}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {searchResults.map((property) => (
-                    <div
-                      key={property.pin}
-                      onClick={() => analyzeProperty(property)}
-                      style={{
-                        padding: '16px',
-                        borderRadius: '12px',
-                        border: `1px solid ${COLORS.border}`,
-                        backgroundColor: '#FAFAFA',
-                        cursor: analyzing ? 'wait' : 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <p style={{ fontSize: '16px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 4px 0' }}>
-                            {property.address || 'Address not available'}
-                          </p>
-                          <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 8px 0' }}>
-                            PIN: {property.pinFormatted} | {property.township} Township
-                          </p>
+                  {searchResults.map((property) => {
+                    const unitNumber = extractUnitFromPin(property.pin);
+                    return (
+                      <div
+                        key={property.pin}
+                        onClick={() => analyzeProperty(property)}
+                        style={{
+                          padding: '16px',
+                          borderRadius: '12px',
+                          border: `1px solid ${COLORS.border}`,
+                          backgroundColor: '#FAFAFA',
+                          cursor: analyzing ? 'wait' : 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                              <p style={{ fontSize: '16px', fontWeight: '600', color: COLORS.graphite, margin: 0 }}>
+                                {property.address || 'Address not available'}
+                              </p>
+                              {unitNumber && (
+                                <span style={{
+                                  padding: '3px 10px',
+                                  backgroundColor: COLORS.regulatory,
+                                  color: 'white',
+                                  borderRadius: '100px',
+                                  fontSize: '12px',
+                                  fontWeight: '600'
+                                }}>
+                                  {unitNumber}
+                                </span>
+                              )}
+                            </div>
+                            <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 8px 0' }}>
+                              PIN: {property.pinFormatted} | {property.township} Township
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            {property.assessedValue && (
+                              <>
+                                <p style={{ fontSize: '14px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 2px 0' }}>
+                                  ${property.assessedValue.toLocaleString()}
+                                </p>
+                                <p style={{ fontSize: '12px', color: COLORS.slate, margin: 0 }}>
+                                  Assessed Value
+                                </p>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          {property.assessedValue && (
-                            <>
-                              <p style={{ fontSize: '14px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 2px 0' }}>
-                                ${property.assessedValue.toLocaleString()}
-                              </p>
-                              <p style={{ fontSize: '12px', color: COLORS.slate, margin: 0 }}>
-                                Assessed Value
-                              </p>
-                            </>
-                          )}
+                        <div style={{
+                          marginTop: '12px',
+                          paddingTop: '12px',
+                          borderTop: `1px solid ${COLORS.border}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <span style={{ fontSize: '13px', color: COLORS.regulatory, fontWeight: '500' }}>
+                            Analyze this property
+                          </span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                          </svg>
                         </div>
                       </div>
-                      <div style={{
-                        marginTop: '12px',
-                        paddingTop: '12px',
-                        borderTop: `1px solid ${COLORS.border}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}>
-                        <span style={{ fontSize: '13px', color: COLORS.regulatory, fontWeight: '500' }}>
-                          Analyze this property
-                        </span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
-                          <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+
+                {/* Help text for finding PIN */}
+                {searchResults.length > 1 && (
+                  <p style={{
+                    fontSize: '13px',
+                    color: COLORS.slate,
+                    margin: '16px 0 0 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 16v-4M12 8h.01"/>
+                    </svg>
+                    Not sure which is yours?{' '}
+                    <a
+                      href="https://www.cookcountyassessor.com/address-search"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: COLORS.regulatory, fontWeight: '500' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Look up your PIN on the Assessor's website
+                    </a>
+                  </p>
+                )}
               </div>
             )}
 

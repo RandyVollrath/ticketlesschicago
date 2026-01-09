@@ -183,12 +183,30 @@ export default function AuthCallback() {
             .single();
 
           if (!userProfile) {
-            // New user signed in with OAuth but hasn't completed signup
-            // Route to ticket contesting checkout flow
-            console.log('🆕 New OAuth user detected - redirecting to ticket contesting signup');
-            setDebugInfo(`🆕 New user! Redirecting to checkout...`);
+            // New user signed in with OAuth - create a free account automatically
+            console.log('🆕 New OAuth user detected - creating free account...');
+            setDebugInfo(`🆕 Welcome! Setting up your account...`);
+
+            // Create a basic profile for the new user (free tier)
+            const { error: insertError } = await supabase
+              .from('user_profiles')
+              .insert({
+                user_id: user.id,
+                email: user.email,
+                has_contesting: false, // Free user - no automatic contesting
+                created_at: new Date().toISOString(),
+              });
+
+            if (insertError) {
+              console.error('Error creating user profile:', insertError);
+              // Don't block - they can still use the app
+            } else {
+              console.log('✅ Free user profile created successfully');
+            }
+
             await new Promise(r => setTimeout(r, 500));
-            router.push('/get-started');
+            // Redirect to settings so they can complete their profile and see upgrade option
+            router.push('/settings?welcome=true');
             return;
           }
 

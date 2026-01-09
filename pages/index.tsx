@@ -458,63 +458,153 @@ export default function LandingPage() {
 
       {/* Pricing */}
       <section id="pricing" style={{ padding: '80px 5%', maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{
-          maxWidth: '420px',
-          margin: '0 auto',
-          backgroundColor: COLORS.primary,
-          color: COLORS.textLight,
-          padding: '48px 40px',
-          borderRadius: '24px',
+        <h2 style={{
+          fontFamily: FONTS.heading,
+          fontSize: '36px',
+          fontWeight: 700,
           textAlign: 'center',
-          boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
+          marginBottom: '16px',
+          color: COLORS.primary
         }}>
+          Choose Your Plan
+        </h2>
+        <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '48px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+          Start free with alerts or go full autopilot for automatic contesting
+        </p>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '24px',
+          maxWidth: '800px',
+          margin: '0 auto',
+        }}>
+          {/* Free Tier */}
           <div style={{
-            color: COLORS.accent,
-            fontWeight: 700,
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            marginBottom: '10px',
-            fontSize: '14px',
+            backgroundColor: '#fff',
+            padding: '40px 32px',
+            borderRadius: '20px',
+            border: `1px solid ${COLORS.border}`,
+            textAlign: 'center',
           }}>
-            Peace of Mind
+            <div style={{
+              color: COLORS.textMuted,
+              fontWeight: 700,
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              marginBottom: '10px',
+              fontSize: '14px',
+            }}>
+              Free Alerts
+            </div>
+            <h3 style={{
+              fontFamily: FONTS.heading,
+              fontSize: '48px',
+              margin: '0 0 10px 0',
+              color: COLORS.primary
+            }}>
+              $0<span style={{fontSize: '18px', color: '#94A3B8'}}>/forever</span>
+            </h3>
+            <p style={{ color: COLORS.textMuted, marginBottom: '32px' }}>Stay informed, contest manually</p>
+
+            <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {[
+                'New ticket alerts',
+                'Street cleaning reminders',
+                'Snow ban alerts',
+                'Renewal reminders',
+                'Dashboard access',
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: COLORS.textDark }}>
+                  <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              fullWidth
+              href="/get-started"
+              style={{ backgroundColor: COLORS.bgSection, color: COLORS.primary, border: `1px solid ${COLORS.border}` }}
+            >
+              Start Free
+            </Button>
           </div>
-          <h2 style={{
-            fontFamily: FONTS.heading,
-            fontSize: '64px',
-            margin: '0 0 10px 0',
-            color: '#fff'
+
+          {/* Autopilot Tier */}
+          <div style={{
+            backgroundColor: COLORS.primary,
+            color: COLORS.textLight,
+            padding: '40px 32px',
+            borderRadius: '20px',
+            textAlign: 'center',
+            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
+            position: 'relative',
           }}>
-            $24<span style={{fontSize: '20px', color: '#94A3B8'}}>/year</span>
-          </h2>
-          <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>Less than the cost of one late fee.</p>
+            {/* Recommended Badge */}
+            <div style={{
+              position: 'absolute',
+              top: '-12px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: COLORS.accent,
+              color: COLORS.primary,
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+            }}>
+              RECOMMENDED
+            </div>
 
-          <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {[
-              'Monitor 1 license plate',
-              'Weekly ticket checks',
-              'Unlimited contest letters mailed',
-              'USPS mail with tracking',
-              'Full dashboard access',
-              'Email notifications',
-              'Cancel anytime',
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
-                <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
-              </div>
-            ))}
+            <div style={{
+              color: COLORS.accent,
+              fontWeight: 700,
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              marginBottom: '10px',
+              fontSize: '14px',
+              marginTop: '8px',
+            }}>
+              Autopilot
+            </div>
+            <h3 style={{
+              fontFamily: FONTS.heading,
+              fontSize: '48px',
+              margin: '0 0 10px 0',
+              color: '#fff'
+            }}>
+              $24<span style={{fontSize: '18px', color: '#94A3B8'}}>/year</span>
+            </h3>
+            <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>We fight your tickets for you</p>
+
+            <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {[
+                'Everything in Free, plus:',
+                'Weekly plate monitoring',
+                'Automatic contest letters',
+                'USPS mail with tracking',
+                '54% avg dismissal rate',
+                'Cancel anytime',
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff', fontWeight: i === 0 ? 600 : 400 }}>
+                  <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              fullWidth
+              href="/get-started"
+              style={{ backgroundColor: '#fff', color: COLORS.primary }}
+            >
+              Start Autopilot
+            </Button>
+
+            <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
+              Less than $2/month
+            </p>
           </div>
-
-          <Button
-            fullWidth
-            href="/get-started"
-            style={{ backgroundColor: '#fff', color: COLORS.primary }}
-          >
-            Start Protection
-          </Button>
-
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
-            No hidden fees. Cancel anytime.
-          </p>
         </div>
       </section>
 
@@ -583,11 +673,16 @@ export default function LandingPage() {
             Stop paying tickets you could contest
           </h2>
           <p style={{ color: '#94A3B8', marginBottom: '32px', fontSize: '18px' }}>
-            Join Chicago drivers who let us handle their parking tickets automatically.
+            Start free with alerts, or let Autopilot fight your tickets automatically.
           </p>
-          <Button primary href="/get-started">
-            Get Started for $24/year <ArrowRight />
-          </Button>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="outline" href="/get-started">
+              Start Free
+            </Button>
+            <Button primary href="/get-started">
+              Get Autopilot - $24/year <ArrowRight />
+            </Button>
+          </div>
         </div>
       </section>
 

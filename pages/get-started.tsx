@@ -27,6 +27,9 @@ export default function GetStarted() {
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
 
+  // Plan selection
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'autopilot'>('autopilot');
+
   // Checkout state
   const [consentChecked, setConsentChecked] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -106,7 +109,7 @@ export default function GetStarted() {
   };
 
   const handleCheckout = async () => {
-    if (!consentChecked) {
+    if (selectedPlan === 'autopilot' && !consentChecked) {
       setAuthError('Please accept the authorization to continue.');
       return;
     }
@@ -115,6 +118,13 @@ export default function GetStarted() {
     setAuthError('');
 
     try {
+      if (selectedPlan === 'free') {
+        // For free plan, just redirect to settings
+        router.push('/settings?welcome=true');
+        return;
+      }
+
+      // For autopilot plan, go to Stripe checkout
       const response = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -169,54 +179,150 @@ export default function GetStarted() {
       </header>
 
       <main style={{ padding: '48px 24px' }}>
-        <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          {/* Plan Card */}
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          {/* Tier Comparison Header */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: COLORS.deepHarbor, margin: '0 0 8px' }}>
+              Choose Your Plan
+            </h1>
+            <p style={{ fontSize: 16, color: COLORS.slate, margin: 0 }}>
+              Start free or go full autopilot - upgrade anytime
+            </p>
+          </div>
+
+          {/* Plan Cards Container */}
           <div style={{
-            backgroundColor: COLORS.white,
-            borderRadius: 12,
-            border: `1px solid ${COLORS.border}`,
-            overflow: 'hidden',
-            marginBottom: 24,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 24,
+            marginBottom: 32,
           }}>
-            <div style={{
-              backgroundColor: COLORS.regulatory,
-              color: COLORS.white,
-              padding: '12px 24px',
-              fontSize: 14,
-              fontWeight: 600,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <span>AUTO-CONTEST PLAN</span>
-              <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>BEST VALUE</span>
-            </div>
-            <div style={{ padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-                <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$24</span>
-                <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
+            {/* Free Plan Card */}
+            <div
+              onClick={() => setSelectedPlan('free')}
+              style={{
+                backgroundColor: COLORS.white,
+                borderRadius: 12,
+                border: selectedPlan === 'free' ? `2px solid ${COLORS.signal}` : `1px solid ${COLORS.border}`,
+                overflow: 'hidden',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                boxShadow: selectedPlan === 'free' ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none',
+              }}
+            >
+              <div style={{
+                backgroundColor: selectedPlan === 'free' ? COLORS.signal : COLORS.slate,
+                color: COLORS.white,
+                padding: '12px 24px',
+                fontSize: 14,
+                fontWeight: 600,
+                transition: 'background-color 0.2s',
+              }}>
+                FREE ALERTS
               </div>
-              <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
-                That's less than $2/month to protect yourself from tickets
-              </p>
-              <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
-                    <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
-                  </svg>
-                  <strong>Weekly</strong> plate monitoring
+              <div style={{ padding: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$0</span>
+                  <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/forever</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
-                    <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
-                  </svg>
-                  <strong>Automatic</strong> contest letters mailed
+                <p style={{ fontSize: 13, color: COLORS.slate, fontWeight: 500, margin: '0 0 16px 0' }}>
+                  Stay informed about your tickets and deadlines
+                </p>
+                <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    New ticket alerts
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    Street cleaning reminders
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    Snow ban alerts
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    Renewal reminders
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: COLORS.slate }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.slate}>
+                      <path fillRule="evenodd" d="M4.28 3.22a.75.75 0 00-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 101.06 1.06L8 9.06l3.72 3.72a.75.75 0 101.06-1.06L9.06 8l3.72-3.72a.75.75 0 00-1.06-1.06L8 6.94 4.28 3.22z" clipRule="evenodd" />
+                    </svg>
+                    <span style={{ textDecoration: 'line-through' }}>Automatic contesting</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
-                    <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
-                  </svg>
-                  <strong>Win rate:</strong> 60-75% on eligible tickets
+              </div>
+            </div>
+
+            {/* Autopilot Plan Card */}
+            <div
+              onClick={() => setSelectedPlan('autopilot')}
+              style={{
+                backgroundColor: COLORS.white,
+                borderRadius: 12,
+                border: selectedPlan === 'autopilot' ? `2px solid ${COLORS.regulatory}` : `1px solid ${COLORS.border}`,
+                overflow: 'hidden',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                boxShadow: selectedPlan === 'autopilot' ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none',
+              }}
+            >
+              <div style={{
+                backgroundColor: selectedPlan === 'autopilot' ? COLORS.regulatory : COLORS.slate,
+                color: COLORS.white,
+                padding: '12px 24px',
+                fontSize: 14,
+                fontWeight: 600,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                transition: 'background-color 0.2s',
+              }}>
+                <span>AUTOPILOT</span>
+                <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>RECOMMENDED</span>
+              </div>
+              <div style={{ padding: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$24</span>
+                  <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
+                </div>
+                <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
+                  Less than $2/month - we fight your tickets for you
+                </p>
+                <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    <strong>Everything in Free, plus:</strong>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    <strong>Weekly</strong> plate monitoring
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    <strong>Automatic</strong> contest letters mailed
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                    </svg>
+                    <strong>54% avg dismissal rate</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -362,36 +468,59 @@ export default function GetStarted() {
             ) : (
               <>
                 <h2 style={{ fontSize: 20, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
-                  Complete your subscription
+                  {selectedPlan === 'free' ? 'Continue with Free Alerts' : 'Complete your Autopilot subscription'}
                 </h2>
                 <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
                   Signed in as <strong>{user.email}</strong>
                 </p>
 
-                {/* Consent Checkbox */}
-                <div style={{
-                  backgroundColor: COLORS.concrete,
-                  padding: 16,
-                  borderRadius: 8,
-                  marginBottom: 24,
-                }}>
-                  <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={consentChecked}
-                      onChange={(e) => setConsentChecked(e.target.checked)}
-                      style={{ width: 20, height: 20, marginTop: 2 }}
-                    />
-                    <div>
-                      <span style={{ fontSize: 14, color: COLORS.graphite, fontWeight: 500 }}>
-                        I authorize Autopilot America to submit ticket contest letters on my behalf, including generating and mailing a letter using the information I provide.
-                      </span>
-                      <p style={{ fontSize: 13, color: COLORS.slate, margin: '8px 0 0 0' }}>
-                        You can disable auto-mail and require manual approval at any time in Settings.
-                      </p>
-                    </div>
-                  </label>
-                </div>
+                {/* Consent Checkbox - only for Autopilot */}
+                {selectedPlan === 'autopilot' && (
+                  <div style={{
+                    backgroundColor: COLORS.concrete,
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 24,
+                  }}>
+                    <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={consentChecked}
+                        onChange={(e) => setConsentChecked(e.target.checked)}
+                        style={{ width: 20, height: 20, marginTop: 2 }}
+                      />
+                      <div>
+                        <span style={{ fontSize: 14, color: COLORS.graphite, fontWeight: 500 }}>
+                          I authorize Autopilot America to submit ticket contest letters on my behalf, including generating and mailing a letter using the information I provide.
+                        </span>
+                        <p style={{ fontSize: 13, color: COLORS.slate, margin: '8px 0 0 0' }}>
+                          You can disable auto-mail and require manual approval at any time in Settings.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Free plan summary */}
+                {selectedPlan === 'free' && (
+                  <div style={{
+                    backgroundColor: '#F0FDF4',
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 24,
+                    border: `1px solid #BBF7D0`,
+                  }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 600, color: '#166534' }}>
+                      Your Free Plan includes:
+                    </p>
+                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: '#166534', lineHeight: 1.6 }}>
+                      <li>New ticket alerts via email</li>
+                      <li>Street cleaning reminders</li>
+                      <li>Snow ban alerts</li>
+                      <li>Renewal reminders</li>
+                    </ul>
+                  </div>
+                )}
 
                 {authError && (
                   <div style={{
@@ -409,25 +538,33 @@ export default function GetStarted() {
 
                 <button
                   onClick={handleCheckout}
-                  disabled={checkoutLoading || !consentChecked}
+                  disabled={checkoutLoading || (selectedPlan === 'autopilot' && !consentChecked)}
                   style={{
                     width: '100%',
-                    backgroundColor: consentChecked ? COLORS.signal : COLORS.slate,
+                    backgroundColor: selectedPlan === 'free'
+                      ? COLORS.signal
+                      : (consentChecked ? COLORS.regulatory : COLORS.slate),
                     color: COLORS.white,
                     padding: '16px 24px',
                     borderRadius: 8,
                     border: 'none',
                     fontSize: 17,
                     fontWeight: 600,
-                    cursor: (checkoutLoading || !consentChecked) ? 'not-allowed' : 'pointer',
-                    opacity: (checkoutLoading || !consentChecked) ? 0.7 : 1,
+                    cursor: (checkoutLoading || (selectedPlan === 'autopilot' && !consentChecked)) ? 'not-allowed' : 'pointer',
+                    opacity: (checkoutLoading || (selectedPlan === 'autopilot' && !consentChecked)) ? 0.7 : 1,
                   }}
                 >
-                  {checkoutLoading ? 'Loading...' : 'Start Saving Money Now'}
+                  {checkoutLoading
+                    ? 'Loading...'
+                    : selectedPlan === 'free'
+                      ? 'Start Free - Complete Profile'
+                      : 'Continue to Payment - $24/year'}
                 </button>
 
                 <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 16, textAlign: 'center' }}>
-                  You'll be redirected to Stripe for secure payment.
+                  {selectedPlan === 'autopilot'
+                    ? "You'll be redirected to Stripe for secure payment."
+                    : "You can upgrade to Autopilot anytime in Settings."}
                 </p>
               </>
             )}
