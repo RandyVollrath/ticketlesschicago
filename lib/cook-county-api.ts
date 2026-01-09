@@ -266,6 +266,183 @@ export interface AppealOpportunity {
       /** Percentage overvalued based on sales */
       overvaluedByPercent: number;
     };
+    // =========================================================================
+    // THREE-LAYER CREDIBILITY ARCHITECTURE
+    // Layer 1: Market Value - What is the property actually worth?
+    // Layer 2: Equity/Uniformity - Are similar properties assessed consistently?
+    // Layer 3: Assessment Drift - Has this property been systematically overtaxed?
+    // =========================================================================
+
+    /**
+     * LAYER 1: MARKET VALUE ANALYSIS
+     * Uses median/regression analysis to determine fair market value.
+     * This is the primary valuation argument for appeals.
+     */
+    marketValueAnalysis?: {
+      /** Methodology used for valuation */
+      methodology: 'median_comparable' | 'regression' | 'sales_comparison';
+      /** Fair market value based on comparable assessments */
+      fairAssessedValue: number;
+      /** Median $/sqft across all valid comparables */
+      medianValuePerSqft: number;
+      /** Mean $/sqft across all valid comparables */
+      meanValuePerSqft: number;
+      /** Subject's current $/sqft */
+      subjectValuePerSqft: number;
+      /** Difference from median (positive = overassessed) */
+      deviationFromMedian: number;
+      /** Percentage above median */
+      percentAboveMedian: number;
+      /** Top comparables used for valuation (representative sample) */
+      representativeComparables: Array<{
+        pin: string;
+        pinFormatted: string;
+        address: string;
+        neighborhood: string;
+        squareFootage: number;
+        bedrooms: number | null;
+        yearBuilt: number | null;
+        assessedValue: number;
+        valuePerSqft: number;
+        sameNeighborhood: boolean;
+      }>;
+      /** Valuation confidence */
+      confidence: 'high' | 'medium' | 'low';
+      /** Professional language for appeal */
+      valuationStatement: string;
+    };
+
+    /**
+     * LAYER 2: UNIFORMITY/EQUITY ANALYSIS
+     * Detects systematic inconsistencies in assessment practices.
+     * Equal protection argument - similar properties should be assessed similarly.
+     */
+    uniformityAnalysis?: {
+      /** Subject's percentile rank (100 = highest assessed among comparables) */
+      percentileRank: number;
+      /** Number of comparable properties analyzed */
+      comparablePoolSize: number;
+      /** Properties assessed at lower rates per sqft */
+      propertiesAssessedLower: number;
+      /** Coefficient of dispersion - measures assessment uniformity */
+      coefficientOfDispersion: number;
+      /** Neighborhood-specific analysis */
+      neighborhoodMetrics: {
+        avgValuePerSqft: number;
+        subjectVsNeighborhood: number;
+        sampleSize: number;
+      };
+      /** Assessment uniformity rating */
+      uniformityRating: 'consistent' | 'moderate_variation' | 'significant_disparity';
+      /** Professional statement for appeal */
+      uniformityStatement: string;
+    };
+
+    /**
+     * LAYER 3: ASSESSMENT DRIFT ANALYSIS
+     * Identifies historical patterns of overassessment.
+     * Shows systematic errors requiring correction.
+     */
+    driftAnalysis?: {
+      /** Has assessment consistently outpaced market? */
+      systematicOverassessment: boolean;
+      /** Years of data analyzed */
+      yearsAnalyzed: number;
+      /** Compound annual growth rate of assessments */
+      assessmentCAGR: number;
+      /** Estimated market CAGR for comparison */
+      marketCAGR: number;
+      /** Excess growth (assessment CAGR - market CAGR) */
+      excessGrowthRate: number;
+      /** Cumulative overassessment in dollars */
+      cumulativeExcess: number;
+      /** Assessment history for charting */
+      assessmentHistory: Array<{
+        year: number;
+        assessedValue: number;
+      }>;
+      /** Professional statement for appeal */
+      driftStatement: string;
+    };
+
+    /**
+     * CONSOLIDATED APPEAL SUMMARY
+     * Combines all three layers into actionable appeal guidance.
+     */
+    appealSummary?: {
+      /** Recommended target value based on all evidence */
+      recommendedAssessedValue: number;
+      /** Reduction being requested */
+      requestedReduction: number;
+      /** Estimated annual tax savings */
+      estimatedAnnualSavings: number;
+      /** Overall case strength */
+      overallStrength: 'strong' | 'moderate' | 'weak';
+      /** Strongest arguments ranked by effectiveness */
+      primaryArguments: Array<{
+        type: 'market_value' | 'uniformity' | 'assessment_drift';
+        strength: number; // 0-100
+        summary: string;
+      }>;
+      /** Professionally-worded appeal statement */
+      appealStatement: string;
+    };
+
+    /** MARKET TIMING - is this a good year to appeal? */
+    marketTiming?: {
+      /** Is this a favorable market for appeals? */
+      favorableMarket: boolean;
+      /** Market indicators */
+      indicators: {
+        /** Average days on market trend */
+        domTrend: 'rising' | 'stable' | 'falling' | 'unknown';
+        /** Sales volume trend */
+        salesVolumeTrend: 'declining' | 'stable' | 'increasing' | 'unknown';
+        /** Price trend */
+        priceTrend: 'declining' | 'stable' | 'rising' | 'unknown';
+      };
+      /** Market timing summary */
+      summary: string;
+    };
+
+    // Legacy fields for backward compatibility (deprecated - use new analysis layers)
+    /** @deprecated Use marketValueAnalysis instead */
+    appealCase?: {
+      bestComparables: Array<{
+        pin: string;
+        pinFormatted: string;
+        address: string;
+        neighborhood: string;
+        squareFootage: number;
+        bedrooms: number | null;
+        yearBuilt: number | null;
+        assessedValue: number;
+        valuePerSqft: number;
+        percentLowerThanSubject: number;
+        sameNeighborhood: boolean;
+      }>;
+      targetAssessedValue: number;
+      requestedReduction: number;
+      estimatedAnnualSavings: number;
+      caseStrength: 'strong' | 'moderate' | 'weak';
+      arguments: string[];
+    };
+    /** @deprecated Use uniformityAnalysis instead */
+    equityAnalysis?: {
+      percentileRank: number;
+      totalComparables: number;
+      propertiesAssessedLower: number;
+      neighborhoodAvgPerSqft: number;
+      vsNeighborhoodAverage: number;
+      equityStatement: string;
+    };
+    /** @deprecated Use driftAnalysis instead */
+    historicalAnalysis?: {
+      persistentOverassessment: boolean;
+      yearsAnalyzed: number;
+      assessmentGrowthRate: number;
+      cumulativeOverassessment: number;
+    };
   };
   priorAppeals: {
     hasAppealed: boolean;
@@ -922,11 +1099,11 @@ export async function getComparableProperties(
         }
       }
 
-      // FILTER: Skip properties with different square footage (>30% difference)
-      // For property tax appeals, size is critical - a 600 sqft unit is NOT comparable to a 1200 sqft unit
-      if (compSqft && sqft && Math.abs(compSqft - sqft) / sqft > 0.30) {
-        continue; // Skip - size too different for valid comparison
-      }
+      // NOTE: We no longer hard-filter on sqft difference
+      // Instead, we use $/sqft normalization to make units of different sizes comparable
+      // A 600 sqft unit at $28/sqft IS comparable to a 900 sqft unit at $25/sqft
+      // The key insight: per-sqft assessment rates should be similar for similar quality units
+      // Sqft difference will affect similarity score but won't exclude units
 
       // Calculate similarity score (higher = more similar)
       // Base score starts at 100
@@ -947,26 +1124,46 @@ export async function getComparableProperties(
         similarityScore -= 40 * Math.abs(compBedrooms - subjectBedrooms);
       }
 
-      // Square footage similarity (very important for appeals)
-      // Perfect match: +15 points, penalty increases with difference
+      // Square footage similarity
+      // We use $/sqft normalization, so size difference is less critical
+      // But still give bonus for similar sizes (more defensible comparables)
       if (sqftDiff !== null) {
-        if (Math.abs(sqftDiff) <= 10) {
-          similarityScore += 15; // Within 10% is excellent
-        } else if (Math.abs(sqftDiff) <= 20) {
-          similarityScore += 5; // Within 20% is good
+        if (Math.abs(sqftDiff) <= 15) {
+          similarityScore += 10; // Within 15% is good
+        } else if (Math.abs(sqftDiff) <= 30) {
+          similarityScore += 5; // Within 30% is acceptable
+        } else if (Math.abs(sqftDiff) <= 50) {
+          // Still include but slight penalty
+          similarityScore -= 5;
         } else {
-          similarityScore -= Math.abs(sqftDiff) * 0.5; // Penalty for larger differences
+          // Large difference - still include but more penalty
+          similarityScore -= 10;
         }
       }
 
-      // Same neighborhood bonus (+10 points)
+      // IMPORTANT: Same neighborhood is VERY valuable for appeals
+      // The assessor's own methodology uses neighborhood as a key factor
+      // Same neighborhood: +25 points (increased from 10)
       if (propValue.nbhd === subjectProperty.neighborhood) {
-        similarityScore += 10;
+        similarityScore += 25;
       }
 
-      // Year built similarity (-0.5 point per year difference, max -15)
+      // Year built similarity (-0.3 point per year difference, max -10)
+      // Relaxed from -0.5 because age is less critical than location
       if (ageDiff !== null) {
-        similarityScore -= Math.min(15, Math.abs(ageDiff) * 0.5);
+        similarityScore -= Math.min(10, Math.abs(ageDiff) * 0.3);
+      }
+
+      // APPEAL STRATEGY: Bonus for units assessed LOWER per sqft
+      // These are the comparables that support our appeal argument
+      // If comp's $/sqft is lower than subject's, this is good evidence
+      const subjectAssessedValue = subjectProperty.assessedValue;
+      const subjectValuePerSqft = subjectAssessedValue && sqft && sqft > 0 ? subjectAssessedValue / sqft : null;
+      if (valuePerSqft && subjectValuePerSqft && valuePerSqft < subjectValuePerSqft) {
+        // The bigger the gap, the more valuable this comparable is for the appeal
+        const percentLower = ((subjectValuePerSqft - valuePerSqft) / subjectValuePerSqft) * 100;
+        // Add up to 15 bonus points for comparables assessed 20%+ lower
+        similarityScore += Math.min(15, percentLower * 0.75);
       }
 
       // Extract unit number from PIN for display
@@ -1351,6 +1548,518 @@ export async function analyzeAppealOpportunity(
       : null
   };
 
+  // ============================================================================
+  // THREE-LAYER CREDIBILITY ARCHITECTURE
+  // Designed to produce institution-credible analysis that can withstand
+  // scrutiny from assessors, review boards, and city officials.
+  // ============================================================================
+
+  // ============================================================
+  // LAYER 1: MARKET VALUE ANALYSIS
+  // Uses median/mean comparable analysis to determine fair market value.
+  // This is the primary valuation argument - NOT "pick the lowest."
+  // ============================================================
+  let marketValueAnalysis: AppealOpportunity['analysis']['marketValueAnalysis'];
+  let appealCase: AppealOpportunity['analysis']['appealCase']; // Legacy support
+
+  if (subjectValue > 0 && subjectSqft > 0) {
+    const subjectValuePerSqft = subjectValue / subjectSqft;
+    const subjectNeighborhood = property.neighborhood;
+
+    // Get all comparables with valid $/sqft data
+    const validComps = comparables
+      .filter(c => c.squareFootage && c.squareFootage > 0 && c.assessedValue && c.assessedValue > 0)
+      .map(c => ({
+        ...c,
+        valuePerSqft: c.assessedValue! / c.squareFootage!,
+        sameNeighborhood: c.neighborhood === subjectNeighborhood,
+      }))
+      .sort((a, b) => a.valuePerSqft - b.valuePerSqft);
+
+    if (validComps.length >= 5) {
+      // Calculate MEDIAN and MEAN - these are our fair value benchmarks
+      const valuesPerSqft = validComps.map(c => c.valuePerSqft);
+      const sortedValues = [...valuesPerSqft].sort((a, b) => a - b);
+      const medianIdx = Math.floor(sortedValues.length / 2);
+      const medianValuePerSqft = sortedValues.length % 2 === 0
+        ? (sortedValues[medianIdx - 1] + sortedValues[medianIdx]) / 2
+        : sortedValues[medianIdx];
+      const meanValuePerSqft = valuesPerSqft.reduce((a, b) => a + b, 0) / valuesPerSqft.length;
+
+      // Calculate fair assessed value using median (more robust than mean)
+      const fairAssessedValue = Math.round(subjectSqft * medianValuePerSqft);
+      const deviationFromMedian = subjectValue - fairAssessedValue;
+      const percentAboveMedian = ((subjectValuePerSqft - medianValuePerSqft) / medianValuePerSqft) * 100;
+
+      // Determine confidence based on sample size and consistency
+      const stdDev = Math.sqrt(
+        valuesPerSqft.reduce((sum, v) => sum + Math.pow(v - meanValuePerSqft, 2), 0) / valuesPerSqft.length
+      );
+      const coeffOfVariation = stdDev / meanValuePerSqft;
+      let confidence: 'high' | 'medium' | 'low';
+      if (validComps.length >= 10 && coeffOfVariation < 0.3) {
+        confidence = 'high';
+      } else if (validComps.length >= 5 && coeffOfVariation < 0.5) {
+        confidence = 'medium';
+      } else {
+        confidence = 'low';
+      }
+
+      // Select representative comparables (around the median, not just lowest)
+      // This provides a balanced sample that withstands scrutiny
+      const targetCount = Math.min(6, validComps.length);
+      const medianCompIdx = Math.floor(validComps.length / 2);
+      const halfTarget = Math.floor(targetCount / 2);
+      const startIdx = Math.max(0, medianCompIdx - halfTarget);
+      const representativeComps = validComps.slice(startIdx, startIdx + targetCount);
+
+      // Build professional valuation statement
+      let valuationStatement: string;
+      if (percentAboveMedian >= 15) {
+        valuationStatement = `Analysis of ${validComps.length} comparable properties indicates the subject property's assessment of $${subjectValuePerSqft.toFixed(2)}/sqft exceeds the median comparable rate of $${medianValuePerSqft.toFixed(2)}/sqft by ${percentAboveMedian.toFixed(1)}%. Based on market-comparable assessments, the fair assessed value is $${fairAssessedValue.toLocaleString()}.`;
+      } else if (percentAboveMedian >= 5) {
+        valuationStatement = `The subject property's assessment of $${subjectValuePerSqft.toFixed(2)}/sqft is ${percentAboveMedian.toFixed(1)}% above the median comparable rate of $${medianValuePerSqft.toFixed(2)}/sqft, suggesting the assessment may exceed fair market-based valuation.`;
+      } else {
+        valuationStatement = `The subject property's assessment aligns with comparable properties in the market. The median assessment rate is $${medianValuePerSqft.toFixed(2)}/sqft.`;
+      }
+
+      marketValueAnalysis = {
+        methodology: 'median_comparable',
+        fairAssessedValue,
+        medianValuePerSqft: Math.round(medianValuePerSqft * 100) / 100,
+        meanValuePerSqft: Math.round(meanValuePerSqft * 100) / 100,
+        subjectValuePerSqft: Math.round(subjectValuePerSqft * 100) / 100,
+        deviationFromMedian,
+        percentAboveMedian: Math.round(percentAboveMedian * 10) / 10,
+        representativeComparables: representativeComps.map(c => ({
+          pin: c.pin,
+          pinFormatted: c.pinFormatted,
+          address: c.address || '',
+          neighborhood: c.neighborhood || '',
+          squareFootage: c.squareFootage!,
+          bedrooms: c.bedrooms,
+          yearBuilt: c.yearBuilt,
+          assessedValue: c.assessedValue!,
+          valuePerSqft: Math.round(c.valuePerSqft * 100) / 100,
+          sameNeighborhood: c.sameNeighborhood,
+        })),
+        confidence,
+        valuationStatement,
+      };
+
+      // Add appeal ground if significantly overassessed
+      if (percentAboveMedian >= 10 && !scoringResult.appealGrounds.includes('above_market_value')) {
+        scoringResult.appealGrounds.push('above_market_value');
+      }
+
+      // Legacy appealCase support (for backward compatibility)
+      // Uses lower-assessed comps but frames them as equity evidence
+      const lowerComps = validComps.filter(c => c.valuePerSqft < subjectValuePerSqft).slice(0, 5);
+      if (lowerComps.length >= 3) {
+        const avgLowerPerSqft = lowerComps.slice(0, 3).reduce((sum, c) => sum + c.valuePerSqft, 0) / 3;
+        const targetAssessedValue = Math.round(subjectSqft * avgLowerPerSqft);
+        const requestedReduction = subjectValue - targetAssessedValue;
+        const estimatedAnnualSavings = Math.round(requestedReduction * 0.065);
+        const sameNeighborhoodCount = lowerComps.filter(c => c.sameNeighborhood).length;
+
+        appealCase = {
+          bestComparables: lowerComps.map(c => ({
+            pin: c.pin,
+            pinFormatted: c.pinFormatted,
+            address: c.address || '',
+            neighborhood: c.neighborhood || '',
+            squareFootage: c.squareFootage!,
+            bedrooms: c.bedrooms,
+            yearBuilt: c.yearBuilt,
+            assessedValue: c.assessedValue!,
+            valuePerSqft: Math.round(c.valuePerSqft * 100) / 100,
+            percentLowerThanSubject: Math.round(((subjectValuePerSqft - c.valuePerSqft) / subjectValuePerSqft) * 1000) / 10,
+            sameNeighborhood: c.sameNeighborhood,
+          })),
+          targetAssessedValue,
+          requestedReduction,
+          estimatedAnnualSavings,
+          caseStrength: percentAboveMedian >= 15 && sameNeighborhoodCount >= 2 ? 'strong' :
+                        percentAboveMedian >= 10 || sameNeighborhoodCount >= 1 ? 'moderate' : 'weak',
+          arguments: [
+            `${lowerComps.length} comparable properties demonstrate lower assessment rates`,
+            `Median market rate of $${medianValuePerSqft.toFixed(2)}/sqft supports fair value of $${fairAssessedValue.toLocaleString()}`,
+          ],
+        };
+      }
+    }
+  }
+
+  // ============================================================
+  // LAYER 2: UNIFORMITY/EQUITY ANALYSIS
+  // Detects systematic inconsistencies in assessment practices.
+  // Framed as "uniformity" (a legal term) rather than "finding lowest."
+  // ============================================================
+  let uniformityAnalysis: AppealOpportunity['analysis']['uniformityAnalysis'];
+  let equityAnalysis: AppealOpportunity['analysis']['equityAnalysis']; // Legacy support
+
+  if (subjectValue > 0 && subjectSqft > 0 && comparables.length >= 5) {
+    const subjectValuePerSqft = subjectValue / subjectSqft;
+    const subjectNeighborhood = property.neighborhood;
+
+    // Get all comparables with valid $/sqft
+    const allCompsWithSqft = comparables
+      .filter(c => c.squareFootage && c.squareFootage > 0 && c.assessedValue && c.assessedValue > 0)
+      .map(c => ({
+        ...c,
+        valuePerSqft: c.assessedValue! / c.squareFootage!,
+        sameNeighborhood: c.neighborhood === subjectNeighborhood,
+      }));
+
+    if (allCompsWithSqft.length >= 5) {
+      const valuesPerSqft = allCompsWithSqft.map(c => c.valuePerSqft);
+      const meanValue = valuesPerSqft.reduce((a, b) => a + b, 0) / valuesPerSqft.length;
+
+      // Calculate Coefficient of Dispersion (COD)
+      // This is a standard metric used by assessment professionals
+      const medianValue = [...valuesPerSqft].sort((a, b) => a - b)[Math.floor(valuesPerSqft.length / 2)];
+      const absoluteDeviations = valuesPerSqft.map(v => Math.abs(v - medianValue));
+      const avgAbsoluteDeviation = absoluteDeviations.reduce((a, b) => a + b, 0) / absoluteDeviations.length;
+      const coefficientOfDispersion = (avgAbsoluteDeviation / medianValue) * 100;
+
+      // Count properties assessed lower
+      const propertiesAssessedLower = allCompsWithSqft.filter(c => c.valuePerSqft < subjectValuePerSqft).length;
+      const percentileRank = Math.round((propertiesAssessedLower / allCompsWithSqft.length) * 100);
+
+      // Neighborhood-specific metrics
+      const neighborhoodComps = allCompsWithSqft.filter(c => c.sameNeighborhood);
+      const neighborhoodAvg = neighborhoodComps.length > 0
+        ? neighborhoodComps.reduce((sum, c) => sum + c.valuePerSqft, 0) / neighborhoodComps.length
+        : meanValue;
+      const subjectVsNeighborhood = ((subjectValuePerSqft - neighborhoodAvg) / neighborhoodAvg) * 100;
+
+      // Determine uniformity rating
+      // IAAO standards: COD < 15% is ideal for residential
+      let uniformityRating: 'consistent' | 'moderate_variation' | 'significant_disparity';
+      if (coefficientOfDispersion < 15) {
+        uniformityRating = 'consistent';
+      } else if (coefficientOfDispersion < 25) {
+        uniformityRating = 'moderate_variation';
+      } else {
+        uniformityRating = 'significant_disparity';
+      }
+
+      // Build professional uniformity statement
+      let uniformityStatement: string;
+      if (percentileRank >= 80) {
+        uniformityStatement = `Statistical analysis reveals significant assessment disparity. The subject property is assessed at rates exceeding ${percentileRank}% of comparable properties, indicating potential non-uniformity in assessment practices that warrants review under equal protection principles.`;
+      } else if (percentileRank >= 65) {
+        uniformityStatement = `The subject property's assessment exceeds ${percentileRank}% of comparable properties. The coefficient of dispersion of ${coefficientOfDispersion.toFixed(1)}% indicates ${uniformityRating === 'significant_disparity' ? 'significant variation' : 'moderate variation'} in assessment practices.`;
+      } else if (percentileRank >= 50) {
+        uniformityStatement = `The subject property is assessed above the median comparable. Assessment uniformity analysis shows a coefficient of dispersion of ${coefficientOfDispersion.toFixed(1)}%.`;
+      } else {
+        uniformityStatement = `The subject property's assessment is within normal ranges compared to similar properties.`;
+      }
+
+      uniformityAnalysis = {
+        percentileRank,
+        comparablePoolSize: allCompsWithSqft.length,
+        propertiesAssessedLower,
+        coefficientOfDispersion: Math.round(coefficientOfDispersion * 10) / 10,
+        neighborhoodMetrics: {
+          avgValuePerSqft: Math.round(neighborhoodAvg * 100) / 100,
+          subjectVsNeighborhood: Math.round(subjectVsNeighborhood * 10) / 10,
+          sampleSize: neighborhoodComps.length,
+        },
+        uniformityRating,
+        uniformityStatement,
+      };
+
+      // Add appeal ground if significant disparity
+      if (percentileRank >= 75 && !scoringResult.appealGrounds.includes('uniformity_disparity')) {
+        scoringResult.appealGrounds.push('uniformity_disparity');
+      }
+
+      // Legacy equityAnalysis support
+      equityAnalysis = {
+        percentileRank,
+        totalComparables: allCompsWithSqft.length,
+        propertiesAssessedLower,
+        neighborhoodAvgPerSqft: Math.round(neighborhoodAvg * 100) / 100,
+        vsNeighborhoodAverage: Math.round(subjectVsNeighborhood * 10) / 10,
+        equityStatement: uniformityStatement,
+      };
+    }
+  }
+
+  // ============================================================
+  // MARKET TIMING ANALYSIS - Is this a good year to appeal?
+  // Look at sales volume trends, price trends, DOM trends
+  // ============================================================
+  let marketTiming: AppealOpportunity['analysis']['marketTiming'];
+  if (comparableSales.length >= 3) {
+    // Analyze sales data for market indicators
+    const salesByDate = comparableSales
+      .filter(s => s.saleDate)
+      .sort((a, b) => new Date(a.saleDate!).getTime() - new Date(b.saleDate!).getTime());
+
+    // Split into recent (last 6 months) vs older (6-18 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const recentSales = salesByDate.filter(s => new Date(s.saleDate!) >= sixMonthsAgo);
+    const olderSales = salesByDate.filter(s => new Date(s.saleDate!) < sixMonthsAgo);
+
+    // Determine trends (simplified - in production would use more sophisticated analysis)
+    let priceTrend: 'declining' | 'stable' | 'rising' | 'unknown' = 'unknown';
+    let salesVolumeTrend: 'declining' | 'stable' | 'increasing' | 'unknown' = 'unknown';
+
+    if (recentSales.length >= 2 && olderSales.length >= 2) {
+      const recentAvgPrice = recentSales.reduce((sum, s) => sum + s.salePrice, 0) / recentSales.length;
+      const olderAvgPrice = olderSales.reduce((sum, s) => sum + s.salePrice, 0) / olderSales.length;
+
+      const priceChange = ((recentAvgPrice - olderAvgPrice) / olderAvgPrice) * 100;
+
+      if (priceChange < -5) {
+        priceTrend = 'declining';
+      } else if (priceChange > 5) {
+        priceTrend = 'rising';
+      } else {
+        priceTrend = 'stable';
+      }
+
+      // Compare sales volume (simple count comparison)
+      // Normalize by time period
+      const recentMonths = 6;
+      const olderMonths = 12;
+      const recentVolumePerMonth = recentSales.length / recentMonths;
+      const olderVolumePerMonth = olderSales.length / olderMonths;
+
+      const volumeChange = olderVolumePerMonth > 0
+        ? ((recentVolumePerMonth - olderVolumePerMonth) / olderVolumePerMonth) * 100
+        : 0;
+
+      if (volumeChange < -20) {
+        salesVolumeTrend = 'declining';
+      } else if (volumeChange > 20) {
+        salesVolumeTrend = 'increasing';
+      } else {
+        salesVolumeTrend = 'stable';
+      }
+    }
+
+    // Determine if market is favorable for appeals
+    // Declining or stable markets favor appeals (assessments often lag reality)
+    const favorableMarket = priceTrend === 'declining' || salesVolumeTrend === 'declining';
+
+    // Build summary
+    let summary: string;
+    if (priceTrend === 'declining' && salesVolumeTrend === 'declining') {
+      summary = 'Market conditions are highly favorable for an appeal. Declining prices and sales volume suggest assessments may be lagging the market downturn.';
+    } else if (priceTrend === 'declining' || salesVolumeTrend === 'declining') {
+      summary = 'Market conditions are moderately favorable for an appeal. Some indicators suggest the market may be softening.';
+    } else if (priceTrend === 'rising') {
+      summary = 'Market is rising, which may make appeals more challenging. However, if your property is still overassessed relative to comparables, an appeal may still be worthwhile.';
+    } else {
+      summary = 'Market conditions are neutral. Focus on comparable property evidence for your appeal.';
+    }
+
+    marketTiming = {
+      favorableMarket,
+      indicators: {
+        domTrend: 'unknown', // Would need additional data source for DOM
+        salesVolumeTrend,
+        priceTrend,
+      },
+      summary,
+    };
+
+    // Add market timing ground if favorable
+    if (favorableMarket && !scoringResult.appealGrounds.includes('market_timing')) {
+      scoringResult.appealGrounds.push('market_timing');
+    }
+  }
+
+  // ============================================================
+  // LAYER 3: ASSESSMENT DRIFT ANALYSIS
+  // Identifies historical patterns where assessment growth has exceeded
+  // market trends. This is a "correction" argument, not a "minimization" argument.
+  // ============================================================
+  let driftAnalysis: AppealOpportunity['analysis']['driftAnalysis'];
+  let historicalAnalysis: AppealOpportunity['analysis']['historicalAnalysis']; // Legacy support
+
+  // Fetch historical assessment data
+  try {
+    const historicalValues = await querySODA<AssessedValue>(
+      DATASETS.ASSESSED_VALUES,
+      {
+        '$where': `pin = '${pin}'`,
+        '$order': 'year DESC',
+        '$limit': '10'
+      }
+    );
+
+    if (historicalValues.length >= 3) {
+      // Sort by year ascending for analysis
+      const sortedValues = historicalValues
+        .map(v => ({
+          year: parseInt(v.year),
+          value: parseNumber(v.board_tot) || parseNumber(v.certified_tot) || parseNumber(v.mailed_tot) || 0,
+        }))
+        .filter(v => v.value > 0)
+        .sort((a, b) => a.year - b.year);
+
+      if (sortedValues.length >= 3) {
+        const yearsAnalyzed = sortedValues.length;
+        const firstValue = sortedValues[0].value;
+        const lastValue = sortedValues[sortedValues.length - 1].value;
+        const yearSpan = sortedValues[sortedValues.length - 1].year - sortedValues[0].year;
+
+        // Calculate compound annual growth rate of assessments
+        const assessmentCAGR = yearSpan > 0
+          ? (Math.pow(lastValue / firstValue, 1 / yearSpan) - 1) * 100
+          : 0;
+
+        // Estimated market CAGR (based on typical Cook County appreciation)
+        // In production, this could be calculated from actual sales data
+        const marketCAGR = 3.5; // Conservative estimate
+
+        // Excess growth rate
+        const excessGrowthRate = assessmentCAGR - marketCAGR;
+        const systematicOverassessment = excessGrowthRate > 2; // >2% above market is significant
+
+        // Calculate cumulative excess
+        const cumulativeExcess = systematicOverassessment && yearSpan > 0
+          ? Math.round(lastValue * (excessGrowthRate / 100) * yearSpan)
+          : 0;
+
+        // Build professional drift statement
+        let driftStatement: string;
+        if (systematicOverassessment && excessGrowthRate >= 5) {
+          driftStatement = `Historical analysis over ${yearsAnalyzed} years reveals systematic assessment drift. Assessments have grown at ${assessmentCAGR.toFixed(1)}% annually, significantly exceeding typical market appreciation of ${marketCAGR}%. This pattern suggests accumulated assessment error requiring correction.`;
+        } else if (systematicOverassessment) {
+          driftStatement = `Assessment records show growth of ${assessmentCAGR.toFixed(1)}% annually over ${yearsAnalyzed} years, ${excessGrowthRate.toFixed(1)} percentage points above estimated market trends. Historical patterns support reassessment review.`;
+        } else if (assessmentCAGR > marketCAGR) {
+          driftStatement = `Assessment growth of ${assessmentCAGR.toFixed(1)}% annually is moderately above market trends. No significant correction indicated.`;
+        } else {
+          driftStatement = `Historical assessment patterns align with market trends.`;
+        }
+
+        driftAnalysis = {
+          systematicOverassessment,
+          yearsAnalyzed,
+          assessmentCAGR: Math.round(assessmentCAGR * 10) / 10,
+          marketCAGR,
+          excessGrowthRate: Math.round(excessGrowthRate * 10) / 10,
+          cumulativeExcess,
+          assessmentHistory: sortedValues.map(v => ({
+            year: v.year,
+            assessedValue: v.value,
+          })),
+          driftStatement,
+        };
+
+        // Legacy support
+        historicalAnalysis = {
+          persistentOverassessment: systematicOverassessment,
+          yearsAnalyzed,
+          assessmentGrowthRate: Math.round(assessmentCAGR * 10) / 10,
+          cumulativeOverassessment: cumulativeExcess,
+        };
+
+        // Add appeal ground if systematic drift detected
+        if (systematicOverassessment && !scoringResult.appealGrounds.includes('assessment_drift')) {
+          scoringResult.appealGrounds.push('assessment_drift');
+        }
+      }
+    }
+  } catch (error) {
+    // Log but don't fail - drift analysis is optional
+    console.warn('Error fetching historical assessment data:', error);
+  }
+
+  // ============================================================
+  // CONSOLIDATED APPEAL SUMMARY
+  // Combines all three layers into a professional appeal recommendation.
+  // Uses principled language that sounds like a professional firm.
+  // ============================================================
+  let appealSummary: AppealOpportunity['analysis']['appealSummary'];
+
+  // Calculate recommended value based on strongest evidence
+  const marketFairValue = marketValueAnalysis?.fairAssessedValue;
+  const uniformityFairValue = uniformityAnalysis && subjectSqft > 0
+    ? Math.round(uniformityAnalysis.neighborhoodMetrics.avgValuePerSqft * subjectSqft)
+    : undefined;
+
+  // Use market value as primary, uniformity as secondary check
+  const recommendedAssessedValue = marketFairValue || uniformityFairValue || subjectValue;
+  const requestedReduction = subjectValue - recommendedAssessedValue;
+  const estimatedAnnualSavings = Math.round(requestedReduction * 0.065);
+
+  // Build primary arguments ranked by strength
+  const primaryArguments: Array<{type: 'market_value' | 'uniformity' | 'assessment_drift'; strength: number; summary: string}> = [];
+
+  if (marketValueAnalysis && marketValueAnalysis.percentAboveMedian >= 5) {
+    const strength = Math.min(100, 50 + marketValueAnalysis.percentAboveMedian * 2);
+    primaryArguments.push({
+      type: 'market_value',
+      strength,
+      summary: `Market analysis indicates overassessment of ${marketValueAnalysis.percentAboveMedian.toFixed(1)}% above comparable properties.`,
+    });
+  }
+
+  if (uniformityAnalysis && uniformityAnalysis.percentileRank >= 60) {
+    const strength = Math.min(100, uniformityAnalysis.percentileRank);
+    primaryArguments.push({
+      type: 'uniformity',
+      strength,
+      summary: `Uniformity analysis shows assessment exceeds ${uniformityAnalysis.percentileRank}% of comparable properties, indicating potential assessment disparity.`,
+    });
+  }
+
+  if (driftAnalysis && driftAnalysis.systematicOverassessment) {
+    const strength = Math.min(100, 50 + driftAnalysis.excessGrowthRate * 5);
+    primaryArguments.push({
+      type: 'assessment_drift',
+      strength,
+      summary: `Historical analysis reveals ${driftAnalysis.yearsAnalyzed}-year pattern of assessment growth exceeding market trends by ${driftAnalysis.excessGrowthRate.toFixed(1)}% annually.`,
+    });
+  }
+
+  // Sort by strength
+  primaryArguments.sort((a, b) => b.strength - a.strength);
+
+  // Determine overall strength
+  let overallStrength: 'strong' | 'moderate' | 'weak' = 'weak';
+  const maxStrength = primaryArguments.length > 0 ? Math.max(...primaryArguments.map(a => a.strength)) : 0;
+  const avgStrength = primaryArguments.length > 0
+    ? primaryArguments.reduce((sum, a) => sum + a.strength, 0) / primaryArguments.length
+    : 0;
+
+  if (maxStrength >= 75 && avgStrength >= 60 && primaryArguments.length >= 2) {
+    overallStrength = 'strong';
+  } else if (maxStrength >= 60 || (avgStrength >= 50 && primaryArguments.length >= 2)) {
+    overallStrength = 'moderate';
+  }
+
+  // Build professional appeal statement
+  let appealStatement: string;
+  if (overallStrength === 'strong' && requestedReduction > 0) {
+    appealStatement = `Based on comprehensive analysis of market data, assessment uniformity, and historical patterns, the current assessment of $${subjectValue.toLocaleString()} exceeds fair and equitable valuation. Analysis of ${marketValueAnalysis?.representativeComparables.length || 0} comparable properties and ${driftAnalysis?.yearsAnalyzed || 0} years of assessment history supports a fair assessed value of $${recommendedAssessedValue.toLocaleString()}, representing a correction of $${requestedReduction.toLocaleString()}.`;
+  } else if (overallStrength === 'moderate' && requestedReduction > 0) {
+    appealStatement = `Analysis indicates the current assessment may exceed fair market-based valuation. Comparable property data and uniformity analysis suggest a fair assessed value of $${recommendedAssessedValue.toLocaleString()}, compared to the current assessment of $${subjectValue.toLocaleString()}.`;
+  } else if (requestedReduction > 0) {
+    appealStatement = `Limited evidence suggests the assessment may be above market rates. Further review may be warranted.`;
+  } else {
+    appealStatement = `Current assessment appears to align with comparable properties and market conditions.`;
+  }
+
+  if (primaryArguments.length > 0 || requestedReduction > 0) {
+    appealSummary = {
+      recommendedAssessedValue,
+      requestedReduction,
+      estimatedAnnualSavings,
+      overallStrength,
+      primaryArguments,
+      appealStatement,
+    };
+  }
+
   return {
     property,
     comparables: comparables.slice(0, 10),
@@ -1366,6 +2075,16 @@ export async function analyzeAppealOpportunity(
       confidence: scoringResult.confidence,
       perSqftAnalysis,
       salesAnalysis,
+      // New three-layer credible architecture
+      marketValueAnalysis,
+      uniformityAnalysis,
+      driftAnalysis,
+      appealSummary,
+      marketTiming,
+      // Legacy fields (deprecated)
+      appealCase,
+      equityAnalysis,
+      historicalAnalysis,
     },
     priorAppeals,
     deadlines: {
