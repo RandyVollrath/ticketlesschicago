@@ -1326,7 +1326,7 @@ export default function PropertyTax() {
               </h3>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                 gap: '16px'
               }}>
                 <div>
@@ -1342,19 +1342,218 @@ export default function PropertyTax() {
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>Current Assessed Value</p>
+                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>Bedrooms</p>
+                  <p style={{ fontSize: '15px', fontWeight: '500', color: COLORS.graphite, margin: 0 }}>
+                    {appealData.property.bedrooms || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>Sq Ft</p>
+                  <p style={{ fontSize: '15px', fontWeight: '500', color: COLORS.graphite, margin: 0 }}>
+                    {appealData.property.squareFootage?.toLocaleString() || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>Assessed Value</p>
                   <p style={{ fontSize: '15px', fontWeight: '500', color: COLORS.graphite, margin: 0 }}>
                     ${appealData.property.assessedValue?.toLocaleString() || 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>Median Comparable Value</p>
-                  <p style={{ fontSize: '15px', fontWeight: '500', color: COLORS.signal, margin: 0 }}>
+                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>Median Comparable</p>
+                  <p style={{ fontSize: '15px', fontWeight: '500', color: appealData.property.assessedValue && appealData.analysis.medianComparableValue && appealData.property.assessedValue > appealData.analysis.medianComparableValue ? COLORS.danger : COLORS.signal, margin: 0 }}>
                     ${Math.round(appealData.analysis.medianComparableValue).toLocaleString()}
                   </p>
                 </div>
               </div>
+
+              {/* Assessment comparison explanation */}
+              {appealData.analysis.medianComparableValue > 0 && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: appealData.property.assessedValue && appealData.property.assessedValue > appealData.analysis.medianComparableValue
+                    ? '#FEF2F2'
+                    : '#F0FDF4',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  color: appealData.property.assessedValue && appealData.property.assessedValue > appealData.analysis.medianComparableValue
+                    ? '#DC2626'
+                    : '#166534'
+                }}>
+                  {appealData.property.assessedValue && appealData.property.assessedValue > appealData.analysis.medianComparableValue ? (
+                    <>
+                      <strong>Potential overassessment detected.</strong> Your property is assessed{' '}
+                      {Math.round(((appealData.property.assessedValue - appealData.analysis.medianComparableValue) / appealData.analysis.medianComparableValue) * 100)}% higher
+                      than similar properties in your area.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Your assessment appears fair.</strong> Your property is assessed at or below
+                      the median for similar properties in your area.
+                    </>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Comparable Properties Table */}
+            {appealData.comparables && appealData.comparables.length > 0 && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                padding: '24px',
+                border: `1px solid ${COLORS.border}`
+              }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 8px 0' }}>
+                  Comparable Properties
+                </h3>
+                <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 16px 0' }}>
+                  Properties with similar bedrooms, square footage, and location in your township
+                </p>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: '14px'
+                  }}>
+                    <thead>
+                      <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', color: COLORS.slate, fontWeight: '500' }}>PIN</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', color: COLORS.slate, fontWeight: '500' }}>Beds</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', color: COLORS.slate, fontWeight: '500' }}>Sq Ft</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', color: COLORS.slate, fontWeight: '500' }}>Assessed</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', color: COLORS.slate, fontWeight: '500' }}>$/Sq Ft</th>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', color: COLORS.slate, fontWeight: '500' }}>Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Your property row for comparison */}
+                      <tr style={{
+                        backgroundColor: '#EEF2FF',
+                        borderBottom: `1px solid ${COLORS.border}`
+                      }}>
+                        <td style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.regulatory }}>
+                          {appealData.property.pinFormatted}
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '12px 8px', fontWeight: '600', color: COLORS.regulatory }}>
+                          {appealData.property.bedrooms || '-'}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px 8px', fontWeight: '600', color: COLORS.regulatory }}>
+                          {appealData.property.squareFootage?.toLocaleString() || '-'}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px 8px', fontWeight: '600', color: COLORS.regulatory }}>
+                          ${appealData.property.assessedValue?.toLocaleString() || '-'}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px 8px', fontWeight: '600', color: COLORS.regulatory }}>
+                          {appealData.property.assessedValue && appealData.property.squareFootage
+                            ? `$${Math.round(appealData.property.assessedValue / appealData.property.squareFootage)}`
+                            : '-'}
+                        </td>
+                        <td style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.regulatory }}>
+                          Your Property
+                        </td>
+                      </tr>
+                      {/* Comparable properties */}
+                      {appealData.comparables.slice(0, 10).map((comp: any, idx: number) => (
+                        <tr key={comp.pin} style={{
+                          backgroundColor: idx % 2 === 0 ? 'white' : '#FAFAFA',
+                          borderBottom: `1px solid ${COLORS.border}`
+                        }}>
+                          <td style={{ padding: '12px 8px', color: COLORS.graphite }}>
+                            {comp.pinFormatted || comp.pin}
+                          </td>
+                          <td style={{
+                            textAlign: 'center',
+                            padding: '12px 8px',
+                            color: comp.bedrooms === appealData.property.bedrooms ? COLORS.signal : COLORS.graphite,
+                            fontWeight: comp.bedrooms === appealData.property.bedrooms ? '600' : '400'
+                          }}>
+                            {comp.bedrooms || '-'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '12px 8px', color: COLORS.graphite }}>
+                            {comp.squareFootage?.toLocaleString() || '-'}
+                            {comp.sqftDifferencePct && (
+                              <span style={{
+                                fontSize: '11px',
+                                color: COLORS.slate,
+                                marginLeft: '4px'
+                              }}>
+                                ({comp.sqftDifferencePct > 0 ? '+' : ''}{Math.round(comp.sqftDifferencePct)}%)
+                              </span>
+                            )}
+                          </td>
+                          <td style={{
+                            textAlign: 'right',
+                            padding: '12px 8px',
+                            color: comp.assessedValue < (appealData.property.assessedValue || 0) ? COLORS.signal : COLORS.graphite,
+                            fontWeight: comp.assessedValue < (appealData.property.assessedValue || 0) ? '600' : '400'
+                          }}>
+                            ${comp.assessedValue?.toLocaleString() || '-'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '12px 8px', color: COLORS.graphite }}>
+                            {comp.valuePerSqft ? `$${Math.round(comp.valuePerSqft)}` : '-'}
+                          </td>
+                          <td style={{ padding: '12px 8px', color: COLORS.slate, fontSize: '12px' }}>
+                            {comp.address === 'Same Building' && (
+                              <span style={{
+                                padding: '2px 8px',
+                                backgroundColor: '#EEF2FF',
+                                color: COLORS.regulatory,
+                                borderRadius: '100px',
+                                fontSize: '11px',
+                                fontWeight: '500'
+                              }}>
+                                Same Bldg
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary stats */}
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#F8FAFC',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  gap: '24px',
+                  flexWrap: 'wrap',
+                  fontSize: '13px'
+                }}>
+                  <div>
+                    <span style={{ color: COLORS.slate }}>Median Assessed: </span>
+                    <span style={{ fontWeight: '600', color: COLORS.graphite }}>
+                      ${Math.round(appealData.analysis.medianComparableValue).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: COLORS.slate }}>Your Assessment: </span>
+                    <span style={{ fontWeight: '600', color: COLORS.graphite }}>
+                      ${appealData.property.assessedValue?.toLocaleString() || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: COLORS.slate }}>Difference: </span>
+                    <span style={{
+                      fontWeight: '600',
+                      color: appealData.property.assessedValue && appealData.property.assessedValue > appealData.analysis.medianComparableValue
+                        ? COLORS.danger
+                        : COLORS.signal
+                    }}>
+                      {appealData.property.assessedValue && appealData.analysis.medianComparableValue
+                        ? `${appealData.property.assessedValue > appealData.analysis.medianComparableValue ? '+' : ''}$${Math.round(appealData.property.assessedValue - appealData.analysis.medianComparableValue).toLocaleString()}`
+                        : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* CTA to Paywall */}
             {appealData.analysis.opportunityScore >= 40 ? (
