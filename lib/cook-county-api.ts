@@ -572,11 +572,47 @@ export async function getComparableProperties(
 
   if (isCondo) {
     // For condos, search in the condo dataset
-    // Get first 10 digits of PIN (building PIN)
+    // Priority: same bedrooms, similar sqft, same neighborhood/township
+    const subjectBedrooms = subjectProperty.bedrooms || 2;
     const buildingPin10 = subjectProperty.pin.slice(0, 10);
+    const yearBuilt = subjectProperty.yearBuilt || 1980;
 
-    // First, try to find other units in the same building
-    let condoComps = await querySODA<CondoCharacteristics>(
+    // Build queries with progressively relaxed criteria
+    const queries: Promise<CondoCharacteristics[]>[] = [];
+
+    // Query 1: Same neighborhood, same bedrooms, similar sqft (best matches)
+    if (subjectProperty.neighborhood) {
+      queries.push(querySODA<CondoCharacteristics>(
+        DATASETS.CONDO_CHARACTERISTICS,
+        {
+          '$where': `township_code = '${subjectProperty.townshipCode}'
+            AND pin != '${subjectProperty.pin}'
+            AND is_parking_space != 'TRUE'
+            AND is_common_area != 'TRUE'
+            AND char_bedrooms = '${subjectBedrooms}'
+            AND char_unit_sf >= '${minSqft}' AND char_unit_sf <= '${maxSqft}'`,
+          '$order': 'year DESC',
+          '$limit': String(limit * 5)
+        }
+      ));
+    }
+
+    // Query 2: Same township, same bedrooms (relax sqft)
+    queries.push(querySODA<CondoCharacteristics>(
+      DATASETS.CONDO_CHARACTERISTICS,
+      {
+        '$where': `township_code = '${subjectProperty.townshipCode}'
+          AND pin != '${subjectProperty.pin}'
+          AND is_parking_space != 'TRUE'
+          AND is_common_area != 'TRUE'
+          AND char_bedrooms = '${subjectBedrooms}'`,
+        '$order': 'year DESC',
+        '$limit': String(limit * 5)
+      }
+    ));
+
+    // Query 3: Same building (any bedroom count - for context)
+    queries.push(querySODA<CondoCharacteristics>(
       DATASETS.CONDO_CHARACTERISTICS,
       {
         '$where': `pin10 = '${buildingPin10}'
@@ -584,37 +620,23 @@ export async function getComparableProperties(
           AND is_parking_space != 'TRUE'
           AND is_common_area != 'TRUE'`,
         '$order': 'year DESC',
-        '$limit': String(limit * 3)
+        '$limit': String(limit * 2)
       }
-    );
+    ));
 
-    // If not enough comparables in same building, expand to neighborhood
-    if (condoComps.length < 5 && subjectProperty.neighborhood) {
-      const moreCondos = await querySODA<CondoCharacteristics>(
-        DATASETS.CONDO_CHARACTERISTICS,
-        {
-          '$where': `township_code = '${subjectProperty.townshipCode}'
-            AND pin != '${subjectProperty.pin}'
-            AND pin10 != '${buildingPin10}'
-            AND is_parking_space != 'TRUE'
-            AND is_common_area != 'TRUE'
-            AND char_unit_sf >= '${minSqft}' AND char_unit_sf <= '${maxSqft}'`,
-          '$order': 'year DESC',
-          '$limit': String((limit - condoComps.length) * 3)
-        }
-      );
-      condoComps = [...condoComps, ...moreCondos];
-    }
+    // Run all queries in parallel
+    const results = await Promise.all(queries);
+    const allCondos = results.flat();
 
-    // Group by PIN, get most recent
+    // Group by PIN, keeping most recent
     const byPin = new Map<string, CondoCharacteristics>();
-    for (const prop of condoComps) {
+    for (const prop of allCondos) {
       if (!byPin.has(prop.pin)) {
         byPin.set(prop.pin, prop);
       }
     }
 
-    const pins = Array.from(byPin.keys()).slice(0, limit * 2);
+    const pins = Array.from(byPin.keys()).slice(0, limit * 3);
     if (pins.length === 0) {
       console.log(`No condo comparables found for ${subjectProperty.pin}`);
       return [];
@@ -638,26 +660,57 @@ export async function getComparableProperties(
       }
     }
 
-    // Build comparables
-    const comparables: ComparableProperty[] = [];
-    const yearBuilt = subjectProperty.yearBuilt || 1980;
+    // Build comparables with similarity scoring
+    const comparables: (ComparableProperty & { similarityScore: number })[] = [];
 
     for (const [pin, condo] of Array.from(byPin.entries())) {
       const propValue = valuesByPin.get(pin);
       if (!propValue) continue;
 
       const compSqft = parseInt(condo.char_unit_sf);
+      const compBedrooms = parseInt(condo.char_bedrooms);
       const compYearBuilt = parseInt(condo.char_yrblt);
       const compValue = parseNumber(propValue.board_tot) || parseNumber(propValue.certified_tot) || parseNumber(propValue.mailed_tot);
+
+      // Skip if no assessed value
+      if (!compValue) continue;
 
       const sqftDiff = compSqft && sqft ? ((compSqft - sqft) / sqft) * 100 : null;
       const ageDiff = compYearBuilt && yearBuilt ? compYearBuilt - yearBuilt : null;
       const valuePerSqft = compValue && compSqft ? compValue / compSqft : null;
 
+      // Calculate similarity score (higher = more similar)
+      let similarityScore = 100;
+
+      // Bedroom match is most important (0 or -30 points)
+      if (compBedrooms !== subjectBedrooms) {
+        similarityScore -= 30 * Math.abs(compBedrooms - subjectBedrooms);
+      }
+
+      // Square footage similarity (-0.5 points per 1% difference)
+      if (sqftDiff !== null) {
+        similarityScore -= Math.abs(sqftDiff) * 0.5;
+      }
+
+      // Same building bonus (+20 points)
+      if (condo.pin10 === buildingPin10) {
+        similarityScore += 20;
+      }
+
+      // Same neighborhood bonus (+10 points)
+      if (propValue.nbhd === subjectProperty.neighborhood) {
+        similarityScore += 10;
+      }
+
+      // Year built similarity (-1 point per 5 years difference)
+      if (ageDiff !== null) {
+        similarityScore -= Math.abs(ageDiff) / 5;
+      }
+
       comparables.push({
         pin,
         pinFormatted: formatPin(pin),
-        address: '', // Condo dataset doesn't have addresses
+        address: condo.pin10 === buildingPin10 ? 'Same Building' : '',
         city: 'CHICAGO',
         zipCode: '',
         township: propValue.township_name || '',
@@ -668,8 +721,8 @@ export async function getComparableProperties(
         yearBuilt: compYearBuilt,
         squareFootage: compSqft,
         lotSize: parseInt(condo.char_land_sf),
-        bedrooms: parseInt(condo.char_bedrooms),
-        bathrooms: null,
+        bedrooms: compBedrooms,
+        bathrooms: null, // Not in condo dataset unfortunately
         exteriorConstruction: null,
         basementType: null,
         garageType: null,
@@ -684,20 +737,15 @@ export async function getComparableProperties(
         valuePerSqft,
         sqftDifferencePct: sqftDiff,
         ageDifferenceYears: ageDiff,
+        similarityScore,
       });
-
-      if (comparables.length >= limit) break;
     }
 
-    // Sort by assessed value (closest to subject)
-    const subjectValue = subjectProperty.assessedValue || 0;
-    comparables.sort((a, b) => {
-      const aDiff = Math.abs((a.assessedValue || 0) - subjectValue);
-      const bDiff = Math.abs((b.assessedValue || 0) - subjectValue);
-      return aDiff - bDiff;
-    });
+    // Sort by similarity score (highest first)
+    comparables.sort((a, b) => b.similarityScore - a.similarityScore);
 
-    return comparables.slice(0, limit);
+    // Return top comparables, removing the similarityScore field
+    return comparables.slice(0, limit).map(({ similarityScore, ...comp }) => comp);
   }
 
   // For non-condos, use original residential search logic
