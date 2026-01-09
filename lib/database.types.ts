@@ -3426,6 +3426,7 @@ export type Database = {
           guarantee_opt_in_year: number | null
           has_permit_zone: boolean | null
           has_protection: boolean
+          has_contesting: boolean
           has_vanity_plate: boolean | null
           home_address_full: string | null
           home_address_section: string | null
@@ -3586,6 +3587,7 @@ export type Database = {
           guarantee_opt_in_year?: number | null
           has_permit_zone?: boolean | null
           has_protection?: boolean
+          has_contesting?: boolean
           has_vanity_plate?: boolean | null
           home_address_full?: string | null
           home_address_section?: string | null
@@ -3746,6 +3748,7 @@ export type Database = {
           guarantee_opt_in_year?: number | null
           has_permit_zone?: boolean | null
           has_protection?: boolean
+          has_contesting?: boolean
           has_vanity_plate?: boolean | null
           home_address_full?: string | null
           home_address_section?: string | null

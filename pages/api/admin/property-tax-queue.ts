@@ -61,9 +61,9 @@ async function getPropertyTaxQueue(req: NextApiRequest, res: NextApiResponse) {
         property_tax_needs_refresh,
         property_tax_fetch_failed,
         property_tax_fetch_notes,
-        has_protection
+        has_contesting
       `)
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('has_permit_zone', true)
       .not('street_address', 'is', null)
       .order('city_sticker_expiry', { ascending: true });

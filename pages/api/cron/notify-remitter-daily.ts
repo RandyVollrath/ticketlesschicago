@@ -102,7 +102,7 @@ export default async function handler(
     const { data: confirmedUsers, error: confirmedError } = await supabase
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, license_plate, profile_confirmed_at, city_sticker_expiry')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('profile_confirmed_for_year', currentYear)
       .is('sticker_purchased_at', null); // Not yet purchased
 
@@ -114,7 +114,7 @@ export default async function handler(
     const { data: urgentUsers, error: urgentError } = await supabase
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .is('sticker_purchased_at', null)
       .lte('city_sticker_expiry', sevenDaysFromNow.toISOString().split('T')[0])
       .gte('city_sticker_expiry', today.toISOString().split('T')[0]);
@@ -127,7 +127,7 @@ export default async function handler(
     const { data: allPendingUsers, error: pendingError } = await supabase
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, profile_confirmed_for_year, license_image_path')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .is('sticker_purchased_at', null)
       .order('city_sticker_expiry', { ascending: true });
 

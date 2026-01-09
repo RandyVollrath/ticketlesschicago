@@ -386,7 +386,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     zip_code: zipCode,
                     vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
                     vin: hasValue(metadata.vin) ? metadata.vin : null,
-                    has_protection: true,
+                    has_contesting: true,
                     stripe_customer_id: session.customer as string,
                     city_sticker_expiry: hasValue(metadata.citySticker) ? metadata.citySticker : null,
                     license_plate_expiry: hasValue(metadata.licensePlate) ? metadata.licensePlate : null,
@@ -637,7 +637,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   zip_code: zipCode,
                   vehicle_type: hasValue(metadata.vehicleType) ? metadata.vehicleType : 'P',
                   vin: hasValue(metadata.vin) ? metadata.vin : null,
-                  has_protection: true,
+                  has_contesting: true,
                   stripe_customer_id: session.customer as string, // CRITICAL: Save for future renewals
                   city_sticker_expiry: hasValue(metadata.citySticker) ? metadata.citySticker : null,
                   license_plate_expiry: hasValue(metadata.licensePlate) ? metadata.licensePlate : null,
@@ -966,11 +966,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
 
-          // Update or create profile for existing user with has_protection=true and renewal dates
+          // Update or create profile for existing user with has_contesting=true and renewal dates
           const updateData: any = {
             user_id: userId,
             email: email,
-            has_protection: true,
+            has_contesting: true,
             stripe_customer_id: session.customer as string, // CRITICAL: Save for future renewals
             updated_at: new Date().toISOString()
           };
@@ -1318,13 +1318,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } else {
               console.log('✅ Autopilot subscription activated for user:', supabaseUserId);
 
-              // Also ensure autopilot_profiles record exists
-              await supabaseAdmin
-                .from('autopilot_profiles')
-                .upsert({
-                  user_id: supabaseUserId,
-                  updated_at: new Date().toISOString(),
-                }, { onConflict: 'user_id' });
+              // has_contesting is already set to true in user_profiles earlier
 
               // Send welcome email
               const userEmail = session.customer_details?.email || metadata.email;

@@ -88,7 +88,7 @@ export default async function handler(
       console.log(`🅿️ User ${currentProfile.email} moved INTO permit zone`);
 
       // Check if user has Protection (paid subscription)
-      if (currentProfile.has_protection) {
+      if (currentProfile.has_contesting) {
         // Create Stripe Payment Link for $30 permit fee
         const paymentLink = await stripe.paymentLinks.create({
           line_items: [

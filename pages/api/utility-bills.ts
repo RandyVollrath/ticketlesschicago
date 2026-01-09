@@ -121,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`🔍 Looking up user profile for: ${userId}`);
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('user_id, email_forwarding_address, has_protection, has_permit_zone')
+      .select('user_id, email_forwarding_address, has_contesting, has_permit_zone')
       .eq('user_id', userId)
       .single();
 
@@ -131,13 +131,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log(`✅ Found user profile:`, {
-      has_protection: profile.has_protection,
+      has_contesting: profile.has_contesting,
       has_permit_zone: profile.has_permit_zone,
       email_forwarding_address: profile.email_forwarding_address
     });
 
     // Verify user has protection and permit zone
-    if (!profile.has_protection) {
+    if (!profile.has_contesting) {
       console.error('❌ User does not have protection:', userId);
       return res.status(400).json({ error: 'User does not have protection service', userId });
     }

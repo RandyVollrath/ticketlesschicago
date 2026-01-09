@@ -183,7 +183,7 @@ export default async function handler(
 
       // Generate and send notifications using centralized templates
       const effectiveDays = Math.max(0, daysUntil);
-      const hasProtection = user.has_protection || false;
+      const hasProtection = user.has_contesting || false;
 
       const emailContent = emailTemplates.emissionsReminder(
         {

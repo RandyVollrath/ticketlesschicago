@@ -50,7 +50,7 @@ export default async function handler(
         residency_forwarding_enabled,
         residency_proof_path
       `)
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .gte('created_at', fourteenDaysAgo.toISOString());
 
     if (usersError) {

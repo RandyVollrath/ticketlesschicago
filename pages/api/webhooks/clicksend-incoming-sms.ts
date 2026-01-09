@@ -140,9 +140,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Find the right user to confirm - prioritize users with protection who haven't confirmed this year
       const { data: confirmUsers, error: confirmQueryError } = await supabaseAdmin
         .from('user_profiles')
-        .select('user_id, email, first_name, profile_confirmed_at, profile_confirmed_for_year, has_protection')
+        .select('user_id, email, first_name, profile_confirmed_at, profile_confirmed_for_year, has_contesting')
         .or(phoneVariations.map(p => `phone.eq.${p},phone_number.eq.${p}`).join(','))
-        .eq('has_protection', true)
+        .eq('has_contesting', true)
         .neq('profile_confirmed_for_year', currentYear)
         .order('created_at', { ascending: false });
 

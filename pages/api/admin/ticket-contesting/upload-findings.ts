@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: paidUsers } = await supabase
       .from('user_profiles')
       .select('user_id, license_plate, license_state')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .not('license_plate', 'is', null);
 
     // Create a lookup map

@@ -141,17 +141,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // Also get autopilot profiles for names
-      const { data: autopilotProfiles } = await supabase
-        .from('autopilot_profiles')
+      // Get first/last names from user_profiles
+      const { data: userProfiles } = await supabase
+        .from('user_profiles')
         .select('user_id, first_name, last_name')
         .in('user_id', userIds);
 
-      if (autopilotProfiles) {
-        for (const ap of autopilotProfiles) {
-          if (userMap[ap.user_id]) {
-            userMap[ap.user_id].first_name = ap.first_name;
-            userMap[ap.user_id].last_name = ap.last_name;
+      if (userProfiles) {
+        for (const up of userProfiles) {
+          if (userMap[up.user_id]) {
+            userMap[up.user_id].first_name = up.first_name;
+            userMap[up.user_id].last_name = up.last_name;
           }
         }
       }

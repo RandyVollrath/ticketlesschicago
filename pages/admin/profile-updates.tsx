@@ -30,7 +30,7 @@ interface UpcomingRenewal {
   license_plate: string;
   city_sticker_expiry: string | null;
   license_plate_expiry: string | null;
-  has_protection: boolean;
+  has_contesting: boolean;
   phone: string;
   city_sticker_notified?: boolean;
   license_plate_notified?: boolean;
@@ -203,7 +203,7 @@ export default function ProfileUpdates() {
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, has_protection, phone')
+        .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, has_contesting, phone')
         .or(`city_sticker_expiry.lte.${ninetyDaysStr},license_plate_expiry.lte.${ninetyDaysStr}`)
         .order('city_sticker_expiry', { ascending: true, nullsLast: true });
 
@@ -680,7 +680,7 @@ export default function ProfileUpdates() {
                           ) : '-'}
                         </td>
                         <td style={{ padding: '12px' }}>
-                          {renewal.has_protection ? (
+                          {renewal.has_contesting ? (
                             <span style={{ background: '#10b981', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
                               ✓ Active
                             </span>

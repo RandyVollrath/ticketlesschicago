@@ -40,7 +40,7 @@ export default async function handler(
     const { data: users, error: usersError } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, created_at, residency_proof_path')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('has_permit_zone', true)
       .eq('permit_requested', true)
       .eq('residency_forwarding_enabled', false)

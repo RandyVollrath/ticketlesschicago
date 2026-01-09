@@ -149,7 +149,7 @@ export default function AutopilotAdmin() {
           status,
           created_at
         ),
-        autopilot_profiles!detected_tickets_user_id_fkey (
+        user_profiles!detected_tickets_user_id_fkey (
           first_name,
           last_name,
           full_name
@@ -658,8 +658,8 @@ export default function AutopilotAdmin() {
                     const now = new Date();
                     const hoursLeft = deadline ? Math.max(0, Math.round((deadline.getTime() - now.getTime()) / (1000 * 60 * 60))) : 0;
                     const isUrgent = hoursLeft < 24;
-                    const userName = ticket.autopilot_profiles?.full_name ||
-                      `${ticket.autopilot_profiles?.first_name || ''} ${ticket.autopilot_profiles?.last_name || ''}`.trim() ||
+                    const userName = ticket.user_profiles?.full_name ||
+                      `${ticket.user_profiles?.first_name || ''} ${ticket.user_profiles?.last_name || ''}`.trim() ||
                       'Unknown';
                     const letter = ticket.contest_letters?.[0];
 

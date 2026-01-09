@@ -147,8 +147,7 @@ interface DetectedTicket {
 
 interface UserProfile {
   full_name: string | null;
-  mailing_address_line1: string | null;
-  mailing_address_line2: string | null;
+  mailing_address: string | null;
   mailing_city: string | null;
   mailing_state: string | null;
   mailing_zip: string | null;
@@ -369,8 +368,7 @@ function generateLetterContent(
 
   // Build full address
   const addressLines = [
-    profile.mailing_address_line1,
-    profile.mailing_address_line2,
+    profile.mailing_address,
     `${profile.mailing_city || ''}, ${profile.mailing_state || ''} ${profile.mailing_zip || ''}`.trim(),
   ].filter(Boolean);
 
@@ -423,7 +421,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
 
   // Get user profile (for mailing info)
   const { data: profile } = await supabaseAdmin
-    .from('autopilot_profiles')
+    .from('user_profiles')
     .select('*')
     .eq('user_id', ticket.user_id)
     .single();
@@ -432,7 +430,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(ticket.user_id);
   const userEmail = authUser?.user?.email;
 
-  if (!profile || !profile.full_name || !profile.mailing_address_line1) {
+  if (!profile || !profile.full_name || !profile.mailing_address) {
     console.log(`    Skipping: Missing profile/address info`);
     await supabaseAdmin
       .from('detected_tickets')

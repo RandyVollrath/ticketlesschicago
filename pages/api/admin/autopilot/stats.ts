@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             defense_type,
             status
           ),
-          autopilot_profiles!detected_tickets_user_id_fkey (
+          user_profiles!detected_tickets_user_id_fkey (
             first_name,
             last_name,
             full_name

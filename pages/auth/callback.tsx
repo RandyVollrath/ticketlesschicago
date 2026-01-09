@@ -178,7 +178,7 @@ export default function AuthCallback() {
           // Check if this user has a profile (existing user vs new OAuth user)
           const { data: userProfile } = await supabase
             .from('user_profiles')
-            .select('email, has_protection')
+            .select('email, has_contesting')
             .eq('user_id', user.id)
             .single();
 

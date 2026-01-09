@@ -43,7 +43,7 @@ interface OnboardingProgressProps {
     has_permit_zone?: boolean
     license_front_path?: string | null
     residency_proof_path?: string | null
-    has_protection?: boolean
+    has_contesting?: boolean
   }
   onStepClick?: (stepId: string) => void
 }
@@ -143,7 +143,7 @@ export default function OnboardingProgress({ profile, onStepClick }: OnboardingP
   ]
 
   // Add permit zone steps if applicable
-  if (profile.has_permit_zone && profile.has_protection) {
+  if (profile.has_permit_zone && profile.has_contesting) {
     steps.push({
       id: 'license_upload',
       title: 'Upload Driver\'s License',

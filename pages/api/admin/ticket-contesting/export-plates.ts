@@ -37,7 +37,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     const { data: users, error } = await supabase
       .from('user_profiles')
       .select('user_id, first_name, last_name, license_plate, license_state')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .not('license_plate', 'is', null)
       .order('last_name');
 

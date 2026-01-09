@@ -183,7 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get user profiles to get first/last names
     const { data: profiles } = await supabaseAdmin
-      .from('autopilot_profiles')
+      .from('user_profiles')
       .select('user_id, first_name, last_name, full_name')
       .in('user_id', activeUserIds);
 

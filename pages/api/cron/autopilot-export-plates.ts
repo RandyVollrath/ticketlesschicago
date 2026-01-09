@@ -300,7 +300,7 @@ export default async function handler(
 
     // Get user profiles to get first/last names
     const { data: profiles } = await supabase
-      .from('autopilot_profiles')
+      .from('user_profiles')
       .select('user_id, first_name, last_name, full_name')
       .in('user_id', activeUserIds);
 

@@ -126,7 +126,7 @@ export default async function handler(
       // Find user by phone number
       const { data: user, error: userError } = await supabase
         .from('user_profiles')
-        .select('user_id, first_name, email, has_protection')
+        .select('user_id, first_name, email, has_contesting')
         .eq('phone_number', phoneE164)
         .single();
 
@@ -136,7 +136,7 @@ export default async function handler(
       }
 
       // Only allow Protection users to confirm (free users don't need this)
-      if (!user.has_protection) {
+      if (!user.has_contesting) {
         console.log(`⚠️ Non-protection user tried to confirm: ${user.user_id}`);
         return res.status(200).json({ success: true, message: 'Only available for Protection users' });
       }
