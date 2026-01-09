@@ -156,7 +156,6 @@ export default function SettingsPage() {
   const [isPaidUser, setIsPaidUser] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const [hasActivePlates, setHasActivePlates] = useState(false);
 
   // Account Info
@@ -474,25 +473,10 @@ export default function SettingsPage() {
   const handleUpgrade = async () => {
     if (!userId) return;
 
-    // Validate required fields before allowing upgrade
-    setUpgradeError(null);
-
-    const trimmedLastName = lastName.trim();
-    const trimmedPlate = plateNumber.trim();
-
-    if (!trimmedLastName) {
-      setUpgradeError('Please enter your last name before upgrading. This is required for ticket searches.');
-      return;
-    }
-
-    if (!trimmedPlate || trimmedPlate.length < 2) {
-      setUpgradeError('Please enter your license plate number before upgrading. This is required for ticket monitoring.');
-      return;
-    }
-
     setCheckoutLoading(true);
+
     try {
-      // First save the profile to ensure last name and plate are saved
+      // Save any current profile data before checkout
       await autoSave();
 
       const response = await fetch('/api/autopilot/create-checkout', {
@@ -500,8 +484,8 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          lastName: trimmedLastName,
-          plateNumber: trimmedPlate,
+          lastName: lastName.trim() || null,
+          plateNumber: plateNumber.trim() || null,
           plateState: plateState,
         }),
       });
@@ -509,11 +493,10 @@ export default function SettingsPage() {
       if (data.url) {
         window.location.href = data.url;
       } else if (data.error) {
-        setUpgradeError(data.error);
+        console.error('Checkout error:', data.error);
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      setUpgradeError('An error occurred. Please try again.');
     } finally {
       setCheckoutLoading(false);
     }
@@ -821,19 +804,6 @@ export default function SettingsPage() {
                 {checkoutLoading ? 'Loading...' : 'Upgrade Now'}
               </button>
             </div>
-            {upgradeError && (
-              <div style={{
-                marginTop: 12,
-                padding: '10px 14px',
-                backgroundColor: '#FEF2F2',
-                border: `1px solid ${COLORS.danger}`,
-                borderRadius: 6,
-                color: '#991B1B',
-                fontSize: 13,
-              }}>
-                {upgradeError}
-              </div>
-            )}
           </div>
         )}
 
@@ -900,11 +870,11 @@ export default function SettingsPage() {
                 display: 'block',
                 fontSize: 12,
                 fontWeight: 600,
-                color: COLORS.textMuted,
+                color: isPaidUser && !lastName.trim() ? COLORS.danger : COLORS.textMuted,
                 marginBottom: 6,
                 textTransform: 'uppercase',
               }}>
-                Last Name <span style={{ color: COLORS.highlight, fontSize: 10 }}>*Required for VA</span>
+                Last Name {isPaidUser && <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>}
               </label>
               <input
                 type="text"
@@ -915,13 +885,18 @@ export default function SettingsPage() {
                   width: '100%',
                   padding: '10px 14px',
                   borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
+                  border: `1px solid ${isPaidUser && !lastName.trim() ? COLORS.danger : COLORS.border}`,
                   fontSize: 15,
                   color: COLORS.primary,
                   backgroundColor: COLORS.bgLight,
                   boxSizing: 'border-box',
                 }}
               />
+              {isPaidUser && !lastName.trim() && (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: COLORS.danger }}>
+                  Required for ticket searches
+                </p>
+              )}
             </div>
           </div>
           <div>
@@ -961,16 +936,16 @@ export default function SettingsPage() {
               display: 'block',
               fontSize: 12,
               fontWeight: 600,
-              color: COLORS.textMuted,
+              color: isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.textMuted,
               marginBottom: 8,
               textTransform: 'uppercase',
             }}>
-              License Plate
+              License Plate {isPaidUser && <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>}
             </label>
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              border: `2px solid ${COLORS.primary}`,
+              border: `2px solid ${isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.primary}`,
               borderRadius: 8,
               padding: 4,
               backgroundColor: '#fff',
@@ -1013,6 +988,11 @@ export default function SettingsPage() {
                 }}
               />
             </div>
+            {isPaidUser && !plateNumber.trim() && (
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: COLORS.danger }}>
+                Required for ticket monitoring
+              </p>
+            )}
           </div>
 
           <div style={{ marginBottom: 16 }}>

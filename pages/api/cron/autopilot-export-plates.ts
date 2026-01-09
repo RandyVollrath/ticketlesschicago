@@ -328,7 +328,15 @@ export default async function handler(
     // Send email with CSV attachment
     const emailSent = await sendEmailWithAttachment(vaEmail, subject, html, csvContent, filename);
 
-    // Log export job
+    // Log export job with detailed plate data for audit trail
+    const exportedPlatesDetail = platesWithNames.map(p => ({
+      user_id: p.user_id,
+      plate: p.plate,
+      state: p.state,
+      last_name: p.last_name,
+      first_name: p.first_name,
+    }));
+
     await supabase
       .from('plate_export_jobs')
       .insert({
@@ -336,6 +344,7 @@ export default async function handler(
         status: emailSent ? 'complete' : 'failed',
         va_email: vaEmail,
         email_sent_to_va: emailSent,
+        exported_plates: exportedPlatesDetail,
         created_at: new Date().toISOString(),
         completed_at: new Date().toISOString(),
       });
