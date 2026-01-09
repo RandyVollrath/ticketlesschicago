@@ -1,10 +1,11 @@
 /**
  * Sync Property Tax Deadlines
  *
- * Fetches the latest township appeal deadlines from Cook County
- * Board of Review and stores them in our database.
+ * This cron job initializes the property_tax_deadlines table with
+ * UNKNOWN status for all townships. Actual deadline data must be
+ * populated manually or via admin upload once official dates are published.
  *
- * This should run weekly during appeal season (typically Aug-Dec).
+ * Deadlines are NOT hardcoded to avoid incorrect filing guidance.
  *
  * POST /api/cron/sync-property-tax-deadlines
  */
@@ -18,62 +19,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Known 2025 deadlines (these would ideally be scraped from the BOR website)
-// Source: https://www.cookcountyboardofreview.com/dates-and-deadlines
-const KNOWN_DEADLINES_2025: Record<string, { borOpen: string; borClose: string }> = {
-  // South/Southwest suburbs (typically first)
-  'Bloom': { borOpen: '2025-08-01', borClose: '2025-08-30' },
-  'Bremen': { borOpen: '2025-08-01', borClose: '2025-08-30' },
-  'Calumet': { borOpen: '2025-08-01', borClose: '2025-08-30' },
-  'Rich': { borOpen: '2025-08-15', borClose: '2025-09-15' },
-  'Thornton': { borOpen: '2025-08-15', borClose: '2025-09-15' },
-  'Worth': { borOpen: '2025-08-15', borClose: '2025-09-15' },
+// Deadline status constants
+export const DEADLINE_STATUS = {
+  UNKNOWN: 'unknown',      // Deadlines not yet available
+  CONFIRMED: 'confirmed',  // Deadlines verified from official source
+  EXPIRED: 'expired',      // Filing period has passed
+} as const;
 
-  // Chicago townships (middle of season)
-  'Hyde Park': { borOpen: '2025-09-01', borClose: '2025-10-01' },
-  'Jefferson': { borOpen: '2025-09-01', borClose: '2025-10-01' },
-  'Lake': { borOpen: '2025-09-01', borClose: '2025-10-01' },
-  'Lake View': { borOpen: '2025-09-15', borClose: '2025-10-15' },
-  'Rogers Park': { borOpen: '2025-09-15', borClose: '2025-10-15' },
-  'South Chicago': { borOpen: '2025-09-15', borClose: '2025-10-15' },
-  'West Chicago': { borOpen: '2025-10-01', borClose: '2025-10-31' },
-
-  // North suburbs
-  'Evanston': { borOpen: '2025-10-01', borClose: '2025-10-31' },
-  'New Trier': { borOpen: '2025-10-15', borClose: '2025-11-15' },
-  'Niles': { borOpen: '2025-10-15', borClose: '2025-11-15' },
-  'Northfield': { borOpen: '2025-10-15', borClose: '2025-11-15' },
-  'Norwood Park': { borOpen: '2025-11-01', borClose: '2025-12-01' },
-
-  // West suburbs
-  'Berwyn': { borOpen: '2025-11-01', borClose: '2025-12-01' },
-  'Cicero': { borOpen: '2025-11-01', borClose: '2025-12-01' },
-  'Lyons': { borOpen: '2025-11-01', borClose: '2025-12-01' },
-  'Oak Park': { borOpen: '2025-11-15', borClose: '2025-12-15' },
-  'Proviso': { borOpen: '2025-11-15', borClose: '2025-12-15' },
-  'River Forest': { borOpen: '2025-11-15', borClose: '2025-12-15' },
-  'Riverside': { borOpen: '2025-11-15', borClose: '2025-12-15' },
-
-  // Northwest suburbs (typically last)
-  'Barrington': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-  'Elk Grove': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-  'Hanover': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-  'Leyden': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-  'Maine': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-  'Palatine': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-  'Schaumburg': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-  'Wheeling': { borOpen: '2025-12-01', borClose: '2025-12-22' },
-
-  // Others
-  'Lemont': { borOpen: '2025-10-01', borClose: '2025-10-31' },
-  'Orland': { borOpen: '2025-09-15', borClose: '2025-10-15' },
-  'Palos': { borOpen: '2025-09-15', borClose: '2025-10-15' },
-  'Stickney': { borOpen: '2025-10-15', borClose: '2025-11-15' },
-};
-
-// 2026 deadlines (estimated based on typical patterns)
-const KNOWN_DEADLINES_2026: Record<string, { borOpen: string; borClose: string }> = {};
-// Would be populated once available
+export type DeadlineStatus = typeof DEADLINE_STATUS[keyof typeof DEADLINE_STATUS];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -88,61 +41,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const year = new Date().getFullYear();
-    const deadlines = year === 2025 ? KNOWN_DEADLINES_2025 : KNOWN_DEADLINES_2026;
 
     const stats = {
-      updated: 0,
-      inserted: 0,
+      created: 0,
+      skipped: 0,
       errors: 0
     };
 
+    // Ensure each township has a deadline record for the current year
+    // Status will be UNKNOWN until manually populated
     for (const township of TOWNSHIPS) {
-      const deadlineData = deadlines[township];
-
-      if (!deadlineData) {
-        console.log(`No deadline data for ${township}`);
-        continue;
-      }
-
       try {
         const { data: existing } = await supabase
           .from('property_tax_deadlines')
-          .select('id')
+          .select('id, status')
           .eq('township', township)
           .eq('year', year)
           .single();
 
-        const record = {
-          year,
-          township,
-          bor_open_date: deadlineData.borOpen,
-          bor_close_date: deadlineData.borClose,
-          source_url: 'https://www.cookcountyboardofreview.com/dates-and-deadlines',
-          last_verified_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
         if (existing) {
-          await supabase
-            .from('property_tax_deadlines')
-            .update(record)
-            .eq('id', existing.id);
-          stats.updated++;
+          // Record exists, don't overwrite
+          stats.skipped++;
+          continue;
+        }
+
+        // Create placeholder record with UNKNOWN status
+        const { error: insertError } = await supabase
+          .from('property_tax_deadlines')
+          .insert({
+            year,
+            township,
+            status: DEADLINE_STATUS.UNKNOWN,
+            source_url: null,
+            bor_open_date: null,
+            bor_close_date: null,
+            ccao_open_date: null,
+            ccao_close_date: null,
+            last_verified_at: null,
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error(`Error creating ${township}:`, insertError);
+          stats.errors++;
         } else {
-          await supabase
-            .from('property_tax_deadlines')
-            .insert(record);
-          stats.inserted++;
+          stats.created++;
         }
       } catch (error) {
-        console.error(`Error updating ${township}:`, error);
-        stats.errors++;
+        // Single query error (no row found) is expected
+        if ((error as any)?.code !== 'PGRST116') {
+          console.error(`Error processing ${township}:`, error);
+          stats.errors++;
+        }
       }
     }
 
     return res.status(200).json({
       success: true,
       year,
+      message: 'Township deadline placeholders initialized. Populate actual dates via admin.',
       stats
     });
 

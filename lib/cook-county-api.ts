@@ -78,15 +78,15 @@ export interface AssessedValue {
   township_code: string;
   township_name: string;
   nbhd: string;
-  mailed_tot: string;  // Mailed total assessed value
-  certified_tot: string;  // Certified total assessed value
-  board_tot: string;  // Board of Review total assessed value
-  mailed_bldg: string;
-  mailed_land: string;
-  certified_bldg: string;
-  certified_land: string;
-  board_bldg: string;
-  board_land: string;
+  mailed_tot?: string;  // Mailed total assessed value
+  certified_tot?: string;  // Certified total assessed value
+  board_tot?: string;  // Board of Review total assessed value (may not exist for current year)
+  mailed_bldg?: string;
+  mailed_land?: string;
+  certified_bldg?: string;
+  certified_land?: string;
+  board_bldg?: string;
+  board_land?: string;
 }
 
 export interface SaleRecord {
@@ -300,22 +300,9 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
   );
 
   if (characteristics.length === 0) {
-    // Try condo dataset
-    const condoChars = await querySODA<PropertyCharacteristics>(
-      DATASETS.CONDO_CHARACTERISTICS,
-      {
-        '$where': `pin = '${normalizedPin}'`,
-        '$order': 'tax_year DESC',
-        '$limit': '1'
-      }
-    );
-
-    if (condoChars.length === 0) {
-      return null;
-    }
-
-    // Use condo data
-    characteristics.push(condoChars[0]);
+    // Property not found in residential dataset
+    // Note: Condo dataset lookup skipped - dataset ID needs verification
+    return null;
   }
 
   const prop = characteristics[0];
@@ -363,12 +350,14 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
     basementType: prop.bsmt || null,
     garageType: prop.gar1_size || null,
     assessmentYear: parseInt(prop.tax_year) || currentYear - 1,
-    // Assessed value is the board_tot (final after Board of Review)
-    assessedValue: parseNumber(currentValue?.board_tot) || parseNumber(values[0]?.board_tot),
+    // Assessed value: prefer board_tot (final), fall back to certified_tot, then mailed_tot
+    assessedValue: parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) ||
+                   parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot),
     // Market value is assessed * 10 (Cook County uses 10% ratio for residential)
-    marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(values[0]?.board_tot) || 0) * 10,
-    priorAssessedValue: parseNumber(priorValue?.board_tot),
-    priorMarketValue: (parseNumber(priorValue?.board_tot) || 0) * 10,
+    marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) ||
+                  parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot) || 0) * 10,
+    priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
+    priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
   };
 }
 
@@ -408,8 +397,8 @@ export async function searchPropertiesByAddress(
   const values = await querySODA<AssessedValue>(
     DATASETS.ASSESSED_VALUES,
     {
-      '$where': `pin in (${pinList}) AND stage_name = 'board'`,
-      '$order': 'tax_year DESC'
+      '$where': `pin in (${pinList})`,
+      '$order': 'year DESC'
     }
   );
 
@@ -457,10 +446,10 @@ export async function searchPropertiesByAddress(
       basementType: prop.bsmt || null,
       garageType: prop.gar1_size || null,
       assessmentYear: parseInt(prop.tax_year) || currentYear - 1,
-      assessedValue: parseNumber(currentValue?.board_tot),
-      marketValue: (parseNumber(currentValue?.board_tot) || 0) * 10,
-      priorAssessedValue: parseNumber(priorValue?.board_tot),
-      priorMarketValue: (parseNumber(priorValue?.board_tot) || 0) * 10,
+      assessedValue: parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot),
+      marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) || 0) * 10,
+      priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
+      priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
     });
 
     if (results.length >= limit) break;
@@ -564,7 +553,7 @@ export async function getComparableProperties(
     const compSqft = parseInt(prop.bldg_sf);
     const compAge = parseInt(prop.age);
     const compYearBuilt = compAge ? currentYear - compAge : null;
-    const compValue = parseNumber(propValue.board_tot);
+    const compValue = parseNumber(propValue.board_tot) || parseNumber(propValue.certified_tot) || parseNumber(propValue.mailed_tot);
     const totalBaths = (parseNumber(prop.fbath) || 0) + ((parseNumber(prop.hbath) || 0) * 0.5);
 
     const sqftDiff = compSqft && sqft ? ((compSqft - sqft) / sqft) * 100 : null;
@@ -650,8 +639,8 @@ export async function getAssessmentHistory(pin: string, years: number = 5): Prom
     DATASETS.ASSESSED_VALUES,
     {
       '$where': `pin = '${normalizedPin}'`,
-      '$order': 'tax_year DESC, stage_name DESC',
-      '$limit': String(years * 3) // Multiple stages per year
+      '$order': 'year DESC',
+      '$limit': String(years)
     }
   );
 
@@ -810,4 +799,99 @@ export async function getNeighborhoodSales(
   );
 
   return sales;
+}
+
+/**
+ * Calculate opportunity score and analysis from property data.
+ * This is a pure function for testability.
+ */
+export interface OpportunityInput {
+  subjectValue: number;
+  comparableValues: number[];
+  hasRecentAppealSuccess: boolean;
+}
+
+export interface OpportunityOutput {
+  opportunityScore: number;
+  estimatedOvervaluation: number;
+  estimatedTaxSavings: number;
+  medianComparableValue: number;
+  averageComparableValue: number;
+  appealGrounds: string[];
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export function calculateOpportunityScore(input: OpportunityInput): OpportunityOutput {
+  const { subjectValue, comparableValues, hasRecentAppealSuccess } = input;
+
+  // Calculate median and average
+  const sortedValues = [...comparableValues].sort((a, b) => a - b);
+  const medianValue = sortedValues.length > 0
+    ? sortedValues[Math.floor(sortedValues.length / 2)]
+    : 0;
+  const avgValue = sortedValues.length > 0
+    ? sortedValues.reduce((a, b) => a + b, 0) / sortedValues.length
+    : 0;
+
+  // Calculate overvaluation
+  let estimatedOvervaluation = 0;
+  if (medianValue && subjectValue > medianValue) {
+    estimatedOvervaluation = subjectValue - medianValue;
+  }
+
+  // Estimate tax savings (Cook County effective rate ~2.1%)
+  const taxRate = 0.021;
+  const estimatedTaxSavings = estimatedOvervaluation * taxRate;
+
+  // Calculate opportunity score (0-100)
+  let opportunityScore = 0;
+
+  // Factor 1: Overvaluation percentage (up to 40 points)
+  const overvaluationPct = medianValue ? ((subjectValue - medianValue) / medianValue) * 100 : 0;
+  opportunityScore += Math.min(40, Math.max(0, overvaluationPct * 2));
+
+  // Factor 2: Sample size (up to 20 points)
+  opportunityScore += Math.min(20, sortedValues.length * 2);
+
+  // Factor 3: Consistency of comparables (up to 20 points)
+  if (sortedValues.length >= 3) {
+    const valueSpread = Math.max(...sortedValues) - Math.min(...sortedValues);
+    const consistency = 1 - (valueSpread / (avgValue || 1));
+    opportunityScore += Math.max(0, Math.min(20, consistency * 20));
+  }
+
+  // Factor 4: Historical appeal success (up to 20 points)
+  if (hasRecentAppealSuccess) {
+    opportunityScore += 10;
+  }
+  if (overvaluationPct > 15) {
+    opportunityScore += 10;
+  }
+
+  // Clamp score to 0-100
+  opportunityScore = Math.round(Math.min(100, Math.max(0, opportunityScore)));
+
+  // Determine appeal grounds
+  const appealGrounds: string[] = [];
+  if (overvaluationPct > 10) {
+    appealGrounds.push('comparable_sales');
+  }
+
+  // Determine confidence
+  let confidence: 'high' | 'medium' | 'low' = 'low';
+  if (sortedValues.length >= 5 && overvaluationPct > 15) {
+    confidence = 'high';
+  } else if (sortedValues.length >= 3 && overvaluationPct > 10) {
+    confidence = 'medium';
+  }
+
+  return {
+    opportunityScore,
+    estimatedOvervaluation,
+    estimatedTaxSavings,
+    medianComparableValue: medianValue,
+    averageComparableValue: avgValue,
+    appealGrounds,
+    confidence
+  };
 }
