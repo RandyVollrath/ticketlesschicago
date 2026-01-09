@@ -366,8 +366,61 @@ export interface AppealOpportunity {
     };
 
     /**
+     * LAYER 4: NEIGHBORHOOD CONDITIONS ANALYSIS
+     * Uses Chicago 311 data and other indicators to identify neighborhood
+     * factors that may impact property values. Secondary supporting evidence.
+     */
+    neighborhoodConditions?: {
+      /** Ward number for the property */
+      ward: number;
+      /** Community area number */
+      communityArea: number | null;
+      /** Overall neighborhood condition rating */
+      conditionRating: 'stable' | 'some_concerns' | 'significant_concerns';
+      /** Key indicators from 311 data */
+      indicators: {
+        /** Vacant/abandoned building complaints */
+        vacantBuildings: {
+          count: number;
+          trend: 'increasing' | 'stable' | 'decreasing';
+          percentile: number; // vs city average
+        };
+        /** Rodent/pest complaints */
+        rodentComplaints: {
+          count: number;
+          trend: 'increasing' | 'stable' | 'decreasing';
+          percentile: number;
+        };
+        /** Graffiti removal requests */
+        graffitiRequests: {
+          count: number;
+          trend: 'increasing' | 'stable' | 'decreasing';
+          percentile: number;
+        };
+        /** Abandoned vehicle complaints */
+        abandonedVehicles: {
+          count: number;
+          trend: 'increasing' | 'stable' | 'decreasing';
+          percentile: number;
+        };
+        /** Building violations */
+        buildingViolations: {
+          count: number;
+          trend: 'increasing' | 'stable' | 'decreasing';
+          percentile: number;
+        };
+      };
+      /** Composite neighborhood distress score (0-100, higher = more distress) */
+      distressScore: number;
+      /** Whether conditions support a property value reduction argument */
+      supportsReduction: boolean;
+      /** Professional statement for appeal (only if supportsReduction is true) */
+      conditionsStatement: string | null;
+    };
+
+    /**
      * CONSOLIDATED APPEAL SUMMARY
-     * Combines all three layers into actionable appeal guidance.
+     * Combines all four layers into actionable appeal guidance.
      */
     appealSummary?: {
       /** Recommended target value based on all evidence */
@@ -380,7 +433,7 @@ export interface AppealOpportunity {
       overallStrength: 'strong' | 'moderate' | 'weak';
       /** Strongest arguments ranked by effectiveness */
       primaryArguments: Array<{
-        type: 'market_value' | 'uniformity' | 'assessment_drift';
+        type: 'market_value' | 'uniformity' | 'assessment_drift' | 'neighborhood_conditions';
         strength: number; // 0-100
         summary: string;
       }>;
@@ -2123,6 +2176,181 @@ export async function getNeighborhoodSales(
   );
 
   return sales;
+}
+
+/**
+ * LAYER 4: Neighborhood Conditions Analysis
+ * Fetches 311 service request data from Supabase to identify neighborhood
+ * factors that may impact property values.
+ *
+ * This is SECONDARY supporting evidence - only surfaces when conditions
+ * are clearly negative and trending worse.
+ */
+export interface NeighborhoodConditionsData {
+  ward: number;
+  communityArea: number | null;
+  conditionRating: 'stable' | 'some_concerns' | 'significant_concerns';
+  indicators: {
+    vacantBuildings: { count: number; trend: 'increasing' | 'stable' | 'decreasing'; percentile: number };
+    rodentComplaints: { count: number; trend: 'increasing' | 'stable' | 'decreasing'; percentile: number };
+    graffitiRequests: { count: number; trend: 'increasing' | 'stable' | 'decreasing'; percentile: number };
+    abandonedVehicles: { count: number; trend: 'increasing' | 'stable' | 'decreasing'; percentile: number };
+    buildingViolations: { count: number; trend: 'increasing' | 'stable' | 'decreasing'; percentile: number };
+  };
+  distressScore: number;
+  supportsReduction: boolean;
+  conditionsStatement: string | null;
+}
+
+/**
+ * Fetch neighborhood conditions for a given ward from Supabase 311 data.
+ * Uses service_request_stats table aggregated by ward.
+ */
+export async function getNeighborhoodConditions(
+  ward: number,
+  supabaseClient: any // Accept supabase client to avoid circular dependency
+): Promise<NeighborhoodConditionsData | null> {
+  try {
+    // Fetch 311 stats for this ward
+    const { data: wardStats, error } = await supabaseClient
+      .from('service_request_stats')
+      .select('sr_type, total_requests, requests_last_30_days, requests_last_365_days, community_area')
+      .eq('ward', ward);
+
+    if (error || !wardStats || wardStats.length === 0) {
+      return null;
+    }
+
+    // Get community area from first record
+    const communityArea = wardStats[0]?.community_area || null;
+
+    // Fetch city-wide averages for percentile calculation
+    const { data: cityStats } = await supabaseClient
+      .from('service_request_stats')
+      .select('sr_type, total_requests, requests_last_30_days, requests_last_365_days')
+      .in('sr_type', [
+        'Vacant/Abandoned Building Complaint',
+        'Rodent Baiting/Rat Complaint',
+        'Graffiti Removal Request',
+        'Abandoned Vehicle Complaint',
+        'Building Violation'
+      ]);
+
+    // Calculate city-wide averages per ward
+    const cityAverages: Record<string, { total: number; count: number }> = {};
+    if (cityStats) {
+      for (const stat of cityStats) {
+        if (!cityAverages[stat.sr_type]) {
+          cityAverages[stat.sr_type] = { total: 0, count: 0 };
+        }
+        cityAverages[stat.sr_type].total += stat.requests_last_365_days || 0;
+        cityAverages[stat.sr_type].count += 1;
+      }
+    }
+
+    // Helper to get indicator data
+    const getIndicator = (srType: string) => {
+      const stat = wardStats.find((s: any) => s.sr_type === srType);
+      const count = stat?.requests_last_365_days || 0;
+      const recent = stat?.requests_last_30_days || 0;
+
+      // Calculate trend: compare last 30 days annualized vs last 365 days
+      const annualizedRecent = recent * 12;
+      let trend: 'increasing' | 'stable' | 'decreasing' = 'stable';
+      if (count > 0) {
+        const trendRatio = annualizedRecent / count;
+        if (trendRatio > 1.2) trend = 'increasing';
+        else if (trendRatio < 0.8) trend = 'decreasing';
+      }
+
+      // Calculate percentile vs city average
+      const cityAvg = cityAverages[srType]?.count > 0
+        ? cityAverages[srType].total / cityAverages[srType].count
+        : count;
+      const percentile = cityAvg > 0 ? Math.round((count / cityAvg) * 100) : 100;
+
+      return { count, trend, percentile };
+    };
+
+    const indicators = {
+      vacantBuildings: getIndicator('Vacant/Abandoned Building Complaint'),
+      rodentComplaints: getIndicator('Rodent Baiting/Rat Complaint'),
+      graffitiRequests: getIndicator('Graffiti Removal Request'),
+      abandonedVehicles: getIndicator('Abandoned Vehicle Complaint'),
+      buildingViolations: getIndicator('Building Violation'),
+    };
+
+    // Calculate composite distress score (0-100)
+    // Weight: vacant buildings (30%), rodents (20%), graffiti (15%), abandoned vehicles (20%), violations (15%)
+    const distressScore = Math.min(100, Math.round(
+      (indicators.vacantBuildings.percentile * 0.30) +
+      (indicators.rodentComplaints.percentile * 0.20) +
+      (indicators.graffitiRequests.percentile * 0.15) +
+      (indicators.abandonedVehicles.percentile * 0.20) +
+      (indicators.buildingViolations.percentile * 0.15)
+    ));
+
+    // Determine condition rating
+    let conditionRating: 'stable' | 'some_concerns' | 'significant_concerns';
+    if (distressScore >= 150) {
+      conditionRating = 'significant_concerns';
+    } else if (distressScore >= 120) {
+      conditionRating = 'some_concerns';
+    } else {
+      conditionRating = 'stable';
+    }
+
+    // Count increasing trends
+    const increasingTrends = Object.values(indicators).filter(i => i.trend === 'increasing').length;
+
+    // Only support reduction if: high distress AND multiple increasing trends
+    const supportsReduction = distressScore >= 130 && increasingTrends >= 2;
+
+    // Build professional statement (only if supports reduction)
+    let conditionsStatement: string | null = null;
+    if (supportsReduction) {
+      const concerns: string[] = [];
+      if (indicators.vacantBuildings.percentile >= 150 || indicators.vacantBuildings.trend === 'increasing') {
+        concerns.push('elevated vacant building complaints');
+      }
+      if (indicators.rodentComplaints.percentile >= 150 || indicators.rodentComplaints.trend === 'increasing') {
+        concerns.push('above-average rodent complaints');
+      }
+      if (indicators.graffitiRequests.percentile >= 150 || indicators.graffitiRequests.trend === 'increasing') {
+        concerns.push('elevated graffiti removal requests');
+      }
+      if (indicators.abandonedVehicles.percentile >= 150 || indicators.abandonedVehicles.trend === 'increasing') {
+        concerns.push('above-average abandoned vehicle complaints');
+      }
+      if (indicators.buildingViolations.percentile >= 150 || indicators.buildingViolations.trend === 'increasing') {
+        concerns.push('elevated building code violations');
+      }
+
+      if (concerns.length > 0) {
+        const concernsText = concerns.length === 1
+          ? concerns[0]
+          : concerns.slice(0, -1).join(', ') + ' and ' + concerns[concerns.length - 1];
+
+        conditionsStatement = `Neighborhood condition analysis for Ward ${ward} indicates ${concernsText}. ` +
+          `City service request data shows ${increasingTrends} of 5 key quality-of-life indicators trending upward, ` +
+          `suggesting environmental factors that may negatively impact property values in this area. ` +
+          `These conditions should be considered when evaluating fair market value.`;
+      }
+    }
+
+    return {
+      ward,
+      communityArea,
+      conditionRating,
+      indicators,
+      distressScore,
+      supportsReduction,
+      conditionsStatement,
+    };
+  } catch (error) {
+    console.warn('Error fetching neighborhood conditions:', error);
+    return null;
+  }
 }
 
 /**
