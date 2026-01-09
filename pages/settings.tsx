@@ -102,7 +102,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   );
 }
 
-function Card({ title, children, badge, greyed }: { title: string; children: React.ReactNode; badge?: React.ReactNode; greyed?: boolean }) {
+function Card({ title, children, badge, greyed, upgradeContent }: { title: string; children: React.ReactNode; badge?: React.ReactNode; greyed?: boolean; upgradeContent?: React.ReactNode }) {
   return (
     <div style={{
       backgroundColor: COLORS.white,
@@ -111,8 +111,6 @@ function Card({ title, children, badge, greyed }: { title: string; children: Rea
       border: `1px solid ${COLORS.border}`,
       marginBottom: 20,
       overflow: 'hidden',
-      opacity: greyed ? 0.6 : 1,
-      pointerEvents: greyed ? 'none' : 'auto',
     }}>
       <div style={{
         padding: '16px 24px',
@@ -132,7 +130,17 @@ function Card({ title, children, badge, greyed }: { title: string; children: Rea
         </h3>
         {badge}
       </div>
-      <div style={{ padding: 24 }}>
+      {/* Upgrade content is always clickable */}
+      {upgradeContent && (
+        <div style={{ padding: '24px 24px 0' }}>
+          {upgradeContent}
+        </div>
+      )}
+      <div style={{
+        padding: upgradeContent ? '20px 24px 24px' : 24,
+        opacity: greyed ? 0.5 : 1,
+        pointerEvents: greyed ? 'none' : 'auto',
+      }}>
         {children}
       </div>
     </div>
@@ -150,6 +158,8 @@ export default function SettingsPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Account Info
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
 
   // Vehicle Information
@@ -166,6 +176,8 @@ export default function SettingsPage() {
   const [homeCity, setHomeCity] = useState('Chicago');
   const [homeState, setHomeState] = useState('IL');
   const [homeZip, setHomeZip] = useState('');
+  const [wardLookupStatus, setWardLookupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [wardLookupMessage, setWardLookupMessage] = useState('');
 
   // Mailing Address
   const [mailingAddress1, setMailingAddress1] = useState('');
@@ -177,6 +189,7 @@ export default function SettingsPage() {
   // Notification Preferences
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
+  const [phoneCallNotifications, setPhoneCallNotifications] = useState(false);
   const [streetCleaningAlerts, setStreetCleaningAlerts] = useState(true);
   const [snowBanAlerts, setSnowBanAlerts] = useState(true);
   const [renewalReminders, setRenewalReminders] = useState(true);
@@ -232,6 +245,8 @@ export default function SettingsPage() {
     setIsPaidUser(profileData?.has_contesting === true);
 
     if (profileData) {
+      setFirstName(profileData.first_name || '');
+      setLastName(profileData.last_name || '');
       setPhone(profileData.phone || profileData.phone_number || '');
       setHomeAddress(profileData.street_address || profileData.home_address_full || '');
       // Parse ward from home_address_ward if available
@@ -265,6 +280,7 @@ export default function SettingsPage() {
         const prefs = profileData.notification_preferences;
         setEmailNotifications(prefs.email ?? profileData.notify_email ?? true);
         setSmsNotifications(prefs.sms ?? profileData.notify_sms ?? false);
+        setPhoneCallNotifications(prefs.phone_call ?? profileData.phone_call_enabled ?? false);
         setStreetCleaningAlerts(prefs.street_cleaning ?? true);
         setSnowBanAlerts(prefs.snow_ban ?? profileData.notify_snow_ban ?? true);
         setRenewalReminders(prefs.renewals ?? true);
@@ -273,6 +289,7 @@ export default function SettingsPage() {
         // Fallback to individual columns
         setEmailNotifications(profileData.notify_email ?? true);
         setSmsNotifications(profileData.notify_sms ?? false);
+        setPhoneCallNotifications(profileData.phone_call_enabled ?? false);
         setSnowBanAlerts(profileData.notify_snow_ban ?? true);
         setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
       }
@@ -324,6 +341,8 @@ export default function SettingsPage() {
       .upsert({
         user_id: userId,
         email: email,
+        first_name: firstName || null,
+        last_name: lastName || null,
         phone: phone || null,
         phone_number: phone || null, // Legacy field
         street_address: homeAddress || null,
@@ -337,7 +356,6 @@ export default function SettingsPage() {
         mailing_state: mailingState || 'IL',
         mailing_zip: mailingZip || null,
         vin: vin || null,
-        vehicle_type: vehicleType || null,
         license_plate: plateUpper || null,
         license_state: plateState || 'IL',
         city_sticker_expiry: cityStickerExpiry || null,
@@ -345,11 +363,13 @@ export default function SettingsPage() {
         emissions_date: emissionsDate || null,
         notify_email: emailNotifications,
         notify_sms: smsNotifications,
+        phone_call_enabled: phoneCallNotifications,
         notify_snow_ban: snowBanAlerts,
         notify_days_array: notificationDays,
         notification_preferences: {
           email: emailNotifications,
           sms: smsNotifications,
+          phone_call: phoneCallNotifications,
           street_cleaning: streetCleaningAlerts,
           snow_ban: snowBanAlerts,
           renewals: renewalReminders,
@@ -407,9 +427,9 @@ export default function SettingsPage() {
 
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2000);
-  }, [userId, email, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
-      mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin, vehicleType,
-      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications,
+  }, [userId, email, firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
+      mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
+      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
       streetCleaningAlerts, snowBanAlerts, renewalReminders, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, isPaidUser]);
@@ -422,9 +442,9 @@ export default function SettingsPage() {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
-      mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin, vehicleType,
-      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications,
+  }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
+      mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
+      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
       streetCleaningAlerts, snowBanAlerts, renewalReminders, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, autoSave]);
@@ -463,6 +483,55 @@ export default function SettingsPage() {
     } finally {
       setCheckoutLoading(false);
     }
+  };
+
+  // Auto-lookup ward/section when address changes
+  const lookupWardSection = async (address: string) => {
+    if (!address || address.length < 5) {
+      setWardLookupStatus('idle');
+      setWardLookupMessage('');
+      return;
+    }
+
+    setWardLookupStatus('loading');
+    setWardLookupMessage('Looking up ward...');
+
+    try {
+      const response = await fetch(`/api/validate-address?address=${encodeURIComponent(address)}`);
+      const data = await response.json();
+
+      if (data.valid && data.ward && data.section) {
+        setWard(data.ward);
+        setSection(data.section);
+        setWardLookupStatus('success');
+        setWardLookupMessage(`Ward ${data.ward}, Section ${data.section}`);
+      } else if (data.valid && !data.ward) {
+        setWardLookupStatus('error');
+        setWardLookupMessage(data.message || 'Address not in a street cleaning zone');
+      } else {
+        setWardLookupStatus('error');
+        setWardLookupMessage(data.message || 'Could not verify address');
+      }
+    } catch (error) {
+      setWardLookupStatus('error');
+      setWardLookupMessage('Error looking up address');
+    }
+  };
+
+  // Debounced address lookup
+  const addressLookupRef = useRef<NodeJS.Timeout | null>(null);
+  const handleAddressChange = (newAddress: string) => {
+    setHomeAddress(newAddress);
+
+    // Clear previous timeout
+    if (addressLookupRef.current) {
+      clearTimeout(addressLookupRef.current);
+    }
+
+    // Debounce the lookup
+    addressLookupRef.current = setTimeout(() => {
+      lookupWardSection(newAddress);
+    }, 1000);
   };
 
   if (loading) {
@@ -722,6 +791,64 @@ export default function SettingsPage() {
               }}
             />
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.textMuted,
+                marginBottom: 6,
+                textTransform: 'uppercase',
+              }}>
+                First Name
+              </label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="John"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 15,
+                  color: COLORS.primary,
+                  backgroundColor: COLORS.bgLight,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.textMuted,
+                marginBottom: 6,
+                textTransform: 'uppercase',
+              }}>
+                Last Name <span style={{ color: COLORS.highlight, fontSize: 10 }}>*Required for VA</span>
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Doe"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 15,
+                  color: COLORS.primary,
+                  backgroundColor: COLORS.bgLight,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          </div>
           <div>
             <label style={{
               display: 'block',
@@ -863,36 +990,6 @@ export default function SettingsPage() {
                 }}
               />
             </div>
-            <div style={{ flex: '1 1 150px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
-                Vehicle Type
-              </label>
-              <select
-                value={vehicleType}
-                onChange={(e) => setVehicleType(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  cursor: 'pointer',
-                }}
-              >
-                {VEHICLE_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
           </div>
         </Card>
 
@@ -914,19 +1011,36 @@ export default function SettingsPage() {
             <input
               type="text"
               value={homeAddress}
-              onChange={(e) => setHomeAddress(e.target.value)}
-              placeholder="123 Main Street"
+              onChange={(e) => handleAddressChange(e.target.value)}
+              placeholder="123 Main Street, Chicago IL"
               style={{
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: 8,
-                border: `1px solid ${COLORS.border}`,
+                border: `1px solid ${wardLookupStatus === 'error' ? COLORS.highlight : COLORS.border}`,
                 fontSize: 15,
                 color: COLORS.primary,
                 backgroundColor: COLORS.bgLight,
                 boxSizing: 'border-box',
               }}
             />
+            {wardLookupMessage && (
+              <div style={{
+                marginTop: 6,
+                fontSize: 12,
+                color: wardLookupStatus === 'success' ? COLORS.accent
+                     : wardLookupStatus === 'error' ? COLORS.highlight
+                     : COLORS.textMuted,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}>
+                {wardLookupStatus === 'loading' && '⏳'}
+                {wardLookupStatus === 'success' && '✓'}
+                {wardLookupStatus === 'error' && '⚠'}
+                {wardLookupMessage}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -939,27 +1053,23 @@ export default function SettingsPage() {
                 marginBottom: 6,
                 textTransform: 'uppercase',
               }}>
-                Ward
+                Ward <span style={{ fontSize: 10, fontWeight: 400 }}>(auto)</span>
               </label>
-              <select
-                value={ward || ''}
-                onChange={(e) => setWard(e.target.value ? Number(e.target.value) : null)}
+              <input
+                type="text"
+                value={ward ? `Ward ${ward}` : '—'}
+                disabled
                 style={{
                   width: '100%',
                   padding: '10px 14px',
                   borderRadius: 8,
                   border: `1px solid ${COLORS.border}`,
                   fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  cursor: 'pointer',
+                  color: COLORS.textMuted,
+                  backgroundColor: COLORS.bgSection,
+                  boxSizing: 'border-box',
                 }}
-              >
-                <option value="">Select ward</option>
-                {CHICAGO_WARDS.map(w => (
-                  <option key={w} value={w}>Ward {w}</option>
-                ))}
-              </select>
+              />
             </div>
             <div style={{ flex: '1 1 120px' }}>
               <label style={{
@@ -970,21 +1080,20 @@ export default function SettingsPage() {
                 marginBottom: 6,
                 textTransform: 'uppercase',
               }}>
-                Section
+                Section <span style={{ fontSize: 10, fontWeight: 400 }}>(auto)</span>
               </label>
               <input
                 type="text"
-                value={section}
-                onChange={(e) => setSection(e.target.value)}
-                placeholder="A"
+                value={section || '—'}
+                disabled
                 style={{
                   width: '100%',
                   padding: '10px 14px',
                   borderRadius: 8,
                   border: `1px solid ${COLORS.border}`,
                   fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
+                  color: COLORS.textMuted,
+                  backgroundColor: COLORS.bgSection,
                   boxSizing: 'border-box',
                 }}
               />
@@ -1081,46 +1190,52 @@ export default function SettingsPage() {
         </Card>
 
         {/* Mailing Address */}
-        <Card title="Mailing Address" badge={
-          !isPaidUser ? (
-            <span style={{
-              fontSize: 11,
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: 4,
-              backgroundColor: COLORS.warningLight,
-              color: '#92400E',
-            }}>
-              AUTOPILOT ONLY
-            </span>
-          ) : undefined
-        } greyed={!isPaidUser}>
-          {!isPaidUser && (
+        <Card
+          title="Mailing Address"
+          badge={
+            !isPaidUser ? (
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: 4,
+                backgroundColor: COLORS.warningLight,
+                color: '#92400E',
+              }}>
+                AUTOPILOT ONLY
+              </span>
+            ) : undefined
+          }
+          greyed={!isPaidUser}
+          upgradeContent={!isPaidUser ? (
             <div style={{
               backgroundColor: '#FFF7ED',
               border: `1px solid ${COLORS.highlight}`,
               borderRadius: 8,
               padding: 16,
-              marginBottom: 20,
             }}>
               <p style={{ margin: 0, fontSize: 14, color: '#9A3412' }}>
-                <strong>Upgrade to Autopilot</strong> to add your mailing address and receive automatic contest letters.
+                <strong>Upgrade to Autopilot - $24/year</strong>
+              </p>
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#9A3412' }}>
+                Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate weekly and mail contest letters automatically.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-block',
                 marginTop: 12,
-                padding: '8px 16px',
+                padding: '10px 20px',
                 backgroundColor: COLORS.highlight,
                 color: '#fff',
                 borderRadius: 6,
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: 600,
                 textDecoration: 'none',
               }}>
-                Upgrade - $24/year
+                Upgrade Now - $24/year
               </Link>
             </div>
-          )}
+          ) : undefined}
+        >
 
           <div style={{ marginBottom: 16 }}>
             <label style={{
@@ -1313,6 +1428,25 @@ export default function SettingsPage() {
               </p>
             </div>
             <Toggle checked={smsNotifications} onChange={setSmsNotifications} disabled={!phone} />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+            paddingBottom: 16,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
+                Phone call alerts
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
+                Receive automated voice call reminders
+              </p>
+            </div>
+            <Toggle checked={phoneCallNotifications} onChange={setPhoneCallNotifications} disabled={!phone} />
           </div>
 
           <div style={{
