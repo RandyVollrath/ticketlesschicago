@@ -122,19 +122,22 @@ export interface CondoCharacteristics {
   class: string;
   township_code: string;
   tieback_key_pin: string;
-  tieback_proration_rate: string;
+  tieback_proration_rate: string;  // Unit's share of building value (0.0 to 1.0)
+  card_proration_rate: string;
   char_yrblt: string;  // Year built
-  char_building_sf: string;  // Building square footage
-  char_unit_sf: string;  // Unit square footage
+  char_building_sf: string;  // TOTAL Building square footage (not unit!)
+  char_unit_sf?: string;  // Unit square footage (often missing)
   char_bedrooms: string;  // Number of bedrooms
+  char_full_baths?: string;  // Full bathrooms
+  char_half_baths?: string;  // Half bathrooms
   char_building_non_units: string;
-  char_building_pins: string;
+  char_building_pins: string;  // Number of units in building
   char_land_sf: string;
-  pin_is_multiland: string;
+  pin_is_multiland: string | boolean;
   pin_num_landlines: string;
-  bldg_is_mixed_use: string;
-  is_parking_space: string;
-  is_common_area: string;
+  bldg_is_mixed_use: string | boolean;
+  is_parking_space: string | boolean;
+  is_common_area: string | boolean;
 }
 
 // Normalized property data for our system
@@ -162,6 +165,9 @@ export interface NormalizedProperty {
   marketValue: number | null;
   priorAssessedValue: number | null;
   priorMarketValue: number | null;
+  // Year-over-year change tracking
+  assessmentChangeDollars: number | null;  // Current - Prior
+  assessmentChangePercent: number | null;  // ((Current - Prior) / Prior) * 100
 }
 
 export interface ComparableProperty extends NormalizedProperty {
@@ -238,6 +244,24 @@ function parseInt(value: string | undefined | null): number | null {
 }
 
 /**
+ * Calculate assessment change (dollars and percent) from current and prior values
+ */
+function calculateAssessmentChange(
+  currentValue: number | null,
+  priorValue: number | null
+): { assessmentChangeDollars: number | null; assessmentChangePercent: number | null } {
+  if (currentValue === null || priorValue === null || priorValue === 0) {
+    return { assessmentChangeDollars: null, assessmentChangePercent: null };
+  }
+  const dollars = currentValue - priorValue;
+  const percent = ((currentValue - priorValue) / priorValue) * 100;
+  return {
+    assessmentChangeDollars: dollars,
+    assessmentChangePercent: Math.round(percent * 10) / 10 // Round to 1 decimal
+  };
+}
+
+/**
  * Get property class description
  */
 function getPropertyClassDescription(classCode: string): string {
@@ -263,13 +287,15 @@ function getPropertyClassDescription(classCode: string): string {
 }
 
 /**
- * Query the Socrata API
- * Uses a longer timeout (30s) because Cook County's API can be slow
+ * Query the Socrata API with retry support
+ * Uses a longer timeout (45s) because Cook County's API can be slow
+ * Includes retry logic to handle cold starts and temporary failures
  */
 async function querySODA<T>(
   dataset: string,
   params: Record<string, string>,
-  timeout: number = 30000 // 30 seconds - Cook County API can be slow
+  timeout: number = 45000, // 45 seconds - Cook County API can be very slow
+  maxRetries: number = 2
 ): Promise<T[]> {
   const queryParams = new URLSearchParams();
 
@@ -280,60 +306,89 @@ async function querySODA<T>(
 
   const url = `${SOCRATA_BASE_URL}/${dataset}.json?${queryParams.toString()}`;
 
-  try {
-    const response = await fetchWithTimeout(url, {
-      timeout,
-      headers: {
-        'Accept': 'application/json',
-        // App token is optional but recommended for higher rate limits
-        ...(process.env.SOCRATA_APP_TOKEN && {
-          'X-App-Token': process.env.SOCRATA_APP_TOKEN
-        })
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetchWithTimeout(url, {
+        timeout,
+        headers: {
+          'Accept': 'application/json',
+          // App token is optional but recommended for higher rate limits
+          ...(process.env.SOCRATA_APP_TOKEN && {
+            'X-App-Token': process.env.SOCRATA_APP_TOKEN
+          })
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`SODA API error for ${dataset}:`, response.status, errorText);
+        throw new Error(`SODA API returned ${response.status}: ${errorText}`);
       }
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`SODA API error for ${dataset}:`, response.status, errorText);
-      throw new Error(`SODA API returned ${response.status}: ${errorText}`);
+      return await response.json();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`SODA query attempt ${attempt + 1} failed for ${dataset}:`, lastError.message);
+
+      // Don't retry if it's not a timeout or network error
+      if (lastError.message.includes('SODA API returned')) {
+        throw lastError;
+      }
+
+      // Wait before retrying (exponential backoff)
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
     }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`Error querying SODA dataset ${dataset}:`, error);
-    throw error;
   }
+
+  console.error(`Error querying SODA dataset ${dataset} after ${maxRetries} attempts:`, lastError);
+  throw lastError;
 }
 
 // Main API Functions
 
 /**
  * Look up a property by PIN
- * Tries residential dataset first, then falls back to condo dataset
+ * Checks both residential and condo datasets to get complete data
+ * Condos may have address in residential dataset but bedroom/sqft in condo dataset
  */
 export async function getPropertyByPin(pin: string): Promise<NormalizedProperty | null> {
   const normalizedPin = normalizePin(pin);
   const currentYear = new Date().getFullYear();
 
-  // Get property characteristics from residential dataset
-  const characteristics = await querySODA<PropertyCharacteristics>(
-    DATASETS.CHARACTERISTICS,
-    {
-      '$where': `pin = '${normalizedPin}'`,
-      '$order': 'tax_year DESC',
-      '$limit': '1'
-    }
-  );
-
-  // Get assessed values (needed for both residential and condo)
-  const values = await querySODA<AssessedValue>(
-    DATASETS.ASSESSED_VALUES,
-    {
-      '$where': `pin = '${normalizedPin}'`,
-      '$order': 'year DESC',
-      '$limit': '2'
-    }
-  );
+  // Query both datasets in parallel for speed
+  const [characteristics, values, condoCharacteristics] = await Promise.all([
+    // Property characteristics from residential dataset
+    querySODA<PropertyCharacteristics>(
+      DATASETS.CHARACTERISTICS,
+      {
+        '$where': `pin = '${normalizedPin}'`,
+        '$order': 'tax_year DESC',
+        '$limit': '1'
+      }
+    ),
+    // Assessed values (needed for both residential and condo)
+    querySODA<AssessedValue>(
+      DATASETS.ASSESSED_VALUES,
+      {
+        '$where': `pin = '${normalizedPin}'`,
+        '$order': 'year DESC',
+        '$limit': '2'
+      }
+    ),
+    // Condo characteristics
+    querySODA<CondoCharacteristics>(
+      DATASETS.CONDO_CHARACTERISTICS,
+      {
+        '$where': `pin = '${normalizedPin}'`,
+        '$order': 'year DESC',
+        '$limit': '1'
+      }
+    )
+  ]);
 
   const currentValue = values.find(v => parseInt(v.year) === currentYear - 1) || values[0];
   const priorValue = values.find(v => parseInt(v.year) === currentYear - 2) || values[1];
@@ -341,16 +396,39 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
   // Get township name from assessed values
   const township = currentValue?.township_name || values[0]?.township_name || '';
 
+  // Check if we have condo data (has bedrooms, sqft, year built)
+  const condo = condoCharacteristics.length > 0 ? condoCharacteristics[0] : null;
+  const hasCondo = condo && (condo.char_bedrooms || condo.char_unit_sf || condo.char_yrblt);
+
   if (characteristics.length > 0) {
     // Found in residential dataset
     const prop = characteristics[0];
 
-    // Calculate year built from age (approximate)
+    // Calculate year built from age (approximate) or use condo data
     const age = parseInt(prop.age);
-    const yearBuilt = age ? currentYear - age : null;
+    const yearBuilt = condo ? parseInt(condo.char_yrblt) : (age ? currentYear - age : null);
 
-    // Combine the data
+    // Combine the data - prefer condo dataset for bedrooms/sqft if available
     const totalBaths = (parseNumber(prop.fbath) || 0) + ((parseNumber(prop.hbath) || 0) * 0.5);
+
+    // For sqft, prefer condo unit_sf, fall back to residential bldg_sf
+    let squareFootage = parseInt(prop.bldg_sf);
+    if (hasCondo && condo) {
+      const condoSqft = parseInt(condo.char_unit_sf);
+      // Only use condo sqft if it's reasonable (not 0 or same as building total)
+      if (condoSqft && condoSqft > 0 && condoSqft < 10000) {
+        squareFootage = condoSqft;
+      }
+    }
+
+    // For bedrooms, prefer condo data if available
+    let bedrooms = parseInt(prop.beds);
+    if (hasCondo && condo) {
+      const condoBedrooms = parseInt(condo.char_bedrooms);
+      if (condoBedrooms !== null) {
+        bedrooms = condoBedrooms;
+      }
+    }
 
     return {
       pin: normalizedPin,
@@ -364,9 +442,9 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
       propertyClass: prop.class || '',
       propertyClassDescription: getPropertyClassDescription(prop.class || ''),
       yearBuilt,
-      squareFootage: parseInt(prop.bldg_sf),
+      squareFootage,
       lotSize: parseInt(prop.hd_sf),
-      bedrooms: parseInt(prop.beds),
+      bedrooms,
       bathrooms: totalBaths || null,
       exteriorConstruction: prop.ext_wall || null,
       basementType: prop.bsmt || null,
@@ -378,20 +456,16 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
                     parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot) || 0) * 10,
       priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
       priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
+      ...calculateAssessmentChange(
+        parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) ||
+          parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot),
+        parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot)
+      ),
     };
   }
 
-  // Not found in residential dataset - try condo dataset
-  const condoCharacteristics = await querySODA<CondoCharacteristics>(
-    DATASETS.CONDO_CHARACTERISTICS,
-    {
-      '$where': `pin = '${normalizedPin}'`,
-      '$order': 'year DESC',
-      '$limit': '1'
-    }
-  );
-
-  if (condoCharacteristics.length === 0) {
+  // Not found in residential dataset - check if we have condo data from the parallel query
+  if (!condo) {
     // Not found in either dataset
     // If we have assessed values, we can still return basic info
     if (values.length > 0) {
@@ -420,13 +494,33 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
         marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) || 0) * 10,
         priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
         priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
+        ...calculateAssessmentChange(
+          parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot),
+          parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot)
+        ),
       };
     }
     return null;
   }
 
-  // Found in condo dataset
-  const condo = condoCharacteristics[0];
+  // Found in condo dataset (but not in residential)
+
+  // Calculate unit square footage:
+  // 1. Use char_unit_sf if available
+  // 2. Otherwise, estimate from proration_rate × building_sf
+  let unitSquareFootage = parseInt(condo.char_unit_sf);
+  if (!unitSquareFootage || unitSquareFootage <= 0) {
+    const buildingSf = parseNumber(condo.char_building_sf);
+    const prorationRate = parseNumber(condo.tieback_proration_rate) || parseNumber(condo.card_proration_rate);
+    if (buildingSf && prorationRate && prorationRate > 0 && prorationRate < 1) {
+      unitSquareFootage = Math.round(buildingSf * prorationRate);
+    }
+  }
+
+  // Calculate bathrooms from full + half baths
+  const fullBaths = parseNumber(condo.char_full_baths) || 0;
+  const halfBaths = parseNumber(condo.char_half_baths) || 0;
+  const totalBaths = fullBaths + (halfBaths * 0.5);
 
   return {
     pin: normalizedPin,
@@ -440,10 +534,10 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
     propertyClass: condo.class || '299', // Condos are typically class 299
     propertyClassDescription: getPropertyClassDescription(condo.class || '299'),
     yearBuilt: parseInt(condo.char_yrblt),
-    squareFootage: parseInt(condo.char_unit_sf), // Use unit SF, not building SF
+    squareFootage: unitSquareFootage || null,
     lotSize: parseInt(condo.char_land_sf),
     bedrooms: parseInt(condo.char_bedrooms),
-    bathrooms: null, // Not in condo dataset
+    bathrooms: totalBaths || null,
     exteriorConstruction: null,
     basementType: null,
     garageType: null,
@@ -452,6 +546,10 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
     marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) || 0) * 10,
     priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
     priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
+    ...calculateAssessmentChange(
+      parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot),
+      parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot)
+    ),
   };
 }
 
@@ -544,6 +642,10 @@ export async function searchPropertiesByAddress(
       marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) || 0) * 10,
       priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
       priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
+      ...calculateAssessmentChange(
+        parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot),
+        parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot)
+      ),
     });
 
     if (results.length >= limit) break;
@@ -572,61 +674,96 @@ export async function getComparableProperties(
 
   if (isCondo) {
     // For condos, search in the condo dataset
-    // Priority: same bedrooms, similar sqft, same neighborhood/township
-    const subjectBedrooms = subjectProperty.bedrooms || 2;
+    // KEY CRITERIA for property tax appeal comparables:
+    // 1. Same bedroom count (most important - 1BR vs 2BR are not comparable)
+    // 2. Similar square footage (within 30%)
+    // 3. Same township (same assessment jurisdiction)
+    // 4. Similar age (within 15 years)
+    // 5. Same building is ideal but not required
+
+    const subjectBedrooms = subjectProperty.bedrooms; // Don't default - use actual value
     const buildingPin10 = subjectProperty.pin.slice(0, 10);
     const yearBuilt = subjectProperty.yearBuilt || 1980;
+    const minYearBuilt = yearBuilt - 15;
+    const maxYearBuilt = yearBuilt + 15;
 
-    // Build queries with progressively relaxed criteria
+    console.log(`Searching for condo comparables: township=${subjectProperty.townshipCode}, bedrooms=${subjectBedrooms}, sqft=${sqft} (${minSqft}-${maxSqft}), yearBuilt=${yearBuilt}`);
+
+    // Strategy: Run targeted queries in parallel, then merge and score results
+    // Query by specific criteria to avoid timeout on broad township searches
     const queries: Promise<CondoCharacteristics[]>[] = [];
 
-    // Query 1: Same neighborhood, same bedrooms, similar sqft (best matches)
-    if (subjectProperty.neighborhood) {
-      queries.push(querySODA<CondoCharacteristics>(
-        DATASETS.CONDO_CHARACTERISTICS,
-        {
-          '$where': `township_code = '${subjectProperty.townshipCode}'
-            AND pin != '${subjectProperty.pin}'
-            AND is_parking_space != 'TRUE'
-            AND is_common_area != 'TRUE'
-            AND char_bedrooms = '${subjectBedrooms}'
-            AND char_unit_sf >= '${minSqft}' AND char_unit_sf <= '${maxSqft}'`,
-          '$order': 'year DESC',
-          '$limit': String(limit * 5)
-        }
-      ));
-    }
-
-    // Query 2: Same township, same bedrooms (relax sqft)
-    queries.push(querySODA<CondoCharacteristics>(
-      DATASETS.CONDO_CHARACTERISTICS,
-      {
-        '$where': `township_code = '${subjectProperty.townshipCode}'
-          AND pin != '${subjectProperty.pin}'
-          AND is_parking_space != 'TRUE'
-          AND is_common_area != 'TRUE'
-          AND char_bedrooms = '${subjectBedrooms}'`,
-        '$order': 'year DESC',
-        '$limit': String(limit * 5)
-      }
-    ));
-
-    // Query 3: Same building (any bedroom count - for context)
+    // Query 1: Same building - BEST comparables (always include)
     queries.push(querySODA<CondoCharacteristics>(
       DATASETS.CONDO_CHARACTERISTICS,
       {
         '$where': `pin10 = '${buildingPin10}'
           AND pin != '${subjectProperty.pin}'
-          AND is_parking_space != 'TRUE'
-          AND is_common_area != 'TRUE'`,
+          AND is_parking_space = false
+          AND is_common_area = false`,
         '$order': 'year DESC',
-        '$limit': String(limit * 2)
+        '$limit': '50'
       }
     ));
 
-    // Run all queries in parallel
-    const results = await Promise.all(queries);
-    const allCondos = results.flat();
+    // Query 2: Same township + same bedrooms + similar size
+    // This is the most important query for finding true comparables
+    if (subjectBedrooms !== null && subjectBedrooms !== undefined) {
+      // Use proration rate as proxy for size since char_unit_sf is often missing
+      // Your property: proration ~0.11, so look for 0.08-0.14 range
+      const subjectProration = subjectProperty.squareFootage && subjectProperty.squareFootage > 0
+        ? subjectProperty.squareFootage / 5000 // Rough estimate assuming avg building is 5000 sqft
+        : 0.12; // Default assumption
+      const minProration = Math.max(0.05, subjectProration * 0.6);
+      const maxProration = Math.min(0.5, subjectProration * 1.5);
+
+      queries.push(querySODA<CondoCharacteristics>(
+        DATASETS.CONDO_CHARACTERISTICS,
+        {
+          '$where': `township_code = '${subjectProperty.townshipCode}'
+            AND pin != '${subjectProperty.pin}'
+            AND pin10 != '${buildingPin10}'
+            AND is_parking_space = false
+            AND is_common_area = false
+            AND char_bedrooms = '${subjectBedrooms}'
+            AND tieback_proration_rate >= '${minProration.toFixed(3)}'
+            AND tieback_proration_rate <= '${maxProration.toFixed(3)}'`,
+          '$order': 'year DESC',
+          '$limit': '100'
+        }
+      ));
+
+      // Query 3: Same township + same bedrooms only (backup if size filter too restrictive)
+      queries.push(querySODA<CondoCharacteristics>(
+        DATASETS.CONDO_CHARACTERISTICS,
+        {
+          '$where': `township_code = '${subjectProperty.townshipCode}'
+            AND pin != '${subjectProperty.pin}'
+            AND pin10 != '${buildingPin10}'
+            AND is_parking_space = false
+            AND is_common_area = false
+            AND char_bedrooms = '${subjectBedrooms}'
+            AND char_yrblt >= '${minYearBuilt}'
+            AND char_yrblt <= '${maxYearBuilt}'`,
+          '$order': 'year DESC',
+          '$limit': '75'
+        }
+      ));
+    }
+
+    // Run all queries in parallel with individual error handling
+    const results = await Promise.allSettled(queries);
+    const allCondos: CondoCharacteristics[] = [];
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        allCondos.push(...result.value);
+      } else {
+        console.warn('Condo comparable query failed:', result.reason?.message || result.reason);
+      }
+    }
+
+    console.log(`Found ${allCondos.length} potential condo comparables before filtering`);
 
     // Group by PIN, keeping most recent
     const byPin = new Map<string, CondoCharacteristics>();
@@ -667,7 +804,16 @@ export async function getComparableProperties(
       const propValue = valuesByPin.get(pin);
       if (!propValue) continue;
 
-      const compSqft = parseInt(condo.char_unit_sf);
+      // Calculate unit sqft - use char_unit_sf if available, otherwise estimate from proration
+      let compSqft = parseInt(condo.char_unit_sf);
+      if (!compSqft || compSqft <= 0) {
+        const buildingSf = parseNumber(condo.char_building_sf);
+        const prorationRate = parseNumber(condo.tieback_proration_rate) || parseNumber(condo.card_proration_rate);
+        if (buildingSf && prorationRate && prorationRate > 0 && prorationRate < 1) {
+          compSqft = Math.round(buildingSf * prorationRate);
+        }
+      }
+
       const compBedrooms = parseInt(condo.char_bedrooms);
       const compYearBuilt = parseInt(condo.char_yrblt);
       const compValue = parseNumber(propValue.board_tot) || parseNumber(propValue.certified_tot) || parseNumber(propValue.mailed_tot);
@@ -679,22 +825,51 @@ export async function getComparableProperties(
       const ageDiff = compYearBuilt && yearBuilt ? compYearBuilt - yearBuilt : null;
       const valuePerSqft = compValue && compSqft ? compValue / compSqft : null;
 
+      // FILTER: Skip properties with wrong bedroom count
+      // For property tax appeals, comparing 1BR to 2BR is not valid
+      if (subjectBedrooms !== null && subjectBedrooms !== undefined &&
+          compBedrooms !== null && !isNaN(compBedrooms) &&
+          compBedrooms !== subjectBedrooms) {
+        // Only allow ±1 bedroom difference, and heavily penalize
+        if (Math.abs(compBedrooms - subjectBedrooms) > 1) {
+          continue; // Skip entirely - too different
+        }
+      }
+
+      // FILTER: Skip properties with vastly different square footage (>50% difference)
+      if (compSqft && sqft && Math.abs(compSqft - sqft) / sqft > 0.5) {
+        continue; // Skip - size too different for valid comparison
+      }
+
       // Calculate similarity score (higher = more similar)
+      // Base score starts at 100
       let similarityScore = 100;
 
-      // Bedroom match is most important (0 or -30 points)
-      if (compBedrooms !== subjectBedrooms) {
-        similarityScore -= 30 * Math.abs(compBedrooms - subjectBedrooms);
-      }
-
-      // Square footage similarity (-0.5 points per 1% difference)
-      if (sqftDiff !== null) {
-        similarityScore -= Math.abs(sqftDiff) * 0.5;
-      }
-
-      // Same building bonus (+20 points)
+      // HIGHEST PRIORITY: Same building gets massive bonus (+50 points)
+      // Units in the same building are best comparables
       if (condo.pin10 === buildingPin10) {
+        similarityScore += 50;
+      }
+
+      // Bedroom match is critical
+      // Same bedrooms: +20 points, Different: -40 points per bedroom
+      if (compBedrooms === subjectBedrooms) {
         similarityScore += 20;
+      } else if (compBedrooms !== null && !isNaN(compBedrooms) &&
+                 subjectBedrooms !== null && subjectBedrooms !== undefined) {
+        similarityScore -= 40 * Math.abs(compBedrooms - subjectBedrooms);
+      }
+
+      // Square footage similarity (very important for appeals)
+      // Perfect match: +15 points, penalty increases with difference
+      if (sqftDiff !== null) {
+        if (Math.abs(sqftDiff) <= 10) {
+          similarityScore += 15; // Within 10% is excellent
+        } else if (Math.abs(sqftDiff) <= 20) {
+          similarityScore += 5; // Within 20% is good
+        } else {
+          similarityScore -= Math.abs(sqftDiff) * 0.5; // Penalty for larger differences
+        }
       }
 
       // Same neighborhood bonus (+10 points)
@@ -702,15 +877,30 @@ export async function getComparableProperties(
         similarityScore += 10;
       }
 
-      // Year built similarity (-1 point per 5 years difference)
+      // Year built similarity (-0.5 point per year difference, max -15)
       if (ageDiff !== null) {
-        similarityScore -= Math.abs(ageDiff) / 5;
+        similarityScore -= Math.min(15, Math.abs(ageDiff) * 0.5);
+      }
+
+      // Extract unit number from PIN for display
+      // Cook County condo PINs: last 4 digits typically represent unit (1XXX = unit XXX)
+      const unitSuffix = pin.slice(-4);
+      const unitNumber = unitSuffix.startsWith('1') ? unitSuffix.slice(1).replace(/^0+/, '') : unitSuffix.replace(/^0+/, '');
+      const isSameBuilding = condo.pin10 === buildingPin10;
+
+      // Create a descriptive address for the comparable
+      let compAddress = '';
+      if (isSameBuilding) {
+        compAddress = `Same Building - Unit ${unitNumber || 'N/A'}`;
+      } else {
+        // For other buildings, show township + unit
+        compAddress = `${propValue.township_name || 'Cook County'} - Unit ${unitNumber || 'N/A'}`;
       }
 
       comparables.push({
         pin,
         pinFormatted: formatPin(pin),
-        address: condo.pin10 === buildingPin10 ? 'Same Building' : '',
+        address: compAddress,
         city: 'CHICAGO',
         zipCode: '',
         township: propValue.township_name || '',
@@ -731,6 +921,8 @@ export async function getComparableProperties(
         marketValue: (compValue || 0) * 10,
         priorAssessedValue: null,
         priorMarketValue: null,
+        assessmentChangeDollars: null,
+        assessmentChangePercent: null,
         distanceMiles: null,
         salePrice: null,
         saleDate: null,
@@ -860,6 +1052,8 @@ export async function getComparableProperties(
       marketValue: (compValue || 0) * 10,
       priorAssessedValue: null,
       priorMarketValue: null,
+      assessmentChangeDollars: null,
+      assessmentChangePercent: null,
       distanceMiles: null, // Would need geocoding
       salePrice: parseNumber(propSale?.sale_price),
       saleDate: propSale?.sale_date || null,
@@ -941,75 +1135,26 @@ export async function analyzeAppealOpportunity(
   // Get appeal history
   const appealHistory = await getAppealHistory(pin);
 
-  // Calculate analysis
+  // Calculate analysis using the pure scoring function
   const compValues = comparables
     .map(c => c.assessedValue)
     .filter((v): v is number => v !== null);
 
-  const medianValue = compValues.length > 0
-    ? compValues.sort((a, b) => a - b)[Math.floor(compValues.length / 2)]
-    : null;
-
-  const avgValue = compValues.length > 0
-    ? compValues.reduce((a, b) => a + b, 0) / compValues.length
-    : null;
-
   const subjectValue = property.assessedValue || 0;
 
-  // Calculate overvaluation
-  let estimatedOvervaluation = 0;
-  if (medianValue && subjectValue > medianValue) {
-    estimatedOvervaluation = subjectValue - medianValue;
-  }
-
-  // Estimate tax savings (Cook County effective rate ~2.1%)
-  const taxRate = 0.021;
-  const estimatedTaxSavings = estimatedOvervaluation * taxRate;
-
-  // Calculate opportunity score (0-100)
-  let opportunityScore = 0;
-
-  // Factor 1: Overvaluation percentage (up to 40 points)
-  const overvaluationPct = medianValue ? ((subjectValue - medianValue) / medianValue) * 100 : 0;
-  opportunityScore += Math.min(40, overvaluationPct * 2);
-
-  // Factor 2: Sample size (up to 20 points)
-  opportunityScore += Math.min(20, compValues.length * 2);
-
-  // Factor 3: Consistency of comparables (up to 20 points)
-  if (compValues.length >= 3) {
-    const valueSpread = Math.max(...compValues) - Math.min(...compValues);
-    const avgVal = avgValue || 1;
-    const consistency = 1 - (valueSpread / avgVal);
-    opportunityScore += Math.max(0, Math.min(20, consistency * 20));
-  }
-
-  // Factor 4: Historical appeal success (up to 20 points)
+  // Check if property has had recent successful appeals
   const hasRecentSuccess = appealHistory.some(
     a => a.change && parseNumber(a.tot_post_mktval) && parseNumber(a.tot_pre_mktval) &&
     parseNumber(a.tot_post_mktval)! < parseNumber(a.tot_pre_mktval)!
   );
-  if (hasRecentSuccess) {
-    opportunityScore += 10;
-  }
-  if (overvaluationPct > 15) {
-    opportunityScore += 10;
-  }
 
-  // Determine appeal grounds
-  const appealGrounds: string[] = [];
-  if (overvaluationPct > 10) {
-    appealGrounds.push('comparable_sales');
-  }
-  // Could add more grounds detection here
-
-  // Determine confidence
-  let confidence: 'high' | 'medium' | 'low' = 'low';
-  if (compValues.length >= 5 && overvaluationPct > 15) {
-    confidence = 'high';
-  } else if (compValues.length >= 3 && overvaluationPct > 10) {
-    confidence = 'medium';
-  }
+  // Use the pure scoring function (includes assessment change factor)
+  const scoringResult = calculateOpportunityScore({
+    subjectValue,
+    comparableValues: compValues,
+    hasRecentAppealSuccess: hasRecentSuccess,
+    assessmentChangePercent: property.assessmentChangePercent,
+  });
 
   // Check prior appeals
   const lastAppeal = appealHistory[0];
@@ -1029,14 +1174,14 @@ export async function analyzeAppealOpportunity(
     property,
     comparables: comparables.slice(0, 10),
     analysis: {
-      opportunityScore: Math.round(Math.min(100, Math.max(0, opportunityScore))),
-      estimatedOvervaluation,
-      estimatedTaxSavings,
-      medianComparableValue: medianValue || 0,
-      averageComparableValue: avgValue || 0,
+      opportunityScore: scoringResult.opportunityScore,
+      estimatedOvervaluation: scoringResult.estimatedOvervaluation,
+      estimatedTaxSavings: scoringResult.estimatedTaxSavings,
+      medianComparableValue: scoringResult.medianComparableValue,
+      averageComparableValue: scoringResult.averageComparableValue,
       comparableCount: compValues.length,
-      appealGrounds,
-      confidence,
+      appealGrounds: scoringResult.appealGrounds,
+      confidence: scoringResult.confidence,
     },
     priorAppeals,
     deadlines: {
@@ -1085,6 +1230,8 @@ export interface OpportunityInput {
   subjectValue: number;
   comparableValues: number[];
   hasRecentAppealSuccess: boolean;
+  /** Year-over-year assessment change percentage (e.g., 51.5 for 51.5% increase) */
+  assessmentChangePercent?: number | null;
 }
 
 export interface OpportunityOutput {
@@ -1098,7 +1245,7 @@ export interface OpportunityOutput {
 }
 
 export function calculateOpportunityScore(input: OpportunityInput): OpportunityOutput {
-  const { subjectValue, comparableValues, hasRecentAppealSuccess } = input;
+  const { subjectValue, comparableValues, hasRecentAppealSuccess, assessmentChangePercent } = input;
 
   // Calculate median and average
   const sortedValues = [...comparableValues].sort((a, b) => a - b);
@@ -1120,27 +1267,45 @@ export function calculateOpportunityScore(input: OpportunityInput): OpportunityO
   const estimatedTaxSavings = estimatedOvervaluation * taxRate;
 
   // Calculate opportunity score (0-100)
+  // Scoring breakdown:
+  // - Overvaluation vs comparables: up to 35 points
+  // - Sample size: up to 15 points
+  // - Comparable consistency: up to 15 points
+  // - Assessment increase: up to 25 points (NEW)
+  // - Historical appeal success: up to 10 points
   let opportunityScore = 0;
 
-  // Factor 1: Overvaluation percentage (up to 40 points)
+  // Factor 1: Overvaluation percentage (up to 35 points)
   const overvaluationPct = medianValue ? ((subjectValue - medianValue) / medianValue) * 100 : 0;
-  opportunityScore += Math.min(40, Math.max(0, overvaluationPct * 2));
+  opportunityScore += Math.min(35, Math.max(0, overvaluationPct * 1.75));
 
-  // Factor 2: Sample size (up to 20 points)
-  opportunityScore += Math.min(20, sortedValues.length * 2);
+  // Factor 2: Sample size (up to 15 points)
+  opportunityScore += Math.min(15, sortedValues.length * 1.5);
 
-  // Factor 3: Consistency of comparables (up to 20 points)
+  // Factor 3: Consistency of comparables (up to 15 points)
   if (sortedValues.length >= 3) {
     const valueSpread = Math.max(...sortedValues) - Math.min(...sortedValues);
     const consistency = 1 - (valueSpread / (avgValue || 1));
-    opportunityScore += Math.max(0, Math.min(20, consistency * 20));
+    opportunityScore += Math.max(0, Math.min(15, consistency * 15));
   }
 
-  // Factor 4: Historical appeal success (up to 20 points)
-  if (hasRecentAppealSuccess) {
-    opportunityScore += 10;
+  // Factor 4: Year-over-year assessment increase (up to 25 points)
+  // A large increase (>20%) is a strong argument for appeal
+  // Assessments should generally increase at a reasonable rate (e.g., 5-10% annually)
+  // Increases over 20% warrant scrutiny, over 40% is a red flag
+  const yoyChange = assessmentChangePercent || 0;
+  if (yoyChange > 10) {
+    // 10-20% increase: 5 points
+    // 20-30% increase: 10 points
+    // 30-40% increase: 15 points
+    // 40-50% increase: 20 points
+    // >50% increase: 25 points
+    const increasePoints = Math.min(25, Math.max(0, (yoyChange - 10) * 0.5));
+    opportunityScore += increasePoints;
   }
-  if (overvaluationPct > 15) {
+
+  // Factor 5: Historical appeal success (up to 10 points)
+  if (hasRecentAppealSuccess) {
     opportunityScore += 10;
   }
 
@@ -1152,12 +1317,21 @@ export function calculateOpportunityScore(input: OpportunityInput): OpportunityO
   if (overvaluationPct > 10) {
     appealGrounds.push('comparable_sales');
   }
+  if (yoyChange > 20) {
+    appealGrounds.push('excessive_increase');
+  }
+  if (yoyChange > 40) {
+    appealGrounds.push('dramatic_increase');
+  }
 
   // Determine confidence
   let confidence: 'high' | 'medium' | 'low' = 'low';
-  if (sortedValues.length >= 5 && overvaluationPct > 15) {
+  if (sortedValues.length >= 5 && (overvaluationPct > 15 || yoyChange > 30)) {
     confidence = 'high';
-  } else if (sortedValues.length >= 3 && overvaluationPct > 10) {
+  } else if (sortedValues.length >= 3 && (overvaluationPct > 10 || yoyChange > 20)) {
+    confidence = 'medium';
+  } else if (yoyChange > 40) {
+    // Even with few comparables, a 40%+ increase is a red flag
     confidence = 'medium';
   }
 

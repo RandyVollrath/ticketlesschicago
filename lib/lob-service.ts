@@ -106,10 +106,28 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
 }
 
 /**
- * Convert plain text letter to HTML format for Lob
- * Optionally includes signature image
+ * Maximum number of evidence images to include
+ * More than 5 images would exceed 6 pages and trigger extra fees
  */
-export function formatLetterAsHTML(letterText: string, signatureImage?: string): string {
+const MAX_EVIDENCE_IMAGES = 5;
+
+/**
+ * Convert plain text letter to HTML format for Lob
+ * Optionally includes signature image and evidence images
+ *
+ * @param letterText - The letter content text
+ * @param options.signatureImage - Optional signature image URL
+ * @param options.evidenceImages - Array of evidence image URLs (max 5 will be included)
+ */
+export function formatLetterAsHTML(
+  letterText: string,
+  options?: {
+    signatureImage?: string;
+    evidenceImages?: string[];
+  }
+): string {
+  const { signatureImage, evidenceImages } = options || {};
+
   // Escape HTML entities
   const escaped = letterText
     .replace(/&/g, '&amp;')
@@ -127,6 +145,28 @@ export function formatLetterAsHTML(letterText: string, signatureImage?: string):
       </div>`
     : '';
 
+  // Add evidence images if provided (limit to MAX_EVIDENCE_IMAGES to stay under 6 pages)
+  let evidenceHTML = '';
+  if (evidenceImages && evidenceImages.length > 0) {
+    const imagesToInclude = evidenceImages.slice(0, MAX_EVIDENCE_IMAGES);
+    const imageCount = imagesToInclude.length;
+    const totalImages = evidenceImages.length;
+
+    evidenceHTML = `
+      <div style="page-break-before: always; margin-top: 30px;">
+        <h3 style="font-size: 14pt; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
+          Supporting Evidence${totalImages > imageCount ? ` (${imageCount} of ${totalImages} images)` : ''}
+        </h3>
+        ${imagesToInclude.map((url, index) => `
+          <div style="margin-bottom: 20px; ${index > 0 && index % 2 === 0 ? 'page-break-before: always;' : ''}">
+            <p style="font-size: 10pt; color: #666; margin-bottom: 8px;">Exhibit ${index + 1}</p>
+            <img src="${url}" alt="Evidence ${index + 1}" style="max-width: 100%; max-height: 400px; border: 1px solid #ccc;" />
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
   return `
 <!DOCTYPE html>
 <html>
@@ -138,11 +178,15 @@ export function formatLetterAsHTML(letterText: string, signatureImage?: string):
       line-height: 1.5;
       margin: 1in;
     }
+    @media print {
+      img { max-width: 100%; height: auto; }
+    }
   </style>
 </head>
 <body>
   ${withBreaks}
   ${signatureHTML}
+  ${evidenceHTML}
 </body>
 </html>
   `.trim();

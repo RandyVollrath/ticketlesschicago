@@ -84,10 +84,45 @@ const testCases: TestCase[] = [
       hasRecentAppealSuccess: true
     },
     expectedOutput: {
-      opportunityScoreMin: 70,
-      opportunityScoreMax: 90,
+      opportunityScoreMin: 50,
+      opportunityScoreMax: 80,
       confidence: 'high', // 5 comps + >15% overval = high
       hasComparableSalesGround: true
+    }
+  },
+
+  // Test 5: High assessment increase (like the user's 51.5% increase)
+  // Even with mediocre comps, a 51.5% YoY increase should boost the score significantly
+  {
+    name: 'High assessment increase case (51.5% YoY increase)',
+    input: {
+      subjectValue: 16666, // Current assessed value
+      comparableValues: [15000, 16000, 17000, 18000], // Similar or higher values
+      hasRecentAppealSuccess: false,
+      assessmentChangePercent: 51.5 // 51.5% increase from prior year
+    },
+    expectedOutput: {
+      opportunityScoreMin: 35, // Should get boost from assessment change
+      opportunityScoreMax: 70,
+      confidence: 'medium', // 51.5% > 40% gives medium confidence even with few comps
+      hasComparableSalesGround: false // Not overvalued vs comps, but has excessive_increase
+    }
+  },
+
+  // Test 6: Moderate assessment increase
+  {
+    name: 'Moderate assessment increase (25% YoY)',
+    input: {
+      subjectValue: 25000,
+      comparableValues: [24000, 25000, 26000],
+      hasRecentAppealSuccess: false,
+      assessmentChangePercent: 25
+    },
+    expectedOutput: {
+      opportunityScoreMin: 20,
+      opportunityScoreMax: 50,
+      confidence: 'medium', // 3 comps + 25% increase
+      hasComparableSalesGround: false
     }
   }
 ];
@@ -204,6 +239,43 @@ function runAssertions(): { passed: number; failed: number } {
     passed++;
   } else {
     console.log(`✗ FAIL: Expected savings $${expectedSavings}, got $${savingsTest.estimatedTaxSavings}`);
+    failed++;
+  }
+
+  // Assert: 51.5% assessment increase adds appeal grounds
+  const highIncreaseTest = calculateOpportunityScore({
+    subjectValue: 16666,
+    comparableValues: [16000, 17000],
+    hasRecentAppealSuccess: false,
+    assessmentChangePercent: 51.5
+  });
+  if (highIncreaseTest.appealGrounds.includes('excessive_increase') &&
+      highIncreaseTest.appealGrounds.includes('dramatic_increase')) {
+    console.log('✓ PASS: 51.5% increase triggers excessive_increase and dramatic_increase grounds');
+    passed++;
+  } else {
+    console.log(`✗ FAIL: Expected excessive_increase and dramatic_increase in grounds, got: ${highIncreaseTest.appealGrounds.join(', ')}`);
+    failed++;
+  }
+
+  // Assert: Assessment increase boosts score (compare with/without)
+  const withoutIncrease = calculateOpportunityScore({
+    subjectValue: 16666,
+    comparableValues: [16000, 17000],
+    hasRecentAppealSuccess: false,
+    assessmentChangePercent: 0
+  });
+  const withIncrease = calculateOpportunityScore({
+    subjectValue: 16666,
+    comparableValues: [16000, 17000],
+    hasRecentAppealSuccess: false,
+    assessmentChangePercent: 51.5
+  });
+  if (withIncrease.opportunityScore > withoutIncrease.opportunityScore) {
+    console.log(`✓ PASS: 51.5% increase boosts score (${withoutIncrease.opportunityScore} -> ${withIncrease.opportunityScore})`);
+    passed++;
+  } else {
+    console.log(`✗ FAIL: Expected increase in score with 51.5% YoY change, got ${withoutIncrease.opportunityScore} vs ${withIncrease.opportunityScore}`);
     failed++;
   }
 

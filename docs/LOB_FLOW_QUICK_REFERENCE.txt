@@ -1,0 +1,251 @@
+================================================================================
+                    LOB INTEGRATION FLOW - QUICK REFERENCE
+================================================================================
+
+ENTRY POINT: VA uploads CSV → /api/admin/autopilot/upload-results
+
+================================================================================
+STEP 1: CSV UPLOAD & PARSING
+================================================================================
+File: /pages/api/admin/autopilot/upload-results.ts
+Time: Manual (when VA uploads)
+Input: CSV with columns: last_name, first_name, plate, state, user_id, 
+                        ticket_number, violation_code, violation_type, 
+                        violation_date, amount
+
+Process:
+  1. Parse CSV (formidable library)
+  2. Normalize violation types to enum values
+  3. For each row with ticket_number:
+     - Verify monitored_plate exists (active status)
+     - Check ticket not duplicate
+     - Create detected_ticket (status='pending_evidence')
+     - Generate contest_letter (status='pending_evidence')
+     - Send evidence request email
+  4. Set evidence_deadline = NOW + 72 HOURS
+
+================================================================================
+STEP 2: WAIT FOR EVIDENCE DEADLINE
+================================================================================
+User can reply to evidence@autopilotamerica.com with supporting documents
+Email deadline is communicated in the initial evidence request email
+After 72 hours pass, letter is eligible for mailing
+
+================================================================================
+STEP 3: DAILY MAILING CRON
+================================================================================
+File: /pages/api/cron/autopilot-mail-letters.ts
+Schedule: vercel.json line 151-152 → "0 15 * * *" (3:00 PM UTC daily)
+Max Duration: 120 seconds
+
+PRE-CHECKS (Kill Switches):
+  1. Is LOB_API_KEY set?
+     - YES → Continue
+     - NO → Return 500 error
+  
+  2. Is pause_all_mail enabled in autopilot_admin_settings?
+     - YES → Return 200 with "Kill switch active" (graceful skip)
+     - NO → Continue
+
+LETTER SELECTION:
+  Find all letters WHERE:
+    - status IN ('pending_evidence', 'approved', 'draft')
+    - evidence_deadline <= NOW (deadline has passed)
+    - ticket.is_test = false (not a test ticket)
+
+FOR EACH READY LETTER:
+  1. Get user profile (check for mailing_address)
+  2. Call sendLetter() function
+  3. Update letter: status='mailed', lob_letter_id, pdf_url, tracking_number
+  4. Update ticket: status='mailed'
+  5. Increment user's letters_used_this_period
+  6. Send user "letter mailed" notification email
+  7. Log to audit trail
+  8. Wait 1 second (rate limiting)
+
+================================================================================
+STEP 4: LOB API INTEGRATION
+================================================================================
+File: /lib/lob-service.ts
+API: https://api.lob.com/v1/letters
+Auth: HTTP Basic (LOB_API_KEY + ":")
+
+REQUEST BODY:
+{
+  "to": {
+    "name": "City of Chicago - Department of Finance",
+    "address_line1": "PO Box 88292",
+    "address_city": "Chicago",
+    "address_state": "IL",
+    "address_zip": "60680-1292"
+  },
+  "from": {
+    "name": "[User Name]",
+    "address_line1": "[User Address]",
+    "address_city": "[City]",
+    "address_state": "[State]",
+    "address_zip": "[Zip]"
+  },
+  "file": "[HTML formatted letter]",
+  "color": false,
+  "double_sided": false,
+  "metadata": {
+    "ticket_id": "...",
+    "letter_id": "...",
+    "user_id": "..."
+  }
+}
+
+RESPONSE:
+{
+  "id": "[Lob Letter ID]",
+  "url": "[PDF Download URL]",
+  "tracking_number": "[USPS Tracking]",
+  "expected_delivery_date": "[ISO Date]"
+}
+
+================================================================================
+STEP 5: COMPLETION
+================================================================================
+Lob.com:
+  - Prints letter (B&W, single-sided)
+  - Puts in envelope
+  - Mails via USPS
+  - Provides tracking number
+  - Expected delivery: 3-5 business days
+
+Database Status:
+  - contest_letters.status = 'mailed'
+  - detected_tickets.status = 'mailed'
+  - audit log entry created
+
+User Notification:
+  - Email sent with expected delivery date
+  - PDF link provided
+  - Next steps explained
+
+================================================================================
+KEY CONDITIONS THAT MUST ALL BE TRUE FOR MAILING
+================================================================================
+1. LOB_API_KEY environment variable is set
+2. pause_all_mail kill switch is NOT enabled
+3. Letter exists in contest_letters table
+4. Ticket exists in detected_tickets table
+5. Ticket status is one of: pending_evidence, approved, or draft
+6. Ticket is_test flag = false
+7. Current time >= ticket.evidence_deadline
+8. User has mailing_address in user_profiles table
+9. Cron job runs (daily at 3:00 PM UTC)
+
+================================================================================
+KILL SWITCHES (Manual Stops)
+================================================================================
+Location: autopilot_admin_settings table
+
+pause_all_mail:
+  - When: key = 'pause_all_mail' AND value.enabled = true
+  - Effect: Cron returns gracefully with "Kill switch active"
+  - Result: No letters mailed that day
+
+kill_all_mailing / maintenance_mode:
+  - When: Used in autopilot-generate-letters.ts
+  - Effect: Stops letter generation (not mailing)
+
+Test Tickets:
+  - When: detected_tickets.is_test = true
+  - Effect: Letter never mailed (allows safe testing)
+
+================================================================================
+LOB_API_KEY REFERENCES
+================================================================================
+File: /lib/lob-service.ts
+  Line 47-51: Check if configured
+  Line 51-52: Base64 encode for HTTP Basic Auth
+  Line 56-85: Used in POST to Lob API
+
+File: /pages/api/cron/autopilot-mail-letters.ts
+  Line 343-350: Check if configured before processing
+  Returns 500 error if missing
+
+File: /pages/api/stripe-webhook.ts
+  Reference found (context unclear)
+
+================================================================================
+DEFENSE TEMPLATES (By Violation Type)
+================================================================================
+Violation Type          → Defense Strategy
+─────────────────────────────────────────────────────────────────────────────
+expired_plates          → Registration recently renewed (within grace period)
+no_city_sticker         → Sticker purchased but not yet received/displayed
+expired_meter           → Meter malfunction or payment issue
+disabled_zone           → Valid disability permit, visibility issue
+street_cleaning         → Unclear/missing/obscured signage
+rush_hour               → Emergency situation requiring brief stop
+fire_hydrant            → Parked 15+ feet away (distance dispute)
+speed_camera            → Equipment malfunction or calibration error
+red_light_camera        → Already in intersection, unsafe to stop
+other_unknown           → General request for hearing/review
+
+Each template includes specific evidence questions sent to user.
+
+================================================================================
+TESTING & MONITORING
+================================================================================
+To PREVENT mailing (for testing):
+  Option 1: Set detected_tickets.is_test = true
+  Option 2: Enable pause_all_mail in autopilot_admin_settings
+  Option 3: Don't set evidence_deadline or set to future date
+
+To TRIGGER mailing:
+  Option 1: Wait for daily 3:00 PM UTC cron
+  Option 2: Manually call endpoint (if exposed)
+  Option 3: Call with Authorization: Bearer {CRON_SECRET}
+
+To MONITOR:
+  Query detected_tickets: Check status column
+  Query contest_letters: Check status and lob_letter_id columns
+  Query ticket_audit_log: Review action='letter_mailed'
+  Monitor Lob dashboard: https://dashboard.lob.com
+
+================================================================================
+COMMON ISSUES & FIXES
+================================================================================
+Issue                           → Fix
+─────────────────────────────────────────────────────────────────────────────
+500 error "LOB_API_KEY not      → Set LOB_API_KEY environment variable
+configured"
+
+Letters skipped silently        → Check pause_all_mail in settings
+                                → Check is_test flag on tickets
+                                → Check evidence_deadline not in future
+
+Letters in pending_approval     → User must approve or change settings
+                                → Check require_approval setting
+
+Missing mailing address error   → User must update user_profiles table
+
+Duplicate ticket skipped        → Check detected_tickets for existing
+                                  ticket_number
+
+No letters to mail message      → Check evidence_deadline has passed
+                                → Check ticket status is correct
+
+Email not received              → Check RESEND_API_KEY configured
+                                → Check email_on_letter_sent setting
+
+================================================================================
+DATABASE TABLES INVOLVED
+================================================================================
+Table                   Used For
+─────────────────────────────────────────────────────────────────────────────
+monitored_plates        Verify plate is monitored
+detected_tickets        Store ticket info, track status
+contest_letters         Store generated letter content, track mailing
+user_profiles           Get mailing address for letter
+autopilot_settings      User preferences (auto_mail, approval, etc.)
+autopilot_subscriptions Track letters_used_this_period
+autopilot_admin_settings Kill switches (pause_all_mail, etc.)
+ticket_audit_log        Audit trail of all actions
+va_uploads              Log of VA CSV uploads
+
+================================================================================
