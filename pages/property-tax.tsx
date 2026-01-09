@@ -934,7 +934,7 @@ export default function PropertyTax() {
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }} />
-                  Searching...
+                  Searching Cook County records...
                 </>
               ) : (
                 <>
@@ -946,6 +946,18 @@ export default function PropertyTax() {
                 </>
               )}
             </button>
+
+            {/* Search time notice */}
+            {searching && (
+              <p style={{
+                fontSize: '13px',
+                color: COLORS.slate,
+                margin: '12px 0 0 0',
+                textAlign: 'center'
+              }}>
+                This may take 20-30 seconds as we query Cook County's database...
+              </p>
+            )}
 
             {/* Error Message */}
             {searchError && (

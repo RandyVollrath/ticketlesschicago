@@ -554,27 +554,161 @@ export async function searchPropertiesByAddress(
 
 /**
  * Get comparable properties for a subject property
+ * Handles both residential and condo properties
  */
 export async function getComparableProperties(
   subjectProperty: NormalizedProperty,
   limit: number = 10
 ): Promise<ComparableProperty[]> {
-  // Find properties in same neighborhood with similar characteristics
+  const currentYear = new Date().getFullYear();
   const sqft = subjectProperty.squareFootage || 1500;
-  const minSqft = Math.floor(sqft * 0.85);
-  const maxSqft = Math.ceil(sqft * 1.15);
+  const minSqft = Math.floor(sqft * 0.70); // 30% tolerance for condos
+  const maxSqft = Math.ceil(sqft * 1.30);
 
+  // Check if this is a condo (class 299 or 399, or PIN pattern suggests condo)
+  const isCondo = subjectProperty.propertyClass === '299' ||
+                  subjectProperty.propertyClass === '399' ||
+                  subjectProperty.propertyClassDescription?.toLowerCase().includes('condo');
+
+  if (isCondo) {
+    // For condos, search in the condo dataset
+    // Get first 10 digits of PIN (building PIN)
+    const buildingPin10 = subjectProperty.pin.slice(0, 10);
+
+    // First, try to find other units in the same building
+    let condoComps = await querySODA<CondoCharacteristics>(
+      DATASETS.CONDO_CHARACTERISTICS,
+      {
+        '$where': `pin10 = '${buildingPin10}'
+          AND pin != '${subjectProperty.pin}'
+          AND is_parking_space != 'TRUE'
+          AND is_common_area != 'TRUE'`,
+        '$order': 'year DESC',
+        '$limit': String(limit * 3)
+      }
+    );
+
+    // If not enough comparables in same building, expand to neighborhood
+    if (condoComps.length < 5 && subjectProperty.neighborhood) {
+      const moreCondos = await querySODA<CondoCharacteristics>(
+        DATASETS.CONDO_CHARACTERISTICS,
+        {
+          '$where': `township_code = '${subjectProperty.townshipCode}'
+            AND pin != '${subjectProperty.pin}'
+            AND pin10 != '${buildingPin10}'
+            AND is_parking_space != 'TRUE'
+            AND is_common_area != 'TRUE'
+            AND char_unit_sf >= '${minSqft}' AND char_unit_sf <= '${maxSqft}'`,
+          '$order': 'year DESC',
+          '$limit': String((limit - condoComps.length) * 3)
+        }
+      );
+      condoComps = [...condoComps, ...moreCondos];
+    }
+
+    // Group by PIN, get most recent
+    const byPin = new Map<string, CondoCharacteristics>();
+    for (const prop of condoComps) {
+      if (!byPin.has(prop.pin)) {
+        byPin.set(prop.pin, prop);
+      }
+    }
+
+    const pins = Array.from(byPin.keys()).slice(0, limit * 2);
+    if (pins.length === 0) {
+      console.log(`No condo comparables found for ${subjectProperty.pin}`);
+      return [];
+    }
+
+    // Get assessed values for these condos
+    const pinList = pins.map(p => `'${p}'`).join(',');
+    const values = await querySODA<AssessedValue>(
+      DATASETS.ASSESSED_VALUES,
+      {
+        '$where': `pin in (${pinList})`,
+        '$order': 'year DESC'
+      }
+    );
+
+    // Group values by PIN
+    const valuesByPin = new Map<string, AssessedValue>();
+    for (const val of values) {
+      if (!valuesByPin.has(val.pin)) {
+        valuesByPin.set(val.pin, val);
+      }
+    }
+
+    // Build comparables
+    const comparables: ComparableProperty[] = [];
+    const yearBuilt = subjectProperty.yearBuilt || 1980;
+
+    for (const [pin, condo] of Array.from(byPin.entries())) {
+      const propValue = valuesByPin.get(pin);
+      if (!propValue) continue;
+
+      const compSqft = parseInt(condo.char_unit_sf);
+      const compYearBuilt = parseInt(condo.char_yrblt);
+      const compValue = parseNumber(propValue.board_tot) || parseNumber(propValue.certified_tot) || parseNumber(propValue.mailed_tot);
+
+      const sqftDiff = compSqft && sqft ? ((compSqft - sqft) / sqft) * 100 : null;
+      const ageDiff = compYearBuilt && yearBuilt ? compYearBuilt - yearBuilt : null;
+      const valuePerSqft = compValue && compSqft ? compValue / compSqft : null;
+
+      comparables.push({
+        pin,
+        pinFormatted: formatPin(pin),
+        address: '', // Condo dataset doesn't have addresses
+        city: 'CHICAGO',
+        zipCode: '',
+        township: propValue.township_name || '',
+        townshipCode: condo.township_code || propValue.township_code || '',
+        neighborhood: propValue.nbhd || '',
+        propertyClass: condo.class || '299',
+        propertyClassDescription: getPropertyClassDescription(condo.class || '299'),
+        yearBuilt: compYearBuilt,
+        squareFootage: compSqft,
+        lotSize: parseInt(condo.char_land_sf),
+        bedrooms: parseInt(condo.char_bedrooms),
+        bathrooms: null,
+        exteriorConstruction: null,
+        basementType: null,
+        garageType: null,
+        assessmentYear: parseInt(condo.year) || currentYear - 1,
+        assessedValue: compValue,
+        marketValue: (compValue || 0) * 10,
+        priorAssessedValue: null,
+        priorMarketValue: null,
+        distanceMiles: null,
+        salePrice: null,
+        saleDate: null,
+        valuePerSqft,
+        sqftDifferencePct: sqftDiff,
+        ageDifferenceYears: ageDiff,
+      });
+
+      if (comparables.length >= limit) break;
+    }
+
+    // Sort by assessed value (closest to subject)
+    const subjectValue = subjectProperty.assessedValue || 0;
+    comparables.sort((a, b) => {
+      const aDiff = Math.abs((a.assessedValue || 0) - subjectValue);
+      const bDiff = Math.abs((b.assessedValue || 0) - subjectValue);
+      return aDiff - bDiff;
+    });
+
+    return comparables.slice(0, limit);
+  }
+
+  // For non-condos, use original residential search logic
   const yearBuilt = subjectProperty.yearBuilt || 1960;
-  const minYear = yearBuilt - 10;
-  const maxYear = yearBuilt + 10;
 
   // Calculate age range for comparison
-  const currentYear = new Date().getFullYear();
   const subjectAge = subjectProperty.yearBuilt ? currentYear - subjectProperty.yearBuilt : 50;
   const minAge = Math.max(0, subjectAge - 10);
   const maxAge = subjectAge + 10;
 
-  // Query for comparables
+  // Query for comparables from residential dataset
   const characteristics = await querySODA<PropertyCharacteristics>(
     DATASETS.CHARACTERISTICS,
     {
