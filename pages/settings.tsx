@@ -156,6 +156,8 @@ export default function SettingsPage() {
   const [isPaidUser, setIsPaidUser] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [hasActivePlates, setHasActivePlates] = useState(false);
 
   // Account Info
   const [firstName, setFirstName] = useState('');
@@ -300,12 +302,16 @@ export default function SettingsPage() {
       .from('monitored_plates')
       .select('*')
       .eq('user_id', session.user.id)
-      .single();
+      .eq('status', 'active');
 
-    if (plateData) {
-      setPlateNumber(plateData.plate);
-      setPlateState(plateData.state);
-      setIsLeased(plateData.is_leased_or_company || false);
+    // Check if user has any active plates
+    setHasActivePlates(plateData && plateData.length > 0);
+
+    if (plateData && plateData.length > 0) {
+      // Use first active plate
+      setPlateNumber(plateData[0].plate);
+      setPlateState(plateData[0].state);
+      setIsLeased(plateData[0].is_leased_or_company || false);
     }
 
     // Load autopilot settings
@@ -467,19 +473,47 @@ export default function SettingsPage() {
 
   const handleUpgrade = async () => {
     if (!userId) return;
+
+    // Validate required fields before allowing upgrade
+    setUpgradeError(null);
+
+    const trimmedLastName = lastName.trim();
+    const trimmedPlate = plateNumber.trim();
+
+    if (!trimmedLastName) {
+      setUpgradeError('Please enter your last name before upgrading. This is required for ticket searches.');
+      return;
+    }
+
+    if (!trimmedPlate || trimmedPlate.length < 2) {
+      setUpgradeError('Please enter your license plate number before upgrading. This is required for ticket monitoring.');
+      return;
+    }
+
     setCheckoutLoading(true);
     try {
+      // First save the profile to ensure last name and plate are saved
+      await autoSave();
+
       const response = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({
+          userId,
+          lastName: trimmedLastName,
+          plateNumber: trimmedPlate,
+          plateState: plateState,
+        }),
       });
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url;
+      } else if (data.error) {
+        setUpgradeError(data.error);
       }
     } catch (error) {
       console.error('Checkout error:', error);
+      setUpgradeError('An error occurred. Please try again.');
     } finally {
       setCheckoutLoading(false);
     }
@@ -720,6 +754,31 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Warning Banner for Paid Users Without Plates or Last Name */}
+        {isPaidUser && (!hasActivePlates || !lastName.trim()) && (
+          <div style={{
+            backgroundColor: '#FEF2F2',
+            borderRadius: 12,
+            border: `1px solid ${COLORS.danger}`,
+            padding: '16px 24px',
+            marginBottom: 20,
+          }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#991B1B' }}>
+              ⚠️ Action Required: Complete Your Profile
+            </p>
+            <p style={{ margin: '8px 0 0', fontSize: 14, color: '#991B1B' }}>
+              {!lastName.trim() && !hasActivePlates
+                ? 'Your last name and license plate are missing. We need both to search for and contest your tickets.'
+                : !lastName.trim()
+                ? 'Your last name is missing. We need this to search for tickets on your behalf.'
+                : 'Your license plate is missing. We need this to monitor for new tickets.'}
+            </p>
+            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#7F1D1D' }}>
+              Please fill in the missing information below to ensure your Autopilot service works correctly.
+            </p>
+          </div>
+        )}
+
         {/* Upgrade CTA for Free Users (persistent, not welcome flow) */}
         {!showWelcome && !isPaidUser && (
           <div style={{
@@ -728,37 +787,53 @@ export default function SettingsPage() {
             border: `1px solid ${COLORS.highlight}`,
             padding: '16px 24px',
             marginBottom: 20,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 16,
           }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
-                Upgrade to Autopilot - $24/year
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9A3412' }}>
-                Automatic ticket detection &amp; contesting with 54% average dismissal rate
-              </p>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 16,
+            }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
+                  Upgrade to Autopilot - $24/year
+                </p>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9A3412' }}>
+                  Automatic ticket detection &amp; contesting with 54% average dismissal rate
+                </p>
+              </div>
+              <button
+                onClick={handleUpgrade}
+                disabled={checkoutLoading}
+                style={{
+                  backgroundColor: COLORS.highlight,
+                  color: COLORS.white,
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: checkoutLoading ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {checkoutLoading ? 'Loading...' : 'Upgrade Now'}
+              </button>
             </div>
-            <button
-              onClick={handleUpgrade}
-              disabled={checkoutLoading}
-              style={{
-                backgroundColor: COLORS.highlight,
-                color: COLORS.white,
-                padding: '10px 20px',
-                borderRadius: 8,
-                border: 'none',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: checkoutLoading ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {checkoutLoading ? 'Loading...' : 'Upgrade Now'}
-            </button>
+            {upgradeError && (
+              <div style={{
+                marginTop: 12,
+                padding: '10px 14px',
+                backgroundColor: '#FEF2F2',
+                border: `1px solid ${COLORS.danger}`,
+                borderRadius: 6,
+                color: '#991B1B',
+                fontSize: 13,
+              }}>
+                {upgradeError}
+              </div>
+            )}
           </div>
         )}
 

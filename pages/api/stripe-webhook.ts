@@ -1978,17 +1978,72 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted':
       const subscription = event.data.object as Stripe.Subscription;
-      
-      // Update subscription status
+
+      // Update subscription status in vehicle_reminders
       if (supabaseAdmin) {
         await supabaseAdmin
           .from('vehicle_reminders')
-          .update({ 
+          .update({
             subscription_status: subscription.status
           })
           .eq('subscription_id', subscription.id);
+
+        // Sync has_contesting based on subscription status
+        // Check if this is an Autopilot subscription by looking at metadata or product
+        const isAutopilotSubscription = subscription.metadata?.service === 'autopilot' ||
+          subscription.metadata?.plan === 'autopilot' ||
+          (subscription.items?.data?.some(item =>
+            item.price?.product === process.env.STRIPE_AUTOPILOT_PRODUCT_ID ||
+            item.price?.lookup_key?.includes('autopilot')
+          ));
+
+        if (isAutopilotSubscription) {
+          const customerId = subscription.customer as string;
+
+          // Find user by stripe_customer_id
+          const { data: userProfile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('user_id')
+            .eq('stripe_customer_id', customerId)
+            .single();
+
+          if (userProfile) {
+            const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+
+            console.log(`📋 Syncing has_contesting for user ${userProfile.user_id}: ${isActive} (subscription status: ${subscription.status})`);
+
+            await supabaseAdmin
+              .from('user_profiles')
+              .update({
+                has_contesting: isActive,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', userProfile.user_id);
+
+            // Also update autopilot_subscriptions if it exists
+            await supabaseAdmin
+              .from('autopilot_subscriptions')
+              .update({
+                status: isActive ? 'active' : 'canceled',
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', userProfile.user_id);
+
+            // If subscription is canceled/deleted, mark monitored plates as inactive
+            if (!isActive) {
+              console.log(`📋 Deactivating monitored plates for user ${userProfile.user_id}`);
+              await supabaseAdmin
+                .from('monitored_plates')
+                .update({
+                  status: 'inactive',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('user_id', userProfile.user_id);
+            }
+          }
+        }
       }
-      
+
       console.log(`Subscription ${subscription.id} status updated to: ${subscription.status}`);
       break;
 
