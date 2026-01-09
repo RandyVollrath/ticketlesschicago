@@ -70,6 +70,11 @@ export const stripeConfig = {
     ? (process.env.STRIPE_TEST_REMITTER_SETUP_FEE_PRICE_ID || process.env.STRIPE_REMITTER_SETUP_FEE_PRICE_ID)
     : process.env.STRIPE_REMITTER_SETUP_FEE_PRICE_ID || process.env.STRIPE_LIVE_REMITTER_SETUP_FEE_PRICE_ID)?.trim(),
 
+  // Property Tax Appeal package (one-time $179)
+  propertyTaxAppealPriceId: (isTestMode
+    ? (process.env.STRIPE_TEST_PROPERTY_TAX_APPEAL_PRICE_ID || process.env.STRIPE_PROPERTY_TAX_APPEAL_PRICE_ID)
+    : process.env.STRIPE_PROPERTY_TAX_APPEAL_PRICE_ID || process.env.STRIPE_LIVE_PROPERTY_TAX_APPEAL_PRICE_ID)?.trim(),
+
   // Mode indicator
   isTestMode,
   mode: isTestMode ? 'test' : 'live',

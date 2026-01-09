@@ -353,6 +353,68 @@ export const trackRevenue = (data: {
 };
 
 // ============================================
+// PROPERTY TAX APPEAL EVENTS
+// ============================================
+
+export const trackPropertyTaxPageViewed = () => {
+  capture('property_tax_page_viewed');
+};
+
+export const trackPropertyTaxAnalysisComplete = (data: {
+  opportunityScore: number;
+  estimatedSavings: number;
+  township: string;
+  confidence: string;
+}) => {
+  capture('property_tax_analysis_complete', {
+    opportunity_score: data.opportunityScore,
+    estimated_savings: data.estimatedSavings,
+    township: data.township,
+    confidence: data.confidence
+  });
+};
+
+export const trackPropertyTaxCheckoutStarted = (data: {
+  opportunityScore: number;
+  estimatedSavings: number;
+  township: string;
+}) => {
+  capture('property_tax_checkout_started', {
+    opportunity_score: data.opportunityScore,
+    estimated_savings: data.estimatedSavings,
+    township: data.township,
+    revenue: 179
+  });
+};
+
+export const trackPropertyTaxCheckoutCompleted = (data: {
+  opportunityScore: number;
+  estimatedSavings: number;
+  township: string;
+}) => {
+  capture('property_tax_checkout_completed', {
+    opportunity_score: data.opportunityScore,
+    estimated_savings: data.estimatedSavings,
+    township: data.township,
+    $revenue: 179
+  });
+};
+
+export const trackPropertyTaxLetterGenerated = (data: {
+  township: string;
+  opportunityScore: number;
+}) => {
+  capture('property_tax_letter_generated', {
+    township: data.township,
+    opportunity_score: data.opportunityScore
+  });
+};
+
+export const trackPropertyTaxLetterCopied = () => {
+  capture('property_tax_letter_copied');
+};
+
+// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 
@@ -417,5 +479,13 @@ export const analytics = {
   googleAuthStarted: trackGoogleAuthStarted,
 
   // Revenue
-  revenue: trackRevenue
+  revenue: trackRevenue,
+
+  // Property Tax
+  propertyTaxPageViewed: trackPropertyTaxPageViewed,
+  propertyTaxAnalysisComplete: trackPropertyTaxAnalysisComplete,
+  propertyTaxCheckoutStarted: trackPropertyTaxCheckoutStarted,
+  propertyTaxCheckoutCompleted: trackPropertyTaxCheckoutCompleted,
+  propertyTaxLetterGenerated: trackPropertyTaxLetterGenerated,
+  propertyTaxLetterCopied: trackPropertyTaxLetterCopied
 };

@@ -145,6 +145,146 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
 
+        // Handle Property Tax Appeal purchases
+        if (metadata.product === 'property_tax_appeal') {
+          console.log('🏠 Processing Property Tax Appeal purchase');
+
+          if (!supabaseAdmin) {
+            console.error('Supabase admin client not available');
+            break;
+          }
+
+          const appealId = metadata.appealId;
+          const userId = metadata.userId;
+
+          if (!appealId || !userId) {
+            console.error('Missing appealId or userId in Property Tax Appeal purchase');
+            break;
+          }
+
+          // IDEMPOTENCY CHECK: Skip if already processed
+          const { data: existingAppeal } = await supabaseAdmin
+            .from('property_tax_appeals')
+            .select('id, status, stripe_payment_intent_id')
+            .eq('id', appealId)
+            .single();
+
+          if (existingAppeal?.stripe_payment_intent_id === session.payment_intent) {
+            console.log('⏭️ Property Tax Appeal payment already processed (idempotent skip)');
+            break;
+          }
+
+          if (existingAppeal?.status === 'paid' || existingAppeal?.status === 'letter_generated') {
+            console.log('⏭️ Property Tax Appeal already paid (idempotent skip)');
+            break;
+          }
+
+          // Update appeal record with payment info
+          const { error: updateError } = await supabaseAdmin
+            .from('property_tax_appeals')
+            .update({
+              status: 'paid',
+              stripe_payment_intent_id: session.payment_intent as string,
+              stripe_session_id: session.id,
+              paid_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', appealId)
+            .eq('user_id', userId);
+
+          if (updateError) {
+            console.error('❌ Error updating Property Tax Appeal payment status:', updateError);
+            // Alert admin
+            try {
+              await resend.emails.send({
+                from: 'Alerts <alerts@autopilotamerica.com>',
+                to: 'randyvollrath@gmail.com',
+                subject: '🚨 Property Tax Appeal Payment - DB Update Failed',
+                text: `Payment received but DB update failed!\n\nSession: ${session.id}\nAppeal ID: ${appealId}\nUser ID: ${userId}\nError: ${updateError.message}`
+              });
+            } catch (e) {
+              console.error('Failed to send alert email:', e);
+            }
+            return res.status(500).json({ error: 'DB update failed', details: updateError.message });
+          }
+
+          console.log('✅ Property Tax Appeal payment recorded');
+
+          // Log audit event
+          await logAuditEvent({
+            userId: userId,
+            actionType: 'payment_processed',
+            entityType: 'property_tax_appeal',
+            entityId: appealId,
+            actionDetails: {
+              product: 'property_tax_appeal',
+              amount: session.amount_total,
+              currency: session.currency,
+              pin: metadata.pin,
+              address: metadata.address,
+              township: metadata.township,
+              estimatedSavings: metadata.estimatedSavings,
+              stripeSessionId: session.id,
+              stripePaymentIntentId: session.payment_intent,
+            },
+            status: 'success',
+          });
+
+          // Send confirmation email
+          const email = session.customer_details?.email;
+          if (email) {
+            try {
+              await resend.emails.send({
+                from: 'Autopilot America <hello@autopilotamerica.com>',
+                to: email,
+                subject: 'Your Property Tax Appeal Package is Ready',
+                html: `
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Appeal Package is Ready!</h2>
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                      Thank you for your purchase. Your property tax appeal package for <strong>${metadata.address}</strong> is now being prepared.
+                    </p>
+                    <div style="margin: 24px 0; padding: 16px; background-color: #F0FDF4; border-radius: 8px;">
+                      <p style="margin: 0; color: #166534; font-size: 14px;">
+                        <strong>Estimated Annual Savings:</strong> $${metadata.estimatedSavings || 'N/A'}
+                      </p>
+                    </div>
+                    <div style="margin: 32px 0; text-align: center;">
+                      <a href="${process.env.NEXT_PUBLIC_SITE_URL}/property-tax"
+                         style="background-color: #2563EB;
+                                color: white;
+                                padding: 14px 32px;
+                                text-decoration: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                font-size: 16px;
+                                display: inline-block;">
+                        View Your Appeal Package
+                      </a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">
+                      <strong>Next Steps:</strong><br>
+                      1. Review your appeal letter<br>
+                      2. Print and sign where indicated<br>
+                      3. Mail to the Cook County Board of Review before your deadline
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+                    <p style="color: #9ca3af; font-size: 13px;">
+                      Questions? Reply to this email or contact support@autopilotamerica.com
+                    </p>
+                  </div>
+                `
+              });
+              console.log('✅ Property Tax Appeal confirmation email sent');
+            } catch (emailErr) {
+              console.error('Failed to send confirmation email:', emailErr);
+            }
+          }
+
+          // Exit early for Property Tax Appeal purchases
+          break;
+        }
+
         // Handle Ticket Protection purchases separately
         if (metadata.product === 'ticket_protection') {
           console.log('🛡️ Processing Ticket Protection purchase');
