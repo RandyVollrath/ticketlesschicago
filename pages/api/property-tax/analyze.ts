@@ -222,6 +222,14 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
       actionItems.push('Verify your property characteristics match county records');
     }
 
+    if (stats.appealGrounds.includes('excessive_increase')) {
+      actionItems.push('Document your assessment increased significantly from last year - this strengthens your case');
+    }
+
+    if (stats.appealGrounds.includes('dramatic_increase')) {
+      actionItems.push('Your assessment increased dramatically (40%+) - this is a strong argument for appeal');
+    }
+
     if (deadlines?.daysUntilDeadline && deadlines.daysUntilDeadline > 0) {
       if (deadlines.daysUntilDeadline <= 14) {
         actionItems.push(`URGENT: File your appeal within ${deadlines.daysUntilDeadline} days`);
@@ -271,8 +279,12 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
       currentMarketValue: property.marketValue,
       priorAssessedValue: property.priorAssessedValue,
       priorMarketValue: property.priorMarketValue,
-      assessmentChange: property.priorAssessedValue && property.assessedValue
-        ? ((property.assessedValue - property.priorAssessedValue) / property.priorAssessedValue * 100).toFixed(1) + '%'
+      // Assessment change from API (calculated in cook-county-api.ts)
+      assessmentChangeDollars: property.assessmentChangeDollars,
+      assessmentChangePercent: property.assessmentChangePercent,
+      // Formatted string for display
+      assessmentChange: property.assessmentChangePercent !== null
+        ? `${property.assessmentChangePercent > 0 ? '+' : ''}${property.assessmentChangePercent}%`
         : null
     },
     analysis: {

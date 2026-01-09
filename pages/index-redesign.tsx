@@ -480,7 +480,7 @@ export default function LandingPage() {
                 'All free tier features',
                 'Automatic ticket detection (weekly)',
                 'AI-generated contest letters',
-                'Automatic USPS mailing with tracking',
+                'Automatic mailing with delivery tracking',
                 'Full dashboard access',
                 'Contest letter approval system',
                 'Email notifications on ticket status',

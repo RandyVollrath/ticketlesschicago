@@ -583,7 +583,7 @@ export default function LandingPage() {
                 'Everything in Free, plus:',
                 'Weekly plate monitoring',
                 'Automatic contest letters',
-                'USPS mail with tracking',
+                'Physical mail with delivery tracking',
                 '54% avg dismissal rate',
                 'Cancel anytime',
               ].map((item, i) => (

@@ -19,6 +19,11 @@ interface LetterToMail {
   defense_type: string | null;
 }
 
+interface EvidenceData {
+  attachment_urls?: string[];
+  [key: string]: any;
+}
+
 interface UserProfile {
   full_name: string;
   first_name: string | null;
@@ -53,12 +58,21 @@ async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string
 }
 
 /**
+ * Check if test mode is enabled
+ * Test mode sends letters to user's address instead of city hall
+ */
+function isTestModeEnabled(): boolean {
+  return process.env.LOB_TEST_MODE === 'true';
+}
+
+/**
  * Mail a single letter via Lob
  */
 async function mailLetter(
   letter: LetterToMail,
   profile: UserProfile,
-  ticketNumber: string
+  ticketNumber: string,
+  evidenceImages?: string[]
 ): Promise<{ success: boolean; lobId?: string; expectedDelivery?: string; pdfUrl?: string; error?: string }> {
   console.log(`  Mailing letter ${letter.id} for ticket ${ticketNumber}...`);
 
@@ -68,7 +82,7 @@ async function mailLetter(
       `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
       'Vehicle Owner';
 
-    // Build sender address
+    // Build sender address (user's address)
     const fromAddress = {
       name: senderName,
       address: profile.mailing_address,
@@ -77,25 +91,41 @@ async function mailLetter(
       zip: profile.mailing_zip,
     };
 
+    // Determine recipient address
+    // In test mode, send to user's address instead of city hall
+    const testMode = isTestModeEnabled();
+    const toAddress = testMode ? fromAddress : CHICAGO_PARKING_CONTEST_ADDRESS;
+
+    if (testMode) {
+      console.log(`    ⚠️ TEST MODE: Sending letter to user's address instead of city hall`);
+    }
+
     // Get letter content (prefer letter_content, fall back to letter_text)
     const letterText = letter.letter_content || letter.letter_text;
     if (!letterText) {
       throw new Error('No letter content found');
     }
 
-    // Format letter as HTML
-    const htmlContent = formatLetterAsHTML(letterText);
+    // Format letter as HTML with evidence images
+    const htmlContent = formatLetterAsHTML(letterText, {
+      evidenceImages: evidenceImages,
+    });
+
+    if (evidenceImages && evidenceImages.length > 0) {
+      console.log(`    Including ${evidenceImages.length} evidence image(s) in letter`);
+    }
 
     // Send via Lob
     const result = await sendLetter({
       from: fromAddress,
-      to: CHICAGO_PARKING_CONTEST_ADDRESS,
+      to: toAddress,
       letterContent: htmlContent,
-      description: `Contest letter for ticket ${ticketNumber}`,
+      description: `Contest letter for ticket ${ticketNumber}${testMode ? ' (TEST)' : ''}`,
       metadata: {
         ticket_id: letter.ticket_id,
         letter_id: letter.id,
         user_id: letter.user_id,
+        test_mode: testMode ? 'true' : 'false',
       },
     });
 
@@ -375,6 +405,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get letters for these tickets, plus any already approved letters
     // Exclude test tickets from being mailed
+    // Include user_evidence for attaching images to letters
     const { data: letters } = await supabaseAdmin
       .from('contest_letters')
       .select(`
@@ -389,7 +420,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ticket_number,
           status,
           evidence_deadline,
-          is_test
+          is_test,
+          user_evidence
         )
       `)
       .or(`status.eq.pending_evidence,status.eq.approved,status.eq.draft,status.eq.ready`)
@@ -465,10 +497,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const ticketNumber = (letter as any).detected_tickets?.ticket_number || 'Unknown';
 
+      // Extract evidence image URLs from user_evidence JSON
+      let evidenceImages: string[] = [];
+      const userEvidence = (letter as any).detected_tickets?.user_evidence as EvidenceData | null;
+      if (userEvidence?.attachment_urls && Array.isArray(userEvidence.attachment_urls)) {
+        // Filter to only include image URLs (not PDFs or other files)
+        evidenceImages = userEvidence.attachment_urls.filter((url: string) => {
+          const lowerUrl = url.toLowerCase();
+          return lowerUrl.includes('.jpg') ||
+                 lowerUrl.includes('.jpeg') ||
+                 lowerUrl.includes('.png') ||
+                 lowerUrl.includes('.gif') ||
+                 lowerUrl.includes('.webp') ||
+                 // Vercel Blob URLs don't have extensions, check content type hints
+                 lowerUrl.includes('image');
+        });
+      }
+
       const result = await mailLetter(
         letter as LetterToMail,
         profile as UserProfile,
-        ticketNumber
+        ticketNumber,
+        evidenceImages
       );
 
       if (result.success) {

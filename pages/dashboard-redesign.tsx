@@ -349,7 +349,7 @@ export default function DashboardPage() {
                 {[
                   'Automatic weekly ticket detection',
                   'AI-generated contest letters (54% win rate)',
-                  'Automatic USPS mailing with tracking',
+                  'Automatic mailing with delivery tracking',
                   'Full dashboard with ticket history',
                   'Contest letter approval system',
                   'Email notifications on ticket status',

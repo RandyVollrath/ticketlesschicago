@@ -62,6 +62,9 @@ interface PropertyData {
   assessedValue: number | null;
   marketValue: number | null;
   priorAssessedValue: number | null;
+  assessmentChange: string | null;
+  assessmentChangeDollars: number | null;
+  assessmentChangePercent: number | null;
 }
 
 interface AnalysisData {
@@ -197,7 +200,10 @@ export default function PropertyTax() {
               bathrooms: null,
               assessedValue: paidAppeal.current_assessed_value,
               marketValue: paidAppeal.current_market_value,
-              priorAssessedValue: null
+              priorAssessedValue: null,
+              assessmentChange: null,
+              assessmentChangeDollars: null,
+              assessmentChangePercent: null
             },
             analysis: {
               opportunityScore: paidAppeal.opportunity_score || 0,
@@ -1360,12 +1366,52 @@ export default function PropertyTax() {
                   </p>
                 </div>
                 <div>
+                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>YoY Change</p>
+                  <p style={{
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    color: appealData.property.assessmentChangePercent && appealData.property.assessmentChangePercent > 20
+                      ? COLORS.danger
+                      : appealData.property.assessmentChangePercent && appealData.property.assessmentChangePercent > 0
+                        ? COLORS.warning
+                        : COLORS.signal,
+                    margin: 0
+                  }}>
+                    {appealData.property.assessmentChange || 'N/A'}
+                  </p>
+                </div>
+                <div>
                   <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 4px 0' }}>Median Comparable</p>
                   <p style={{ fontSize: '15px', fontWeight: '500', color: appealData.property.assessedValue && appealData.analysis.medianComparableValue && appealData.property.assessedValue > appealData.analysis.medianComparableValue ? COLORS.danger : COLORS.signal, margin: 0 }}>
                     ${Math.round(appealData.analysis.medianComparableValue).toLocaleString()}
                   </p>
                 </div>
               </div>
+
+              {/* Year-over-year assessment increase alert */}
+              {appealData.property.assessmentChangePercent && appealData.property.assessmentChangePercent > 20 && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: appealData.property.assessmentChangePercent > 40 ? '#FEF2F2' : '#FFFBEB',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  color: appealData.property.assessmentChangePercent > 40 ? '#DC2626' : '#92400E'
+                }}>
+                  <strong>
+                    {appealData.property.assessmentChangePercent > 40
+                      ? 'Dramatic assessment increase!'
+                      : 'Significant assessment increase.'}
+                  </strong>{' '}
+                  Your assessment increased {appealData.property.assessmentChange} from last year
+                  {appealData.property.assessmentChangeDollars && (
+                    <> (${appealData.property.assessmentChangeDollars.toLocaleString()})</>
+                  )}.
+                  {appealData.property.assessmentChangePercent > 40
+                    ? ' This is a strong argument for appealing your assessment.'
+                    : ' This may strengthen your appeal case.'}
+                </div>
+              )}
 
               {/* Assessment comparison explanation */}
               {appealData.analysis.medianComparableValue > 0 && (

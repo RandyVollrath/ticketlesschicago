@@ -69,7 +69,22 @@ interface Letter {
   status: string;
   mailed_at: string | null;
   tracking_number: string | null;
+  delivery_status: string | null;
+  expected_delivery_date: string | null;
+  delivered_at: string | null;
+  last_tracking_update: string | null;
 }
+
+const DELIVERY_STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  created: { label: 'Processing', color: COLORS.slate, icon: '📝' },
+  processing: { label: 'Processing', color: COLORS.slate, icon: '⏳' },
+  in_transit: { label: 'In Transit', color: COLORS.regulatory, icon: '📬' },
+  in_local_area: { label: 'In Local Area', color: COLORS.regulatory, icon: '🏘️' },
+  out_for_delivery: { label: 'Out for Delivery', color: COLORS.warning, icon: '🚚' },
+  delivered: { label: 'Delivered', color: COLORS.signal, icon: '✅' },
+  returned: { label: 'Returned', color: COLORS.danger, icon: '↩️' },
+  re_routed: { label: 'Re-routed', color: COLORS.warning, icon: '🔄' },
+};
 
 export default function TicketDetailPage() {
   const router = useRouter();
@@ -447,11 +462,38 @@ export default function TicketDetailPage() {
                   </p>
                 </div>
               )}
-              {letter.tracking_number && (
+              {letter.delivery_status && (
                 <div>
-                  <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Tracking</p>
-                  <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.regulatory, margin: 0 }}>
-                    {letter.tracking_number}
+                  <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Delivery Status</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{DELIVERY_STATUS_LABELS[letter.delivery_status]?.icon || '📮'}</span>
+                    <span style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: DELIVERY_STATUS_LABELS[letter.delivery_status]?.color || COLORS.slate
+                    }}>
+                      {DELIVERY_STATUS_LABELS[letter.delivery_status]?.label || letter.delivery_status}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {letter.expected_delivery_date && !letter.delivered_at && (
+                <div>
+                  <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Expected Delivery</p>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
+                    {new Date(letter.expected_delivery_date).toLocaleDateString('en-US', {
+                      weekday: 'short', month: 'short', day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+              {letter.delivered_at && (
+                <div>
+                  <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Delivered</p>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: COLORS.signal, margin: 0 }}>
+                    {new Date(letter.delivered_at).toLocaleDateString('en-US', {
+                      weekday: 'short', month: 'short', day: 'numeric'
+                    })}
                   </p>
                 </div>
               )}
