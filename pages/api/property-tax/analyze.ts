@@ -15,7 +15,9 @@ import { createClient } from '@supabase/supabase-js';
 import {
   analyzeAppealOpportunity,
   normalizePin,
-  AppealOpportunity
+  AppealOpportunity,
+  getNeighborhoodConditions,
+  NeighborhoodConditionsData
 } from '../../../lib/cook-county-api';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
@@ -81,11 +83,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       analysis.deadlines = deadlines;
     }
 
+    // Get neighborhood conditions from 311 data (Layer 4)
+    // Extract ward from township code if available
+    let neighborhoodConditions: NeighborhoodConditionsData | null = null;
+    const ward = extractWardFromProperty(analysis);
+    if (ward) {
+      neighborhoodConditions = await getNeighborhoodConditions(ward, supabase);
+    }
+
     // Cache comparables for later use
     await cacheComparables(normalizedPin, analysis);
 
     // Format the response with actionable insights
-    const response = formatAnalysisResponse(analysis);
+    const response = formatAnalysisResponse(analysis, neighborhoodConditions);
 
     return res.status(200).json(response);
 
@@ -190,7 +200,10 @@ async function cacheComparables(pin: string, analysis: AppealOpportunity): Promi
 /**
  * Format the analysis response with actionable insights
  */
-function formatAnalysisResponse(analysis: AppealOpportunity) {
+function formatAnalysisResponse(
+  analysis: AppealOpportunity,
+  neighborhoodConditions: NeighborhoodConditionsData | null = null
+) {
   const { property, analysis: stats, comparables, comparableSales, priorAppeals, deadlines } = analysis;
 
   // Determine recommendation
@@ -252,6 +265,11 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
 
     if (stats.appealGrounds.includes('historical_overassessment')) {
       actionItems.push('Your property has been persistently overassessed for years - this pattern strengthens your case');
+    }
+
+    // Neighborhood conditions action item (only if it supports reduction)
+    if (neighborhoodConditions?.supportsReduction) {
+      actionItems.push('Neighborhood condition data shows elevated quality-of-life concerns that may impact property values');
     }
 
     if (deadlines?.daysUntilDeadline && deadlines.daysUntilDeadline > 0) {
@@ -405,6 +423,45 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
         summary: stats.historicalAnalysis.persistentOverassessment
           ? `Your assessment has grown ${stats.historicalAnalysis.assessmentGrowthRate}% annually over ${stats.historicalAnalysis.yearsAnalyzed} years, faster than typical market growth. This pattern of over-assessment strengthens your appeal.`
           : `Your assessment growth of ${stats.historicalAnalysis.assessmentGrowthRate}% annually is in line with market trends.`
+      } : null,
+      // NEIGHBORHOOD CONDITIONS - Layer 4: Quality of life indicators from 311 data
+      neighborhoodConditions: neighborhoodConditions ? {
+        ward: neighborhoodConditions.ward,
+        communityArea: neighborhoodConditions.communityArea,
+        conditionRating: neighborhoodConditions.conditionRating,
+        distressScore: neighborhoodConditions.distressScore,
+        supportsReduction: neighborhoodConditions.supportsReduction,
+        indicators: {
+          vacantBuildings: {
+            count: neighborhoodConditions.indicators.vacantBuildings.count,
+            trend: neighborhoodConditions.indicators.vacantBuildings.trend,
+            vsAverage: `${neighborhoodConditions.indicators.vacantBuildings.percentile}% of city average`,
+          },
+          rodentComplaints: {
+            count: neighborhoodConditions.indicators.rodentComplaints.count,
+            trend: neighborhoodConditions.indicators.rodentComplaints.trend,
+            vsAverage: `${neighborhoodConditions.indicators.rodentComplaints.percentile}% of city average`,
+          },
+          graffitiRequests: {
+            count: neighborhoodConditions.indicators.graffitiRequests.count,
+            trend: neighborhoodConditions.indicators.graffitiRequests.trend,
+            vsAverage: `${neighborhoodConditions.indicators.graffitiRequests.percentile}% of city average`,
+          },
+          abandonedVehicles: {
+            count: neighborhoodConditions.indicators.abandonedVehicles.count,
+            trend: neighborhoodConditions.indicators.abandonedVehicles.trend,
+            vsAverage: `${neighborhoodConditions.indicators.abandonedVehicles.percentile}% of city average`,
+          },
+          buildingViolations: {
+            count: neighborhoodConditions.indicators.buildingViolations.count,
+            trend: neighborhoodConditions.indicators.buildingViolations.trend,
+            vsAverage: `${neighborhoodConditions.indicators.buildingViolations.percentile}% of city average`,
+          },
+        },
+        conditionsStatement: neighborhoodConditions.conditionsStatement,
+        summary: neighborhoodConditions.supportsReduction
+          ? `Ward ${neighborhoodConditions.ward} shows elevated neighborhood distress indicators (score: ${neighborhoodConditions.distressScore}/100). This data may support an argument that environmental factors negatively impact property values.`
+          : `Ward ${neighborhoodConditions.ward} neighborhood conditions are ${neighborhoodConditions.conditionRating === 'stable' ? 'stable' : 'showing some concerns'} (distress score: ${neighborhoodConditions.distressScore}/100).`
       } : null
     },
     comparables: formattedComparables,
@@ -443,6 +500,36 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
     },
     actionItems
   };
+}
+
+/**
+ * Extract ward number from property data
+ * Chicago wards are 1-50; we try to get it from various sources
+ */
+function extractWardFromProperty(analysis: AppealOpportunity): number | null {
+  // Ward is typically encoded in Chicago addresses or can be looked up
+  // For now, we'll extract from township code or use a mapping
+  // Chicago townships and their approximate ward ranges:
+  const townshipToWardMap: Record<string, number[]> = {
+    'Lake View': [43, 44, 46, 47],
+    'Rogers Park': [49, 50],
+    'Hyde Park': [4, 5, 20],
+    'South Chicago': [7, 8, 10],
+    'Jefferson': [11, 12, 19, 34],
+    'West Chicago': [27, 28, 29, 37],
+    'Lake': [42, 43, 46],
+  };
+
+  // Try to get ward from township
+  const township = analysis.property.township;
+  if (township && townshipToWardMap[township]) {
+    // Return first ward as representative for now
+    // In production, would use geocoding to get exact ward
+    return townshipToWardMap[township][0];
+  }
+
+  // Default to null - we'll skip neighborhood analysis
+  return null;
 }
 
 /**
