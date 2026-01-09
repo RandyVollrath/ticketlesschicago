@@ -22,8 +22,10 @@ const DATASETS = {
   CHARACTERISTICS: 'bcnq-qi2z',
   // Assessed values history
   ASSESSED_VALUES: 'uzyt-m557',
-  // Residential sales
-  SALES: '5pge-nu6u',
+  // Residential sales (ARCHIVED - only has data through 2019)
+  SALES_ARCHIVED: '5pge-nu6u',
+  // Parcel Sales - CURRENT (updated daily, has 2024-2025 data)
+  PARCEL_SALES: 'wvhk-k5uv',
   // Board of Review decisions
   BOR_DECISIONS: '7pny-nedm',
   // Condo unit characteristics (correct ID as of 2024)
@@ -113,6 +115,47 @@ export interface BORDecision {
   tot_post_mktval: string;  // post-appeal market value
 }
 
+// Parcel Sales from dataset wvhk-k5uv (current, updated daily)
+export interface ParcelSale {
+  pin: string;
+  year: string;
+  township_code: string;
+  nbhd: string;
+  class: string;
+  sale_date: string;
+  sale_price: string;
+  doc_no: string;
+  deed_type: string;
+  seller_name?: string;
+  buyer_name?: string;
+  is_multisale: boolean;
+  num_parcels_sale: string;
+  // Filters to identify arm's-length transactions
+  sale_filter_same_sale_within_365: boolean;
+  sale_filter_less_than_10k: boolean;
+  sale_filter_deed_type: boolean;
+}
+
+// Comparable sale with enriched data
+export interface ComparableSale {
+  pin: string;
+  pinFormatted: string;
+  address: string;
+  saleDate: string;
+  salePrice: number;
+  pricePerSqft: number | null;
+  squareFootage: number | null;
+  bedrooms: number | null;
+  yearBuilt: number | null;
+  township: string;
+  neighborhood: string;
+  propertyClass: string;
+  // Comparison to subject
+  sqftDifferencePct: number | null;
+  ageDifferenceYears: number | null;
+  priceDifferenceFromAssessed: number | null;
+}
+
 // Condo characteristics from dataset 3r7i-mrz4
 export interface CondoCharacteristics {
   pin: string;
@@ -182,6 +225,8 @@ export interface ComparableProperty extends NormalizedProperty {
 export interface AppealOpportunity {
   property: NormalizedProperty;
   comparables: ComparableProperty[];
+  /** Actual recent sales of similar properties - strongest evidence for appeals */
+  comparableSales: ComparableSale[];
   analysis: {
     opportunityScore: number;  // 0-100
     estimatedOvervaluation: number;
@@ -191,6 +236,36 @@ export interface AppealOpportunity {
     comparableCount: number;
     appealGrounds: string[];
     confidence: 'high' | 'medium' | 'low';
+    /** Per-sqft analysis - critical for fair comparisons */
+    perSqftAnalysis?: {
+      /** Subject property's assessed value per sqft */
+      subjectValuePerSqft: number;
+      /** Median assessed value per sqft among comparables */
+      medianComparableValuePerSqft: number;
+      /** Average assessed value per sqft among comparables */
+      averageComparableValuePerSqft: number;
+      /** Percentage difference: (subject - median) / median * 100 */
+      percentDifferenceFromMedian: number;
+      /** Number of comparables with valid sqft data */
+      comparablesWithSqftData: number;
+      /** Implied fair value for subject based on median $/sqft */
+      impliedFairValue: number;
+      /** Estimated overvaluation in dollars based on $/sqft */
+      overvaluationBasedOnSqft: number;
+    };
+    /** Sales-based analysis */
+    salesAnalysis?: {
+      medianSalePrice: number;
+      averageSalePrice: number;
+      medianPricePerSqft: number;
+      salesCount: number;
+      /** What market data suggests property is worth */
+      impliedMarketValue: number;
+      /** How much higher assessment is than sales suggest */
+      assessmentVsSalesGap: number;
+      /** Percentage overvalued based on sales */
+      overvaluedByPercent: number;
+    };
   };
   priorAppeals: {
     hasAppealed: boolean;
@@ -411,11 +486,22 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
     // Combine the data - prefer condo dataset for bedrooms/sqft if available
     const totalBaths = (parseNumber(prop.fbath) || 0) + ((parseNumber(prop.hbath) || 0) * 0.5);
 
-    // For sqft, prefer condo unit_sf, fall back to residential bldg_sf
+    // For sqft, prefer condo data (calculated from proration if needed)
     let squareFootage = parseInt(prop.bldg_sf);
     if (hasCondo && condo) {
-      const condoSqft = parseInt(condo.char_unit_sf);
-      // Only use condo sqft if it's reasonable (not 0 or same as building total)
+      // First try char_unit_sf directly
+      let condoSqft = parseInt(condo.char_unit_sf);
+
+      // If char_unit_sf is not available, calculate from building sqft × proration rate
+      if (!condoSqft || condoSqft <= 0) {
+        const buildingSf = parseNumber(condo.char_building_sf);
+        const prorationRate = parseNumber(condo.tieback_proration_rate) || parseNumber(condo.card_proration_rate);
+        if (buildingSf && prorationRate && prorationRate > 0 && prorationRate < 1) {
+          condoSqft = Math.round(buildingSf * prorationRate);
+        }
+      }
+
+      // Use condo sqft if it's reasonable (not 0 and not unrealistically large)
       if (condoSqft && condoSqft > 0 && condoSqft < 10000) {
         squareFootage = condoSqft;
       }
@@ -836,8 +922,9 @@ export async function getComparableProperties(
         }
       }
 
-      // FILTER: Skip properties with vastly different square footage (>50% difference)
-      if (compSqft && sqft && Math.abs(compSqft - sqft) / sqft > 0.5) {
+      // FILTER: Skip properties with different square footage (>30% difference)
+      // For property tax appeals, size is critical - a 600 sqft unit is NOT comparable to a 1200 sqft unit
+      if (compSqft && sqft && Math.abs(compSqft - sqft) / sqft > 0.30) {
         continue; // Skip - size too different for valid comparison
       }
 
@@ -985,7 +1072,7 @@ export async function getComparableProperties(
       }
     ),
     querySODA<SaleRecord>(
-      DATASETS.SALES,
+      DATASETS.SALES_ARCHIVED,
       {
         '$where': `pin in (${pinList}) AND sale_price > '50000'`,
         '$order': 'sale_date DESC'
@@ -1129,11 +1216,12 @@ export async function analyzeAppealOpportunity(
     return null;
   }
 
-  // Get comparables
-  const comparables = await getComparableProperties(property, 15);
-
-  // Get appeal history
-  const appealHistory = await getAppealHistory(pin);
+  // Get comparables, sales, and appeal history in parallel for performance
+  const [comparables, comparableSales, appealHistory] = await Promise.all([
+    getComparableProperties(property, 15),
+    getComparableSales(property, 10),
+    getAppealHistory(pin),
+  ]);
 
   // Calculate analysis using the pure scoring function
   const compValues = comparables
@@ -1141,6 +1229,47 @@ export async function analyzeAppealOpportunity(
     .filter((v): v is number => v !== null);
 
   const subjectValue = property.assessedValue || 0;
+  const subjectSqft = property.squareFootage || 0;
+
+  // Calculate per-sqft analysis - THIS IS CRITICAL for fair comparisons
+  // Comparing a 600 sqft unit to a 1200 sqft unit by total value is misleading
+  // $/sqft is the true apples-to-apples comparison
+  let perSqftAnalysis: AppealOpportunity['analysis']['perSqftAnalysis'];
+  if (subjectSqft > 0 && subjectValue > 0) {
+    const subjectValuePerSqft = subjectValue / subjectSqft;
+
+    // Get comparables with valid sqft data
+    const comparablesWithSqft = comparables.filter(c =>
+      c.squareFootage && c.squareFootage > 0 &&
+      c.assessedValue && c.assessedValue > 0
+    );
+
+    if (comparablesWithSqft.length >= 3) {
+      const valuesPerSqft = comparablesWithSqft
+        .map(c => (c.assessedValue! / c.squareFootage!))
+        .sort((a, b) => a - b);
+
+      const medianValuePerSqft = valuesPerSqft[Math.floor(valuesPerSqft.length / 2)];
+      const avgValuePerSqft = valuesPerSqft.reduce((a, b) => a + b, 0) / valuesPerSqft.length;
+
+      // Calculate how much subject differs from median $/sqft
+      const percentDiff = ((subjectValuePerSqft - medianValuePerSqft) / medianValuePerSqft) * 100;
+
+      // What should the subject be valued at based on median $/sqft?
+      const impliedFairValue = Math.round(subjectSqft * medianValuePerSqft);
+      const overvaluationBasedOnSqft = subjectValue - impliedFairValue;
+
+      perSqftAnalysis = {
+        subjectValuePerSqft: Math.round(subjectValuePerSqft * 100) / 100,
+        medianComparableValuePerSqft: Math.round(medianValuePerSqft * 100) / 100,
+        averageComparableValuePerSqft: Math.round(avgValuePerSqft * 100) / 100,
+        percentDifferenceFromMedian: Math.round(percentDiff * 10) / 10,
+        comparablesWithSqftData: comparablesWithSqft.length,
+        impliedFairValue,
+        overvaluationBasedOnSqft: Math.round(overvaluationBasedOnSqft),
+      };
+    }
+  }
 
   // Check if property has had recent successful appeals
   const hasRecentSuccess = appealHistory.some(
@@ -1155,6 +1284,58 @@ export async function analyzeAppealOpportunity(
     hasRecentAppealSuccess: hasRecentSuccess,
     assessmentChangePercent: property.assessmentChangePercent,
   });
+
+  // Add per-sqft appeal ground if applicable (now that we have scoringResult)
+  if (perSqftAnalysis && perSqftAnalysis.percentDifferenceFromMedian > 15) {
+    if (!scoringResult.appealGrounds.includes('value_per_sqft')) {
+      scoringResult.appealGrounds.push('value_per_sqft');
+    }
+  }
+
+  // Calculate sales-based analysis
+  // This is the strongest evidence: "These sold for $X. My assessment implies $Y."
+  let salesAnalysis: AppealOpportunity['analysis']['salesAnalysis'];
+  if (comparableSales.length >= 3) {
+    const salePrices = comparableSales.map(s => s.salePrice).sort((a, b) => a - b);
+    const pricesPerSqft = comparableSales
+      .filter(s => s.pricePerSqft !== null)
+      .map(s => s.pricePerSqft as number)
+      .sort((a, b) => a - b);
+
+    const medianSalePrice = salePrices[Math.floor(salePrices.length / 2)];
+    const averageSalePrice = salePrices.reduce((a, b) => a + b, 0) / salePrices.length;
+    const medianPricePerSqft = pricesPerSqft.length > 0
+      ? pricesPerSqft[Math.floor(pricesPerSqft.length / 2)]
+      : 0;
+
+    // Calculate implied value based on subject's sqft and median price/sqft
+    const subjectSqft = property.squareFootage || 800;
+    const impliedMarketValue = medianPricePerSqft > 0
+      ? Math.round(subjectSqft * medianPricePerSqft)
+      : medianSalePrice;
+
+    // In Cook County, assessed value = market value / 10
+    const subjectImpliedMarketValue = (property.assessedValue || 0) * 10;
+    const assessmentVsSalesGap = subjectImpliedMarketValue - impliedMarketValue;
+    const overvaluedByPercent = impliedMarketValue > 0
+      ? ((subjectImpliedMarketValue - impliedMarketValue) / impliedMarketValue) * 100
+      : 0;
+
+    salesAnalysis = {
+      medianSalePrice: Math.round(medianSalePrice),
+      averageSalePrice: Math.round(averageSalePrice),
+      medianPricePerSqft: Math.round(medianPricePerSqft),
+      salesCount: comparableSales.length,
+      impliedMarketValue,
+      assessmentVsSalesGap: Math.round(assessmentVsSalesGap),
+      overvaluedByPercent: Math.round(overvaluedByPercent * 10) / 10,
+    };
+
+    // Add sales-based ground if overvalued by more than 10%
+    if (overvaluedByPercent > 10 && !scoringResult.appealGrounds.includes('market_sales')) {
+      scoringResult.appealGrounds.push('market_sales');
+    }
+  }
 
   // Check prior appeals
   const lastAppeal = appealHistory[0];
@@ -1173,6 +1354,7 @@ export async function analyzeAppealOpportunity(
   return {
     property,
     comparables: comparables.slice(0, 10),
+    comparableSales: comparableSales.slice(0, 6), // Top 6 sales for appeal evidence
     analysis: {
       opportunityScore: scoringResult.opportunityScore,
       estimatedOvervaluation: scoringResult.estimatedOvervaluation,
@@ -1182,6 +1364,8 @@ export async function analyzeAppealOpportunity(
       comparableCount: compValues.length,
       appealGrounds: scoringResult.appealGrounds,
       confidence: scoringResult.confidence,
+      perSqftAnalysis,
+      salesAnalysis,
     },
     priorAppeals,
     deadlines: {
@@ -1208,7 +1392,7 @@ export async function getNeighborhoodSales(
   const dateStr = cutoffDate.toISOString().split('T')[0];
 
   const sales = await querySODA<SaleRecord>(
-    DATASETS.SALES,
+    DATASETS.SALES_ARCHIVED,
     {
       '$where': `nbhd = '${neighborhood}'
         AND class = '${propertyClass}'
@@ -1242,6 +1426,273 @@ export interface OpportunityOutput {
   averageComparableValue: number;
   appealGrounds: string[];
   confidence: 'high' | 'medium' | 'low';
+}
+
+/**
+ * Get comparable sales from the Parcel Sales dataset
+ * Returns recent arm's-length sales in the same township and property class
+ * with similar bedroom count and square footage.
+ *
+ * This provides ACTUAL SALES DATA - the strongest evidence for property tax appeals.
+ * "These sold for $X. My assessment implies $Y. That's not market-accurate."
+ */
+export async function getComparableSales(
+  subjectProperty: NormalizedProperty,
+  limit: number = 10
+): Promise<ComparableSale[]> {
+  const currentYear = new Date().getFullYear();
+  const sqft = subjectProperty.squareFootage || 800;
+  const subjectBedrooms = subjectProperty.bedrooms;
+  const yearBuilt = subjectProperty.yearBuilt || 1980;
+
+  // Sales within last 18 months are most relevant for appeals
+  // Per user feedback: "Sold close to Jan 1 of the tax year"
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - 18);
+  const dateStr = cutoffDate.toISOString().split('T')[0];
+
+  console.log(`Searching for comparable sales: township=${subjectProperty.townshipCode}, class=${subjectProperty.propertyClass}, bedrooms=${subjectBedrooms}, sqft=${sqft}`);
+
+  // Check if this is a condo
+  const isCondo = subjectProperty.propertyClass === '299' ||
+                  subjectProperty.propertyClass === '399' ||
+                  subjectProperty.propertyClassDescription?.toLowerCase().includes('condo');
+
+  try {
+    // Query Parcel Sales dataset for arm's-length transactions
+    // Filters out:
+    // - Multi-parcel sales (is_multisale = false)
+    // - Sales under $10k (sale_filter_less_than_10k = false)
+    // - Non-arm's-length deed types (sale_filter_deed_type = false)
+    // - Same-property resales within 365 days (sale_filter_same_sale_within_365 = false)
+    const sales = await querySODA<ParcelSale>(
+      DATASETS.PARCEL_SALES,
+      {
+        '$where': `township_code = '${subjectProperty.townshipCode}'
+          AND class = '${subjectProperty.propertyClass}'
+          AND pin != '${subjectProperty.pin}'
+          AND sale_date >= '${dateStr}'
+          AND sale_price > '25000'
+          AND is_multisale = false
+          AND sale_filter_less_than_10k = false
+          AND sale_filter_deed_type = false`,
+        '$order': 'sale_date DESC',
+        '$limit': '200'
+      }
+    );
+
+    console.log(`Found ${sales.length} potential comparable sales`);
+
+    if (sales.length === 0) {
+      return [];
+    }
+
+    // Get PINs for enrichment with characteristics
+    const salePins = sales.map(s => s.pin);
+    const pinList = salePins.slice(0, 100).map(p => `'${p}'`).join(',');
+
+    // For condos, get characteristics from condo dataset to filter by bedroom/sqft
+    let condoChars: Map<string, CondoCharacteristics> = new Map();
+    if (isCondo) {
+      const condos = await querySODA<CondoCharacteristics>(
+        DATASETS.CONDO_CHARACTERISTICS,
+        {
+          '$where': `pin in (${pinList})`,
+          '$order': 'year DESC',
+          '$limit': '200'
+        }
+      );
+
+      // Group by PIN, keep most recent
+      for (const condo of condos) {
+        if (!condoChars.has(condo.pin)) {
+          condoChars.set(condo.pin, condo);
+        }
+      }
+      console.log(`Enriched ${condoChars.size} sales with condo characteristics`);
+    }
+
+    // For non-condos, get characteristics from residential dataset
+    let resChars: Map<string, PropertyCharacteristics> = new Map();
+    if (!isCondo) {
+      const chars = await querySODA<PropertyCharacteristics>(
+        DATASETS.CHARACTERISTICS,
+        {
+          '$where': `pin in (${pinList})`,
+          '$order': 'tax_year DESC',
+          '$limit': '200'
+        }
+      );
+
+      for (const char of chars) {
+        if (!resChars.has(char.pin)) {
+          resChars.set(char.pin, char);
+        }
+      }
+      console.log(`Enriched ${resChars.size} sales with residential characteristics`);
+    }
+
+    // Build comparable sales with enriched data
+    const comparableSales: (ComparableSale & { similarityScore: number })[] = [];
+
+    for (const sale of sales) {
+      const salePrice = parseNumber(sale.sale_price);
+      if (!salePrice || salePrice < 25000) continue;
+
+      let saleBedrooms: number | null = null;
+      let saleSqft: number | null = null;
+      let saleYearBuilt: number | null = null;
+      let saleAddress = '';
+
+      if (isCondo) {
+        const condo = condoChars.get(sale.pin);
+        if (condo) {
+          saleBedrooms = parseInt(condo.char_bedrooms);
+          saleYearBuilt = parseInt(condo.char_yrblt);
+
+          // Calculate unit sqft from proration rate if unit_sf not available
+          saleSqft = parseInt(condo.char_unit_sf);
+          if (!saleSqft || saleSqft <= 0) {
+            const buildingSf = parseNumber(condo.char_building_sf);
+            const prorationRate = parseNumber(condo.tieback_proration_rate);
+            if (buildingSf && prorationRate && prorationRate > 0 && prorationRate < 1) {
+              saleSqft = Math.round(buildingSf * prorationRate);
+            }
+          }
+
+          // If bedroom data is missing but subject has bedroom info,
+          // try to estimate based on proration rate (unit size)
+          // Typical 1BR: 600-800 sqft, 2BR: 900-1200 sqft, Studio: 400-550 sqft
+          if ((saleBedrooms === null || isNaN(saleBedrooms)) && saleSqft && subjectBedrooms !== null) {
+            // Estimate bedrooms from sqft
+            if (saleSqft < 600) {
+              saleBedrooms = 0; // Studio
+            } else if (saleSqft < 900) {
+              saleBedrooms = 1;
+            } else if (saleSqft < 1200) {
+              saleBedrooms = 2;
+            } else {
+              saleBedrooms = 3;
+            }
+          }
+
+          // Create address from unit number
+          const unitSuffix = sale.pin.slice(-4);
+          const unitNumber = unitSuffix.startsWith('1') ? unitSuffix.slice(1).replace(/^0+/, '') : unitSuffix.replace(/^0+/, '');
+          saleAddress = `Unit ${unitNumber || 'N/A'}`;
+        } else {
+          // For condos without enrichment data in characteristics dataset,
+          // skip entirely - we can't verify it's a comparable unit
+          continue;
+        }
+      } else {
+        const char = resChars.get(sale.pin);
+        if (char) {
+          saleBedrooms = parseInt(char.beds);
+          saleSqft = parseInt(char.bldg_sf);
+          const age = parseInt(char.age);
+          saleYearBuilt = age ? currentYear - age : null;
+          saleAddress = char.addr || '';
+        }
+      }
+
+      // FILTER: Same bedroom count (critical for valid comparisons)
+      // Per user feedback: 1BR vs 2BR are NOT valid comparables
+      if (subjectBedrooms !== null && subjectBedrooms !== undefined &&
+          saleBedrooms !== null && saleBedrooms !== subjectBedrooms) {
+        if (Math.abs(saleBedrooms - subjectBedrooms) > 1) {
+          continue; // Skip - too different
+        }
+      }
+
+      // FILTER: Similar size (±30% per user feedback: "Similar size ±20%")
+      // Being slightly more lenient at 30% to get more comps
+      if (saleSqft && sqft && Math.abs(saleSqft - sqft) / sqft > 0.30) {
+        continue; // Skip - size too different
+      }
+
+      // Calculate price per sqft
+      const pricePerSqft = saleSqft && saleSqft > 0 ? salePrice / saleSqft : null;
+
+      // Calculate differences for comparison
+      const sqftDiff = saleSqft && sqft ? ((saleSqft - sqft) / sqft) * 100 : null;
+      const ageDiff = saleYearBuilt && yearBuilt ? saleYearBuilt - yearBuilt : null;
+
+      // Price implied by sale vs subject's assessed value
+      const priceDiff = subjectProperty.assessedValue
+        ? salePrice - (subjectProperty.assessedValue * 10) // Market value = assessed * 10 in Cook County
+        : null;
+
+      // Calculate similarity score
+      let similarityScore = 100;
+
+      // Same bedrooms: +20 points
+      if (saleBedrooms === subjectBedrooms) {
+        similarityScore += 20;
+      } else if (saleBedrooms !== null && subjectBedrooms !== null) {
+        similarityScore -= 30 * Math.abs(saleBedrooms - subjectBedrooms);
+      }
+
+      // Same neighborhood: +15 points
+      if (sale.nbhd === subjectProperty.neighborhood) {
+        similarityScore += 15;
+      }
+
+      // Square footage similarity
+      if (sqftDiff !== null) {
+        if (Math.abs(sqftDiff) <= 10) {
+          similarityScore += 15; // Within 10%
+        } else if (Math.abs(sqftDiff) <= 20) {
+          similarityScore += 5; // Within 20%
+        } else {
+          similarityScore -= Math.abs(sqftDiff) * 0.3;
+        }
+      }
+
+      // Year built similarity
+      if (ageDiff !== null) {
+        similarityScore -= Math.min(10, Math.abs(ageDiff) * 0.3);
+      }
+
+      // Recency bonus (sales closer to Jan 1 of tax year are more relevant)
+      const saleDate = new Date(sale.sale_date);
+      const monthsAgo = (Date.now() - saleDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+      if (monthsAgo <= 6) {
+        similarityScore += 10; // Very recent
+      } else if (monthsAgo <= 12) {
+        similarityScore += 5; // Within a year
+      }
+
+      comparableSales.push({
+        pin: sale.pin,
+        pinFormatted: formatPin(sale.pin),
+        address: saleAddress,
+        saleDate: sale.sale_date,
+        salePrice,
+        pricePerSqft,
+        squareFootage: saleSqft,
+        bedrooms: saleBedrooms,
+        yearBuilt: saleYearBuilt,
+        township: subjectProperty.township,
+        neighborhood: sale.nbhd || '',
+        propertyClass: sale.class,
+        sqftDifferencePct: sqftDiff,
+        ageDifferenceYears: ageDiff,
+        priceDifferenceFromAssessed: priceDiff,
+        similarityScore,
+      });
+    }
+
+    // Sort by similarity score (highest first)
+    comparableSales.sort((a, b) => b.similarityScore - a.similarityScore);
+
+    // Return top sales without similarity score field
+    return comparableSales.slice(0, limit).map(({ similarityScore, ...sale }) => sale);
+
+  } catch (error) {
+    console.error('Error fetching comparable sales:', error);
+    return [];
+  }
 }
 
 export function calculateOpportunityScore(input: OpportunityInput): OpportunityOutput {

@@ -191,7 +191,7 @@ async function cacheComparables(pin: string, analysis: AppealOpportunity): Promi
  * Format the analysis response with actionable insights
  */
 function formatAnalysisResponse(analysis: AppealOpportunity) {
-  const { property, analysis: stats, comparables, priorAppeals, deadlines } = analysis;
+  const { property, analysis: stats, comparables, comparableSales, priorAppeals, deadlines } = analysis;
 
   // Determine recommendation
   let recommendation: 'strongly_recommend' | 'recommend' | 'consider' | 'not_recommended';
@@ -228,6 +228,14 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
 
     if (stats.appealGrounds.includes('dramatic_increase')) {
       actionItems.push('Your assessment increased dramatically (40%+) - this is a strong argument for appeal');
+    }
+
+    if (stats.appealGrounds.includes('market_sales')) {
+      actionItems.push('Recent sales of similar properties support your case - we found comparable sales data below');
+    }
+
+    if (stats.appealGrounds.includes('value_per_sqft')) {
+      actionItems.push('Your assessed value per square foot is higher than similar properties - this is strong evidence for your appeal');
     }
 
     if (deadlines?.daysUntilDeadline && deadlines.daysUntilDeadline > 0) {
@@ -308,9 +316,53 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
         yourValueVsMedian: property.assessedValue && stats.medianComparableValue
           ? ((property.assessedValue - stats.medianComparableValue) / stats.medianComparableValue * 100).toFixed(1) + '%'
           : null
-      }
+      },
+      // Sales-based analysis (strongest evidence for appeals)
+      salesAnalysis: stats.salesAnalysis ? {
+        salesCount: stats.salesAnalysis.salesCount,
+        medianSalePrice: stats.salesAnalysis.medianSalePrice,
+        averageSalePrice: stats.salesAnalysis.averageSalePrice,
+        medianPricePerSqft: stats.salesAnalysis.medianPricePerSqft,
+        impliedMarketValue: stats.salesAnalysis.impliedMarketValue,
+        assessmentVsSalesGap: stats.salesAnalysis.assessmentVsSalesGap,
+        overvaluedByPercent: stats.salesAnalysis.overvaluedByPercent,
+        // Human-readable summary
+        summary: stats.salesAnalysis.overvaluedByPercent > 10
+          ? `Based on ${stats.salesAnalysis.salesCount} recent sales, your property may be overvalued by ${stats.salesAnalysis.overvaluedByPercent}%. Similar properties sold for a median of $${stats.salesAnalysis.medianSalePrice.toLocaleString()}, suggesting your assessment implies a value $${Math.abs(stats.salesAnalysis.assessmentVsSalesGap).toLocaleString()} ${stats.salesAnalysis.assessmentVsSalesGap > 0 ? 'higher' : 'lower'} than market.`
+          : `Based on ${stats.salesAnalysis.salesCount} recent sales, your assessment appears reasonable compared to market data.`
+      } : null,
+      // Per-sqft analysis - critical for fair comparison of similar-sized properties
+      perSqftAnalysis: stats.perSqftAnalysis ? {
+        yourValuePerSqft: stats.perSqftAnalysis.subjectValuePerSqft,
+        medianValuePerSqft: stats.perSqftAnalysis.medianComparableValuePerSqft,
+        averageValuePerSqft: stats.perSqftAnalysis.averageComparableValuePerSqft,
+        percentAboveMedian: stats.perSqftAnalysis.percentDifferenceFromMedian,
+        comparablesUsed: stats.perSqftAnalysis.comparablesWithSqftData,
+        impliedFairValue: stats.perSqftAnalysis.impliedFairValue,
+        overvaluationAmount: stats.perSqftAnalysis.overvaluationBasedOnSqft,
+        // Human-readable summary
+        summary: stats.perSqftAnalysis.percentDifferenceFromMedian > 10
+          ? `Your property is assessed at $${stats.perSqftAnalysis.subjectValuePerSqft.toFixed(2)}/sqft, which is ${stats.perSqftAnalysis.percentDifferenceFromMedian.toFixed(1)}% higher than the median of $${stats.perSqftAnalysis.medianComparableValuePerSqft.toFixed(2)}/sqft for comparable properties. Based on this, your fair assessed value would be ~$${stats.perSqftAnalysis.impliedFairValue.toLocaleString()}, suggesting you may be overassessed by $${stats.perSqftAnalysis.overvaluationBasedOnSqft.toLocaleString()}.`
+          : `Your property is assessed at $${stats.perSqftAnalysis.subjectValuePerSqft.toFixed(2)}/sqft, which is in line with comparable properties (median: $${stats.perSqftAnalysis.medianComparableValuePerSqft.toFixed(2)}/sqft).`
+      } : null
     },
     comparables: formattedComparables,
+    // Comparable sales - actual recent sales of similar properties
+    comparableSales: comparableSales ? comparableSales.slice(0, 6).map(sale => ({
+      pin: sale.pinFormatted,
+      address: sale.address,
+      saleDate: sale.saleDate,
+      salePrice: sale.salePrice,
+      pricePerSqft: sale.pricePerSqft ? Math.round(sale.pricePerSqft) : null,
+      squareFootage: sale.squareFootage,
+      bedrooms: sale.bedrooms,
+      yearBuilt: sale.yearBuilt,
+      neighborhood: sale.neighborhood,
+      // Comparison to subject property
+      sqftDifference: sale.sqftDifferencePct ? `${sale.sqftDifferencePct > 0 ? '+' : ''}${Math.round(sale.sqftDifferencePct)}%` : null,
+      ageDifference: sale.ageDifferenceYears ? `${sale.ageDifferenceYears > 0 ? '+' : ''}${sale.ageDifferenceYears} years` : null,
+      priceDifferenceFromAssessed: sale.priceDifferenceFromAssessed ? Math.round(sale.priceDifferenceFromAssessed) : null,
+    })) : [],
     priorAppeals: {
       hasAppealed: priorAppeals.hasAppealed,
       lastAppealYear: priorAppeals.lastAppealYear,
