@@ -195,6 +195,17 @@ async function cacheProperty(property: NormalizedProperty): Promise<void> {
  * Map cached database record to NormalizedProperty
  */
 function mapCachedToProperty(cached: any): NormalizedProperty {
+  // Calculate assessment change if we have both current and prior values
+  const currentValue = cached.current_assessed_value;
+  const priorValue = cached.prior_assessed_value;
+  let assessmentChangeDollars: number | null = null;
+  let assessmentChangePercent: number | null = null;
+
+  if (currentValue !== null && priorValue !== null && priorValue > 0) {
+    assessmentChangeDollars = currentValue - priorValue;
+    assessmentChangePercent = Math.round(((currentValue - priorValue) / priorValue) * 1000) / 10; // Round to 1 decimal
+  }
+
   return {
     pin: cached.pin,
     pinFormatted: cached.pin_formatted || formatPin(cached.pin),
@@ -215,9 +226,11 @@ function mapCachedToProperty(cached: any): NormalizedProperty {
     basementType: cached.basement_type,
     garageType: cached.garage_type,
     assessmentYear: cached.assessment_year,
-    assessedValue: cached.current_assessed_value,
+    assessedValue: currentValue,
     marketValue: cached.current_market_value,
-    priorAssessedValue: cached.prior_assessed_value,
+    priorAssessedValue: priorValue,
     priorMarketValue: cached.prior_market_value,
+    assessmentChangeDollars,
+    assessmentChangePercent,
   };
 }

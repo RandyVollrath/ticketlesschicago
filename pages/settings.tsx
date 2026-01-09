@@ -763,7 +763,7 @@ export default function SettingsPage() {
       setHomeState('IL'); // Chicago is in IL
       setHomeZip(profileData.zip_code || '');
       setMailingAddress1(profileData.mailing_address || '');
-      setMailingAddress2(''); // user_profiles doesn't have line2, will be added
+      setMailingAddress2(profileData.mailing_address_2 || '');
       setMailingCity(profileData.mailing_city || '');
       setMailingState(profileData.mailing_state || 'IL');
       setMailingZip(profileData.mailing_zip || '');
@@ -927,6 +927,7 @@ export default function SettingsPage() {
         city: homeCity || 'chicago',
         zip_code: homeZip || null,
         mailing_address: mailingAddress1 || null,
+        mailing_address_2: mailingAddress2 || null,
         mailing_city: mailingCity || null,
         mailing_state: mailingState || 'IL',
         mailing_zip: mailingZip || null,
