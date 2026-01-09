@@ -1093,22 +1093,19 @@ export default function SettingsPage() {
         setWardLookupStatus('success');
         setWardLookupMessage(`Ward ${data.ward}, Section ${data.section}`);
       } else if (data.valid && !data.ward) {
-        // Address is valid but not in a street cleaning zone - clear old ward/section
-        setWard(null);
-        setSection('');
+        // Address is valid but not in a street cleaning zone
+        // Only clear if we don't have existing data from database
+        if (!ward) setWard(null);
+        if (!section) setSection('');
         setWardLookupStatus('error');
         setWardLookupMessage(data.message || 'Address not in a street cleaning zone');
       } else {
-        // Address validation failed - clear old ward/section to avoid stale data
-        setWard(null);
-        setSection('');
+        // Address validation failed - keep existing ward/section if we have them
         setWardLookupStatus('error');
         setWardLookupMessage(data.message || 'Could not verify address');
       }
     } catch (error) {
-      // Network error - clear old ward/section to avoid stale data
-      setWard(null);
-      setSection('');
+      // Network error - keep existing ward/section, just show error message
       setWardLookupStatus('error');
       setWardLookupMessage('Error looking up address. Please try again.');
     }
