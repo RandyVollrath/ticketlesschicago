@@ -157,6 +157,7 @@ export default function SettingsPage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [hasActivePlates, setHasActivePlates] = useState(false);
+  const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
 
   // Account Info
   const [firstName, setFirstName] = useState('');
@@ -233,6 +234,13 @@ export default function SettingsPage() {
     // Check if this is a new user welcome flow
     if (router.query.welcome === 'true') {
       setShowWelcome(true);
+    }
+
+    // Check if user just completed checkout successfully
+    if (router.query.checkout === 'success') {
+      setShowCheckoutSuccess(true);
+      // Clear the query param from URL without reload
+      router.replace('/settings', undefined, { shallow: true });
     }
 
     // Load profile from user_profiles - single source of truth
@@ -523,15 +531,24 @@ export default function SettingsPage() {
         setWardLookupStatus('success');
         setWardLookupMessage(`Ward ${data.ward}, Section ${data.section}`);
       } else if (data.valid && !data.ward) {
+        // Address is valid but not in a street cleaning zone - clear old ward/section
+        setWard(null);
+        setSection('');
         setWardLookupStatus('error');
         setWardLookupMessage(data.message || 'Address not in a street cleaning zone');
       } else {
+        // Address validation failed - clear old ward/section to avoid stale data
+        setWard(null);
+        setSection('');
         setWardLookupStatus('error');
         setWardLookupMessage(data.message || 'Could not verify address');
       }
     } catch (error) {
+      // Network error - clear old ward/section to avoid stale data
+      setWard(null);
+      setSection('');
       setWardLookupStatus('error');
-      setWardLookupMessage('Error looking up address');
+      setWardLookupMessage('Error looking up address. Please try again.');
     }
   };
 
@@ -931,68 +948,103 @@ export default function SettingsPage() {
 
         {/* Vehicle Information */}
         <Card title="Vehicle Information">
-          <div style={{ marginBottom: 20 }}>
-            <label style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 600,
-              color: isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.textMuted,
-              marginBottom: 8,
-              textTransform: 'uppercase',
-            }}>
-              License Plate {isPaidUser && <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>}
-            </label>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              border: `2px solid ${isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.primary}`,
-              borderRadius: 8,
-              padding: 4,
-              backgroundColor: '#fff',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}>
-              <select
-                value={plateState}
-                onChange={(e) => setPlateState(e.target.value)}
-                style={{
-                  backgroundColor: COLORS.primary,
-                  color: '#fff',
-                  fontSize: 11,
-                  padding: '6px 8px',
-                  borderRadius: 4,
-                  border: 'none',
-                  fontWeight: 700,
-                  marginRight: 8,
-                  cursor: 'pointer',
-                }}
-              >
-                {US_STATES.map(s => (
-                  <option key={s.code} value={s.code}>{s.code}</option>
-                ))}
-              </select>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-start' }}>
+            {/* License Plate */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 600,
+                color: isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.textMuted,
+                marginBottom: 8,
+                textTransform: 'uppercase',
+              }}>
+                License Plate {isPaidUser && <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>}
+              </label>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                border: `2px solid ${isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.primary}`,
+                borderRadius: 8,
+                padding: 4,
+                backgroundColor: '#fff',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}>
+                <select
+                  value={plateState}
+                  onChange={(e) => setPlateState(e.target.value)}
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    color: '#fff',
+                    fontSize: 11,
+                    padding: '6px 8px',
+                    borderRadius: 4,
+                    border: 'none',
+                    fontWeight: 700,
+                    marginRight: 8,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {US_STATES.map(s => (
+                    <option key={s.code} value={s.code}>{s.code}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={plateNumber}
+                  onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+                  placeholder="ABC1234"
+                  style={{
+                    border: 'none',
+                    fontSize: 22,
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    color: COLORS.primary,
+                    width: 130,
+                    outline: 'none',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                />
+              </div>
+              {isPaidUser && !plateNumber.trim() && (
+                <p style={{ margin: '8px 0 0', fontSize: 12, color: COLORS.danger }}>
+                  Required for ticket monitoring
+                </p>
+              )}
+            </div>
+
+            {/* VIN */}
+            <div style={{ flex: '1 1 200px', maxWidth: 280 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.textMuted,
+                marginBottom: 8,
+                textTransform: 'uppercase',
+              }}>
+                VIN (optional)
+              </label>
               <input
                 type="text"
-                value={plateNumber}
-                onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                placeholder="ABC1234"
+                value={vin}
+                onChange={(e) => setVin(e.target.value.toUpperCase())}
+                placeholder="1HGBH41JXMN109186"
+                maxLength={17}
                 style={{
-                  border: 'none',
-                  fontSize: 22,
-                  fontFamily: 'monospace',
-                  fontWeight: 700,
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 14,
                   color: COLORS.primary,
-                  width: 130,
-                  outline: 'none',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  backgroundColor: COLORS.bgLight,
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace',
                 }}
               />
             </div>
-            {isPaidUser && !plateNumber.trim() && (
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: COLORS.danger }}>
-                Required for ticket monitoring
-              </p>
-            )}
           </div>
 
           <div style={{ marginBottom: 16 }}>
@@ -1012,39 +1064,6 @@ export default function SettingsPage() {
               />
               Leased or company vehicle
             </label>
-          </div>
-
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
-                VIN (optional)
-              </label>
-              <input
-                type="text"
-                value={vin}
-                onChange={(e) => setVin(e.target.value.toUpperCase())}
-                placeholder="1HGBH41JXMN109186"
-                maxLength={17}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                  fontFamily: 'monospace',
-                }}
-              />
-            </div>
           </div>
         </Card>
 
@@ -1908,6 +1927,148 @@ export default function SettingsPage() {
           </div>
         </Card>
       </main>
+
+      {/* Checkout Success Modal */}
+      {showCheckoutSuccess && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 20,
+        }}>
+          <div style={{
+            backgroundColor: COLORS.white,
+            borderRadius: 16,
+            maxWidth: 500,
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+          }}>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              padding: '32px 24px',
+              textAlign: 'center',
+              color: COLORS.white,
+            }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <h2 style={{ margin: 0, fontSize: 24, fontFamily: FONTS.heading }}>
+                Welcome to Autopilot!
+              </h2>
+              <p style={{ margin: '8px 0 0', opacity: 0.9, fontSize: 15 }}>
+                Your subscription is now active
+              </p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: 24 }}>
+              <h3 style={{
+                margin: '0 0 16px',
+                fontSize: 18,
+                fontWeight: 600,
+                color: COLORS.primary,
+              }}>
+                Complete your profile to get started:
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  borderRadius: 8,
+                  backgroundColor: lastName.trim() ? COLORS.successLight : '#FEF2F2',
+                  border: `1px solid ${lastName.trim() ? '#10B981' : COLORS.danger}`,
+                }}>
+                  <span style={{ fontSize: 20 }}>{lastName.trim() ? '✓' : '1'}</span>
+                  <div>
+                    <strong>Add your last name</strong>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: COLORS.textMuted }}>
+                      Required for searching Chicago ticket records
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  borderRadius: 8,
+                  backgroundColor: plateNumber.trim() ? COLORS.successLight : '#FEF2F2',
+                  border: `1px solid ${plateNumber.trim() ? '#10B981' : COLORS.danger}`,
+                }}>
+                  <span style={{ fontSize: 20 }}>{plateNumber.trim() ? '✓' : '2'}</span>
+                  <div>
+                    <strong>Add your license plate</strong>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: COLORS.textMuted }}>
+                      Required for automatic ticket monitoring
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  borderRadius: 8,
+                  backgroundColor: mailingAddress.trim() ? COLORS.successLight : COLORS.warningLight,
+                  border: `1px solid ${mailingAddress.trim() ? '#10B981' : '#F59E0B'}`,
+                }}>
+                  <span style={{ fontSize: 20 }}>{mailingAddress.trim() ? '✓' : '3'}</span>
+                  <div>
+                    <strong>Add your mailing address</strong>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: COLORS.textMuted }}>
+                      Needed for mailing contest letters (optional until first ticket)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                marginTop: 20,
+                padding: 16,
+                backgroundColor: COLORS.bgSection,
+                borderRadius: 8,
+              }}>
+                <p style={{ margin: 0, fontSize: 14, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                  <strong style={{ color: COLORS.primary }}>What happens next?</strong><br />
+                  We check your plates for tickets twice weekly. When we find one, we automatically
+                  generate and mail a contest letter on your behalf. You will be notified via email
+                  at each step.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowCheckoutSuccess(false)}
+                style={{
+                  width: '100%',
+                  marginTop: 20,
+                  padding: '14px 24px',
+                  backgroundColor: COLORS.primary,
+                  color: COLORS.white,
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Complete My Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

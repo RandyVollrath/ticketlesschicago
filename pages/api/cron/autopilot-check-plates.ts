@@ -1,10 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Chicago Data Portal API for parking tickets
 const CHICAGO_TICKETS_API = 'https://data.cityofchicago.org/resource/rvjx-6vbp.json';
@@ -101,12 +104,20 @@ async function fetchChicagoTickets(plate: string, state: string): Promise<Chicag
   }
 }
 
+interface FoundTicket {
+  ticket_number: string;
+  violation_description: string;
+  amount: number;
+  plate: string;
+}
+
 /**
  * Process a single plate - check for new tickets
  */
-async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number; errors: string[] }> {
+async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number; errors: string[]; ticketDetails: FoundTicket[] }> {
   const errors: string[] = [];
   let newTickets = 0;
+  const ticketDetails: FoundTicket[] = [];
 
   console.log(`  Checking plate ${plate.plate} (${plate.state})...`);
 
@@ -115,7 +126,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
   if (chicagoTickets.length === 0) {
     console.log(`    No tickets found`);
-    return { newTickets: 0, errors };
+    return { newTickets: 0, errors, ticketDetails };
   }
 
   console.log(`    Found ${chicagoTickets.length} tickets in Chicago database`);
@@ -181,6 +192,12 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
       errors.push(`Failed to insert ticket ${ticket.ticket_number}: ${insertError.message}`);
     } else {
       newTickets++;
+      ticketDetails.push({
+        ticket_number: ticket.ticket_number,
+        violation_description: ticket.violation_description,
+        amount,
+        plate: plate.plate,
+      });
       console.log(`    NEW: ${ticket.ticket_number} - ${ticket.violation_description} - $${amount}`);
 
       // Log to audit
@@ -206,13 +223,17 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     .update({ last_checked_at: new Date().toISOString() })
     .eq('id', plate.id);
 
-  return { newTickets, errors };
+  return { newTickets, errors, ticketDetails };
 }
 
 /**
  * Send notification email for new tickets
  */
-async function sendTicketNotifications(userId: string, ticketCount: number): Promise<void> {
+async function sendTicketNotifications(
+  userId: string,
+  ticketCount: number,
+  tickets: Array<{ ticket_number: string; violation_description: string; amount: number; plate: string }>
+): Promise<void> {
   // Get user settings
   const { data: settings } = await supabaseAdmin
     .from('autopilot_settings')
@@ -221,17 +242,122 @@ async function sendTicketNotifications(userId: string, ticketCount: number): Pro
     .single();
 
   if (!settings?.email_on_ticket_found) {
+    console.log(`  User ${userId} has email_on_ticket_found disabled, skipping notification`);
     return;
   }
 
-  // Get user email
+  // Get user email and profile
   const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
   if (!userData?.user?.email) {
+    console.log(`  User ${userId} has no email, skipping notification`);
     return;
   }
 
-  // TODO: Send email via Resend
-  console.log(`  Would send email to ${userData.user.email}: ${ticketCount} new tickets found`);
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('first_name')
+    .eq('user_id', userId)
+    .single();
+
+  const firstName = profile?.first_name || 'there';
+  const email = userData.user.email;
+
+  if (!resend) {
+    console.log(`  RESEND not configured, would send to ${email}: ${ticketCount} new tickets found`);
+    return;
+  }
+
+  try {
+    // Build ticket list HTML
+    const ticketListHtml = tickets.map(t => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0;">${t.ticket_number}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0;">${t.plate}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0;">${t.violation_description}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0; text-align: right;">$${t.amount.toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    const totalAmount = tickets.reduce((sum, t) => sum + t.amount, 0);
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 24px;">🎫 New Tickets Detected!</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">Autopilot found ${ticketCount} new ticket${ticketCount > 1 ? 's' : ''} on your account</p>
+        </div>
+
+        <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="margin: 0 0 20px; font-size: 16px; color: #374151;">
+            Hi ${firstName},
+          </p>
+
+          <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
+            We found ${ticketCount} new parking ticket${ticketCount > 1 ? 's' : ''} associated with your license plate${tickets.length > 1 && new Set(tickets.map(t => t.plate)).size > 1 ? 's' : ''}.
+            ${ticketCount === 1 ? "Don't worry - we're on it!" : "Don't worry - we're working on all of them!"}
+          </p>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+            <thead>
+              <tr style="background: #F8FAFC;">
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #E2E8F0;">Ticket #</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #E2E8F0;">Plate</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #E2E8F0;">Violation</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #E2E8F0;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ticketListHtml}
+            </tbody>
+            <tfoot>
+              <tr style="background: #F8FAFC; font-weight: bold;">
+                <td colspan="3" style="padding: 12px;">Total</td>
+                <td style="padding: 12px; text-align: right;">$${totalAmount.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div style="background: #EFF6FF; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="margin: 0 0 8px; font-size: 16px; color: #1E40AF;">What happens next?</h3>
+            <ol style="margin: 0; padding-left: 20px; color: #1E40AF; font-size: 14px; line-height: 1.6;">
+              <li>We generate a personalized contest letter for each ticket</li>
+              <li>The letter is automatically mailed to Chicago's Department of Finance</li>
+              <li>You'll receive an email confirmation when each letter is mailed</li>
+              <li>Wait 2-4 weeks for the city's decision</li>
+            </ol>
+          </div>
+
+          <div style="text-align: center; margin-bottom: 20px;">
+            <a href="https://autopilotamerica.com/settings"
+               style="display: inline-block; background: #0F172A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">
+              View Your Dashboard
+            </a>
+          </div>
+
+          <p style="margin: 0; font-size: 13px; color: #9CA3AF; text-align: center;">
+            Questions? Reply to this email or contact support@autopilotamerica.com
+          </p>
+        </div>
+
+        <p style="margin: 20px 0 0; font-size: 12px; color: #9CA3AF; text-align: center;">
+          You're receiving this because you have Autopilot ticket monitoring enabled.<br>
+          <a href="https://autopilotamerica.com/settings" style="color: #6B7280;">Manage notification preferences</a>
+        </p>
+      </div>
+    `;
+
+    await resend.emails.send({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: [email],
+      subject: `🎫 ${ticketCount} New Ticket${ticketCount > 1 ? 's' : ''} Found - We're On It!`,
+      html,
+    });
+
+    console.log(`  ✅ Sent ticket notification email to ${email}`);
+
+  } catch (error) {
+    console.error(`  ❌ Failed to send ticket notification to ${email}:`, error);
+  }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -294,15 +420,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let totalNewTickets = 0;
     const allErrors: string[] = [];
     const userTicketCounts: Record<string, number> = {};
+    const userTicketDetails: Record<string, FoundTicket[]> = {};
 
     // Process each plate
     for (const plate of plates) {
-      const { newTickets, errors } = await processPlate(plate as MonitoredPlate);
+      const { newTickets, errors, ticketDetails } = await processPlate(plate as MonitoredPlate);
       totalNewTickets += newTickets;
       allErrors.push(...errors);
 
       if (newTickets > 0) {
         userTicketCounts[plate.user_id] = (userTicketCounts[plate.user_id] || 0) + newTickets;
+        userTicketDetails[plate.user_id] = [
+          ...(userTicketDetails[plate.user_id] || []),
+          ...ticketDetails,
+        ];
       }
 
       // Rate limit: 500ms between plates
@@ -311,7 +442,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Send notifications
     for (const [userId, count] of Object.entries(userTicketCounts)) {
-      await sendTicketNotifications(userId, count);
+      await sendTicketNotifications(userId, count, userTicketDetails[userId] || []);
     }
 
     console.log(`✅ Complete: ${plates.length} plates checked, ${totalNewTickets} new tickets found`);

@@ -80,7 +80,8 @@ async function geocodeAddress(address: string): Promise<{
 
   const googleApiKey = process.env.GOOGLE_API_KEY;
   if (!googleApiKey) {
-    return { success: false, error: 'Geocoding service unavailable' };
+    console.error('GOOGLE_API_KEY not configured');
+    return { success: false, error: 'Address verification service temporarily unavailable. Please try again later.' };
   }
 
   // Always add Chicago context for better results
@@ -95,11 +96,24 @@ async function geocodeAddress(address: string): Promise<{
     const data = await response.json();
 
     if (data.status !== 'OK' || !data.results?.length) {
+      let errorMessage = 'Unable to verify address. Please try again.';
+
+      if (data.status === 'ZERO_RESULTS') {
+        errorMessage = 'Address not found. Please check the spelling and try again.';
+      } else if (data.status === 'REQUEST_DENIED') {
+        console.error('Google Geocode API key issue:', data.error_message);
+        errorMessage = 'Address verification service temporarily unavailable.';
+      } else if (data.status === 'OVER_QUERY_LIMIT') {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      } else if (data.status === 'INVALID_REQUEST') {
+        errorMessage = 'Invalid address format. Please enter a complete street address.';
+      }
+
+      console.log('Geocode failed:', data.status, data.error_message);
+
       const result = {
         success: false,
-        error: data.status === 'ZERO_RESULTS'
-          ? 'Address not found. Please check the spelling and try again.'
-          : 'Unable to verify address. Please try again.'
+        error: errorMessage
       };
       geocodeCache.set(cacheKey, { result, timestamp: Date.now() });
       return result;
@@ -148,13 +162,25 @@ async function lookupWardSection(lat: number, lng: number): Promise<{
   ward?: number;
   section?: string;
 }> {
+  // Check if MSC Supabase is configured
+  if (!process.env.MSC_SUPABASE_ANON_KEY) {
+    console.warn('MSC_SUPABASE_ANON_KEY not configured - ward/section lookup unavailable');
+    return { found: false };
+  }
+
   try {
     const { data, error } = await mscSupabase.rpc('find_section_for_point', {
       lon: lng,
       lat: lat
     });
 
-    if (error || !data?.length) {
+    if (error) {
+      console.error('Ward/section lookup error:', error.message);
+      return { found: false };
+    }
+
+    if (!data?.length) {
+      console.log(`No ward/section found for coordinates (${lat}, ${lng})`);
       return { found: false };
     }
 
@@ -163,7 +189,8 @@ async function lookupWardSection(lat: number, lng: number): Promise<{
       ward: data[0].ward,
       section: data[0].section
     };
-  } catch {
+  } catch (err) {
+    console.error('Ward/section lookup exception:', err);
     return { found: false };
   }
 }
