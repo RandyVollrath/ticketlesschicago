@@ -70,6 +70,494 @@ const TICKET_TYPES = [
 
 const NOTIFICATION_DAYS = [30, 14, 7, 3, 1, 0];
 
+// Dashboard-related types and constants
+interface DashboardTicket {
+  id: string;
+  plate: string;
+  state: string;
+  ticket_number: string | null;
+  violation_type: string;
+  violation_date: string | null;
+  amount: number | null;
+  location: string | null;
+  status: string;
+  skip_reason: string | null;
+  found_at: string;
+}
+
+interface AutopilotSubscription {
+  status: string;
+  current_period_end: string | null;
+}
+
+const VIOLATION_LABELS: Record<string, string> = {
+  expired_plates: 'Expired Plates',
+  no_city_sticker: 'No City Sticker',
+  expired_meter: 'Expired Meter',
+  disabled_zone: 'Disabled Zone',
+  street_cleaning: 'Street Cleaning',
+  rush_hour: 'Rush Hour',
+  fire_hydrant: 'Fire Hydrant',
+  red_light: 'Red Light Camera',
+  speed_camera: 'Speed Camera',
+  other_unknown: 'Other',
+};
+
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  found: { label: 'Found', color: COLORS.highlight, bg: 'rgba(249, 115, 22, 0.1)' },
+  letter_generated: { label: 'Letter Ready', color: COLORS.accent, bg: 'rgba(16, 185, 129, 0.1)' },
+  pending_evidence: { label: 'Awaiting Evidence', color: COLORS.highlight, bg: 'rgba(249, 115, 22, 0.1)' },
+  ready: { label: 'Ready to Mail', color: COLORS.accent, bg: 'rgba(16, 185, 129, 0.1)' },
+  needs_approval: { label: 'Needs Approval', color: COLORS.danger, bg: 'rgba(239, 68, 68, 0.1)' },
+  approved: { label: 'Approved', color: COLORS.accent, bg: 'rgba(16, 185, 129, 0.1)' },
+  mailed: { label: 'Mailed', color: COLORS.accent, bg: 'rgba(16, 185, 129, 0.1)' },
+  skipped: { label: 'Skipped', color: COLORS.textMuted, bg: 'rgba(100, 116, 139, 0.1)' },
+  failed: { label: 'Failed', color: COLORS.danger, bg: 'rgba(239, 68, 68, 0.1)' },
+};
+
+function TabNavigation({ activeTab, onTabChange }: { activeTab: 'dashboard' | 'settings'; onTabChange: (tab: 'dashboard' | 'settings') => void }) {
+  return (
+    <div style={{
+      display: 'flex',
+      gap: 0,
+      marginBottom: 24,
+      backgroundColor: COLORS.white,
+      borderRadius: 12,
+      padding: 6,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    }}>
+      <button
+        onClick={() => onTabChange('dashboard')}
+        style={{
+          flex: 1,
+          padding: '14px 24px',
+          fontSize: 16,
+          fontWeight: 700,
+          fontFamily: FONTS.heading,
+          backgroundColor: activeTab === 'dashboard' ? COLORS.primary : 'transparent',
+          border: 'none',
+          borderRadius: 8,
+          color: activeTab === 'dashboard' ? COLORS.textLight : COLORS.textMuted,
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+      >
+        <span style={{ fontSize: 18 }}>📊</span>
+        Dashboard
+      </button>
+      <button
+        onClick={() => onTabChange('settings')}
+        style={{
+          flex: 1,
+          padding: '14px 24px',
+          fontSize: 16,
+          fontWeight: 700,
+          fontFamily: FONTS.heading,
+          backgroundColor: activeTab === 'settings' ? COLORS.primary : 'transparent',
+          border: 'none',
+          borderRadius: 8,
+          color: activeTab === 'settings' ? COLORS.textLight : COLORS.textMuted,
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+      >
+        <span style={{ fontSize: 18 }}>⚙️</span>
+        Settings
+      </button>
+    </div>
+  );
+}
+
+function StatCard({ label, value, subtext, color }: { label: string; value: string | number; subtext?: string; color?: string }) {
+  return (
+    <div style={{
+      backgroundColor: COLORS.white,
+      borderRadius: 12,
+      border: `1px solid ${COLORS.border}`,
+      padding: 20,
+      flex: '1 1 150px',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    }}>
+      <p style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: COLORS.textMuted,
+        margin: '0 0 8px 0',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
+      }}>
+        {label}
+      </p>
+      <p style={{
+        fontSize: 32,
+        fontWeight: 700,
+        color: color || COLORS.primary,
+        margin: 0,
+        fontFamily: FONTS.heading,
+      }}>
+        {value}
+      </p>
+      {subtext && (
+        <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '6px 0 0 0' }}>
+          {subtext}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DashboardContent({
+  tickets,
+  platesMonitored,
+  nextCheckDate,
+  subscription,
+  isPaidUser,
+}: {
+  tickets: DashboardTicket[];
+  platesMonitored: number;
+  nextCheckDate: string;
+  subscription: AutopilotSubscription | null;
+  isPaidUser: boolean;
+}) {
+  const ticketsFound = tickets.length;
+  const lettersMailed = tickets.filter(t => t.status === 'mailed').length;
+  const needsApproval = tickets.filter(t => t.status === 'needs_approval');
+  const avgTicketAmount = tickets.length > 0
+    ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / Math.max(tickets.filter(t => t.amount).length, 1))
+    : 0;
+  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.54);
+
+  if (!isPaidUser) {
+    return (
+      <div style={{
+        backgroundColor: COLORS.white,
+        borderRadius: 16,
+        padding: 48,
+        textAlign: 'center',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+      }}>
+        <div style={{
+          width: 80,
+          height: 80,
+          borderRadius: '50%',
+          backgroundColor: `${COLORS.highlight}20`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          fontSize: 40,
+        }}>
+          🚀
+        </div>
+
+        <h2 style={{
+          fontFamily: FONTS.heading,
+          fontSize: 28,
+          fontWeight: 700,
+          margin: '0 0 16px',
+          color: COLORS.primary,
+        }}>
+          Upgrade to Autopilot
+        </h2>
+
+        <p style={{
+          fontSize: 16,
+          color: COLORS.textMuted,
+          margin: '0 0 32px',
+          maxWidth: 500,
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          lineHeight: 1.6,
+        }}>
+          You're using the <strong>Free</strong> tier. Upgrade to Autopilot for automatic ticket detection and contesting.
+        </p>
+
+        <div style={{
+          backgroundColor: COLORS.bgSection,
+          borderRadius: 12,
+          padding: 24,
+          marginBottom: 32,
+          textAlign: 'left',
+        }}>
+          <h3 style={{
+            fontFamily: FONTS.heading,
+            fontSize: 16,
+            margin: '0 0 16px',
+            color: COLORS.primary,
+          }}>
+            What you'll get:
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[
+              'Automatic weekly ticket detection',
+              'AI-generated contest letters (54% win rate)',
+              'Automatic mailing with delivery tracking',
+              'Full dashboard with ticket history',
+              'Email notifications on ticket status',
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span style={{ fontSize: 14, color: COLORS.textDark, flex: 1 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            fontSize: 42,
+            fontWeight: 800,
+            fontFamily: FONTS.heading,
+            color: COLORS.primary,
+            marginBottom: 4,
+          }}>
+            $24<span style={{ fontSize: 18, color: COLORS.textMuted }}>/year</span>
+          </div>
+          <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>
+            Less than $2/month. Cancel anytime.
+          </p>
+        </div>
+
+        <Link href="/get-started" style={{
+          display: 'inline-block',
+          padding: '14px 36px',
+          borderRadius: 8,
+          backgroundColor: COLORS.highlight,
+          color: '#fff',
+          fontSize: 16,
+          fontWeight: 700,
+          textDecoration: 'none',
+          boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
+        }}>
+          Upgrade to Autopilot
+        </Link>
+      </div>
+    );
+  }
+
+  // Paid user dashboard
+  return (
+    <>
+      {/* Stats Row */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <StatCard label="Plates" value={platesMonitored} />
+        <StatCard label="Tickets Found" value={ticketsFound} subtext="All time" />
+        <StatCard label="Letters Mailed" value={lettersMailed} subtext="All time" />
+        <StatCard
+          label="Estimated Savings"
+          value={`$${estimatedSavings}`}
+          color={COLORS.accent}
+          subtext="Based on 54% win rate"
+        />
+        <StatCard label="Next Check" value={nextCheckDate} />
+      </div>
+
+      {/* Needs Approval Alert */}
+      {needsApproval.length > 0 && (
+        <div style={{
+          backgroundColor: '#FEE2E2',
+          border: `2px solid ${COLORS.danger}`,
+          borderRadius: 12,
+          padding: '20px 24px',
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+        }}>
+          <div style={{ fontSize: 32 }}>⚠️</div>
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: '0 0 8px', color: COLORS.danger, fontWeight: 700, fontSize: 16, fontFamily: FONTS.heading }}>
+              {needsApproval.length} ticket{needsApproval.length > 1 ? 's' : ''} need{needsApproval.length === 1 ? 's' : ''} your approval
+            </h4>
+            <p style={{ margin: 0, fontSize: 14, color: '#991B1B' }}>
+              Review and approve the contest letters below before they can be mailed.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Tickets */}
+      <Card title="Recent Tickets" badge={
+        tickets.length > 0 && (
+          <span style={{ fontSize: 12, color: COLORS.textMuted }}>
+            {tickets.length} total
+          </span>
+        )
+      }>
+        {tickets.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+            <h4 style={{
+              margin: '0 0 8px',
+              fontSize: 18,
+              fontWeight: 600,
+              color: COLORS.primary,
+              fontFamily: FONTS.heading
+            }}>
+              No tickets found yet
+            </h4>
+            <p style={{ color: COLORS.textMuted, fontSize: 14, margin: 0, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+              We check your plate weekly. You'll be notified immediately when a ticket is detected.
+            </p>
+          </div>
+        ) : (
+          <div>
+            {tickets.map((ticket, index) => {
+              const statusInfo = STATUS_LABELS[ticket.status] || STATUS_LABELS.found;
+              return (
+                <div
+                  key={ticket.id}
+                  style={{
+                    padding: '16px 0',
+                    borderBottom: index < tickets.length - 1 ? `1px solid ${COLORS.border}` : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 16,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 250 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                      <span style={{
+                        fontFamily: 'monospace',
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: COLORS.primary,
+                        backgroundColor: COLORS.bgSection,
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                      }}>
+                        {ticket.state} {ticket.plate}
+                      </span>
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: 20,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        backgroundColor: statusInfo.bg,
+                        color: statusInfo.color,
+                      }}>
+                        {statusInfo.label}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 14, color: COLORS.textMuted }}>
+                      {VIOLATION_LABELS[ticket.violation_type] || ticket.violation_type}
+                      {ticket.amount && <span style={{ fontWeight: 600 }}> • ${ticket.amount}</span>}
+                      {ticket.violation_date && ` • ${new Date(ticket.violation_date).toLocaleDateString()}`}
+                    </div>
+                    {ticket.location && (
+                      <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>
+                        {ticket.location}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {ticket.status === 'needs_approval' && (
+                      <Link href={`/tickets/${ticket.id}`} style={{
+                        padding: '8px 16px',
+                        borderRadius: 6,
+                        backgroundColor: COLORS.primary,
+                        color: COLORS.white,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                      }}>
+                        Review & Approve
+                      </Link>
+                    )}
+                    <Link href={`/tickets/${ticket.id}`} style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      border: `1px solid ${COLORS.border}`,
+                      backgroundColor: 'transparent',
+                      color: COLORS.textDark,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                    }}>
+                      View Details
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* Subscription Info */}
+      {subscription && (
+        <Card title="Subscription" badge={
+          <span style={{
+            padding: '4px 10px',
+            fontSize: 11,
+            fontWeight: 700,
+            backgroundColor: COLORS.successLight,
+            color: COLORS.accent,
+            borderRadius: 4,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}>
+            ACTIVE
+          </span>
+        }>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{
+              flex: '1 1 180px',
+              padding: 20,
+              backgroundColor: COLORS.bgLight,
+              borderRadius: 10,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Plan</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
+                $24/year
+              </div>
+            </div>
+            <div style={{
+              flex: '1 1 180px',
+              padding: 20,
+              backgroundColor: COLORS.bgLight,
+              borderRadius: 10,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Next Billing</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
+                {subscription.current_period_end
+                  ? new Date(subscription.current_period_end).toLocaleDateString()
+                  : 'N/A'}
+              </div>
+            </div>
+            <div style={{
+              flex: '1 1 180px',
+              padding: 20,
+              backgroundColor: COLORS.successLight,
+              borderRadius: 10,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 12, color: COLORS.accent, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Letters</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.accent, fontFamily: FONTS.heading }}>
+                Unlimited
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </>
+  );
+}
+
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
   return (
     <button
@@ -214,6 +702,13 @@ export default function SettingsPage() {
   const [emailOnLetterMailed, setEmailOnLetterMailed] = useState(true);
   const [emailOnApprovalNeeded, setEmailOnApprovalNeeded] = useState(true);
 
+  // Dashboard Tab State
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'settings'>('dashboard');
+  const [dashboardTickets, setDashboardTickets] = useState<DashboardTicket[]>([]);
+  const [platesMonitored, setPlatesMonitored] = useState(0);
+  const [nextCheckDate, setNextCheckDate] = useState('');
+  const [autopilotSubscription, setAutopilotSubscription] = useState<AutopilotSubscription | null>(null);
+
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
 
@@ -335,6 +830,73 @@ export default function SettingsPage() {
       setEmailOnTicketFound(settingsData.email_on_ticket_found);
       setEmailOnLetterMailed(settingsData.email_on_letter_mailed);
       setEmailOnApprovalNeeded(settingsData.email_on_approval_needed);
+    }
+
+    // Load dashboard data for ticket display
+    if (plateData && plateData.length > 0) {
+      setPlatesMonitored(plateData.length);
+
+      // Fetch detected tickets for this user
+      const { data: ticketData } = await supabase
+        .from('detected_tickets')
+        .select(`
+          id,
+          ticket_number,
+          violation_type,
+          violation_code,
+          violation_date,
+          amount,
+          location,
+          status,
+          skip_reason,
+          created_at,
+          user_id
+        `)
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (ticketData) {
+        const formattedTickets: DashboardTicket[] = ticketData.map(t => ({
+          id: t.id,
+          plate: plateData[0]?.plate || '',
+          state: plateData[0]?.state || 'IL',
+          ticket_number: t.ticket_number,
+          violation_type: t.violation_type || t.violation_code || 'other_unknown',
+          violation_date: t.violation_date,
+          amount: t.amount,
+          location: t.location,
+          status: t.status || 'found',
+          skip_reason: t.skip_reason,
+          found_at: t.created_at,
+        }));
+        setDashboardTickets(formattedTickets);
+      }
+
+      // Set next check date (next Monday or Thursday at 9 AM Central)
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      let daysUntilNext;
+      if (dayOfWeek < 1) daysUntilNext = 1; // Sunday -> Monday
+      else if (dayOfWeek < 4) daysUntilNext = 4 - dayOfWeek; // Mon-Wed -> Thursday
+      else daysUntilNext = 8 - dayOfWeek; // Thu-Sat -> next Monday
+      const nextCheck = new Date(now);
+      nextCheck.setDate(now.getDate() + daysUntilNext);
+      setNextCheckDate(nextCheck.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+
+      // Load subscription info
+      const { data: subData } = await supabase
+        .from('subscriptions')
+        .select('status, current_period_end')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (subData) {
+        setAutopilotSubscription({
+          status: subData.status,
+          current_period_end: subData.current_period_end,
+        });
+      }
     }
 
     setLoading(false);
@@ -612,14 +1174,6 @@ export default function SettingsPage() {
           </Link>
 
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <Link href="/dashboard" style={{
-              color: COLORS.textLight,
-              textDecoration: 'none',
-              fontSize: 14,
-              fontWeight: 500,
-            }}>
-              Dashboard
-            </Link>
             {saveStatus !== 'idle' && (
               <span style={{
                 fontSize: 12,
@@ -650,7 +1204,7 @@ export default function SettingsPage() {
             fontWeight: 700,
             margin: '0 0 6px',
           }}>
-            Settings
+            {activeTab === 'dashboard' ? 'Dashboard' : 'Settings'}
           </h1>
           <p style={{ margin: 0, opacity: 0.7, fontSize: 14 }}>{email}</p>
         </div>
@@ -780,7 +1334,7 @@ export default function SettingsPage() {
         )}
 
         {/* Upgrade CTA for Free Users (persistent, not welcome flow) */}
-        {!showWelcome && !isPaidUser && (
+        {!showWelcome && !isPaidUser && activeTab === 'settings' && (
           <div style={{
             backgroundColor: '#FFF7ED',
             borderRadius: 12,
@@ -824,6 +1378,23 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Tab Navigation */}
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {/* Dashboard Tab Content */}
+        {activeTab === 'dashboard' && (
+          <DashboardContent
+            tickets={dashboardTickets}
+            platesMonitored={platesMonitored}
+            nextCheckDate={nextCheckDate}
+            subscription={autopilotSubscription}
+            isPaidUser={isPaidUser}
+          />
+        )}
+
+        {/* Settings Tab Content */}
+        {activeTab === 'settings' && (
+          <>
         {/* Account Info */}
         <Card title="Account Info">
           <div style={{ marginBottom: 16 }}>
@@ -1926,6 +2497,8 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
+          </>
+        )}
       </main>
 
       {/* Checkout Success Modal */}
