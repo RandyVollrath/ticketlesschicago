@@ -298,16 +298,15 @@ export default function PropertyTax() {
     setSearchResults([]);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const body = lookupMethod === 'address'
         ? { address: addressInput }
         : { pin: pinInput };
 
+      // Lookup doesn't require auth - uses IP-based rate limiting
       const response = await fetch('/api/property-tax/lookup', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
       });
