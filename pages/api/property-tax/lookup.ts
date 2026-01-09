@@ -131,6 +131,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Property lookup error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Error details:', { message: errorMessage, stack: errorStack });
 
     // Check if it's a Cook County API error
     if (error instanceof Error && error.message.includes('SODA API')) {
@@ -139,8 +142,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Return more detail in non-production for debugging
     return res.status(500).json({
-      error: 'An error occurred while looking up the property. Please try again.'
+      error: 'An error occurred while looking up the property. Please try again.',
+      ...(process.env.NODE_ENV !== 'production' && { detail: errorMessage })
     });
   }
 }
