@@ -55,6 +55,20 @@ export default function AutopilotAdmin() {
     require_approval_all: false,
   });
 
+  // VA Stats
+  const [vaStats, setVaStats] = useState<{
+    totalExports: number;
+    totalPlatesExported: number;
+    lastExportDate: string | null;
+    exportsByMonth: { month: string; count: number; plates: number }[];
+  }>({
+    totalExports: 0,
+    totalPlatesExported: 0,
+    lastExportDate: null,
+    exportsByMonth: [],
+  });
+  const [selectedExportJob, setSelectedExportJob] = useState<any>(null);
+
   // VA email recipient
   const [vaEmail, setVaEmail] = useState('');
   const [vaEmailSaving, setVaEmailSaving] = useState(false);
@@ -85,13 +99,44 @@ export default function AutopilotAdmin() {
   };
 
   const loadData = async () => {
-    // Load export jobs
+    // Load export jobs (get more for stats)
     const { data: jobs } = await supabase
       .from('plate_export_jobs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(20);
-    if (jobs) setExportJobs(jobs);
+      .limit(100);
+    if (jobs) {
+      setExportJobs(jobs.slice(0, 20)); // Show only 20 in table
+
+      // Compute VA stats
+      const totalExports = jobs.length;
+      const totalPlatesExported = jobs.reduce((sum, j) => sum + (j.plate_count || 0), 0);
+      const lastExportDate = jobs[0]?.created_at || null;
+
+      // Group by month
+      const monthMap: Record<string, { count: number; plates: number }> = {};
+      jobs.forEach(job => {
+        const date = new Date(job.created_at);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthMap[monthKey]) {
+          monthMap[monthKey] = { count: 0, plates: 0 };
+        }
+        monthMap[monthKey].count++;
+        monthMap[monthKey].plates += job.plate_count || 0;
+      });
+
+      const exportsByMonth = Object.entries(monthMap)
+        .map(([month, data]) => ({ month, ...data }))
+        .sort((a, b) => b.month.localeCompare(a.month))
+        .slice(0, 6);
+
+      setVaStats({
+        totalExports,
+        totalPlatesExported,
+        lastExportDate,
+        exportsByMonth,
+      });
+    }
 
     // Load uploads
     const { data: uploadsData } = await supabase
@@ -317,8 +362,8 @@ export default function AutopilotAdmin() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {['export', 'upload', 'letters', 'settings'].map(tab => (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+          {['export', 'upload', 'va-stats', 'letters', 'settings'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -534,6 +579,177 @@ export default function AutopilotAdmin() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* VA Stats Tab */}
+        {activeTab === 'va-stats' && (
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            {/* Left column: Stats overview */}
+            <div style={{ flex: '1 1 400px' }}>
+              {/* Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
+                <div style={{ backgroundColor: COLORS.white, padding: 20, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
+                  <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Total Exports</p>
+                  <p style={{ fontSize: 32, fontWeight: 700, color: COLORS.regulatory, margin: 0 }}>{vaStats.totalExports}</p>
+                </div>
+                <div style={{ backgroundColor: COLORS.white, padding: 20, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
+                  <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Total Plates Exported</p>
+                  <p style={{ fontSize: 32, fontWeight: 700, color: COLORS.signal, margin: 0 }}>{vaStats.totalPlatesExported}</p>
+                </div>
+                <div style={{ backgroundColor: COLORS.white, padding: 20, borderRadius: 12, border: `1px solid ${COLORS.border}`, gridColumn: 'span 2' }}>
+                  <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Last Export</p>
+                  <p style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: 0 }}>
+                    {vaStats.lastExportDate
+                      ? new Date(vaStats.lastExportDate).toLocaleString('en-US', {
+                          weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+                        })
+                      : 'No exports yet'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Monthly breakdown */}
+              <div style={{ backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 16px 0' }}>
+                  Monthly Breakdown
+                </h3>
+                {vaStats.exportsByMonth.length === 0 ? (
+                  <p style={{ color: COLORS.slate }}>No export data available</p>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 13, color: COLORS.slate }}>Month</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 13, color: COLORS.slate }}>Exports</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 13, color: COLORS.slate }}>Plates</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 13, color: COLORS.slate }}>Avg/Export</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vaStats.exportsByMonth.map(({ month, count, plates }) => (
+                        <tr key={month} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+                          <td style={{ padding: '10px 12px', fontSize: 14, fontWeight: 500 }}>
+                            {new Date(month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                          </td>
+                          <td style={{ padding: '10px 12px', fontSize: 14, textAlign: 'right' }}>{count}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 14, textAlign: 'right', fontWeight: 600, color: COLORS.signal }}>{plates}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 14, textAlign: 'right', color: COLORS.slate }}>
+                            {count > 0 ? Math.round(plates / count) : 0}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Right column: Export details */}
+            <div style={{ flex: '1 1 500px' }}>
+              <div style={{ backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 16px 0' }}>
+                  Recent Exports - Click to view details
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+                  {exportJobs.map(job => (
+                    <div
+                      key={job.id}
+                      onClick={() => setSelectedExportJob(selectedExportJob?.id === job.id ? null : job)}
+                      style={{
+                        padding: 12,
+                        borderRadius: 8,
+                        border: `1px solid ${selectedExportJob?.id === job.id ? COLORS.regulatory : COLORS.border}`,
+                        backgroundColor: selectedExportJob?.id === job.id ? '#EFF6FF' : COLORS.concrete,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.deepHarbor, margin: 0 }}>
+                          {new Date(job.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </p>
+                        <p style={{ fontSize: 12, color: COLORS.slate, margin: '2px 0 0 0' }}>
+                          {new Date(job.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: 16, fontWeight: 600, color: COLORS.regulatory }}>{job.plate_count}</span>
+                        <span style={{ fontSize: 12, color: COLORS.slate, marginLeft: 4 }}>plates</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Selected export details */}
+                {selectedExportJob && (
+                  <div style={{ marginTop: 24, paddingTop: 24, borderTop: `1px solid ${COLORS.border}` }}>
+                    <h4 style={{ fontSize: 15, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 12px 0' }}>
+                      Export Details - {new Date(selectedExportJob.created_at).toLocaleDateString()}
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 16 }}>
+                      <div>
+                        <p style={{ fontSize: 12, color: COLORS.slate, margin: '0 0 2px 0' }}>Status</p>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: 20,
+                          fontSize: 12,
+                          backgroundColor: selectedExportJob.status === 'complete' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                          color: selectedExportJob.status === 'complete' ? COLORS.signal : COLORS.warning,
+                        }}>
+                          {selectedExportJob.status}
+                        </span>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 12, color: COLORS.slate, margin: '0 0 2px 0' }}>Email Sent</p>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.deepHarbor, margin: 0 }}>
+                          {selectedExportJob.email_sent_to_va ? 'Yes' : 'No'}
+                        </p>
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <p style={{ fontSize: 12, color: COLORS.slate, margin: '0 0 2px 0' }}>VA Email</p>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: COLORS.deepHarbor, margin: 0 }}>
+                          {selectedExportJob.va_email || 'Not set'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Exported plates breakdown */}
+                    {selectedExportJob.exported_plates && Array.isArray(selectedExportJob.exported_plates) && (
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
+                          Plates in this export ({selectedExportJob.exported_plates.length}):
+                        </p>
+                        <div style={{ maxHeight: 200, overflowY: 'auto', backgroundColor: COLORS.concrete, borderRadius: 8, padding: 12 }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                              <tr>
+                                <th style={{ textAlign: 'left', padding: '4px 8px', color: COLORS.slate }}>Plate</th>
+                                <th style={{ textAlign: 'left', padding: '4px 8px', color: COLORS.slate }}>State</th>
+                                <th style={{ textAlign: 'left', padding: '4px 8px', color: COLORS.slate }}>Name</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedExportJob.exported_plates.map((p: any, i: number) => (
+                                <tr key={i}>
+                                  <td style={{ padding: '4px 8px', fontWeight: 500 }}>{p.plate}</td>
+                                  <td style={{ padding: '4px 8px' }}>{p.state}</td>
+                                  <td style={{ padding: '4px 8px', color: COLORS.slate }}>
+                                    {p.first_name || p.last_name ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
