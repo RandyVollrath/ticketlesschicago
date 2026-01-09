@@ -299,18 +299,17 @@ export default function PropertyTax() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const params = new URLSearchParams();
+      const body = lookupMethod === 'address'
+        ? { address: addressInput }
+        : { pin: pinInput };
 
-      if (lookupMethod === 'address') {
-        params.set('address', addressInput);
-      } else {
-        params.set('pin', pinInput);
-      }
-
-      const response = await fetch(`/api/property-tax/lookup?${params}`, {
+      const response = await fetch('/api/property-tax/lookup', {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
-        }
+        },
+        body: JSON.stringify(body)
       });
 
       const data = await response.json();
