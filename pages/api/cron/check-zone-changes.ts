@@ -28,7 +28,7 @@ export default async function handler(
     const { data: users, error: usersError } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id, email, mailing_address, has_permit_zone, city_sticker_expiry')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .not('mailing_address', 'is', null);
 
     if (usersError) {

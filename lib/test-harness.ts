@@ -25,7 +25,7 @@ export interface TestUser {
   email: string;
   phone_number: string;
   license_plate: string;
-  has_protection: boolean;
+  has_contesting: boolean;
   has_permit_zone: boolean;
   city_sticker_expiry?: string;
   license_plate_expiry?: string;
@@ -64,7 +64,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-protection-30d@autopilottest.com',
         phone_number: '+15555550001',
         license_plate: 'TEST001',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: false,
         city_sticker_expiry: getFutureDate(30),
         notification_preferences: { sms: true, email: true, voice: false }
@@ -75,7 +75,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-free-30d@autopilottest.com',
         phone_number: '+15555550002',
         license_plate: 'TEST002',
-        has_protection: false,
+        has_contesting: false,
         has_permit_zone: false,
         city_sticker_expiry: getFutureDate(30),
         notification_preferences: { sms: true, email: true, voice: false }
@@ -86,7 +86,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-protection-14d@autopilottest.com',
         phone_number: '+15555550003',
         license_plate: 'TEST003',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: false,
         city_sticker_expiry: getFutureDate(14),
         notification_preferences: { sms: true, email: true, voice: false }
@@ -97,7 +97,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-permit-60d@autopilottest.com',
         phone_number: '+15555550004',
         license_plate: 'TEST004',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: true,
         permit_zone: 42,
         city_sticker_expiry: getFutureDate(60),
@@ -109,7 +109,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-license-7d@autopilottest.com',
         phone_number: '+15555550005',
         license_plate: 'TEST005',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: false,
         license_plate_expiry: getFutureDate(7),
         notification_preferences: { sms: true, email: true, voice: false }
@@ -120,7 +120,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-emissions-1d@autopilottest.com',
         phone_number: '+15555550006',
         license_plate: 'TEST006',
-        has_protection: false,
+        has_contesting: false,
         has_permit_zone: false,
         emissions_date: getFutureDate(1),
         notification_preferences: { sms: true, email: true, voice: false }
@@ -131,7 +131,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-no-phone@autopilottest.com',
         phone_number: null,
         license_plate: 'TEST007',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: false,
         city_sticker_expiry: getFutureDate(30),
         notification_preferences: { sms: true, email: true, voice: false }
@@ -142,7 +142,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-sms-disabled@autopilottest.com',
         phone_number: '+15555550008',
         license_plate: 'TEST008',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: false,
         city_sticker_expiry: getFutureDate(30),
         notification_preferences: { sms: false, email: true, voice: false }
@@ -153,7 +153,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-multiple@autopilottest.com',
         phone_number: '+15555550009',
         license_plate: 'TEST009',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: false,
         city_sticker_expiry: getFutureDate(30),
         license_plate_expiry: getFutureDate(30),
@@ -166,7 +166,7 @@ export async function generateTestUsers(): Promise<{
         email: 'test-dedup@autopilottest.com',
         phone_number: '+15555550010',
         license_plate: 'TEST010',
-        has_protection: true,
+        has_contesting: true,
         has_permit_zone: false,
         city_sticker_expiry: getFutureDate(30),
         notification_preferences: { sms: true, email: true, voice: false }
@@ -183,7 +183,7 @@ export async function generateTestUsers(): Promise<{
           phone_number: userData.phone_number,
           license_plate: userData.license_plate,
           license_state: 'IL',
-          has_protection: userData.has_protection,
+          has_contesting: userData.has_contesting,
           has_permit_zone: userData.has_permit_zone,
           permit_zone: userData.permit_zone,
           city_sticker_expiry: userData.city_sticker_expiry,

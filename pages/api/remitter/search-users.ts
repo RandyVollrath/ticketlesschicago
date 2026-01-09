@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let dbQuery = supabase
       .from('user_profiles')
       .select('*')
-      .eq('has_protection', true);
+      .eq('has_contesting', true);
 
     // Apply search filter - just search email for now (simpler)
     const searchTerm = query.trim();

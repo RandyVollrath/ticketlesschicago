@@ -38,7 +38,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
         zone: 42,
         days_until: 30,
         renewal_type: 'City Sticker',
-        has_protection: true
+        has_contesting: true
       },
       messagePreview: 'Autopilot: Your City Sticker expires in 30 days. We\'ll charge your card today...',
       externalMessageId: 'test-sms-001',

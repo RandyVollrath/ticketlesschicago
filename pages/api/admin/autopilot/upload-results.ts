@@ -49,8 +49,7 @@ interface UserProfile {
   full_name: string | null;
   first_name: string | null;
   last_name: string | null;
-  mailing_address_line1: string | null;
-  mailing_address_line2: string | null;
+  mailing_address: string | null;
   mailing_city: string | null;
   mailing_state: string | null;
   mailing_zip: string | null;
@@ -309,8 +308,7 @@ function generateLetterContent(
 
   // Build full address
   const addressLines = [
-    profile.mailing_address_line1,
-    profile.mailing_address_line2,
+    profile.mailing_address,
     `${profile.mailing_city || ''}, ${profile.mailing_state || ''} ${profile.mailing_zip || ''}`.trim(),
   ].filter(Boolean);
 
@@ -851,7 +849,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Get user profile for letter generation
         const { data: profile } = await supabaseAdmin
-          .from('autopilot_profiles')
+          .from('user_profiles')
           .select('*')
           .eq('user_id', plate.user_id)
           .single();
@@ -907,7 +905,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log(`  Created ticket ${ticket.ticket_number} for plate ${ticket.plate}`);
 
         // Generate contest letter
-        if (profile && profile.mailing_address_line1) {
+        if (profile && profile.mailing_address) {
           const template = DEFENSE_TEMPLATES[ticket.violation_type] || DEFENSE_TEMPLATES.other_unknown;
           const letterContent = generateLetterContent(
             {

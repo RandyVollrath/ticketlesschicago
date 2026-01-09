@@ -36,7 +36,7 @@ export default async function handler(
     const { data: users, error: usersError } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id, email, phone_number, mailing_address, city_sticker_expiry, has_permit_zone')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('has_permit_zone', true)
       .not('city_sticker_expiry', 'is', null)
       .lte('city_sticker_expiry', thirtyDaysFromNow.toISOString().split('T')[0]);

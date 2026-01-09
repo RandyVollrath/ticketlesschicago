@@ -41,7 +41,7 @@ export default async function handler(
     // Get user profile to check protection status
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .select('has_protection, email, first_name, last_name, license_plate')
+      .select('has_contesting, email, first_name, last_name, license_plate')
       .eq('user_id', userId)
       .single();
 
@@ -49,7 +49,7 @@ export default async function handler(
       return res.status(400).json({ error: 'User profile not found' });
     }
 
-    if (!profile.has_protection) {
+    if (!profile.has_contesting) {
       return res.status(403).json({ error: 'Ticket Protection plan required to submit reimbursement requests' });
     }
 

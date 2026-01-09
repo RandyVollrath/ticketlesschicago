@@ -41,11 +41,11 @@ export default function SubmitTicket() {
       // Check if user has protection
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('has_protection')
+        .select('has_contesting')
         .eq('user_id', currentUser.id)
         .single();
 
-      if (!profile?.has_protection) {
+      if (!profile?.has_contesting) {
         router.push('/protection');
         return;
       }

@@ -396,7 +396,7 @@ export async function getUpcomingRenewals(daysAhead: number = 30): Promise<Upcom
     const { data: users, error } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, phone')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .or(`city_sticker_expiry.gte.${todayStr},license_plate_expiry.gte.${todayStr}`)
       .order('city_sticker_expiry', { ascending: true });
 
@@ -463,7 +463,7 @@ export async function getMissingPermitDocs(): Promise<MissingPermitDoc[]> {
     const { data: users, error } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id, email, phone, mailing_address, city_sticker_expiry, has_permit_zone')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('has_permit_zone', true)
       .not('city_sticker_expiry', 'is', null)
       .lte('city_sticker_expiry', thirtyDaysFromNow.toISOString().split('T')[0]);

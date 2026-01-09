@@ -131,7 +131,7 @@ export default function Dashboard({ user, profile }: DashboardProps) {
   }
 
   // Calculate protection stats
-  const hasProtection = profile?.has_protection || false;
+  const hasProtection = profile?.has_contesting || false;
   const memberSince = profile?.created_at ? new Date(profile.created_at) : null;
   const monthsActive = memberSince
     ? Math.floor((Date.now() - memberSince.getTime()) / (1000 * 60 * 60 * 24 * 30))

@@ -37,8 +37,7 @@ interface UserProfile {
   full_name: string | null;
   first_name: string | null;
   last_name: string | null;
-  mailing_address_line1: string | null;
-  mailing_address_line2: string | null;
+  mailing_address: string | null;
   mailing_city: string | null;
   mailing_state: string | null;
   mailing_zip: string | null;
@@ -401,7 +400,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get user profile for letter regeneration
     const { data: profile } = await supabaseAdmin
-      .from('autopilot_profiles')
+      .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)
       .single();

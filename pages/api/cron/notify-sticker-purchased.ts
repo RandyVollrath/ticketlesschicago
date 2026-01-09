@@ -120,7 +120,7 @@ export default async function handler(
     const { data: users, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .not('sticker_purchased_at', 'is', null);
 
     if (error) {

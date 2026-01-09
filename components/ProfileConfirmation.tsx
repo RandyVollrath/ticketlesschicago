@@ -33,7 +33,7 @@ interface ProfileConfirmationProps {
     license_plate_expiry?: string
     profile_confirmed_at?: string
     profile_confirmed_for_year?: number
-    has_protection?: boolean
+    has_contesting?: boolean
   }
   onConfirm?: () => void
 }
@@ -93,7 +93,7 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
     profile.zip_code
   )
 
-  const showConfirmationCard = profile.has_protection && nextExpiry && nextExpiry.daysUntil <= 60 && !isConfirmedForCurrentYear
+  const showConfirmationCard = profile.has_contesting && nextExpiry && nextExpiry.daysUntil <= 60 && !isConfirmedForCurrentYear
 
   const handleConfirm = async () => {
     setConfirming(true)
@@ -123,7 +123,7 @@ export default function ProfileConfirmation({ userId, profile, onConfirm }: Prof
   // Don't show if not a protection user or no upcoming renewals
   if (!showConfirmationCard) {
     // Show a small confirmation badge if already confirmed
-    if (isConfirmedForCurrentYear && profile.has_protection) {
+    if (isConfirmedForCurrentYear && profile.has_contesting) {
       return (
         <div style={{
           display: 'inline-flex',

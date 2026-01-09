@@ -338,8 +338,8 @@ export class NotificationScheduler {
           
           // Check if this matches a reminder day for the user
           // Default: More reminders for Protection users to confirm info before 30-day charge
-          const defaultReminderDays = user.has_protection
-            ? [60, 45, 37, 30, 14, 7, 1]  // Protection: 60d, 45d, 37d (1 week before charge), 30d (charge day), then post-charge updates
+          const defaultReminderDays = user.has_contesting
+            ? [60, 45, 37, 30, 14, 7, 1]  // Contesting: 60d, 45d, 37d (1 week before charge), 30d (charge day), then post-charge updates
             : [30, 7, 1];                  // Free: standard reminders to renew themselves
 
           const reminderDays = user.notification_preferences?.reminder_days || defaultReminderDays;
@@ -351,7 +351,7 @@ export class NotificationScheduler {
             // Send notifications based on preferences
             try {
               const prefs = user.notification_preferences || {};
-              const hasProtection = user.has_protection || false;
+              const hasProtection = user.has_contesting || false;
               const hasPermitZone = user.has_permit_zone || false;
 
               // Check if user needs to submit permit zone documents
@@ -382,7 +382,7 @@ export class NotificationScheduler {
                 zone: user.permit_zone || undefined,
                 days_until: daysUntil,
                 renewal_type: renewal.type,
-                has_protection: hasProtection,
+                has_contesting: hasProtection,
                 has_permit_zone: hasPermitZone
               };
 

@@ -127,7 +127,7 @@ export default async function handler(
 
     const { data: softSellPending, error: softSellError } = await supabase
       .from('drip_campaign_status')
-      .select('*, user_profiles!inner(first_name, has_protection)')
+      .select('*, user_profiles!inner(first_name, has_contesting)')
       .eq('welcome_sent', true)
       .eq('soft_sell_sent', false)
       .eq('unsubscribed', false)
@@ -141,7 +141,7 @@ export default async function handler(
 
       for (const user of softSellPending) {
         // Skip if user already upgraded to protection
-        if (user.user_profiles?.has_protection) {
+        if (user.user_profiles?.has_contesting) {
           console.log(`⏭️  Skipping ${user.email} - already has protection`);
 
           // Mark as sent but also mark as upgraded

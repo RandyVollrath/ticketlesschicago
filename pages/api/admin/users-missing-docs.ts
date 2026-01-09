@@ -2,7 +2,7 @@
  * Admin API to get users who have Protection but are missing residency proof
  *
  * These are users who:
- * - Have has_protection = true (paid for Protection subscription)
+ * - Have has_contesting = true (paid for Protection subscription)
  * - Have permit_zone set (need permit parking)
  * - Do NOT have residency_proof_path OR have residency_proof_verified = false
  */
@@ -36,7 +36,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
         zip_code,
         permit_zone,
         has_permit_zone,
-        has_protection,
+        has_contesting,
         residency_proof_path,
         residency_proof_type,
         residency_proof_verified,
@@ -44,7 +44,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
         city_sticker_expiry,
         created_at
       `)
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('has_permit_zone', true)
       .order('created_at', { ascending: false });
 

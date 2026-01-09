@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('license_reuse_consent_given', true)
       .not('license_valid_until', 'is', null)
       .not('city_sticker_expiry', 'is', null)
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .lte('city_sticker_expiry', ninetyDaysFromNow.toISOString().split('T')[0]);
 
     if (queryError) {

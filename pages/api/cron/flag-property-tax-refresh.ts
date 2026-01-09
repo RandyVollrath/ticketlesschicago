@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: users, error: queryError } = await supabase
       .from('user_profiles')
       .select('user_id, email, first_name, property_tax_last_fetched_at')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('residency_proof_type', 'property_tax')
       .not('street_address', 'is', null);
 
@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .update({
         property_tax_needs_refresh: true
       })
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .eq('residency_proof_type', 'property_tax')
       .not('street_address', 'is', null);
 

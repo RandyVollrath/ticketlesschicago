@@ -10,7 +10,7 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  * Default: [60, 45, 37, 30] days before their earliest upcoming renewal date
  *
  * Only sends to users who have:
- * - has_protection = false (free users)
+ * - has_contesting = false (free users)
  * - At least one renewal date set (city_sticker_expiry, license_plate_expiry, or emissions_date)
  *
  * Different from paid user notifications:
@@ -57,7 +57,7 @@ export default async function handler(
         emissions_completed,
         notification_preferences
       `)
-      .eq('has_protection', false);
+      .eq('has_contesting', false);
 
     if (usersError) {
       throw usersError;

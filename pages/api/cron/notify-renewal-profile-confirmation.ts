@@ -14,7 +14,7 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  * specific to that renewal.
  *
  * Only sends to users who have:
- * - has_protection = true (paid users)
+ * - has_contesting = true (paid users)
  * - At least one renewal date set (city_sticker_expiry, license_plate_expiry, or emissions_date)
  *
  * Schedule: Daily at 9 AM CT
@@ -67,7 +67,7 @@ export default async function handler(
         notification_preferences,
         profile_confirmed_at
       `)
-      .eq('has_protection', true);
+      .eq('has_contesting', true);
 
     if (usersError) {
       throw usersError;

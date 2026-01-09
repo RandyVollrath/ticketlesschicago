@@ -395,7 +395,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: cityStickerCustomers, error: cityStickerError } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .not('stripe_customer_id', 'is', null)
       .not('city_sticker_expiry', 'is', null);
 
@@ -954,7 +954,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: plateCustomers, error: plateError } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .not('license_plate_expiry', 'is', null)
       .not('stripe_customer_id', 'is', null);
 

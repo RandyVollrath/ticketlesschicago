@@ -34,7 +34,7 @@ interface RenewalUser {
   vehicle_model: string;
   vehicle_year: string;
   city_sticker_expiry: string | null;
-  has_protection: boolean;
+  has_contesting: boolean;
   permit_zone: string | null;
   has_permit_zone: boolean;
   profile_confirmed_for_year: number | null;
@@ -63,7 +63,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
     const { data: users, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('has_protection', true)
+      .eq('has_contesting', true)
       .order('city_sticker_expiry', { ascending: true, nullsFirst: false });
 
     if (error) {

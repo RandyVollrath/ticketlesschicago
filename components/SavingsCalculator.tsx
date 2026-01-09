@@ -33,7 +33,7 @@ interface SavingsData {
   renewal_reminders: number
 
   // User data
-  has_protection: boolean
+  has_contesting: boolean
   protection_start_date?: string
   member_since?: string
 
@@ -44,7 +44,7 @@ interface SavingsData {
 interface SavingsCalculatorProps {
   userId: string
   profile: {
-    has_protection?: boolean
+    has_contesting?: boolean
     created_at?: string
     protection_start_date?: string
     home_address_ward?: string
@@ -83,7 +83,7 @@ export default function SavingsCalculator({ userId, profile }: SavingsCalculator
         street_cleaning_alerts: streetCleaningAlerts,
         snow_ban_alerts: snowBanAlerts,
         renewal_reminders: renewalReminders,
-        has_protection: profile.has_protection || false,
+        has_contesting: profile.has_contesting || false,
         protection_start_date: profile.protection_start_date,
         member_since: profile.created_at,
       })
@@ -345,7 +345,7 @@ export default function SavingsCalculator({ userId, profile }: SavingsCalculator
         )}
 
         {/* Protection Upsell (if not protected) */}
-        {!savingsData.has_protection && (
+        {!savingsData.has_contesting && (
           <div style={{
             marginTop: '20px',
             padding: '16px',

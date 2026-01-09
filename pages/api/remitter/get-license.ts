@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         license_image_path_back,
         license_image_back_uploaded_at,
         license_valid_until,
-        has_protection,
+        has_contesting,
         license_reuse_consent_given
       `)
       .eq('user_id', userId)
@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (!profile.has_protection) {
+    if (!profile.has_contesting) {
       return res.status(400).json({ error: 'User does not have Protection service' });
     }
 

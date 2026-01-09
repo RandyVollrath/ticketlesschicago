@@ -2127,7 +2127,7 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER
                         </thead>
                         <tbody>
                           {pendingEvidenceTickets.slice(0, 15).map((ticket: any) => {
-                            const profile = ticket.autopilot_profiles;
+                            const profile = ticket.user_profiles;
                             const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'Unknown';
                             const deadline = ticket.evidence_deadline ? new Date(ticket.evidence_deadline) : null;
                             const isOverdue = deadline && deadline < new Date();

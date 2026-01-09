@@ -94,8 +94,7 @@ interface TicketRow {
 
 interface UserProfile {
   full_name: string;
-  mailing_address_line1: string;
-  mailing_address_line2: string | null;
+  mailing_address: string;
   mailing_city: string;
   mailing_state: string;
   mailing_zip: string;
@@ -196,8 +195,7 @@ function generateLetterContent(
     : 'the date indicated';
 
   const addressLines = [
-    profile.mailing_address_line1,
-    profile.mailing_address_line2,
+    profile.mailing_address,
     `${profile.mailing_city || ''}, ${profile.mailing_state || ''} ${profile.mailing_zip || ''}`.trim(),
   ].filter(Boolean);
 
@@ -352,12 +350,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Get user profile
         const { data: profile } = await supabaseAdmin
-          .from('autopilot_profiles')
+          .from('user_profiles')
           .select('*')
           .eq('user_id', plate.user_id)
           .single();
 
-        if (!profile || !profile.full_name || !profile.mailing_address_line1) {
+        if (!profile || !profile.full_name || !profile.mailing_address) {
           await supabaseAdmin
             .from('detected_tickets')
             .update({ status: 'needs_approval', skip_reason: 'Missing profile/address' })
@@ -427,9 +425,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
           const fromAddress = {
             name: profile.full_name,
-            address: profile.mailing_address_line2
-              ? `${profile.mailing_address_line1}, ${profile.mailing_address_line2}`
-              : profile.mailing_address_line1,
+            address: profile.mailing_address,
             city: profile.mailing_city,
             state: profile.mailing_state,
             zip: profile.mailing_zip,

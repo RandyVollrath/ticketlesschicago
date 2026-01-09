@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         vin,
         trailer_weight,
         rv_weight,
-        has_protection,
+        has_contesting,
         first_name,
         last_name,
         mailing_address,
@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check if user has protection
-    if (!profile.has_protection) {
+    if (!profile.has_contesting) {
       return res.status(400).json({
         error: 'User does not have protection service',
       });
