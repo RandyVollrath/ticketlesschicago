@@ -238,6 +238,22 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
       actionItems.push('Your assessed value per square foot is higher than similar properties - this is strong evidence for your appeal');
     }
 
+    if (stats.appealGrounds.includes('lower_assessed_comps')) {
+      actionItems.push('We found comparable properties assessed at lower rates - use these as your primary evidence');
+    }
+
+    if (stats.appealGrounds.includes('equity_disparity')) {
+      actionItems.push('You are assessed higher than most comparable properties - this is an equity argument the Board takes seriously');
+    }
+
+    if (stats.appealGrounds.includes('market_timing')) {
+      actionItems.push('Current market conditions favor an appeal - act now while the data supports your case');
+    }
+
+    if (stats.appealGrounds.includes('historical_overassessment')) {
+      actionItems.push('Your property has been persistently overassessed for years - this pattern strengthens your case');
+    }
+
     if (deadlines?.daysUntilDeadline && deadlines.daysUntilDeadline > 0) {
       if (deadlines.daysUntilDeadline <= 14) {
         actionItems.push(`URGENT: File your appeal within ${deadlines.daysUntilDeadline} days`);
@@ -344,6 +360,51 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
         summary: stats.perSqftAnalysis.percentDifferenceFromMedian > 10
           ? `Your property is assessed at $${stats.perSqftAnalysis.subjectValuePerSqft.toFixed(2)}/sqft, which is ${stats.perSqftAnalysis.percentDifferenceFromMedian.toFixed(1)}% higher than the median of $${stats.perSqftAnalysis.medianComparableValuePerSqft.toFixed(2)}/sqft for comparable properties. Based on this, your fair assessed value would be ~$${stats.perSqftAnalysis.impliedFairValue.toLocaleString()}, suggesting you may be overassessed by $${stats.perSqftAnalysis.overvaluationBasedOnSqft.toLocaleString()}.`
           : `Your property is assessed at $${stats.perSqftAnalysis.subjectValuePerSqft.toFixed(2)}/sqft, which is in line with comparable properties (median: $${stats.perSqftAnalysis.medianComparableValuePerSqft.toFixed(2)}/sqft).`
+      } : null,
+      // APPEAL CASE - Best comparables to use for appeal argument
+      appealCase: stats.appealCase ? {
+        caseStrength: stats.appealCase.caseStrength,
+        targetAssessedValue: stats.appealCase.targetAssessedValue,
+        requestedReduction: stats.appealCase.requestedReduction,
+        estimatedAnnualSavings: stats.appealCase.estimatedAnnualSavings,
+        arguments: stats.appealCase.arguments,
+        bestComparables: stats.appealCase.bestComparables.map(c => ({
+          pin: c.pinFormatted,
+          address: c.address,
+          neighborhood: c.neighborhood,
+          squareFootage: c.squareFootage,
+          bedrooms: c.bedrooms,
+          yearBuilt: c.yearBuilt,
+          assessedValue: c.assessedValue,
+          valuePerSqft: c.valuePerSqft,
+          percentLowerThanYou: c.percentLowerThanSubject,
+          sameNeighborhood: c.sameNeighborhood,
+        })),
+      } : null,
+      // EQUITY ANALYSIS - How you compare to similar properties
+      equityAnalysis: stats.equityAnalysis ? {
+        percentileRank: stats.equityAnalysis.percentileRank,
+        totalComparables: stats.equityAnalysis.totalComparables,
+        propertiesAssessedLower: stats.equityAnalysis.propertiesAssessedLower,
+        neighborhoodAvgPerSqft: stats.equityAnalysis.neighborhoodAvgPerSqft,
+        vsNeighborhoodAverage: stats.equityAnalysis.vsNeighborhoodAverage,
+        equityStatement: stats.equityAnalysis.equityStatement,
+      } : null,
+      // MARKET TIMING - Is this a good year to appeal?
+      marketTiming: stats.marketTiming ? {
+        favorableMarket: stats.marketTiming.favorableMarket,
+        indicators: stats.marketTiming.indicators,
+        summary: stats.marketTiming.summary,
+      } : null,
+      // HISTORICAL ANALYSIS - Persistent overassessment pattern
+      historicalAnalysis: stats.historicalAnalysis ? {
+        persistentOverassessment: stats.historicalAnalysis.persistentOverassessment,
+        yearsAnalyzed: stats.historicalAnalysis.yearsAnalyzed,
+        assessmentGrowthRate: stats.historicalAnalysis.assessmentGrowthRate,
+        cumulativeOverassessment: stats.historicalAnalysis.cumulativeOverassessment,
+        summary: stats.historicalAnalysis.persistentOverassessment
+          ? `Your assessment has grown ${stats.historicalAnalysis.assessmentGrowthRate}% annually over ${stats.historicalAnalysis.yearsAnalyzed} years, faster than typical market growth. This pattern of over-assessment strengthens your appeal.`
+          : `Your assessment growth of ${stats.historicalAnalysis.assessmentGrowthRate}% annually is in line with market trends.`
       } : null
     },
     comparables: formattedComparables,
