@@ -18,7 +18,7 @@ const SOCRATA_BASE_URL = 'https://datacatalog.cookcountyil.gov/resource';
 
 // Dataset IDs
 const DATASETS = {
-  // Property characteristics (residential)
+  // Property characteristics (residential single-family/multi-family)
   CHARACTERISTICS: 'bcnq-qi2z',
   // Assessed values history
   ASSESSED_VALUES: 'uzyt-m557',
@@ -26,8 +26,8 @@ const DATASETS = {
   SALES: '5pge-nu6u',
   // Board of Review decisions
   BOR_DECISIONS: '7pny-nedm',
-  // Condo characteristics
-  CONDO_CHARACTERISTICS: 'sv5f-d7bh',
+  // Condo unit characteristics (correct ID as of 2024)
+  CONDO_CHARACTERISTICS: '3r7i-mrz4',
 } as const;
 
 // Property class codes for residential properties
@@ -111,6 +111,30 @@ export interface BORDecision {
   reason: string;  // reason for change
   tot_pre_mktval: string;  // pre-appeal market value
   tot_post_mktval: string;  // post-appeal market value
+}
+
+// Condo characteristics from dataset 3r7i-mrz4
+export interface CondoCharacteristics {
+  pin: string;
+  pin10: string;  // Building PIN (first 10 digits)
+  card: string;
+  year: string;
+  class: string;
+  township_code: string;
+  tieback_key_pin: string;
+  tieback_proration_rate: string;
+  char_yrblt: string;  // Year built
+  char_building_sf: string;  // Building square footage
+  char_unit_sf: string;  // Unit square footage
+  char_bedrooms: string;  // Number of bedrooms
+  char_building_non_units: string;
+  char_building_pins: string;
+  char_land_sf: string;
+  pin_is_multiland: string;
+  pin_num_landlines: string;
+  bldg_is_mixed_use: string;
+  is_parking_space: string;
+  is_common_area: string;
 }
 
 // Normalized property data for our system
@@ -285,12 +309,13 @@ async function querySODA<T>(
 
 /**
  * Look up a property by PIN
+ * Tries residential dataset first, then falls back to condo dataset
  */
 export async function getPropertyByPin(pin: string): Promise<NormalizedProperty | null> {
   const normalizedPin = normalizePin(pin);
   const currentYear = new Date().getFullYear();
 
-  // Get property characteristics
+  // Get property characteristics from residential dataset
   const characteristics = await querySODA<PropertyCharacteristics>(
     DATASETS.CHARACTERISTICS,
     {
@@ -300,15 +325,7 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
     }
   );
 
-  if (characteristics.length === 0) {
-    // Property not found in residential dataset
-    // Note: Condo dataset lookup skipped - dataset ID needs verification
-    return null;
-  }
-
-  const prop = characteristics[0];
-
-  // Get assessed values for current and prior year
+  // Get assessed values (needed for both residential and condo)
   const values = await querySODA<AssessedValue>(
     DATASETS.ASSESSED_VALUES,
     {
@@ -318,45 +335,121 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
     }
   );
 
-  const currentValue = values.find(v => parseInt(v.year) === currentYear - 1);
-  const priorValue = values.find(v => parseInt(v.year) === currentYear - 2);
+  const currentValue = values.find(v => parseInt(v.year) === currentYear - 1) || values[0];
+  const priorValue = values.find(v => parseInt(v.year) === currentYear - 2) || values[1];
 
-  // Calculate year built from age (approximate)
-  const age = parseInt(prop.age);
-  const yearBuilt = age ? currentYear - age : null;
-
-  // Combine the data
-  const totalBaths = (parseNumber(prop.fbath) || 0) + ((parseNumber(prop.hbath) || 0) * 0.5);
-
-  // Get township name from assessed values (more reliable)
+  // Get township name from assessed values
   const township = currentValue?.township_name || values[0]?.township_name || '';
+
+  if (characteristics.length > 0) {
+    // Found in residential dataset
+    const prop = characteristics[0];
+
+    // Calculate year built from age (approximate)
+    const age = parseInt(prop.age);
+    const yearBuilt = age ? currentYear - age : null;
+
+    // Combine the data
+    const totalBaths = (parseNumber(prop.fbath) || 0) + ((parseNumber(prop.hbath) || 0) * 0.5);
+
+    return {
+      pin: normalizedPin,
+      pinFormatted: formatPin(normalizedPin),
+      address: prop.addr || '',
+      city: 'CHICAGO',
+      zipCode: '',
+      township,
+      townshipCode: prop.town_code || currentValue?.township_code || '',
+      neighborhood: prop.nbhd || '',
+      propertyClass: prop.class || '',
+      propertyClassDescription: getPropertyClassDescription(prop.class || ''),
+      yearBuilt,
+      squareFootage: parseInt(prop.bldg_sf),
+      lotSize: parseInt(prop.hd_sf),
+      bedrooms: parseInt(prop.beds),
+      bathrooms: totalBaths || null,
+      exteriorConstruction: prop.ext_wall || null,
+      basementType: prop.bsmt || null,
+      garageType: prop.gar1_size || null,
+      assessmentYear: parseInt(prop.tax_year) || currentYear - 1,
+      assessedValue: parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) ||
+                     parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot),
+      marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) ||
+                    parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot) || 0) * 10,
+      priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
+      priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
+    };
+  }
+
+  // Not found in residential dataset - try condo dataset
+  const condoCharacteristics = await querySODA<CondoCharacteristics>(
+    DATASETS.CONDO_CHARACTERISTICS,
+    {
+      '$where': `pin = '${normalizedPin}'`,
+      '$order': 'year DESC',
+      '$limit': '1'
+    }
+  );
+
+  if (condoCharacteristics.length === 0) {
+    // Not found in either dataset
+    // If we have assessed values, we can still return basic info
+    if (values.length > 0) {
+      console.log(`Property ${normalizedPin} not in characteristics datasets, using assessed values only`);
+      return {
+        pin: normalizedPin,
+        pinFormatted: formatPin(normalizedPin),
+        address: '', // No address available from assessed values
+        city: 'CHICAGO',
+        zipCode: '',
+        township,
+        townshipCode: currentValue?.township_code || '',
+        neighborhood: currentValue?.nbhd || '',
+        propertyClass: currentValue?.class || '',
+        propertyClassDescription: getPropertyClassDescription(currentValue?.class || ''),
+        yearBuilt: null,
+        squareFootage: null,
+        lotSize: null,
+        bedrooms: null,
+        bathrooms: null,
+        exteriorConstruction: null,
+        basementType: null,
+        garageType: null,
+        assessmentYear: parseInt(currentValue?.year) || currentYear - 1,
+        assessedValue: parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot),
+        marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) || 0) * 10,
+        priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
+        priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
+      };
+    }
+    return null;
+  }
+
+  // Found in condo dataset
+  const condo = condoCharacteristics[0];
 
   return {
     pin: normalizedPin,
     pinFormatted: formatPin(normalizedPin),
-    address: prop.addr || '',
-    city: 'CHICAGO', // Default - would need address lookup for accurate city
-    zipCode: '', // Not in main dataset
+    address: '', // Condo dataset doesn't have address, would need separate lookup
+    city: 'CHICAGO',
+    zipCode: '',
     township,
-    townshipCode: prop.town_code || currentValue?.township_code || '',
-    neighborhood: prop.nbhd || '',
-    propertyClass: prop.class || '',
-    propertyClassDescription: getPropertyClassDescription(prop.class || ''),
-    yearBuilt,
-    squareFootage: parseInt(prop.bldg_sf),
-    lotSize: parseInt(prop.hd_sf),
-    bedrooms: parseInt(prop.beds),
-    bathrooms: totalBaths || null,
-    exteriorConstruction: prop.ext_wall || null,
-    basementType: prop.bsmt || null,
-    garageType: prop.gar1_size || null,
-    assessmentYear: parseInt(prop.tax_year) || currentYear - 1,
-    // Assessed value: prefer board_tot (final), fall back to certified_tot, then mailed_tot
-    assessedValue: parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) ||
-                   parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot),
-    // Market value is assessed * 10 (Cook County uses 10% ratio for residential)
-    marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) ||
-                  parseNumber(values[0]?.board_tot) || parseNumber(values[0]?.certified_tot) || parseNumber(values[0]?.mailed_tot) || 0) * 10,
+    townshipCode: condo.township_code || currentValue?.township_code || '',
+    neighborhood: currentValue?.nbhd || '',
+    propertyClass: condo.class || '299', // Condos are typically class 299
+    propertyClassDescription: getPropertyClassDescription(condo.class || '299'),
+    yearBuilt: parseInt(condo.char_yrblt),
+    squareFootage: parseInt(condo.char_unit_sf), // Use unit SF, not building SF
+    lotSize: parseInt(condo.char_land_sf),
+    bedrooms: parseInt(condo.char_bedrooms),
+    bathrooms: null, // Not in condo dataset
+    exteriorConstruction: null,
+    basementType: null,
+    garageType: null,
+    assessmentYear: parseInt(condo.year) || currentYear - 1,
+    assessedValue: parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot),
+    marketValue: (parseNumber(currentValue?.board_tot) || parseNumber(currentValue?.certified_tot) || parseNumber(currentValue?.mailed_tot) || 0) * 10,
     priorAssessedValue: parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot),
     priorMarketValue: (parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot) || 0) * 10,
   };
