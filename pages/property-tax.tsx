@@ -345,7 +345,12 @@ export default function PropertyTax() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ pin: property.pin })
+        // Pass address from search result so it's preserved even if not in condo dataset
+        body: JSON.stringify({
+          pin: property.pin,
+          addressHint: property.address,
+          townshipHint: property.township
+        })
       });
 
       const data = await response.json();
@@ -354,8 +359,18 @@ export default function PropertyTax() {
         throw new Error(data.error || 'Analysis failed');
       }
 
+      // Merge property data, preferring API response but falling back to search result for missing fields
+      const mergedProperty = {
+        ...property,
+        ...data.property,
+        // Ensure address is preserved if API didn't return one
+        address: data.property.address || property.address || 'Address not available',
+        township: data.property.township || property.township || '',
+        pinFormatted: data.property.pinFormatted || property.pinFormatted || property.pin,
+      };
+
       setAppealData({
-        property: data.property,
+        property: mergedProperty,
         analysis: data.analysis,
         comparables: data.comparables || []
       });

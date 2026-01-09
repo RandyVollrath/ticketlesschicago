@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await recordRateLimitAction(clientIp, 'api');
 
   try {
-    const { pin } = req.body;
+    const { pin, addressHint, townshipHint } = req.body;
 
     if (!pin) {
       return res.status(400).json({
@@ -60,6 +60,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Analyze the property
     const analysis = await analyzeAppealOpportunity(normalizedPin);
+
+    // If address is missing from analysis but we have a hint from search, use it
+    if (analysis && (!analysis.property.address || analysis.property.address === '') && addressHint) {
+      analysis.property.address = addressHint;
+    }
+    if (analysis && (!analysis.property.township || analysis.property.township === '') && townshipHint) {
+      analysis.property.township = townshipHint;
+    }
 
     if (!analysis) {
       return res.status(404).json({
@@ -244,17 +252,22 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
   return {
     success: true,
     property: {
-      pin: property.pinFormatted,
+      pin: property.pin,
+      pinFormatted: property.pinFormatted,
       address: property.address,
       city: property.city,
       zipCode: property.zipCode,
       township: property.township,
-      propertyClass: property.propertyClassDescription,
+      propertyClass: property.propertyClass,
+      propertyClassDescription: property.propertyClassDescription,
       yearBuilt: property.yearBuilt,
       squareFootage: property.squareFootage,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
+      // Include both field names for compatibility
+      assessedValue: property.assessedValue,
       currentAssessedValue: property.assessedValue,
+      marketValue: property.marketValue,
       currentMarketValue: property.marketValue,
       priorAssessedValue: property.priorAssessedValue,
       priorMarketValue: property.priorMarketValue,
@@ -268,10 +281,14 @@ function formatAnalysisResponse(analysis: AppealOpportunity) {
       recommendation,
       recommendationText,
       estimatedOvervaluation: Math.round(stats.estimatedOvervaluation),
+      // Include both field names for compatibility
+      estimatedTaxSavings: Math.round(stats.estimatedTaxSavings),
       estimatedAnnualTaxSavings: Math.round(stats.estimatedTaxSavings),
       // At 35% contingency, user would save 65% of tax savings
       estimatedNetSavings: Math.round(stats.estimatedTaxSavings * 0.65),
       appealGrounds: stats.appealGrounds,
+      medianComparableValue: Math.round(stats.medianComparableValue),
+      comparableCount: stats.comparableCount,
       comparableStats: {
         count: stats.comparableCount,
         medianAssessedValue: Math.round(stats.medianComparableValue),
