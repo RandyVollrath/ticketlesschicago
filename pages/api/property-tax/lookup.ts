@@ -142,10 +142,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Return more detail in non-production for debugging
+    // Return error detail for debugging (temporarily enabled for production)
     return res.status(500).json({
       error: 'An error occurred while looking up the property. Please try again.',
-      ...(process.env.NODE_ENV !== 'production' && { detail: errorMessage })
+      detail: errorMessage
     });
   }
 }
