@@ -392,7 +392,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           is_test
         )
       `)
-      .or(`status.eq.pending_evidence,status.eq.approved,status.eq.draft`)
+      .or(`status.eq.pending_evidence,status.eq.approved,status.eq.draft,status.eq.ready`)
       .order('created_at', { ascending: true })
       .limit(20); // Process in batches
 
