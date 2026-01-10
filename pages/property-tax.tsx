@@ -1811,24 +1811,130 @@ export default function PropertyTax() {
                   Lower opportunity detected
                 </h3>
                 <p style={{ fontSize: '14px', color: '#92400E', margin: '0 0 16px 0' }}>
-                  Based on our analysis, you may not have a strong case for appeal.
-                  You can still proceed, but success is less likely.
+                  Based on our analysis, you may not have a strong case for appeal right now.
+                  {appealData.analysis.opportunityScore >= 15 && appealData.analysis.opportunityScore < 30 && (
+                    <> However, you're close to the threshold - things could change.</>
+                  )}
                 </p>
-                <button
-                  onClick={() => setStage('paywall')}
-                  style={{
-                    padding: '12px 24px',
-                    borderRadius: '8px',
-                    border: '1px solid #92400E',
-                    backgroundColor: 'transparent',
-                    color: '#92400E',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Proceed Anyway - ${PRICE}
-                </button>
+
+                {/* Watchlist option for borderline cases */}
+                {appealData.analysis.opportunityScore >= 15 && (
+                  <div style={{
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '16px',
+                    border: '1px solid #FDE68A'
+                  }}>
+                    <p style={{ fontSize: '14px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 8px 0' }}>
+                      Get notified if your case improves
+                    </p>
+                    <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 12px 0' }}>
+                      We'll alert you before the filing deadline or if comparable sales change your score.
+                    </p>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const form = e.target as HTMLFormElement;
+                        const emailInput = form.elements.namedItem('watchlistEmail') as HTMLInputElement;
+                        const email = emailInput.value;
+
+                        try {
+                          const response = await fetch('/api/property-tax/watchlist', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              pin: appealData.property.pin,
+                              email,
+                              address: appealData.property.address,
+                              township: appealData.property.township,
+                              currentScore: appealData.analysis.opportunityScore,
+                              reason: 'borderline',
+                              notifyBeforeDeadline: true,
+                              notifyOnScoreChange: true
+                            })
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            alert('Added to watchlist! We\'ll notify you if anything changes.');
+                            emailInput.value = '';
+                          } else {
+                            alert(data.error || 'Failed to add to watchlist');
+                          }
+                        } catch (err) {
+                          alert('Failed to add to watchlist');
+                        }
+                      }}
+                      style={{ display: 'flex', gap: '8px' }}
+                    >
+                      <input
+                        type="email"
+                        name="watchlistEmail"
+                        placeholder="Enter your email"
+                        required
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: `1px solid ${COLORS.border}`,
+                          fontSize: '14px'
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        style={{
+                          padding: '10px 16px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          backgroundColor: COLORS.regulatory,
+                          color: 'white',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Notify Me
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setStage('paywall')}
+                    style={{
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      border: '1px solid #92400E',
+                      backgroundColor: 'transparent',
+                      color: '#92400E',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Proceed Anyway - ${PRICE}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPricingModel('success_fee');
+                      setStage('paywall');
+                    }}
+                    style={{
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: COLORS.regulatory,
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Try Risk-Free (Pay Only If Successful)
+                  </button>
+                </div>
               </div>
             )}
 

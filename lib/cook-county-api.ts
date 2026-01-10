@@ -1728,12 +1728,33 @@ export async function analyzeAppealOpportunity(
     parseNumber(a.tot_post_mktval)! < parseNumber(a.tot_pre_mktval)!
   );
 
-  // Use the pure scoring function (includes assessment change factor)
+  // Prepare enhanced scoring inputs
+  const compSqfts = comparables.map(c => c.squareFootage);
+  const compCharacteristics = comparables.map(c => ({
+    bedrooms: c.bedrooms,
+    bathrooms: c.bathrooms,
+    yearBuilt: c.yearBuilt,
+    stories: null as number | null, // Not always available
+  }));
+
+  // Use the enhanced pure scoring function
   const scoringResult = calculateOpportunityScore({
     subjectValue,
     comparableValues: compValues,
     hasRecentAppealSuccess: hasRecentSuccess,
     assessmentChangePercent: property.assessmentChangePercent,
+    // NEW: Pass enhanced data for expanded scoring
+    subjectSquareFootage: subjectSqft,
+    comparableSquareFootages: compSqfts,
+    subjectCharacteristics: {
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      yearBuilt: property.yearBuilt,
+      stories: null,
+    },
+    comparableCharacteristics: compCharacteristics,
+    // Historical assessments would need separate API call - skip for now
+    // neighborhoodChangePercent would need separate calculation - skip for now
   });
 
   // Add per-sqft appeal ground if applicable (now that we have scoringResult)
@@ -2564,6 +2585,30 @@ export interface OpportunityInput {
   hasRecentAppealSuccess: boolean;
   /** Year-over-year assessment change percentage (e.g., 51.5 for 51.5% increase) */
   assessmentChangePercent?: number | null;
+  /** Subject property square footage */
+  subjectSquareFootage?: number | null;
+  /** Comparable square footages (same order as comparableValues) */
+  comparableSquareFootages?: (number | null)[];
+  /** Multi-year assessment values [oldest...newest] for trend analysis */
+  historicalAssessments?: number[];
+  /** Neighborhood median change percentage (declining areas are good for appeals) */
+  neighborhoodChangePercent?: number | null;
+  /** Subject property characteristics for error detection */
+  subjectCharacteristics?: {
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    yearBuilt?: number | null;
+    stories?: number | null;
+  };
+  /** Comparable characteristics for error detection */
+  comparableCharacteristics?: Array<{
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    yearBuilt?: number | null;
+    stories?: number | null;
+  }>;
+  /** Is this a success fee customer (lower risk = lower thresholds) */
+  isSuccessFeeCustomer?: boolean;
 }
 
 export interface OpportunityOutput {
@@ -2574,6 +2619,22 @@ export interface OpportunityOutput {
   averageComparableValue: number;
   appealGrounds: string[];
   confidence: 'high' | 'medium' | 'low';
+  /** Breakdown of score components for transparency */
+  scoreBreakdown?: {
+    overvaluationPoints: number;
+    sampleSizePoints: number;
+    consistencyPoints: number;
+    assessmentIncreasePoints: number;
+    historicalSuccessPoints: number;
+    neighborhoodTrendPoints: number;
+    persistentOverassessmentPoints: number;
+    characteristicAnomalyPoints: number;
+    perSqftPoints: number;
+  };
+  /** Suggested action even for low-scoring properties */
+  alternativeAction?: 'watchlist' | 'recheck_next_year' | 'verify_characteristics' | null;
+  /** Reason for alternative action */
+  alternativeActionReason?: string;
 }
 
 /**
@@ -2844,7 +2905,22 @@ export async function getComparableSales(
 }
 
 export function calculateOpportunityScore(input: OpportunityInput): OpportunityOutput {
-  const { subjectValue, comparableValues, hasRecentAppealSuccess, assessmentChangePercent } = input;
+  const {
+    subjectValue,
+    comparableValues,
+    hasRecentAppealSuccess,
+    assessmentChangePercent,
+    subjectSquareFootage,
+    comparableSquareFootages,
+    historicalAssessments,
+    neighborhoodChangePercent,
+    subjectCharacteristics,
+    comparableCharacteristics,
+    isSuccessFeeCustomer
+  } = input;
+
+  // For success fee customers, we use lower thresholds since they have no financial risk
+  const thresholdMultiplier = isSuccessFeeCustomer ? 0.7 : 1.0;
 
   // Calculate median and average
   const sortedValues = [...comparableValues].sort((a, b) => a - b);
@@ -2865,73 +2941,224 @@ export function calculateOpportunityScore(input: OpportunityInput): OpportunityO
   const taxRate = 0.021;
   const estimatedTaxSavings = estimatedOvervaluation * taxRate;
 
-  // Calculate opportunity score (0-100)
-  // Scoring breakdown:
-  // - Overvaluation vs comparables: up to 35 points
-  // - Sample size: up to 15 points
-  // - Comparable consistency: up to 15 points
-  // - Assessment increase: up to 25 points (NEW)
-  // - Historical appeal success: up to 10 points
-  let opportunityScore = 0;
+  // ============================================================================
+  // ENHANCED SCORING ALGORITHM (0-100 points, expanded from original)
+  // ============================================================================
+  // Base factors (original):
+  // - Overvaluation vs comparables: up to 30 points
+  // - Sample size: up to 10 points
+  // - Comparable consistency: up to 10 points
+  // - Assessment increase: up to 20 points
+  // - Historical appeal success: up to 5 points
+  //
+  // NEW factors to expand appealable pool:
+  // - Per-sqft overvaluation: up to 10 points (catches size-adjusted issues)
+  // - Neighborhood decline: up to 5 points (declining areas = appeal ground)
+  // - Persistent overassessment: up to 5 points (multi-year trend)
+  // - Characteristic anomaly: up to 5 points (data errors boost case)
+  // ============================================================================
 
-  // Factor 1: Overvaluation percentage (up to 35 points)
+  let overvaluationPoints = 0;
+  let sampleSizePoints = 0;
+  let consistencyPoints = 0;
+  let assessmentIncreasePoints = 0;
+  let historicalSuccessPoints = 0;
+  let neighborhoodTrendPoints = 0;
+  let persistentOverassessmentPoints = 0;
+  let characteristicAnomalyPoints = 0;
+  let perSqftPoints = 0;
+
+  const appealGrounds: string[] = [];
+  let alternativeAction: OpportunityOutput['alternativeAction'] = null;
+  let alternativeActionReason: string | undefined;
+
+  // Factor 1: Overvaluation percentage (up to 30 points)
   const overvaluationPct = medianValue ? ((subjectValue - medianValue) / medianValue) * 100 : 0;
-  opportunityScore += Math.min(35, Math.max(0, overvaluationPct * 1.75));
+  const overvaluationThreshold = 10 * thresholdMultiplier;
+  overvaluationPoints = Math.min(30, Math.max(0, overvaluationPct * 1.5));
 
-  // Factor 2: Sample size (up to 15 points)
-  opportunityScore += Math.min(15, sortedValues.length * 1.5);
+  if (overvaluationPct > overvaluationThreshold) {
+    appealGrounds.push('comparable_sales');
+  }
 
-  // Factor 3: Consistency of comparables (up to 15 points)
+  // Factor 2: Sample size (up to 10 points)
+  sampleSizePoints = Math.min(10, sortedValues.length * 1.0);
+
+  // Factor 3: Consistency of comparables (up to 10 points)
   if (sortedValues.length >= 3) {
     const valueSpread = Math.max(...sortedValues) - Math.min(...sortedValues);
     const consistency = 1 - (valueSpread / (avgValue || 1));
-    opportunityScore += Math.max(0, Math.min(15, consistency * 15));
+    consistencyPoints = Math.max(0, Math.min(10, consistency * 10));
   }
 
-  // Factor 4: Year-over-year assessment increase (up to 25 points)
-  // A large increase (>20%) is a strong argument for appeal
-  // Assessments should generally increase at a reasonable rate (e.g., 5-10% annually)
-  // Increases over 20% warrant scrutiny, over 40% is a red flag
+  // Factor 4: Year-over-year assessment increase (up to 20 points)
   const yoyChange = assessmentChangePercent || 0;
-  if (yoyChange > 10) {
-    // 10-20% increase: 5 points
-    // 20-30% increase: 10 points
-    // 30-40% increase: 15 points
-    // 40-50% increase: 20 points
-    // >50% increase: 25 points
-    const increasePoints = Math.min(25, Math.max(0, (yoyChange - 10) * 0.5));
-    opportunityScore += increasePoints;
+  const yoyThreshold = 10 * thresholdMultiplier;
+  if (yoyChange > yoyThreshold) {
+    assessmentIncreasePoints = Math.min(20, Math.max(0, (yoyChange - yoyThreshold) * 0.5));
+  }
+  if (yoyChange > 20 * thresholdMultiplier) {
+    appealGrounds.push('excessive_increase');
+  }
+  if (yoyChange > 40 * thresholdMultiplier) {
+    appealGrounds.push('dramatic_increase');
   }
 
-  // Factor 5: Historical appeal success (up to 10 points)
+  // Factor 5: Historical appeal success (up to 5 points)
   if (hasRecentAppealSuccess) {
-    opportunityScore += 10;
+    historicalSuccessPoints = 5;
+    appealGrounds.push('prior_success');
   }
+
+  // ============================================================================
+  // NEW FACTOR 6: Per-sqft overvaluation (up to 10 points)
+  // This catches cases where total value looks similar but $/sqft is way off
+  // ============================================================================
+  if (subjectSquareFootage && subjectSquareFootage > 0 && comparableSquareFootages) {
+    const subjectPerSqft = subjectValue / subjectSquareFootage;
+
+    // Calculate $/sqft for comparables
+    const compPerSqftValues: number[] = [];
+    for (let i = 0; i < comparableValues.length; i++) {
+      const sqft = comparableSquareFootages[i];
+      if (sqft && sqft > 0) {
+        compPerSqftValues.push(comparableValues[i] / sqft);
+      }
+    }
+
+    if (compPerSqftValues.length >= 3) {
+      compPerSqftValues.sort((a, b) => a - b);
+      const medianPerSqft = compPerSqftValues[Math.floor(compPerSqftValues.length / 2)];
+      const perSqftOvervaluationPct = ((subjectPerSqft - medianPerSqft) / medianPerSqft) * 100;
+
+      if (perSqftOvervaluationPct > 10 * thresholdMultiplier) {
+        perSqftPoints = Math.min(10, Math.max(0, perSqftOvervaluationPct * 0.5));
+        appealGrounds.push('value_per_sqft');
+      }
+    }
+  }
+
+  // ============================================================================
+  // NEW FACTOR 7: Neighborhood decline (up to 5 points)
+  // If the neighborhood's median assessment DECREASED but subject increased, that's a ground
+  // ============================================================================
+  if (neighborhoodChangePercent !== null && neighborhoodChangePercent !== undefined) {
+    if (neighborhoodChangePercent < 0 && yoyChange > 0) {
+      // Neighborhood declined but subject increased - strong appeal ground
+      neighborhoodTrendPoints = Math.min(5, Math.abs(neighborhoodChangePercent - yoyChange) * 0.1);
+      appealGrounds.push('neighborhood_decline');
+    } else if (neighborhoodChangePercent < yoyChange - 10) {
+      // Subject increased much more than neighborhood average
+      neighborhoodTrendPoints = Math.min(3, (yoyChange - neighborhoodChangePercent) * 0.1);
+      appealGrounds.push('above_neighborhood_trend');
+    }
+  }
+
+  // ============================================================================
+  // NEW FACTOR 8: Persistent overassessment (up to 5 points)
+  // If the property has been consistently above comparables for 3+ years
+  // ============================================================================
+  if (historicalAssessments && historicalAssessments.length >= 3) {
+    // Check if consistently increasing faster than inflation (~3%)
+    let consecutiveAboveAvg = 0;
+    for (let i = 1; i < historicalAssessments.length; i++) {
+      const yearOverYearChange = ((historicalAssessments[i] - historicalAssessments[i - 1]) / historicalAssessments[i - 1]) * 100;
+      if (yearOverYearChange > 5) {
+        consecutiveAboveAvg++;
+      }
+    }
+    if (consecutiveAboveAvg >= 2) {
+      persistentOverassessmentPoints = Math.min(5, consecutiveAboveAvg * 2);
+      appealGrounds.push('persistent_overassessment');
+    }
+  }
+
+  // ============================================================================
+  // NEW FACTOR 9: Characteristic anomaly detection (up to 5 points)
+  // If subject has fewer bedrooms/baths but higher value, might be data error
+  // ============================================================================
+  if (subjectCharacteristics && comparableCharacteristics && comparableCharacteristics.length >= 3) {
+    let anomalyScore = 0;
+
+    // Check bedrooms
+    if (subjectCharacteristics.bedrooms !== null && subjectCharacteristics.bedrooms !== undefined) {
+      const compBedrooms = comparableCharacteristics
+        .map(c => c.bedrooms)
+        .filter((b): b is number => b !== null && b !== undefined);
+      if (compBedrooms.length >= 3) {
+        const avgCompBedrooms = compBedrooms.reduce((a, b) => a + b, 0) / compBedrooms.length;
+        // Subject has FEWER bedrooms but HIGHER value? Possible error or overassessment
+        if (subjectCharacteristics.bedrooms < avgCompBedrooms && subjectValue > avgValue) {
+          anomalyScore += 2;
+          appealGrounds.push('fewer_bedrooms_higher_value');
+        }
+      }
+    }
+
+    // Check square footage mismatch (may indicate data error)
+    if (subjectSquareFootage && comparableSquareFootages) {
+      const validSqfts = comparableSquareFootages.filter((s): s is number => s !== null && s > 0);
+      if (validSqfts.length >= 3) {
+        const avgSqft = validSqfts.reduce((a, b) => a + b, 0) / validSqfts.length;
+        // Subject is SMALLER but assessed HIGHER? Red flag
+        if (subjectSquareFootage < avgSqft * 0.9 && subjectValue > avgValue * 1.1) {
+          anomalyScore += 3;
+          if (!appealGrounds.includes('characteristic_mismatch')) {
+            appealGrounds.push('characteristic_mismatch');
+          }
+          alternativeAction = 'verify_characteristics';
+          alternativeActionReason = 'Your property appears smaller than comparables but assessed higher. Verify your recorded square footage is correct.';
+        }
+      }
+    }
+
+    characteristicAnomalyPoints = Math.min(5, anomalyScore);
+  }
+
+  // ============================================================================
+  // Calculate final score
+  // ============================================================================
+  let opportunityScore =
+    overvaluationPoints +
+    sampleSizePoints +
+    consistencyPoints +
+    assessmentIncreasePoints +
+    historicalSuccessPoints +
+    neighborhoodTrendPoints +
+    persistentOverassessmentPoints +
+    characteristicAnomalyPoints +
+    perSqftPoints;
 
   // Clamp score to 0-100
   opportunityScore = Math.round(Math.min(100, Math.max(0, opportunityScore)));
 
-  // Determine appeal grounds
-  const appealGrounds: string[] = [];
-  if (overvaluationPct > 10) {
-    appealGrounds.push('comparable_sales');
-  }
-  if (yoyChange > 20) {
-    appealGrounds.push('excessive_increase');
-  }
-  if (yoyChange > 40) {
-    appealGrounds.push('dramatic_increase');
+  // ============================================================================
+  // Determine confidence
+  // ============================================================================
+  let confidence: 'high' | 'medium' | 'low' = 'low';
+  const effectiveOvervaluationThreshold = 15 * thresholdMultiplier;
+  const effectiveYoyThreshold = 30 * thresholdMultiplier;
+
+  if (sortedValues.length >= 5 && (overvaluationPct > effectiveOvervaluationThreshold || yoyChange > effectiveYoyThreshold)) {
+    confidence = 'high';
+  } else if (sortedValues.length >= 3 && (overvaluationPct > 10 * thresholdMultiplier || yoyChange > 20 * thresholdMultiplier)) {
+    confidence = 'medium';
+  } else if (yoyChange > 40 * thresholdMultiplier) {
+    confidence = 'medium';
+  } else if (appealGrounds.length >= 2) {
+    // Multiple grounds even if individually weak = medium confidence
+    confidence = 'medium';
   }
 
-  // Determine confidence
-  let confidence: 'high' | 'medium' | 'low' = 'low';
-  if (sortedValues.length >= 5 && (overvaluationPct > 15 || yoyChange > 30)) {
-    confidence = 'high';
-  } else if (sortedValues.length >= 3 && (overvaluationPct > 10 || yoyChange > 20)) {
-    confidence = 'medium';
-  } else if (yoyChange > 40) {
-    // Even with few comparables, a 40%+ increase is a red flag
-    confidence = 'medium';
+  // ============================================================================
+  // Alternative actions for borderline/low-scoring cases
+  // ============================================================================
+  if (opportunityScore < 30 && opportunityScore >= 15 && !alternativeAction) {
+    alternativeAction = 'watchlist';
+    alternativeActionReason = 'Your property is close to the appeal threshold. We can notify you if comparables or deadlines change.';
+  } else if (opportunityScore < 30 && yoyChange > 5) {
+    alternativeAction = 'recheck_next_year';
+    alternativeActionReason = 'Your assessment increased this year. If this trend continues, you may have a stronger case next year.';
   }
 
   return {
@@ -2941,6 +3168,19 @@ export function calculateOpportunityScore(input: OpportunityInput): OpportunityO
     medianComparableValue: medianValue,
     averageComparableValue: avgValue,
     appealGrounds,
-    confidence
+    confidence,
+    scoreBreakdown: {
+      overvaluationPoints: Math.round(overvaluationPoints),
+      sampleSizePoints: Math.round(sampleSizePoints),
+      consistencyPoints: Math.round(consistencyPoints),
+      assessmentIncreasePoints: Math.round(assessmentIncreasePoints),
+      historicalSuccessPoints: Math.round(historicalSuccessPoints),
+      neighborhoodTrendPoints: Math.round(neighborhoodTrendPoints),
+      persistentOverassessmentPoints: Math.round(persistentOverassessmentPoints),
+      characteristicAnomalyPoints: Math.round(characteristicAnomalyPoints),
+      perSqftPoints: Math.round(perSqftPoints),
+    },
+    alternativeAction,
+    alternativeActionReason
   };
 }
