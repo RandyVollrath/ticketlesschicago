@@ -1065,6 +1065,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.log('⚠️ No license plate found in profile to add to monitored_plates');
             }
 
+            // Create autopilot_subscriptions record for admin dashboard tracking
+            console.log('📋 Creating autopilot_subscriptions record for user:', userId);
+            const { error: subscriptionError } = await supabaseAdmin
+              .from('autopilot_subscriptions')
+              .upsert({
+                user_id: userId,
+                plan: 'auto_contest',
+                status: 'active',
+                stripe_subscription_id: session.subscription as string || null,
+                stripe_customer_id: session.customer as string || null,
+                letters_included_remaining: 12,
+                current_period_start: new Date().toISOString(),
+                current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                authorized_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'user_id'
+              });
+
+            if (subscriptionError) {
+              console.error('Error creating autopilot_subscriptions:', subscriptionError);
+            } else {
+              console.log('✅ autopilot_subscriptions record created');
+            }
+
             // NOTE: Remitter fee is NOT charged upfront
             // Remitter gets paid when they perform the renewal service (30 days before expiration)
             // This happens in /api/cron/process-renewals.ts
@@ -1745,6 +1771,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 } else {
                   console.log('✅ License plate added to monitored_plates');
                 }
+              }
+
+              // Create autopilot_subscriptions record for admin dashboard tracking
+              console.log('📋 Creating autopilot_subscriptions record for new user:', authData.user.id);
+              const { error: newUserSubError } = await supabaseAdmin
+                .from('autopilot_subscriptions')
+                .upsert({
+                  user_id: authData.user.id,
+                  plan: 'auto_contest',
+                  status: 'active',
+                  stripe_subscription_id: session.subscription as string || null,
+                  stripe_customer_id: session.customer as string || null,
+                  letters_included_remaining: 12,
+                  current_period_start: new Date().toISOString(),
+                  current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                  authorized_at: new Date().toISOString(),
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'user_id'
+                });
+
+              if (newUserSubError) {
+                console.error('Error creating autopilot_subscriptions for new user:', newUserSubError);
+              } else {
+                console.log('✅ autopilot_subscriptions record created for new user');
               }
 
               // Check if user needs winter ban notification (Dec 1 - Apr 1)
