@@ -21,7 +21,11 @@ import {
   getTownshipWinRate,
   getPriorAppealOutcomes,
   TownshipWinRate,
-  PriorAppealOutcome
+  PriorAppealOutcome,
+  getRecentSuccessfulAppeals,
+  RecentSuccessfulAppeal,
+  checkExemptionEligibility,
+  ExemptionEligibility
 } from '../../../lib/cook-county-api';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
@@ -87,21 +91,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       analysis.deadlines = deadlines;
     }
 
-    // Get additional data in parallel: neighborhood conditions, win rate, prior appeals
+    // Get additional data in parallel: neighborhood conditions, win rate, prior appeals, social proof, exemptions
     const ward = extractWardFromProperty(analysis);
-    const [neighborhoodConditions, townshipWinRate, priorAppeals] = await Promise.all([
+    const [neighborhoodConditions, townshipWinRate, priorAppeals, recentSuccesses, exemptions] = await Promise.all([
       ward ? getNeighborhoodConditions(ward, supabase) : Promise.resolve(null),
       analysis.property.townshipCode
         ? getTownshipWinRate(analysis.property.townshipCode, analysis.property.propertyClass)
         : Promise.resolve(null),
-      getPriorAppealOutcomes(normalizedPin)
+      getPriorAppealOutcomes(normalizedPin),
+      analysis.property.townshipCode
+        ? getRecentSuccessfulAppeals(analysis.property.townshipCode, 5)
+        : Promise.resolve([]),
+      checkExemptionEligibility(normalizedPin, analysis.property.assessedValue || 0)
     ]);
 
     // Cache comparables for later use
     await cacheComparables(normalizedPin, analysis);
 
     // Format the response with actionable insights
-    const response = formatAnalysisResponse(analysis, neighborhoodConditions, townshipWinRate, priorAppeals);
+    const response = formatAnalysisResponse(
+      analysis,
+      neighborhoodConditions,
+      townshipWinRate,
+      priorAppeals,
+      recentSuccesses,
+      exemptions
+    );
 
     return res.status(200).json(response);
 
@@ -210,7 +225,9 @@ function formatAnalysisResponse(
   analysis: AppealOpportunity,
   neighborhoodConditions: NeighborhoodConditionsData | null = null,
   townshipWinRate: TownshipWinRate | null = null,
-  priorAppealOutcomes: PriorAppealOutcome[] = []
+  priorAppealOutcomes: PriorAppealOutcome[] = [],
+  recentSuccesses: RecentSuccessfulAppeal[] = [],
+  exemptions: ExemptionEligibility | null = null
 ) {
   const { property, analysis: stats, comparables, comparableSales, priorAppeals, deadlines } = analysis;
 
@@ -542,7 +559,40 @@ function formatAnalysisResponse(
       daysUntilDeadline: deadlines.daysUntilDeadline,
       status: getDeadlineStatus(deadlines)
     },
-    actionItems
+    actionItems,
+    // SOCIAL PROOF - Recent successful appeals in this township
+    socialProof: recentSuccesses.length > 0 ? {
+      recentSuccesses: recentSuccesses.map(s => ({
+        pin: s.pin,
+        address: s.address,
+        taxYear: s.taxYear,
+        reductionPercent: s.reductionPercent,
+        reductionDollars: s.reductionDollars,
+        propertyClass: s.propertyClass,
+        daysAgo: Math.floor((Date.now() - new Date(s.decisionDate).getTime()) / (1000 * 60 * 60 * 24))
+      })),
+      totalRecentSuccesses: recentSuccesses.length,
+      summary: `${recentSuccesses.length} properties in ${property.township} have successfully appealed recently, with average reductions of ${Math.round(recentSuccesses.reduce((sum, s) => sum + s.reductionPercent, 0) / recentSuccesses.length)}%.`
+    } : null,
+    // EXEMPTION ELIGIBILITY - Tax exemptions the owner may qualify for
+    exemptions: exemptions ? {
+      currentlyHasHomeowner: exemptions.currentlyHasHomeowner,
+      currentlyHasSenior: exemptions.currentlyHasSenior,
+      currentlyHasSeniorFreeze: exemptions.currentlyHasSeniorFreeze,
+      currentlyHasDisabledVet: exemptions.currentlyHasDisabledVet,
+      eligibleExemptions: exemptions.eligibleExemptions.map(e => ({
+        type: e.type,
+        name: e.name,
+        potentialSavings: e.potentialSavings,
+        requirements: e.requirements,
+        howToApply: e.howToApply
+      })),
+      totalPotentialSavings: exemptions.totalPotentialSavings,
+      hasMissingExemptions: exemptions.eligibleExemptions.length > 0,
+      summary: exemptions.eligibleExemptions.length > 0
+        ? `You may be eligible for ${exemptions.eligibleExemptions.length} exemption(s) that could save you up to $${exemptions.totalPotentialSavings.toLocaleString()} annually. These are separate from appealing your assessment.`
+        : 'You appear to have all available exemptions applied to your property.'
+    } : null
   };
 }
 

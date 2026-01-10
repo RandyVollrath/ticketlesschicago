@@ -1656,6 +1656,193 @@ export async function getAssessmentHistory(pin: string, years: number = 5): Prom
 }
 
 /**
+ * Get recent successful appeals in a township for social proof
+ * Returns anonymized data showing real reductions
+ */
+export interface RecentSuccessfulAppeal {
+  taxYear: string;
+  propertyClass: string;
+  neighborhood: string;
+  originalValue: number;
+  reducedValue: number;
+  reductionAmount: number;
+  reductionPercent: number;
+  estimatedTaxSavings: number;
+}
+
+export async function getRecentSuccessfulAppeals(
+  townshipCode: string,
+  limit: number = 10
+): Promise<RecentSuccessfulAppeal[]> {
+  try {
+    const currentYear = new Date().getFullYear();
+    const recentYears = [currentYear - 1, currentYear - 2].map(String);
+
+    const decisions = await querySODA<BORDecision>(
+      DATASETS.BOR_DECISIONS,
+      {
+        '$where': `township_code = '${townshipCode}' AND tax_year IN ('${recentYears.join("','")}')`,
+        '$order': 'tax_year DESC',
+        '$limit': '500'
+      }
+    );
+
+    // Filter to successful appeals with meaningful reductions
+    const successful = decisions
+      .map(d => {
+        const preVal = parseFloat(d.tot_pre_mktval) || 0;
+        const postVal = parseFloat(d.tot_post_mktval) || 0;
+        const reduction = preVal - postVal;
+        const reductionPct = preVal > 0 ? (reduction / preVal) * 100 : 0;
+
+        if (reduction > 0 && reductionPct >= 5) {
+          return {
+            taxYear: d.tax_year,
+            propertyClass: d.class || 'Unknown',
+            neighborhood: d.nbhd || '',
+            originalValue: Math.round(preVal),
+            reducedValue: Math.round(postVal),
+            reductionAmount: Math.round(reduction),
+            reductionPercent: Math.round(reductionPct * 10) / 10,
+            estimatedTaxSavings: Math.round(reduction * 0.021) // ~2.1% tax rate
+          };
+        }
+        return null;
+      })
+      .filter((a): a is RecentSuccessfulAppeal => a !== null)
+      .slice(0, limit);
+
+    return successful;
+  } catch (error) {
+    console.error('Error fetching recent successful appeals:', error);
+    return [];
+  }
+}
+
+/**
+ * Check available exemptions for a property
+ * Cook County offers several exemptions that can stack
+ */
+export interface ExemptionEligibility {
+  homeownerExemption: {
+    eligible: boolean;
+    currentlyApplied: boolean;
+    potentialSavings: number;
+    description: string;
+  };
+  seniorExemption: {
+    eligible: boolean; // User must be 65+
+    currentlyApplied: boolean;
+    potentialSavings: number;
+    description: string;
+  };
+  seniorFreezeExemption: {
+    eligible: boolean; // 65+ and income under ~$65k
+    currentlyApplied: boolean;
+    potentialSavings: number;
+    description: string;
+  };
+  disabledVeteranExemption: {
+    eligible: boolean;
+    currentlyApplied: boolean;
+    potentialSavings: number;
+    description: string;
+  };
+  totalPotentialSavings: number;
+  recommendations: string[];
+}
+
+export async function checkExemptionEligibility(
+  pin: string,
+  assessedValue: number
+): Promise<ExemptionEligibility> {
+  // Cook County exemption amounts (2024 values, updated annually)
+  const HOMEOWNER_EXEMPTION = 10000; // $10,000 reduction in EAV
+  const SENIOR_EXEMPTION = 8000; // $8,000 reduction in EAV
+  const SENIOR_FREEZE_BENEFIT = 5000; // Approximate additional benefit
+  const DISABLED_VET_EXEMPTION = 100000; // Up to $100,000 reduction
+
+  const taxRate = 0.021; // ~2.1% effective rate
+
+  // Try to fetch current exemption status from county data
+  // Note: This data may not always be available via API
+  let currentExemptions: string[] = [];
+  try {
+    const exemptionData = await querySODA<any>(
+      DATASETS.ASSESSED_VALUES,
+      {
+        '$where': `pin = '${normalizePin(pin)}'`,
+        '$select': 'exe_homeowner, exe_senior, exe_freeze, exe_disabled, exe_veteran',
+        '$limit': '1',
+        '$order': 'year DESC'
+      }
+    );
+    if (exemptionData[0]) {
+      if (exemptionData[0].exe_homeowner === 'Y') currentExemptions.push('homeowner');
+      if (exemptionData[0].exe_senior === 'Y') currentExemptions.push('senior');
+      if (exemptionData[0].exe_freeze === 'Y') currentExemptions.push('freeze');
+      if (exemptionData[0].exe_disabled === 'Y' || exemptionData[0].exe_veteran === 'Y') {
+        currentExemptions.push('disabled_veteran');
+      }
+    }
+  } catch (e) {
+    // Exemption data not available, assume none applied
+  }
+
+  const recommendations: string[] = [];
+
+  // Homeowner exemption - available to all owner-occupied primary residences
+  const homeownerApplied = currentExemptions.includes('homeowner');
+  const homeownerSavings = !homeownerApplied ? Math.round(HOMEOWNER_EXEMPTION * taxRate) : 0;
+  if (!homeownerApplied) {
+    recommendations.push('Apply for Homeowner Exemption - saves ~$210/year if this is your primary residence');
+  }
+
+  // Senior exemption - must be 65+ and owner-occupied
+  const seniorApplied = currentExemptions.includes('senior');
+  const seniorSavings = !seniorApplied ? Math.round(SENIOR_EXEMPTION * taxRate) : 0;
+
+  // Senior freeze - 65+ and income under threshold
+  const freezeApplied = currentExemptions.includes('freeze');
+  const freezeSavings = !freezeApplied ? Math.round(SENIOR_FREEZE_BENEFIT * taxRate) : 0;
+
+  // Disabled veteran
+  const disabledVetApplied = currentExemptions.includes('disabled_veteran');
+  const disabledVetSavings = !disabledVetApplied ? Math.round(Math.min(DISABLED_VET_EXEMPTION, assessedValue) * taxRate) : 0;
+
+  const totalPotentialSavings = homeownerSavings + seniorSavings + freezeSavings;
+
+  return {
+    homeownerExemption: {
+      eligible: true, // Anyone with primary residence
+      currentlyApplied: homeownerApplied,
+      potentialSavings: homeownerSavings,
+      description: 'Available to homeowners who occupy their property as primary residence. Reduces EAV by $10,000.'
+    },
+    seniorExemption: {
+      eligible: true, // We don't know age, so show as potentially eligible
+      currentlyApplied: seniorApplied,
+      potentialSavings: seniorSavings,
+      description: 'Available to homeowners 65+ years old. Reduces EAV by $8,000. Stacks with Homeowner Exemption.'
+    },
+    seniorFreezeExemption: {
+      eligible: true,
+      currentlyApplied: freezeApplied,
+      potentialSavings: freezeSavings,
+      description: 'Freezes your EAV at base year if 65+ with household income under ~$65,000.'
+    },
+    disabledVeteranExemption: {
+      eligible: true,
+      currentlyApplied: disabledVetApplied,
+      potentialSavings: disabledVetSavings,
+      description: 'Available to veterans with service-connected disability. Can reduce EAV by up to $100,000.'
+    },
+    totalPotentialSavings,
+    recommendations
+  };
+}
+
+/**
  * Analyze appeal opportunity for a property
  */
 export async function analyzeAppealOpportunity(

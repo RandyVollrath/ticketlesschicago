@@ -102,6 +102,47 @@ interface ComparableProperty {
   valuePerSqft: number | null;
 }
 
+interface SocialProofData {
+  recentSuccesses: Array<{
+    pin: string;
+    address: string;
+    taxYear: number;
+    reductionPercent: number;
+    reductionDollars: number;
+    propertyClass: string;
+    daysAgo: number;
+  }>;
+  totalRecentSuccesses: number;
+  summary: string;
+}
+
+interface ExemptionData {
+  currentlyHasHomeowner: boolean;
+  currentlyHasSenior: boolean;
+  currentlyHasSeniorFreeze: boolean;
+  currentlyHasDisabledVet: boolean;
+  eligibleExemptions: Array<{
+    type: string;
+    name: string;
+    potentialSavings: number;
+    requirements: string[];
+    howToApply: string;
+  }>;
+  totalPotentialSavings: number;
+  hasMissingExemptions: boolean;
+  summary: string;
+}
+
+interface DeadlineData {
+  township: string;
+  ccaoOpen: string | null;
+  ccaoClose: string | null;
+  borOpen: string | null;
+  borClose: string | null;
+  daysUntilDeadline: number | null;
+  status: string;
+}
+
 interface AppealData {
   id?: string;
   property: PropertyData;
@@ -109,6 +150,9 @@ interface AppealData {
   comparables: ComparableProperty[];
   appealLetter?: string;
   paidAt?: string;
+  socialProof?: SocialProofData | null;
+  exemptions?: ExemptionData | null;
+  deadlines?: DeadlineData | null;
 }
 
 // Disclaimer component
@@ -397,7 +441,10 @@ export default function PropertyTax() {
       setAppealData({
         property: mergedProperty,
         analysis: data.analysis,
-        comparables: data.comparables || []
+        comparables: data.comparables || [],
+        socialProof: data.socialProof || null,
+        exemptions: data.exemptions || null,
+        deadlines: data.deadlines || null
       });
 
       // Track analysis complete
@@ -1189,6 +1236,114 @@ export default function PropertyTax() {
         {/* Stage: Analysis Results (Free Preview) */}
         {stage === 'analysis' && appealData && (
           <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Deadline Urgency Banner */}
+            {appealData.deadlines && appealData.deadlines.daysUntilDeadline !== null && appealData.deadlines.daysUntilDeadline > 0 && (
+              <div style={{
+                backgroundColor: appealData.deadlines.daysUntilDeadline <= 7 ? '#FEE2E2' :
+                               appealData.deadlines.daysUntilDeadline <= 14 ? '#FEF3C7' : '#ECFDF5',
+                borderRadius: '16px',
+                padding: '20px 24px',
+                border: `2px solid ${appealData.deadlines.daysUntilDeadline <= 7 ? '#FCA5A5' :
+                                    appealData.deadlines.daysUntilDeadline <= 14 ? '#FDE68A' : '#A7F3D0'}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                animation: appealData.deadlines.daysUntilDeadline <= 7 ? 'pulse 2s infinite' : 'none'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '16px',
+                  backgroundColor: appealData.deadlines.daysUntilDeadline <= 7 ? '#EF4444' :
+                                  appealData.deadlines.daysUntilDeadline <= 14 ? '#F59E0B' : '#10B981',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.15)'
+                }}>
+                  <span style={{ color: 'white', fontSize: '24px', fontWeight: '800', lineHeight: 1 }}>
+                    {appealData.deadlines.daysUntilDeadline}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {appealData.deadlines.daysUntilDeadline === 1 ? 'day' : 'days'}
+                  </span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    color: appealData.deadlines.daysUntilDeadline <= 7 ? '#991B1B' :
+                          appealData.deadlines.daysUntilDeadline <= 14 ? '#92400E' : '#065F46',
+                    margin: '0 0 4px 0'
+                  }}>
+                    {appealData.deadlines.daysUntilDeadline <= 7 ? 'URGENT: Deadline Approaching!' :
+                     appealData.deadlines.daysUntilDeadline <= 14 ? 'Filing Deadline in 2 Weeks' :
+                     'Filing Period Open'}
+                  </p>
+                  <p style={{
+                    fontSize: '14px',
+                    color: appealData.deadlines.daysUntilDeadline <= 7 ? '#B91C1C' :
+                          appealData.deadlines.daysUntilDeadline <= 14 ? '#B45309' : '#047857',
+                    margin: 0
+                  }}>
+                    {appealData.deadlines.daysUntilDeadline <= 7
+                      ? `File your ${appealData.deadlines.township || 'township'} appeal by ${appealData.deadlines.borClose || 'the deadline'} to avoid missing this year's window.`
+                      : appealData.deadlines.daysUntilDeadline <= 14
+                        ? `Don't miss the ${appealData.deadlines.township || 'township'} deadline. Deadline: ${appealData.deadlines.borClose || 'soon'}`
+                        : `${appealData.deadlines.daysUntilDeadline} days remaining to file your ${appealData.deadlines.township || 'township'} appeal.`}
+                  </p>
+                </div>
+                {appealData.deadlines.daysUntilDeadline <= 14 && (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                       stroke={appealData.deadlines.daysUntilDeadline <= 7 ? '#EF4444' : '#F59E0B'}
+                       strokeWidth="2.5"
+                       style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                )}
+              </div>
+            )}
+
+            {/* Deadline Closed Banner */}
+            {appealData.deadlines && (appealData.deadlines.daysUntilDeadline === null || appealData.deadlines.daysUntilDeadline <= 0) && appealData.deadlines.status.includes('closed') && (
+              <div style={{
+                backgroundColor: '#F1F5F9',
+                borderRadius: '16px',
+                padding: '20px 24px',
+                border: `1px solid ${COLORS.border}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px'
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  backgroundColor: COLORS.slate,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M15 9l-6 6M9 9l6 6"/>
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 4px 0' }}>
+                    Filing Period Closed for {appealData.deadlines.township || 'This Township'}
+                  </p>
+                  <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0 }}>
+                    Add this property to your watchlist and we'll notify you when the next filing period opens.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Opportunity Score Card */}
             <div style={{
               backgroundColor: 'white',
@@ -1430,6 +1585,118 @@ export default function PropertyTax() {
                   <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0 }}>
                     {appealData.analysis.priorAppealHistory.summary}
                   </p>
+                </div>
+              )}
+
+              {/* Social Proof - Recent Successful Appeals */}
+              {appealData.socialProof && appealData.socialProof.totalRecentSuccesses > 0 && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '16px 20px',
+                  backgroundColor: '#ECFDF5',
+                  borderRadius: '12px',
+                  border: '1px solid #A7F3D0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: '#10B981',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '14px', fontWeight: '600', color: '#065F46', margin: '0 0 2px 0' }}>
+                        Neighbors Are Winning Appeals
+                      </p>
+                      <p style={{ fontSize: '13px', color: '#047857', margin: 0 }}>
+                        {appealData.socialProof.summary}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {appealData.socialProof.recentSuccesses.slice(0, 3).map((success, idx) => (
+                      <div key={idx} style={{
+                        padding: '8px 12px',
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        border: '1px solid #D1FAE5',
+                        fontSize: '12px'
+                      }}>
+                        <span style={{ color: '#065F46', fontWeight: '600' }}>
+                          {success.reductionPercent.toFixed(0)}% reduction
+                        </span>
+                        <span style={{ color: '#6B7280', marginLeft: '6px' }}>
+                          {success.daysAgo}d ago
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Exemption Eligibility Alert */}
+              {appealData.exemptions && appealData.exemptions.hasMissingExemptions && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '16px 20px',
+                  backgroundColor: '#FEF3C7',
+                  borderRadius: '12px',
+                  border: '1px solid #FDE68A'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: '#F59E0B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                        <path d="M12 9v2M12 15h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '14px', fontWeight: '600', color: '#92400E', margin: '0 0 4px 0' }}>
+                        You May Be Missing Tax Exemptions!
+                      </p>
+                      <p style={{ fontSize: '13px', color: '#B45309', margin: '0 0 12px 0' }}>
+                        {appealData.exemptions.summary}
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {appealData.exemptions.eligibleExemptions.map((exemption, idx) => (
+                          <div key={idx} style={{
+                            padding: '10px 14px',
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            border: '1px solid #FDE68A'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: '600', color: '#78350F' }}>
+                                {exemption.name}
+                              </span>
+                              <span style={{ fontSize: '13px', fontWeight: '700', color: '#10B981' }}>
+                                Save ${exemption.potentialSavings.toLocaleString()}/yr
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '12px', color: '#92400E', margin: 0 }}>
+                              {exemption.requirements.join(' • ')}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
