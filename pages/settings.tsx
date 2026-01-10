@@ -736,6 +736,32 @@ export default function SettingsPage() {
       setShowCheckoutSuccess(true);
       // Clear the query param from URL without reload
       router.replace('/settings', undefined, { shallow: true });
+
+      // Webhook may not have completed yet - poll for updated data
+      // This ensures has_contesting and monitored_plates are set
+      const pollForWebhookCompletion = async () => {
+        for (let i = 0; i < 5; i++) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+          const { data: updatedProfile } = await supabase
+            .from('user_profiles')
+            .select('has_contesting, license_plate')
+            .eq('user_id', session.user.id)
+            .single();
+
+          const { data: updatedPlates } = await supabase
+            .from('monitored_plates')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .eq('status', 'active');
+
+          if (updatedProfile?.has_contesting || (updatedPlates && updatedPlates.length > 0)) {
+            // Webhook completed - reload all data
+            loadData();
+            break;
+          }
+        }
+      };
+      pollForWebhookCompletion();
     }
 
     // Load profile from user_profiles - single source of truth
@@ -806,8 +832,10 @@ export default function SettingsPage() {
       .eq('user_id', session.user.id)
       .eq('status', 'active');
 
-    // Check if user has any active plates
-    setHasActivePlates(plateData && plateData.length > 0);
+    // Check if user has any active plates (check both monitored_plates AND user_profiles.license_plate)
+    const hasPlateInMonitored = plateData && plateData.length > 0;
+    const hasPlateInProfile = !!profileData?.license_plate?.trim();
+    setHasActivePlates(hasPlateInMonitored || hasPlateInProfile);
 
     if (plateData && plateData.length > 0) {
       // Use first active plate
