@@ -75,6 +75,21 @@ interface AnalysisData {
   comparableCount: number;
   appealGrounds: string[];
   confidence: 'high' | 'medium' | 'low';
+  // Win rate data from BOR decisions
+  townshipWinRate?: {
+    winRate: number;
+    winRateFormatted: string;
+    totalAppeals: number;
+    avgReductionPercent: number;
+    summary: string;
+  } | null;
+  // Prior appeal history for this PIN
+  priorAppealHistory?: {
+    hasAppealed: boolean;
+    appealCount: number;
+    successCount: number;
+    summary: string;
+  } | null;
 }
 
 interface ComparableProperty {
@@ -142,6 +157,10 @@ export default function PropertyTax() {
   const [consentAnalysis, setConsentAnalysis] = useState(false);
   const [consentNotLegal, setConsentNotLegal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [pricingModel, setPricingModel] = useState<'upfront' | 'success_fee'>('upfront');
+
+  // Success fee constants
+  const SUCCESS_FEE_RATE = 0.25; // 25% of first year savings
 
   // Preparation state
   const [preparingProgress, setPreparingProgress] = useState(0);
@@ -442,35 +461,62 @@ export default function PropertyTax() {
         township: appealData.property.township
       });
 
-      // Step 2: Create Stripe Checkout session
-      const checkoutResponse = await fetch('/api/property-tax/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          appealId: appealId,
-          pin: appealData.property.pin,
-          address: appealData.property.address,
-          township: appealData.property.township,
-          assessedValue: appealData.property.assessedValue,
-          estimatedSavings: appealData.analysis.estimatedTaxSavings,
-          opportunityScore: appealData.analysis.opportunityScore
-        })
-      });
+      // Step 2: Handle payment based on pricing model
+      if (pricingModel === 'success_fee') {
+        // Success fee model - no upfront payment, just activate the appeal
+        const activateResponse = await fetch('/api/property-tax/activate-success-fee', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            appealId: appealId,
+            successFeeRate: SUCCESS_FEE_RATE
+          })
+        });
 
-      const checkoutData = await checkoutResponse.json();
+        const activateData = await activateResponse.json();
 
-      if (!checkoutResponse.ok) {
-        throw new Error(checkoutData.message || checkoutData.error || 'Failed to create checkout');
-      }
+        if (!activateResponse.ok) {
+          throw new Error(activateData.message || activateData.error || 'Failed to activate appeal');
+        }
 
-      // Step 3: Redirect to Stripe Checkout
-      if (checkoutData.url) {
-        window.location.href = checkoutData.url;
+        // Success! Move to preparing stage
+        setStage('preparing');
+        simulatePreparation(appealId, session.access_token);
       } else {
-        throw new Error('No checkout URL returned');
+        // Upfront payment - create Stripe checkout
+        const checkoutResponse = await fetch('/api/property-tax/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            appealId: appealId,
+            pin: appealData.property.pin,
+            address: appealData.property.address,
+            township: appealData.property.township,
+            assessedValue: appealData.property.assessedValue,
+            estimatedSavings: appealData.analysis.estimatedTaxSavings,
+            opportunityScore: appealData.analysis.opportunityScore,
+            pricingModel: 'upfront'
+          })
+        });
+
+        const checkoutData = await checkoutResponse.json();
+
+        if (!checkoutResponse.ok) {
+          throw new Error(checkoutData.message || checkoutData.error || 'Failed to create checkout');
+        }
+
+        // Step 3: Redirect to Stripe Checkout
+        if (checkoutData.url) {
+          window.location.href = checkoutData.url;
+        } else {
+          throw new Error('No checkout URL returned');
+        }
       }
 
     } catch (error) {
@@ -1318,6 +1364,74 @@ export default function PropertyTax() {
                   </p>
                 </div>
               </div>
+
+              {/* Township Win Rate Banner */}
+              {appealData.analysis.townshipWinRate && (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '16px 20px',
+                  backgroundColor: appealData.analysis.townshipWinRate.winRate >= 50 ? '#F0FDF4' : '#FEF3C7',
+                  borderRadius: '12px',
+                  border: `1px solid ${appealData.analysis.townshipWinRate.winRate >= 50 ? '#86EFAC' : '#FDE68A'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: appealData.analysis.townshipWinRate.winRate >= 50 ? '#10B981' : '#F59E0B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <span style={{ color: 'white', fontSize: '16px', fontWeight: '700' }}>
+                      {Math.round(appealData.analysis.townshipWinRate.winRate)}%
+                    </span>
+                  </div>
+                  <div>
+                    <p style={{
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      color: appealData.analysis.townshipWinRate.winRate >= 50 ? '#166534' : '#92400E',
+                      margin: '0 0 4px 0'
+                    }}>
+                      Historical Success Rate
+                    </p>
+                    <p style={{
+                      fontSize: '13px',
+                      color: appealData.analysis.townshipWinRate.winRate >= 50 ? '#166534' : '#92400E',
+                      margin: 0
+                    }}>
+                      {appealData.analysis.townshipWinRate.summary}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Prior Appeal History */}
+              {appealData.analysis.priorAppealHistory?.hasAppealed && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px 16px',
+                  backgroundColor: '#F8FAFC',
+                  borderRadius: '10px',
+                  border: `1px solid ${COLORS.border}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                  <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0 }}>
+                    {appealData.analysis.priorAppealHistory.summary}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Property Summary */}
@@ -1826,33 +1940,121 @@ export default function PropertyTax() {
               </div>
             </div>
 
-            {/* Property Summary + Price */}
+            {/* Property Summary */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              background: `linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)`,
-              borderRadius: '14px',
-              marginBottom: '28px',
-              border: '1px solid #BBF7D0'
+              padding: '16px 20px',
+              background: '#F8FAFC',
+              borderRadius: '12px',
+              marginBottom: '20px',
+              border: '1px solid #E2E8F0'
             }}>
-              <div>
-                <p style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 4px 0' }}>
-                  {appealData.property.address}
-                </p>
-                <p style={{ fontSize: '13px', color: '#166534', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-                  </svg>
-                  Est. savings: <strong>${Math.round(appealData.analysis.estimatedTaxSavings).toLocaleString()}/year</strong>
-                </p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '36px', fontWeight: '800', color: COLORS.signal, margin: 0, fontFamily: '"Space Grotesk", sans-serif', lineHeight: 1 }}>
-                  ${PRICE}
-                </p>
-                <p style={{ fontSize: '12px', color: '#166534', margin: '4px 0 0 0' }}>one-time</p>
+              <p style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite, margin: '0 0 4px 0' }}>
+                {appealData.property.address}
+              </p>
+              <p style={{ fontSize: '13px', color: COLORS.signal, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                </svg>
+                Est. savings: <strong>${Math.round(appealData.analysis.estimatedTaxSavings).toLocaleString()}/year</strong>
+              </p>
+            </div>
+
+            {/* Pricing Options */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: '0 0 12px 0' }}>
+                Choose Your Payment Option:
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Upfront Option */}
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: `2px solid ${pricingModel === 'upfront' ? COLORS.regulatory : COLORS.border}`,
+                  backgroundColor: pricingModel === 'upfront' ? `${COLORS.regulatory}08` : 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}>
+                  <input
+                    type="radio"
+                    name="pricingModel"
+                    checked={pricingModel === 'upfront'}
+                    onChange={() => setPricingModel('upfront')}
+                    style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: COLORS.regulatory }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.graphite }}>Pay Now</span>
+                      <span style={{ fontSize: '24px', fontWeight: '800', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>${PRICE}</span>
+                    </div>
+                    <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0 }}>
+                      One-time payment. Best value if appeal succeeds.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Success Fee Option */}
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: `2px solid ${pricingModel === 'success_fee' ? COLORS.regulatory : COLORS.border}`,
+                  backgroundColor: pricingModel === 'success_fee' ? `${COLORS.regulatory}08` : 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    right: '12px',
+                    backgroundColor: COLORS.warning,
+                    color: 'white',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    textTransform: 'uppercase'
+                  }}>
+                    No Risk
+                  </div>
+                  <input
+                    type="radio"
+                    name="pricingModel"
+                    checked={pricingModel === 'success_fee'}
+                    onChange={() => setPricingModel('success_fee')}
+                    style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: COLORS.regulatory }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.graphite }}>Success Fee</span>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '24px', fontWeight: '800', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>$0</span>
+                        <span style={{ fontSize: '14px', color: COLORS.slate, marginLeft: '4px' }}>upfront</span>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '13px', color: COLORS.slate, margin: '0 0 8px 0' }}>
+                      Pay only if your appeal succeeds: <strong>25% of first year savings</strong>
+                    </p>
+                    {appealData.analysis.estimatedTaxSavings > 0 && (
+                      <p style={{
+                        fontSize: '12px',
+                        color: COLORS.graphite,
+                        margin: 0,
+                        padding: '6px 10px',
+                        backgroundColor: '#FEF3C7',
+                        borderRadius: '6px',
+                        display: 'inline-block'
+                      }}>
+                        Est. fee if successful: ${Math.round(appealData.analysis.estimatedTaxSavings * SUCCESS_FEE_RATE).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </label>
               </div>
             </div>
 
@@ -1903,7 +2105,7 @@ export default function PropertyTax() {
               </label>
             </div>
 
-            {/* Pay Button */}
+            {/* Action Button */}
             <button
               className="btn-primary"
               onClick={handlePayment}
@@ -1937,6 +2139,14 @@ export default function PropertyTax() {
                     animation: 'spin 1s linear infinite'
                   }} />
                   Processing...
+                </>
+              ) : pricingModel === 'success_fee' ? (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                    <polyline points="22,4 12,14.01 9,11.01"/>
+                  </svg>
+                  Get Package - Pay Later If Successful
                 </>
               ) : (
                 <>
@@ -2233,31 +2443,86 @@ export default function PropertyTax() {
                   <h3 style={{ fontSize: '18px', fontWeight: '600', color: COLORS.graphite, margin: 0 }}>
                     Your Appeal Letter
                   </h3>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(appealData.appealLetter || '');
-                      trackPropertyTaxLetterCopied();
-                      alert('Letter copied to clipboard!');
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      border: `1px solid ${COLORS.border}`,
-                      backgroundColor: 'white',
-                      color: COLORS.graphite,
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                    </svg>
-                    Copy
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { data: { session } } = await supabase.auth.getSession();
+                          if (!session || !appealData.id) return;
+
+                          const response = await fetch('/api/property-tax/generate-pdf', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({ appealId: appealData.id })
+                          });
+
+                          if (!response.ok) throw new Error('Failed to generate PDF');
+
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `Appeal_${appealData.property.pin.replace(/-/g, '')}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          window.URL.revokeObjectURL(url);
+                        } catch (error) {
+                          console.error('PDF download error:', error);
+                          alert('Failed to download PDF. Please try again.');
+                        }
+                      }}
+                      className="btn-success"
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        backgroundColor: COLORS.signal,
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      Download PDF
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(appealData.appealLetter || '');
+                        trackPropertyTaxLetterCopied();
+                        alert('Letter copied to clipboard!');
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        border: `1px solid ${COLORS.border}`,
+                        backgroundColor: 'white',
+                        color: COLORS.graphite,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                      </svg>
+                      Copy
+                    </button>
+                  </div>
                 </div>
                 <div style={{
                   padding: '20px',
