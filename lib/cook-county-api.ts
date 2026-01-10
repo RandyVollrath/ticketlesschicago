@@ -1523,6 +1523,121 @@ export async function getAppealHistory(pin: string): Promise<BORDecision[]> {
 }
 
 /**
+ * Get township win rate statistics from Board of Review decisions
+ * Returns success rate and average reduction for similar properties
+ */
+export interface TownshipWinRate {
+  township: string;
+  totalAppeals: number;
+  successfulAppeals: number;
+  winRate: number;
+  avgReductionPercent: number;
+  avgReductionDollars: number;
+  dataYears: string[];
+}
+
+export async function getTownshipWinRate(
+  townshipCode: string,
+  propertyClass?: string
+): Promise<TownshipWinRate | null> {
+  try {
+    // Query BOR decisions for this township over last 3 years
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 3;
+
+    let whereClause = `township_code = '${townshipCode}' AND tax_year >= '${startYear}'`;
+    if (propertyClass) {
+      whereClause += ` AND class = '${propertyClass}'`;
+    }
+
+    const decisions = await querySODA<BORDecision>(
+      DATASETS.BOR_DECISIONS,
+      {
+        '$where': whereClause,
+        '$limit': '5000'
+      }
+    );
+
+    if (decisions.length === 0) {
+      return null;
+    }
+
+    // Calculate statistics
+    let successfulAppeals = 0;
+    let totalReductionPercent = 0;
+    let totalReductionDollars = 0;
+    const years = new Set<string>();
+
+    for (const decision of decisions) {
+      years.add(decision.tax_year);
+
+      // A successful appeal is one where the value was reduced
+      const preMktVal = parseFloat(decision.tot_pre_mktval) || 0;
+      const postMktVal = parseFloat(decision.tot_post_mktval) || 0;
+
+      if (postMktVal < preMktVal && preMktVal > 0) {
+        successfulAppeals++;
+        const reduction = preMktVal - postMktVal;
+        const reductionPct = (reduction / preMktVal) * 100;
+        totalReductionPercent += reductionPct;
+        totalReductionDollars += reduction;
+      }
+    }
+
+    const winRate = (successfulAppeals / decisions.length) * 100;
+    const avgReductionPercent = successfulAppeals > 0 ? totalReductionPercent / successfulAppeals : 0;
+    const avgReductionDollars = successfulAppeals > 0 ? totalReductionDollars / successfulAppeals : 0;
+
+    return {
+      township: townshipCode,
+      totalAppeals: decisions.length,
+      successfulAppeals,
+      winRate: Math.round(winRate * 10) / 10,
+      avgReductionPercent: Math.round(avgReductionPercent * 10) / 10,
+      avgReductionDollars: Math.round(avgReductionDollars),
+      dataYears: Array.from(years).sort().reverse()
+    };
+  } catch (error) {
+    console.error('Error fetching township win rate:', error);
+    return null;
+  }
+}
+
+/**
+ * Get prior appeal history for a specific PIN with outcomes
+ */
+export interface PriorAppealOutcome {
+  taxYear: string;
+  preAppealValue: number;
+  postAppealValue: number;
+  reduction: number;
+  reductionPercent: number;
+  success: boolean;
+  reason: string;
+}
+
+export async function getPriorAppealOutcomes(pin: string): Promise<PriorAppealOutcome[]> {
+  const decisions = await getAppealHistory(pin);
+
+  return decisions.map(d => {
+    const preVal = parseFloat(d.tot_pre_mktval) || 0;
+    const postVal = parseFloat(d.tot_post_mktval) || 0;
+    const reduction = preVal - postVal;
+    const reductionPct = preVal > 0 ? (reduction / preVal) * 100 : 0;
+
+    return {
+      taxYear: d.tax_year,
+      preAppealValue: preVal,
+      postAppealValue: postVal,
+      reduction: reduction,
+      reductionPercent: Math.round(reductionPct * 10) / 10,
+      success: reduction > 0,
+      reason: d.reason || ''
+    };
+  });
+}
+
+/**
  * Get assessment history for a property
  */
 export async function getAssessmentHistory(pin: string, years: number = 5): Promise<AssessedValue[]> {

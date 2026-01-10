@@ -17,7 +17,11 @@ import {
   normalizePin,
   AppealOpportunity,
   getNeighborhoodConditions,
-  NeighborhoodConditionsData
+  NeighborhoodConditionsData,
+  getTownshipWinRate,
+  getPriorAppealOutcomes,
+  TownshipWinRate,
+  PriorAppealOutcome
 } from '../../../lib/cook-county-api';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
@@ -83,19 +87,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       analysis.deadlines = deadlines;
     }
 
-    // Get neighborhood conditions from 311 data (Layer 4)
-    // Extract ward from township code if available
-    let neighborhoodConditions: NeighborhoodConditionsData | null = null;
+    // Get additional data in parallel: neighborhood conditions, win rate, prior appeals
     const ward = extractWardFromProperty(analysis);
-    if (ward) {
-      neighborhoodConditions = await getNeighborhoodConditions(ward, supabase);
-    }
+    const [neighborhoodConditions, townshipWinRate, priorAppeals] = await Promise.all([
+      ward ? getNeighborhoodConditions(ward, supabase) : Promise.resolve(null),
+      analysis.property.townshipCode
+        ? getTownshipWinRate(analysis.property.townshipCode, analysis.property.propertyClass)
+        : Promise.resolve(null),
+      getPriorAppealOutcomes(normalizedPin)
+    ]);
 
     // Cache comparables for later use
     await cacheComparables(normalizedPin, analysis);
 
     // Format the response with actionable insights
-    const response = formatAnalysisResponse(analysis, neighborhoodConditions);
+    const response = formatAnalysisResponse(analysis, neighborhoodConditions, townshipWinRate, priorAppeals);
 
     return res.status(200).json(response);
 
@@ -202,7 +208,9 @@ async function cacheComparables(pin: string, analysis: AppealOpportunity): Promi
  */
 function formatAnalysisResponse(
   analysis: AppealOpportunity,
-  neighborhoodConditions: NeighborhoodConditionsData | null = null
+  neighborhoodConditions: NeighborhoodConditionsData | null = null,
+  townshipWinRate: TownshipWinRate | null = null,
+  priorAppealOutcomes: PriorAppealOutcome[] = []
 ) {
   const { property, analysis: stats, comparables, comparableSales, priorAppeals, deadlines } = analysis;
 
@@ -488,6 +496,42 @@ function formatAnalysisResponse(
       neighborhoodSuccessRate: priorAppeals.successRate
         ? Math.round(priorAppeals.successRate * 100) + '%'
         : null
+    },
+    // Historical win rate for this township/property class
+    townshipWinRate: townshipWinRate ? {
+      winRate: townshipWinRate.winRate,
+      winRateFormatted: `${townshipWinRate.winRate}%`,
+      totalAppeals: townshipWinRate.totalAppeals,
+      successfulAppeals: townshipWinRate.successfulAppeals,
+      avgReductionPercent: townshipWinRate.avgReductionPercent,
+      avgReductionDollars: townshipWinRate.avgReductionDollars,
+      dataYears: townshipWinRate.dataYears,
+      summary: townshipWinRate.winRate >= 50
+        ? `Properties like yours have a ${townshipWinRate.winRate}% success rate on appeal, with average reductions of ${townshipWinRate.avgReductionPercent}%.`
+        : `Historical data shows a ${townshipWinRate.winRate}% success rate for similar properties. Strong evidence improves your chances.`
+    } : null,
+    // This PIN's prior appeal history with outcomes
+    priorAppealHistory: priorAppealOutcomes.length > 0 ? {
+      hasAppealed: true,
+      appealCount: priorAppealOutcomes.length,
+      appeals: priorAppealOutcomes.map(a => ({
+        taxYear: a.taxYear,
+        preAppealValue: a.preAppealValue,
+        postAppealValue: a.postAppealValue,
+        reduction: a.reduction,
+        reductionPercent: a.reductionPercent,
+        success: a.success
+      })),
+      successCount: priorAppealOutcomes.filter(a => a.success).length,
+      summary: priorAppealOutcomes.some(a => a.success)
+        ? `This property has successfully appealed before (${priorAppealOutcomes.filter(a => a.success).length} wins). Prior success strengthens your case.`
+        : 'This property has appealed before but was not reduced. New comparable data may support a different outcome.'
+    } : {
+      hasAppealed: false,
+      appealCount: 0,
+      appeals: [],
+      successCount: 0,
+      summary: 'No prior appeal history found for this property.'
     },
     deadlines: {
       township: property.township,
