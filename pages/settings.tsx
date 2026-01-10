@@ -2302,14 +2302,13 @@ export default function SettingsPage() {
               AUTOPILOT ONLY
             </span>
           )
-        } greyed={!isPaidUser}>
-          {!isPaidUser && (
+        } greyed={!isPaidUser}
+          upgradeContent={!isPaidUser ? (
             <div style={{
               backgroundColor: '#FFF7ED',
               border: `1px solid ${COLORS.highlight}`,
               borderRadius: 8,
               padding: 16,
-              marginBottom: 20,
             }}>
               <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
                 Upgrade to Autopilot - $24/year
@@ -2330,8 +2329,8 @@ export default function SettingsPage() {
                 Upgrade Now - $24/year
               </Link>
             </div>
-          )}
-
+          ) : undefined}
+        >
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
