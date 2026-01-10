@@ -20,7 +20,20 @@ export const emailSchema = z
 export const phoneSchema = z
   .string()
   .regex(/^[\+\d\s\-\(\)]{7,20}$/, 'Invalid phone number format')
-  .transform(val => val.replace(/[\s\-\(\)]/g, ''));
+  .transform(val => {
+    // Remove all non-digits first
+    const digits = val.replace(/\D/g, '');
+    // If 10 digits (US without country code), add +1
+    if (digits.length === 10) {
+      return '+1' + digits;
+    }
+    // If 11 digits starting with 1 (US with country code but no +), add +
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return '+' + digits;
+    }
+    // Otherwise return with + prefix if not already there
+    return val.startsWith('+') ? val.replace(/[\s\-\(\)]/g, '') : '+' + digits;
+  });
 
 export const licensePlateSchema = z
   .string()

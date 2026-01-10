@@ -477,6 +477,23 @@ export default function PropertyTax() {
   // Letter preview modal state
   const [showLetterPreview, setShowLetterPreview] = useState(false);
 
+  // Referral program state
+  const [referralData, setReferralData] = useState<{
+    hasReferralCode: boolean;
+    code?: string;
+    shareUrl?: string;
+    rewardAmount?: number;
+    isEligible?: boolean;
+    stats?: {
+      totalClicks: number;
+      conversions: number;
+      pendingEarnings: number;
+      paidEarnings: number;
+    };
+  } | null>(null);
+  const [generatingReferral, setGeneratingReferral] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
+
   useEffect(() => {
     checkAuth();
     handleReturnFromStripe();
@@ -840,6 +857,81 @@ export default function PropertyTax() {
       setProcessing(false);
     }
   }
+
+  // Fetch referral data when on complete stage
+  async function fetchReferralData() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/property-tax/referrals', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setReferralData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching referral data:', error);
+    }
+  }
+
+  // Generate a new referral code
+  async function generateReferralCode() {
+    setGeneratingReferral(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Please log in to generate your referral code');
+        return;
+      }
+
+      const response = await fetch('/api/property-tax/referrals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ action: 'generate' })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setReferralData({
+          hasReferralCode: true,
+          code: data.code,
+          shareUrl: data.shareUrl,
+          rewardAmount: data.rewardAmount,
+          stats: { totalClicks: 0, conversions: 0, pendingEarnings: 0, paidEarnings: 0 }
+        });
+      } else {
+        alert(data.error || 'Failed to generate referral code');
+      }
+    } catch (error) {
+      console.error('Error generating referral code:', error);
+      alert('Failed to generate referral code');
+    } finally {
+      setGeneratingReferral(false);
+    }
+  }
+
+  // Copy referral link to clipboard
+  function copyReferralLink() {
+    if (referralData?.shareUrl) {
+      navigator.clipboard.writeText(referralData.shareUrl);
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 2000);
+    }
+  }
+
+  // Fetch referral data when stage changes to complete
+  useEffect(() => {
+    if (stage === 'complete') {
+      fetchReferralData();
+    }
+  }, [stage]);
 
   function getScoreColor(score: number) {
     if (score >= 70) return COLORS.signal;
@@ -3279,6 +3371,183 @@ export default function PropertyTax() {
                   Filing deadlines vary by township. Visit the Board of Review website to confirm your deadline
                   for {appealData.property.township} Township before submitting.
                 </p>
+              </div>
+            </div>
+
+            {/* Referral Program Section */}
+            <div style={{
+              background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)',
+              borderRadius: '16px',
+              padding: '28px',
+              border: '1px solid #C7D2FE'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 010 7.75"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#3730A3', margin: '0 0 6px 0' }}>
+                    Earn $25 for Each Referral
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#4338CA', margin: '0 0 16px 0', lineHeight: '1.5' }}>
+                    Know someone who might be overpaying property taxes? Share your referral link and earn $25 for every friend who completes an appeal.
+                  </p>
+
+                  {referralData === null ? (
+                    <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '8px' }}>
+                      <p style={{ fontSize: '13px', color: '#6366F1', margin: 0 }}>Loading referral info...</p>
+                    </div>
+                  ) : referralData.hasReferralCode ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {/* Share Link */}
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        backgroundColor: 'white',
+                        borderRadius: '10px',
+                        padding: '4px',
+                        border: '1px solid #C7D2FE'
+                      }}>
+                        <input
+                          type="text"
+                          value={referralData.shareUrl || ''}
+                          readOnly
+                          style={{
+                            flex: 1,
+                            padding: '10px 14px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            fontSize: '13px',
+                            color: COLORS.graphite,
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                        <button
+                          onClick={copyReferralLink}
+                          style={{
+                            padding: '10px 20px',
+                            backgroundColor: referralCopied ? COLORS.signal : '#6366F1',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          {referralCopied ? (
+                            <>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <polyline points="20,6 9,17 4,12"/>
+                              </svg>
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                              </svg>
+                              Copy Link
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Stats */}
+                      {referralData.stats && (referralData.stats.conversions > 0 || referralData.stats.pendingEarnings > 0) && (
+                        <div style={{
+                          display: 'flex',
+                          gap: '16px',
+                          padding: '12px 16px',
+                          backgroundColor: 'rgba(255,255,255,0.7)',
+                          borderRadius: '10px'
+                        }}>
+                          <div>
+                            <p style={{ fontSize: '20px', fontWeight: '700', color: '#4F46E5', margin: 0 }}>
+                              {referralData.stats.conversions}
+                            </p>
+                            <p style={{ fontSize: '11px', color: '#6366F1', margin: 0, textTransform: 'uppercase' }}>
+                              Referrals
+                            </p>
+                          </div>
+                          <div style={{ width: '1px', backgroundColor: '#C7D2FE' }} />
+                          <div>
+                            <p style={{ fontSize: '20px', fontWeight: '700', color: COLORS.signal, margin: 0 }}>
+                              ${referralData.stats.pendingEarnings + referralData.stats.paidEarnings}
+                            </p>
+                            <p style={{ fontSize: '11px', color: '#6366F1', margin: 0, textTransform: 'uppercase' }}>
+                              Earned
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Code display */}
+                      <p style={{ fontSize: '12px', color: '#6366F1', margin: 0 }}>
+                        Your code: <strong style={{ fontFamily: 'monospace' }}>{referralData.code}</strong>
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={generateReferralCode}
+                      disabled={generatingReferral}
+                      style={{
+                        padding: '14px 28px',
+                        backgroundColor: '#6366F1',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: generatingReferral ? 'wait' : 'pointer',
+                        opacity: generatingReferral ? 0.7 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      {generatingReferral ? (
+                        <>
+                          <div style={{
+                            width: '16px',
+                            height: '16px',
+                            border: '2px solid rgba(255,255,255,0.3)',
+                            borderTopColor: 'white',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite'
+                          }} />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 5v14M5 12h14"/>
+                          </svg>
+                          Get My Referral Link
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

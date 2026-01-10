@@ -924,7 +924,7 @@ export default function SettingsPage() {
         home_address_full: homeAddress || null,
         home_address_ward: ward ? String(ward) : null,
         home_address_section: section || null,
-        city: homeCity || 'chicago',
+        city: homeCity || 'Chicago',
         zip_code: homeZip || null,
         mailing_address: mailingAddress1 || null,
         mailing_address_2: mailingAddress2 || null,
@@ -2349,7 +2349,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <Toggle
-              checked={autoMailEnabled}
+              checked={isPaidUser && autoMailEnabled}
               onChange={(checked) => {
                 setAutoMailEnabled(checked);
                 setRequireApproval(!checked);
@@ -2375,7 +2375,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <Toggle
-              checked={requireApproval}
+              checked={isPaidUser && requireApproval}
               onChange={(checked) => {
                 setRequireApproval(checked);
                 setAutoMailEnabled(!checked);
@@ -2396,7 +2396,9 @@ export default function SettingsPage() {
               Ticket types to auto-contest
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-              {TICKET_TYPES.map(type => (
+              {TICKET_TYPES.map(type => {
+                const isChecked = isPaidUser && allowedTicketTypes.includes(type.id);
+                return (
                 <label key={type.id} style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -2406,12 +2408,12 @@ export default function SettingsPage() {
                   color: COLORS.textDark,
                   padding: '10px 12px',
                   borderRadius: 6,
-                  border: `1px solid ${allowedTicketTypes.includes(type.id) ? COLORS.primary : COLORS.border}`,
-                  backgroundColor: allowedTicketTypes.includes(type.id) ? `${COLORS.primary}05` : 'transparent',
+                  border: `1px solid ${isChecked ? COLORS.primary : COLORS.border}`,
+                  backgroundColor: isChecked ? `${COLORS.primary}05` : 'transparent',
                 }}>
                   <input
                     type="checkbox"
-                    checked={allowedTicketTypes.includes(type.id)}
+                    checked={isChecked}
                     onChange={() => toggleTicketType(type.id)}
                     disabled={!isPaidUser}
                     style={{ width: 16, height: 16, accentColor: COLORS.primary }}
@@ -2425,7 +2427,8 @@ export default function SettingsPage() {
                     {type.winRate}%
                   </span>
                 </label>
-              ))}
+              );
+              })}
             </div>
           </div>
 
@@ -2451,7 +2454,7 @@ export default function SettingsPage() {
               }}>
                 <input
                   type="checkbox"
-                  checked={emailOnTicketFound}
+                  checked={isPaidUser && emailOnTicketFound}
                   onChange={(e) => setEmailOnTicketFound(e.target.checked)}
                   disabled={!isPaidUser}
                   style={{ width: 16, height: 16, accentColor: COLORS.primary }}
@@ -2468,7 +2471,7 @@ export default function SettingsPage() {
               }}>
                 <input
                   type="checkbox"
-                  checked={emailOnLetterMailed}
+                  checked={isPaidUser && emailOnLetterMailed}
                   onChange={(e) => setEmailOnLetterMailed(e.target.checked)}
                   disabled={!isPaidUser}
                   style={{ width: 16, height: 16, accentColor: COLORS.primary }}
@@ -2485,7 +2488,7 @@ export default function SettingsPage() {
               }}>
                 <input
                   type="checkbox"
-                  checked={emailOnApprovalNeeded}
+                  checked={isPaidUser && emailOnApprovalNeeded}
                   onChange={(e) => setEmailOnApprovalNeeded(e.target.checked)}
                   disabled={!isPaidUser}
                   style={{ width: 16, height: 16, accentColor: COLORS.primary }}
