@@ -178,6 +178,271 @@ function Disclaimer() {
   );
 }
 
+// Letter Preview Modal Component
+function LetterPreviewModal({
+  isOpen,
+  onClose,
+  property,
+  analysis,
+  comparables
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  property: PropertyData;
+  analysis: AnalysisData;
+  comparables: ComparableProperty[];
+}) {
+  if (!isOpen) return null;
+
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 1000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      backdropFilter: 'blur(4px)'
+    }} onClick={onClose}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '20px',
+        maxWidth: '700px',
+        width: '100%',
+        maxHeight: '85vh',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+      }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{
+          padding: '20px 24px',
+          borderBottom: '1px solid #E2E8F0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#F8FAFC'
+        }}>
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', color: COLORS.graphite, margin: 0 }}>
+              Appeal Letter Preview
+            </h3>
+            <p style={{ fontSize: '13px', color: COLORS.slate, margin: '4px 0 0 0' }}>
+              Sample of your customized appeal letter
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              border: 'none',
+              backgroundColor: '#E2E8F0',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Letter Content */}
+        <div style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '32px',
+          backgroundColor: 'white'
+        }}>
+          {/* Letter document styling */}
+          <div style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize: '14px',
+            lineHeight: '1.7',
+            color: '#1a1a1a'
+          }}>
+            {/* Date */}
+            <p style={{ marginBottom: '24px' }}>{today}</p>
+
+            {/* Recipient */}
+            <p style={{ margin: '0 0 4px 0' }}>Cook County Board of Review</p>
+            <p style={{ margin: '0 0 4px 0' }}>118 N. Clark Street, Room 601</p>
+            <p style={{ margin: '0 0 24px 0' }}>Chicago, IL 60602</p>
+
+            {/* Subject */}
+            <p style={{ margin: '0 0 4px 0' }}>
+              <strong>RE: Property Tax Assessment Appeal</strong>
+            </p>
+            <p style={{ margin: '0 0 4px 0' }}>
+              <strong>PIN:</strong> {property.pinFormatted}
+            </p>
+            <p style={{ margin: '0 0 4px 0' }}>
+              <strong>Property:</strong> {property.address}
+            </p>
+            <p style={{ margin: '0 0 24px 0' }}>
+              <strong>Township:</strong> {property.township}
+            </p>
+
+            {/* Salutation */}
+            <p style={{ marginBottom: '16px' }}>Dear Members of the Board of Review:</p>
+
+            {/* Body - first paragraph */}
+            <p style={{ marginBottom: '16px' }}>
+              I am writing to formally appeal the current assessed value of the above-referenced property.
+              The current assessed value of <strong>${property.assessedValue?.toLocaleString()}</strong> significantly
+              exceeds the fair market value when compared to similar properties in the area.
+            </p>
+
+            {/* Key argument paragraph */}
+            <p style={{ marginBottom: '16px' }}>
+              Based on my analysis of comparable properties, I respectfully request that the assessed
+              value be reduced to approximately <strong>${analysis.medianComparableValue?.toLocaleString()}</strong>,
+              which represents the median assessed value of similar properties. This would result in an
+              estimated reduction of <strong>${Math.round(analysis.estimatedOvervaluation).toLocaleString()}</strong>.
+            </p>
+
+            {/* Comparables section - partially blurred */}
+            <div style={{
+              backgroundColor: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '16px',
+              position: 'relative'
+            }}>
+              <p style={{ fontWeight: '600', margin: '0 0 12px 0', fontFamily: 'sans-serif', fontSize: '13px' }}>
+                COMPARABLE PROPERTIES ANALYSIS:
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', fontFamily: 'sans-serif' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#E2E8F0' }}>
+                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600' }}>Address</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '600' }}>Sq Ft</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '600' }}>Assessed Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparables.slice(0, 3).map((comp, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                      <td style={{ padding: '8px' }}>{comp.address}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{comp.squareFootage?.toLocaleString() || '-'}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>${comp.assessedValue?.toLocaleString() || '-'}</td>
+                    </tr>
+                  ))}
+                  {comparables.length > 3 && (
+                    <tr>
+                      <td colSpan={3} style={{ padding: '8px', textAlign: 'center', color: COLORS.slate, fontStyle: 'italic' }}>
+                        + {comparables.length - 3} more comparables included...
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Additional blurred content to show there's more */}
+            <div style={{
+              position: 'relative',
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                filter: 'blur(4px)',
+                opacity: 0.6,
+                userSelect: 'none',
+                pointerEvents: 'none'
+              }}>
+                <p style={{ marginBottom: '16px' }}>
+                  Furthermore, I would like to draw your attention to the following factors that support this appeal: the property characteristics, neighborhood conditions, and recent market trends all indicate that the current assessment is excessive relative to comparable properties...
+                </p>
+                <p style={{ marginBottom: '16px' }}>
+                  The attached documentation includes detailed analysis of each comparable property, photographs, and supporting market data. I believe this evidence clearly demonstrates that a reduction in the assessed value is warranted...
+                </p>
+              </div>
+              {/* Overlay */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(248, 250, 252, 0.8)',
+                borderRadius: '8px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 20px',
+                  backgroundColor: COLORS.regulatory,
+                  borderRadius: '100px',
+                  color: 'white',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  fontFamily: 'sans-serif'
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0110 0v4"/>
+                  </svg>
+                  Full letter available after purchase
+                </div>
+              </div>
+            </div>
+
+            {/* Signature area */}
+            <p style={{ marginBottom: '4px' }}>Sincerely,</p>
+            <p style={{
+              fontStyle: 'italic',
+              color: COLORS.slate,
+              marginBottom: '24px'
+            }}>[Your Name Here]</p>
+          </div>
+        </div>
+
+        {/* Footer with CTA */}
+        <div style={{
+          padding: '20px 24px',
+          borderTop: '1px solid #E2E8F0',
+          backgroundColor: '#F8FAFC',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0 }}>
+            Your complete letter includes detailed arguments, all comparables, and filing instructions.
+          </p>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: COLORS.regulatory,
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Continue to Purchase
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PropertyTax() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -208,6 +473,9 @@ export default function PropertyTax() {
 
   // Preparation state
   const [preparingProgress, setPreparingProgress] = useState(0);
+
+  // Letter preview modal state
+  const [showLetterPreview, setShowLetterPreview] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -2311,6 +2579,44 @@ export default function PropertyTax() {
                   </div>
                 ))}
               </div>
+
+              {/* Preview Letter Button */}
+              <button
+                onClick={() => setShowLetterPreview(true)}
+                style={{
+                  marginTop: '20px',
+                  width: '100%',
+                  padding: '12px 20px',
+                  backgroundColor: 'white',
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: COLORS.regulatory,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = COLORS.regulatory;
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = COLORS.border;
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14,2 14,8 20,8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Preview Your Appeal Letter
+              </button>
             </div>
 
             {/* Property Summary */}
@@ -3074,6 +3380,17 @@ export default function PropertyTax() {
           </div>
         </div>
       </main>
+
+      {/* Letter Preview Modal */}
+      {appealData && (
+        <LetterPreviewModal
+          isOpen={showLetterPreview}
+          onClose={() => setShowLetterPreview(false)}
+          property={appealData.property}
+          analysis={appealData.analysis}
+          comparables={appealData.comparables}
+        />
+      )}
     </div>
   );
 }
