@@ -670,6 +670,7 @@ export default function SettingsPage() {
   const [wardLookupMessage, setWardLookupMessage] = useState('');
 
   // Mailing Address
+  const [sameAsHomeAddress, setSameAsHomeAddress] = useState(false);
   const [mailingAddress1, setMailingAddress1] = useState('');
   const [mailingAddress2, setMailingAddress2] = useState('');
   const [mailingCity, setMailingCity] = useState('');
@@ -1907,6 +1908,42 @@ export default function SettingsPage() {
             </div>
           ) : undefined}
         >
+          {/* Same as home address checkbox */}
+          <div style={{
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 12px',
+            backgroundColor: sameAsHomeAddress ? '#EFF6FF' : COLORS.bgLight,
+            borderRadius: 8,
+            border: `1px solid ${sameAsHomeAddress ? '#3B82F6' : COLORS.border}`,
+            cursor: isPaidUser ? 'pointer' : 'not-allowed',
+            opacity: isPaidUser ? 1 : 0.6,
+          }}
+          onClick={() => {
+            if (!isPaidUser) return;
+            const newValue = !sameAsHomeAddress;
+            setSameAsHomeAddress(newValue);
+            if (newValue && homeAddress) {
+              setMailingAddress1(homeAddress);
+              setMailingCity(homeCity);
+              setMailingState(homeState);
+              setMailingZip(homeZip);
+            }
+          }}
+          >
+            <input
+              type="checkbox"
+              checked={sameAsHomeAddress}
+              onChange={() => {}}
+              disabled={!isPaidUser}
+              style={{ width: 18, height: 18, cursor: isPaidUser ? 'pointer' : 'not-allowed' }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 500, color: COLORS.primary }}>
+              Same as home address
+            </span>
+          </div>
 
           <div style={{ marginBottom: 16 }}>
             <label style={{
@@ -1922,9 +1959,12 @@ export default function SettingsPage() {
             <input
               type="text"
               value={mailingAddress1}
-              onChange={(e) => setMailingAddress1(e.target.value)}
+              onChange={(e) => {
+                setMailingAddress1(e.target.value);
+                if (sameAsHomeAddress) setSameAsHomeAddress(false);
+              }}
               placeholder="123 Main Street"
-              disabled={!isPaidUser}
+              disabled={!isPaidUser || sameAsHomeAddress}
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -1952,7 +1992,10 @@ export default function SettingsPage() {
             <input
               type="text"
               value={mailingAddress2}
-              onChange={(e) => setMailingAddress2(e.target.value)}
+              onChange={(e) => {
+                setMailingAddress2(e.target.value);
+                if (sameAsHomeAddress) setSameAsHomeAddress(false);
+              }}
               placeholder="Apt 4B"
               disabled={!isPaidUser}
               style={{
@@ -1983,9 +2026,12 @@ export default function SettingsPage() {
               <input
                 type="text"
                 value={mailingCity}
-                onChange={(e) => setMailingCity(e.target.value)}
+                onChange={(e) => {
+                  setMailingCity(e.target.value);
+                  if (sameAsHomeAddress) setSameAsHomeAddress(false);
+                }}
                 placeholder="Chicago"
-                disabled={!isPaidUser}
+                disabled={!isPaidUser || sameAsHomeAddress}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -2011,8 +2057,11 @@ export default function SettingsPage() {
               </label>
               <select
                 value={mailingState}
-                onChange={(e) => setMailingState(e.target.value)}
-                disabled={!isPaidUser}
+                onChange={(e) => {
+                  setMailingState(e.target.value);
+                  if (sameAsHomeAddress) setSameAsHomeAddress(false);
+                }}
+                disabled={!isPaidUser || sameAsHomeAddress}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -2043,9 +2092,12 @@ export default function SettingsPage() {
               <input
                 type="text"
                 value={mailingZip}
-                onChange={(e) => setMailingZip(e.target.value)}
+                onChange={(e) => {
+                  setMailingZip(e.target.value);
+                  if (sameAsHomeAddress) setSameAsHomeAddress(false);
+                }}
                 placeholder="60601"
-                disabled={!isPaidUser}
+                disabled={!isPaidUser || sameAsHomeAddress}
                 style={{
                   width: '100%',
                   padding: '10px 14px',

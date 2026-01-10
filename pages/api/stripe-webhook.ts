@@ -1031,6 +1031,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } else {
             console.log('✅ User profile updated with Protection status and renewal dates');
 
+            // Add license plate to monitored_plates for ticket contesting (existing user upgrade)
+            // Get plate from profile (existing users already have plate saved)
+            const { data: profileForPlate } = await supabaseAdmin
+              .from('user_profiles')
+              .select('license_plate')
+              .eq('user_id', userId)
+              .single();
+
+            const plateToMonitor = profileForPlate?.license_plate;
+            if (plateToMonitor) {
+              console.log('📋 Adding existing user plate to monitored_plates:', plateToMonitor);
+              const { error: plateError } = await supabaseAdmin
+                .from('monitored_plates')
+                .upsert({
+                  user_id: userId,
+                  plate: plateToMonitor.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                  state: 'IL',
+                  status: 'active',
+                  is_leased_or_company: false,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'user_id,plate'
+                });
+
+              if (plateError) {
+                console.error('Error adding plate to monitored_plates:', plateError);
+              } else {
+                console.log('✅ License plate added to monitored_plates for existing user');
+              }
+            } else {
+              console.log('⚠️ No license plate found in profile to add to monitored_plates');
+            }
+
             // NOTE: Remitter fee is NOT charged upfront
             // Remitter gets paid when they perform the renewal service (30 days before expiration)
             // This happens in /api/cron/process-renewals.ts
@@ -1688,6 +1722,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.error('Error creating user_profiles record:', profileError);
             } else {
               console.log('Successfully created user_profiles record');
+
+              // Add license plate to monitored_plates for ticket contesting
+              if (formData.licensePlate) {
+                console.log('📋 Adding license plate to monitored_plates:', formData.licensePlate);
+                const { error: plateError } = await supabaseAdmin
+                  .from('monitored_plates')
+                  .upsert({
+                    user_id: authData.user.id,
+                    plate: formData.licensePlate.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                    state: 'IL', // Default to IL for Chicago users
+                    status: 'active',
+                    is_leased_or_company: false,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'user_id,plate'
+                  });
+
+                if (plateError) {
+                  console.error('Error adding plate to monitored_plates:', plateError);
+                } else {
+                  console.log('✅ License plate added to monitored_plates');
+                }
+              }
 
               // Check if user needs winter ban notification (Dec 1 - Apr 1)
               const userAddress = formData.homeAddress || formData.streetAddress;
