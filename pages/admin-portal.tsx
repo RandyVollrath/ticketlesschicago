@@ -1401,6 +1401,7 @@ export default function AdminPortal() {
           matchedToUser: result.ticketsCreated, // All tickets are matched in the new system
           skipped: result.skipped,
           errors: result.errors || [],
+          rowDetails: result.rowDetails || [],
         });
         setMessage(`Processed ${result.processed} rows: ${result.ticketsCreated} tickets created, ${result.lettersGenerated} letters generated, ${result.emailsSent} emails sent`);
       } else {
@@ -2071,26 +2072,64 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
                         </div>
                       </div>
 
-                      {/* Errors List - More Prominent */}
-                      {uploadResults.errors && uploadResults.errors.length > 0 && (
+                      {/* Row Details Table - Show why each row was skipped/errored */}
+                      {uploadResults.rowDetails && uploadResults.rowDetails.length > 0 && (
                         <div style={{
                           marginTop: '16px',
                           backgroundColor: '#fff',
-                          border: '2px solid #dc2626',
+                          border: '1px solid #e5e7eb',
                           borderRadius: '8px',
-                          padding: '16px'
+                          overflow: 'hidden'
                         }}>
-                          <div style={{ fontWeight: '700', color: '#dc2626', marginBottom: '8px', fontSize: '14px' }}>
-                            &#9888; {uploadResults.errors.length} Error{uploadResults.errors.length !== 1 ? 's' : ''} Found:
+                          <div style={{
+                            backgroundColor: '#f9fafb',
+                            padding: '12px 16px',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            color: '#374151',
+                            borderBottom: '1px solid #e5e7eb'
+                          }}>
+                            Row-by-Row Details
                           </div>
-                          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#991b1b', maxHeight: '200px', overflowY: 'auto' }}>
-                            {uploadResults.errors.slice(0, 20).map((err: string, i: number) => (
-                              <li key={i} style={{ marginBottom: '4px' }}>{err}</li>
-                            ))}
-                            {uploadResults.errors.length > 20 && (
-                              <li style={{ fontWeight: '600' }}>...and {uploadResults.errors.length - 20} more errors</li>
-                            )}
-                          </ul>
+                          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                              <thead>
+                                <tr style={{ backgroundColor: '#f9fafb' }}>
+                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Row</th>
+                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Plate</th>
+                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Ticket #</th>
+                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Status</th>
+                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Reason</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {uploadResults.rowDetails.map((row: any, i: number) => (
+                                  <tr key={i} style={{ backgroundColor: row.status === 'created' ? '#f0fdf4' : row.status === 'error' ? '#fef2f2' : '#fef3c7' }}>
+                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>{row.row}</td>
+                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', fontFamily: 'monospace' }}>{row.plate} ({row.state})</td>
+                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', fontFamily: 'monospace' }}>{row.ticket_number}</td>
+                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+                                      <span style={{
+                                        display: 'inline-block',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        backgroundColor: row.status === 'created' ? '#dcfce7' : row.status === 'error' ? '#fecaca' : '#fde68a',
+                                        color: row.status === 'created' ? '#166534' : row.status === 'error' ? '#991b1b' : '#92400e'
+                                      }}>
+                                        {row.status}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', color: row.status === 'created' ? '#166534' : '#6b7280' }}>
+                                      {row.reason || (row.status === 'created' ? 'Ticket created successfully' : '-')}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )}
                     </div>
