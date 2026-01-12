@@ -163,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get user profiles to get first/last names
     const { data: profiles } = await supabaseAdmin
       .from('user_profiles')
-      .select('user_id, first_name, last_name, full_name')
+      .select('user_id, first_name, last_name')
       .in('user_id', activeUserIds);
 
     // Create a map of user_id to profile
@@ -175,19 +175,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Merge plate data with profile data
     const platesWithNames = plates.map(plate => {
       const profile = profileMap.get(plate.user_id);
-      let firstName = profile?.first_name || '';
-      let lastName = profile?.last_name || '';
-
-      if (!firstName && !lastName && profile?.full_name) {
-        const nameParts = profile.full_name.trim().split(' ');
-        firstName = nameParts[0] || '';
-        lastName = nameParts.slice(1).join(' ') || '';
-      }
-
       return {
         ...plate,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: profile?.first_name || '',
+        last_name: profile?.last_name || '',
       };
     });
 
