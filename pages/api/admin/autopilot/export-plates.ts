@@ -18,6 +18,8 @@ const CHICAGO_TICKET_SEARCH_URL = 'https://webapps1.chicago.gov/payments-web/#/v
 
 /**
  * Generate CSV content for VA
+ * 9 columns: last_name, first_name, plate, state, user_id (pre-filled)
+ *            ticket_number, violation_type, violation_date, amount (VA fills)
  */
 function generateCSV(plates: any[]): string {
   const csvHeader = [
@@ -27,32 +29,10 @@ function generateCSV(plates: any[]): string {
     'state',
     'user_id',
     'ticket_number',
-    'violation_code',
     'violation_type',
     'violation_date',
     'amount'
   ].join(',');
-
-  const instructions = `# AUTOPILOT AMERICA - PLATE CHECK TEMPLATE
-# Generated: ${new Date().toISOString()}
-# Total Plates: ${plates.length}
-#
-# CHICAGO TICKET SEARCH URL:
-# ${CHICAGO_TICKET_SEARCH_URL}
-#
-# INSTRUCTIONS:
-# 1. Go to the Chicago ticket search URL above
-# 2. For each row, search by LAST NAME and LICENSE PLATE
-# 3. If tickets are found, fill in columns F-J (ticket_number through amount)
-# 4. If multiple tickets for one plate, duplicate that row
-# 5. Leave ticket columns empty if no tickets found
-# 6. Upload completed file to the Autopilot Admin portal
-#
-# Valid violation_type values: expired_plates, no_city_sticker, expired_meter, disabled_zone, street_cleaning, rush_hour, fire_hydrant, other_unknown
-# violation_date format: YYYY-MM-DD
-# amount format: numeric only (e.g., 75.00 not $75.00)
-#
-`;
 
   const csvRows = plates.map((p: any) => {
     return [
@@ -62,14 +42,13 @@ function generateCSV(plates: any[]): string {
       `"${p.state}"`,
       `"${p.user_id}"`,
       '', // ticket_number
-      '', // violation_code
       '', // violation_type
       '', // violation_date
       '', // amount
     ].join(',');
   });
 
-  return instructions + csvHeader + '\n' + csvRows.join('\n');
+  return csvHeader + '\n' + csvRows.join('\n');
 }
 
 /**

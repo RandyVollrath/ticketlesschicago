@@ -48,59 +48,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ message: 'No active plates to export' });
     }
 
-    // CSV header with columns VA needs to fill
+    // CSV header - 9 columns, no preamble
     const csvHeader = [
+      'last_name',
+      'first_name',
       'plate',
       'state',
-      'user_email',
+      'user_id',
       'ticket_number',
-      'violation_code',
       'violation_type',
-      'violation_description',
       'violation_date',
-      'amount',
-      'location'
+      'amount'
     ].join(',');
-
-    // Valid violation types for reference
-    const violationTypesComment = '# Valid violation_type values: expired_plates, no_city_sticker, expired_meter, disabled_zone, street_cleaning, rush_hour, fire_hydrant, other_unknown';
 
     // Generate CSV rows - pre-fill plate info, leave ticket columns empty
     const csvRows = plates.map((p: any) => {
-      const userEmail = p.users?.email || '';
       return [
+        '', // last_name - would need to join user_profiles
+        '', // first_name
         `"${p.plate}"`,
         `"${p.state}"`,
-        `"${userEmail}"`,
-        '', // ticket_number - VA fills this
-        '', // violation_code
+        '', // user_id - would need from join
+        '', // ticket_number
         '', // violation_type
-        '', // violation_description
-        '', // violation_date (YYYY-MM-DD format)
-        '', // amount (numeric, no $ sign)
-        '', // location
+        '', // violation_date
+        '', // amount
       ].join(',');
     });
 
-    // Instructions for VA
-    const instructions = `# AUTOPILOT AMERICA - PLATE CHECK TEMPLATE
-# Generated: ${new Date().toISOString()}
-# Total Plates: ${plates.length}
-#
-# INSTRUCTIONS:
-# 1. For each plate, check the Chicago parking ticket portal
-# 2. If tickets are found, fill in the ticket columns
-# 3. If multiple tickets for one plate, duplicate the row
-# 4. Leave ticket columns empty if no tickets found
-# 5. Upload completed file to /api/autopilot/upload-csv
-#
-# ${violationTypesComment}
-# violation_date format: YYYY-MM-DD
-# amount format: numeric only (e.g., 75.00 not $75.00)
-#
-`;
-
-    const csvContent = instructions + csvHeader + '\n' + csvRows.join('\n');
+    const csvContent = csvHeader + '\n' + csvRows.join('\n');
 
     // Set response headers for CSV download
     const filename = `autopilot-plates-${new Date().toISOString().split('T')[0]}.csv`;
