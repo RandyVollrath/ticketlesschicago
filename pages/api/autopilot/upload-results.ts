@@ -82,6 +82,61 @@ interface TicketRow {
   amount?: number;
 }
 
+/**
+ * Parse date from various formats that spreadsheets might auto-generate
+ * Handles: "1-10-26", "1/10/26", "01-10-2026", "2026-01-10", "1/10/2026", etc.
+ * Returns ISO date string (YYYY-MM-DD) or null if unparseable
+ */
+function parseDateFlexible(dateStr?: string): string | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+
+  const cleaned = dateStr.trim();
+  if (!cleaned) return null;
+
+  // Try ISO format first (YYYY-MM-DD)
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cleaned)) {
+    const date = new Date(cleaned);
+    if (!isNaN(date.getTime())) {
+      return cleaned;
+    }
+  }
+
+  // Parse various M/D/Y or M-D-Y formats
+  const separatorMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (separatorMatch) {
+    let [, month, day, year] = separatorMatch;
+
+    // Handle 2-digit year (assume 20xx for years < 50, 19xx otherwise)
+    if (year.length === 2) {
+      const yearNum = parseInt(year, 10);
+      year = yearNum < 50 ? `20${year}` : `19${year}`;
+    }
+
+    // Pad month and day
+    const paddedMonth = month.padStart(2, '0');
+    const paddedDay = day.padStart(2, '0');
+
+    const isoDate = `${year}-${paddedMonth}-${paddedDay}`;
+    const date = new Date(isoDate);
+
+    // Validate the date is real (e.g., no Feb 30)
+    if (!isNaN(date.getTime()) &&
+        date.getMonth() + 1 === parseInt(paddedMonth, 10) &&
+        date.getDate() === parseInt(paddedDay, 10)) {
+      return isoDate;
+    }
+  }
+
+  // Try native Date parsing as fallback
+  const fallbackDate = new Date(cleaned);
+  if (!isNaN(fallbackDate.getTime())) {
+    return fallbackDate.toISOString().split('T')[0];
+  }
+
+  console.log(`  Warning: Could not parse date "${dateStr}"`);
+  return null;
+}
+
 // Map violation type text (any format) to internal types
 function normalizeViolationType(violationType?: string): string {
   const input = (violationType || '').toLowerCase().trim();
@@ -283,6 +338,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Normalize violation type from CSV (handles various formats)
       const normalizedViolationType = normalizeViolationType(ticketRow.violation_type);
 
+      // Parse the date flexibly (handles "1-10-26", "1/10/2026", "2026-01-10", etc.)
+      const parsedDate = parseDateFlexible(ticketRow.violation_date);
+
       // Create ticket record
       const { data: newTicket, error: ticketError } = await supabaseAdmin
         .from('detected_tickets')
@@ -294,7 +352,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ticket_number: ticketRow.ticket_number,
           violation_type: normalizedViolationType,
           violation_description: ticketRow.violation_type || null,
-          violation_date: ticketRow.violation_date || null,
+          violation_date: parsedDate,
           amount: ticketRow.amount || null,
           status: 'found',
           found_at: new Date().toISOString(),
