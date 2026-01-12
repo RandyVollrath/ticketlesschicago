@@ -717,22 +717,10 @@ export default function SettingsPage() {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/auth/signin');
-      return;
-    }
+  // Handle checkout success - must wait for router to be ready
+  useEffect(() => {
+    if (!router.isReady) return;
 
-    setUserId(session.user.id);
-    setEmail(session.user.email || '');
-
-    // Check if this is a new user welcome flow
-    if (router.query.welcome === 'true') {
-      setShowWelcome(true);
-    }
-
-    // Check if user just completed checkout successfully
     if (router.query.checkout === 'success') {
       setShowCheckoutSuccess(true);
       setActiveTab('settings'); // Default to settings tab so user can complete profile
@@ -740,8 +728,10 @@ export default function SettingsPage() {
       router.replace('/settings', undefined, { shallow: true });
 
       // Immediately verify checkout with Stripe and activate user
-      // This is faster than waiting for the webhook
       const verifyAndActivate = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
         try {
           const response = await fetch('/api/autopilot/verify-checkout', {
             method: 'POST',
@@ -775,6 +765,21 @@ export default function SettingsPage() {
       };
       verifyAndActivate();
     }
+
+    if (router.query.welcome === 'true') {
+      setShowWelcome(true);
+    }
+  }, [router.isReady, router.query.checkout, router.query.welcome]);
+
+  const loadData = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    setUserId(session.user.id);
+    setEmail(session.user.email || '');
 
     // Load profile from user_profiles - single source of truth
     const { data: profileData } = await supabase
