@@ -137,12 +137,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       characteristic_error: 'there are errors in the recorded property characteristics',
       recent_purchase: 'the recent purchase price was significantly lower than the assessed value',
       appraisal: 'a recent professional appraisal indicates a lower value',
-      damage: 'the property has sustained damage that reduces its value'
+      damage: 'the property has sustained damage that reduces its value',
+      market_sales: 'recent comparable sales indicate the assessed value exceeds market value',
+      equity_disparity: 'the assessment is not uniform compared to similar properties',
+      value_per_sqft: 'the value per square foot exceeds comparable properties',
+      lower_assessed_comps: 'multiple similar properties are assessed at lower values'
     };
 
     const groundsText = (appeal.appeal_grounds || [])
       .map((g: string) => appealGroundsDescriptions[g] || g)
       .join('; ');
+
+    // Extract v2 analysis data if available
+    const v2Analysis = appeal.v2_analysis;
+    const appealStrategy = appeal.appeal_strategy || 'file_both';
+    const mvCase = v2Analysis?.mvCase;
+    const uniCase = v2Analysis?.uniCase;
+
+    // Build strategy-specific sections for the prompt
+    let strategySection = '';
+    if (v2Analysis) {
+      const strategyLabels: Record<string, string> = {
+        'file_mv': 'MARKET VALUE (Primary Focus)',
+        'file_uni': 'UNIFORMITY/EQUITY (Primary Focus)',
+        'file_both': 'BOTH MARKET VALUE AND UNIFORMITY'
+      };
+
+      strategySection = `
+APPEAL STRATEGY: ${strategyLabels[appealStrategy] || 'COMPARABLE ANALYSIS'}
+
+${appealStrategy === 'file_mv' || appealStrategy === 'file_both' ? `
+MARKET VALUE ARGUMENT (Case Strength: ${mvCase?.caseStrength?.toUpperCase() || 'N/A'}):
+${mvCase?.rationale?.map((r: string) => `- ${r}`).join('\n') || '- Based on comparable sales analysis'}
+${mvCase?.supportingData?.salesCount ? `- Supported by ${mvCase.supportingData.salesCount} comparable sales` : ''}
+${mvCase?.supportingData?.medianSalePrice ? `- Median comparable sale price: $${mvCase.supportingData.medianSalePrice.toLocaleString()}` : ''}
+` : ''}
+
+${appealStrategy === 'file_uni' || appealStrategy === 'file_both' ? `
+UNIFORMITY/EQUITY ARGUMENT (Case Strength: ${uniCase?.caseStrength?.toUpperCase() || 'N/A'}):
+${uniCase?.rationale?.map((r: string) => `- ${r}`).join('\n') || '- Based on assessment uniformity analysis'}
+- Subject property is assessed at the ${Math.round(uniCase?.supportingData?.currentPercentileRank || 0)}th percentile
+- ${uniCase?.supportingData?.propertiesAssessedLower || 0} similar properties are assessed lower
+- Coefficient of Dispersion: ${(uniCase?.supportingData?.coefficientOfDispersion || 0).toFixed(1)}%
+` : ''}
+
+COMPARABLE QUALITY SCORE: ${v2Analysis.comparableQuality?.qualityScore || 'N/A'}/100 (${v2Analysis.comparableQuality?.aggregateAssessment || 'adequate'})
+`;
+    }
 
     // Generate the letter using Claude
     const prompt = `You are an expert property tax appeal writer for Cook County, Illinois. Generate a professional, compelling appeal letter for the Cook County Board of Review.
@@ -161,7 +202,7 @@ PROPOSED VALUES:
 - Proposed Assessed Value: $${appeal.proposed_assessed_value?.toLocaleString()}
 - Proposed Market Value: $${appeal.proposed_market_value?.toLocaleString()}
 - Requested Reduction: $${(appeal.current_assessed_value - appeal.proposed_assessed_value)?.toLocaleString()}
-
+${strategySection}
 APPEAL GROUNDS:
 ${groundsText || 'Comparable sales analysis shows property is overvalued'}
 
@@ -182,10 +223,12 @@ ${additionalContext ? `ADDITIONAL INFORMATION FROM OWNER:\n${additionalContext}`
 INSTRUCTIONS:
 1. Write a formal letter addressed to the Cook County Board of Review
 2. Clearly state the property PIN, address, and assessment year being appealed
-3. Present a compelling case using the comparable properties as evidence
+3. ${appealStrategy === 'file_mv' ? 'Focus primarily on MARKET VALUE arguments - emphasize comparable sales prices and market conditions' :
+     appealStrategy === 'file_uni' ? 'Focus primarily on UNIFORMITY/EQUITY arguments - emphasize that similar properties are assessed lower' :
+     'Present BOTH market value AND uniformity arguments, leading with the stronger case'}
 4. Reference specific data points (assessed values, square footage, year built, value per square foot)
-5. Request a specific reduction amount based on the comparable analysis
-6. Be professional, factual, and persuasive
+5. Request a specific reduction amount based on the analysis
+6. Be professional, factual, and persuasive - this is a legal document
 7. Keep the letter to 1-2 pages
 8. Do NOT include placeholder brackets - use the actual data provided
 9. End with a formal closing

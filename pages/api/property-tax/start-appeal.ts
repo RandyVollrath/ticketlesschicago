@@ -18,6 +18,7 @@ import {
   normalizePin,
   formatPin
 } from '../../../lib/cook-county-api';
+import { analyzePropertyTaxCase } from '../../../lib/property-tax-analysis';
 import { DEADLINE_STATUS } from '../cron/sync-property-tax-deadlines';
 
 const supabase = createClient(
@@ -87,6 +88,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const property = analysis.property;
     const stats = analysis.analysis;
 
+    // Run enhanced MV/UNI analysis
+    const v2Analysis = analyzePropertyTaxCase(
+      analysis.property,
+      analysis.comparables,
+      analysis.comparableSales || []
+    );
+
     // Check deadline status for this township
     const currentYear = new Date().getFullYear();
     const { data: deadline } = await supabase
@@ -119,17 +127,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Use proposed value or calculate from comparables
-    const proposedAssessedValue = proposedValue || stats.medianComparableValue;
+    // Use v2 analysis target value or fallback to proposed/median
+    const strategy = v2Analysis.strategyDecision;
+    const proposedAssessedValue = proposedValue || strategy.targetAssessedValue || stats.medianComparableValue;
     const proposedMarketValue = proposedAssessedValue * 10; // Cook County uses 10% ratio
 
-    // Calculate estimated tax savings
+    // Calculate estimated tax savings using v2 analysis
     const currentValue = property.assessedValue || 0;
     const reduction = Math.max(0, currentValue - proposedAssessedValue);
-    const taxRate = 0.021; // ~2.1% effective rate
-    const estimatedSavings = reduction * taxRate;
+    const taxRate = 0.07; // ~7% effective Cook County rate
+    const estimatedSavings = strategy.estimatedSavings || reduction * taxRate;
 
-    // Create the appeal record
+    // Create the appeal record with v2 analysis
     const { data: appeal, error: insertError } = await supabase
       .from('property_tax_appeals')
       .insert({
@@ -153,7 +162,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           medianValue: stats.medianComparableValue,
           averageValue: stats.averageComparableValue,
           estimatedOvervaluation: stats.estimatedOvervaluation
-        }
+        },
+        // V2 Analysis fields
+        v2_analysis: v2Analysis,
+        appeal_strategy: strategy.strategy,
+        mv_case_strength: v2Analysis.mvCase.caseStrength,
+        uni_case_strength: v2Analysis.uniCase.caseStrength,
+        comparable_quality_score: v2Analysis.comparableQuality.qualityScore,
+        primary_case: strategy.primaryCase,
+        risk_flags: strategy.riskFlags
       })
       .select()
       .single();
@@ -163,9 +180,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to create appeal' });
     }
 
-    // Store the top comparables for this appeal
+    // Store the top comparables for this appeal with quality scores from v2 analysis
     const comparables = analysis.comparables.slice(0, 10);
+    const compAudits = v2Analysis.comparableQuality.comparableAudits;
+
     for (const comp of comparables) {
+      // Find the quality audit for this comparable
+      const audit = compAudits.find(a => a.pin === comp.pin);
+
       await supabase
         .from('property_tax_comparables')
         .insert({
@@ -188,7 +210,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           age_difference_years: comp.ageDifferenceYears,
           value_per_sqft: comp.valuePerSqft,
           selected_by: 'system',
-          is_primary: comparables.indexOf(comp) < 5 // Top 5 are primary
+          is_primary: comparables.indexOf(comp) < 5, // Top 5 are primary
+          // Quality audit fields
+          quality_score: audit?.qualityScore,
+          adjusted_value: audit?.adjustedValue,
+          why_included: audit?.whyIncluded
         });
     }
 
