@@ -747,7 +747,7 @@ export default function SettingsPage() {
             .from('user_profiles')
             .select('has_contesting, license_plate')
             .eq('user_id', session.user.id)
-            .single();
+            .maybeSingle();
 
           const { data: updatedPlates } = await supabase
             .from('monitored_plates')
@@ -770,7 +770,7 @@ export default function SettingsPage() {
       .from('user_profiles')
       .select('*')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     // Check if user has paid for ticket contesting
     setIsPaidUser(profileData?.has_contesting === true);
@@ -845,12 +845,12 @@ export default function SettingsPage() {
       setIsLeased(plateData[0].is_leased_or_company || false);
     }
 
-    // Load autopilot settings
+    // Load autopilot settings (may not exist for new users)
     const { data: settingsData } = await supabase
       .from('autopilot_settings')
       .select('*')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     if (settingsData) {
       setAutoMailEnabled(settingsData.auto_mail_enabled);
@@ -913,12 +913,12 @@ export default function SettingsPage() {
       nextCheck.setDate(now.getDate() + daysUntilNext);
       setNextCheckDate(nextCheck.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
 
-      // Load subscription info
+      // Load subscription info (may not exist for new users)
       const { data: subData } = await supabase
         .from('subscriptions')
         .select('status, current_period_end')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (subData) {
         setAutopilotSubscription({
@@ -989,7 +989,7 @@ export default function SettingsPage() {
         .from('monitored_plates')
         .select('id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (existingPlate) {
         await supabase
@@ -1255,8 +1255,8 @@ export default function SettingsPage() {
             boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
             position: 'relative',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-              <div style={{ flex: '1 1 300px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'stretch', flexWrap: 'wrap', gap: 24 }}>
+              <div style={{ flex: '1 1 320px', maxWidth: 480 }}>
                 <h2 style={{
                   fontFamily: FONTS.heading,
                   fontSize: 22,
@@ -1286,6 +1286,10 @@ export default function SettingsPage() {
                 padding: 20,
                 textAlign: 'center',
                 minWidth: 240,
+                maxWidth: 280,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
               }}>
                 <p style={{ margin: '0 0 4px', fontSize: 13, color: COLORS.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>
                   Want automatic contesting?

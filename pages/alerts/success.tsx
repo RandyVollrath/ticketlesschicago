@@ -97,7 +97,7 @@ export default function AlertsSuccess() {
           .from('user_profiles')
           .select('city_sticker_expiry, has_permit_zone, license_image_path')
           .eq('user_id', authUser.id)
-          .single();
+          .maybeSingle();
 
         // Need license if: has city sticker renewal + has permit zone + no license uploaded yet
         const hasCitySticker = !!profile?.city_sticker_expiry;

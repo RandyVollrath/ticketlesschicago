@@ -171,7 +171,7 @@ export default function DashboardPage() {
       .from('user_profiles')
       .select('has_contesting, stripe_customer_id')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     if (profileData) {
       setIsPaidUser(profileData.has_contesting === true);
@@ -181,7 +181,7 @@ export default function DashboardPage() {
           .from('autopilot_subscriptions')
           .select('status, current_period_end')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
         if (subData) {
           setSubscription(subData);
         }
