@@ -2678,10 +2678,10 @@ export default function SettingsPage() {
                   gap: 12,
                   padding: 12,
                   borderRadius: 8,
-                  backgroundColor: mailingAddress.trim() ? COLORS.successLight : COLORS.warningLight,
-                  border: `1px solid ${mailingAddress.trim() ? '#10B981' : '#F59E0B'}`,
+                  backgroundColor: mailingAddress1.trim() ? COLORS.successLight : COLORS.warningLight,
+                  border: `1px solid ${mailingAddress1.trim() ? '#10B981' : '#F59E0B'}`,
                 }}>
-                  <span style={{ fontSize: 20 }}>{mailingAddress.trim() ? '✓' : '3'}</span>
+                  <span style={{ fontSize: 20 }}>{mailingAddress1.trim() ? '✓' : '3'}</span>
                   <div>
                     <strong>Add your mailing address</strong>
                     <p style={{ margin: '4px 0 0', fontSize: 13, color: COLORS.textMuted }}>
