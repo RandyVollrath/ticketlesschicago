@@ -20,10 +20,9 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [authMethod, setAuthMethod] = useState<'google' | 'magic-link' | 'passkey' | 'password' | null>(null)
+  const [authMethod, setAuthMethod] = useState<'google' | 'magic-link' | 'password' | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const [passkeysSupported, setPasskeysSupported] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
   const fromSignup = router.query.from === 'signup'
@@ -51,9 +50,6 @@ export default function Login() {
       })
     }
 
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      setPasskeysSupported(true)
-    }
   }, [router])
 
   const handleGoogleAuth = async () => {
@@ -217,72 +213,6 @@ export default function Login() {
     }
   }
 
-  const handlePasskeyAuth = async () => {
-    if (!passkeysSupported) {
-      setMessage({
-        type: 'error',
-        text: 'Passkeys are not supported on this device or browser'
-      })
-      return
-    }
-
-    setLoading(true)
-    setAuthMethod('passkey')
-    setMessage(null)
-
-    try {
-      const { startAuthentication } = await import('@simplewebauthn/browser')
-
-      const response = await fetch('/api/auth/passkey/authenticate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'start' })
-      })
-
-      if (!response.ok) throw new Error('Failed to start passkey authentication')
-
-      const options = await response.json()
-      const assertion = await startAuthentication({ optionsJSON: options })
-
-      const verifyResponse = await fetch('/api/auth/passkey/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...assertion,
-          challenge: options.challenge
-        })
-      })
-
-      if (!verifyResponse.ok) throw new Error('Failed to verify passkey')
-
-      const result = await verifyResponse.json()
-      if (result.verified && result.session) {
-        await supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token
-        })
-
-        const redirectUrl = getRedirectUrl()
-        window.location.href = redirectUrl
-      }
-    } catch (error: any) {
-      let errorMessage = 'No passkeys found. Please sign in with email first to register a passkey.'
-
-      if (error.name === 'NotAllowedError') {
-        errorMessage = 'Passkey authentication was cancelled or failed'
-      } else if (error.message && error.message.includes('No passkey found')) {
-        errorMessage = 'No passkeys registered yet. Sign in with email below, then go to Settings to add a passkey for faster future logins!'
-      }
-
-      setMessage({
-        type: 'error',
-        text: errorMessage
-      })
-    } finally {
-      setLoading(false)
-      setAuthMethod(null)
-    }
-  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: COLORS.concrete, fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
@@ -480,49 +410,6 @@ export default function Login() {
                 We'll email you a secure link - no password needed
               </p>
 
-              {/* Passkey Option */}
-              {passkeysSupported && (
-                <div style={{
-                  marginTop: '20px',
-                  paddingTop: '20px',
-                  borderTop: `1px solid ${COLORS.border}`
-                }}>
-                  <p style={{
-                    fontSize: '13px',
-                    color: COLORS.slate,
-                    marginBottom: '12px',
-                    textAlign: 'center',
-                    margin: '0 0 12px 0'
-                  }}>
-                    Biometric sign-in
-                  </p>
-                  <button
-                    onClick={handlePasskeyAuth}
-                    disabled={loading}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '10px',
-                      padding: '12px 16px',
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: '10px',
-                      backgroundColor: loading && authMethod === 'passkey' ? COLORS.concrete : 'white',
-                      fontWeight: '500',
-                      color: COLORS.slate,
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      opacity: loading && authMethod !== 'passkey' ? 0.5 : 1
-                    }}
-                  >
-                    <svg style={{ width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="currentColor"/>
-                    </svg>
-                    {loading && authMethod === 'passkey' ? 'Authenticating...' : 'Sign in with Face ID / Touch ID'}
-                  </button>
-                </div>
-              )}
             </div>
 
             {message && (
