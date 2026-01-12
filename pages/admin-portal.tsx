@@ -154,129 +154,108 @@ const PERMIT_REJECTION_REASONS = {
 };
 
 // ============ Letter Templates Data ============
+// IMPORTANT: These templates should NOT make false claims or assert facts we don't know.
+// They request a hearing and ask for evidence to be reviewed.
 
 const DEFENSE_TEMPLATES: Record<string, { type: string; description: string; template: string }> = {
   expired_plates: {
     type: 'registration_renewed',
     description: 'Expired Registration / Plates',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for expired registration.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for expired registration.
 
-At the time this ticket was issued, my vehicle registration had recently been renewed. I have attached documentation showing that my registration was valid at the time of the citation, or that I renewed it within the grace period allowed by Illinois law.
+I am requesting a hearing to present evidence regarding this citation. I may have documentation showing my registration status at the time of the violation, and I would like the opportunity to have this evidence reviewed.
 
-Under Chicago Municipal Code, a vehicle owner has a reasonable period to update their registration after renewal. I believe this citation was issued in error.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   no_city_sticker: {
     type: 'sticker_purchased',
     description: 'Missing City Sticker',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
 
-At the time this ticket was issued, I had purchased my city sticker but had not yet received it in the mail / had not yet affixed it to my vehicle. I have attached proof of purchase showing the sticker was purchased prior to the citation.
+I am requesting a hearing to present evidence regarding this citation. I may have documentation showing my city sticker purchase or compliance status, and I would like the opportunity to have this evidence reviewed.
 
-Under Chicago Municipal Code Section 3-56-030, the city allows a grace period for displaying newly purchased stickers. I believe this citation was issued during that grace period.
-
-I respectfully request that this ticket be dismissed.`,
+Under Chicago Municipal Code, there are various circumstances under which a city sticker citation may be contested. I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   expired_meter: {
     type: 'meter_malfunction',
     description: 'Expired Meter',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for an expired parking meter.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for an expired parking meter.
 
-I believe the parking meter at this location was malfunctioning at the time of this citation. The meter may not have properly displayed the time remaining, or may have failed to accept payment correctly.
+I am requesting a hearing to review this citation. There may have been issues with the parking meter, signage clarity, or payment acceptance at this location that affected my ability to comply with parking regulations.
 
-Additionally, signage at this location may have been unclear or obscured, making it difficult to determine the correct parking regulations.
-
-I respectfully request that this ticket be dismissed or reduced due to the possibility of meter malfunction.`,
+I respectfully request that photographic evidence of the violation be provided and that this ticket be reviewed, or that a hearing be scheduled where I can present my case.`,
   },
   disabled_zone: {
     type: 'disability_documentation',
     description: 'Disabled Zone Parking',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a disabled zone.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking in a disabled zone.
 
-I am a person with a disability and possess a valid disability parking placard/plate. At the time this ticket was issued, my placard may not have been visible to the parking enforcement officer, but it was present in my vehicle.
+I am requesting a hearing to present evidence regarding this citation. I may have valid disability parking authorization or other documentation relevant to this case.
 
-I have attached documentation of my valid disability parking authorization.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   street_cleaning: {
     type: 'signage_issue',
     description: 'Street Cleaning Violation',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
 
-I believe the signage indicating street cleaning restrictions at this location was either missing, obscured, damaged, or contradictory. I made a good faith effort to comply with posted regulations but the signage was not clear.
+I am requesting a hearing to review this citation. Factors such as signage visibility, temporary changes to cleaning schedules, or other circumstances may be relevant to this case.
 
-Additionally, I would note that street cleaning schedules can be difficult to track and the city's notification systems may not have adequately informed residents of the scheduled cleaning.
-
-I respectfully request that this ticket be dismissed or reduced.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   rush_hour: {
     type: 'emergency_situation',
     description: 'Rush Hour Parking Violation',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
 
-At the time this ticket was issued, I was dealing with an emergency situation that required me to briefly stop my vehicle. I was not parking but rather attending to an urgent matter.
+I am requesting a hearing to present evidence regarding this citation. There may be circumstances or documentation relevant to this case that I would like the opportunity to present.
 
-The signage at this location may also have been unclear about the specific hours of restriction.
-
-I respectfully request that this ticket be dismissed or reduced given the circumstances.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   fire_hydrant: {
     type: 'distance_dispute',
     description: 'Parking Near Fire Hydrant',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking too close to a fire hydrant.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking too close to a fire hydrant.
 
-I believe my vehicle was parked at least 15 feet from the fire hydrant as required by law. The distance may have been misjudged by the parking enforcement officer.
+I am requesting a hearing to review this citation. I would like to request any photographic evidence of the violation showing the distance from the hydrant, and the opportunity to present any relevant evidence.
 
-I would request photographic evidence of the violation if available, and ask that this ticket be reviewed.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   residential_permit: {
     type: 'permit_displayed',
     description: 'Residential Permit Parking',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a residential permit zone.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking in a residential permit zone.
 
-At the time this ticket was issued, I had a valid residential parking permit displayed in my vehicle. The permit may not have been visible to the parking enforcement officer due to lighting conditions or placement, but it was present.
+I am requesting a hearing to present evidence regarding this citation. I may have valid residential parking permit documentation relevant to this case.
 
-I have attached documentation of my valid residential parking permit.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   no_standing: {
     type: 'brief_stop',
     description: 'No Standing/Stopping Zone',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a no standing/stopping violation.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a no standing/stopping violation.
 
-At the time this ticket was issued, I was briefly stopped for an essential purpose such as loading/unloading passengers or responding to an emergency. My vehicle was not parked or left unattended.
+I am requesting a hearing to present evidence regarding this citation. There may be circumstances or documentation relevant to this case that I would like the opportunity to present.
 
-The signage at this location may also have been unclear or contradictory.
-
-I respectfully request that this ticket be dismissed or reduced.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   bus_stop: {
     type: 'signage_unclear',
     description: 'Bus Stop/Stand Violation',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a bus stop zone.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking in a bus stop zone.
 
-I believe the bus stop signage at this location was either missing, faded, or not clearly visible. The curb markings may have been worn or obscured by weather conditions.
+I am requesting a hearing to review this citation. Factors such as signage visibility, curb marking condition, or other circumstances may be relevant to this case.
 
-I made a good faith effort to comply with parking regulations but was unable to identify this location as a bus stop.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   other_unknown: {
     type: 'general_contest',
     description: 'Other/Unknown Violation (General Template)',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date}.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date}.
 
-I believe this ticket was issued in error for the following reasons:
-1. The signage at this location may have been unclear, missing, or contradictory
-2. There may have been extenuating circumstances at the time
-3. The violation may not have occurred as described
+I am requesting a hearing to present evidence and review the circumstances of this citation. I would like the opportunity to present any relevant documentation and have this ticket reviewed.
 
-I respectfully request a hearing to present my case and ask that this ticket be dismissed or reduced.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
 };
 
@@ -801,7 +780,7 @@ export default function AdminPortal() {
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'ticket_detected' | 'letter_generated' | 'evidence_letter_generated' | 'letter_sent'>('all');
   const [selectedPipelineTicket, setSelectedPipelineTicket] = useState<any>(null);
   const [showLetterModal, setShowLetterModal] = useState(false);
-  const [viewingLetter, setViewingLetter] = useState<{ content: string; ticketNumber: string; defenseType: string | null; evidenceIntegrated: boolean } | null>(null);
+  const [viewingLetter, setViewingLetter] = useState<{ content: string; ticketNumber: string; defenseType: string | null; evidenceIntegrated: boolean; attachmentUrls?: string[] } | null>(null);
 
   // Document review state
   const [residencyDocs, setResidencyDocs] = useState<ResidencyProofDoc[]>([]);
@@ -2367,6 +2346,7 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Violation</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
+                        <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Evidence</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Expected Send</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Lob Status</th>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Created</th>
@@ -2404,6 +2384,60 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
                             }}>
                               {ticket.stage_label}
                             </span>
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            {ticket.user_evidence?.attachment_urls?.length > 0 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                                {ticket.user_evidence.attachment_urls.map((url: string, idx: number) => (
+                                  <a
+                                    key={idx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      padding: '4px 8px',
+                                      backgroundColor: '#dcfce7',
+                                      color: '#166534',
+                                      borderRadius: '4px',
+                                      fontSize: '11px',
+                                      textDecoration: 'none',
+                                    }}
+                                  >
+                                    <span>&#128206;</span>
+                                    {idx + 1}
+                                  </a>
+                                ))}
+                                {ticket.user_evidence.text && (
+                                  <span
+                                    title={ticket.user_evidence.text}
+                                    style={{ fontSize: '10px', color: '#6b7280', cursor: 'help' }}
+                                  >
+                                    + text
+                                  </span>
+                                )}
+                              </div>
+                            ) : ticket.user_evidence?.text ? (
+                              <span
+                                title={ticket.user_evidence.text}
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: '#fef3c7',
+                                  color: '#92400e',
+                                  borderRadius: '4px',
+                                  fontSize: '11px',
+                                  cursor: 'help',
+                                }}
+                              >
+                                Text only
+                              </span>
+                            ) : ticket.has_evidence ? (
+                              <span style={{ fontSize: '11px', color: '#6b7280' }}>Yes</span>
+                            ) : (
+                              <span style={{ color: '#9ca3af', fontSize: '11px' }}>-</span>
+                            )}
                           </td>
                           <td style={{ padding: '12px', fontSize: '12px' }}>
                             {ticket.mailed_at ? (
@@ -2457,6 +2491,7 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
                                     ticketNumber: ticket.ticket_number,
                                     defenseType: ticket.defense_type,
                                     evidenceIntegrated: ticket.evidence_integrated,
+                                    attachmentUrls: ticket.user_evidence?.attachment_urls || [],
                                   });
                                   setShowLetterModal(true);
                                 }}
@@ -3546,6 +3581,72 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
               overflow: 'auto',
               flex: 1,
             }}>
+              {/* Evidence Attachments Section */}
+              {viewingLetter.attachmentUrls && viewingLetter.attachmentUrls.length > 0 && (
+                <div style={{
+                  marginBottom: '20px',
+                  padding: '16px',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '8px',
+                }}>
+                  <h4 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600', color: '#166534' }}>
+                    Evidence Attachments ({viewingLetter.attachmentUrls.length})
+                  </h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {viewingLetter.attachmentUrls.map((url: string, idx: number) => (
+                      <a
+                        key={idx}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block',
+                          border: '2px solid #86efac',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          transition: 'transform 0.2s, border-color 0.2s',
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.02)';
+                          e.currentTarget.style.borderColor = '#22c55e';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.borderColor = '#86efac';
+                        }}
+                      >
+                        {url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                          <img
+                            src={url}
+                            alt={`Evidence ${idx + 1}`}
+                            style={{
+                              maxWidth: '200px',
+                              maxHeight: '150px',
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            padding: '12px 16px',
+                            backgroundColor: '#dcfce7',
+                            color: '#166534',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}>
+                            <span>📎</span>
+                            <span>Attachment {idx + 1}</span>
+                          </div>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <pre style={{
                 fontFamily: 'Georgia, serif',
                 fontSize: '14px',
