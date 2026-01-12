@@ -735,6 +735,7 @@ export default function SettingsPage() {
     // Check if user just completed checkout successfully
     if (router.query.checkout === 'success') {
       setShowCheckoutSuccess(true);
+      setActiveTab('settings'); // Default to settings tab so user can complete profile
       // Clear the query param from URL without reload
       router.replace('/settings', undefined, { shallow: true });
 
@@ -1350,7 +1351,8 @@ export default function SettingsPage() {
         )}
 
         {/* Warning Banner for Paid Users Without Plates or Last Name */}
-        {isPaidUser && (!hasActivePlates || !lastName.trim()) && (
+        {/* Hide when checkout success modal is showing - give user a chance to fill out profile */}
+        {isPaidUser && (!hasActivePlates || !lastName.trim()) && !showCheckoutSuccess && (
           <div style={{
             backgroundColor: '#FEF2F2',
             borderRadius: 12,
