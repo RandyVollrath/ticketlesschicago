@@ -55,6 +55,14 @@ interface UserProfile {
   mailing_zip: string | null;
 }
 
+// Default sender address when user hasn't added their own
+const DEFAULT_SENDER_ADDRESS = {
+  address: '2434 N Southport Ave, Unit 1R',
+  city: 'Chicago',
+  state: 'IL',
+  zip: '60614',
+};
+
 /**
  * Parse date from various formats that spreadsheets might auto-generate
  * Handles: "1-10-26", "1/10/26", "01-10-2026", "2026-01-10", "1/10/2026", etc.
@@ -866,8 +874,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ticket_number: string;
       status: 'created' | 'skipped' | 'error';
       reason?: string;
-      letterSkipped?: boolean;
-      letterSkipReason?: string;
+      usingDefaultAddress?: boolean;
     }
 
     const results = {
@@ -875,7 +882,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       processed: tickets.length,
       ticketsCreated: 0,
       lettersGenerated: 0,
-      lettersSkipped: 0,
       emailsSent: 0,
       skipped: 0,
       errors: [] as string[],
@@ -1018,50 +1024,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         console.log(`  Created ticket ${ticket.ticket_number} for plate ${ticket.plate}`);
 
-        // Generate contest letter
-        if (profile && profile.mailing_address) {
-          const template = DEFENSE_TEMPLATES[ticket.violation_type] || DEFENSE_TEMPLATES.other_unknown;
-          const letterContent = generateLetterContent(
-            {
-              ticket_number: ticket.ticket_number,
-              violation_date: parsedDate,
-              violation_description: ticket.violation_description || null,
-              violation_type: ticket.violation_type || 'other_unknown',
-              amount: amount,
-              location: ticket.location || null,
-              plate: ticket.plate.toUpperCase(),
-              state: ticket.state.toUpperCase(),
-            },
-            profile as UserProfile,
-            template
-          );
+        // Generate contest letter - use default address if user hasn't added their own
+        const template = DEFENSE_TEMPLATES[ticket.violation_type] || DEFENSE_TEMPLATES.other_unknown;
 
-          const { error: letterError } = await supabaseAdmin
-            .from('contest_letters')
-            .insert({
-              ticket_id: newTicket.id,
-              user_id: plate.user_id,
-              letter_content: letterContent,
-              letter_text: letterContent, // Also save to letter_text for compatibility
-              defense_type: template.type,
-              status: 'pending_evidence',
-            });
+        // Build profile with fallback to default address
+        const letterProfile: UserProfile = {
+          full_name: profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Vehicle Owner',
+          first_name: profile?.first_name || null,
+          last_name: profile?.last_name || null,
+          mailing_address: profile?.mailing_address || DEFAULT_SENDER_ADDRESS.address,
+          mailing_city: profile?.mailing_city || DEFAULT_SENDER_ADDRESS.city,
+          mailing_state: profile?.mailing_state || DEFAULT_SENDER_ADDRESS.state,
+          mailing_zip: profile?.mailing_zip || DEFAULT_SENDER_ADDRESS.zip,
+        };
 
-          if (!letterError) {
-            results.lettersGenerated++;
-            console.log(`    Generated contest letter`);
+        const usingDefaultAddress = !profile?.mailing_address;
+
+        const letterContent = generateLetterContent(
+          {
+            ticket_number: ticket.ticket_number,
+            violation_date: parsedDate,
+            violation_description: ticket.violation_description || null,
+            violation_type: ticket.violation_type || 'other_unknown',
+            amount: amount,
+            location: ticket.location || null,
+            plate: ticket.plate.toUpperCase(),
+            state: ticket.state.toUpperCase(),
+          },
+          letterProfile,
+          template
+        );
+
+        const { error: letterError } = await supabaseAdmin
+          .from('contest_letters')
+          .insert({
+            ticket_id: newTicket.id,
+            user_id: plate.user_id,
+            letter_content: letterContent,
+            letter_text: letterContent, // Also save to letter_text for compatibility
+            defense_type: template.type,
+            status: 'pending_evidence',
+            using_default_address: usingDefaultAddress,
+          });
+
+        if (!letterError) {
+          results.lettersGenerated++;
+          if (usingDefaultAddress) {
+            console.log(`    Generated contest letter (using default address - user has no mailing address)`);
+            // Note in row details that default address was used
+            const rowDetail = results.rowDetails.find(r => r.row === rowNum);
+            if (rowDetail) {
+              rowDetail.usingDefaultAddress = true;
+            }
           } else {
-            console.error(`    Failed to generate letter: ${letterError.message}`);
+            console.log(`    Generated contest letter`);
           }
         } else {
-          console.log(`    Skipping letter: Missing profile/address`);
-          results.lettersSkipped++;
-          // Update rowDetails to note this
-          const rowDetail = results.rowDetails.find(r => r.row === rowNum);
-          if (rowDetail) {
-            rowDetail.letterSkipped = true;
-            rowDetail.letterSkipReason = !profile ? 'No user profile found' : 'Missing mailing address';
-          }
+          console.error(`    Failed to generate letter: ${letterError.message}`);
+          results.errors.push(`Failed to generate letter for ticket ${ticket.ticket_number}: ${letterError.message}`);
         }
 
         // Send email notification to user
