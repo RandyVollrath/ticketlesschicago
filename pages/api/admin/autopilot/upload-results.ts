@@ -140,13 +140,13 @@ function normalizeViolationType(input: string): string {
     return 'speed_camera';
   }
   if (normalized.includes('red light')) {
-    return 'red_light_camera';
+    return 'red_light';
   }
 
   // If already in correct format, return as-is
   const validTypes = ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
                       'street_cleaning', 'rush_hour', 'fire_hydrant', 'speed_camera',
-                      'red_light_camera', 'other_unknown'];
+                      'red_light', 'other_unknown'];
   if (validTypes.includes(normalized)) {
     return normalized;
   }
@@ -866,6 +866,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ticket_number: string;
       status: 'created' | 'skipped' | 'error';
       reason?: string;
+      letterSkipped?: boolean;
+      letterSkipReason?: string;
     }
 
     const results = {
@@ -873,6 +875,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       processed: tickets.length,
       ticketsCreated: 0,
       lettersGenerated: 0,
+      lettersSkipped: 0,
       emailsSent: 0,
       skipped: 0,
       errors: [] as string[],
@@ -1052,6 +1055,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         } else {
           console.log(`    Skipping letter: Missing profile/address`);
+          results.lettersSkipped++;
+          // Update rowDetails to note this
+          const rowDetail = results.rowDetails.find(r => r.row === rowNum);
+          if (rowDetail) {
+            rowDetail.letterSkipped = true;
+            rowDetail.letterSkipReason = !profile ? 'No user profile found' : 'Missing mailing address';
+          }
         }
 
         // Send email notification to user

@@ -2123,7 +2123,11 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
                                       </span>
                                     </td>
                                     <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', color: row.status === 'created' ? '#166534' : '#6b7280' }}>
-                                      {row.reason || (row.status === 'created' ? 'Ticket created successfully' : '-')}
+                                      {row.reason || (row.status === 'created' ? (
+                                        row.letterSkipped
+                                          ? <span style={{ color: '#b45309' }}>Ticket created, but no letter: {row.letterSkipReason}</span>
+                                          : 'Ticket + letter created'
+                                      ) : '-')}
                                     </td>
                                   </tr>
                                 ))}
