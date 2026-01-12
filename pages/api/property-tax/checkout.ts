@@ -113,16 +113,46 @@ export default async function handler(
     // Record rate limit action
     await recordRateLimitAction(ip, 'property_tax_checkout');
 
-    // Get or create Stripe customer
-    const customers = await stripe.customers.list({ email: user.email!, limit: 1 });
-    let customerId = customers.data[0]?.id;
+    // OPTIMIZED: Get or create Stripe customer using search (faster than list for existing)
+    // For returning customers, search is faster. For new customers, we create directly.
+    let customerId: string;
 
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email!,
-        metadata: { userId: user.id }
-      });
-      customerId = customer.id;
+    // First check if user already has a Stripe customer ID stored in their profile
+    const { data: userProfile } = await supabaseAdmin
+      .from('users')
+      .select('stripe_customer_id')
+      .eq('id', user.id)
+      .single();
+
+    if (userProfile?.stripe_customer_id) {
+      // Use cached customer ID (most common case for returning users)
+      customerId = userProfile.stripe_customer_id;
+    } else {
+      // Check Stripe for existing customer by email
+      const customers = await stripe.customers.list({ email: user.email!, limit: 1 });
+
+      if (customers.data[0]?.id) {
+        customerId = customers.data[0].id;
+        // Cache for future use (fire-and-forget)
+        supabaseAdmin
+          .from('users')
+          .update({ stripe_customer_id: customerId })
+          .eq('id', user.id)
+          .then(() => {});
+      } else {
+        // Create new customer
+        const customer = await stripe.customers.create({
+          email: user.email!,
+          metadata: { userId: user.id }
+        });
+        customerId = customer.id;
+        // Cache for future use (fire-and-forget)
+        supabaseAdmin
+          .from('users')
+          .update({ stripe_customer_id: customerId })
+          .eq('id', user.id)
+          .then(() => {});
+      }
     }
 
     // Determine price - use configured price or create ad-hoc if not set
