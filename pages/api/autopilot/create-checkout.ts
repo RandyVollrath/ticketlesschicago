@@ -89,14 +89,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Update or create subscription record with customer ID
+    // Note: status must be 'active', 'canceled', 'past_due', or 'trialing' per CHECK constraint
     await supabaseAdmin
       .from('autopilot_subscriptions')
       .upsert({
         user_id: userId,
         stripe_customer_id: customerId,
-        status: 'pending',
+        status: 'trialing', // Will be updated to 'active' by webhook after payment
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: 'user_id' });
 
     // Also create default settings if not exists
     await supabaseAdmin
@@ -110,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         email_on_ticket_found: true,
         email_on_letter_mailed: true,
         email_on_approval_needed: true,
-      });
+      }, { onConflict: 'user_id' });
 
     return res.status(200).json({ url: session.url });
   } catch (error: any) {
