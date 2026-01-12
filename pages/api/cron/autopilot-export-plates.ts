@@ -153,15 +153,15 @@ function generateEmailHTML(plateCount: number, dayOfWeek: string): string {
           <li>Download the attached CSV file</li>
           <li>Go to the <a href="${CHICAGO_TICKET_SEARCH_URL}" style="color: #2563eb; font-weight: 600;">Chicago Ticket Search</a></li>
           <li>For each row, search by <strong>Last Name</strong> (Column A) and <strong>License Plate</strong> (Column C)</li>
-          <li>If tickets are found, fill in columns F-L (ticket_number through location)</li>
+          <li>If tickets are found, fill in columns F-I (ticket_number, violation_type, violation_date, amount)</li>
           <li>If multiple tickets exist for one plate, duplicate that row</li>
           <li>Leave ticket columns empty if no tickets found</li>
           <li>Upload the completed file to the <a href="https://autopilotamerica.com/admin/autopilot" style="color: #2563eb;">Autopilot Admin portal</a></li>
         </ol>
 
-        <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin-top: 20px;">
-          <p style="margin: 0; color: #92400e; font-size: 14px;">
-            <strong>Valid violation types:</strong> expired_plates, no_city_sticker, expired_meter, disabled_zone, street_cleaning, rush_hour, fire_hydrant, other_unknown
+        <div style="background: #eff6ff; border: 1px solid #3b82f6; padding: 16px; border-radius: 8px; margin-top: 20px;">
+          <p style="margin: 0; color: #1e40af; font-size: 14px;">
+            <strong>Note:</strong> violation_type can be any text (e.g. "Expired Plates", "No City Sticker") - it will be auto-normalized.
           </p>
         </div>
 
