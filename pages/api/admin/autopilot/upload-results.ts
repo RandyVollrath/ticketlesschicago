@@ -55,6 +55,61 @@ interface UserProfile {
   mailing_zip: string | null;
 }
 
+/**
+ * Parse date from various formats that spreadsheets might auto-generate
+ * Handles: "1-10-26", "1/10/26", "01-10-2026", "2026-01-10", "1/10/2026", etc.
+ * Returns ISO date string (YYYY-MM-DD) or null if unparseable
+ */
+function parseDateFlexible(dateStr?: string): string | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+
+  const cleaned = dateStr.trim();
+  if (!cleaned) return null;
+
+  // Try ISO format first (YYYY-MM-DD)
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cleaned)) {
+    const date = new Date(cleaned);
+    if (!isNaN(date.getTime())) {
+      return cleaned;
+    }
+  }
+
+  // Parse various M/D/Y or M-D-Y formats
+  const separatorMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (separatorMatch) {
+    let [, month, day, year] = separatorMatch;
+
+    // Handle 2-digit year (assume 20xx for years < 50, 19xx otherwise)
+    if (year.length === 2) {
+      const yearNum = parseInt(year, 10);
+      year = yearNum < 50 ? `20${year}` : `19${year}`;
+    }
+
+    // Pad month and day
+    const paddedMonth = month.padStart(2, '0');
+    const paddedDay = day.padStart(2, '0');
+
+    const isoDate = `${year}-${paddedMonth}-${paddedDay}`;
+    const date = new Date(isoDate);
+
+    // Validate the date is real (e.g., no Feb 30)
+    if (!isNaN(date.getTime()) &&
+        date.getMonth() + 1 === parseInt(paddedMonth, 10) &&
+        date.getDate() === parseInt(paddedDay, 10)) {
+      return isoDate;
+    }
+  }
+
+  // Try native Date parsing as fallback
+  const fallbackDate = new Date(cleaned);
+  if (!isNaN(fallbackDate.getTime())) {
+    return fallbackDate.toISOString().split('T')[0];
+  }
+
+  console.log(`  Warning: Could not parse date "${dateStr}"`);
+  return null;
+}
+
 // Normalize violation type from various formats to our enum values
 function normalizeViolationType(input: string): string {
   const normalized = input.toLowerCase().trim();
@@ -803,6 +858,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`📥 Processing ${tickets.length} ticket findings from VA upload`);
 
+    // Track detailed info for each row
+    interface RowResult {
+      row: number;
+      plate: string;
+      state: string;
+      ticket_number: string;
+      status: 'created' | 'skipped' | 'error';
+      reason?: string;
+    }
+
     const results = {
       success: true,
       processed: tickets.length,
@@ -811,13 +876,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       emailsSent: 0,
       skipped: 0,
       errors: [] as string[],
+      rowDetails: [] as RowResult[],
     };
 
     // Calculate evidence deadline (72 hours from now)
     const now = new Date();
     const evidenceDeadline = new Date(now.getTime() + 72 * 60 * 60 * 1000);
 
-    for (const ticket of tickets) {
+    for (let i = 0; i < tickets.length; i++) {
+      const ticket = tickets[i];
+      const rowNum = i + 2; // +2 because row 1 is header, and arrays are 0-indexed
+
       try {
         // Find the monitored plate
         const { data: plate } = await supabaseAdmin
@@ -831,6 +900,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!plate) {
           console.log(`  Skipping ${ticket.plate}: No active monitored plate found`);
           results.skipped++;
+          results.rowDetails.push({
+            row: rowNum,
+            plate: ticket.plate,
+            state: ticket.state,
+            ticket_number: ticket.ticket_number,
+            status: 'skipped',
+            reason: `Plate ${ticket.plate} (${ticket.state}) not found in monitored plates`,
+          });
           continue;
         }
 
@@ -844,6 +921,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (existingTicket) {
           console.log(`  Skipping ${ticket.ticket_number}: Already exists`);
           results.skipped++;
+          results.rowDetails.push({
+            row: rowNum,
+            plate: ticket.plate,
+            state: ticket.state,
+            ticket_number: ticket.ticket_number,
+            status: 'skipped',
+            reason: `Ticket #${ticket.ticket_number} already exists in system`,
+          });
           continue;
         }
 
@@ -872,6 +957,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!isNaN(parsed)) amount = parsed;
         }
 
+        // Parse the date flexibly (handles "1-10-26", "1/10/2026", "2026-01-10", etc.)
+        const parsedDate = parseDateFlexible(ticket.violation_date);
+
         // Create ticket record with evidence deadline
         const { data: newTicket, error: ticketError } = await supabaseAdmin
           .from('detected_tickets')
@@ -884,7 +972,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             violation_code: ticket.violation_code || null,
             violation_type: ticket.violation_type || 'other_unknown',
             violation_description: ticket.violation_description || null,
-            violation_date: ticket.violation_date || null,
+            violation_date: parsedDate,
             amount: amount,
             location: ticket.location || null,
             status: 'pending_evidence',
@@ -897,11 +985,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .single();
 
         if (ticketError || !newTicket) {
-          results.errors.push(`Failed to create ticket ${ticket.ticket_number}: ${ticketError?.message}`);
+          const errorMsg = `Failed to create ticket ${ticket.ticket_number}: ${ticketError?.message}`;
+          results.errors.push(errorMsg);
+          results.rowDetails.push({
+            row: rowNum,
+            plate: ticket.plate,
+            state: ticket.state,
+            ticket_number: ticket.ticket_number,
+            status: 'error',
+            reason: ticketError?.message || 'Unknown database error',
+          });
           continue;
         }
 
         results.ticketsCreated++;
+        results.rowDetails.push({
+          row: rowNum,
+          plate: ticket.plate,
+          state: ticket.state,
+          ticket_number: ticket.ticket_number,
+          status: 'created',
+        });
         console.log(`  Created ticket ${ticket.ticket_number} for plate ${ticket.plate}`);
 
         // Generate contest letter
@@ -910,7 +1014,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const letterContent = generateLetterContent(
             {
               ticket_number: ticket.ticket_number,
-              violation_date: ticket.violation_date || null,
+              violation_date: parsedDate,
               violation_description: ticket.violation_description || null,
               violation_type: ticket.violation_type || 'other_unknown',
               amount: amount,
@@ -980,7 +1084,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
 
       } catch (err: any) {
-        results.errors.push(`Error processing ${ticket.ticket_number}: ${err.message}`);
+        const errorMsg = `Error processing ${ticket.ticket_number}: ${err.message}`;
+        results.errors.push(errorMsg);
+        results.rowDetails.push({
+          row: rowNum,
+          plate: ticket.plate,
+          state: ticket.state,
+          ticket_number: ticket.ticket_number,
+          status: 'error',
+          reason: err.message || 'Unexpected error',
+        });
       }
     }
 

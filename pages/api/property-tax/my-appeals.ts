@@ -68,6 +68,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get all appeals for this user
+    // OPTIMIZED: Removed appeal_letter (50KB+ per appeal) - only fetch metadata
+    // Use letter_generated_at to determine if letter exists
     const { data: appeals, error: appealsError } = await supabase
       .from('property_tax_appeals')
       .select(`
@@ -86,7 +88,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mv_case_strength,
         uni_case_strength,
         comparable_quality_score,
-        appeal_letter,
         letter_generated_at,
         appeal_pdf_generated_at,
         ccao_filed_at,
@@ -267,7 +268,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } : null,
 
         // Actions
-        hasLetter: !!appeal.appeal_letter,
+        hasLetter: !!appeal.letter_generated_at,
         hasPdf: !!appeal.appeal_pdf_generated_at,
         nextAction,
         nextActionUrl,

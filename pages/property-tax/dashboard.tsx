@@ -5,7 +5,7 @@
  * with status tracking, progress indicators, and next actions.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -64,6 +64,271 @@ interface Summary {
   totalActualSavings: number;
 }
 
+// Memoized strength badge styles to avoid recreating on each render
+const STRENGTH_COLORS = {
+  strong: { bg: '#D1FAE5', text: '#065F46' },
+  moderate: { bg: '#FEF3C7', text: '#92400E' },
+  weak: { bg: '#FEE2E2', text: '#991B1B' }
+} as const;
+
+// Helper function (pure, no hooks needed)
+function getStatusColor(status: string, stage: string) {
+  if (status === 'won' || stage?.includes('approved')) return COLORS.signal;
+  if (status === 'lost' || stage?.includes('denied')) return COLORS.danger;
+  if (stage?.includes('filed')) return COLORS.regulatory;
+  if (status === 'withdrawn') return COLORS.slate;
+  return COLORS.warning;
+}
+
+// Memoized StrengthBadge component
+const StrengthBadge = memo(function StrengthBadge({ strength }: { strength: string }) {
+  const c = STRENGTH_COLORS[strength as keyof typeof STRENGTH_COLORS] || STRENGTH_COLORS.moderate;
+  return (
+    <span style={{
+      fontSize: '11px',
+      fontWeight: '600',
+      padding: '2px 8px',
+      borderRadius: '100px',
+      backgroundColor: c.bg,
+      color: c.text,
+      textTransform: 'uppercase'
+    }}>
+      {strength}
+    </span>
+  );
+});
+
+// Memoized AppealCard component to prevent re-renders when other appeals change
+const AppealCard = memo(function AppealCard({ appeal }: { appeal: Appeal }) {
+  const statusColor = getStatusColor(appeal.status, appeal.stage);
+
+  return (
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '20px',
+      overflow: 'hidden',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+      border: appeal.urgency === 'high' ? `2px solid ${COLORS.warning}` : 'none'
+    }}>
+      {/* Progress Bar */}
+      <div style={{
+        height: '4px',
+        backgroundColor: COLORS.border,
+        position: 'relative'
+      }}>
+        <div style={{
+          height: '100%',
+          width: `${appeal.progress}%`,
+          backgroundColor: statusColor,
+          transition: 'width 0.5s ease'
+        }} />
+      </div>
+
+      <div style={{ padding: '24px' }}>
+        {/* Header Row */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '700',
+              color: COLORS.graphite,
+              margin: '0 0 4px 0'
+            }}>
+              {appeal.address}
+            </h3>
+            <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0 }}>
+              PIN: {appeal.pinFormatted} | {appeal.township} Township | Tax Year {appeal.assessmentYear}
+            </p>
+          </div>
+          <div style={{
+            padding: '6px 14px',
+            borderRadius: '100px',
+            backgroundColor: `${statusColor}15`,
+            color: statusColor,
+            fontSize: '13px',
+            fontWeight: '600'
+          }}>
+            {appeal.stageLabel}
+          </div>
+        </div>
+
+        {/* Info Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '16px',
+          marginBottom: '16px'
+        }}>
+          <div>
+            <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 2px 0', textTransform: 'uppercase' }}>
+              Current Value
+            </p>
+            <p style={{ fontSize: '16px', fontWeight: '700', color: COLORS.graphite, margin: 0 }}>
+              ${appeal.currentValue?.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 2px 0', textTransform: 'uppercase' }}>
+              Target Value
+            </p>
+            <p style={{ fontSize: '16px', fontWeight: '700', color: COLORS.regulatory, margin: 0 }}>
+              ${appeal.proposedValue?.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 2px 0', textTransform: 'uppercase' }}>
+              {appeal.savingsDisplay.label}
+            </p>
+            <p style={{ fontSize: '16px', fontWeight: '700', color: COLORS.signal, margin: 0 }}>
+              ${Math.round(appeal.savingsDisplay.amount).toLocaleString()}/yr
+            </p>
+          </div>
+          {appeal.strategy && (
+            <div>
+              <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 4px 0', textTransform: 'uppercase' }}>
+                Strategy
+              </p>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {(appeal.strategy === 'file_mv' || appeal.strategy === 'file_both') && appeal.mvStrength && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', color: COLORS.slate }}>MV:</span>
+                    <StrengthBadge strength={appeal.mvStrength} />
+                  </div>
+                )}
+                {(appeal.strategy === 'file_uni' || appeal.strategy === 'file_both') && appeal.uniStrength && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', color: COLORS.slate }}>UNI:</span>
+                    <StrengthBadge strength={appeal.uniStrength} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Next Action */}
+        {appeal.nextAction && (
+          <div style={{
+            padding: '12px 16px',
+            backgroundColor: appeal.urgency === 'high' ? '#FEF3C7' : COLORS.concrete,
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {appeal.urgency === 'high' && (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2">
+                  <path d="M12 9v2M12 15h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+              )}
+              <p style={{
+                fontSize: '14px',
+                color: appeal.urgency === 'high' ? '#92400E' : COLORS.graphite,
+                margin: 0,
+                fontWeight: appeal.urgency === 'high' ? '600' : '400'
+              }}>
+                {appeal.nextAction}
+              </p>
+            </div>
+            {appeal.nextActionUrl && (
+              <Link href={appeal.nextActionUrl} style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                backgroundColor: COLORS.regulatory,
+                color: 'white',
+                borderRadius: '8px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                fontSize: '13px',
+                whiteSpace: 'nowrap'
+              }}>
+                Take Action
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/* Filed Status Row */}
+        {(appeal.ccao || appeal.bor) && (
+          <div style={{
+            marginTop: '16px',
+            paddingTop: '16px',
+            borderTop: `1px solid ${COLORS.border}`,
+            display: 'flex',
+            gap: '24px',
+            flexWrap: 'wrap'
+          }}>
+            {appeal.ccao && (
+              <div>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, margin: '0 0 4px 0' }}>
+                  CCAO Filing
+                </p>
+                <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0 }}>
+                  Filed: {new Date(appeal.ccao.filedAt).toLocaleDateString()}
+                  {appeal.ccao.confirmationNumber && ` | #${appeal.ccao.confirmationNumber}`}
+                </p>
+                {appeal.ccao.decision && (
+                  <p style={{
+                    fontSize: '13px',
+                    color: appeal.ccao.decision === 'approved' ? COLORS.signal : COLORS.danger,
+                    margin: '4px 0 0 0',
+                    fontWeight: '600'
+                  }}>
+                    {appeal.ccao.decision.charAt(0).toUpperCase() + appeal.ccao.decision.slice(1)}
+                    {appeal.ccao.newValue && ` - New Value: $${appeal.ccao.newValue.toLocaleString()}`}
+                  </p>
+                )}
+              </div>
+            )}
+            {appeal.bor && (
+              <div>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, margin: '0 0 4px 0' }}>
+                  BOR Filing
+                </p>
+                <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0 }}>
+                  Filed: {new Date(appeal.bor.filedAt).toLocaleDateString()}
+                  {appeal.bor.confirmationNumber && ` | #${appeal.bor.confirmationNumber}`}
+                </p>
+                {appeal.bor.hearingDate && (
+                  <p style={{ fontSize: '13px', color: COLORS.regulatory, margin: '4px 0 0 0' }}>
+                    Hearing: {new Date(appeal.bor.hearingDate).toLocaleDateString()}
+                  </p>
+                )}
+                {appeal.bor.decision && (
+                  <p style={{
+                    fontSize: '13px',
+                    color: appeal.bor.decision === 'approved' ? COLORS.signal : COLORS.danger,
+                    margin: '4px 0 0 0',
+                    fontWeight: '600'
+                  }}>
+                    {appeal.bor.decision.charAt(0).toUpperCase() + appeal.bor.decision.slice(1)}
+                    {appeal.bor.newValue && ` - New Value: $${appeal.bor.newValue.toLocaleString()}`}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
 export default function PropertyTaxDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -106,36 +371,6 @@ export default function PropertyTaxDashboard() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function getStatusColor(status: string, stage: string) {
-    if (status === 'won' || stage?.includes('approved')) return COLORS.signal;
-    if (status === 'lost' || stage?.includes('denied')) return COLORS.danger;
-    if (stage?.includes('filed')) return COLORS.regulatory;
-    if (status === 'withdrawn') return COLORS.slate;
-    return COLORS.warning;
-  }
-
-  function getStrengthBadge(strength: string) {
-    const colors = {
-      strong: { bg: '#D1FAE5', text: '#065F46' },
-      moderate: { bg: '#FEF3C7', text: '#92400E' },
-      weak: { bg: '#FEE2E2', text: '#991B1B' }
-    };
-    const c = colors[strength as keyof typeof colors] || colors.moderate;
-    return (
-      <span style={{
-        fontSize: '11px',
-        fontWeight: '600',
-        padding: '2px 8px',
-        borderRadius: '100px',
-        backgroundColor: c.bg,
-        color: c.text,
-        textTransform: 'uppercase'
-      }}>
-        {strength}
-      </span>
-    );
   }
 
   if (loading) {
@@ -323,229 +558,7 @@ export default function PropertyTaxDashboard() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {appeals.map(appeal => (
-                <div key={appeal.id} style={{
-                  backgroundColor: 'white',
-                  borderRadius: '20px',
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  border: appeal.urgency === 'high' ? `2px solid ${COLORS.warning}` : 'none'
-                }}>
-                  {/* Progress Bar */}
-                  <div style={{
-                    height: '4px',
-                    backgroundColor: COLORS.border,
-                    position: 'relative'
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${appeal.progress}%`,
-                      backgroundColor: getStatusColor(appeal.status, appeal.stage),
-                      transition: 'width 0.5s ease'
-                    }} />
-                  </div>
-
-                  <div style={{ padding: '24px' }}>
-                    {/* Header Row */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '16px',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}>
-                      <div>
-                        <h3 style={{
-                          fontSize: '18px',
-                          fontWeight: '700',
-                          color: COLORS.graphite,
-                          margin: '0 0 4px 0'
-                        }}>
-                          {appeal.address}
-                        </h3>
-                        <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0 }}>
-                          PIN: {appeal.pinFormatted} | {appeal.township} Township | Tax Year {appeal.assessmentYear}
-                        </p>
-                      </div>
-                      <div style={{
-                        padding: '6px 14px',
-                        borderRadius: '100px',
-                        backgroundColor: `${getStatusColor(appeal.status, appeal.stage)}15`,
-                        color: getStatusColor(appeal.status, appeal.stage),
-                        fontSize: '13px',
-                        fontWeight: '600'
-                      }}>
-                        {appeal.stageLabel}
-                      </div>
-                    </div>
-
-                    {/* Info Grid */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                      gap: '16px',
-                      marginBottom: '16px'
-                    }}>
-                      <div>
-                        <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 2px 0', textTransform: 'uppercase' }}>
-                          Current Value
-                        </p>
-                        <p style={{ fontSize: '16px', fontWeight: '700', color: COLORS.graphite, margin: 0 }}>
-                          ${appeal.currentValue?.toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 2px 0', textTransform: 'uppercase' }}>
-                          Target Value
-                        </p>
-                        <p style={{ fontSize: '16px', fontWeight: '700', color: COLORS.regulatory, margin: 0 }}>
-                          ${appeal.proposedValue?.toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 2px 0', textTransform: 'uppercase' }}>
-                          {appeal.savingsDisplay.label}
-                        </p>
-                        <p style={{ fontSize: '16px', fontWeight: '700', color: COLORS.signal, margin: 0 }}>
-                          ${Math.round(appeal.savingsDisplay.amount).toLocaleString()}/yr
-                        </p>
-                      </div>
-                      {appeal.strategy && (
-                        <div>
-                          <p style={{ fontSize: '11px', color: COLORS.slate, margin: '0 0 4px 0', textTransform: 'uppercase' }}>
-                            Strategy
-                          </p>
-                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {(appeal.strategy === 'file_mv' || appeal.strategy === 'file_both') && appeal.mvStrength && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontSize: '11px', color: COLORS.slate }}>MV:</span>
-                                {getStrengthBadge(appeal.mvStrength)}
-                              </div>
-                            )}
-                            {(appeal.strategy === 'file_uni' || appeal.strategy === 'file_both') && appeal.uniStrength && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontSize: '11px', color: COLORS.slate }}>UNI:</span>
-                                {getStrengthBadge(appeal.uniStrength)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Next Action */}
-                    {appeal.nextAction && (
-                      <div style={{
-                        padding: '12px 16px',
-                        backgroundColor: appeal.urgency === 'high' ? '#FEF3C7' : COLORS.concrete,
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        flexWrap: 'wrap'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {appeal.urgency === 'high' && (
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2">
-                              <path d="M12 9v2M12 15h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                            </svg>
-                          )}
-                          <p style={{
-                            fontSize: '14px',
-                            color: appeal.urgency === 'high' ? '#92400E' : COLORS.graphite,
-                            margin: 0,
-                            fontWeight: appeal.urgency === 'high' ? '600' : '400'
-                          }}>
-                            {appeal.nextAction}
-                          </p>
-                        </div>
-                        {appeal.nextActionUrl && (
-                          <Link href={appeal.nextActionUrl} style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '8px 16px',
-                            backgroundColor: COLORS.regulatory,
-                            color: 'white',
-                            borderRadius: '8px',
-                            fontWeight: '600',
-                            textDecoration: 'none',
-                            fontSize: '13px',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            Take Action
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                          </Link>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Filed Status Row */}
-                    {(appeal.ccao || appeal.bor) && (
-                      <div style={{
-                        marginTop: '16px',
-                        paddingTop: '16px',
-                        borderTop: `1px solid ${COLORS.border}`,
-                        display: 'flex',
-                        gap: '24px',
-                        flexWrap: 'wrap'
-                      }}>
-                        {appeal.ccao && (
-                          <div>
-                            <p style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, margin: '0 0 4px 0' }}>
-                              CCAO Filing
-                            </p>
-                            <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0 }}>
-                              Filed: {new Date(appeal.ccao.filedAt).toLocaleDateString()}
-                              {appeal.ccao.confirmationNumber && ` | #${appeal.ccao.confirmationNumber}`}
-                            </p>
-                            {appeal.ccao.decision && (
-                              <p style={{
-                                fontSize: '13px',
-                                color: appeal.ccao.decision === 'approved' ? COLORS.signal : COLORS.danger,
-                                margin: '4px 0 0 0',
-                                fontWeight: '600'
-                              }}>
-                                {appeal.ccao.decision.charAt(0).toUpperCase() + appeal.ccao.decision.slice(1)}
-                                {appeal.ccao.newValue && ` - New Value: $${appeal.ccao.newValue.toLocaleString()}`}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                        {appeal.bor && (
-                          <div>
-                            <p style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, margin: '0 0 4px 0' }}>
-                              BOR Filing
-                            </p>
-                            <p style={{ fontSize: '13px', color: COLORS.graphite, margin: 0 }}>
-                              Filed: {new Date(appeal.bor.filedAt).toLocaleDateString()}
-                              {appeal.bor.confirmationNumber && ` | #${appeal.bor.confirmationNumber}`}
-                            </p>
-                            {appeal.bor.hearingDate && (
-                              <p style={{ fontSize: '13px', color: COLORS.regulatory, margin: '4px 0 0 0' }}>
-                                Hearing: {new Date(appeal.bor.hearingDate).toLocaleDateString()}
-                              </p>
-                            )}
-                            {appeal.bor.decision && (
-                              <p style={{
-                                fontSize: '13px',
-                                color: appeal.bor.decision === 'approved' ? COLORS.signal : COLORS.danger,
-                                margin: '4px 0 0 0',
-                                fontWeight: '600'
-                              }}>
-                                {appeal.bor.decision.charAt(0).toUpperCase() + appeal.bor.decision.slice(1)}
-                                {appeal.bor.newValue && ` - New Value: $${appeal.bor.newValue.toLocaleString()}`}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <AppealCard key={appeal.id} appeal={appeal} />
               ))}
             </div>
           )}
