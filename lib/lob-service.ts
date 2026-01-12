@@ -21,6 +21,16 @@ export const CHICAGO_PARKING_CONTEST_ADDRESS: MailingAddress = {
   zip: '60680-1292'
 };
 
+// Cook County Board of Review - Property Tax Appeals Address
+// For filing residential property tax appeals
+export const COOK_COUNTY_BOR_ADDRESS: MailingAddress = {
+  name: 'Cook County Board of Review',
+  address: '118 N. Clark Street, Room 601',
+  city: 'Chicago',
+  state: 'IL',
+  zip: '60602'
+};
+
 interface SendLetterParams {
   from: MailingAddress; // User's address (sender)
   to: MailingAddress; // City department address (recipient)
@@ -190,4 +200,129 @@ export function formatLetterAsHTML(
 </body>
 </html>
   `.trim();
+}
+
+/**
+ * Send a property tax appeal letter with PDF attachment via Lob
+ * Uses Lob's letter API with PDF file support
+ */
+interface SendPropertyTaxAppealParams {
+  from: MailingAddress;
+  pdfUrl: string; // URL to the generated appeal PDF
+  appealId: string;
+  pin: string;
+  township: string;
+  useCertifiedMail?: boolean;
+}
+
+export async function sendPropertyTaxAppealLetter(
+  params: SendPropertyTaxAppealParams
+): Promise<LobMailResponse> {
+  const { from, pdfUrl, appealId, pin, township, useCertifiedMail = false } = params;
+
+  if (!process.env.LOB_API_KEY) {
+    throw new Error('LOB_API_KEY not configured');
+  }
+
+  const lobApiKey = process.env.LOB_API_KEY;
+  const authHeader = 'Basic ' + Buffer.from(lobApiKey + ':').toString('base64');
+
+  try {
+    const response = await fetch('https://api.lob.com/v1/letters', {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        description: `Property Tax Appeal - ${pin} - ${township}`,
+        to: {
+          name: COOK_COUNTY_BOR_ADDRESS.name,
+          address_line1: COOK_COUNTY_BOR_ADDRESS.address,
+          address_city: COOK_COUNTY_BOR_ADDRESS.city,
+          address_state: COOK_COUNTY_BOR_ADDRESS.state,
+          address_zip: COOK_COUNTY_BOR_ADDRESS.zip,
+          address_country: 'US'
+        },
+        from: {
+          name: from.name,
+          address_line1: from.address,
+          address_city: from.city,
+          address_state: from.state,
+          address_zip: from.zip,
+          address_country: 'US'
+        },
+        file: pdfUrl, // Lob accepts PDF URL
+        color: false,
+        double_sided: true, // Property tax appeals can be multi-page
+        address_placement: 'top_first_page',
+        extra_service: useCertifiedMail ? 'certified' : undefined,
+        metadata: {
+          appealId,
+          pin,
+          township,
+          type: 'property_tax_appeal'
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Lob API error for property tax appeal:', errorData);
+      throw new Error(`Lob API error: ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      id: data.id,
+      url: data.url,
+      tracking_number: data.tracking_number,
+      expected_delivery_date: data.expected_delivery_date
+    };
+
+  } catch (error) {
+    console.error('Error sending property tax appeal via Lob:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get letter status from Lob
+ */
+export async function getLetterStatus(letterId: string): Promise<{
+  id: string;
+  status: string;
+  tracking_number?: string;
+  expected_delivery_date?: string;
+  carrier?: string;
+}> {
+  if (!process.env.LOB_API_KEY) {
+    throw new Error('LOB_API_KEY not configured');
+  }
+
+  const lobApiKey = process.env.LOB_API_KEY;
+  const authHeader = 'Basic ' + Buffer.from(lobApiKey + ':').toString('base64');
+
+  const response = await fetch(`https://api.lob.com/v1/letters/${letterId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': authHeader
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Lob API error: ${errorData.error?.message || 'Unknown error'}`);
+  }
+
+  const data = await response.json();
+
+  return {
+    id: data.id,
+    status: data.send_date ? 'mailed' : 'processing',
+    tracking_number: data.tracking_number,
+    expected_delivery_date: data.expected_delivery_date,
+    carrier: data.carrier
+  };
 }

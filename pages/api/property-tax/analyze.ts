@@ -560,20 +560,20 @@ function formatAnalysisResponse(
       status: getDeadlineStatus(deadlines)
     },
     actionItems,
-    // SOCIAL PROOF - Recent successful appeals in this township
-    socialProof: recentSuccesses.length > 0 ? {
-      recentSuccesses: recentSuccesses.map(s => ({
-        pin: s.pin,
-        address: s.address,
+    // SOCIAL PROOF - Recent successful appeals in this township (from public BOR data)
+    socialProof: recentSuccesses.length >= 3 ? {
+      // Show aggregate stats, not individual properties (privacy + we don't have addresses)
+      totalSuccessfulAppeals: recentSuccesses.length,
+      averageReductionPercent: Math.round(recentSuccesses.reduce((sum, s) => sum + s.reductionPercent, 0) / recentSuccesses.length),
+      averageSavings: Math.round(recentSuccesses.reduce((sum, s) => sum + s.estimatedTaxSavings, 0) / recentSuccesses.length),
+      recentExamples: recentSuccesses.slice(0, 3).map(s => ({
         taxYear: s.taxYear,
         reductionPercent: s.reductionPercent,
-        reductionDollars: s.reductionDollars,
-        propertyClass: s.propertyClass,
-        daysAgo: Math.floor((Date.now() - new Date(s.decisionDate).getTime()) / (1000 * 60 * 60 * 24))
+        estimatedSavings: s.estimatedTaxSavings,
+        propertyClass: s.propertyClass
       })),
-      totalRecentSuccesses: recentSuccesses.length,
-      summary: `${recentSuccesses.length} properties in ${property.township} have successfully appealed recently, with average reductions of ${Math.round(recentSuccesses.reduce((sum, s) => sum + s.reductionPercent, 0) / recentSuccesses.length)}%.`
-    } : null,
+      summary: `${recentSuccesses.length} properties in ${property.township} have successfully appealed in the last 2 years, with average reductions of ${Math.round(recentSuccesses.reduce((sum, s) => sum + s.reductionPercent, 0) / recentSuccesses.length)}% and average savings of $${Math.round(recentSuccesses.reduce((sum, s) => sum + s.estimatedTaxSavings, 0) / recentSuccesses.length).toLocaleString()}/year.`
+    } : null, // Only show if we have at least 3 examples
     // EXEMPTION ELIGIBILITY - Tax exemptions the owner may qualify for
     exemptions: exemptions ? {
       currentlyHasHomeowner: exemptions.currentlyHasHomeowner,

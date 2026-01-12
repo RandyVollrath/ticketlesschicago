@@ -230,48 +230,169 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             status: 'success',
           });
 
-          // Send confirmation email
+          // Send comprehensive confirmation email with appeal details
           const email = session.customer_details?.email;
           if (email) {
             try {
+              // Fetch full appeal data for detailed email
+              const { data: fullAppeal } = await supabaseAdmin
+                .from('property_tax_appeals')
+                .select(`
+                  id, pin, address, township, assessment_year,
+                  current_assessed_value, proposed_assessed_value, estimated_tax_savings,
+                  appeal_strategy, mv_case_strength, uni_case_strength, comparable_quality_score,
+                  v2_analysis
+                `)
+                .eq('id', appealId)
+                .single();
+
+              // Get deadline info for the township
+              const currentYear = new Date().getFullYear();
+              const { data: deadline } = await supabaseAdmin
+                .from('property_tax_deadlines')
+                .select('bor_open_date, bor_close_date')
+                .eq('township', metadata.township)
+                .eq('year', currentYear)
+                .single();
+
+              // Format strategy label
+              const strategyLabels: Record<string, string> = {
+                'file_mv': 'Market Value',
+                'file_uni': 'Uniformity',
+                'file_both': 'Market Value + Uniformity',
+                'do_not_file': 'Analysis Complete'
+              };
+              const strategy = fullAppeal?.appeal_strategy || 'file_both';
+              const strategyLabel = strategyLabels[strategy] || 'Comparable Analysis';
+
+              // Format strength indicators
+              const strengthEmoji = (strength: string) => {
+                if (strength === 'strong') return '🟢';
+                if (strength === 'moderate') return '🟡';
+                return '🔴';
+              };
+
+              // Format deadline
+              const deadlineDate = deadline?.bor_close_date
+                ? new Date(deadline.bor_close_date).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })
+                : 'Check Cook County website for deadlines';
+
+              // Calculate reduction percentage
+              const currentValue = fullAppeal?.current_assessed_value || 0;
+              const proposedValue = fullAppeal?.proposed_assessed_value || 0;
+              const reductionPct = currentValue > 0
+                ? Math.round(((currentValue - proposedValue) / currentValue) * 100)
+                : 0;
+
               await resend.emails.send({
                 from: 'Autopilot America <hello@autopilotamerica.com>',
                 to: email,
-                subject: 'Your Property Tax Appeal Package is Ready',
+                subject: `Your Property Tax Appeal is Ready - ${metadata.address}`,
                 html: `
-                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Appeal Package is Ready!</h2>
-                    <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                      Thank you for your purchase. Your property tax appeal package for <strong>${metadata.address}</strong> is now being prepared.
-                    </p>
-                    <div style="margin: 24px 0; padding: 16px; background-color: #F0FDF4; border-radius: 8px;">
-                      <p style="margin: 0; color: #166534; font-size: 14px;">
-                        <strong>Estimated Annual Savings:</strong> $${metadata.estimatedSavings || 'N/A'}
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 24px;">
+                      <h1 style="color: #1a1a1a; margin: 0 0 8px 0; font-size: 24px;">Your Appeal Package is Ready!</h1>
+                      <p style="color: #6b7280; margin: 0; font-size: 14px;">Payment confirmed - your appeal materials are now available</p>
+                    </div>
+
+                    <!-- Property Summary Card -->
+                    <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); border-radius: 12px; padding: 24px; color: white; margin-bottom: 24px;">
+                      <p style="margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">Property</p>
+                      <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600;">${metadata.address}</h2>
+                      <p style="margin: 0; font-size: 14px; opacity: 0.9;">PIN: ${metadata.pin} | ${metadata.township} Township</p>
+                    </div>
+
+                    <!-- Appeal Strategy -->
+                    <div style="background-color: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                      <h3 style="margin: 0 0 12px 0; font-size: 14px; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Appeal Strategy</h3>
+                      <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1e40af;">${strategyLabel}</p>
+                      ${fullAppeal?.mv_case_strength ? `
+                        <p style="margin: 4px 0; font-size: 14px; color: #4b5563;">
+                          ${strengthEmoji(fullAppeal.mv_case_strength)} Market Value Case: <strong>${fullAppeal.mv_case_strength}</strong>
+                        </p>
+                      ` : ''}
+                      ${fullAppeal?.uni_case_strength ? `
+                        <p style="margin: 4px 0; font-size: 14px; color: #4b5563;">
+                          ${strengthEmoji(fullAppeal.uni_case_strength)} Uniformity Case: <strong>${fullAppeal.uni_case_strength}</strong>
+                        </p>
+                      ` : ''}
+                      ${fullAppeal?.comparable_quality_score ? `
+                        <p style="margin: 4px 0; font-size: 14px; color: #4b5563;">
+                          📊 Comparable Quality Score: <strong>${fullAppeal.comparable_quality_score}/100</strong>
+                        </p>
+                      ` : ''}
+                    </div>
+
+                    <!-- Values & Savings -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                      <div style="flex: 1; background-color: #fef3c7; border-radius: 8px; padding: 16px; text-align: center;">
+                        <p style="margin: 0 0 4px 0; font-size: 12px; color: #92400e;">Current Value</p>
+                        <p style="margin: 0; font-size: 20px; font-weight: 700; color: #78350f;">$${currentValue.toLocaleString()}</p>
+                      </div>
+                      <div style="flex: 1; background-color: #d1fae5; border-radius: 8px; padding: 16px; text-align: center;">
+                        <p style="margin: 0 0 4px 0; font-size: 12px; color: #065f46;">Proposed Value</p>
+                        <p style="margin: 0; font-size: 20px; font-weight: 700; color: #047857;">$${proposedValue.toLocaleString()}</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #065f46;">-${reductionPct}%</p>
+                      </div>
+                    </div>
+
+                    <!-- Estimated Savings -->
+                    <div style="background-color: #ecfdf5; border: 2px solid #10b981; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px;">
+                      <p style="margin: 0 0 4px 0; font-size: 14px; color: #059669;">Estimated Annual Tax Savings</p>
+                      <p style="margin: 0; font-size: 32px; font-weight: 700; color: #047857;">$${metadata.estimatedSavings || 'N/A'}</p>
+                    </div>
+
+                    <!-- Deadline Alert -->
+                    <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin-bottom: 24px;">
+                      <p style="margin: 0; font-size: 14px; color: #991b1b;">
+                        <strong>⚠️ Filing Deadline:</strong> ${deadlineDate}
+                      </p>
+                      <p style="margin: 8px 0 0 0; font-size: 13px; color: #7f1d1d;">
+                        Make sure to file your appeal before this date to avoid missing the window.
                       </p>
                     </div>
-                    <div style="margin: 32px 0; text-align: center;">
-                      <a href="${process.env.NEXT_PUBLIC_SITE_URL}/property-tax"
+
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 32px 0;">
+                      <a href="${process.env.NEXT_PUBLIC_SITE_URL}/property-tax/dashboard"
                          style="background-color: #2563EB;
                                 color: white;
-                                padding: 14px 32px;
+                                padding: 16px 40px;
                                 text-decoration: none;
                                 border-radius: 8px;
                                 font-weight: 600;
                                 font-size: 16px;
-                                display: inline-block;">
-                        View Your Appeal Package
+                                display: inline-block;
+                                box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
+                        View Your Appeal Dashboard
                       </a>
                     </div>
-                    <p style="color: #666; font-size: 14px;">
-                      <strong>Next Steps:</strong><br>
-                      1. Review your appeal letter<br>
-                      2. Print and sign where indicated<br>
-                      3. Mail to the Cook County Board of Review before your deadline
-                    </p>
+
+                    <!-- Next Steps -->
+                    <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                      <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #1f2937;">Next Steps</h3>
+                      <ol style="margin: 0; padding-left: 20px; color: #4b5563; font-size: 14px; line-height: 1.8;">
+                        <li><strong>Generate your appeal letter</strong> - Click the button above to create your personalized appeal</li>
+                        <li><strong>Download your appeal packet</strong> - Includes your letter and comparable evidence</li>
+                        <li><strong>Sign and file</strong> - Submit to Cook County BOR online or by mail</li>
+                        <li><strong>Track your progress</strong> - We'll send you updates as your appeal moves through the system</li>
+                      </ol>
+                    </div>
+
                     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-                    <p style="color: #9ca3af; font-size: 13px;">
-                      Questions? Reply to this email or contact support@autopilotamerica.com
-                    </p>
+
+                    <div style="text-align: center;">
+                      <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px 0;">
+                        Questions? Reply to this email or contact support@autopilotamerica.com
+                      </p>
+                      <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                        Autopilot America | Property Tax Appeals
+                      </p>
+                    </div>
                   </div>
                 `
               });
@@ -282,6 +403,113 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           // Exit early for Property Tax Appeal purchases
+          break;
+        }
+
+        // Handle Property Tax Success Fee payments
+        if (metadata.product === 'property_tax_success_fee') {
+          console.log('💰 Processing Property Tax Success Fee payment');
+
+          if (!supabaseAdmin) {
+            console.error('Supabase admin client not available');
+            break;
+          }
+
+          const appealId = metadata.appealId;
+          const userId = metadata.userId;
+
+          if (!appealId || !userId) {
+            console.error('Missing appealId or userId in Success Fee payment');
+            break;
+          }
+
+          // Update appeal with success fee payment
+          const { error: updateError } = await supabaseAdmin
+            .from('property_tax_appeals')
+            .update({
+              success_fee_paid: true,
+              success_fee_paid_at: new Date().toISOString(),
+              success_fee_payment_intent_id: session.payment_intent as string,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', appealId)
+            .eq('user_id', userId);
+
+          if (updateError) {
+            console.error('❌ Error updating Success Fee payment:', updateError);
+            // Alert admin
+            try {
+              await resend.emails.send({
+                from: 'Alerts <alerts@autopilotamerica.com>',
+                to: 'randyvollrath@gmail.com',
+                subject: '🚨 Property Tax Success Fee - DB Update Failed',
+                text: `Success fee payment received but DB update failed!\n\nSession: ${session.id}\nAppeal ID: ${appealId}\nUser ID: ${userId}\nAmount: $${metadata.successFeeAmount}\nError: ${updateError.message}`
+              });
+            } catch (e) {
+              console.error('Failed to send alert email:', e);
+            }
+            return res.status(500).json({ error: 'DB update failed', details: updateError.message });
+          }
+
+          console.log('✅ Property Tax Success Fee recorded');
+
+          // Log audit event
+          await logAuditEvent({
+            userId: userId,
+            actionType: 'payment_processed',
+            entityType: 'property_tax_success_fee',
+            entityId: appealId,
+            actionDetails: {
+              product: 'property_tax_success_fee',
+              amount: session.amount_total,
+              currency: session.currency,
+              actualSavings: metadata.actualSavings,
+              successFeeAmount: metadata.successFeeAmount,
+              stripeSessionId: session.id,
+              stripePaymentIntentId: session.payment_intent,
+            },
+            status: 'success',
+          });
+
+          // Send thank you email
+          const email = session.customer_details?.email;
+          if (email) {
+            try {
+              await resend.emails.send({
+                from: 'Autopilot America <hello@autopilotamerica.com>',
+                to: email,
+                subject: 'Thank you for your success fee payment',
+                html: `
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #1a1a1a; margin-bottom: 16px;">Thank You!</h2>
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                      We've received your success fee payment of <strong>$${metadata.successFeeAmount}</strong> for your property tax appeal at <strong>${metadata.address}</strong>.
+                    </p>
+                    <div style="margin: 24px 0; padding: 16px; background-color: #ecfdf5; border-radius: 8px;">
+                      <p style="margin: 0; color: #047857; font-size: 14px;">
+                        <strong>Your Annual Savings:</strong> $${Number(metadata.actualSavings).toLocaleString()}
+                      </p>
+                      <p style="margin: 8px 0 0 0; color: #059669; font-size: 13px;">
+                        This reduction will be applied to your property tax bills going forward!
+                      </p>
+                    </div>
+                    <p style="color: #6b7280; font-size: 14px;">
+                      Thank you for choosing Autopilot America for your property tax appeal. We're glad we could help you save money on your property taxes.
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+                    <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+                      Autopilot America | Property Tax Appeals
+                    </p>
+                  </div>
+                `
+              });
+              console.log('✅ Success fee thank you email sent');
+            } catch (emailErr) {
+              console.error('Failed to send success fee email:', emailErr);
+            }
+          }
+
+          // Exit early for Success Fee payments
           break;
         }
 

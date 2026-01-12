@@ -2,10 +2,13 @@
  * Generate Property Tax Appeal PDF
  *
  * Creates a Board of Review-ready PDF packet including:
- * - Appeal cover letter
- * - Comparable properties table
- * - Property characteristics comparison
- * - Supporting evidence summary
+ * - Cover Letter (neutral legal tone)
+ * - Executive Summary (strategy, target value, savings, rationale)
+ * - Evidence: Comparable table + audit notes
+ * - Statistical Analysis
+ * - Comparable Audit Details
+ *
+ * Uses the professional pdf-lib generator for v2 analysis
  *
  * POST /api/property-tax/generate-pdf
  * Body: { appealId: string }
@@ -14,8 +17,8 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import PDFDocument from 'pdfkit';
 import { formatPin } from '../../../lib/cook-county-api';
+import { generateAppealPDF, AppealPDFData } from '../../../lib/property-tax-pdf';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,22 +71,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Require letter to be generated first
-    if (!appeal.appeal_letter) {
-      return res.status(400).json({
-        error: 'Letter not generated',
-        message: 'Please generate your appeal letter first.'
-      });
-    }
-
     // Get comparables for this appeal
     const { data: comparables } = await supabase
       .from('property_tax_comparables')
       .select('*')
       .eq('appeal_id', appealId)
-      .eq('is_primary', true)
-      .order('value_per_sqft', { ascending: true })
-      .limit(5);
+      .order('quality_score', { ascending: false, nullsFirst: false })
+      .limit(10);
 
     // Get user profile for name
     const { data: profile } = await supabase
@@ -95,6 +89,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ownerName = profile?.first_name && profile?.last_name
       ? `${profile.first_name} ${profile.last_name}`
       : 'Property Owner';
+
+    // Check if we have v2 analysis data
+    if (appeal.v2_analysis) {
+      // Use the professional PDF generator with v2 analysis
+      const pdfData: AppealPDFData = {
+        ownerName,
+        ownerAddress: profile?.street_address,
+        email: profile?.email,
+        phone: profile?.phone_number,
+        analysis: appeal.v2_analysis,
+        filingDeadline: appeal.deadline_date,
+        caseNumber: appeal.ccao_confirmation_number
+      };
+
+      try {
+        const result = await generateAppealPDF(pdfData);
+
+        // Update appeal with PDF info
+        await supabase
+          .from('property_tax_appeals')
+          .update({
+            appeal_pdf_generated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', appealId);
+
+        // Set response headers for PDF download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+        res.setHeader('Content-Length', result.pdfBytes.length);
+
+        // Send the PDF
+        return res.send(Buffer.from(result.pdfBytes));
+      } catch (pdfError) {
+        console.error('V2 PDF generation failed, falling back to legacy:', pdfError);
+        // Fall through to legacy PDF generation
+      }
+    }
+
+    // Legacy PDF generation (fallback for old appeals without v2 analysis)
+    const PDFDocument = (await import('pdfkit')).default;
 
     // Create PDF document
     const doc = new PDFDocument({
@@ -108,13 +143,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
 
-    // Set response headers for PDF download
-    const filename = `Appeal_${formatPin(appeal.pin).replace(/-/g, '')}_${new Date().toISOString().split('T')[0]}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    // Collect PDF chunks
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
 
-    // Pipe the PDF to the response
-    doc.pipe(res);
+    const pdfPromise = new Promise<Buffer>((resolve, reject) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+    });
 
     // === PAGE 1: COVER LETTER ===
     generateCoverLetter(doc, appeal, ownerName);
@@ -130,6 +166,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Finalize the PDF
     doc.end();
 
+    const pdfBuffer = await pdfPromise;
+
+    // Update appeal with PDF info
+    await supabase
+      .from('property_tax_appeals')
+      .update({
+        appeal_pdf_generated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', appealId);
+
+    // Set response headers for PDF download
+    const filename = `Appeal_${formatPin(appeal.pin).replace(/-/g, '')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    return res.send(pdfBuffer);
+
   } catch (error) {
     console.error('Generate PDF error:', error);
     return res.status(500).json({
@@ -139,7 +194,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 /**
- * Generate the cover letter page
+ * Generate the cover letter page (legacy)
  */
 function generateCoverLetter(doc: PDFKit.PDFDocument, appeal: any, ownerName: string) {
   const today = new Date().toLocaleDateString('en-US', {
@@ -221,7 +276,7 @@ function generateCoverLetter(doc: PDFKit.PDFDocument, appeal: any, ownerName: st
 }
 
 /**
- * Generate the comparable properties table
+ * Generate the comparable properties table (legacy)
  */
 function generateComparablesTable(doc: PDFKit.PDFDocument, appeal: any, comparables: any[]) {
   // Title
@@ -346,7 +401,7 @@ function generateComparablesTable(doc: PDFKit.PDFDocument, appeal: any, comparab
 }
 
 /**
- * Generate comparison summary page
+ * Generate comparison summary page (legacy)
  */
 function generateComparisonSummary(doc: PDFKit.PDFDocument, appeal: any, comparables: any[]) {
   // Title
@@ -372,7 +427,6 @@ function generateComparisonSummary(doc: PDFKit.PDFDocument, appeal: any, compara
   // Calculate statistics
   if (comparables.length > 0) {
     const avgPerSqft = comparables.reduce((sum, c) => sum + (c.value_per_sqft || 0), 0) / comparables.length;
-    const medianAssessed = comparables.map(c => c.comp_assessed_value || 0).sort((a, b) => a - b)[Math.floor(comparables.length / 2)];
 
     const opportunityAnalysis = appeal.opportunity_analysis || {};
     const subjectSqft = opportunityAnalysis.squareFootage || 1;
