@@ -1918,22 +1918,22 @@ export default function AdminPortal() {
                     Expected CSV Format (from plate export email)
                   </div>
                   <p style={{ fontSize: '13px', color: '#78350f', marginBottom: '8px' }}>
-                    Use the same CSV that was emailed to the VA. Fill in columns F-L for each ticket found:
+                    Use the same CSV that was emailed to the VA. Fill in columns F-I for each ticket found:
                   </p>
                   <code style={{ fontSize: '11px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px 12px', borderRadius: '4px', display: 'block', marginBottom: '8px', wordBreak: 'break-all' }}>
-                    last_name, first_name, plate, state, user_id, ticket_number, violation_code, violation_type, violation_description, violation_date, amount, location
+                    last_name, first_name, plate, state, user_id, ticket_number, violation_type, violation_date, amount
                   </code>
                   <p style={{ fontSize: '12px', color: '#78350f', margin: '8px 0' }}>
-                    Valid violation_type values: expired_plates, no_city_sticker, expired_meter, disabled_zone, street_cleaning, rush_hour, fire_hydrant, other_unknown
+                    violation_type can be any text (e.g. &quot;Expired Plates&quot;, &quot;No City Sticker&quot;) - it will be auto-normalized.
                   </p>
                   <button
                     onClick={() => {
                       // Generate example CSV content matching the export format
-                      const exampleCSV = `last_name,first_name,plate,state,user_id,ticket_number,violation_code,violation_type,violation_description,violation_date,amount,location
-Smith,John,ABC1234,IL,user-id-123,987654321,0964125F,expired_plates,EXPIRED PLATES/STICKER,2025-01-15,100.00,1234 N STATE ST
-Doe,Jane,XYZ5678,IL,user-id-456,123456789,0964125D,no_city_sticker,NO CITY STICKER,2025-01-14,250.00,5678 W MADISON ST
-Brown,Bob,DEF9012,IL,user-id-789,,,,,,(no ticket found - leave empty)
-Wilson,Amy,GHI3456,IL,user-id-012,555666777,0976160F,expired_meter,EXPIRED METER,2025-01-13,75.00,321 S MICHIGAN AVE`;
+                      const exampleCSV = `last_name,first_name,plate,state,user_id,ticket_number,violation_type,violation_date,amount
+Smith,John,ABC1234,IL,user-id-123,987654321,Expired Plates,2025-01-15,100.00
+Doe,Jane,XYZ5678,IL,user-id-456,123456789,No City Sticker,2025-01-14,250.00
+Brown,Bob,DEF9012,IL,user-id-789,,,,(no ticket found - leave empty)
+Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
 
                       const blob = new Blob([exampleCSV], { type: 'text/csv' });
                       const url = URL.createObjectURL(blob);
