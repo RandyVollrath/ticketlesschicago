@@ -48,10 +48,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Please provide an appeal ID' });
     }
 
-    // Get the appeal record
+    // Get the appeal record - OPTIMIZED: only select needed columns
     const { data: appeal, error: appealError } = await supabase
       .from('property_tax_appeals')
-      .select('*')
+      .select(`
+        id, pin, address, township, assessment_year,
+        current_assessed_value, current_market_value,
+        proposed_assessed_value, proposed_market_value,
+        estimated_tax_savings, appeal_grounds,
+        stage, status, v2_analysis, appeal_strategy,
+        letter_generated_at, appeal_letter, appeal_letter_html
+      `)
       .eq('id', appealId)
       .eq('user_id', user.id)
       .single();
@@ -83,10 +90,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Get comparables for this appeal
+    // Get comparables for this appeal - OPTIMIZED: only select needed columns
     const { data: comparables } = await supabase
       .from('property_tax_comparables')
-      .select('*')
+      .select(`
+        comp_pin, comp_address, comp_assessed_value, comp_market_value,
+        comp_square_footage, comp_year_built, comp_bedrooms, comp_bathrooms,
+        value_per_sqft, quality_score
+      `)
       .eq('appeal_id', appealId)
       .eq('is_primary', true)
       .order('value_per_sqft', { ascending: true })
