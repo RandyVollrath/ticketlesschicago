@@ -888,14 +888,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const rowNum = i + 2; // +2 because row 1 is header, and arrays are 0-indexed
 
       try {
-        // Find the monitored plate
-        const { data: plate } = await supabaseAdmin
+        // Find the monitored plate - use user_id from CSV if provided (handles multiple users with same plate)
+        let plateQuery = supabaseAdmin
           .from('monitored_plates')
           .select('id, user_id')
           .eq('plate', ticket.plate.toUpperCase())
           .eq('state', ticket.state.toUpperCase())
-          .eq('status', 'active')
-          .single();
+          .eq('status', 'active');
+
+        // If user_id is in CSV, filter by it (critical when multiple users monitor same plate)
+        if (ticket.user_id) {
+          plateQuery = plateQuery.eq('user_id', ticket.user_id);
+        }
+
+        const { data: plates, error: plateError } = await plateQuery;
+        const plate = plates?.[0]; // Take first match
 
         if (!plate) {
           console.log(`  Skipping ${ticket.plate}: No active monitored plate found`);
