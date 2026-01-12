@@ -16,6 +16,45 @@ import { fetchWithTimeout, fetchWithRetry, DEFAULT_TIMEOUTS } from './fetch-with
 // Socrata API base URL
 const SOCRATA_BASE_URL = 'https://datacatalog.cookcountyil.gov/resource';
 
+// ============================================================================
+// IN-MEMORY CACHES - Reduce redundant API calls within same request/session
+// These are process-level caches that persist across requests on same instance
+// ============================================================================
+
+// Cache for township comparable data (key: townshipCode_bedrooms)
+interface TownshipComparableCache {
+  data: CondoCharacteristics[];
+  timestamp: number;
+}
+const townshipComparableCache = new Map<string, TownshipComparableCache>();
+const TOWNSHIP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Cache for property lookups by PIN
+interface PropertyCache {
+  data: NormalizedProperty;
+  timestamp: number;
+}
+const propertyCache = new Map<string, PropertyCache>();
+const PROPERTY_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+// Cache for assessed values by PIN
+interface AssessedValueCache {
+  data: AssessedValue[];
+  timestamp: number;
+}
+const assessedValueCache = new Map<string, AssessedValueCache>();
+const ASSESSED_VALUE_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Clear all in-memory caches (useful for testing or forced refresh)
+ */
+export function clearCaches(): void {
+  townshipComparableCache.clear();
+  propertyCache.clear();
+  assessedValueCache.clear();
+  console.log('All in-memory caches cleared');
+}
+
 // Dataset IDs
 const DATASETS = {
   // Property characteristics (residential single-family/multi-family)
@@ -625,12 +664,27 @@ function getPropertyClassDescription(classCode: string): string {
  * Uses a longer timeout (45s) because Cook County's API can be slow
  * Includes retry logic to handle cold starts and temporary failures
  */
+// Circuit breaker state - fail fast if API is down
+let circuitBreakerOpen = false;
+let circuitBreakerLastFailure = 0;
+const CIRCUIT_BREAKER_TIMEOUT = 30000; // 30 seconds before retry after circuit opens
+
 async function querySODA<T>(
   dataset: string,
   params: Record<string, string>,
-  timeout: number = 45000, // 45 seconds - Cook County API can be very slow
-  maxRetries: number = 2
+  timeout: number = 20000, // 20 seconds - reduced from 45s for faster failures
+  maxRetries: number = 1 // Reduced from 2 to fail faster
 ): Promise<T[]> {
+  // Circuit breaker check - fail fast if API was recently down
+  if (circuitBreakerOpen) {
+    const timeSinceFailure = Date.now() - circuitBreakerLastFailure;
+    if (timeSinceFailure < CIRCUIT_BREAKER_TIMEOUT) {
+      console.warn(`Circuit breaker open, skipping SODA query for ${dataset}`);
+      return [];
+    }
+    // Reset circuit breaker after timeout
+    circuitBreakerOpen = false;
+  }
   const queryParams = new URLSearchParams();
 
   // Add all params
@@ -678,7 +732,10 @@ async function querySODA<T>(
     }
   }
 
-  console.error(`Error querying SODA dataset ${dataset} after ${maxRetries} attempts:`, lastError);
+  // Open circuit breaker on repeated failures
+  circuitBreakerOpen = true;
+  circuitBreakerLastFailure = Date.now();
+  console.error(`Error querying SODA dataset ${dataset} after ${maxRetries} attempts, opening circuit breaker:`, lastError);
   throw lastError;
 }
 
@@ -692,6 +749,13 @@ async function querySODA<T>(
 export async function getPropertyByPin(pin: string): Promise<NormalizedProperty | null> {
   const normalizedPin = normalizePin(pin);
   const currentYear = new Date().getFullYear();
+
+  // Check in-memory cache first
+  const cached = propertyCache.get(normalizedPin);
+  if (cached && Date.now() - cached.timestamp < PROPERTY_CACHE_TTL) {
+    console.log(`Cache hit for property ${normalizedPin}`);
+    return cached.data;
+  }
 
   // Query both datasets in parallel for speed
   const [characteristics, values, condoCharacteristics] = await Promise.all([
@@ -775,7 +839,7 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
       }
     }
 
-    return {
+    const result: NormalizedProperty = {
       pin: normalizedPin,
       pinFormatted: formatPin(normalizedPin),
       address: prop.addr || '',
@@ -807,6 +871,9 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
         parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot)
       ),
     };
+    // Cache before returning
+    propertyCache.set(normalizedPin, { data: result, timestamp: Date.now() });
+    return result;
   }
 
   // Not found in residential dataset - check if we have condo data from the parallel query
@@ -815,7 +882,7 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
     // If we have assessed values, we can still return basic info
     if (values.length > 0) {
       console.log(`Property ${normalizedPin} not in characteristics datasets, using assessed values only`);
-      return {
+      const result: NormalizedProperty = {
         pin: normalizedPin,
         pinFormatted: formatPin(normalizedPin),
         address: '', // No address available from assessed values
@@ -844,6 +911,9 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
           parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot)
         ),
       };
+      // Cache before returning
+      propertyCache.set(normalizedPin, { data: result, timestamp: Date.now() });
+      return result;
     }
     return null;
   }
@@ -867,7 +937,7 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
   const halfBaths = parseNumber(condo.char_half_baths) || 0;
   const totalBaths = fullBaths + (halfBaths * 0.5);
 
-  return {
+  const result: NormalizedProperty = {
     pin: normalizedPin,
     pinFormatted: formatPin(normalizedPin),
     address: '', // Condo dataset doesn't have address, would need separate lookup
@@ -896,6 +966,9 @@ export async function getPropertyByPin(pin: string): Promise<NormalizedProperty 
       parseNumber(priorValue?.board_tot) || parseNumber(priorValue?.certified_tot) || parseNumber(priorValue?.mailed_tot)
     ),
   };
+  // Cache before returning
+  propertyCache.set(normalizedPin, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 /**
