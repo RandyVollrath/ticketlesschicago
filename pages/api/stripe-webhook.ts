@@ -1606,7 +1606,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } else {
               console.log('✅ Autopilot subscription activated for user:', supabaseUserId);
 
-              // has_contesting is already set to true in user_profiles earlier
+              // CRITICAL: Set has_contesting to true in user_profiles so user is recognized as paid
+              const { error: profileUpdateError } = await supabaseAdmin
+                .from('user_profiles')
+                .upsert({
+                  user_id: supabaseUserId,
+                  has_contesting: true,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'user_id' });
+
+              if (profileUpdateError) {
+                console.error('❌ Error setting has_contesting for Autopilot user:', profileUpdateError);
+              } else {
+                console.log('✅ has_contesting set to true for user:', supabaseUserId);
+              }
 
               // Send welcome email
               const userEmail = session.customer_details?.email || metadata.email;
@@ -1628,9 +1641,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                           <li><strong>Sit back and relax</strong> - We'll automatically contest any tickets we find</li>
                         </ol>
                         <div style="margin: 32px 0; text-align: center;">
-                          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard"
+                          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/settings"
                              style="background-color: #2563EB; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
-                            Go to Dashboard
+                            Complete Your Profile
                           </a>
                         </div>
                         <p style="color: #666; font-size: 14px;">Questions? Reply to this email or contact support@autopilotamerica.com</p>
