@@ -875,6 +875,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       status: 'created' | 'skipped' | 'error';
       reason?: string;
       usingDefaultAddress?: boolean;
+      emailFailed?: boolean;
+      noEmail?: boolean;
     }
 
     const results = {
@@ -1085,8 +1087,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Send email notification to user
-        if (userEmail && profile) {
-          const userName = profile.first_name || profile.full_name?.split(' ')[0] || 'there';
+        if (userEmail) {
+          const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'there';
           const emailSent = await sendTicketDetectedEmail(
             userEmail,
             userName,
@@ -1102,6 +1104,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (emailSent) {
             results.emailsSent++;
             console.log(`    Sent evidence request email to ${userEmail}`);
+          } else {
+            console.error(`    Failed to send email to ${userEmail}`);
+            const rowDetail = results.rowDetails.find(r => r.row === rowNum);
+            if (rowDetail) {
+              rowDetail.emailFailed = true;
+            }
+          }
+        } else {
+          console.log(`    No email found for user ${plate.user_id}`);
+          const rowDetail = results.rowDetails.find(r => r.row === rowNum);
+          if (rowDetail) {
+            rowDetail.noEmail = true;
           }
         }
 
