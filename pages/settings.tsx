@@ -684,6 +684,7 @@ export default function SettingsPage() {
   const [streetCleaningAlerts, setStreetCleaningAlerts] = useState(true);
   const [snowBanAlerts, setSnowBanAlerts] = useState(true);
   const [renewalReminders, setRenewalReminders] = useState(true);
+  const [towAlerts, setTowAlerts] = useState(true);
   const [notificationDays, setNotificationDays] = useState<number[]>([30, 7, 1]);
 
   // Renewal Dates
@@ -835,6 +836,7 @@ export default function SettingsPage() {
         setStreetCleaningAlerts(prefs.street_cleaning ?? true);
         setSnowBanAlerts(prefs.snow_ban ?? profileData.notify_snow_ban ?? true);
         setRenewalReminders(prefs.renewals ?? true);
+        setTowAlerts(prefs.tow ?? profileData.notify_tow ?? true);
         setNotificationDays(prefs.days_before || profileData.notify_days_array || [30, 7, 1]);
       } else {
         // Fallback to individual columns
@@ -842,6 +844,7 @@ export default function SettingsPage() {
         setSmsNotifications(profileData.notify_sms ?? false);
         setPhoneCallNotifications(profileData.phone_call_enabled ?? false);
         setSnowBanAlerts(profileData.notify_snow_ban ?? true);
+        setTowAlerts(profileData.notify_tow ?? true);
         setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
       }
     }
@@ -990,6 +993,7 @@ export default function SettingsPage() {
         notify_sms: smsNotifications,
         phone_call_enabled: phoneCallNotifications,
         notify_snow_ban: snowBanAlerts,
+        notify_tow: towAlerts,
         notify_days_array: notificationDays,
         notification_preferences: {
           email: emailNotifications,
@@ -998,6 +1002,7 @@ export default function SettingsPage() {
           street_cleaning: streetCleaningAlerts,
           snow_ban: snowBanAlerts,
           renewals: renewalReminders,
+          tow: towAlerts,
           days_before: notificationDays,
         },
         updated_at: new Date().toISOString(),
@@ -2233,6 +2238,41 @@ export default function SettingsPage() {
               </p>
             </div>
             <Toggle checked={snowBanAlerts} onChange={setSnowBanAlerts} />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+            paddingBottom: 16,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary, display: 'flex', alignItems: 'center', gap: 6 }}>
+                Tow alerts
+                <span
+                  title="Get notified immediately if your vehicle is towed. We check the Chicago tow database hourly and alert you via SMS/email so you can retrieve your car before fees increase."
+                  style={{
+                    cursor: 'help',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    backgroundColor: COLORS.border,
+                    color: COLORS.textMuted,
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >i</span>
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
+                Get notified if your car is towed
+              </p>
+            </div>
+            <Toggle checked={towAlerts} onChange={setTowAlerts} />
           </div>
 
           <div style={{
