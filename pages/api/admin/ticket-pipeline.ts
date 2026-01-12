@@ -163,6 +163,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const user = userMap[ticket.user_id] || { email: 'Unknown' };
       const hasEvidence = !!ticket.user_evidence;
 
+      // Parse user_evidence JSON to extract attachment URLs
+      let evidenceData = null;
+      if (ticket.user_evidence) {
+        try {
+          evidenceData = typeof ticket.user_evidence === 'string'
+            ? JSON.parse(ticket.user_evidence)
+            : ticket.user_evidence;
+        } catch (e) {
+          // If parsing fails, leave as null
+        }
+      }
+
       const item = {
         id: ticket.id,
         ticket_number: ticket.ticket_number,
@@ -180,6 +192,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         letter_content: letter?.letter_content || null,
         defense_type: letter?.defense_type || null,
         has_evidence: hasEvidence,
+        user_evidence: evidenceData, // Include parsed evidence data with attachment URLs
         evidence_integrated: letter?.evidence_integrated || false,
         evidence_integrated_at: letter?.evidence_integrated_at || null,
         mailed_at: letter?.mailed_at || null,

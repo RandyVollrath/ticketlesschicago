@@ -18,6 +18,112 @@ import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 
+/**
+ * Sleep for a given number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Send email via Resend with automatic retry on rate limits
+ * Resend has a rate limit of 2 requests per second
+ */
+async function sendResendEmailWithRetry(
+  payload: {
+    from: string;
+    to: string[];
+    subject: string;
+    html: string;
+    reply_to?: string;
+  },
+  maxRetries: number = 5,
+  baseDelayMs: number = 1000
+): Promise<{ success: boolean; error?: string; retries?: number }> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not configured, skipping email');
+    return { success: false, error: 'API key not configured' };
+  }
+
+  let lastError: string = '';
+  let retries = 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Check for rate limiting (429 status)
+      if (response.status === 429) {
+        retries = attempt;
+
+        if (attempt < maxRetries) {
+          const delay = baseDelayMs * Math.pow(2, attempt);
+          console.log(`⏳ Rate limited by Resend. Waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}...`);
+          await sleep(delay);
+          continue;
+        }
+
+        return {
+          success: false,
+          error: 'Rate limit exceeded after max retries',
+          retries,
+        };
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        // Check if error message indicates rate limiting
+        if (errorText.toLowerCase().includes('rate limit') || errorText.toLowerCase().includes('too many requests')) {
+          retries = attempt;
+
+          if (attempt < maxRetries) {
+            const delay = baseDelayMs * Math.pow(2, attempt);
+            console.log(`⏳ Rate limited by Resend. Waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}...`);
+            await sleep(delay);
+            continue;
+          }
+        }
+
+        console.error('Resend error:', errorText);
+        return { success: false, error: errorText, retries };
+      }
+
+      // Success
+      if (retries > 0) {
+        console.log(`✅ Email sent successfully after ${retries} retries`);
+      }
+
+      return { success: true, retries };
+
+    } catch (err: any) {
+      lastError = err.message || 'Unknown error';
+      retries = attempt;
+
+      // Network errors might be transient, retry
+      if (attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        console.log(`⏳ Network error sending email. Waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}...`);
+        await sleep(delay);
+        continue;
+      }
+    }
+  }
+
+  return {
+    success: false,
+    error: lastError || 'Max retries exceeded',
+    retries,
+  };
+}
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -163,87 +269,72 @@ function normalizeViolationType(input: string): string {
 }
 
 // Defense templates by violation type
+// IMPORTANT: These templates should NOT make false claims or assert facts we don't know.
+// They should request a hearing and ask for evidence to be reviewed.
 const DEFENSE_TEMPLATES: Record<string, { type: string; template: string }> = {
   expired_plates: {
     type: 'registration_renewed',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for expired registration.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for expired registration.
 
-At the time this ticket was issued, my vehicle registration had recently been renewed. I have attached documentation showing that my registration was valid at the time of the citation, or that I renewed it within the grace period allowed by Illinois law.
+I am requesting a hearing to present evidence regarding this citation. I may have documentation showing my registration status at the time of the violation, and I would like the opportunity to have this evidence reviewed.
 
-Under Chicago Municipal Code, a vehicle owner has a reasonable period to update their registration after renewal. I believe this citation was issued in error.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   no_city_sticker: {
     type: 'sticker_purchased',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
 
-At the time this ticket was issued, I had purchased my city sticker but had not yet received it in the mail / had not yet affixed it to my vehicle. I have attached proof of purchase showing the sticker was purchased prior to the citation.
+I am requesting a hearing to present evidence regarding this citation. I may have documentation showing my city sticker purchase or compliance status, and I would like the opportunity to have this evidence reviewed.
 
-Under Chicago Municipal Code Section 3-56-030, the city allows a grace period for displaying newly purchased stickers. I believe this citation was issued during that grace period.
-
-I respectfully request that this ticket be dismissed.`,
+Under Chicago Municipal Code, there are various circumstances under which a city sticker citation may be contested. I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   expired_meter: {
     type: 'meter_malfunction',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for an expired parking meter.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for an expired parking meter.
 
-I believe the parking meter at this location was malfunctioning at the time of this citation. The meter may not have properly displayed the time remaining, or may have failed to accept payment correctly.
+I am requesting a hearing to review this citation. There may have been issues with the parking meter, signage clarity, or payment acceptance at this location that affected my ability to comply with parking regulations.
 
-Additionally, signage at this location may have been unclear or obscured, making it difficult to determine the correct parking regulations.
-
-I respectfully request that this ticket be dismissed or reduced due to the possibility of meter malfunction.`,
+I respectfully request that photographic evidence of the violation be provided and that this ticket be reviewed, or that a hearing be scheduled where I can present my case.`,
   },
   disabled_zone: {
     type: 'disability_documentation',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a disabled zone.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking in a disabled zone.
 
-I am a person with a disability and possess a valid disability parking placard/plate. At the time this ticket was issued, my placard may not have been visible to the parking enforcement officer, but it was present in my vehicle.
+I am requesting a hearing to present evidence regarding this citation. I may have valid disability parking authorization or other documentation relevant to this case.
 
-I have attached documentation of my valid disability parking authorization.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   street_cleaning: {
     type: 'signage_issue',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
 
-I believe the signage indicating street cleaning restrictions at this location was either missing, obscured, damaged, or contradictory. I made a good faith effort to comply with posted regulations but the signage was not clear.
+I am requesting a hearing to review this citation. Factors such as signage visibility, temporary changes to cleaning schedules, or other circumstances may be relevant to this case.
 
-Additionally, I would note that street cleaning schedules can be difficult to track and the city's notification systems may not have adequately informed residents of the scheduled cleaning.
-
-I respectfully request that this ticket be dismissed or reduced.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   rush_hour: {
     type: 'emergency_situation',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
 
-At the time this ticket was issued, I was dealing with an emergency situation that required me to briefly stop my vehicle. I was not parking but rather attending to an urgent matter.
+I am requesting a hearing to present evidence regarding this citation. There may be circumstances or documentation relevant to this case that I would like the opportunity to present.
 
-The signage at this location may also have been unclear about the specific hours of restriction.
-
-I respectfully request that this ticket be dismissed or reduced given the circumstances.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   fire_hydrant: {
     type: 'distance_dispute',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking too close to a fire hydrant.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking too close to a fire hydrant.
 
-I believe my vehicle was parked at least 15 feet from the fire hydrant as required by law. The distance may have been misjudged by the parking enforcement officer.
+I am requesting a hearing to review this citation. I would like to request any photographic evidence of the violation showing the distance from the hydrant, and the opportunity to present any relevant evidence.
 
-I would request photographic evidence of the violation if available, and ask that this ticket be reviewed.
-
-I respectfully request that this ticket be dismissed.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
   other_unknown: {
     type: 'general_contest',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date}.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date}.
 
-I believe this ticket was issued in error for the following reasons:
-1. The signage at this location may have been unclear, missing, or contradictory
-2. There may have been extenuating circumstances at the time
-3. The violation may not have occurred as described
+I am requesting a hearing to present evidence and review the circumstances of this citation. I would like the opportunity to present any relevant documentation and have this ticket reviewed.
 
-I respectfully request a hearing to present my case and ask that this ticket be dismissed or reduced.`,
+I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
   },
 };
 
@@ -641,31 +732,18 @@ async function sendAdminUploadNotification(
     </div>
   `;
 
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Autopilot America <alerts@autopilotamerica.com>',
-        to: ['randyvollrath@gmail.com'], // Admin email
-        subject: `VA Upload ${statusText} - ${results.errors.length} errors, ${results.ticketsCreated}/${results.processed} tickets created`,
-        html,
-      }),
-    });
+  const result = await sendResendEmailWithRetry({
+    from: 'Autopilot America <alerts@autopilotamerica.com>',
+    to: ['randyvollrath@gmail.com'], // Admin email
+    subject: `VA Upload ${statusText} - ${results.errors.length} errors, ${results.ticketsCreated}/${results.processed} tickets created`,
+    html,
+  });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Resend error (admin notification):', error);
-      return false;
-    }
-
-    console.log('Admin notification sent');
+  if (result.success) {
+    console.log('Admin notification sent' + (result.retries ? ` (after ${result.retries} retries)` : ''));
     return true;
-  } catch (error) {
-    console.error('Admin notification failed:', error);
+  } else {
+    console.error('Admin notification failed:', result.error);
     return false;
   }
 }
@@ -684,11 +762,6 @@ async function sendTicketDetectedEmail(
   plate: string,
   evidenceDeadline: Date
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('RESEND_API_KEY not configured, skipping email');
-    return false;
-  }
-
   const formattedDeadline = evidenceDeadline.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -801,31 +874,21 @@ async function sendTicketDetectedEmail(
     </div>
   `;
 
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Autopilot America <alerts@autopilotamerica.com>',
-        to: [userEmail],
-        subject: `Parking Ticket Detected - ${ticketNumber} - Evidence Needed`,
-        html,
-        reply_to: 'evidence@autopilotamerica.com',
-      }),
-    });
+  const result = await sendResendEmailWithRetry({
+    from: 'Autopilot America <alerts@autopilotamerica.com>',
+    to: [userEmail],
+    subject: `Parking Ticket Detected - ${ticketNumber} - Evidence Needed`,
+    html,
+    reply_to: 'evidence@autopilotamerica.com',
+  });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Resend error:', error);
-      return false;
+  if (result.success) {
+    if (result.retries) {
+      console.log(`Email sent to ${userEmail} after ${result.retries} retries`);
     }
-
     return true;
-  } catch (error) {
-    console.error('Email send failed:', error);
+  } else {
+    console.error('Email send failed:', result.error);
     return false;
   }
 }

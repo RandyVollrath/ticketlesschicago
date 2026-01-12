@@ -1620,32 +1620,85 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.log('✅ has_contesting set to true for user:', supabaseUserId);
               }
 
-              // Send welcome email
+              // Send comprehensive welcome email
               const userEmail = session.customer_details?.email || metadata.email;
               if (userEmail) {
                 try {
                   await resend.emails.send({
                     from: 'Autopilot America <hello@autopilotamerica.com>',
                     to: userEmail,
-                    subject: 'Welcome to Autopilot America!',
+                    subject: 'Welcome to Autopilot America - Your Ticket Protection is Active!',
                     html: `
-                      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
-                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                          Your subscription is now active. Here's what happens next:
-                        </p>
-                        <ol style="color: #374151; font-size: 16px; line-height: 1.8;">
-                          <li><strong>Add your license plate</strong> - We'll start monitoring it for tickets</li>
-                          <li><strong>Complete your profile</strong> - Add your mailing address for contest letters</li>
-                          <li><strong>Sit back and relax</strong> - We'll automatically contest any tickets we find</li>
-                        </ol>
-                        <div style="margin: 32px 0; text-align: center;">
-                          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/settings"
-                             style="background-color: #2563EB; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
-                            Complete Your Profile
-                          </a>
+                      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+                        <!-- Header -->
+                        <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 32px 24px; border-radius: 12px 12px 0 0; text-align: center;">
+                          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">Welcome to Autopilot America!</h1>
+                          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 16px;">Your subscription is now active</p>
                         </div>
-                        <p style="color: #666; font-size: 14px;">Questions? Reply to this email or contact support@autopilotamerica.com</p>
+
+                        <!-- Body -->
+                        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+                          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
+                            Thank you for trusting Autopilot America to protect you from parking tickets. We're excited to have you on board!
+                          </p>
+
+                          <!-- Features Box -->
+                          <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 24px 0;">
+                            <h3 style="color: #0369a1; margin: 0 0 12px; font-size: 16px;">What's included in your subscription:</h3>
+                            <ul style="margin: 0; padding-left: 20px; color: #374151; line-height: 1.8;">
+                              <li><strong>Daily ticket monitoring</strong> - We check for new tickets on your plates</li>
+                              <li><strong>Automatic contest letters</strong> - We generate and mail letters to City Hall</li>
+                              <li><strong>Evidence integration</strong> - AI-powered letters that incorporate your evidence</li>
+                              <li><strong>Email notifications</strong> - Stay informed every step of the way</li>
+                            </ul>
+                          </div>
+
+                          <!-- Getting Started Steps -->
+                          <h3 style="color: #1a1a1a; margin: 24px 0 16px; font-size: 18px;">Getting Started:</h3>
+                          <div style="margin-bottom: 16px;">
+                            <div style="display: flex; align-items: flex-start; margin-bottom: 16px;">
+                              <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">1</div>
+                              <div>
+                                <strong style="color: #1a1a1a;">Add your license plate(s)</strong>
+                                <p style="color: #6b7280; font-size: 14px; margin: 4px 0 0;">We'll immediately start monitoring for any tickets.</p>
+                              </div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; margin-bottom: 16px;">
+                              <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">2</div>
+                              <div>
+                                <strong style="color: #1a1a1a;">Add your mailing address</strong>
+                                <p style="color: #6b7280; font-size: 14px; margin: 4px 0 0;">Contest letters will be sent from your address for credibility.</p>
+                              </div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start;">
+                              <div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">✓</div>
+                              <div>
+                                <strong style="color: #1a1a1a;">Sit back and relax</strong>
+                                <p style="color: #6b7280; font-size: 14px; margin: 4px 0 0;">We'll handle everything automatically from here!</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- CTA Button -->
+                          <div style="text-align: center; margin: 32px 0;">
+                            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/settings"
+                               style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
+                              Complete Your Setup
+                            </a>
+                          </div>
+
+                          <!-- Help Section -->
+                          <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-top: 24px;">
+                            <p style="color: #6b7280; font-size: 14px; margin: 0; text-align: center;">
+                              Questions? Reply to this email or contact <a href="mailto:support@autopilotamerica.com" style="color: #2563eb;">support@autopilotamerica.com</a>
+                            </p>
+                          </div>
+
+                          <!-- Footer -->
+                          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 24px 0 0;">
+                            Autopilot America • Never get another parking ticket
+                          </p>
+                        </div>
                       </div>
                     `
                   });
