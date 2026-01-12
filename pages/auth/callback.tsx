@@ -180,7 +180,7 @@ export default function AuthCallback() {
             .from('user_profiles')
             .select('email, has_contesting')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
 
           if (!userProfile) {
             // New user signed in with OAuth - create a free account automatically
