@@ -71,15 +71,53 @@ I respectfully request a hearing to present my case and ask that this ticket be 
 };
 
 interface TicketRow {
+  last_name?: string;
+  first_name?: string;
   plate: string;
   state: string;
+  user_id?: string;
   ticket_number: string;
-  violation_code?: string;
-  violation_type: string;
-  violation_description?: string;
+  violation_type?: string;
   violation_date?: string;
   amount?: number;
-  location?: string;
+}
+
+// Map violation type text (any format) to internal types
+function normalizeViolationType(violationType?: string): string {
+  const input = (violationType || '').toLowerCase().trim();
+
+  if (input.includes('expired') && (input.includes('plate') || input.includes('registration'))) {
+    return 'expired_plates';
+  }
+  if (input.includes('city sticker') || input.includes('no_city_sticker')) {
+    return 'no_city_sticker';
+  }
+  if (input.includes('meter') || input.includes('expired_meter')) {
+    return 'expired_meter';
+  }
+  if (input.includes('disabled') || input.includes('handicap')) {
+    return 'disabled_zone';
+  }
+  if (input.includes('standing') || input.includes('time restrict')) {
+    return 'no_standing_time_restricted';
+  }
+  if (input.includes('parking prohibit') || input.includes('no parking')) {
+    return 'parking_prohibited';
+  }
+  if (input.includes('residential') || input.includes('permit')) {
+    return 'residential_permit';
+  }
+  if (input.includes('missing') && input.includes('plate')) {
+    return 'missing_plate';
+  }
+  if (input.includes('commercial') || input.includes('loading')) {
+    return 'commercial_loading';
+  }
+  if (input.includes('street clean')) {
+    return 'street_cleaning';
+  }
+
+  return 'other_unknown';
 }
 
 interface UserProfile {
@@ -199,13 +237,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   for (const ticketRow of tickets) {
     try {
       // Find the monitored plate and user
-      const { data: plate } = await supabaseAdmin
+      // If user_id is provided in CSV, use it to find the specific plate
+      let plateQuery = supabaseAdmin
         .from('monitored_plates')
         .select('id, user_id')
         .eq('plate', ticketRow.plate.toUpperCase())
         .eq('state', ticketRow.state.toUpperCase())
-        .eq('status', 'active')
-        .single();
+        .eq('status', 'active');
+
+      // If user_id is in CSV, filter by it (handles multiple users monitoring same plate)
+      if (ticketRow.user_id) {
+        plateQuery = plateQuery.eq('user_id', ticketRow.user_id);
+      }
+
+      const { data: plates, error: plateError } = await plateQuery;
+
+      if (plateError || !plates || plates.length === 0) {
+        console.log(`  Skipping ${ticketRow.plate}: No active monitored plate found`);
+        results.skipped++;
+        continue;
+      }
+
+      // Use first matching plate (or the one matching user_id if provided)
+      const plate = plates[0];
 
       if (!plate) {
         console.log(`  Skipping ${ticketRow.plate}: No active monitored plate found`);
@@ -226,6 +280,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
+      // Normalize violation type from CSV (handles various formats)
+      const normalizedViolationType = normalizeViolationType(ticketRow.violation_type);
+
       // Create ticket record
       const { data: newTicket, error: ticketError } = await supabaseAdmin
         .from('detected_tickets')
@@ -235,12 +292,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           plate: ticketRow.plate.toUpperCase(),
           state: ticketRow.state.toUpperCase(),
           ticket_number: ticketRow.ticket_number,
-          violation_code: ticketRow.violation_code || null,
-          violation_type: ticketRow.violation_type || 'other_unknown',
-          violation_description: ticketRow.violation_description || null,
+          violation_type: normalizedViolationType,
+          violation_description: ticketRow.violation_type || null,
           violation_date: ticketRow.violation_date || null,
           amount: ticketRow.amount || null,
-          location: ticketRow.location || null,
           status: 'found',
           found_at: new Date().toISOString(),
         })
@@ -282,22 +337,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const userSettings: UserSettings = settings || {
         auto_mail_enabled: true,
         require_approval: false,
-        allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone'],
+        allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading'],
         never_auto_mail_unknown: true,
       };
 
-      // Check if auto-mail is allowed for this ticket type
-      const violationType = ticketRow.violation_type || 'other_unknown';
+      // Check if auto-mail is allowed for this ticket type (use normalized type)
       let shouldAutoMail = userSettings.auto_mail_enabled &&
                            !userSettings.require_approval &&
-                           userSettings.allowed_ticket_types.includes(violationType);
+                           userSettings.allowed_ticket_types.includes(normalizedViolationType);
 
-      if (violationType === 'other_unknown' && userSettings.never_auto_mail_unknown) {
+      if (normalizedViolationType === 'other_unknown' && userSettings.never_auto_mail_unknown) {
         shouldAutoMail = false;
       }
 
       // Generate letter
-      const template = DEFENSE_TEMPLATES[violationType] || DEFENSE_TEMPLATES.other_unknown;
+      const template = DEFENSE_TEMPLATES[normalizedViolationType] || DEFENSE_TEMPLATES.other_unknown;
       const letterContent = generateLetterContent(newTicket, profile as UserProfile, template);
 
       const { data: letter, error: letterError } = await supabaseAdmin

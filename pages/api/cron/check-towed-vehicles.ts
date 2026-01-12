@@ -22,11 +22,11 @@ export default async function handler(
   try {
     console.log('Checking for towed user vehicles...');
 
-    // Get all Chicago users with license plates
+    // Get all Chicago users with license plates (case-insensitive city match)
     const { data: users, error: userError } = await supabaseAdmin
       .from('user_profiles')
       .select('user_id, phone_number, email, license_plate, license_state, notify_sms, notify_email')
-      .eq('city', 'chicago')
+      .ilike('city', 'chicago')
       .not('license_plate', 'is', null);
 
     if (userError || !users || users.length === 0) {

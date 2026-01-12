@@ -472,15 +472,15 @@ export default function AutopilotAdmin() {
               borderRadius: 8,
               marginBottom: 24,
             }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>CSV format (from VA email export):</h4>
+              <h4 style={{ fontSize: 14, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>CSV format (9 columns):</h4>
               <code style={{ fontSize: 12, color: COLORS.slate, wordBreak: 'break-all' }}>
-                last_name, first_name, plate, state, user_id, ticket_number, violation_code, violation_type, violation_description, violation_date, amount, location
+                last_name, first_name, plate, state, user_id, ticket_number, violation_type, violation_date, amount
               </code>
               <p style={{ fontSize: 13, color: COLORS.slate, margin: '12px 0 0 0' }}>
-                <strong>Note:</strong> Only rows with a ticket_number will be processed. VA should fill in columns F-L for each ticket found.
+                <strong>Note:</strong> Only rows with a ticket_number will be processed. VA fills in columns F-I for each ticket found.
               </p>
               <p style={{ fontSize: 13, color: COLORS.slate, margin: '8px 0 0 0' }}>
-                Valid violation_type values: expired_plates, no_city_sticker, expired_meter, disabled_zone, street_cleaning, rush_hour, fire_hydrant, other_unknown
+                violation_type can be any text (e.g. &quot;Expired Plates&quot;, &quot;No City Sticker&quot;) - it will be auto-normalized.
               </p>
             </div>
 
