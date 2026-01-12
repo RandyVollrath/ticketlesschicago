@@ -219,7 +219,7 @@ export default function SettingsPage() {
       .from('user_profiles')
       .select('*')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     // Check if user has paid for ticket contesting
     setIsPaidUser(profileData?.has_contesting === true);
@@ -276,7 +276,7 @@ export default function SettingsPage() {
       .from('monitored_plates')
       .select('*')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     if (plateData) {
       setPlateNumber(plateData.plate);
@@ -289,7 +289,7 @@ export default function SettingsPage() {
       .from('autopilot_settings')
       .select('*')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     if (settingsData) {
       setAutoMailEnabled(settingsData.auto_mail_enabled);
@@ -357,7 +357,7 @@ export default function SettingsPage() {
         .from('monitored_plates')
         .select('id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (existingPlate) {
         await supabase

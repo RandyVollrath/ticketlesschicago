@@ -103,7 +103,7 @@ export default function Protection() {
           .from('user_profiles')
           .select('phone_number, home_address_full, street_address')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (profile) {
           if (profile.phone_number && !phone) {
