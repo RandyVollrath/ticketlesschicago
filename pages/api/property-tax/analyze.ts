@@ -68,6 +68,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Check cache first - analyses are valid for 72 hours
+    const CACHE_TTL_HOURS = 72;
+    const cacheExpiry = new Date(Date.now() - CACHE_TTL_HOURS * 60 * 60 * 1000).toISOString();
+
+    const { data: cachedAnalysis } = await supabase
+      .from('property_tax_analysis_cache')
+      .select('analysis_data, cached_at')
+      .eq('pin', normalizedPin)
+      .gte('cached_at', cacheExpiry)
+      .order('cached_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (cachedAnalysis?.analysis_data) {
+      console.log(`Cache hit for PIN ${normalizedPin} (cached ${cachedAnalysis.cached_at})`);
+      return res.status(200).json({
+        ...cachedAnalysis.analysis_data,
+        cached: true,
+        cachedAt: cachedAnalysis.cached_at
+      });
+    }
+
     // Analyze the property
     const analysis = await analyzeAppealOpportunity(normalizedPin);
 
@@ -117,6 +139,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       recentSuccesses,
       exemptions
     );
+
+    // Cache the analysis result for future requests (async, don't block response)
+    supabase
+      .from('property_tax_analysis_cache')
+      .upsert({
+        pin: normalizedPin,
+        analysis_data: response,
+        cached_at: new Date().toISOString(),
+        township: analysis.property.township,
+        opportunity_score: analysis.analysis.opportunityScore
+      }, { onConflict: 'pin' })
+      .then(({ error }) => {
+        if (error) console.error('Failed to cache analysis:', error);
+        else console.log(`Cached analysis for PIN ${normalizedPin}`);
+      });
 
     return res.status(200).json(response);
 
@@ -178,43 +215,48 @@ async function getDeadlinesForTownship(township: string): Promise<AppealOpportun
 }
 
 /**
- * Cache comparables for an analysis
+ * Cache comparables for an analysis - BATCHED for performance
  */
 async function cacheComparables(pin: string, analysis: AppealOpportunity): Promise<void> {
-  // Store in property_tax_properties for future reference
-  for (const comp of analysis.comparables) {
-    try {
-      await supabase
-        .from('property_tax_properties')
-        .upsert({
-          pin: comp.pin,
-          pin_formatted: comp.pinFormatted,
-          address: comp.address,
-          city: comp.city,
-          zip_code: comp.zipCode,
-          township: comp.township,
-          township_code: comp.townshipCode,
-          property_class: comp.propertyClass,
-          property_class_description: comp.propertyClassDescription,
-          square_footage: comp.squareFootage,
-          lot_size: comp.lotSize,
-          year_built: comp.yearBuilt,
-          bedrooms: comp.bedrooms,
-          bathrooms: comp.bathrooms,
-          exterior_construction: comp.exteriorConstruction,
-          basement_type: comp.basementType,
-          garage_type: comp.garageType,
-          assessment_year: comp.assessmentYear,
-          current_assessed_value: comp.assessedValue,
-          current_market_value: comp.marketValue,
-          last_synced_at: new Date().toISOString()
-        }, {
-          onConflict: 'pin,assessment_year'
-        });
-    } catch (error) {
-      // Log but don't fail
-      console.error('Error caching comparable:', error);
+  if (!analysis.comparables || analysis.comparables.length === 0) return;
+
+  // Prepare batch data
+  const now = new Date().toISOString();
+  const records = analysis.comparables.map(comp => ({
+    pin: comp.pin,
+    pin_formatted: comp.pinFormatted,
+    address: comp.address,
+    city: comp.city,
+    zip_code: comp.zipCode,
+    township: comp.township,
+    township_code: comp.townshipCode,
+    property_class: comp.propertyClass,
+    property_class_description: comp.propertyClassDescription,
+    square_footage: comp.squareFootage,
+    lot_size: comp.lotSize,
+    year_built: comp.yearBuilt,
+    bedrooms: comp.bedrooms,
+    bathrooms: comp.bathrooms,
+    exterior_construction: comp.exteriorConstruction,
+    basement_type: comp.basementType,
+    garage_type: comp.garageType,
+    assessment_year: comp.assessmentYear,
+    current_assessed_value: comp.assessedValue,
+    current_market_value: comp.marketValue,
+    last_synced_at: now
+  }));
+
+  try {
+    // Single batched upsert instead of sequential
+    const { error } = await supabase
+      .from('property_tax_properties')
+      .upsert(records, { onConflict: 'pin,assessment_year' });
+
+    if (error) {
+      console.error('Error batch caching comparables:', error);
     }
+  } catch (error) {
+    console.error('Error caching comparables:', error);
   }
 }
 
