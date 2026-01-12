@@ -1595,8 +1595,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 status: 'active',
                 stripe_subscription_id: subscriptionId,
                 current_period_end: periodEnd,
-                letters_included: 999, // Unlimited
-                letters_used_this_period: 0,
+                letters_included_remaining: 999, // Unlimited
                 updated_at: new Date().toISOString(),
               })
               .eq('user_id', supabaseUserId);
