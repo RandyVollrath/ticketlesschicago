@@ -673,7 +673,7 @@ export default function SettingsPage() {
   const [sameAsHomeAddress, setSameAsHomeAddress] = useState(false);
   const [mailingAddress1, setMailingAddress1] = useState('');
   const [mailingAddress2, setMailingAddress2] = useState('');
-  const [mailingCity, setMailingCity] = useState('');
+  const [mailingCity, setMailingCity] = useState('Chicago');
   const [mailingState, setMailingState] = useState('IL');
   const [mailingZip, setMailingZip] = useState('');
 
@@ -802,12 +802,16 @@ export default function SettingsPage() {
         if (!isNaN(wardNum)) setWard(wardNum);
       }
       setSection(profileData.home_address_section || '');
-      setHomeCity(profileData.city || 'Chicago');
+      // Always capitalize city name properly
+      const city = profileData.city || 'Chicago';
+      setHomeCity(city.charAt(0).toUpperCase() + city.slice(1).toLowerCase());
       setHomeState('IL'); // Chicago is in IL
       setHomeZip(profileData.zip_code || '');
       setMailingAddress1(profileData.mailing_address || '');
       setMailingAddress2(profileData.mailing_address_2 || '');
-      setMailingCity(profileData.mailing_city || '');
+      // Capitalize mailing city properly
+      const mailingCityVal = profileData.mailing_city || 'Chicago';
+      setMailingCity(mailingCityVal.charAt(0).toUpperCase() + mailingCityVal.slice(1).toLowerCase());
       setMailingState(profileData.mailing_state || 'IL');
       setMailingZip(profileData.mailing_zip || '');
       setVin(profileData.vin || '');
