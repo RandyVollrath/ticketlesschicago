@@ -738,31 +738,41 @@ export default function SettingsPage() {
       // Clear the query param from URL without reload
       router.replace('/settings', undefined, { shallow: true });
 
-      // Webhook may not have completed yet - poll for updated data
-      // This ensures has_contesting and monitored_plates are set
-      const pollForWebhookCompletion = async () => {
-        for (let i = 0; i < 5; i++) {
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-          const { data: updatedProfile } = await supabase
-            .from('user_profiles')
-            .select('has_contesting, license_plate')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-          const { data: updatedPlates } = await supabase
-            .from('monitored_plates')
-            .select('id')
-            .eq('user_id', session.user.id)
-            .eq('status', 'active');
-
-          if (updatedProfile?.has_contesting || (updatedPlates && updatedPlates.length > 0)) {
-            // Webhook completed - reload all data
+      // Immediately verify checkout with Stripe and activate user
+      // This is faster than waiting for the webhook
+      const verifyAndActivate = async () => {
+        try {
+          const response = await fetch('/api/autopilot/verify-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: session.user.id }),
+          });
+          const result = await response.json();
+          if (result.success) {
+            // User activated - reload all data to reflect paid status
+            setIsPaidUser(true);
             loadData();
-            break;
+          }
+        } catch (err) {
+          console.error('Failed to verify checkout:', err);
+          // Fall back to polling if API fails
+          for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const { data: updatedProfile } = await supabase
+              .from('user_profiles')
+              .select('has_contesting')
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+
+            if (updatedProfile?.has_contesting) {
+              setIsPaidUser(true);
+              loadData();
+              break;
+            }
           }
         }
       };
-      pollForWebhookCompletion();
+      verifyAndActivate();
     }
 
     // Load profile from user_profiles - single source of truth
