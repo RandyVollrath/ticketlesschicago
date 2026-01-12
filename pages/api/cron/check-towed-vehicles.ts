@@ -25,7 +25,7 @@ export default async function handler(
     // Get all Chicago users with license plates (case-insensitive city match)
     const { data: users, error: userError } = await supabaseAdmin
       .from('user_profiles')
-      .select('user_id, phone_number, email, license_plate, license_state, notify_sms, notify_email')
+      .select('user_id, phone_number, email, license_plate, license_state, notify_sms, notify_email, notify_tow')
       .ilike('city', 'chicago')
       .not('license_plate', 'is', null);
 
@@ -72,6 +72,12 @@ export default async function handler(
 
       if (alreadyNotified) {
         console.log(`Already notified ${user.user_id} about tow ${tow.inventory_number}`);
+        continue;
+      }
+
+      // Skip if user has tow notifications disabled
+      if (user.notify_tow === false) {
+        console.log(`Skipping ${user.user_id}: tow notifications disabled`);
         continue;
       }
 
