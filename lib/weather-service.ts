@@ -159,6 +159,10 @@ async function getForecast(gridPoint: GridPoint): Promise<ForecastPeriod[]> {
 /**
  * Parse snow amount from forecast text
  * NWS includes snow amounts in the detailed forecast like "Snow accumulation of 2 to 4 inches"
+ *
+ * IMPORTANT: We use the MINIMUM of ranges to avoid false positives.
+ * "1 to 3 inches possible" means at least 1 inch is expected, but 3 is the upper bound.
+ * We should only trigger 2-inch alerts when the MINIMUM forecast is >= 2 inches.
  */
 function parseSnowAmount(detailedForecast: string): number {
   const forecast = detailedForecast.toLowerCase();
@@ -169,10 +173,14 @@ function parseSnowAmount(detailedForecast: string): number {
   // "total snow accumulation of less than one inch"
   // "snow accumulations of 6 to 10 inches"
 
-  // Match "X to Y inches" - take the higher number
+  // Match "X to Y inches" - take the LOWER number to avoid false positives
+  // "1 to 3 inches" means at least 1 inch expected, we shouldn't alert until min >= 2
   const rangeMatch = forecast.match(/(\d+)\s+to\s+(\d+)\s+inch/i);
   if (rangeMatch) {
-    return Math.max(parseFloat(rangeMatch[1]), parseFloat(rangeMatch[2]));
+    const low = parseFloat(rangeMatch[1]);
+    const high = parseFloat(rangeMatch[2]);
+    // Use the lower bound to be conservative and avoid false positives
+    return low;
   }
 
   // Match "around X inches" or "of X inches"
