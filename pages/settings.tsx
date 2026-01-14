@@ -51,6 +51,7 @@ const VEHICLE_TYPES = [
   'Sedan', 'SUV', 'Truck', 'Van', 'Motorcycle', 'Other'
 ];
 
+// Note: Red light camera and speed camera tickets are excluded due to legal complexity
 const TICKET_TYPES = [
   { id: 'expired_plates', label: 'Expired Plates', winRate: 75 },
   { id: 'no_city_sticker', label: 'No City Sticker', winRate: 70 },
@@ -64,8 +65,6 @@ const TICKET_TYPES = [
   { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
   { id: 'rush_hour', label: 'Rush Hour Parking', winRate: 37 },
   { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
-  { id: 'red_light', label: 'Red Light Camera', winRate: 20 },
-  { id: 'speed_camera', label: 'Speed Camera', winRate: 18 },
 ];
 
 const NOTIFICATION_DAYS = [30, 14, 7, 3, 1, 0];
@@ -1364,9 +1363,9 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Warning Banner for Paid Users Without Plates or Last Name */}
+        {/* Warning Banner for Paid Users Without Plates, Last Name, or Mailing Address */}
         {/* Hide when checkout success modal is showing - give user a chance to fill out profile */}
-        {isPaidUser && (!hasActivePlates || !lastName.trim()) && !showCheckoutSuccess && (
+        {isPaidUser && (!hasActivePlates || !lastName.trim() || !mailingAddress1.trim()) && !showCheckoutSuccess && (
           <div style={{
             backgroundColor: '#FEF2F2',
             borderRadius: 12,
@@ -1378,11 +1377,16 @@ export default function SettingsPage() {
               ⚠️ Action Required: Complete Your Profile
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 14, color: '#991B1B' }}>
-              {!lastName.trim() && !hasActivePlates
-                ? 'Your last name and license plate are missing. We need both to search for and contest your tickets.'
-                : !lastName.trim()
-                ? 'Your last name is missing. We need this to search for tickets on your behalf.'
-                : 'Your license plate is missing. We need this to monitor for new tickets.'}
+              {(() => {
+                const missing = [];
+                if (!lastName.trim()) missing.push('last name');
+                if (!hasActivePlates) missing.push('license plate');
+                if (!mailingAddress1.trim()) missing.push('mailing address');
+                if (missing.length === 1) {
+                  return `Your ${missing[0]} is missing. We need this to ${missing[0] === 'mailing address' ? 'send contest letters' : missing[0] === 'license plate' ? 'monitor for new tickets' : 'search for tickets on your behalf'}.`;
+                }
+                return `Your ${missing.slice(0, -1).join(', ')}${missing.length > 1 ? ' and ' + missing[missing.length - 1] : ''} are missing. We need these to search for and contest your tickets.`;
+              })()}
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 13, color: '#7F1D1D' }}>
               Please fill in the missing information below to ensure your Autopilot service works correctly.
@@ -1906,7 +1910,18 @@ export default function SettingsPage() {
               }}>
                 AUTOPILOT ONLY
               </span>
-            ) : undefined
+            ) : (
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: 4,
+                backgroundColor: !mailingAddress1.trim() ? '#FEE2E2' : COLORS.successLight,
+                color: !mailingAddress1.trim() ? '#991B1B' : COLORS.accent,
+              }}>
+                {!mailingAddress1.trim() ? 'REQUIRED' : 'COMPLETE'}
+              </span>
+            )
           }
           greyed={!isPaidUser}
           upgradeContent={!isPaidUser ? (
@@ -2739,14 +2754,14 @@ export default function SettingsPage() {
                   gap: 12,
                   padding: 12,
                   borderRadius: 8,
-                  backgroundColor: mailingAddress1.trim() ? COLORS.successLight : COLORS.warningLight,
-                  border: `1px solid ${mailingAddress1.trim() ? '#10B981' : '#F59E0B'}`,
+                  backgroundColor: mailingAddress1.trim() ? COLORS.successLight : '#FEF2F2',
+                  border: `1px solid ${mailingAddress1.trim() ? '#10B981' : COLORS.danger}`,
                 }}>
                   <span style={{ fontSize: 20 }}>{mailingAddress1.trim() ? '✓' : '3'}</span>
                   <div>
                     <strong>Add your mailing address</strong>
                     <p style={{ margin: '4px 0 0', fontSize: 13, color: COLORS.textMuted }}>
-                      Needed for mailing contest letters (optional until first ticket)
+                      Required for mailing contest letters on your behalf
                     </p>
                   </div>
                 </div>
