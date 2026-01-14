@@ -154,108 +154,230 @@ const PERMIT_REJECTION_REASONS = {
 };
 
 // ============ Letter Templates Data ============
-// IMPORTANT: These templates should NOT make false claims or assert facts we don't know.
-// They request a hearing and ask for evidence to be reviewed.
+// These templates request DISMISSAL BY MAIL - not hearings
+// Strategy: Challenge the citation, request city's evidence, cite procedural requirements
 
 const DEFENSE_TEMPLATES: Record<string, { type: string; description: string; template: string }> = {
   expired_plates: {
-    type: 'registration_renewed',
+    type: 'registration_challenge',
     description: 'Expired Registration / Plates',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for expired registration.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly expired registration.
 
-I am requesting a hearing to present evidence regarding this citation. I may have documentation showing my registration status at the time of the violation, and I would like the opportunity to have this evidence reviewed.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. BURDEN OF PROOF: Under Illinois law, the City bears the burden of proving the violation occurred. I request the City provide documentation showing the officer verified the registration status through the Illinois Secretary of State database at the time of citation.
+
+2. PROCEDURAL REQUIREMENTS: Chicago Municipal Code Section 9-100-050 requires that parking violations be properly documented. I request copies of any photographs or documentation taken at the time of the alleged violation.
+
+3. REGISTRATION VERIFICATION: Vehicle registration status can change rapidly due to online renewals, grace periods, and processing delays. Without verification through official state records at the exact time of citation, the violation cannot be conclusively established.
+
+I request that this ticket be dismissed. If the City cannot provide adequate documentation supporting this citation, dismissal is the appropriate remedy.`,
   },
   no_city_sticker: {
-    type: 'sticker_purchased',
+    type: 'sticker_challenge',
     description: 'Missing City Sticker',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly lacking a Chicago city vehicle sticker.
 
-I am requesting a hearing to present evidence regarding this citation. I may have documentation showing my city sticker purchase or compliance status, and I would like the opportunity to have this evidence reviewed.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-Under Chicago Municipal Code, there are various circumstances under which a city sticker citation may be contested. I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. EXEMPTION VERIFICATION: Under Chicago Municipal Code Section 3-56-020, numerous exemptions exist for the wheel tax requirement, including vehicles registered outside Chicago, vehicles owned by disabled persons, and vehicles in transit. The issuing officer cannot determine exemption status by visual inspection alone.
+
+2. BURDEN OF PROOF: The City must prove that the vehicle was required to display a city sticker AND that no valid sticker existed. I request documentation showing the officer verified through City records that no valid sticker was registered to this vehicle.
+
+3. PROCEDURAL REQUIREMENTS: I request any photographs taken at the time of citation and documentation of the officer's verification process.
+
+4. TIMING CONSIDERATIONS: City sticker purchases may not immediately appear in City systems. If this ticket was issued near a renewal deadline or shortly after a purchase, system lag may explain the apparent violation.
+
+I request that this ticket be dismissed. Without documentation proving both the requirement to display AND the absence of a valid sticker in City records, dismissal is appropriate.`,
   },
   expired_meter: {
-    type: 'meter_malfunction',
+    type: 'meter_challenge',
     description: 'Expired Meter',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for an expired parking meter.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for an allegedly expired parking meter.
 
-I am requesting a hearing to review this citation. There may have been issues with the parking meter, signage clarity, or payment acceptance at this location that affected my ability to comply with parking regulations.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that photographic evidence of the violation be provided and that this ticket be reviewed, or that a hearing be scheduled where I can present my case.`,
+1. METER FUNCTIONALITY: Chicago parking meters are known to malfunction, fail to accept payment, or display incorrect time remaining. Under Chicago Municipal Code, a citation may be dismissed if the meter was malfunctioning. I request maintenance records for this meter for the week surrounding the citation date.
+
+2. PAYMENT VERIFICATION: If payment was made via the ParkChicago app or other digital payment method, there may be a discrepancy between the app's records and the meter display. I request that the City verify no digital payment was active for this location at the time of citation.
+
+3. SIGNAGE REQUIREMENTS: Metered parking zones must have clear signage indicating hours of operation and rates. I request photographs documenting compliant signage at this location.
+
+4. TIMING ACCURACY: The citation must accurately reflect the time of violation. I request documentation of the precise time the violation was observed and how it was determined that paid time had expired.
+
+I request that this ticket be dismissed. If meter functionality, payment records, or proper signage cannot be verified, dismissal is the appropriate remedy.`,
   },
   disabled_zone: {
-    type: 'disability_documentation',
+    type: 'disability_challenge',
     description: 'Disabled Zone Parking',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking in a disabled zone.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly parking in a disabled zone.
 
-I am requesting a hearing to present evidence regarding this citation. I may have valid disability parking authorization or other documentation relevant to this case.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. PLACARD/PLATE VERIFICATION: Disability placards and plates may be valid but not visible to the issuing officer due to placement, lighting conditions, or viewing angle. I request any photographs taken showing the vehicle's windshield and license plate areas.
+
+2. ZONE MARKING REQUIREMENTS: Under the Americans with Disabilities Act and Illinois Accessibility Code, disabled parking spaces must be properly marked with both signage and pavement markings. I request documentation that this space met all marking requirements at the time of citation.
+
+3. AUTHORIZATION VERIFICATION: The Secretary of State maintains records of all valid disability placards and plates. I request that the City verify through state records whether a valid authorization existed for this vehicle at the time of citation.
+
+4. PROCEDURAL REQUIREMENTS: Before issuing this citation, the officer should have verified no valid placard was displayed. I request documentation of the verification steps taken.
+
+I request that this ticket be dismissed. Given the serious nature of disability parking violations and the potential for valid authorizations to be overlooked, thorough verification is required before a citation can be upheld.`,
   },
   street_cleaning: {
-    type: 'signage_issue',
+    type: 'signage_challenge',
     description: 'Street Cleaning Violation',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
 
-I am requesting a hearing to review this citation. Factors such as signage visibility, temporary changes to cleaning schedules, or other circumstances may be relevant to this case.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. SIGNAGE REQUIREMENTS: Chicago Municipal Code requires that street cleaning restrictions be posted with signs that are visible, legible, and accurate. I request photographs documenting all posted signage within 100 feet of where my vehicle was parked, showing the signs were compliant and visible.
+
+2. SCHEDULE VERIFICATION: Street cleaning schedules are frequently modified due to weather, holidays, or operational changes. I request documentation that street cleaning actually occurred on this date at this location, and that the posted schedule matched the actual cleaning.
+
+3. SIGN PLACEMENT: Signs must be posted at intervals that provide adequate notice to drivers. If signage was obscured by foliage, damaged, missing, or improperly placed, the citation should be dismissed.
+
+4. WEATHER CANCELLATION: Street cleaning is often cancelled due to weather conditions. I request verification that cleaning was not cancelled on this date.
+
+I request that this ticket be dismissed. Street cleaning violations require proper notice through compliant signage, and without documentation of proper signage and actual cleaning activity, dismissal is appropriate.`,
   },
   rush_hour: {
-    type: 'emergency_situation',
+    type: 'rush_hour_challenge',
     description: 'Rush Hour Parking Violation',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
 
-I am requesting a hearing to present evidence regarding this citation. There may be circumstances or documentation relevant to this case that I would like the opportunity to present.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. SIGNAGE CLARITY: Rush hour restrictions must be clearly posted with signs indicating the specific hours and days of restriction. I request photographs of all signage at this location documenting that the restrictions were clearly posted and the signs were not contradictory or confusing.
+
+2. TIME VERIFICATION: The citation must accurately reflect that the violation occurred during posted rush hour restriction times. I request documentation of the precise time of the alleged violation and how it was verified to fall within restricted hours.
+
+3. SIGN VISIBILITY: Signs must be visible and not obscured by foliage, other signs, or obstructions. I request documentation that all required signs were visible from the parking location.
+
+4. CONFLICTING REGULATIONS: Many locations have multiple parking signs with different restrictions. If signs at this location presented conflicting or confusing information, dismissal is appropriate.
+
+I request that this ticket be dismissed. Rush hour restrictions require clear, unambiguous signage, and without documentation of compliant signage and accurate timing, dismissal is the appropriate remedy.`,
   },
   fire_hydrant: {
-    type: 'distance_dispute',
+    type: 'distance_challenge',
     description: 'Parking Near Fire Hydrant',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking too close to a fire hydrant.
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly parking too close to a fire hydrant.
 
-I am requesting a hearing to review this citation. I would like to request any photographic evidence of the violation showing the distance from the hydrant, and the opportunity to present any relevant evidence.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. DISTANCE MEASUREMENT: Illinois law requires vehicles to park at least 15 feet from a fire hydrant. I request documentation of how the distance was measured at the time of citation. Visual estimation alone is insufficient to establish a violation.
+
+2. PHOTOGRAPHIC EVIDENCE: I request any photographs taken at the time of citation showing the vehicle's position relative to the hydrant, including reference points that would allow accurate distance determination.
+
+3. HYDRANT VISIBILITY: If the hydrant was obscured by snow, vegetation, construction equipment, or other obstructions, I could not have reasonably known of its location. I request documentation of the hydrant's visibility at the time of citation.
+
+4. MEASUREMENT METHODOLOGY: The 15-foot requirement is measured from the nearest point of the vehicle to the nearest point of the hydrant. Without documented measurement methodology, the violation cannot be conclusively established.
+
+I request that this ticket be dismissed. Fire hydrant violations require accurate distance measurement, and without documented evidence of the actual distance, dismissal is appropriate.`,
   },
   residential_permit: {
-    type: 'permit_displayed',
+    type: 'permit_challenge',
     description: 'Residential Permit Parking',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking in a residential permit zone.
 
-I am requesting a hearing to present evidence regarding this citation. I may have valid residential parking permit documentation relevant to this case.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. PERMIT VERIFICATION: I request that the City verify through its permit database whether a valid residential parking permit was registered to this vehicle at the time of citation. Permits may be valid but not physically displayed due to replacement in progress or windshield damage.
+
+2. ZONE BOUNDARY CLARITY: Residential permit zone boundaries must be clearly posted. I request documentation showing the exact boundaries of this permit zone and photographs of all boundary signage.
+
+3. VISITOR/TEMPORARY PERMITS: Various temporary and visitor permit allowances exist. I request verification that no temporary permit, visitor pass, or other authorization was active for this vehicle.
+
+4. SIGNAGE COMPLIANCE: Signs must clearly indicate the permit zone number and hours of enforcement. I request photographs of all signage at this location.
+
+I request that this ticket be dismissed. Without verification that no valid permit existed and that signage was compliant, dismissal is appropriate.`,
   },
   no_standing: {
-    type: 'brief_stop',
+    type: 'standing_challenge',
     description: 'No Standing/Stopping Zone',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a no standing/stopping violation.
 
-I am requesting a hearing to present evidence regarding this citation. There may be circumstances or documentation relevant to this case that I would like the opportunity to present.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. ACTIVITY VERIFICATION: "No Standing" zones allow brief stops to load/unload passengers. "No Stopping" zones prohibit any stopping. I request documentation of what activity was observed and how it was determined to violate the specific posted restriction.
+
+2. SIGNAGE REQUIREMENTS: No standing/stopping zones must be clearly marked with compliant signage. I request photographs of all signage at this location showing the exact restriction type and hours of enforcement.
+
+3. DURATION DOCUMENTATION: If the violation was for exceeding a time limit, I request documentation of how long the vehicle was observed at this location.
+
+4. ZONE VALIDITY: I request verification that this no standing/stopping zone was properly established and that all required signage was in place.
+
+I request that this ticket be dismissed. Without clear documentation of the observed activity and compliant signage, dismissal is appropriate.`,
   },
   bus_stop: {
-    type: 'signage_unclear',
+    type: 'bus_zone_challenge',
     description: 'Bus Stop/Stand Violation',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for parking in a bus stop zone.
 
-I am requesting a hearing to review this citation. Factors such as signage visibility, curb marking condition, or other circumstances may be relevant to this case.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. ZONE MARKING REQUIREMENTS: Bus zones must be clearly marked with signage and curb markings. I request photographs showing that the bus zone was properly marked with visible signs and red curb paint at the time of citation.
+
+2. SIGNAGE VISIBILITY: Bus zone signs must be visible and not obscured. I request documentation that all required signs were in place and clearly visible.
+
+3. CURB MARKING CONDITION: Red curb markings fade over time and may not be visible. I request documentation of the condition of curb markings at this location.
+
+4. ZONE BOUNDARIES: Bus zone boundaries must be clearly delineated. I request documentation showing the exact boundaries of this bus zone and how my vehicle's position was determined to be within those boundaries.
+
+I request that this ticket be dismissed. Without documentation of proper zone marking and signage, dismissal is appropriate.`,
+  },
+  red_light: {
+    type: 'camera_challenge',
+    description: 'Red Light Camera Violation',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a red light camera violation.
+
+I respectfully request that this citation be DISMISSED for the following reasons:
+
+1. CAMERA CERTIFICATION: Illinois law requires red light cameras to be properly calibrated and certified. I request documentation of the camera's calibration and certification status at the time of the alleged violation.
+
+2. YELLOW LIGHT TIMING: Federal guidelines recommend minimum yellow light intervals based on speed limits. I request documentation of the yellow light duration at this intersection and verification that it meets applicable standards.
+
+3. VEHICLE IDENTIFICATION: I request the photographs and/or video evidence showing that my vehicle (not another vehicle) committed the alleged violation, including clear images of the license plate and vehicle position.
+
+4. INTERSECTION ENTRY: A violation occurs only if the vehicle enters the intersection after the light turns red. If the vehicle entered during yellow and cleared during red, no violation occurred. I request frame-by-frame documentation showing when my vehicle entered the intersection relative to the light change.
+
+I request that this ticket be dismissed. Without clear photographic evidence and documentation of proper camera operation, dismissal is appropriate.`,
+  },
+  speed_camera: {
+    type: 'speed_camera_challenge',
+    description: 'Speed Camera Violation',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a speed camera violation.
+
+I respectfully request that this citation be DISMISSED for the following reasons:
+
+1. CAMERA CALIBRATION: Speed cameras must be regularly calibrated to ensure accuracy. I request documentation of the camera's calibration records and certification status at the time of the alleged violation.
+
+2. SPEED MEASUREMENT ACCURACY: I request documentation of the methodology used to determine vehicle speed, including any margin of error in the measurement system.
+
+3. VEHICLE IDENTIFICATION: I request photographic evidence clearly identifying my vehicle as the one allegedly speeding, including legible license plate images.
+
+4. SIGNAGE REQUIREMENTS: Speed camera zones must be properly posted with warning signs. I request documentation that all required signage was in place and visible at the time of the alleged violation.
+
+5. SPEED LIMIT POSTING: I request verification that the speed limit was properly posted and that the camera was calibrated for the correct speed limit at this location.
+
+I request that this ticket be dismissed. Speed camera violations require accurate, calibrated equipment and proper signage, and without documentation of these requirements, dismissal is appropriate.`,
   },
   other_unknown: {
-    type: 'general_contest',
+    type: 'general_challenge',
     description: 'Other/Unknown Violation (General Template)',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date}.
 
-I am requesting a hearing to present evidence and review the circumstances of this citation. I would like the opportunity to present any relevant documentation and have this ticket reviewed.
+I respectfully request that this citation be DISMISSED for the following reasons:
 
-I respectfully request that this ticket be reviewed and dismissed if appropriate, or that a hearing be scheduled where I can present my case.`,
+1. BURDEN OF PROOF: The City bears the burden of proving the alleged violation occurred. I request all documentation, photographs, and evidence supporting this citation.
+
+2. PROCEDURAL REQUIREMENTS: Under Chicago Municipal Code, parking violations must be properly documented at the time of citation. I request verification that all procedural requirements were followed.
+
+3. SIGNAGE COMPLIANCE: If this violation relates to posted restrictions, I request photographs documenting that all required signage was properly posted, visible, and unambiguous at the time of the alleged violation.
+
+4. EVIDENCE REQUEST: I request copies of any photographs taken, officer notes, and all other documentation related to this citation.
+
+I request that this ticket be dismissed. Without adequate documentation supporting the alleged violation, dismissal is the appropriate remedy.`,
   },
 };
 
