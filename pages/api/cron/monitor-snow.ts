@@ -91,7 +91,26 @@ export default async function handler(
         .eq('event_date', today)
         .single();
 
-      if (!existingEvent) {
+      // Also check for recent active events from yesterday that may be the same storm
+      // This prevents duplicate notifications when a storm spans midnight
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+      const { data: recentEvent } = await supabaseAdmin
+        .from('snow_events')
+        .select('*')
+        .eq('event_date', yesterdayStr)
+        .eq('is_active', true)
+        .eq('forecast_sent', true)
+        .single();
+
+      // If there's a recent event from yesterday with the same forecast period,
+      // don't create a new one - it's the same storm
+      const isSameStorm = recentEvent &&
+        recentEvent.metadata?.forecast_period === snowData.forecastPeriod;
+
+      if (!existingEvent && !isSameStorm) {
         // Create new snow event
         const { data: newEvent, error: insertError } = await supabaseAdmin
           .from('snow_events')
@@ -118,6 +137,23 @@ export default async function handler(
           snowCheckResult.event = newEvent;
           snowCheckResult.needsNotification = true;
         }
+      } else if (isSameStorm && !existingEvent) {
+        // Same storm from yesterday - update yesterday's event but don't send new notification
+        console.log('Same storm continues from yesterday - skipping duplicate notification');
+        await supabaseAdmin
+          .from('snow_events')
+          .update({
+            metadata: {
+              ...recentEvent.metadata,
+              continues_to_date: today,
+              latest_check_at: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', recentEvent.id);
+
+        snowCheckResult.event = recentEvent;
+        snowCheckResult.needsNotification = false; // Already notified yesterday
       } else {
         // Update existing event
         await supabaseAdmin
