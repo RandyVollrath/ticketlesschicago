@@ -45,7 +45,7 @@ export default function Success() {
             Your vehicle compliance reminders are now active. We'll notify you before each renewal deadline.
           </p>
 
-          {/* Important Action Required */}
+          {/* Important Action Required - Mailing Address */}
           <div style={{
             backgroundColor: '#fee2e2',
             padding: '20px',
@@ -55,7 +55,7 @@ export default function Success() {
             border: '2px solid #fca5a5'
           }}>
             <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#991b1b' }}>
-              ⚠️ Action Required: Add Your Renewal Dates
+              ⚠️ Required: Add Your Mailing Address
             </h3>
             <p style={{
               margin: '0 0 12px 0',
@@ -63,16 +63,15 @@ export default function Success() {
               color: '#991b1b',
               lineHeight: '1.6'
             }}>
-              To ensure we file your renewals on time, please add your city sticker and license plate expiration dates in your account settings.
+              <strong>We need your mailing address</strong> to send contest letters on your behalf. This is required for automatic ticket contesting to work.
             </p>
             <p style={{
               margin: '0 0 12px 0',
               fontSize: '14px',
               color: '#991b1b',
-              lineHeight: '1.6',
-              fontStyle: 'italic'
+              lineHeight: '1.6'
             }}>
-              💡 <strong>Tip:</strong> Search your email for "city sticker" or "license plate renewal" to find your expiration dates.
+              Also add your renewal dates (city sticker, license plate) so we can send you timely reminders.
             </p>
             <a
               href="/settings"
@@ -88,7 +87,7 @@ export default function Success() {
                 marginTop: '8px'
               }}
             >
-              Add Dates Now →
+              Complete Your Profile →
             </a>
           </div>
 

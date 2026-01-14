@@ -153,8 +153,9 @@ export default function DashboardPage() {
   const [nextCheckDate, setNextCheckDate] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    // Redirect to settings page which has Dashboard + Settings as equal tabs
+    router.replace('/settings');
+  }, [router]);
 
   const loadData = async () => {
     const { data: { session } } = await supabase.auth.getSession();

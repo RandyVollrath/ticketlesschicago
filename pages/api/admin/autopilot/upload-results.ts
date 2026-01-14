@@ -382,40 +382,7 @@ I respectfully request that this citation be DISMISSED for the following reasons
 
 I request that this ticket be dismissed. Fire hydrant violations require accurate distance measurement, and without documented evidence of the actual distance, dismissal is appropriate.`,
   },
-  red_light: {
-    type: 'camera_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a red light camera violation.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. CAMERA CERTIFICATION: Illinois law requires red light cameras to be properly calibrated and certified. I request documentation of the camera's calibration and certification status at the time of the alleged violation.
-
-2. YELLOW LIGHT TIMING: Federal guidelines recommend minimum yellow light intervals based on speed limits. I request documentation of the yellow light duration at this intersection and verification that it meets applicable standards.
-
-3. VEHICLE IDENTIFICATION: I request the photographs and/or video evidence showing that my vehicle (not another vehicle) committed the alleged violation, including clear images of the license plate and vehicle position.
-
-4. INTERSECTION ENTRY: A violation occurs only if the vehicle enters the intersection after the light turns red. If the vehicle entered during yellow and cleared during red, no violation occurred. I request frame-by-frame documentation showing when my vehicle entered the intersection relative to the light change.
-
-I request that this ticket be dismissed. Without clear photographic evidence and documentation of proper camera operation, dismissal is appropriate.`,
-  },
-  speed_camera: {
-    type: 'speed_camera_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a speed camera violation.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. CAMERA CALIBRATION: Speed cameras must be regularly calibrated to ensure accuracy. I request documentation of the camera's calibration records and certification status at the time of the alleged violation.
-
-2. SPEED MEASUREMENT ACCURACY: I request documentation of the methodology used to determine vehicle speed, including any margin of error in the measurement system.
-
-3. VEHICLE IDENTIFICATION: I request photographic evidence clearly identifying my vehicle as the one allegedly speeding, including legible license plate images.
-
-4. SIGNAGE REQUIREMENTS: Speed camera zones must be properly posted with warning signs. I request documentation that all required signage was in place and visible at the time of the alleged violation.
-
-5. SPEED LIMIT POSTING: I request verification that the speed limit was properly posted and that the camera was calibrated for the correct speed limit at this location.
-
-I request that this ticket be dismissed. Speed camera violations require accurate, calibrated equipment and proper signage, and without documentation of these requirements, dismissal is appropriate.`,
-  },
+  // Note: Red light camera and speed camera tickets excluded due to legal complexity
   other_unknown: {
     type: 'general_challenge',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date}.
