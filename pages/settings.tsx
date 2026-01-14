@@ -704,7 +704,7 @@ export default function SettingsPage() {
   const [emailOnApprovalNeeded, setEmailOnApprovalNeeded] = useState(true);
 
   // Dashboard Tab State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'settings'>('settings');
   const [dashboardTickets, setDashboardTickets] = useState<DashboardTicket[]>([]);
   const [platesMonitored, setPlatesMonitored] = useState(0);
   const [nextCheckDate, setNextCheckDate] = useState('');
