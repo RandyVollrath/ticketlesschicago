@@ -4374,6 +4374,139 @@ export type Database = {
         }
         Relationships: []
       }
+      parking_location_history: {
+        Row: {
+          id: string
+          user_id: string
+          latitude: number
+          longitude: number
+          address: string | null
+          on_winter_ban_street: boolean | null
+          winter_ban_street_name: string | null
+          on_snow_route: boolean | null
+          snow_route_name: string | null
+          street_cleaning_date: string | null
+          street_cleaning_ward: string | null
+          street_cleaning_section: string | null
+          permit_zone: string | null
+          permit_restriction_schedule: string | null
+          parked_at: string
+          cleared_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          latitude: number
+          longitude: number
+          address?: string | null
+          on_winter_ban_street?: boolean | null
+          winter_ban_street_name?: string | null
+          on_snow_route?: boolean | null
+          snow_route_name?: string | null
+          street_cleaning_date?: string | null
+          street_cleaning_ward?: string | null
+          street_cleaning_section?: string | null
+          permit_zone?: string | null
+          permit_restriction_schedule?: string | null
+          parked_at?: string
+          cleared_at?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          latitude?: number
+          longitude?: number
+          address?: string | null
+          on_winter_ban_street?: boolean | null
+          winter_ban_street_name?: string | null
+          on_snow_route?: boolean | null
+          snow_route_name?: string | null
+          street_cleaning_date?: string | null
+          street_cleaning_ward?: string | null
+          street_cleaning_section?: string | null
+          permit_zone?: string | null
+          permit_restriction_schedule?: string | null
+          parked_at?: string
+          cleared_at?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parking_location_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      saved_parking_locations: {
+        Row: {
+          id: string
+          user_id: string
+          latitude: number
+          longitude: number
+          address: string | null
+          nickname: string
+          icon: string | null
+          color: string | null
+          notify_on_arrival: boolean | null
+          has_restrictions: boolean | null
+          restriction_summary: string | null
+          last_restriction_check: string | null
+          times_parked: number | null
+          last_parked_at: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          latitude: number
+          longitude: number
+          address?: string | null
+          nickname: string
+          icon?: string | null
+          color?: string | null
+          notify_on_arrival?: boolean | null
+          has_restrictions?: boolean | null
+          restriction_summary?: string | null
+          last_restriction_check?: string | null
+          times_parked?: number | null
+          last_parked_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          latitude?: number
+          longitude?: number
+          address?: string | null
+          nickname?: string
+          icon?: string | null
+          color?: string | null
+          notify_on_arrival?: boolean | null
+          has_restrictions?: boolean | null
+          restriction_summary?: string | null
+          last_restriction_check?: string | null
+          times_parked?: number | null
+          last_parked_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_parking_locations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       contest_method_win_rates: {

@@ -7,6 +7,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default async function handler(
   req: NextApiRequest,
@@ -46,6 +47,32 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to clear parked location' });
     }
 
+    // Update parking history with cleared_at timestamp
+    // First find the most recent history record without a cleared_at
+    const clearedAt = new Date().toISOString();
+    const { data: recentHistory, error: fetchError } = await supabaseAdmin
+      .from('parking_location_history')
+      .select('id')
+      .eq('user_id', user.id)
+      .is('cleared_at', null)
+      .order('parked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error fetching parking history for clear:', fetchError);
+    } else if (recentHistory) {
+      // Update only that specific record
+      const { error: historyError } = await supabaseAdmin
+        .from('parking_location_history')
+        .update({ cleared_at: clearedAt })
+        .eq('id', recentHistory.id);
+
+      if (historyError) {
+        console.error('Error updating parking history cleared_at:', historyError);
+      }
+    }
+
     console.log(`Cleared parked location for user ${user.id}`);
 
     return res.status(200).json({
@@ -55,6 +82,6 @@ export default async function handler(
 
   } catch (error) {
     console.error('Error in clear-parked-location:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
