@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import { checkWeatherDefense } from '../../../lib/weather-service';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -203,8 +204,10 @@ I have attached documentation of my valid disability parking authorization.
 I respectfully request that this ticket be dismissed.`,
   },
   street_cleaning: {
-    type: 'signage_issue',
+    type: 'weather_and_signage',
     template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
+
+{weather_defense}
 
 I believe the signage indicating street cleaning restrictions at this location was either missing, obscured, damaged, or contradictory. I made a good faith effort to comply with posted regulations but the signage was not clear.
 
@@ -350,7 +353,8 @@ async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string
 function generateLetterContent(
   ticket: DetectedTicket,
   profile: UserProfile,
-  template: { type: string; template: string }
+  template: { type: string; template: string },
+  weatherDefense?: string | null
 ): string {
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -381,6 +385,15 @@ function generateLetterContent(
     .replace(/{location}/g, ticket.location || 'the cited location')
     .replace(/{plate}/g, ticket.plate)
     .replace(/{state}/g, ticket.state);
+
+  // Replace weather defense placeholder
+  if (weatherDefense) {
+    content = content.replace(/{weather_defense}/g, weatherDefense);
+  } else {
+    // Remove the weather defense placeholder and any extra blank lines if no weather defense
+    content = content.replace(/{weather_defense}\n\n/g, '');
+    content = content.replace(/{weather_defense}/g, '');
+  }
 
   // Build full letter
   const fullLetter = `${today}
@@ -477,8 +490,26 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   // Get the appropriate template
   const template = DEFENSE_TEMPLATES[ticket.violation_type] || DEFENSE_TEMPLATES.other_unknown;
 
+  // Check for weather defense (for street cleaning tickets)
+  let weatherDefenseParagraph: string | null = null;
+  if (ticket.violation_type === 'street_cleaning' && ticket.violation_date) {
+    try {
+      console.log(`    Checking weather for ${ticket.violation_date}...`);
+      const weatherResult = await checkWeatherDefense(ticket.violation_date, 'street_cleaning');
+      if (weatherResult.canUseWeatherDefense) {
+        weatherDefenseParagraph = weatherResult.defenseParagraph;
+        console.log(`    Weather defense available: ${weatherResult.weatherData.weatherDescription}`);
+      } else {
+        console.log(`    No weather defense: ${weatherResult.weatherData.weatherDescription}`);
+      }
+    } catch (weatherError) {
+      console.log(`    Weather check failed: ${weatherError}`);
+      // Continue without weather defense
+    }
+  }
+
   // Generate letter content
-  const letterContent = generateLetterContent(ticket, profile as UserProfile, template);
+  const letterContent = generateLetterContent(ticket, profile as UserProfile, template, weatherDefenseParagraph);
 
   // Insert letter record
   const { data: letter, error: letterError } = await supabaseAdmin
@@ -519,6 +550,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
         defense_type: template.type,
         needs_approval: needsApproval,
         reason: skipReason || 'Auto-generated',
+        weather_defense_used: !!weatherDefenseParagraph,
       },
       performed_by: 'autopilot_cron',
     });
