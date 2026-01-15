@@ -89,20 +89,37 @@ export default {
 };
 
 /**
- * Convert ReadableStream to string
+ * Convert ReadableStream to ArrayBuffer then to string using Latin-1 encoding
+ * This preserves binary data (like image attachments) that would be corrupted by UTF-8
  */
 async function streamToString(stream) {
   const reader = stream.getReader();
-  const decoder = new TextDecoder();
-  let result = '';
+  const chunks = [];
+  let totalLength = 0;
 
+  // Read all chunks as raw bytes
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    result += decoder.decode(value, { stream: true });
+    chunks.push(value);
+    totalLength += value.length;
   }
 
-  result += decoder.decode(); // Flush remaining
+  // Combine all chunks into a single Uint8Array
+  const combined = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  // Convert to string using Latin-1 (ISO-8859-1) which preserves all byte values 0-255
+  // This is critical for binary attachments - UTF-8 would corrupt them
+  let result = '';
+  for (let i = 0; i < combined.length; i++) {
+    result += String.fromCharCode(combined[i]);
+  }
+
   return result;
 }
 
