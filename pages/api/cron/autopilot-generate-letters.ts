@@ -396,10 +396,9 @@ function generateLetterContent(
   }
 
   // Build full letter
+  // Note: Lob automatically adds sender address as return address, so we don't include it in the body
+  // This keeps the letter to one page
   const fullLetter = `${today}
-
-${profile.full_name || 'Vehicle Owner'}
-${addressLines.join('\n')}
 
 City of Chicago
 Department of Finance
@@ -420,8 +419,7 @@ Thank you for your consideration of this matter.
 
 Sincerely,
 
-${profile.full_name || 'Vehicle Owner'}
-${addressLines.join('\n')}`;
+${profile.full_name || 'Vehicle Owner'}`;
 
   return fullLetter;
 }
