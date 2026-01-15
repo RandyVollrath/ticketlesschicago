@@ -485,40 +485,112 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       for (const attachment of attachments) {
         try {
-          const filename = attachment.filename || 'attachment';
-          const contentType = attachment.content_type || 'application/octet-stream';
-          const encoding = attachment.encoding || 'base64';
+          const filename = attachment.filename || attachment.name || 'attachment';
+          const contentType = attachment.content_type || attachment.contentType || attachment.type || 'application/octet-stream';
+          const encoding = attachment.encoding || attachment.content_transfer_encoding || 'base64';
 
-          console.log(`Processing attachment: ${filename}, encoding: ${encoding}, content length: ${attachment.content?.length || 0}`);
+          // Log all attachment properties for debugging
+          console.log(`Processing attachment: ${filename}`);
+          console.log(`  - contentType: ${contentType}`);
+          console.log(`  - encoding: ${encoding}`);
+          console.log(`  - has content: ${!!attachment.content}`);
+          console.log(`  - content length: ${attachment.content?.length || 0}`);
+          console.log(`  - has url: ${!!attachment.url}`);
+          console.log(`  - has data: ${!!attachment.data}`);
+          console.log(`  - attachment keys: ${Object.keys(attachment).join(', ')}`);
 
-          let buffer: Buffer;
-          if (encoding === 'base64') {
-            // Remove any whitespace from base64 content
-            const cleanBase64 = (attachment.content || '').replace(/\s/g, '');
-            buffer = Buffer.from(cleanBase64, 'base64');
-          } else {
-            // Assume text encoding
-            buffer = Buffer.from(attachment.content || '', 'utf-8');
+          let buffer: Buffer | null = null;
+
+          // Method 1: If attachment has a URL, fetch the content from it
+          if (attachment.url) {
+            console.log(`  Fetching attachment from URL: ${attachment.url}`);
+            try {
+              const response = await fetch(attachment.url);
+              if (response.ok) {
+                const arrayBuffer = await response.arrayBuffer();
+                buffer = Buffer.from(arrayBuffer);
+                console.log(`  Fetched ${buffer.length} bytes from URL`);
+              } else {
+                console.error(`  Failed to fetch URL: ${response.status}`);
+              }
+            } catch (fetchErr: any) {
+              console.error(`  Error fetching URL: ${fetchErr.message}`);
+            }
           }
 
-          // Skip empty attachments
-          if (buffer.length === 0) {
-            console.log(`Skipping empty attachment: ${filename}`);
+          // Method 2: If attachment has content (base64 or raw)
+          if (!buffer && attachment.content) {
+            const content = attachment.content;
+
+            if (encoding === 'base64' || typeof content === 'string') {
+              // Try base64 decoding
+              // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+              let base64Data = content;
+              if (typeof base64Data === 'string') {
+                const dataUrlMatch = base64Data.match(/^data:[^;]+;base64,(.+)$/);
+                if (dataUrlMatch) {
+                  base64Data = dataUrlMatch[1];
+                }
+                // Remove whitespace and newlines
+                base64Data = base64Data.replace(/[\s\r\n]/g, '');
+              }
+
+              buffer = Buffer.from(base64Data, 'base64');
+              console.log(`  Decoded base64 content: ${buffer.length} bytes`);
+
+              // Verify it's valid binary (not just the string re-encoded)
+              if (buffer.length < 100 && content.length > 1000) {
+                console.log(`  Warning: base64 decode may have failed, trying raw buffer`);
+                buffer = Buffer.from(content);
+              }
+            } else if (Buffer.isBuffer(content)) {
+              buffer = content;
+              console.log(`  Content is already a Buffer: ${buffer.length} bytes`);
+            } else if (content instanceof Uint8Array || content instanceof ArrayBuffer) {
+              buffer = Buffer.from(content);
+              console.log(`  Content is Uint8Array/ArrayBuffer: ${buffer.length} bytes`);
+            }
+          }
+
+          // Method 3: If attachment has 'data' field (alternative format)
+          if (!buffer && attachment.data) {
+            if (typeof attachment.data === 'string') {
+              const cleanData = attachment.data.replace(/[\s\r\n]/g, '');
+              buffer = Buffer.from(cleanData, 'base64');
+              console.log(`  Decoded data field: ${buffer.length} bytes`);
+            } else if (Buffer.isBuffer(attachment.data)) {
+              buffer = attachment.data;
+            }
+          }
+
+          // Skip if we couldn't get any content
+          if (!buffer || buffer.length === 0) {
+            console.log(`  Skipping empty/unparseable attachment: ${filename}`);
             continue;
           }
+
+          // Validate the buffer looks like an image (check magic bytes)
+          const isJpeg = buffer[0] === 0xFF && buffer[1] === 0xD8;
+          const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+          const isGif = buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46;
+          const isPdf = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
+
+          console.log(`  Buffer validation - JPEG: ${isJpeg}, PNG: ${isPng}, GIF: ${isGif}, PDF: ${isPdf}`);
+          console.log(`  First 20 bytes: ${buffer.slice(0, 20).toString('hex')}`);
 
           const timestamp = Date.now();
           const blobPath = `evidence/${user.id}/${ticket.id}/${timestamp}-${filename}`;
 
           const blob = await put(blobPath, buffer, {
-            access: 'public', // Changed to public so we can view/download
+            access: 'public',
             contentType: contentType,
           });
 
           attachmentUrls.push(blob.url);
-          console.log(`Uploaded evidence attachment: ${filename} (${buffer.length} bytes) -> ${blob.url}`);
+          console.log(`  Uploaded: ${filename} (${buffer.length} bytes) -> ${blob.url}`);
         } catch (uploadErr: any) {
           console.error(`Failed to upload attachment ${attachment.filename}:`, uploadErr.message || uploadErr);
+          console.error(`  Stack:`, uploadErr.stack);
         }
       }
 
