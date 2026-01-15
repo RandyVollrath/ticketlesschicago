@@ -500,20 +500,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const ticketNumber = (letter as any).detected_tickets?.ticket_number || 'Unknown';
 
       // Extract evidence image URLs from user_evidence JSON
+      // Note: user_evidence is stored as a text string, not JSONB, so we need to parse it
       let evidenceImages: string[] = [];
-      const userEvidence = (letter as any).detected_tickets?.user_evidence as EvidenceData | null;
-      if (userEvidence?.attachment_urls && Array.isArray(userEvidence.attachment_urls)) {
-        // Filter to only include image URLs (not PDFs or other files)
-        evidenceImages = userEvidence.attachment_urls.filter((url: string) => {
-          const lowerUrl = url.toLowerCase();
-          return lowerUrl.includes('.jpg') ||
-                 lowerUrl.includes('.jpeg') ||
-                 lowerUrl.includes('.png') ||
-                 lowerUrl.includes('.gif') ||
-                 lowerUrl.includes('.webp') ||
-                 // Vercel Blob URLs don't have extensions, check content type hints
-                 lowerUrl.includes('image');
-        });
+      const userEvidenceRaw = (letter as any).detected_tickets?.user_evidence;
+      if (userEvidenceRaw) {
+        try {
+          const userEvidence: EvidenceData = typeof userEvidenceRaw === 'string'
+            ? JSON.parse(userEvidenceRaw)
+            : userEvidenceRaw;
+
+          if (userEvidence?.attachment_urls && Array.isArray(userEvidence.attachment_urls)) {
+            // Filter to only include image URLs (not PDFs or other files)
+            evidenceImages = userEvidence.attachment_urls.filter((url: string) => {
+              const lowerUrl = url.toLowerCase();
+              return lowerUrl.includes('.jpg') ||
+                     lowerUrl.includes('.jpeg') ||
+                     lowerUrl.includes('.png') ||
+                     lowerUrl.includes('.gif') ||
+                     lowerUrl.includes('.webp') ||
+                     // Vercel Blob URLs don't have extensions, check content type hints
+                     lowerUrl.includes('image');
+            });
+            console.log(`    Found ${evidenceImages.length} evidence image(s) to include`);
+          }
+        } catch (parseError) {
+          console.error('    Failed to parse user_evidence JSON:', parseError);
+        }
       }
 
       const result = await mailLetter(

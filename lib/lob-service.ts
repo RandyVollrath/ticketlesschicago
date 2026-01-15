@@ -146,8 +146,18 @@ export function formatLetterAsHTML(
 ): string {
   const { signatureImage, evidenceImages } = options || {};
 
+  // Clean up the letter text - remove leading/trailing delimiters and whitespace
+  let cleanedText = letterText.trim();
+  // Remove markdown-style delimiters that AI might add
+  if (cleanedText.startsWith('---')) {
+    cleanedText = cleanedText.replace(/^---\s*\n?/, '');
+  }
+  if (cleanedText.endsWith('---')) {
+    cleanedText = cleanedText.replace(/\n?---\s*$/, '');
+  }
+
   // Escape HTML entities
-  const escaped = letterText
+  const escaped = cleanedText
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
@@ -192,12 +202,15 @@ export function formatLetterAsHTML(
   <style>
     body {
       font-family: Arial, sans-serif;
-      font-size: 12pt;
-      line-height: 1.5;
-      margin: 1in;
+      font-size: 11pt;
+      line-height: 1.3;
+      margin: 0.75in 0.75in 0.5in 0.75in;
     }
     @media print {
       img { max-width: 100%; height: auto; }
+    }
+    @page {
+      margin: 0.5in;
     }
   </style>
 </head>
