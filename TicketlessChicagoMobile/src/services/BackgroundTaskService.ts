@@ -24,6 +24,7 @@ const log = Logger.createLogger('BackgroundTaskService');
 const BACKGROUND_TASK_ID = 'ticketless-parking-check';
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const MIN_DISCONNECT_DURATION_MS = 30 * 1000; // 30 seconds (to avoid false positives)
+const DEPARTURE_CONFIRMATION_DELAY_MS = 120 * 1000; // 2 minutes after car starts
 
 interface BackgroundTaskState {
   isInitialized: boolean;
@@ -31,6 +32,12 @@ interface BackgroundTaskState {
   lastCarConnectionStatus: boolean;
   lastDisconnectTime: number | null;
   lastParkingCheckTime: number | null;
+  // Departure tracking
+  pendingDepartureConfirmation: {
+    parkingHistoryId: string;
+    parkedLocation: { latitude: number; longitude: number };
+    clearedAt: string;
+  } | null;
 }
 
 class BackgroundTaskServiceClass {
@@ -40,11 +47,14 @@ class BackgroundTaskServiceClass {
     lastCarConnectionStatus: false,
     lastDisconnectTime: null,
     lastParkingCheckTime: null,
+    pendingDepartureConfirmation: null,
   };
 
   private appStateSubscription: any = null;
   private monitoringInterval: ReturnType<typeof setInterval> | null = null;
   private disconnectCallback: (() => void) | null = null;
+  private reconnectCallback: (() => void) | null = null;
+  private departureConfirmationTimeout: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Initialize the background task service
@@ -90,9 +100,12 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Start monitoring for car disconnection
+   * Start monitoring for car disconnection and reconnection
    */
-  async startMonitoring(onDisconnect?: () => void): Promise<boolean> {
+  async startMonitoring(
+    onDisconnect?: () => void,
+    onReconnect?: () => void
+  ): Promise<boolean> {
     try {
       const savedDevice = await BluetoothService.getSavedCarDevice();
       if (!savedDevice) {
@@ -109,6 +122,7 @@ class BackgroundTaskServiceClass {
       }
 
       this.disconnectCallback = onDisconnect || null;
+      this.reconnectCallback = onReconnect || null;
       this.state.isMonitoring = true;
       this.state.lastCarConnectionStatus = true; // Assume connected at start
 
@@ -136,7 +150,14 @@ class BackgroundTaskServiceClass {
     // Stop Bluetooth monitoring
     BluetoothService.stopMonitoring();
 
+    // Clear departure confirmation timeout
+    if (this.departureConfirmationTimeout) {
+      clearTimeout(this.departureConfirmationTimeout);
+      this.departureConfirmationTimeout = null;
+    }
+
     this.disconnectCallback = null;
+    this.reconnectCallback = null;
     await this.saveState();
     log.info('Monitoring stopped');
   }
@@ -397,6 +418,7 @@ class BackgroundTaskServiceClass {
         lastDisconnectTime: this.state.lastDisconnectTime,
         lastParkingCheckTime: this.state.lastParkingCheckTime,
         isInitialized: this.state.isInitialized,
+        pendingDepartureConfirmation: this.state.pendingDepartureConfirmation,
       }));
     } catch (error) {
       log.error('Error saving background task state', error);
@@ -427,12 +449,152 @@ class BackgroundTaskServiceClass {
 
   /**
    * Mark car as reconnected (user feedback or detection)
+   * This triggers the clear parked location API and schedules departure confirmation
    */
   async markCarReconnected(): Promise<void> {
+    log.info('Car reconnection detected');
+
     this.state.lastCarConnectionStatus = true;
     this.state.lastDisconnectTime = null;
     await this.saveState();
-    log.info('Car marked as reconnected');
+
+    // Call the reconnect callback if provided
+    if (this.reconnectCallback) {
+      this.reconnectCallback();
+    }
+
+    // Clear the parked location and get history ID for departure confirmation
+    try {
+      const response = await LocationService.clearParkedLocation();
+
+      if (response.parking_history_id && response.parked_location) {
+        log.info('Parked location cleared, scheduling departure confirmation', {
+          historyId: response.parking_history_id,
+          delayMs: DEPARTURE_CONFIRMATION_DELAY_MS,
+        });
+
+        // Store pending departure confirmation
+        this.state.pendingDepartureConfirmation = {
+          parkingHistoryId: response.parking_history_id,
+          parkedLocation: response.parked_location,
+          clearedAt: response.cleared_at,
+        };
+        await this.saveState();
+
+        // Schedule departure confirmation after delay
+        this.scheduleDepartureConfirmation();
+      }
+    } catch (error) {
+      log.error('Failed to clear parked location on reconnect', error);
+    }
+  }
+
+  /**
+   * Schedule departure confirmation after a delay
+   * This captures the user's location ~2 minutes after leaving to prove they left
+   */
+  private scheduleDepartureConfirmation(): void {
+    // Clear any existing timeout
+    if (this.departureConfirmationTimeout) {
+      clearTimeout(this.departureConfirmationTimeout);
+    }
+
+    this.departureConfirmationTimeout = setTimeout(async () => {
+      await this.confirmDeparture();
+    }, DEPARTURE_CONFIRMATION_DELAY_MS);
+
+    log.info(`Departure confirmation scheduled in ${DEPARTURE_CONFIRMATION_DELAY_MS / 1000}s`);
+  }
+
+  /**
+   * Confirm departure by capturing current location
+   * This proves the user was no longer at their parking spot at this time
+   */
+  private async confirmDeparture(): Promise<void> {
+    if (!this.state.pendingDepartureConfirmation) {
+      log.debug('No pending departure confirmation');
+      return;
+    }
+
+    try {
+      log.info('Confirming departure...');
+
+      // Get current location with high accuracy
+      let coords;
+      try {
+        coords = await LocationService.getHighAccuracyLocation(30, 20000);
+        log.info(`Got departure location: ${coords.accuracy?.toFixed(1)}m accuracy`);
+      } catch (error) {
+        log.warn('High accuracy location failed for departure, trying fallback', error);
+        coords = await LocationService.getLocationWithRetry(3);
+      }
+
+      // Call the confirm-departure API
+      const result = await LocationService.confirmDeparture(
+        this.state.pendingDepartureConfirmation.parkingHistoryId,
+        coords.latitude,
+        coords.longitude,
+        coords.accuracy
+      );
+
+      log.info('Departure confirmed:', {
+        distance: result.distance_from_parked_meters,
+        isConclusive: result.is_conclusive,
+      });
+
+      // Clear pending confirmation
+      this.state.pendingDepartureConfirmation = null;
+      await this.saveState();
+
+      // Notify user if departure is conclusive
+      if (result.is_conclusive) {
+        await this.sendDepartureConfirmedNotification(result.distance_from_parked_meters);
+      }
+    } catch (error) {
+      log.error('Failed to confirm departure', error);
+      // Keep the pending confirmation for retry later
+    }
+  }
+
+  /**
+   * Send notification that departure was confirmed
+   */
+  private async sendDepartureConfirmedNotification(distanceMeters: number): Promise<void> {
+    await notifee.displayNotification({
+      title: 'Departure Recorded',
+      body: `Your departure has been recorded. You moved ${distanceMeters}m from your parking spot. This can be used as evidence if needed.`,
+      android: {
+        channelId: 'parking-monitoring',
+        pressAction: { id: 'default' },
+      },
+      ios: {
+        sound: 'default',
+      },
+    });
+  }
+
+  /**
+   * Manually trigger departure confirmation (if auto failed)
+   */
+  async manualDepartureConfirmation(): Promise<{ success: boolean; distance?: number }> {
+    if (!this.state.pendingDepartureConfirmation) {
+      return { success: false };
+    }
+
+    try {
+      await this.confirmDeparture();
+      return { success: true };
+    } catch (error) {
+      log.error('Manual departure confirmation failed', error);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Check if there's a pending departure confirmation
+   */
+  hasPendingDepartureConfirmation(): boolean {
+    return this.state.pendingDepartureConfirmation !== null;
   }
 
   /**

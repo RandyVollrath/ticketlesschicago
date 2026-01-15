@@ -608,6 +608,100 @@ class LocationServiceClass {
     }
   }
 
+  /**
+   * Clear parked location when user leaves (car reconnects)
+   * Returns the parking history ID needed for departure confirmation
+   */
+  async clearParkedLocation(): Promise<{
+    success: boolean;
+    parking_history_id: string | null;
+    cleared_at: string;
+    parked_location: { latitude: number; longitude: number; address: string | null } | null;
+    departure_confirmation_delay_ms: number;
+  }> {
+    try {
+      const response = await ApiClient.post<any>('/api/mobile/clear-parked-location', {}, {
+        retries: 2,
+        timeout: 15000,
+        showErrorAlert: false,
+      });
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to clear parked location');
+      }
+
+      log.info('Parked location cleared', {
+        historyId: response.data.parking_history_id,
+        clearedAt: response.data.cleared_at,
+      });
+
+      return {
+        success: true,
+        parking_history_id: response.data.parking_history_id || null,
+        cleared_at: response.data.cleared_at,
+        parked_location: response.data.parked_location || null,
+        departure_confirmation_delay_ms: response.data.departure_confirmation_delay_ms || 120000,
+      };
+    } catch (error) {
+      log.error('Error clearing parked location', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Confirm departure from parking spot
+   * This proves the user was no longer at their parking spot at a specific time
+   * Used as evidence for contesting tickets with erroneous timestamps
+   */
+  async confirmDeparture(
+    parkingHistoryId: string,
+    latitude: number,
+    longitude: number,
+    accuracyMeters?: number
+  ): Promise<{
+    parking_history_id: string;
+    parked_at: string;
+    cleared_at: string;
+    departure_confirmed_at: string;
+    distance_from_parked_meters: number;
+    is_conclusive: boolean;
+  }> {
+    try {
+      const response = await ApiClient.post<any>('/api/mobile/confirm-departure', {
+        parking_history_id: parkingHistoryId,
+        latitude,
+        longitude,
+        accuracy_meters: accuracyMeters,
+      }, {
+        retries: 2,
+        timeout: 15000,
+        showErrorAlert: false,
+      });
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to confirm departure');
+      }
+
+      log.info('Departure confirmed', {
+        historyId: response.data.data.parking_history_id,
+        distance: response.data.data.distance_from_parked_meters,
+        isConclusive: response.data.data.is_conclusive,
+      });
+
+      return {
+        parking_history_id: response.data.data.parking_history_id,
+        parked_at: response.data.data.parked_at,
+        cleared_at: response.data.data.cleared_at,
+        departure_confirmed_at: response.data.data.departure_confirmed_at,
+        distance_from_parked_meters: response.data.data.distance_from_parked_meters,
+        is_conclusive: response.data.data.is_conclusive,
+      };
+    } catch (error) {
+      log.error('Error confirming departure', error);
+      throw error;
+    }
+  }
+
   async sendParkingAlert(rules: ParkingRule[]): Promise<void> {
     try {
       // Request notification permission and check if granted

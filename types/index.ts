@@ -84,6 +84,12 @@ export interface ParkingLocationHistory {
   permit_restriction_schedule: string | null;
   parked_at: string;
   cleared_at: string | null;
+  // Departure tracking - proves user left parking spot at specific time
+  departure_latitude: number | null;
+  departure_longitude: number | null;
+  departure_confirmed_at: string | null;
+  departure_accuracy_meters: number | null;
+  departure_distance_meters: number | null;
   created_at: string;
 }
 
