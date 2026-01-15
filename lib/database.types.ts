@@ -4392,6 +4392,11 @@ export type Database = {
           permit_restriction_schedule: string | null
           parked_at: string
           cleared_at: string | null
+          departure_latitude: number | null
+          departure_longitude: number | null
+          departure_confirmed_at: string | null
+          departure_accuracy_meters: number | null
+          departure_distance_meters: number | null
           created_at: string | null
         }
         Insert: {
@@ -4411,6 +4416,11 @@ export type Database = {
           permit_restriction_schedule?: string | null
           parked_at?: string
           cleared_at?: string | null
+          departure_latitude?: number | null
+          departure_longitude?: number | null
+          departure_confirmed_at?: string | null
+          departure_accuracy_meters?: number | null
+          departure_distance_meters?: number | null
           created_at?: string | null
         }
         Update: {
@@ -4430,6 +4440,11 @@ export type Database = {
           permit_restriction_schedule?: string | null
           parked_at?: string
           cleared_at?: string | null
+          departure_latitude?: number | null
+          departure_longitude?: number | null
+          departure_confirmed_at?: string | null
+          departure_accuracy_meters?: number | null
+          departure_distance_meters?: number | null
           created_at?: string | null
         }
         Relationships: [
