@@ -95,6 +95,7 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
         file: letterContent, // HTML string
         color: false, // Black & white printing (cheaper)
         double_sided: false,
+        use_type: 'operational', // Required by Lob - operational for transactional mail like contest letters
         metadata: metadata || {}
       })
     });
@@ -264,6 +265,7 @@ export async function sendPropertyTaxAppealLetter(
         double_sided: true, // Property tax appeals can be multi-page
         address_placement: 'top_first_page',
         extra_service: useCertifiedMail ? 'certified' : undefined,
+        use_type: 'operational', // Required by Lob - operational for transactional mail
         metadata: {
           appealId,
           pin,
