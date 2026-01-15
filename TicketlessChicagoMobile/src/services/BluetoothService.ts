@@ -17,8 +17,11 @@ const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
 
 class BluetoothServiceClass {
   private monitoringSubscription: any = null;
+  private reconnectSubscription: any = null;
   private disconnectCallback: (() => void) | null = null;
+  private reconnectCallback: (() => void) | null = null;
   private connectedDeviceId: string | null = null;
+  private savedDeviceId: string | null = null;
 
   async initialize(): Promise<void> {
     try {
@@ -152,7 +155,10 @@ class BluetoothServiceClass {
     }
   }
 
-  async monitorCarConnection(onDisconnect: () => void): Promise<void> {
+  async monitorCarConnection(
+    onDisconnect: () => void,
+    onReconnect?: () => void
+  ): Promise<void> {
     await this.initialize();
 
     const savedDevice = await this.getSavedCarDevice();
@@ -161,6 +167,8 @@ class BluetoothServiceClass {
     }
 
     this.disconnectCallback = onDisconnect;
+    this.reconnectCallback = onReconnect || null;
+    this.savedDeviceId = savedDevice.id;
 
     // Listen for disconnect events
     this.monitoringSubscription = bleManagerEmitter.addListener(
@@ -168,8 +176,23 @@ class BluetoothServiceClass {
       (data: any) => {
         if (data.peripheral === savedDevice.id) {
           log.info('Car disconnected', data.peripheral);
+          this.connectedDeviceId = null;
           if (this.disconnectCallback) {
             this.disconnectCallback();
+          }
+        }
+      }
+    );
+
+    // Listen for reconnection events (when device connects)
+    this.reconnectSubscription = bleManagerEmitter.addListener(
+      'BleManagerConnectPeripheral',
+      (data: any) => {
+        if (data.peripheral === savedDevice.id) {
+          log.info('Car reconnected', data.peripheral);
+          this.connectedDeviceId = savedDevice.id;
+          if (this.reconnectCallback) {
+            this.reconnectCallback();
           }
         }
       }
@@ -186,10 +209,22 @@ class BluetoothServiceClass {
     }
   }
 
+  /**
+   * Check if currently connected to the saved car device
+   */
+  isConnectedToCar(): boolean {
+    return this.connectedDeviceId !== null && this.connectedDeviceId === this.savedDeviceId;
+  }
+
   stopMonitoring(): void {
     if (this.monitoringSubscription) {
       this.monitoringSubscription.remove();
       this.monitoringSubscription = null;
+    }
+
+    if (this.reconnectSubscription) {
+      this.reconnectSubscription.remove();
+      this.reconnectSubscription = null;
     }
 
     if (this.connectedDeviceId) {
@@ -200,6 +235,8 @@ class BluetoothServiceClass {
     }
 
     this.disconnectCallback = null;
+    this.reconnectCallback = null;
+    this.savedDeviceId = null;
     log.debug('Bluetooth monitoring stopped');
   }
 }
