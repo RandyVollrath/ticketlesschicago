@@ -367,3 +367,218 @@ export async function getWeatherDetails() {
     throw error;
   }
 }
+
+/**
+ * Historical weather data for contesting tickets
+ */
+export interface HistoricalWeatherData {
+  date: string;
+  hasAdverseWeather: boolean;
+  weatherDescription: string;
+  temperature: number | null;
+  precipitation: number | null; // in inches
+  snowfall: number | null; // in inches
+  windSpeed: number | null;
+  conditions: string[];
+  defenseRelevant: boolean;
+  defenseReason: string | null;
+}
+
+/**
+ * Get historical weather for a specific date using Open-Meteo API (free, no API key)
+ * This is useful for contesting tickets - checking if weather was bad on violation date
+ *
+ * Open-Meteo provides historical weather data for free with no API key required
+ * https://open-meteo.com/en/docs/historical-weather-api
+ */
+export async function getHistoricalWeather(date: Date | string): Promise<HistoricalWeatherData> {
+  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const dateStr = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+  try {
+    // Open-Meteo historical weather API (free, no key required)
+    const url = `https://archive-api.open-meteo.com/v1/archive?` +
+      `latitude=${CHICAGO_LAT}&longitude=${CHICAGO_LON}` +
+      `&start_date=${dateStr}&end_date=${dateStr}` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,rain_sum,wind_speed_10m_max,weather_code` +
+      `&timezone=America/Chicago` +
+      `&temperature_unit=fahrenheit` +
+      `&precipitation_unit=inch`;
+
+    const response = await fetchWithTimeout(url, {}, REQUEST_TIMEOUT);
+
+    if (!response.ok) {
+      throw new Error(`Open-Meteo API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.daily || !data.daily.time || data.daily.time.length === 0) {
+      throw new Error('No historical data available for this date');
+    }
+
+    const daily = data.daily;
+    const weatherCode = daily.weather_code?.[0];
+    const precipitation = daily.precipitation_sum?.[0] || 0;
+    const snowfall = daily.snowfall_sum?.[0] || 0;
+    const rain = daily.rain_sum?.[0] || 0;
+    const tempMax = daily.temperature_2m_max?.[0];
+    const tempMin = daily.temperature_2m_min?.[0];
+    const windSpeed = daily.wind_speed_10m_max?.[0];
+
+    // WMO Weather interpretation codes
+    // https://open-meteo.com/en/docs
+    const weatherCodeDescriptions: Record<number, string> = {
+      0: 'Clear sky',
+      1: 'Mainly clear',
+      2: 'Partly cloudy',
+      3: 'Overcast',
+      45: 'Fog',
+      48: 'Depositing rime fog',
+      51: 'Light drizzle',
+      53: 'Moderate drizzle',
+      55: 'Dense drizzle',
+      56: 'Light freezing drizzle',
+      57: 'Dense freezing drizzle',
+      61: 'Slight rain',
+      63: 'Moderate rain',
+      65: 'Heavy rain',
+      66: 'Light freezing rain',
+      67: 'Heavy freezing rain',
+      71: 'Slight snow fall',
+      73: 'Moderate snow fall',
+      75: 'Heavy snow fall',
+      77: 'Snow grains',
+      80: 'Slight rain showers',
+      81: 'Moderate rain showers',
+      82: 'Violent rain showers',
+      85: 'Slight snow showers',
+      86: 'Heavy snow showers',
+      95: 'Thunderstorm',
+      96: 'Thunderstorm with slight hail',
+      99: 'Thunderstorm with heavy hail',
+    };
+
+    const weatherDescription = weatherCodeDescriptions[weatherCode] || `Weather code ${weatherCode}`;
+
+    // Determine conditions
+    const conditions: string[] = [];
+    if (snowfall > 0) conditions.push(`${snowfall.toFixed(1)}" snowfall`);
+    if (rain > 0.1) conditions.push(`${rain.toFixed(2)}" rain`);
+    if (weatherCode >= 56 && weatherCode <= 57) conditions.push('freezing drizzle');
+    if (weatherCode >= 66 && weatherCode <= 67) conditions.push('freezing rain');
+    if (weatherCode >= 71 && weatherCode <= 77) conditions.push('snow');
+    if (weatherCode >= 85 && weatherCode <= 86) conditions.push('snow showers');
+    if (tempMax !== null && tempMax < 32) conditions.push('below freezing');
+    if (windSpeed && windSpeed > 25) conditions.push(`high winds (${Math.round(windSpeed)} mph)`);
+
+    // Determine if weather is defense-relevant for street cleaning
+    // Chicago typically cancels street cleaning for:
+    // - Snow accumulation
+    // - Freezing rain/ice
+    // - Heavy rain that makes sweeping ineffective
+    // - Extreme cold (equipment issues)
+    let defenseRelevant = false;
+    let defenseReason: string | null = null;
+
+    if (snowfall >= 0.5) {
+      defenseRelevant = true;
+      defenseReason = `${snowfall.toFixed(1)} inches of snow fell on this date. Street cleaning is typically cancelled during snow events.`;
+    } else if (weatherCode >= 66 && weatherCode <= 67) {
+      defenseRelevant = true;
+      defenseReason = `Freezing rain was recorded on this date. Street cleaning is typically cancelled during icy conditions.`;
+    } else if (rain >= 0.5) {
+      defenseRelevant = true;
+      defenseReason = `${rain.toFixed(2)} inches of rain fell on this date. Heavy rain can cause street cleaning to be ineffective or cancelled.`;
+    } else if (tempMax !== null && tempMax < 25) {
+      defenseRelevant = true;
+      defenseReason = `The high temperature was only ${Math.round(tempMax)}°F. Extreme cold can cause street cleaning equipment issues and lead to cancellations.`;
+    } else if (weatherCode >= 56 && weatherCode <= 57) {
+      defenseRelevant = true;
+      defenseReason = `Freezing drizzle was recorded on this date, creating icy road conditions.`;
+    }
+
+    const hasAdverseWeather = defenseRelevant || snowfall > 0 || rain > 0.25 ||
+      (tempMax !== null && tempMax < 32) || (weatherCode >= 51 && weatherCode <= 99);
+
+    return {
+      date: dateStr,
+      hasAdverseWeather,
+      weatherDescription,
+      temperature: tempMax,
+      precipitation,
+      snowfall,
+      windSpeed,
+      conditions,
+      defenseRelevant,
+      defenseReason,
+    };
+
+  } catch (error) {
+    console.error('Error fetching historical weather:', error);
+
+    // Return a default response indicating we couldn't get data
+    return {
+      date: dateStr,
+      hasAdverseWeather: false,
+      weatherDescription: 'Weather data unavailable',
+      temperature: null,
+      precipitation: null,
+      snowfall: null,
+      windSpeed: null,
+      conditions: [],
+      defenseRelevant: false,
+      defenseReason: null,
+    };
+  }
+}
+
+/**
+ * Check if weather on a specific date could be used as a defense for a ticket
+ * Specifically useful for street cleaning tickets
+ */
+export async function checkWeatherDefense(
+  violationDate: Date | string,
+  violationType: string
+): Promise<{
+  canUseWeatherDefense: boolean;
+  weatherData: HistoricalWeatherData;
+  defenseParagraph: string | null;
+}> {
+  const weather = await getHistoricalWeather(violationDate);
+
+  // Only certain violation types can use weather as a defense
+  const weatherRelevantViolations = [
+    'street_cleaning',
+    'snow_route',
+    'winter_parking_ban',
+  ];
+
+  if (!weatherRelevantViolations.includes(violationType)) {
+    return {
+      canUseWeatherDefense: false,
+      weatherData: weather,
+      defenseParagraph: null,
+    };
+  }
+
+  if (!weather.defenseRelevant) {
+    return {
+      canUseWeatherDefense: false,
+      weatherData: weather,
+      defenseParagraph: null,
+    };
+  }
+
+  // Build a defense paragraph
+  const defenseParagraph = `Furthermore, according to historical weather records for Chicago on ${weather.date}, ${weather.defenseReason} ` +
+    `The weather conditions (${weather.conditions.join(', ')}) would have made street cleaning operations impractical or impossible. ` +
+    `I respectfully submit that the city should not issue citations for street cleaning violations on days when weather conditions ` +
+    `prevent effective street cleaning operations.`;
+
+  return {
+    canUseWeatherDefense: true,
+    weatherData: weather,
+    defenseParagraph,
+  };
+}
