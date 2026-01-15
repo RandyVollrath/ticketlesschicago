@@ -817,6 +817,7 @@ async function sendAdminUploadNotification(
 async function sendTicketDetectedEmail(
   userEmail: string,
   userName: string,
+  ticketId: string,
   ticketNumber: string,
   violationType: string,
   violationDate: string | null,
@@ -937,12 +938,16 @@ async function sendTicketDetectedEmail(
     </div>
   `;
 
+  // Use ticket-specific reply-to so evidence goes to the right ticket
+  // Format: evidence+TICKET_ID@autopilotamerica.com (plus addressing)
+  const ticketSpecificReplyTo = `evidence+${ticketId}@autopilotamerica.com`;
+
   const result = await sendResendEmailWithRetry({
     from: 'Autopilot America <alerts@autopilotamerica.com>',
     to: [userEmail],
     subject: `Parking Ticket Detected - ${ticketNumber} - Evidence Needed`,
     html,
-    reply_to: 'evidence@autopilotamerica.com',
+    reply_to: ticketSpecificReplyTo,
   });
 
   if (result.success) {
@@ -1218,6 +1223,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const emailSent = await sendTicketDetectedEmail(
             userEmail,
             userName,
+            newTicket.id,
             ticket.ticket_number,
             ticket.violation_type || 'other_unknown',
             ticket.violation_date || null,
