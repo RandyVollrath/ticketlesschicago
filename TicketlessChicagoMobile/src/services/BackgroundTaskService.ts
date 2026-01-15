@@ -37,8 +37,13 @@ interface BackgroundTaskState {
     parkingHistoryId: string;
     parkedLocation: { latitude: number; longitude: number };
     clearedAt: string;
+    retryCount: number;
+    scheduledAt: number; // timestamp when confirmation was scheduled
   } | null;
 }
+
+const MAX_DEPARTURE_RETRIES = 3;
+const DEPARTURE_RETRY_DELAY_MS = 60 * 1000; // 1 minute between retries
 
 class BackgroundTaskServiceClass {
   private state: BackgroundTaskState = {
@@ -169,10 +174,11 @@ class BackgroundTaskServiceClass {
     // Clear any existing interval
     this.stopForegroundMonitoring();
 
-    // Start Bluetooth connection monitoring
+    // Start Bluetooth connection monitoring with both disconnect and reconnect handlers
     try {
       await BluetoothService.monitorCarConnection(
-        this.handleCarDisconnection.bind(this)
+        this.handleCarDisconnection.bind(this),
+        this.handleCarReconnection.bind(this)
       );
     } catch (error) {
       log.warn('Could not start Bluetooth monitoring:', error);
@@ -184,7 +190,22 @@ class BackgroundTaskServiceClass {
       CHECK_INTERVAL_MS
     );
 
+    // Check if there's a pending departure confirmation from app restart
+    if (this.state.pendingDepartureConfirmation) {
+      log.info('Found pending departure confirmation from previous session, scheduling...');
+      this.scheduleDepartureConfirmation();
+    }
+
     log.debug('Foreground monitoring started with interval checks');
+  }
+
+  /**
+   * Handle car reconnection event (Bluetooth reconnects)
+   * This triggers departure tracking
+   */
+  private async handleCarReconnection(): Promise<void> {
+    log.info('Car reconnection detected via Bluetooth');
+    await this.markCarReconnected();
   }
 
   /**
@@ -478,6 +499,8 @@ class BackgroundTaskServiceClass {
           parkingHistoryId: response.parking_history_id,
           parkedLocation: response.parked_location,
           clearedAt: response.cleared_at,
+          retryCount: 0,
+          scheduledAt: Date.now(),
         };
         await this.saveState();
 
@@ -516,8 +539,10 @@ class BackgroundTaskServiceClass {
       return;
     }
 
+    const pending = this.state.pendingDepartureConfirmation;
+
     try {
-      log.info('Confirming departure...');
+      log.info('Confirming departure...', { attempt: pending.retryCount + 1 });
 
       // Get current location with high accuracy
       let coords;
@@ -531,7 +556,7 @@ class BackgroundTaskServiceClass {
 
       // Call the confirm-departure API
       const result = await LocationService.confirmDeparture(
-        this.state.pendingDepartureConfirmation.parkingHistoryId,
+        pending.parkingHistoryId,
         coords.latitude,
         coords.longitude,
         coords.accuracy
@@ -542,18 +567,73 @@ class BackgroundTaskServiceClass {
         isConclusive: result.is_conclusive,
       });
 
-      // Clear pending confirmation
+      // Clear pending confirmation on success
       this.state.pendingDepartureConfirmation = null;
       await this.saveState();
 
       // Notify user if departure is conclusive
       if (result.is_conclusive) {
         await this.sendDepartureConfirmedNotification(result.distance_from_parked_meters);
+      } else {
+        // Not conclusive - user hasn't moved far enough yet
+        // Send a softer notification
+        await this.sendDepartureRecordedNotification(result.distance_from_parked_meters);
       }
     } catch (error) {
       log.error('Failed to confirm departure', error);
-      // Keep the pending confirmation for retry later
+
+      // Retry logic
+      if (pending.retryCount < MAX_DEPARTURE_RETRIES) {
+        pending.retryCount++;
+        await this.saveState();
+        log.info(`Scheduling departure confirmation retry ${pending.retryCount}/${MAX_DEPARTURE_RETRIES}`);
+
+        // Schedule retry
+        this.departureConfirmationTimeout = setTimeout(async () => {
+          await this.confirmDeparture();
+        }, DEPARTURE_RETRY_DELAY_MS);
+      } else {
+        // Max retries exceeded - clear pending and notify user
+        log.warn('Max departure confirmation retries exceeded, giving up');
+        this.state.pendingDepartureConfirmation = null;
+        await this.saveState();
+        await this.sendDepartureFailedNotification();
+      }
     }
+  }
+
+  /**
+   * Send notification that departure was recorded but not conclusive
+   */
+  private async sendDepartureRecordedNotification(distanceMeters: number): Promise<void> {
+    await notifee.displayNotification({
+      title: 'Departure Recorded',
+      body: `Location recorded ${distanceMeters}m from parking spot. Drive further for stronger evidence.`,
+      android: {
+        channelId: 'parking-monitoring',
+        pressAction: { id: 'default' },
+      },
+      ios: {
+        sound: 'default',
+      },
+    });
+  }
+
+  /**
+   * Send notification that departure confirmation failed
+   */
+  private async sendDepartureFailedNotification(): Promise<void> {
+    await notifee.displayNotification({
+      title: 'Departure Tracking Failed',
+      body: 'Could not record your departure location. Open the app to retry manually.',
+      android: {
+        channelId: 'parking-monitoring',
+        pressAction: { id: 'default' },
+      },
+      ios: {
+        sound: 'default',
+      },
+    });
   }
 
   /**
