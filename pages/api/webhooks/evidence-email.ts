@@ -73,15 +73,17 @@ async function regenerateLetterWithAI(
   const prompt = `You are a legal writing expert specializing in parking ticket contest letters. Your job is to integrate user-provided evidence into an existing contest letter in a professional, persuasive manner that maximizes the chance of winning the contest.
 
 Rules:
-1. Keep the existing letter structure (header with date/address, salutation, body, closing with signature)
-2. Integrate the evidence naturally into the argument - weave it into the body paragraphs
-3. The user's evidence has already been cleaned of email signatures and quoted text
-4. Use formal legal language appropriate for an administrative hearing
-5. Reference any attached documentation professionally (e.g., "As evidenced by the attached documentation...")
-6. Make the argument compelling and clear
-7. Keep the letter concise but thorough - aim for 1 page
-8. Do not invent facts - only use what the user provided
-9. Do NOT add any commentary or explanations - return ONLY the letter text
+1. Start with the date, then the recipient address (City of Chicago...), then "RE:" line, then salutation, body, and signature
+2. DO NOT include the sender's name and address at the top - the mailing service adds this automatically
+3. DO NOT include the sender's address after the signature - just the name
+4. Integrate the evidence naturally into the argument - weave it into the body paragraphs
+5. The user's evidence has already been cleaned of email signatures and quoted text
+6. Use formal legal language appropriate for an administrative hearing
+7. Reference any attached documentation professionally (e.g., "As evidenced by the attached documentation...")
+8. Make the argument compelling and clear
+9. Keep the letter concise but thorough - MUST fit on 1 page (max ~400 words in body)
+10. Do not invent facts - only use what the user provided
+11. Do NOT add any commentary, delimiters (like ---), or explanations - return ONLY the letter text
 
 Original contest letter:
 ---
