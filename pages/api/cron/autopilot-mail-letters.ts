@@ -131,11 +131,11 @@ async function mailLetter(
 
     console.log(`    Mailed! Lob ID: ${result.id}`);
 
-    // Update letter record
+    // Update letter record (status must be 'sent' per database constraint)
     await supabaseAdmin
       .from('contest_letters')
       .update({
-        status: 'mailed',
+        status: 'sent',
         lob_letter_id: result.id,
         letter_pdf_url: result.url,
         tracking_number: result.tracking_number || null,
