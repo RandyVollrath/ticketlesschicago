@@ -66,6 +66,63 @@ export interface AutoRegistrationRequest {
   paymentStatus: 'pending' | 'paid' | 'failed';
 }
 
+// Parking location history record
+export interface ParkingLocationHistory {
+  id: string;
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  on_winter_ban_street: boolean;
+  winter_ban_street_name: string | null;
+  on_snow_route: boolean;
+  snow_route_name: string | null;
+  street_cleaning_date: string | null;
+  street_cleaning_ward: string | null;
+  street_cleaning_section: string | null;
+  permit_zone: string | null;
+  permit_restriction_schedule: string | null;
+  parked_at: string;
+  cleared_at: string | null;
+  created_at: string;
+}
+
+// Saved parking location (user favorites)
+export interface SavedParkingLocation {
+  id: string;
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  nickname: string;
+  icon: string;
+  color: string;
+  notify_on_arrival: boolean;
+  has_restrictions: boolean;
+  restriction_summary: string | null;
+  last_restriction_check: string | null;
+  times_parked: number;
+  last_parked_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Parking insights types
+export interface ParkingDurationStats {
+  average_minutes: number | null;
+  median_minutes: number | null;
+  shortest_minutes: number | null;
+  longest_minutes: number | null;
+  total_hours_parked: number;
+}
+
+export interface ParkingInsight {
+  type: 'info' | 'warning' | 'tip';
+  icon: string;
+  title: string;
+  description: string;
+}
+
 // Chicago-specific constants
 export const CHICAGO_OBLIGATIONS = {
   CITY_STICKER: {

@@ -86,14 +86,17 @@ export default async function handler(
       }
     }
 
-    // Insert new parked location
+    const parkedAt = new Date().toISOString();
+    const addressValue = input.address || `${input.latitude.toFixed(6)}, ${input.longitude.toFixed(6)}`;
+
+    // Insert new parked location (for active parking tracking)
     const { data, error } = await supabaseAdmin
       .from('user_parked_vehicles')
       .insert({
         user_id: userId,
         latitude: input.latitude,
         longitude: input.longitude,
-        address: input.address || `${input.latitude.toFixed(6)}, ${input.longitude.toFixed(6)}`,
+        address: addressValue,
         fcm_token: input.fcm_token,
 
         on_winter_ban_street: input.on_winter_ban_street,
@@ -107,7 +110,7 @@ export default async function handler(
         permit_restriction_schedule: input.permit_restriction_schedule || null,
 
         is_active: true,
-        parked_at: new Date().toISOString(),
+        parked_at: parkedAt,
       })
       .select('id')
       .single();
@@ -115,6 +118,55 @@ export default async function handler(
     if (error) {
       console.error('Error saving parked location:', error);
       return res.status(500).json({ error: 'Failed to save parked location' });
+    }
+
+    // Also insert into parking history for permanent record
+    const { error: historyError } = await supabaseAdmin
+      .from('parking_location_history')
+      .insert({
+        user_id: userId,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        address: addressValue,
+
+        on_winter_ban_street: input.on_winter_ban_street,
+        winter_ban_street_name: input.winter_ban_street_name || null,
+        on_snow_route: input.on_snow_route,
+        snow_route_name: input.snow_route_name || null,
+        street_cleaning_date: streetCleaningDate,
+        street_cleaning_ward: input.street_cleaning_ward || null,
+        street_cleaning_section: input.street_cleaning_section || null,
+        permit_zone: input.permit_zone || null,
+        permit_restriction_schedule: input.permit_restriction_schedule || null,
+
+        parked_at: parkedAt,
+      });
+
+    if (historyError) {
+      // Log but don't fail the request - history is secondary to active tracking
+      console.error('Error saving parking history:', historyError);
+    }
+
+    // Update saved location stats if user parked at a saved location (within ~50m)
+    const { data: matchingSavedLocation } = await supabaseAdmin
+      .from('saved_parking_locations')
+      .select('id, times_parked')
+      .eq('user_id', userId)
+      .gte('latitude', input.latitude - 0.0005)
+      .lte('latitude', input.latitude + 0.0005)
+      .gte('longitude', input.longitude - 0.0005)
+      .lte('longitude', input.longitude + 0.0005)
+      .limit(1)
+      .maybeSingle();
+
+    if (matchingSavedLocation) {
+      await supabaseAdmin
+        .from('saved_parking_locations')
+        .update({
+          times_parked: (matchingSavedLocation.times_parked || 0) + 1,
+          last_parked_at: parkedAt,
+        })
+        .eq('id', matchingSavedLocation.id);
     }
 
     console.log(`Saved parked location for user ${userId}:`, {
