@@ -216,6 +216,22 @@ function cleanUserEvidence(text: string): string {
 }
 
 /**
+ * Extract ticket ID from the "to" address using plus addressing
+ * e.g., evidence+UUID@autopilotamerica.com -> UUID
+ */
+function extractTicketIdFromAddress(toEmail: string): string | null {
+  if (!toEmail) return null;
+
+  // Match evidence+TICKET_ID@autopilotamerica.com
+  const match = toEmail.match(/evidence\+([a-f0-9-]{36})@autopilotamerica\.com/i);
+  if (match) {
+    return match[1];
+  }
+
+  return null;
+}
+
+/**
  * Extract ticket number from email subject or body
  */
 function extractTicketNumber(subject: string, body: string): string | null {
@@ -290,8 +306,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`Evidence email from ${fromEmail}: "${subject}"`);
     console.log(`Attachments: ${attachments.length}`);
 
-    // Only process emails sent to evidence@autopilotamerica.com
-    if (!toEmail?.includes('evidence@autopilotamerica.com')) {
+    // Only process emails sent to evidence@autopilotamerica.com (or evidence+TICKET_ID@)
+    // Match both evidence@autopilotamerica.com and evidence+UUID@autopilotamerica.com
+    if (!toEmail?.match(/evidence(\+[a-f0-9-]+)?@autopilotamerica\.com/i)) {
       console.log('Email not sent to evidence address, ignoring');
       return res.status(200).json({ message: 'Not an evidence email' });
     }
@@ -347,31 +364,77 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Matched user: ${user.email} (${user.id})`);
 
-    // Try to extract ticket number from email
+    // Try to extract ticket ID from the to address (plus addressing)
+    // e.g., evidence+UUID@autopilotamerica.com
+    const ticketIdFromAddress = extractTicketIdFromAddress(toEmail);
+    console.log(`Extracted ticket ID from address: ${ticketIdFromAddress}`);
+
+    // Also try to extract ticket number from subject/body as fallback
     const ticketNumber = extractTicketNumber(subject, textBody);
-    console.log(`Extracted ticket number: ${ticketNumber}`);
+    console.log(`Extracted ticket number from content: ${ticketNumber}`);
 
-    // Find pending ticket for this user
-    let ticketQuery = supabaseAdmin
-      .from('detected_tickets')
-      .select(`
-        *,
-        contest_letters (
-          id,
-          letter_content,
-          letter_text,
-          defense_type
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('status', 'pending_evidence');
+    // Find the ticket - prioritize ticket ID from address, then ticket number, then first pending
+    let tickets: any[] | null = null;
 
-    // If we found a ticket number, filter by it
-    if (ticketNumber) {
-      ticketQuery = ticketQuery.eq('ticket_number', ticketNumber);
+    if (ticketIdFromAddress) {
+      // Best case: we have the exact ticket ID from plus addressing
+      const { data } = await supabaseAdmin
+        .from('detected_tickets')
+        .select(`
+          *,
+          contest_letters (
+            id,
+            letter_content,
+            letter_text,
+            defense_type
+          )
+        `)
+        .eq('id', ticketIdFromAddress)
+        .eq('user_id', user.id);
+      tickets = data;
+      console.log(`Found ${tickets?.length || 0} ticket(s) by ID from address`);
     }
 
-    const { data: tickets } = await ticketQuery.order('evidence_deadline', { ascending: true });
+    // Fallback: try by ticket number if we didn't find by ID
+    if ((!tickets || tickets.length === 0) && ticketNumber) {
+      const { data } = await supabaseAdmin
+        .from('detected_tickets')
+        .select(`
+          *,
+          contest_letters (
+            id,
+            letter_content,
+            letter_text,
+            defense_type
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('ticket_number', ticketNumber)
+        .eq('status', 'pending_evidence');
+      tickets = data;
+      console.log(`Found ${tickets?.length || 0} ticket(s) by ticket number`);
+    }
+
+    // Final fallback: get the first pending_evidence ticket (earliest deadline)
+    if (!tickets || tickets.length === 0) {
+      const { data } = await supabaseAdmin
+        .from('detected_tickets')
+        .select(`
+          *,
+          contest_letters (
+            id,
+            letter_content,
+            letter_text,
+            defense_type
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'pending_evidence')
+        .order('evidence_deadline', { ascending: true })
+        .limit(1);
+      tickets = data;
+      console.log(`Fallback: Found ${tickets?.length || 0} pending ticket(s) for user`);
+    }
 
     if (!tickets || tickets.length === 0) {
       console.log('No pending tickets found for user');
