@@ -150,19 +150,19 @@ async function mailLetter(
       .update({ status: 'mailed' })
       .eq('id', letter.ticket_id);
 
-    // Log to audit
+    // Log to audit (performed_by is null for system actions)
     await supabaseAdmin
       .from('ticket_audit_log')
       .insert({
         ticket_id: letter.ticket_id,
-        user_id: letter.user_id,
         action: 'letter_mailed',
         details: {
           lob_letter_id: result.id,
           tracking_number: result.tracking_number,
           expected_delivery: result.expected_delivery_date,
+          performed_by_system: 'autopilot_cron',
         },
-        performed_by: 'autopilot_cron',
+        performed_by: null,
       });
 
     return {
@@ -182,15 +182,17 @@ async function mailLetter(
       .update({ status: 'failed' })
       .eq('id', letter.id);
 
-    // Log error to audit
+    // Log error to audit (performed_by is null for system actions)
     await supabaseAdmin
       .from('ticket_audit_log')
       .insert({
         ticket_id: letter.ticket_id,
-        user_id: letter.user_id,
         action: 'letter_mail_failed',
-        details: { error: errorMessage },
-        performed_by: 'autopilot_cron',
+        details: {
+          error: errorMessage,
+          performed_by_system: 'autopilot_cron',
+        },
+        performed_by: null,
       });
 
     return { success: false, error: errorMessage };

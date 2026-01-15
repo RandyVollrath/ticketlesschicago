@@ -19,11 +19,11 @@ const log = Logger.createLogger('CrashReporting');
 interface CrashlyticsInstance {
   log: (message: string) => void;
   recordError: (error: Error, jsErrorName?: string) => void;
-  setUserId: (userId: string) => Promise<void>;
-  setAttribute: (key: string, value: string) => Promise<void>;
-  setAttributes: (attributes: Record<string, string>) => Promise<void>;
+  setUserId: (userId: string) => Promise<null>;
+  setAttribute: (key: string, value: string) => Promise<null>;
+  setAttributes: (attributes: Record<string, string>) => Promise<null>;
   crash: () => void;
-  setCrashlyticsCollectionEnabled: (enabled: boolean) => Promise<void>;
+  setCrashlyticsCollectionEnabled: (enabled: boolean) => Promise<null>;
 }
 
 let crashlytics: CrashlyticsInstance | null = null;

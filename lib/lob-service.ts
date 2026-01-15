@@ -62,6 +62,11 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
   const authHeader = 'Basic ' + Buffer.from(lobApiKey + ':').toString('base64');
 
   try {
+    console.log('Sending letter via Lob API...');
+    console.log('  From:', from.name, '-', from.address, from.city, from.state, from.zip);
+    console.log('  To:', to.name, '-', to.address, to.city, to.state, to.zip);
+    console.log('  Letter content length:', letterContent.length, 'chars');
+
     // Lob API expects letter content as HTML
     const response = await fetch('https://api.lob.com/v1/letters', {
       method: 'POST',
@@ -96,8 +101,10 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Lob API error:', errorData);
-      throw new Error(`Lob API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('Lob API error response:', JSON.stringify(errorData, null, 2));
+      console.error('Lob API status code:', response.status);
+      const errorMessage = errorData.error?.message || errorData.message || JSON.stringify(errorData);
+      throw new Error(`Lob API error (${response.status}): ${errorMessage}`);
     }
 
     const data = await response.json();
