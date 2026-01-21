@@ -11,9 +11,14 @@ import { StorageKeys } from '../constants';
 const log = Logger.createLogger('LocationService');
 
 export interface ParkingRule {
-  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban';
+  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban' | 'rush_hour' | 'tow_zone';
   message: string;
   severity: 'critical' | 'warning' | 'info';
+  // Additional metadata for enhanced display
+  schedule?: string;
+  zoneName?: string;
+  nextDate?: string;
+  isActiveNow?: boolean;
 }
 
 export interface Coordinates {
@@ -211,7 +216,7 @@ class LocationServiceClass {
           timeout: 20000, // 20 seconds for high accuracy
           maximumAge: 5000, // Only use cache if < 5 seconds old
           forceRequestLocation: true, // Force new GPS reading on Android
-          forceLocationManager: false, // Use Google Play Services if available
+          forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
           showLocationDialog: true, // Show dialog if location is off (Android)
         };
       case 'balanced':
@@ -220,7 +225,7 @@ class LocationServiceClass {
           timeout: 15000,
           maximumAge: 30000, // Accept 30-second old cache
           forceRequestLocation: false,
-          forceLocationManager: false,
+          forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
           showLocationDialog: true,
         };
       case 'low':
@@ -255,7 +260,7 @@ class LocationServiceClass {
         interval: 1000, // Android: check every second
         fastestInterval: 500, // Android: accept faster updates
         forceRequestLocation: true,
-        forceLocationManager: false,
+        forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
         showLocationDialog: true,
       };
 
@@ -336,7 +341,7 @@ class LocationServiceClass {
       interval: 5000, // Android: 5 second intervals
       fastestInterval: 2000, // Android: accept faster if available
       forceRequestLocation: true,
-      forceLocationManager: false,
+      forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
       showLocationDialog: true,
     };
 
@@ -537,12 +542,17 @@ class LocationServiceClass {
     const data = response.data;
     const rules: ParkingRule[] = [];
 
-    // Street cleaning
+    // Street cleaning - check for any restriction (not just active now)
     if (data?.streetCleaning?.hasRestriction) {
+      const severity = data.streetCleaning.timing === 'NOW' ? 'critical' :
+                       data.streetCleaning.timing === 'TODAY' ? 'warning' : 'info';
       rules.push({
         type: 'street_cleaning',
         message: data.streetCleaning.message,
-        severity: data.streetCleaning.timing === 'NOW' ? 'critical' : 'warning',
+        severity: severity as 'critical' | 'warning' | 'info',
+        schedule: data.streetCleaning.schedule,
+        nextDate: data.streetCleaning.nextDate,
+        isActiveNow: data.streetCleaning.timing === 'NOW',
       });
     }
 
@@ -551,27 +561,52 @@ class LocationServiceClass {
       rules.push({
         type: 'winter_ban',
         message: data.winterOvernightBan.message,
-        severity: data.winterOvernightBan.severity || 'warning',
+        severity: (data.winterOvernightBan.severity || 'warning') as 'critical' | 'warning' | 'info',
+        schedule: `${data.winterOvernightBan.startTime} - ${data.winterOvernightBan.endTime}`,
+        isActiveNow: true,
       });
     }
 
-    // 2-inch snow ban
+    // 2-inch snow ban (most urgent - tow risk)
     if (data?.twoInchSnowBan?.active) {
       rules.push({
         type: 'snow_route',
         message: data.twoInchSnowBan.message,
-        severity: data.twoInchSnowBan.severity || 'critical',
+        severity: (data.twoInchSnowBan.severity || 'critical') as 'critical' | 'warning' | 'info',
+        isActiveNow: true,
       });
     }
 
-    // Permit zones
+    // Permit zones - show if in zone (even if not currently restricted)
     if (data?.permitZone?.inPermitZone) {
+      const severity = data.permitZone.permitRequired ? 'warning' :
+                       (data.permitZone.severity || 'info');
       rules.push({
         type: 'permit_zone',
         message: data.permitZone.message,
-        severity: 'info',
+        severity: severity as 'critical' | 'warning' | 'info',
+        zoneName: data.permitZone.zoneName,
+        schedule: data.permitZone.restrictionSchedule,
+        isActiveNow: data.permitZone.permitRequired,
       });
     }
+
+    // Rush hour restrictions (when enabled on backend)
+    if (data?.rushHour?.hasRestriction) {
+      const severity = data.rushHour.isActiveNow ? 'critical' :
+                       (data.rushHour.severity || 'info');
+      rules.push({
+        type: 'rush_hour',
+        message: data.rushHour.message,
+        severity: severity as 'critical' | 'warning' | 'info',
+        schedule: data.rushHour.schedule,
+        isActiveNow: data.rushHour.isActiveNow,
+      });
+    }
+
+    // Sort rules by severity (critical first, then warning, then info)
+    const severityOrder = { critical: 0, warning: 1, info: 2 };
+    rules.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
     return {
       coords,

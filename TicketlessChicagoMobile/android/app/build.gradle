@@ -111,6 +111,10 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // Force compatible Google Play Services Location version for react-native-geolocation-service
+    // This fixes IncompatibleClassChangeError crash on Map screen
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius } from '../theme';
-import { Button, Card, RuleCard } from '../components';
+import { Button, Card, RuleCard, ErrorBoundary } from '../components';
 import LocationService, { Coordinates, ParkingCheckResult } from '../services/LocationService';
 import NetworkStatus from '../utils/NetworkStatus';
 import Logger from '../utils/Logger';
@@ -29,7 +29,8 @@ type MapScreenRouteParams = {
   };
 };
 
-const MapScreen: React.FC = () => {
+// Inner component that does the actual work
+const MapScreenContent: React.FC = () => {
   const route = useRoute<RouteProp<MapScreenRouteParams, 'Map'>>();
   const navigation = useNavigation<NavigationProp<MapScreenRouteParams>>();
   const [lastLocation, setLastLocation] = useState<ParkingCheckResult | null>(null);
@@ -37,13 +38,16 @@ const MapScreen: React.FC = () => {
   const [currentLocation, setCurrentLocation] = useState<Coordinates | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Refs to prevent memory leaks and race conditions
   const isMountedRef = useRef(true);
   const notificationProcessedRef = useRef(false);
+  const locationRequestInProgress = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -59,9 +63,35 @@ const MapScreen: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // Initialize the screen - load data first, then request location
   useEffect(() => {
-    loadLastLocation();
-    getCurrentLocationSilent();
+    const initialize = async () => {
+      try {
+        // First load saved location (fast, no permissions needed)
+        await loadLastLocation();
+
+        // Mark as initialized so UI can render
+        if (isMountedRef.current) {
+          setIsInitialized(true);
+        }
+
+        // Then request location permission (may show dialog)
+        // Small delay to ensure UI is fully rendered before permission dialog
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        if (isMountedRef.current) {
+          await getCurrentLocationSilent();
+        }
+      } catch (error) {
+        log.error('Error during initialization', error);
+        if (isMountedRef.current) {
+          setIsInitialized(true);
+          setLoading(false);
+        }
+      }
+    };
+
+    initialize();
   }, []);
 
   // Handle navigation from notification with specific coordinates
@@ -135,20 +165,74 @@ const MapScreen: React.FC = () => {
   };
 
   const getCurrentLocationSilent = async () => {
+    // Prevent concurrent location requests
+    if (locationRequestInProgress.current) {
+      log.debug('Location request already in progress, skipping');
+      return;
+    }
+
+    locationRequestInProgress.current = true;
+
     try {
-      const hasPermission = await LocationService.requestLocationPermission();
-      if (!isMountedRef.current) return;
+      // Request permission first
+      let hasPermission = false;
+      try {
+        log.debug('Requesting location permission...');
+        hasPermission = await LocationService.requestLocationPermission();
+        log.debug('Permission result:', hasPermission);
+      } catch (permissionError) {
+        log.error('Error requesting location permission', permissionError);
+        if (isMountedRef.current) {
+          setLocationPermissionDenied(true);
+        }
+        return;
+      }
+
+      // Check if component is still mounted after async permission request
+      if (!isMountedRef.current) {
+        log.debug('Component unmounted after permission request');
+        return;
+      }
 
       if (hasPermission) {
-        const coords = await LocationService.getCurrentLocation();
-        if (isMountedRef.current) {
-          setCurrentLocation(coords);
+        // Delay to ensure Android permission system is fully ready
+        // This prevents crashes when accessing location immediately after grant
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (!isMountedRef.current) {
+          log.debug('Component unmounted after permission delay');
+          return;
+        }
+
+        try {
+          log.debug('Getting current location...');
+          const coords = await LocationService.getCurrentLocation();
+          log.debug('Got location:', coords.latitude, coords.longitude);
+
+          if (isMountedRef.current) {
+            setCurrentLocation(coords);
+          }
+        } catch (locationError: any) {
+          log.error('Error getting location after permission granted', {
+            message: locationError?.message,
+            code: locationError?.code,
+          });
+          // Location failed but permission was granted - don't mark as denied
+          // User can still manually trigger location check later
         }
       } else {
-        setLocationPermissionDenied(true);
+        log.debug('Location permission denied by user');
+        if (isMountedRef.current) {
+          setLocationPermissionDenied(true);
+        }
       }
-    } catch (error) {
-      log.error('Error getting current location', error);
+    } catch (error: any) {
+      log.error('Unexpected error in getCurrentLocationSilent', {
+        message: error?.message,
+        stack: error?.stack,
+      });
+    } finally {
+      locationRequestInProgress.current = false;
     }
   };
 
@@ -501,5 +585,12 @@ const styles = StyleSheet.create({
     lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
   },
 });
+
+// Wrap in ErrorBoundary to catch any rendering errors
+const MapScreen: React.FC = () => (
+  <ErrorBoundary>
+    <MapScreenContent />
+  </ErrorBoundary>
+);
 
 export default MapScreen;

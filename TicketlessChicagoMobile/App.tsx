@@ -146,6 +146,14 @@ function App(): React.JSX.Element {
   const handleOnboardingComplete = async () => {
     await AsyncStorage.setItem(StorageKeys.HAS_ONBOARDED, 'true');
     setHasOnboarded(true);
+    // Navigate to Login screen after onboarding
+    // initialRouteName only works on first mount, so we need explicit navigation
+    if (navigationRef.current) {
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    }
   };
 
   const handleLoginComplete = async () => {
@@ -154,6 +162,14 @@ function App(): React.JSX.Element {
 
     // Request push notification permissions after login
     await PushNotificationService.requestPermissionAndRegister();
+
+    // Navigate to main app after login
+    if (navigationRef.current) {
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
+    }
   };
 
   if (isLoading || authState?.isLoading) {

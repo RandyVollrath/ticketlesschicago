@@ -2,17 +2,18 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-// Brand Colors
+// Brand Colors - Autopilot America (Gemini 3 Flash recommended)
 export const colors = {
-  // Primary
-  primary: '#007AFF',
-  primaryDark: '#0056b3',
-  primaryLight: '#4da3ff',
+  // Primary - Vibrant Electric Blue
+  primary: '#0066FF',
+  primaryDark: '#004DCC',
+  primaryLight: '#3388FF',
+  primaryTint: '#F0F6FF', // Light blue tint for secondary buttons
 
-  // Secondary
-  secondary: '#5856D6',
-  secondaryDark: '#3634a3',
-  secondaryLight: '#8583e8',
+  // Secondary - Vibrant Yellow for tips/accents
+  secondary: '#FFD60A',
+  secondaryDark: '#E6C109',
+  secondaryLight: '#FFF9DB', // Soft yellow for tip backgrounds
 
   // Status Colors
   success: '#34C759',
@@ -27,17 +28,17 @@ export const colors = {
   infoBg: '#f0f8ff',
   successBg: '#f0fff4',
 
-  // Neutrals
+  // Neutrals - Cool Off-White background
   white: '#FFFFFF',
-  background: '#F5F5F7',
+  background: '#F5F7FA',
   cardBg: '#FFFFFF',
-  border: '#E5E5EA',
-  divider: '#C6C6C8',
+  border: '#E9ECEF',
+  divider: '#E9ECEF',
 
-  // Text
-  textPrimary: '#1C1C1E',
-  textSecondary: '#8E8E93',
-  textTertiary: '#AEAEB2',
+  // Text - Deep Charcoal and Muted Slate
+  textPrimary: '#1A1C1E',
+  textSecondary: '#6C727A',
+  textTertiary: '#ADB5BD',
   textInverse: '#FFFFFF',
 
   // Overlays
@@ -45,7 +46,7 @@ export const colors = {
   overlayLight: 'rgba(0, 0, 0, 0.3)',
 };
 
-// Typography
+// Typography - Clean, modern hierarchy
 export const typography = {
   // Font Sizes
   sizes: {
@@ -53,7 +54,7 @@ export const typography = {
     sm: 13,
     base: 15,
     md: 17,
-    lg: 20,
+    lg: 22,
     xl: 24,
     xxl: 28,
     xxxl: 34,
@@ -65,6 +66,7 @@ export const typography = {
     medium: '500' as const,
     semibold: '600' as const,
     bold: '700' as const,
+    extrabold: '800' as const,
   },
 
   // Line Heights
@@ -72,6 +74,14 @@ export const typography = {
     tight: 1.2,
     normal: 1.4,
     relaxed: 1.6,
+  },
+
+  // Letter Spacing
+  letterSpacing: {
+    tight: -0.5,
+    normal: 0,
+    wide: 0.3,
+    wider: 1.2,
   },
 };
 
@@ -87,37 +97,46 @@ export const spacing = {
   xxxl: 40,
 };
 
-// Border Radius
+// Border Radius - More rounded for modern look
 export const borderRadius = {
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
+  sm: 6,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
   full: 9999,
 };
 
-// Shadows
+// Shadows - Modern "Soft Depth" shadows (Gemini 3 recommended)
 export const shadows = {
   sm: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   md: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    elevation: 4,
   },
   lg: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.08,
+    shadowRadius: 32,
+    elevation: 8,
+  },
+  // Primary button glow effect
+  primaryGlow: {
+    shadowColor: '#0066FF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
 };
 
@@ -150,19 +169,19 @@ export const commonStyles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Cards
+  // Cards - Modern floating cards with soft shadows
   card: {
     backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.base,
-    marginBottom: spacing.base,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
     ...shadows.md,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
 
   // Typography
@@ -192,29 +211,30 @@ export const commonStyles = StyleSheet.create({
     color: colors.textTertiary,
   },
 
-  // Buttons
+  // Buttons - Modern with depth (Gemini 3 recommended)
   primaryButton: {
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.base,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 64,
+    ...shadows.primaryGlow,
   },
   primaryButtonText: {
     color: colors.textInverse,
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontSize: 18,
+    fontWeight: typography.weights.bold,
   },
   secondaryButton: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.primaryTint,
+    borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 52,
   },
   secondaryButtonText: {
     color: colors.primary,
@@ -223,11 +243,12 @@ export const commonStyles = StyleSheet.create({
   },
   dangerButton: {
     backgroundColor: colors.error,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,
   },
   dangerButtonText: {
     color: colors.textInverse,

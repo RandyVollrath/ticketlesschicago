@@ -17,18 +17,21 @@ const ENV = {
   // The anon key only allows access to public data and RLS-protected resources
   SUPABASE_URL: 'https://dzhqolbhuqdcpngdayuq.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6aHFvbGJodXFkY3BuZ2RheXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyOTMzNDksImV4cCI6MjA3NDg2OTM0OX0.n6X0Tvexf2bR8nEkP_YzQsX__C4zgH29BPBx3F0Lik0',
+  // Google OAuth Web Client ID (from Google Cloud Console, must match Supabase config)
+  // This is the WEB client ID, not the Android client ID
+  GOOGLE_WEB_CLIENT_ID: '475235892792-f369h80bodv82phk7n438rtu677fapqt.apps.googleusercontent.com',
 };
 
 export default {
   // API Configuration
   API_BASE_URL: __DEV__
     ? 'http://localhost:3000' // Development
-    : 'https://ticketless.fyi', // Production
+    : 'https://autopilotamerica.com', // Production
 
   // App Info
   APP_VERSION,
   BUILD_NUMBER,
-  APP_NAME: 'Ticketless Chicago',
+  APP_NAME: 'Autopilot America',
   BUNDLE_ID: 'fyi.ticketless.app',
 
   // Supabase configuration (same as web app)
@@ -36,9 +39,12 @@ export default {
   SUPABASE_URL: ENV.SUPABASE_URL,
   SUPABASE_ANON_KEY: ENV.SUPABASE_ANON_KEY,
 
+  // Google OAuth configuration
+  GOOGLE_WEB_CLIENT_ID: ENV.GOOGLE_WEB_CLIENT_ID,
+
   // Deep Linking
-  URL_SCHEME: 'ticketlesschicago',
-  WEBSITE_URL: 'https://ticketless.fyi',
+  URL_SCHEME: 'autopilotamerica',
+  WEBSITE_URL: 'https://autopilotamerica.com',
 
   // Timeouts (in milliseconds)
   API_TIMEOUT: 15000,

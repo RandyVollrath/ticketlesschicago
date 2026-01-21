@@ -2,7 +2,7 @@
 
 export const API_URL = __DEV__
   ? 'http://localhost:3000' // Development - your local Next.js server
-  : 'https://ticketless.fyi'; // Production
+  : 'https://autopilotamerica.com'; // Production
 
 export const PARKING_CHECK_ENDPOINT = `${API_URL}/api/check-parking-location`;
 

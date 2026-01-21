@@ -282,32 +282,46 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Clear All',
+          text: 'Continue',
           style: 'destructive',
-          onPress: async () => {
-            clearingRef.current = true;
-            if (isMountedRef.current) setIsClearing(true);
+          onPress: () => {
+            // Second confirmation
+            Alert.alert(
+              'Are you absolutely sure?',
+              'All your parking history, saved vehicle, and settings will be permanently deleted.',
+              [
+                { text: 'No, keep my data', style: 'cancel' },
+                {
+                  text: 'Yes, delete everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    clearingRef.current = true;
+                    if (isMountedRef.current) setIsClearing(true);
 
-            try {
-              await AsyncStorage.clear();
-              if (isMountedRef.current) {
-                setSettings(DEFAULT_SETTINGS);
-                setSavedCar(null);
-                setStats({ totalChecks: 0, violationsFound: 0, daysSaved: 0 });
-                setBiometricEnabled(false);
-                Alert.alert('Done', 'All data has been cleared');
-              }
-            } catch (error) {
-              log.error('Error clearing data', error);
-              if (isMountedRef.current) {
-                Alert.alert('Error', 'Failed to clear data. Please try again.');
-              }
-            } finally {
-              clearingRef.current = false;
-              if (isMountedRef.current) {
-                setIsClearing(false);
-              }
-            }
+                    try {
+                      await AsyncStorage.clear();
+                      if (isMountedRef.current) {
+                        setSettings(DEFAULT_SETTINGS);
+                        setSavedCar(null);
+                        setStats({ totalChecks: 0, violationsFound: 0, daysSaved: 0 });
+                        setBiometricEnabled(false);
+                        Alert.alert('Done', 'All data has been cleared');
+                      }
+                    } catch (error) {
+                      log.error('Error clearing data', error);
+                      if (isMountedRef.current) {
+                        Alert.alert('Error', 'Failed to clear data. Please try again.');
+                      }
+                    } finally {
+                      clearingRef.current = false;
+                      if (isMountedRef.current) {
+                        setIsClearing(false);
+                      }
+                    }
+                  },
+                },
+              ]
+            );
           },
         },
       ]
