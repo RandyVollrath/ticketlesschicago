@@ -13,9 +13,38 @@ export default function AuthCallback() {
       try {
         setDebugInfo('🔄 Starting OAuth callback...')
 
-        // Parse URL parameters
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        // Check if this is a mobile app callback (from magic link)
+        // Mobile app sets a specific parameter or we detect by user agent
         const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const isMobileApp = searchParams.get('mobile') === 'true' ||
+                           searchParams.get('redirect_to')?.startsWith('ticketlesschicago://');
+
+        // If this is a mobile app callback, redirect to the app with tokens
+        if (isMobileApp) {
+          const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+          const error = hashParams.get('error') || searchParams.get('error');
+          const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
+
+          let mobileRedirectUrl = 'ticketlesschicago://auth/callback';
+
+          if (error) {
+            mobileRedirectUrl += `?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`;
+          } else if (accessToken) {
+            mobileRedirectUrl += `?access_token=${encodeURIComponent(accessToken)}`;
+            if (refreshToken) {
+              mobileRedirectUrl += `&refresh_token=${encodeURIComponent(refreshToken)}`;
+            }
+          }
+
+          console.log('📱 Mobile app detected, redirecting to:', mobileRedirectUrl);
+          setDebugInfo('📱 Redirecting to mobile app...');
+          window.location.href = mobileRedirectUrl;
+          return;
+        }
+
+        // Variables already declared above for mobile check
 
         console.log('📍 Callback URL:', window.location.href);
         console.log('🔗 Hash params:', Array.from(hashParams.entries()));
