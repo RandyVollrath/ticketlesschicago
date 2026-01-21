@@ -76,18 +76,9 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
   const [isCompleting, setIsCompleting] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
-  const isMountedRef = useRef(true);
-  const isCompletingRef = useRef(false);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   const viewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0 && isMountedRef.current) {
+    if (viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index);
     }
   }).current;
@@ -95,14 +86,16 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
   const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
   const completeOnboarding = useCallback(async () => {
-    // Prevent double completion
-    if (isCompletingRef.current) return;
-    isCompletingRef.current = true;
+    // Prevent double-taps
+    if (isCompleting) return;
+    setIsCompleting(true);
 
-    if (isMountedRef.current) setIsCompleting(true);
+    log.info('completeOnboarding called');
 
     try {
       await AsyncStorage.setItem(StorageKeys.HAS_ONBOARDED, 'true');
+      log.info('AsyncStorage set, calling onComplete or navigating');
+
       if (onComplete) {
         onComplete();
       } else {
@@ -110,13 +103,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
       }
     } catch (error) {
       log.error('Error completing onboarding', error);
-      isCompletingRef.current = false;
-      if (isMountedRef.current) {
-        setIsCompleting(false);
-        Alert.alert('Error', 'Failed to complete setup. Please try again.');
-      }
+      setIsCompleting(false);
+      Alert.alert('Error', 'Failed to complete setup. Please try again.');
     }
-  }, [navigation, onComplete]);
+  }, [navigation, onComplete, isCompleting]);
 
   const goToNextSlide = useCallback(() => {
     if (currentIndex < SLIDES.length - 1) {
@@ -192,7 +182,6 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
             size="sm"
             onPress={skipOnboarding}
             textStyle={styles.skipText}
-            disabled={isCompleting}
             accessibilityLabel="Skip onboarding and continue to login"
           />
         </View>
@@ -223,13 +212,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
         <View style={styles.buttonContainer}>
           <Button
             title={isLastSlide ? 'Get Started' : 'Next'}
-            variant="secondary"
+            variant="primary"
             size="lg"
             onPress={goToNextSlide}
             style={styles.nextButton}
-            textStyle={styles.nextButtonText}
-            disabled={isCompleting}
-            loading={isCompleting}
             accessibilityLabel={isLastSlide ? 'Get started with Ticketless' : `Go to next slide, ${currentIndex + 2} of ${SLIDES.length}`}
           />
         </View>
@@ -297,11 +283,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
   },
   nextButton: {
-    backgroundColor: colors.white,
-    borderColor: colors.white,
-  },
-  nextButtonText: {
-    color: colors.primary,
+    minHeight: 52,
   },
 });
 

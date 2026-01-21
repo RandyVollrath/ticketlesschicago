@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import Config from '../config/config';
 import Logger from '../utils/Logger';
 
@@ -42,6 +43,7 @@ class AuthServiceClass {
   };
 
   private listeners: ((state: AuthState) => void)[] = [];
+  private googleSignInConfigured = false;
 
   constructor() {
     this.supabase = createClient(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY, {
@@ -58,6 +60,23 @@ class AuthServiceClass {
       log.debug('Auth state changed', event);
       this.updateAuthState(session);
     });
+
+    // Configure Google Sign-In
+    this.configureGoogleSignIn();
+  }
+
+  private configureGoogleSignIn(): void {
+    try {
+      GoogleSignin.configure({
+        // Web client ID from Google Cloud Console (same one configured in Supabase)
+        webClientId: Config.GOOGLE_WEB_CLIENT_ID,
+        offlineAccess: true,
+      });
+      this.googleSignInConfigured = true;
+      log.info('Google Sign-In configured');
+    } catch (error) {
+      log.error('Failed to configure Google Sign-In', error);
+    }
   }
 
   private updateAuthState(session: Session | null): void {
@@ -155,10 +174,12 @@ class AuthServiceClass {
 
   async signInWithMagicLink(email: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // Use the web callback URL with mobile=true parameter
+      // The web page will detect this and redirect to the app's custom scheme
       const { error } = await this.supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: 'ticketlesschicago://auth/callback',
+          emailRedirectTo: 'https://ticketless.fyi/auth/callback?mobile=true',
         },
       });
 
@@ -173,7 +194,66 @@ class AuthServiceClass {
     }
   }
 
+  async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
+    if (!this.googleSignInConfigured) {
+      return { success: false, error: 'Google Sign-In is not configured' };
+    }
+
+    try {
+      // Check if device has Google Play Services
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+      // Sign in with Google
+      const userInfo = await GoogleSignin.signIn();
+
+      log.info('Google userInfo received', JSON.stringify(userInfo, null, 2));
+
+      if (!userInfo.data?.idToken) {
+        log.error('No idToken in userInfo', userInfo);
+        return { success: false, error: 'Failed to get Google ID token. Please try again.' };
+      }
+
+      log.info('Google sign-in successful, authenticating with Supabase');
+
+      // Authenticate with Supabase using the Google ID token
+      const { data, error } = await this.supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: userInfo.data.idToken,
+      });
+
+      if (error) {
+        log.error('Supabase Google auth error', error);
+        return { success: false, error: error.message };
+      }
+
+      log.info('Supabase authentication successful');
+      return { success: true };
+    } catch (error: any) {
+      log.error('Google sign-in error', error);
+
+      // Handle specific Google Sign-In errors
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { success: false, error: 'Sign in was cancelled' };
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        return { success: false, error: 'Sign in is already in progress' };
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        return { success: false, error: 'Google Play Services not available' };
+      }
+
+      return { success: false, error: error.message || 'Google sign-in failed' };
+    }
+  }
+
+  async signOutGoogle(): Promise<void> {
+    try {
+      await GoogleSignin.signOut();
+    } catch (error) {
+      log.error('Google sign-out error', error);
+    }
+  }
+
   async signOut(): Promise<void> {
+    await this.signOutGoogle();
     await this.supabase.auth.signOut();
     log.info('User signed out');
   }

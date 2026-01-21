@@ -154,6 +154,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         return;
       }
 
+      // Small delay to ensure Android permission system is fully ready after grant
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Initialize and start background task service for monitoring
       await BackgroundTaskService.initialize();
       const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
@@ -195,6 +198,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         setIsGettingLocation(false);
         return;
       }
+
+      // Small delay to ensure Android permission system is fully ready after grant
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Check if location services are enabled
       const servicesEnabled = await LocationService.checkLocationServicesEnabled();
@@ -284,7 +290,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.title}>Ticketless Chicago</Text>
+          <Text style={styles.title}>Autopilot America</Text>
         </View>
 
         {/* Quick Action */}
@@ -416,6 +422,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.tipIcon}>🚨</Text>
             <Text style={styles.tipText}>
               Snow routes are enforced during {Config.PARKING_RULES.SNOW_BAN_INCHES}"+ snowfall events
+            </Text>
+          </View>
+          <View style={styles.tip}>
+            <Text style={styles.tipIcon}>🅿️</Text>
+            <Text style={styles.tipText}>
+              We also check permit zones - avoid tickets in residential permit areas
             </Text>
           </View>
         </Card>

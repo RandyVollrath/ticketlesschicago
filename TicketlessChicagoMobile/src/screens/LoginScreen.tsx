@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { colors, typography, spacing, borderRadius, commonStyles, shadows } from '../theme';
 import AuthService from '../services/AuthService';
+import GoogleLogo from '../components/GoogleLogo';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('LoginScreen');
@@ -21,8 +22,6 @@ const log = Logger.createLogger('LoginScreen');
 interface LoginScreenProps {
   onAuthSuccess?: () => void;
 }
-
-type AuthMode = 'login' | 'signup' | 'forgot';
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,12 +31,11 @@ const validateEmail = (email: string): boolean => {
 };
 
 export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
-  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   // Refs to prevent memory leaks and double-submissions
   const isMountedRef = useRef(true);
@@ -48,99 +46,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       isMountedRef.current = false;
     };
   }, []);
-
-  const handleLogin = async () => {
-    if (isProcessingRef.current) return;
-
-    if (!email || !password) {
-      setError('Please enter your email and password');
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    isProcessingRef.current = true;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await AuthService.signInWithEmail(email.trim(), password);
-
-      if (!isMountedRef.current) return;
-
-      if (result.success) {
-        onAuthSuccess?.();
-      } else {
-        setError(result.error || 'Login failed');
-      }
-    } catch (err) {
-      log.error('Login error', err);
-      if (isMountedRef.current) {
-        setError('An unexpected error occurred. Please try again.');
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-      isProcessingRef.current = false;
-    }
-  };
-
-  const handleSignup = async () => {
-    if (isProcessingRef.current) return;
-
-    if (!email || !password) {
-      setError('Please enter your email and password');
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
-    isProcessingRef.current = true;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await AuthService.signUpWithEmail(email.trim(), password, name.trim());
-
-      if (!isMountedRef.current) return;
-
-      if (result.success) {
-        if (result.needsVerification) {
-          Alert.alert(
-            'Check Your Email',
-            'We sent you a verification link. Please check your email to complete signup.',
-            [{ text: 'OK', onPress: () => setMode('login') }]
-          );
-        } else {
-          onAuthSuccess?.();
-        }
-      } else {
-        setError(result.error || 'Signup failed');
-      }
-    } catch (err) {
-      log.error('Signup error', err);
-      if (isMountedRef.current) {
-        setError('An unexpected error occurred. Please try again.');
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-      isProcessingRef.current = false;
-    }
-  };
 
   const handleMagicLink = async () => {
     if (isProcessingRef.current) return;
@@ -165,11 +70,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       if (!isMountedRef.current) return;
 
       if (result.success) {
-        Alert.alert(
-          'Check Your Email',
-          'We sent you a magic link. Click the link in your email to sign in.',
-          [{ text: 'OK' }]
-        );
+        setMagicLinkSent(true);
       } else {
         setError(result.error || 'Failed to send magic link');
       }
@@ -186,53 +87,86 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     }
   };
 
-  const handleForgotPassword = async () => {
+  const handleSkip = () => {
+    onAuthSuccess?.();
+  };
+
+  const handleGoogleSignIn = async () => {
     if (isProcessingRef.current) return;
 
-    if (!email) {
-      setError('Please enter your email');
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
     isProcessingRef.current = true;
-    setLoading(true);
+    setGoogleLoading(true);
     setError(null);
 
     try {
-      const result = await AuthService.sendPasswordReset(email.trim());
+      const result = await AuthService.signInWithGoogle();
 
       if (!isMountedRef.current) return;
 
       if (result.success) {
-        Alert.alert(
-          'Check Your Email',
-          'We sent you a password reset link. Check your email to reset your password.',
-          [{ text: 'OK', onPress: () => setMode('login') }]
-        );
+        onAuthSuccess?.();
       } else {
-        setError(result.error || 'Failed to send reset email');
+        setError(result.error || 'Google sign-in failed');
       }
     } catch (err) {
-      log.error('Password reset error', err);
+      log.error('Google sign-in error', err);
       if (isMountedRef.current) {
         setError('An unexpected error occurred. Please try again.');
       }
     } finally {
       if (isMountedRef.current) {
-        setLoading(false);
+        setGoogleLoading(false);
       }
       isProcessingRef.current = false;
     }
   };
 
-  const handleSkip = () => {
-    onAuthSuccess?.();
+  const handleResendLink = () => {
+    setMagicLinkSent(false);
+    handleMagicLink();
   };
+
+  // Success state after magic link is sent
+  if (magicLinkSent) {
+    return (
+      <SafeAreaView style={commonStyles.safeArea}>
+        <View style={styles.successContainer}>
+          <Text style={styles.successIcon}>✉️</Text>
+          <Text style={styles.successTitle}>Check Your Email</Text>
+          <Text style={styles.successMessage}>
+            We sent a magic link to{'\n'}
+            <Text style={styles.emailHighlight}>{email}</Text>
+          </Text>
+          <Text style={styles.successInstructions}>
+            Click the link in your email to sign in. The link will expire in 1 hour.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.resendButton}
+            onPress={handleResendLink}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Text style={styles.resendText}>Resend magic link</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.changeEmailButton}
+            onPress={() => setMagicLinkSent(false)}
+          >
+            <Text style={styles.changeEmailText}>Use a different email</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+            <Text style={styles.skipText}>Continue without account</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={commonStyles.safeArea}>
@@ -246,39 +180,20 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.logo}>Ticketless</Text>
-            <Text style={styles.tagline}>Never get a parking ticket again</Text>
+            <Text style={styles.logo}>Autopilot</Text>
+            <Text style={styles.tagline}>Smart parking protection for America</Text>
           </View>
 
           {/* Form Card */}
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>
-              {mode === 'login' && 'Welcome Back'}
-              {mode === 'signup' && 'Create Account'}
-              {mode === 'forgot' && 'Reset Password'}
+            <Text style={styles.formTitle}>Sign In</Text>
+            <Text style={styles.formSubtitle}>
+              Enter your email and we'll send you a magic link to sign in instantly - no password needed.
             </Text>
 
             {error && (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {/* Name field (signup only) */}
-            {mode === 'signup' && (
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Name (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Your name"
-                  placeholderTextColor={colors.textTertiary}
-                  value={name}
-                  onChangeText={(text) => {
-                    setName(text);
-                    if (error) setError(null);
-                  }}
-                  autoCapitalize="words"
-                />
               </View>
             )}
 
@@ -297,113 +212,60 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoFocus
               />
             </View>
 
-            {/* Password field (not for forgot mode) */}
-            {mode !== 'forgot' && (
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter password"
-                  placeholderTextColor={colors.textTertiary}
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    if (error) setError(null);
-                  }}
-                  secureTextEntry
-                />
-              </View>
-            )}
-
-            {/* Primary Action Button */}
+            {/* Google Sign In Button */}
             <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.buttonDisabled]}
-              onPress={() => {
-                if (mode === 'login') handleLogin();
-                else if (mode === 'signup') handleSignup();
-                else handleForgotPassword();
-              }}
-              disabled={loading}
+              style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading || loading}
             >
-              {loading ? (
-                <ActivityIndicator color={colors.white} />
+              {googleLoading ? (
+                <ActivityIndicator color={colors.textPrimary} />
               ) : (
-                <Text style={styles.primaryButtonText}>
-                  {mode === 'login' && 'Sign In'}
-                  {mode === 'signup' && 'Create Account'}
-                  {mode === 'forgot' && 'Send Reset Link'}
-                </Text>
+                <>
+                  <GoogleLogo size={20} />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </>
               )}
             </TouchableOpacity>
 
-            {/* Magic Link Option (login only) */}
-            {mode === 'login' && (
-              <TouchableOpacity
-                style={styles.magicLinkButton}
-                onPress={handleMagicLink}
-                disabled={loading}
-              >
-                <Text style={styles.magicLinkText}>Send me a magic link instead</Text>
-              </TouchableOpacity>
-            )}
-
             {/* Divider */}
-            <View style={styles.divider}>
+            <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Mode Switcher */}
-            {mode === 'login' && (
-              <>
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => {
-                    setMode('signup');
-                    setError(null);
-                  }}
-                >
-                  <Text style={styles.secondaryButtonText}>Create an Account</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.linkButton}
-                  onPress={() => {
-                    setMode('forgot');
-                    setError(null);
-                  }}
-                >
-                  <Text style={styles.linkText}>Forgot your password?</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            {/* Magic Link Button */}
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && styles.buttonDisabled]}
+              onPress={handleMagicLink}
+              disabled={loading || googleLoading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Send Magic Link</Text>
+              )}
+            </TouchableOpacity>
 
-            {mode === 'signup' && (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => {
-                  setMode('login');
-                  setError(null);
-                }}
-              >
-                <Text style={styles.secondaryButtonText}>Already have an account? Sign In</Text>
-              </TouchableOpacity>
-            )}
-
-            {mode === 'forgot' && (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => {
-                  setMode('login');
-                  setError(null);
-                }}
-              >
-                <Text style={styles.secondaryButtonText}>Back to Sign In</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.benefitsContainer}>
+              <View style={styles.benefitRow}>
+                <Text style={styles.benefitIcon}>✨</Text>
+                <Text style={styles.benefitText}>No password to remember</Text>
+              </View>
+              <View style={styles.benefitRow}>
+                <Text style={styles.benefitIcon}>🔒</Text>
+                <Text style={styles.benefitText}>Secure one-time link</Text>
+              </View>
+              <View style={styles.benefitRow}>
+                <Text style={styles.benefitIcon}>⚡</Text>
+                <Text style={styles.benefitText}>Sign in with one click</Text>
+              </View>
+            </View>
           </View>
 
           {/* Skip Button */}
@@ -454,7 +316,14 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
     textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  formSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
     marginBottom: spacing.lg,
+    lineHeight: typography.sizes.sm * 1.5,
   },
   errorContainer: {
     backgroundColor: colors.criticalBg,
@@ -486,30 +355,25 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     color: colors.textPrimary,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+  googleButton: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
     marginTop: spacing.sm,
+    gap: spacing.sm,
+    minHeight: 48,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    color: colors.white,
+  googleButtonText: {
+    color: colors.textPrimary,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontWeight: typography.weights.medium,
   },
-  magicLinkButton: {
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  magicLinkText: {
-    color: colors.primary,
-    fontSize: typography.sizes.sm,
-  },
-  divider: {
+  dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: spacing.lg,
@@ -521,29 +385,42 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     color: colors.textTertiary,
-    paddingHorizontal: spacing.md,
     fontSize: typography.sizes.sm,
+    marginHorizontal: spacing.md,
   },
-  secondaryButton: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+  primaryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.xl,
     paddingVertical: spacing.md,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 48,
   },
-  secondaryButtonText: {
-    color: colors.primary,
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+  buttonDisabled: {
+    opacity: 0.6,
   },
-  linkButton: {
+  primaryButtonText: {
+    color: colors.white,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+  },
+  benefitsContainer: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  benefitRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
-  linkText: {
-    color: colors.textSecondary,
+  benefitIcon: {
+    fontSize: typography.sizes.base,
+    marginRight: spacing.sm,
+  },
+  benefitText: {
     fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
   skipButton: {
     alignItems: 'center',
@@ -558,5 +435,54 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     textAlign: 'center',
     marginTop: spacing.lg,
+  },
+  // Success state styles
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  successIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  successTitle: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  successMessage: {
+    fontSize: typography.sizes.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emailHighlight: {
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+  },
+  successInstructions: {
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginBottom: spacing.xxl,
+  },
+  resendButton: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  resendText: {
+    color: colors.primary,
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.medium,
+  },
+  changeEmailButton: {
+    paddingVertical: spacing.md,
+  },
+  changeEmailText: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
   },
 });
