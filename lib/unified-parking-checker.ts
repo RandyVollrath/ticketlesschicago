@@ -189,7 +189,7 @@ export async function checkAllParkingRestrictions(
       streetCleaningData,
       snowRouteData,
       snowBanStatus,
-      winterBanStreets,
+      winterBanData,
       permitZones,
     ] = await Promise.all([
       // Street cleaning spatial query
@@ -214,11 +214,12 @@ export async function checkAllParkingRestrictions(
         .single()
         .then(r => r.data).catch(() => null),
 
-      // Winter ban streets (for address matching)
-      supabaseAdmin
-        .from('winter_overnight_parking_ban_streets')
-        .select('street_name, from_location, to_location')
-        .then(r => r.data || []).catch(() => []),
+      // Winter ban SPATIAL query (replaces address matching)
+      supabaseAdmin.rpc('get_winter_ban_at_location', {
+        user_lat: latitude,
+        user_lng: longitude,
+        distance_meters: 30,
+      }).then(r => r.data?.[0] || null).catch(() => null),
 
       // Permit zones (for address matching) - only if we have parsed address
       result.location.parsedAddress
@@ -268,44 +269,44 @@ export async function checkAllParkingRestrictions(
 
       if (result.snowBan.isBanActive) {
         result.snowBan.severity = 'critical';
-        result.snowBan.message = `SNOW BAN ACTIVE on ${snowRouteData.street_name}! ${result.snowBan.snowAmount || 2}+ inches of snow. Move your car immediately.`;
+        result.snowBan.message = `SNOW BAN MAY BE ACTIVE on ${snowRouteData.street_name}! ${result.snowBan.snowAmount || 2}+ inches of snow detected. Check signs and move your car if needed.`;
       } else {
         result.snowBan.severity = 'info';
         result.snowBan.message = `${snowRouteData.street_name} is a snow route. No parking when 2"+ snow accumulates.`;
       }
     }
 
-    // --- Winter Overnight Ban ---
-    const winterSeason = isWinterSeason();
+    // --- Winter Overnight Ban (now using spatial query) ---
     const banHoursInfo = getBanHoursInfo();
-    result.winterBan.isWinterSeason = winterSeason;
-    result.winterBan.isBanHours = banHoursInfo.isBanHours;
-    result.winterBan.hoursUntilBan = banHoursInfo.hoursUntilBan;
 
-    if (winterSeason && result.location.streetName && winterBanStreets.length > 0) {
-      const normalizedUserStreet = normalizeStreetName(result.location.streetName);
+    // winterBanData comes from spatial query - already filtered by location
+    if (winterBanData?.street_name) {
+      result.winterBan.found = true;
+      result.winterBan.streetName = winterBanData.street_name;
+      result.winterBan.isWinterSeason = winterBanData.is_winter_season || false;
+      result.winterBan.isBanHours = winterBanData.is_winter_ban_hours || false;
+      result.winterBan.hoursUntilBan = banHoursInfo.hoursUntilBan;
 
-      for (const banStreet of winterBanStreets) {
-        const normalizedBanStreet = normalizeStreetName(banStreet.street_name || '');
-
-        if (normalizedUserStreet.includes(normalizedBanStreet) ||
-            normalizedBanStreet.includes(normalizedUserStreet)) {
-          result.winterBan.found = true;
-          result.winterBan.streetName = banStreet.street_name;
-
-          if (banHoursInfo.isBanHours) {
-            result.winterBan.severity = 'critical';
-            result.winterBan.message = `WINTER BAN ACTIVE on ${banStreet.street_name}! No parking 3-7 AM. Move immediately!`;
-          } else if (banHoursInfo.hoursUntilBan <= 4) {
-            result.winterBan.severity = 'warning';
-            result.winterBan.message = `Winter ban starts in ${Math.round(banHoursInfo.hoursUntilBan)} hour(s) on ${banStreet.street_name}. Move before 3 AM.`;
-          } else {
-            result.winterBan.severity = 'info';
-            result.winterBan.message = `${banStreet.street_name} has winter overnight parking ban (3-7 AM, Dec 1 - Apr 1)`;
-          }
-          break;
+      if (winterBanData.is_winter_season) {
+        if (winterBanData.is_winter_ban_hours) {
+          result.winterBan.severity = 'critical';
+          result.winterBan.message = `WINTER BAN ACTIVE on ${winterBanData.street_name}! No parking 3-7 AM. Move immediately!`;
+        } else if (banHoursInfo.hoursUntilBan <= 4) {
+          result.winterBan.severity = 'warning';
+          result.winterBan.message = `Winter ban starts in ${Math.round(banHoursInfo.hoursUntilBan)} hour(s) on ${winterBanData.street_name}. Move before 3 AM.`;
+        } else {
+          result.winterBan.severity = 'info';
+          result.winterBan.message = `${winterBanData.street_name} has winter overnight parking ban (3-7 AM, Dec 1 - Apr 1)`;
         }
+      } else {
+        // Not winter season but on a winter ban street
+        result.winterBan.severity = 'none';
+        result.winterBan.message = `${winterBanData.street_name} has winter overnight parking ban (Dec 1 - Apr 1, 3-7 AM). Currently outside ban season.`;
       }
+    } else {
+      result.winterBan.isWinterSeason = isWinterSeason();
+      result.winterBan.isBanHours = banHoursInfo.isBanHours;
+      result.winterBan.hoursUntilBan = banHoursInfo.hoursUntilBan;
     }
 
     // --- Permit Zone ---

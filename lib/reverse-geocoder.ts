@@ -42,9 +42,9 @@ export async function reverseGeocode(
   }
 
   // Check if Google Maps API key is configured
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    console.warn('Google Maps API key not configured');
+    console.warn('Google Maps API key not configured (checked GOOGLE_MAPS_API_KEY and GOOGLE_API_KEY)');
     return null;
   }
 

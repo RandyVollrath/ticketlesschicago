@@ -474,10 +474,11 @@ const MapScreenContent: React.FC = () => {
                   </Text>
                 </View>
                 <Button
-                  title="Check Restrictions Here"
-                  variant="secondary"
+                  title="Save Current Location"
+                  variant="primary"
                   onPress={checkCurrentLocation}
                   disabled={isOffline}
+                  style={styles.saveLocationButton}
                 />
               </Card>
             ) : locationPermissionDenied ? (
@@ -675,6 +676,9 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: spacing.lg,
+  },
+  saveLocationButton: {
+    marginTop: spacing.sm,
   },
   permissionDenied: {
     alignItems: 'center',

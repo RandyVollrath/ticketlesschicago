@@ -7,7 +7,7 @@
  * Runs at:
  * - 5am CT: Permit zone reminders (most zones start at 6am)
  * - 7am CT: Street cleaning reminders (cleaning starts at 9am)
- * - 10pm CT: Winter ban reminders (ban starts at 3am)
+ * - 9pm CT: Winter ban reminders (ban starts at 3am)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -115,9 +115,10 @@ export default async function handler(
 
     for (const vehicle of parkedVehicles as ParkedVehicle[]) {
       try {
-        // Winter ban reminder (10pm check, ban starts at 3am)
+        // Winter ban reminder (9pm check, ban starts at 3am)
+        // Changed from 10pm to 9pm to give users more time
         // Only send once per parking session
-        if (chicagoHour >= 21 && chicagoHour <= 23 && isWinterSeason && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at) {
+        if (chicagoHour >= 20 && chicagoHour <= 22 && isWinterSeason && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Winter Parking Ban Reminder',
             body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
@@ -142,12 +143,16 @@ export default async function handler(
           }
         }
 
-        // Street cleaning reminder (7am check, cleaning at 9am)
-        // Only send once per parking session
-        if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.street_cleaning_date === today && !vehicle.street_cleaning_notified_at) {
+        // Street cleaning reminder - NIGHT BEFORE (8pm check for tomorrow's cleaning)
+        // This gives users time to move their car the evening before
+        const tomorrow = new Date(chicagoTime);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+        if (chicagoHour >= 19 && chicagoHour <= 21 && vehicle.street_cleaning_date === tomorrowStr && !vehicle.street_cleaning_notified_at) {
           const result = await sendPushNotification(vehicle.fcm_token, {
-            title: 'Street Cleaning Today!',
-            body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car now to avoid a $65 ticket.`,
+            title: 'Street Cleaning Tomorrow!',
+            body: `Street cleaning scheduled tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid a $65 ticket.`,
             data: {
               type: 'street_cleaning_reminder',
               lat: vehicle.latitude?.toString(),
@@ -159,7 +164,33 @@ export default async function handler(
               .update({ street_cleaning_notified_at: new Date().toISOString() })
               .eq('id', vehicle.id);
             results.streetCleaningReminders++;
-            console.log(`Sent street cleaning reminder to ${vehicle.user_id}`);
+            console.log(`Sent night-before street cleaning reminder to ${vehicle.user_id}`);
+          } else if (result.invalidToken) {
+            await supabaseAdmin.from('user_parked_vehicles')
+              .update({ is_active: false })
+              .eq('id', vehicle.id);
+            console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+          }
+        }
+
+        // Street cleaning reminder - MORNING OF (7am check, cleaning at 9am)
+        // Backup reminder for those who didn't move the night before
+        if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.street_cleaning_date === today && !vehicle.street_cleaning_notified_at) {
+          const result = await sendPushNotification(vehicle.fcm_token, {
+            title: 'Street Cleaning Today - Move Now!',
+            body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car NOW to avoid a $65 ticket.`,
+            data: {
+              type: 'street_cleaning_reminder',
+              lat: vehicle.latitude?.toString(),
+              lng: vehicle.longitude?.toString(),
+            },
+          });
+          if (result.success) {
+            await supabaseAdmin.from('user_parked_vehicles')
+              .update({ street_cleaning_notified_at: new Date().toISOString() })
+              .eq('id', vehicle.id);
+            results.streetCleaningReminders++;
+            console.log(`Sent morning-of street cleaning reminder to ${vehicle.user_id}`);
           } else if (result.invalidToken) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })

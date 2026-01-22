@@ -171,7 +171,7 @@ export default function Dashboard({ user, profile }: DashboardProps) {
                 date: d.date,
                 ward: ward,
                 section: section,
-                time: d.time || '9:00 AM - 3:00 PM',
+                time: d.time || '9:00 AM - 2:00 PM',
                 daysUntil: Math.ceil((new Date(d.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
               }))
               .filter((d: UpcomingCleaning) => d.daysUntil >= 0 && d.daysUntil <= 14)

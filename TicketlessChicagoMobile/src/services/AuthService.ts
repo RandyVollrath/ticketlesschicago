@@ -179,7 +179,7 @@ class AuthServiceClass {
       const { error } = await this.supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: 'https://ticketless.fyi/auth/callback?mobile=true',
+          emailRedirectTo: 'https://autopilotamerica.com/auth/callback?mobile=true',
         },
       });
 

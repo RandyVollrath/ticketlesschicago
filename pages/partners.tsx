@@ -522,7 +522,7 @@ export default function Partners() {
   "risks": [{
     "type": "street_cleaning",
     "date": "2025-01-15",
-    "time": "9:00 AM - 3:00 PM",
+    "time": "9:00 AM - 2:00 PM",
     "severity": "high",
     "fineAmount": 60
   }],

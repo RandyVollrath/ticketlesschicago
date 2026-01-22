@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "private": true,
   "description": "Never get a parking ticket in Chicago again. Automatic parking violation detection and alerts.",
-  "author": "Ticketless Chicago <support@ticketless.fyi>",
-  "homepage": "https://ticketless.fyi",
+  "author": "Autopilot America <support@autopilotamerica.com>",
+  "homepage": "https://autopilotamerica.com",
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
