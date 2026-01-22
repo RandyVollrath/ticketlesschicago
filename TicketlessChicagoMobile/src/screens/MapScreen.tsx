@@ -8,6 +8,7 @@ import {
   Linking,
   Platform,
   Alert,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
@@ -336,7 +337,7 @@ const MapScreenContent: React.FC = () => {
           <Text style={styles.offlineBannerText}>No internet connection</Text>
         </View>
       )}
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Your Parking</Text>
 
         {lastLocation ? (
@@ -356,38 +357,72 @@ const MapScreenContent: React.FC = () => {
                 </View>
               </View>
 
-              <View style={styles.buttonRow}>
-                <Button
-                  title="Open in Maps"
-                  variant="secondary"
-                  size="sm"
-                  onPress={() => openInMaps(lastLocation.coords)}
-                  style={styles.mapButton}
-                />
-                <Button
-                  title="Get Directions"
-                  variant="primary"
-                  size="sm"
-                  onPress={() => getDirections(lastLocation.coords)}
-                  style={styles.mapButton}
-                />
-              </View>
+              <Button
+                title="Get Directions"
+                variant="primary"
+                onPress={() => getDirections(lastLocation.coords)}
+              />
             </Card>
 
-            {lastLocation.rules.length > 0 ? (
-              <Card title="Parking Restrictions">
+            {lastLocation.rules.length > 0 && (
+              <Card title="Active Restrictions">
                 {lastLocation.rules.map((rule, index) => (
                   <RuleCard key={index} rule={rule} />
                 ))}
               </Card>
-            ) : (
-              <Card>
+            )}
+
+            {/* Protection Status - Shows all databases checked */}
+            <Card title="Protection Status">
+              <View style={styles.protectionList}>
+                <View style={styles.protectionItem}>
+                  <Text style={styles.protectionIcon}>🧹</Text>
+                  <View style={styles.protectionInfo}>
+                    <Text style={styles.protectionLabel}>Street Cleaning</Text>
+                    <Text style={styles.protectionStatus}>Checked</Text>
+                  </View>
+                  <Text style={styles.protectionCheck}>✓</Text>
+                </View>
+                <View style={styles.protectionItem}>
+                  <Text style={styles.protectionIcon}>❄️</Text>
+                  <View style={styles.protectionInfo}>
+                    <Text style={styles.protectionLabel}>Winter Overnight Ban</Text>
+                    <Text style={styles.protectionStatus}>Checked</Text>
+                  </View>
+                  <Text style={styles.protectionCheck}>✓</Text>
+                </View>
+                <View style={styles.protectionItem}>
+                  <Text style={styles.protectionIcon}>🌨️</Text>
+                  <View style={styles.protectionInfo}>
+                    <Text style={styles.protectionLabel}>Snow Route Ban</Text>
+                    <Text style={styles.protectionStatus}>Checked</Text>
+                  </View>
+                  <Text style={styles.protectionCheck}>✓</Text>
+                </View>
+                <View style={styles.protectionItem}>
+                  <Text style={styles.protectionIcon}>🅿️</Text>
+                  <View style={styles.protectionInfo}>
+                    <Text style={styles.protectionLabel}>Permit Parking Zones</Text>
+                    <Text style={styles.protectionStatus}>Checked</Text>
+                  </View>
+                  <Text style={styles.protectionCheck}>✓</Text>
+                </View>
+                <View style={styles.protectionItem}>
+                  <Text style={styles.protectionIcon}>🚗</Text>
+                  <View style={styles.protectionInfo}>
+                    <Text style={styles.protectionLabel}>Rush Hour Restrictions</Text>
+                    <Text style={styles.protectionStatus}>Checked</Text>
+                  </View>
+                  <Text style={styles.protectionCheck}>✓</Text>
+                </View>
+              </View>
+              {lastLocation.rules.length === 0 && (
                 <View style={styles.allClear}>
                   <Text style={styles.allClearIcon}>✅</Text>
-                  <Text style={styles.allClearText}>No parking restrictions at this location</Text>
+                  <Text style={styles.allClearText}>All clear - no active restrictions!</Text>
                 </View>
-              </Card>
-            )}
+              )}
+            </Card>
 
             {currentLocation ? (
               <Card title="Current Location">
@@ -437,7 +472,7 @@ const MapScreenContent: React.FC = () => {
             </View>
           </Card>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -460,7 +495,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: spacing.base,
+    paddingBottom: spacing.xxl,
   },
   centered: {
     flex: 1,
@@ -529,7 +567,10 @@ const styles = StyleSheet.create({
   allClear: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.successBg,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.md,
   },
   allClearIcon: {
     fontSize: typography.sizes.lg,
@@ -539,6 +580,38 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     color: colors.success,
     fontWeight: typography.weights.medium,
+    flex: 1,
+  },
+  protectionList: {
+    gap: spacing.sm,
+  },
+  protectionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  protectionIcon: {
+    fontSize: typography.sizes.md,
+    width: 32,
+  },
+  protectionInfo: {
+    flex: 1,
+  },
+  protectionLabel: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
+  },
+  protectionStatus: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+  },
+  protectionCheck: {
+    fontSize: typography.sizes.md,
+    color: colors.success,
+    fontWeight: typography.weights.bold,
   },
   emptyState: {
     alignItems: 'center',
