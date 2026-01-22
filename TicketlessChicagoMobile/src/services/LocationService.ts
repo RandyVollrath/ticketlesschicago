@@ -542,14 +542,15 @@ class LocationServiceClass {
     const data = response.data;
     const rules: ParkingRule[] = [];
 
-    // Street cleaning - check for any restriction (not just active now)
-    if (data?.streetCleaning?.hasRestriction) {
-      const severity = data.streetCleaning.timing === 'NOW' ? 'critical' :
-                       data.streetCleaning.timing === 'TODAY' ? 'warning' : 'info';
+    // Street cleaning - only show as active restriction if it's NOW or TODAY
+    // Don't show UPCOMING as it means it's off-season (like January, before April 1)
+    if (data?.streetCleaning?.hasRestriction &&
+        (data.streetCleaning.timing === 'NOW' || data.streetCleaning.timing === 'TODAY')) {
+      const severity = data.streetCleaning.timing === 'NOW' ? 'critical' : 'warning';
       rules.push({
         type: 'street_cleaning',
         message: data.streetCleaning.message,
-        severity: severity as 'critical' | 'warning' | 'info',
+        severity: severity as 'critical' | 'warning',
         schedule: data.streetCleaning.schedule,
         nextDate: data.streetCleaning.nextDate,
         isActiveNow: data.streetCleaning.timing === 'NOW',
