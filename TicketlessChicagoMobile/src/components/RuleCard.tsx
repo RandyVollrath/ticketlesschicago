@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   activeBadge: {
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: borderRadius.xs,
+    borderRadius: borderRadius.sm,
     marginLeft: spacing.xs,
   },
   activeBadgeText: {

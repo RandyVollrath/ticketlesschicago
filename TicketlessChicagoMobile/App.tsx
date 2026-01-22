@@ -3,6 +3,7 @@ import { NavigationContainer, NavigationContainerRef } from '@react-navigation/n
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Screens
@@ -189,8 +190,9 @@ function App(): React.JSX.Element {
   };
 
   return (
-    <ErrorBoundary>
-      <NavigationContainer
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <NavigationContainer
         ref={navigationRef}
         linking={DeepLinkingService.getLinkingConfig()}
         onReady={() => {
@@ -241,8 +243,9 @@ function App(): React.JSX.Element {
             }}
           />
         </Stack.Navigator>
-      </NavigationContainer>
-    </ErrorBoundary>
+        </NavigationContainer>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 

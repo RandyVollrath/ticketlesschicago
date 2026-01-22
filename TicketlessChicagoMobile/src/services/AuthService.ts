@@ -68,9 +68,9 @@ class AuthServiceClass {
   private configureGoogleSignIn(): void {
     try {
       GoogleSignin.configure({
-        // Web client ID from Google Cloud Console (same one configured in Supabase)
+        // Only set webClientId - let iOS use CLIENT_ID from GoogleService-Info.plist
+        // This configuration avoids nonce issues with Supabase
         webClientId: Config.GOOGLE_WEB_CLIENT_ID,
-        offlineAccess: true,
       });
       this.googleSignInConfigured = true;
       log.info('Google Sign-In configured');
@@ -200,20 +200,20 @@ class AuthServiceClass {
     }
 
     try {
-      // Check if device has Google Play Services
+      // Check if device has Google Play Services (no-op on iOS but required for Android)
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-      // Sign in with Google
+      // Sign in with Google natively
       const userInfo = await GoogleSignin.signIn();
 
-      log.info('Google userInfo received', JSON.stringify(userInfo, null, 2));
+      log.info('Google sign-in response received');
 
       if (!userInfo.data?.idToken) {
-        log.error('No idToken in userInfo', userInfo);
+        log.error('No idToken in userInfo');
         return { success: false, error: 'Failed to get Google ID token. Please try again.' };
       }
 
-      log.info('Google sign-in successful, authenticating with Supabase');
+      log.info('Got Google ID token, authenticating with Supabase');
 
       // Authenticate with Supabase using the Google ID token
       const { data, error } = await this.supabase.auth.signInWithIdToken({

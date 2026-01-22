@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Switch,
@@ -11,6 +10,7 @@ import {
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing } from '../theme';
 import { Card, Button } from '../components';
@@ -215,19 +215,19 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const openWebsite = () => {
-    Linking.openURL('https://ticketless.fyi');
+    Linking.openURL('https://autopilotamerica.com');
   };
 
   const openPrivacyPolicy = () => {
-    Linking.openURL('https://ticketless.fyi/privacy');
+    Linking.openURL('https://autopilotamerica.com/privacy');
   };
 
   const openTerms = () => {
-    Linking.openURL('https://ticketless.fyi/terms');
+    Linking.openURL('https://autopilotamerica.com/terms');
   };
 
   const contactSupport = () => {
-    Linking.openURL('mailto:support@ticketless.fyi?subject=Mobile App Support');
+    Linking.openURL('mailto:support@autopilotamerica.com?subject=Autopilot Mobile App Support');
   };
 
   const handleSignOut = useCallback(() => {

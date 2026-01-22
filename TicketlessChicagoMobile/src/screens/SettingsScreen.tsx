@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import Logger from '../utils/Logger';

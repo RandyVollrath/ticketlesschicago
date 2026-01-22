@@ -6,7 +6,7 @@ import Logger from '../utils/Logger';
 const log = Logger.createLogger('DeepLinking');
 
 // URL scheme for the app
-const URL_SCHEME = 'ticketlesschicago://';
+const URL_SCHEME = 'autopilotamerica://';
 
 // Deep link routes
 export const DEEP_LINK_ROUTES = {
@@ -284,12 +284,20 @@ class DeepLinkingServiceClass {
       let path = '';
       let params: URLParams = {};
 
-      // Handle custom scheme (ticketlesschicago://)
-      if (url.startsWith(URL_SCHEME)) {
-        const withoutScheme = url.substring(URL_SCHEME.length);
+      // Handle custom schemes (autopilotamerica:// or ticketlesschicago://)
+      if (url.startsWith(URL_SCHEME) || url.startsWith('ticketlesschicago://')) {
+        const scheme = url.startsWith(URL_SCHEME) ? URL_SCHEME : 'ticketlesschicago://';
+        const withoutScheme = url.substring(scheme.length);
         const [pathPart, queryPart] = withoutScheme.split('?');
         path = pathPart;
         params = parseQueryString(queryPart || '');
+
+        // Also parse hash fragment for OAuth callbacks
+        const hashIndex = (queryPart || '').indexOf('#');
+        if (hashIndex !== -1) {
+          const hashPart = (queryPart || '').substring(hashIndex + 1);
+          params = { ...params, ...parseQueryString(hashPart) };
+        }
       }
       // Handle https scheme
       else if (url.startsWith('https://') || url.startsWith('http://')) {
@@ -374,7 +382,7 @@ class DeepLinkingServiceClass {
    */
   getLinkingConfig() {
     return {
-      prefixes: [URL_SCHEME, 'https://ticketless.fyi'],
+      prefixes: [URL_SCHEME, 'ticketlesschicago://', 'https://ticketless.fyi', 'https://autopilotamerica.com'],
       config: {
         screens: {
           Onboarding: 'onboarding',

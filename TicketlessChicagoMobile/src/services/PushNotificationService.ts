@@ -237,7 +237,7 @@ class PushNotificationServiceClass {
       }
 
       await notifee.displayNotification({
-        title: notification.title || 'Ticketless Chicago',
+        title: notification.title || 'Autopilot',
         body: notification.body || '',
         data: data,
         android: {
