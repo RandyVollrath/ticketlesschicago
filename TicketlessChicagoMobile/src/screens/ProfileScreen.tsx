@@ -477,7 +477,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </Card>
 
         {/* Version */}
-        <Text style={styles.version}>Ticketless Chicago v{Config.APP_VERSION}</Text>
+        <Text style={styles.version}>Autopilot v{Config.APP_VERSION}</Text>
       </ScrollView>
     </SafeAreaView>
   );

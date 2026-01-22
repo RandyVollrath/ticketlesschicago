@@ -28,24 +28,25 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We need your location to check parking restrictions when you park your car</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>We need your location in the background to automatically detect when you park and check for parking restrictions</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>We need your location in the background to automatically detect when you park and check for parking restrictions</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>We use Bluetooth to detect when you disconnect from your car to know when you've parked</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>We use Bluetooth to detect when you disconnect from your car to know when you've parked</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to quickly and securely sign in to Ticketless</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need your location in the background to automatically detect when you park and check for parking restrictions</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We need your location in the background to automatically detect when you park and check for parking restrictions</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to check parking restrictions when you park your car</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

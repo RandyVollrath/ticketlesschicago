@@ -290,7 +290,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.title}>Autopilot America</Text>
+          <Text style={styles.title}>Autopilot</Text>
         </View>
 
         {/* Quick Action */}
