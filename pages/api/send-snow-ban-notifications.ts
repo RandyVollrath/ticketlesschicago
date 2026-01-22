@@ -34,22 +34,24 @@ async function sendEmail(to: string, subject: string, html: string) {
 
 // SMS via centralized service with retry (lib/sms-service.ts)
 
-function getForecastEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string, userAddress: string): string {
+function getForecastEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string, userAddress: string, forecastPeriod?: string): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
   const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
+  const whenText = forecastPeriod ? `<strong>${forecastPeriod}</strong>` : 'soon';
 
   return `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">❄️ 2+ Inches of Snow Forecasted for Your Street</h2>
+      <h2 style="margin:0 0 12px">❄️ 2+ Inches of Snow Forecasted Starting ${forecastPeriod || 'Soon'}</h2>
       <p>${greeting}</p>
-      <p><strong>Chicago is forecasted to receive ${snowAmount}" of snow, which may trigger the 2-inch parking ban on your street.</strong></p>
+      <p><strong>Chicago is forecasted to receive ${snowAmount}" of snow starting ${whenText}, which may trigger the 2-inch parking ban on your street.</strong></p>
 
       <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;margin:20px 0">
-        <strong>⚠️ PREPARE TO MOVE YOUR CAR</strong>
+        <strong>⚠️ MOVE YOUR CAR BEFORE ${forecastPeriod ? forecastPeriod.toUpperCase() : 'THE SNOW STARTS'}</strong>
         <ul style="margin:8px 0">
           <li><strong>Your Street:</strong> ${streetInfo}</li>
-          <li><strong>Forecasted Snow:</strong> ${snowAmount} inches</li>
-          <li><strong>When Ban Activates:</strong> Once 2+ inches has actually fallen (not yet in effect)</li>
+          <li><strong>Snow Expected:</strong> ${forecastPeriod || 'Soon'}</li>
+          <li><strong>Forecasted Amount:</strong> ${snowAmount} inches</li>
+          <li><strong>When Ban Activates:</strong> Once 2+ inches has actually fallen</li>
           <li><strong>Penalty if Violated:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
         </ul>
       </div>
@@ -145,9 +147,10 @@ function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, 
   `;
 }
 
-function getForecastSMSText(snowAmount: number, streetInfo: string, userAddress: string): string {
+function getForecastSMSText(snowAmount: number, streetInfo: string, userAddress: string, forecastPeriod?: string): string {
   const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
-  return `❄️ ${snowAmount}" snow forecasted. 2-inch parking ban may activate on ${streetInfo}. Find safe parking: ${safeParkingUrl}`;
+  const whenText = forecastPeriod ? ` starting ${forecastPeriod}` : '';
+  return `❄️ ${snowAmount}" snow forecasted${whenText}. Move car off ${streetInfo} before then or risk $235+ tow. Safe parking: ${safeParkingUrl}`;
 }
 
 function getConfirmationSMSText(snowAmount: number, streetInfo: string, userAddress: string): string {
@@ -156,13 +159,14 @@ function getConfirmationSMSText(snowAmount: number, streetInfo: string, userAddr
 }
 
 // Templates for users NOT on snow routes (awareness alerts)
-function getAwarenessForecastEmailHtml(firstName: string | null, snowAmount: number): string {
+function getAwarenessForecastEmailHtml(firstName: string | null, snowAmount: number, forecastPeriod?: string): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
+  const whenText = forecastPeriod ? `starting <strong>${forecastPeriod}</strong>` : 'soon';
   return `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">❄️ 2-Inch Snow Ban May Be Activated Soon</h2>
+      <h2 style="margin:0 0 12px">❄️ 2-Inch Snow Ban May Be Activated ${forecastPeriod || 'Soon'}</h2>
       <p>${greeting}</p>
-      <p><strong>Chicago is forecasted to receive ${snowAmount}" of snow, which may trigger the 2-inch parking ban on main streets.</strong></p>
+      <p><strong>Chicago is forecasted to receive ${snowAmount}" of snow ${whenText}, which may trigger the 2-inch parking ban on main streets.</strong></p>
 
       <div style="background:#dbeafe;border-left:4px solid #3b82f6;padding:16px;margin:20px 0">
         <strong>ℹ️ FOR YOUR AWARENESS</strong>
@@ -224,8 +228,9 @@ function getAwarenessConfirmationEmailHtml(firstName: string | null, snowAmount:
   `;
 }
 
-function getAwarenessForecastSMSText(snowAmount: number): string {
-  return `❄️ ${snowAmount}" snow forecasted in Chicago. 2-inch parking ban may activate on main streets. Check signs if parked on arterials. -Autopilot America`;
+function getAwarenessForecastSMSText(snowAmount: number, forecastPeriod?: string): string {
+  const whenText = forecastPeriod ? ` starting ${forecastPeriod}` : '';
+  return `❄️ ${snowAmount}" snow forecasted${whenText}. 2-inch ban may activate on main streets. Move before then if parked on arterials. -Autopilot`;
 }
 
 function getAwarenessConfirmationSMSText(snowAmount: number): string {
@@ -395,19 +400,22 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
     }
   }
 
+  // Extract forecast period from snow event metadata (e.g., "Sunday", "Tonight")
+  const forecastPeriod = snowEvent.metadata?.forecast_period || snowEvent.metadata?.latest_forecast_period;
+
   // Process users ON snow routes (urgent alerts with their specific street) - PARALLEL
   await processBatch(snowRouteUsersToNotify, async (user) => {
     const streetInfo = user.route.on_street;
     const userAddress = user.home_address_full || user.route.on_street;
 
     const emailSubject = isForecastNotif
-      ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban May Apply`
+      ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted${forecastPeriod ? ` for ${forecastPeriod}` : ''} - Move Your Car`
       : `🚨 ${snowEvent.snow_amount_inches}" Snow Fell - 2-Inch Ban May Be Active`;
     const emailHtml = isForecastNotif
-      ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress)
+      ? getForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress, forecastPeriod)
       : getConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches, streetInfo, userAddress);
     const smsText = isForecastNotif
-      ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress)
+      ? getForecastSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress, forecastPeriod)
       : getConfirmationSMSText(snowEvent.snow_amount_inches, streetInfo, userAddress);
 
     const smsEnabled = isForecastNotif
@@ -433,13 +441,13 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
   // Process users NOT on snow routes (awareness alerts) - PARALLEL
   await processBatch(awarenessUsers, async (user) => {
     const emailSubject = isForecastNotif
-      ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted - 2-Inch Ban Alert`
+      ? `❄️ ${snowEvent.snow_amount_inches}" Snow Forecasted${forecastPeriod ? ` for ${forecastPeriod}` : ''} - 2-Inch Ban Alert`
       : `🚨 ${snowEvent.snow_amount_inches}" Snow Fell - 2-Inch Ban May Be Active`;
     const emailHtml = isForecastNotif
-      ? getAwarenessForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches)
+      ? getAwarenessForecastEmailHtml(user.first_name, snowEvent.snow_amount_inches, forecastPeriod)
       : getAwarenessConfirmationEmailHtml(user.first_name, snowEvent.snow_amount_inches);
     const smsText = isForecastNotif
-      ? getAwarenessForecastSMSText(snowEvent.snow_amount_inches)
+      ? getAwarenessForecastSMSText(snowEvent.snow_amount_inches, forecastPeriod)
       : getAwarenessConfirmationSMSText(snowEvent.snow_amount_inches);
 
     const smsEnabled = isForecastNotif
