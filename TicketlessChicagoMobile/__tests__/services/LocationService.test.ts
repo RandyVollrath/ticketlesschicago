@@ -125,7 +125,7 @@ describe('LocationService', () => {
         address: '123 N State St, Chicago',
         streetCleaning: {
           hasRestriction: true,
-          message: 'Street cleaning Tuesday 9am-3pm',
+          message: 'Street cleaning Tuesday 9am-2pm',
           timing: 'TODAY',
         },
         winterOvernightBan: { active: false, message: '' },

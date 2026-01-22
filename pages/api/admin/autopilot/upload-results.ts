@@ -17,6 +17,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
+import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../../../../lib/contest-kits/evidence-guidance';
 
 /**
  * Sleep for a given number of milliseconds
@@ -572,133 +573,6 @@ ${addressLines.join('\n')}`;
   return fullLetter;
 }
 
-// Evidence questions tailored to each violation type
-const EVIDENCE_QUESTIONS: Record<string, { title: string; questions: string[] }> = {
-  expired_plates: {
-    title: 'Questions About Your Expired Plates Ticket',
-    questions: [
-      'Did you renew your registration BEFORE the ticket date? If so, please provide a screenshot of the renewal confirmation email or receipt showing the renewal date.',
-      'Was your renewed sticker in the mail at the time of the ticket? If so, when did you receive it?',
-      'Do you have any documentation showing your registration was valid (e.g., IL SOS confirmation, renewal receipt)?',
-    ],
-  },
-  no_city_sticker: {
-    title: 'Questions About Your City Sticker Ticket',
-    questions: [
-      'Did you purchase your city sticker BEFORE the ticket date? If so, please provide a screenshot of the purchase confirmation email or receipt.',
-      'Was your sticker purchased but not yet displayed on your vehicle? Please explain.',
-      'Do you have proof showing when you purchased the sticker (email confirmation, credit card statement)?',
-    ],
-  },
-  expired_meter: {
-    title: 'Questions About Your Expired Meter Ticket',
-    questions: [
-      'Did the parking meter appear to be malfunctioning? Please describe what happened.',
-      'Did you pay via a parking app (ParkChicago, SpotHero, etc.)? If so, please provide a screenshot showing your payment and time.',
-      'Was the meter signage unclear or confusing? Do you have any photos?',
-    ],
-  },
-  street_cleaning: {
-    title: 'Questions About Your Street Cleaning Ticket',
-    questions: [
-      'Do you have any photos showing your car was NOT on the street during the posted cleaning hours?',
-      'Was the street cleaning signage missing, damaged, or obscured? Do you have photos?',
-      'Do you have any evidence (dashcam, security camera, photos) showing your car was parked elsewhere during that time?',
-      'Were the posted hours confusing or contradictory with other signs nearby?',
-    ],
-  },
-  fire_hydrant: {
-    title: 'Questions About Your Fire Hydrant Ticket',
-    questions: [
-      'Do you have any photos showing how far your car was parked from the hydrant?',
-      'Was the hydrant obscured by snow, vegetation, or other objects?',
-      'Do you believe you were parked at least 15 feet away? Any evidence to support this?',
-    ],
-  },
-  rush_hour: {
-    title: 'Questions About Your Rush Hour Parking Ticket',
-    questions: [
-      'Were you dealing with an emergency situation? Please describe what happened.',
-      'Was the rush hour signage unclear about the specific hours of restriction?',
-      'Were you actively loading/unloading or briefly stopped (not parked)?',
-    ],
-  },
-  disabled_zone: {
-    title: 'Questions About Your Disabled Zone Ticket',
-    questions: [
-      'Do you have a valid disability placard or plate? Please provide documentation.',
-      'Was your placard displayed but perhaps not visible to the officer?',
-      'Were you picking up or dropping off someone with a disability?',
-    ],
-  },
-  residential_permit: {
-    title: 'Questions About Your Residential Permit Parking Ticket',
-    questions: [
-      'Do you have a valid residential parking permit for this zone? Please provide a photo or documentation.',
-      'Were you visiting a resident who gave you a guest pass?',
-      'Was the permit zone signage unclear or contradictory?',
-    ],
-  },
-  parking_prohibited: {
-    title: 'Questions About Your Parking Prohibited Ticket',
-    questions: [
-      'Was the "No Parking" signage missing, obscured, or confusing? Do you have photos?',
-      'Was this a temporary restriction (construction, event)? Was it properly posted?',
-      'Were there contradictory signs in the area?',
-    ],
-  },
-  no_standing_time_restricted: {
-    title: 'Questions About Your No Standing/Time Restricted Ticket',
-    questions: [
-      'Were the posted restriction hours unclear or hard to read?',
-      'Were you actively loading/unloading passengers or goods?',
-      'Do you have any evidence showing the signage was confusing or contradictory?',
-    ],
-  },
-  missing_plate: {
-    title: 'Questions About Your Missing/Noncompliant Plate Ticket',
-    questions: [
-      'Was your plate actually on the vehicle but perhaps obscured by dirt, snow, or a bike rack?',
-      'Did your plate fall off recently? Do you have any documentation of this?',
-      'Do you have photos showing your plate was properly displayed?',
-    ],
-  },
-  commercial_loading: {
-    title: 'Questions About Your Commercial Loading Zone Ticket',
-    questions: [
-      'Were you actively loading or unloading goods for a nearby business? Please describe.',
-      'Do you have any receipts or documentation showing you were making a delivery?',
-      'Was the loading zone signage unclear about allowed times or activities?',
-    ],
-  },
-  red_light: {
-    title: 'Questions About Your Red Light Camera Ticket',
-    questions: [
-      'Were you already in the intersection when the light turned red and it was unsafe to stop?',
-      'Was the yellow light unusually short at this intersection?',
-      'Were road conditions (ice, rain, heavy traffic) a factor in your decision to proceed?',
-      'Was your vehicle not the one that ran the light (wrong plate captured)?',
-    ],
-  },
-  speed_camera: {
-    title: 'Questions About Your Speed Camera Ticket',
-    questions: [
-      'Was the speed limit signage unclear or obscured at this location?',
-      'Do you believe the camera may have malfunctioned or misread your speed?',
-      'Were there road conditions that affected traffic flow (construction, emergency vehicle)?',
-      'Was your vehicle not the one speeding (wrong plate captured)?',
-    ],
-  },
-  other_unknown: {
-    title: 'Questions About Your Ticket',
-    questions: [
-      'Please describe what happened and why you believe this ticket was issued in error.',
-      'Was there any signage that was missing, unclear, or confusing?',
-      'Do you have any photos, receipts, or documentation that could help your case?',
-      'Were there any extenuating circumstances we should know about?',
-    ],
-  },
-};
 
 /**
  * Send email to admin when VA upload has errors
@@ -813,6 +687,8 @@ async function sendAdminUploadNotification(
 
 /**
  * Send email to user about detected ticket
+ * Uses the evidence guidance system to provide ticket-specific questions,
+ * win rates, tips, and pitfalls to help users provide the most useful evidence.
  */
 async function sendTicketDetectedEmail(
   userEmail: string,
@@ -844,19 +720,33 @@ async function sendTicketDetectedEmail(
     .replace(/_/g, ' ')
     .replace(/\b\w/g, l => l.toUpperCase());
 
-  // Get ticket-specific evidence questions
-  const evidenceInfo = EVIDENCE_QUESTIONS[violationType] || EVIDENCE_QUESTIONS.other_unknown;
+  // Get ticket-specific evidence guidance (includes win rates, tips, and smart questions)
+  const guidance = getEvidenceGuidance(violationType);
+  const questionsHtml = generateEvidenceQuestionsHtml(guidance);
+  const quickTipsHtml = generateQuickTipsHtml(guidance);
 
-  // Build the questions HTML
-  const questionsHtml = evidenceInfo.questions
-    .map((q, i) => `<li style="margin-bottom: 12px;">${q}</li>`)
-    .join('');
+  // Format win rate as percentage
+  const winRatePercent = Math.round(guidance.winRate * 100);
+
+  // Color the win rate based on odds
+  const winRateColor = guidance.winRate >= 0.5 ? '#059669' : guidance.winRate >= 0.3 ? '#d97706' : '#dc2626';
+  const winRateText = guidance.winRate >= 0.5 ? 'Good odds!' : guidance.winRate >= 0.3 ? 'Worth trying' : 'Challenging but possible';
+
+  // Generate pitfalls HTML
+  const pitfallsHtml = guidance.pitfalls.length > 0 ? `
+    <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 16px; border-radius: 8px; margin: 20px 0;">
+      <h4 style="margin: 0 0 8px; color: #991b1b; font-size: 14px;">⚠️ Avoid These Mistakes</h4>
+      <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 13px; line-height: 1.6;">
+        ${guidance.pitfalls.map(p => `<li>${p}</li>`).join('')}
+      </ul>
+    </div>
+  ` : '';
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0; font-size: 24px;">Parking Ticket Detected</h1>
-        <p style="margin: 8px 0 0; opacity: 0.9;">Action Required - Evidence Submission</p>
+      <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 24px;">${guidance.title}</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9;">Your evidence can make the difference</p>
       </div>
 
       <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
@@ -865,10 +755,20 @@ async function sendTicketDetectedEmail(
         </p>
 
         <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-          We've detected a parking ticket on your vehicle. Here are the details:
+          ${guidance.intro}
         </p>
 
-        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <!-- Win Rate Badge -->
+        <div style="text-align: center; margin: 20px 0;">
+          <div style="display: inline-block; background: ${winRateColor}; color: white; padding: 12px 24px; border-radius: 20px;">
+            <span style="font-size: 24px; font-weight: bold;">${winRatePercent}%</span>
+            <span style="font-size: 14px; margin-left: 8px;">Win Rate • ${winRateText}</span>
+          </div>
+        </div>
+
+        <!-- Ticket Details -->
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 12px; color: #374151; font-size: 16px;">Ticket Details</h3>
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Ticket Number:</td>
@@ -897,29 +797,25 @@ async function sendTicketDetectedEmail(
           </table>
         </div>
 
-        <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="margin: 0 0 12px; color: #92400e; font-size: 18px;">${evidenceInfo.title}</h3>
+        <!-- Evidence Questions -->
+        <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 16px; color: #92400e; font-size: 18px;">📝 Help Us Win Your Case</h3>
           <p style="margin: 0 0 16px; color: #92400e; font-size: 14px; line-height: 1.6;">
-            <strong>Evidence can significantly increase your chances of winning.</strong> Please <strong>reply to this email</strong> with answers to these questions:
+            Please <strong>reply to this email</strong> with answers to these questions. Each question is designed to get the evidence that wins cases:
           </p>
-          <ol style="margin: 0; padding-left: 20px; color: #78350f; font-size: 14px; line-height: 1.7;">
-            ${questionsHtml}
-          </ol>
+          ${questionsHtml}
         </div>
 
-        <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <h4 style="margin: 0 0 8px; color: #065f46; font-size: 14px;">What Evidence Helps Most?</h4>
-          <ul style="margin: 0; padding-left: 20px; color: #065f46; font-size: 13px; line-height: 1.7;">
-            <li><strong>Screenshots</strong> of email confirmations, receipts, or app payments</li>
-            <li><strong>Photos</strong> of unclear/missing signage, your parked car, or the location</li>
-            <li><strong>Documentation</strong> like registration renewals or permit receipts</li>
-            <li><strong>Your written explanation</strong> of what happened</li>
-          </ul>
-        </div>
+        <!-- Quick Tips -->
+        ${quickTipsHtml}
 
+        <!-- Pitfalls -->
+        ${pitfallsHtml}
+
+        <!-- Deadline -->
         <div style="background: #dbeafe; border: 1px solid #3b82f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0; color: #1e40af; font-size: 14px;">
-            <strong>Deadline:</strong> ${formattedDeadline}
+            <strong>⏰ Evidence Deadline:</strong> ${formattedDeadline}
           </p>
           <p style="margin: 8px 0 0; color: #1e40af; font-size: 14px;">
             We will send your contest letter with or without evidence after this deadline.
@@ -927,7 +823,7 @@ async function sendTicketDetectedEmail(
         </div>
 
         <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-          If you don't have any evidence to submit, no action is needed. We'll automatically send a contest letter on your behalf after the deadline.
+          No evidence? No problem. We'll automatically send a contest letter on your behalf after the deadline. But any evidence you provide significantly increases your chances of winning!
         </p>
 
         <p style="color: #6b7280; font-size: 12px; margin-top: 24px; text-align: center;">
@@ -945,7 +841,7 @@ async function sendTicketDetectedEmail(
   const result = await sendResendEmailWithRetry({
     from: 'Autopilot America <alerts@autopilotamerica.com>',
     to: [userEmail],
-    subject: `Parking Ticket Detected - ${ticketNumber} - Evidence Needed`,
+    subject: guidance.emailSubject,
     html,
     reply_to: ticketSpecificReplyTo,
   });

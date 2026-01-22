@@ -70,7 +70,12 @@ interface LinkRowProps {
 }
 
 const LinkRow: React.FC<LinkRowProps> = ({ title, onPress, icon, danger }) => (
-  <TouchableOpacity style={styles.linkRow} onPress={onPress}>
+  <TouchableOpacity
+    style={styles.linkRow}
+    onPress={onPress}
+    delayPressIn={100}
+    activeOpacity={0.7}
+  >
     {icon && <Text style={styles.linkIcon}>{icon}</Text>}
     <Text style={[styles.linkTitle, danger && styles.dangerText]}>{title}</Text>
     <Text style={styles.chevron}>›</Text>
@@ -437,9 +442,26 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.settingDivider} />
           <SettingRow
             title="Background Location"
-            subtitle="Enable for more accurate detection"
+            subtitle="May increase battery usage. Required for automatic parking detection when app is closed."
             value={settings.backgroundLocationEnabled}
-            onValueChange={v => updateSetting('backgroundLocationEnabled', v)}
+            onValueChange={v => {
+              if (v) {
+                // Show battery warning when enabling
+                Alert.alert(
+                  'Battery Usage Notice',
+                  'Enabling background location allows automatic parking detection when you disconnect from your car, even when the app is closed.\n\nThis may increase battery usage. You can disable this anytime if you notice significant battery drain.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Enable',
+                      onPress: () => updateSetting('backgroundLocationEnabled', true),
+                    },
+                  ]
+                );
+              } else {
+                updateSetting('backgroundLocationEnabled', false);
+              }
+            }}
           />
         </Card>
 
@@ -468,6 +490,17 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Danger Zone */}
         <Card>
+          {user && (
+            <>
+              <LinkRow
+                title={isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                icon="🚪"
+                onPress={handleSignOut}
+                danger
+              />
+              <View style={styles.settingDivider} />
+            </>
+          )}
           <LinkRow
             title="Clear All Data"
             icon="🗑️"

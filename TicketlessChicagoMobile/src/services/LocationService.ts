@@ -128,7 +128,7 @@ class LocationServiceClass {
             resolve(true); // Services enabled but other error
           }
         },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity, forceLocationManager: true }
       );
     });
   }
@@ -207,35 +207,36 @@ class LocationServiceClass {
 
   /**
    * Get location options based on desired accuracy level
+   * Prioritize accuracy - we need precise locations for parking checks
    */
   private getLocationOptions(accuracy: LocationAccuracy): GeoOptions {
     switch (accuracy) {
       case 'high':
         return {
           enableHighAccuracy: true,
-          timeout: 20000, // 20 seconds for high accuracy
-          maximumAge: 5000, // Only use cache if < 5 seconds old
-          forceRequestLocation: true, // Force new GPS reading on Android
+          timeout: 15000, // 15 seconds for GPS
+          maximumAge: 5000, // Only accept 5-second old cache for high accuracy
+          forceRequestLocation: true, // Force new GPS reading
           forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
           showLocationDialog: true, // Show dialog if location is off (Android)
         };
       case 'balanced':
         return {
           enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 30000, // Accept 30-second old cache
-          forceRequestLocation: false,
+          timeout: 12000, // 12 seconds
+          maximumAge: 15000, // Accept 15-second old cache
+          forceRequestLocation: true, // Force fresh location
           forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
           showLocationDialog: true,
         };
       case 'low':
         return {
           enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 60000, // Accept 1-minute old cache
+          timeout: 8000, // 8 seconds
+          maximumAge: 30000, // Accept 30-second old cache
           forceRequestLocation: false,
-          forceLocationManager: true, // Use location manager (faster but less accurate)
-          showLocationDialog: false,
+          forceLocationManager: true, // Use location manager
+          showLocationDialog: true,
         };
     }
   }
@@ -246,9 +247,60 @@ class LocationServiceClass {
    * or times out after the specified duration
    */
   async getHighAccuracyLocation(
-    targetAccuracyMeters: number = 20,
-    maxWaitMs: number = 30000
+    targetAccuracyMeters: number = 50,
+    maxWaitMs: number = 20000
   ): Promise<Coordinates> {
+    // On Android, we need to prioritize accuracy over speed
+    // The forceLocationManager option means we use Android's LocationManager
+    // which can be slower but is more reliable than FusedLocationProvider
+    if (Platform.OS === 'android') {
+      log.info('Android: Getting high accuracy location (target: ' + targetAccuracyMeters + 'm)');
+
+      // Try high accuracy first - this is what we want
+      try {
+        const coords = await this.getCurrentLocation('high');
+        const accuracy = coords.accuracy || 9999;
+        log.info(`Android: High accuracy returned ${accuracy.toFixed(1)}m`);
+
+        // If accuracy is good enough, return it
+        if (accuracy <= targetAccuracyMeters) {
+          return coords;
+        }
+
+        // If accuracy is poor (>500m), try balanced as it might do better
+        if (accuracy > 500) {
+          log.info('Android: Accuracy poor, trying balanced...');
+          try {
+            const balanced = await this.getCurrentLocation('balanced');
+            const balancedAcc = balanced.accuracy || 9999;
+            log.info(`Android: Balanced returned ${balancedAcc.toFixed(1)}m`);
+            // Return whichever is better
+            return balancedAcc < accuracy ? balanced : coords;
+          } catch {
+            return coords; // Return high accuracy result even if poor
+          }
+        }
+
+        return coords;
+      } catch (highError) {
+        log.warn('Android: High accuracy failed, trying balanced', highError);
+      }
+
+      // Fallback to balanced
+      try {
+        const coords = await this.getCurrentLocation('balanced');
+        log.info(`Android: Balanced fallback returned ${coords.accuracy?.toFixed(1) || 'unknown'}m`);
+        return coords;
+      } catch (balancedError) {
+        log.warn('Android: Balanced failed, trying low', balancedError);
+      }
+
+      // Final fallback: low accuracy
+      log.info('Android: Using low accuracy as last resort');
+      return this.getCurrentLocation('low');
+    }
+
+    // iOS: Use watchPosition for better accuracy
     return new Promise((resolve, reject) => {
       let bestPosition: Coordinates | null = null;
       let resolved = false;

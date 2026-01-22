@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { createTowAlert, markAlertNotified } from '../../../lib/contest-intelligence';
 
 // Checks if any user's car was towed recently
 // Sends immediate SMS/email alerts
@@ -83,14 +84,12 @@ export default async function handler(
 
       console.log(`🚨 FOUND TOW: ${plate} (${state}) - User: ${user.user_id}`);
 
-      // Format tow date
+      // Format tow date (no time - Chicago doesn't provide it)
       const towDate = new Date(tow.tow_date);
       const dateStr = towDate.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
+        day: 'numeric'
       });
 
       const message = `🚨 AUTOPILOT AMERICA ALERT
@@ -164,6 +163,38 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
         } catch (emailError) {
           console.error(`Error sending email to ${user.email}:`, emailError);
         }
+      }
+
+      // Create tow alert in the intelligence system
+      try {
+        const towAlert = await createTowAlert(supabaseAdmin, {
+          user_id: user.user_id,
+          alert_type: 'tow',
+          plate: plate,
+          state: state,
+          tow_location: tow.tow_zone || undefined,
+          impound_location: tow.towed_to || undefined,
+          impound_address: tow.towed_to_address || undefined,
+          impound_phone: tow.tow_facility_phone || undefined,
+          tow_date: tow.tow_date,
+          discovered_at: new Date().toISOString(),
+          related_ticket_ids: [],
+          contesting_tow: false,
+        });
+
+        if (towAlert) {
+          // Mark the alert as notified if we sent notifications
+          if (notificationsSent > 0) {
+            await markAlertNotified(
+              supabaseAdmin,
+              towAlert.id,
+              user.notify_sms && user.phone_number ? 'sms' : 'email'
+            );
+          }
+          console.log(`✓ Created tow alert ${towAlert.id} for user ${user.user_id}`);
+        }
+      } catch (alertError) {
+        console.error(`Failed to create tow alert for user ${user.user_id}:`, alertError);
       }
 
       // Mark this user as notified for this tow

@@ -140,7 +140,7 @@ export async function checkSnowBanStatus(): Promise<SnowBanStatus> {
     let message = '';
     if (isBanActive && isCurrentlyWinterBanHours) {
       const hoursUntil7am = 7 - currentHour;
-      message = `🚨 2-INCH SNOW BAN ACTIVE NOW! No parking until 7am (${hoursUntil7am} hours)`;
+      message = `🚨 2-INCH SNOW BAN MAY BE ACTIVE! No parking until 7am (${hoursUntil7am} hours) - verify with street signs`;
     } else if (isBanActive && hoursUntilBan < 12) {
       message = `❄️ Snow ban active - No parking 3am-7am (${hoursUntilBan} hours until ban)`;
     } else if (isBanActive) {

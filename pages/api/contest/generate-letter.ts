@@ -4,6 +4,40 @@ import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { CHICAGO_ORDINANCES, getOrdinanceByCode } from '../../../lib/chicago-ordinances';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { getHistoricalWeather, HistoricalWeatherData } from '../../../lib/weather-service';
+import {
+  getContestKit,
+  evaluateContest,
+  ContestKit,
+  ContestEvaluation,
+  TicketFacts,
+  UserEvidence,
+} from '../../../lib/contest-kits';
+
+// Weather relevance by violation type
+// PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
+// SUPPORTING: Weather can be a contributing factor argument
+// EMERGENCY: Weather made it unsafe/impossible to comply
+const WEATHER_RELEVANCE: Record<string, 'primary' | 'supporting' | 'emergency'> = {
+  // PRIMARY - Weather directly affects the violation
+  '9-64-010': 'primary',    // Street Cleaning - cancelled in bad weather
+  '9-64-100': 'primary',    // Snow Route - threshold must be met
+
+  // SUPPORTING - Weather contributes to circumstances
+  '9-64-170': 'supporting', // Expired Meter - hard to return in storm
+  '9-64-070': 'supporting', // Residential Permit - visibility issues
+  '9-64-190': 'supporting', // Rush Hour - hazardous conditions
+  '9-64-130': 'supporting', // Fire Hydrant - obscured by snow
+  '9-64-050': 'supporting', // Bus Stop - markings obscured
+  '9-64-090': 'supporting', // Bike Lane - markings obscured by snow/ice
+
+  // EMERGENCY - Any violation where weather created unsafe conditions
+  '9-64-020': 'emergency',  // Parking in Alley - took shelter
+  '9-64-180': 'emergency',  // Handicapped Zone - medical emergency in weather
+};
+
+// All violations where weather might be relevant
+const WEATHER_RELEVANT_VIOLATIONS = Object.keys(WEATHER_RELEVANCE);
 
 // Input validation schema
 const generateLetterSchema = z.object({
@@ -231,7 +265,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Validate request body
     const parseResult = generateLetterSchema.safeParse(req.body);
     if (!parseResult.success) {
-      const errors = parseResult.error.errors.map(err => ({
+      const errors = parseResult.error.issues.map(err => ({
         field: err.path.join('.'),
         message: err.message,
       }));
@@ -267,12 +301,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supportingDocs = (contest.supporting_documents as any[]) || [];
     const hasWitnessStatement = !!contest.written_statement;
 
-    const userEvidence = {
+    const userEvidence: UserEvidence = {
       hasPhotos: evidencePhotos.length > 0,
       hasWitnesses: hasWitnessStatement,
       hasDocs: supportingDocs.length > 0,
-      photoTypes: evidencePhotos.map((p: any) => p.type)
+      photoTypes: evidencePhotos.map((p: any) => p.type),
+      hasReceipts: supportingDocs.some((d: any) => d.type === 'receipt'),
+      hasPoliceReport: supportingDocs.some((d: any) => d.type === 'police_report'),
+      hasMedicalDocs: supportingDocs.some((d: any) => d.type === 'medical'),
+      docTypes: supportingDocs.map((d: any) => d.type),
     };
+
+    // Get contest kit and evaluate if available
+    const contestKit = contest.violation_code ? getContestKit(contest.violation_code) : null;
+    let kitEvaluation: ContestEvaluation | null = null;
+
+    if (contestKit && contest.violation_code) {
+      const ticketFacts: TicketFacts = {
+        ticketNumber: contest.ticket_number || '',
+        violationCode: contest.violation_code,
+        violationDescription: contest.violation_description || '',
+        ticketDate: contest.ticket_date || contest.extracted_data?.date || '',
+        ticketTime: contest.extracted_data?.time,
+        location: contest.ticket_location || '',
+        amount: contest.ticket_amount || 0,
+        daysSinceTicket: contest.ticket_date
+          ? Math.floor((Date.now() - new Date(contest.ticket_date).getTime()) / (1000 * 60 * 60 * 24))
+          : 0,
+        hasSignageIssue: contestGrounds?.some(g =>
+          g.toLowerCase().includes('sign') || g.toLowerCase().includes('signage')
+        ),
+        hasEmergency: contestGrounds?.some(g =>
+          g.toLowerCase().includes('emergency')
+        ),
+      };
+
+      try {
+        kitEvaluation = await evaluateContest(ticketFacts, userEvidence, contestGrounds);
+      } catch (evalError) {
+        console.error('Contest kit evaluation failed:', evalError);
+        // Continue without kit evaluation
+      }
+    }
 
     // Get court data for this violation type (now with smart case matching)
     const courtData = await getCourtDataForViolation(
@@ -283,6 +353,85 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Generate evidence checklist
     const evidenceChecklist = generateEvidenceChecklist(contest, contestGrounds, ordinanceInfo);
+
+    // Check weather defense for relevant violation types
+    let weatherData: HistoricalWeatherData | null = null;
+    let weatherDefenseText = '';
+    const weatherRelevanceType = contest.violation_code ? WEATHER_RELEVANCE[contest.violation_code] : null;
+
+    if (contest.violation_code && weatherRelevanceType) {
+      try {
+        const ticketDate = contest.ticket_date || contest.extracted_data?.date;
+        if (ticketDate) {
+          weatherData = await getHistoricalWeather(ticketDate);
+
+          // Generate different prompts based on how weather relates to this violation
+          if (weatherRelevanceType === 'primary' && weatherData.defenseRelevant) {
+            // PRIMARY: Weather is the main defense
+            weatherDefenseText = `
+WEATHER DEFENSE DATA - PRIMARY ARGUMENT (USE THIS PROMINENTLY IN THE LETTER):
+Date: ${weatherData.date}
+Conditions: ${weatherData.weatherDescription}
+${weatherData.snowfall ? `Snowfall: ${weatherData.snowfall} inches` : ''}
+${weatherData.precipitation ? `Precipitation: ${weatherData.precipitation} inches` : ''}
+${weatherData.temperature !== null ? `Temperature: ${Math.round(weatherData.temperature)}°F` : ''}
+${weatherData.windSpeed ? `Wind Speed: ${Math.round(weatherData.windSpeed)} mph` : ''}
+
+Defense Reason: ${weatherData.defenseReason}
+
+CRITICAL: Weather is a PRIMARY defense for this violation type. Include a dedicated paragraph that:
+- Cites historical weather records showing adverse conditions on ${weatherData.date}
+- Explains that street cleaning/snow operations are typically cancelled in these conditions
+- Argues the city should not issue citations when weather prevents the purpose of the restriction
+- This should be one of the MAIN arguments in the letter`;
+
+          } else if (weatherRelevanceType === 'supporting' && weatherData.hasAdverseWeather) {
+            // SUPPORTING: Weather helps explain circumstances
+            weatherDefenseText = `
+WEATHER DATA - SUPPORTING ARGUMENT (WEAVE INTO THE LETTER):
+Date: ${weatherData.date}
+Conditions: ${weatherData.weatherDescription}
+${weatherData.conditions.length > 0 ? `Notable conditions: ${weatherData.conditions.join(', ')}` : ''}
+${weatherData.snowfall ? `Snowfall: ${weatherData.snowfall} inches` : ''}
+${weatherData.precipitation ? `Precipitation: ${weatherData.precipitation} inches` : ''}
+${weatherData.temperature !== null ? `Temperature: ${Math.round(weatherData.temperature)}°F` : ''}
+
+GUIDANCE: Weather can SUPPORT the defense by explaining:
+- Why signage/markings may have been obscured (snow, ice, rain)
+- Why returning to the vehicle promptly was difficult or unsafe
+- Why visibility conditions made compliance difficult
+- DO NOT make weather the primary argument, but use it to strengthen other points`;
+
+          } else if (weatherRelevanceType === 'emergency' && weatherData.hasAdverseWeather) {
+            // EMERGENCY: Weather created unsafe conditions
+            weatherDefenseText = `
+WEATHER DATA - EMERGENCY/SAFETY CONTEXT:
+Date: ${weatherData.date}
+Conditions: ${weatherData.weatherDescription}
+${weatherData.conditions.length > 0 ? `Notable: ${weatherData.conditions.join(', ')}` : ''}
+
+GUIDANCE: If the user mentions safety concerns, weather can support that:
+- Conditions may have made it unsafe to move the vehicle
+- Emergency shelter from severe weather may have been necessary
+- Only use if user's stated grounds involve safety/emergency circumstances`;
+
+          } else if (weatherData.hasAdverseWeather) {
+            // Weather was notable but not strongly defense-worthy
+            weatherDefenseText = `
+WEATHER CONTEXT (OPTIONAL - USE ONLY IF STRENGTHENS OTHER ARGUMENTS):
+Date: ${weatherData.date}
+Conditions: ${weatherData.weatherDescription}
+${weatherData.conditions.length > 0 ? `Notable: ${weatherData.conditions.join(', ')}` : ''}
+
+Note: Weather conditions were present but not severe. Only mention if it genuinely supports another argument (e.g., visibility, safety). Do NOT force weather into the letter if it doesn't fit naturally.`;
+          }
+          // If weather was clear/mild, don't add any weather text - don't force it
+        }
+      } catch (weatherError) {
+        console.error('Failed to fetch weather data:', weatherError);
+        // Continue without weather data - don't block letter generation
+      }
+    }
 
     // Generate contest letter using Claude
     let contestLetter = '';
@@ -309,6 +458,34 @@ Contest Grounds: ${contestGrounds?.join(', ') || 'To be determined'}
 Ordinance Info: ${ordinanceInfo ? JSON.stringify(ordinanceInfo) : 'Not available'}
 
 Additional Context: ${additionalContext || 'None provided'}
+
+${kitEvaluation ? `
+=== CONTEST KIT GUIDANCE (USE THIS AS PRIMARY STRUCTURE) ===
+
+RECOMMENDED ARGUMENT (${Math.round(kitEvaluation.selectedArgument.winRate * 100)}% historical success rate):
+Name: ${kitEvaluation.selectedArgument.name}
+Category: ${kitEvaluation.selectedArgument.category}
+
+ARGUMENT TEMPLATE TO FOLLOW:
+${kitEvaluation.filledArgument}
+
+${kitEvaluation.backupArgument ? `BACKUP ARGUMENT (if primary doesn't fit):
+Name: ${kitEvaluation.backupArgument.name}
+Template: ${kitEvaluation.backupArgument.template}` : ''}
+
+${kitEvaluation.weatherDefense.applicable ? `
+WEATHER DEFENSE (${contestKit?.eligibility.weatherRelevance === 'primary' ? 'PRIMARY' : 'SUPPORTING'} ARGUMENT):
+${kitEvaluation.weatherDefense.paragraph}
+` : ''}
+
+ESTIMATED WIN PROBABILITY: ${Math.round(kitEvaluation.estimatedWinRate * 100)}%
+CONFIDENCE: ${Math.round(kitEvaluation.confidence * 100)}%
+
+${kitEvaluation.warnings.length > 0 ? `WARNINGS:\n${kitEvaluation.warnings.map(w => `- ${w}`).join('\n')}` : ''}
+
+INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill in any remaining placeholders with the ticket facts. The template is based on proven successful arguments for this specific violation type.
+` : ''}
+${weatherDefenseText}
 
 ${courtData.hasData ? `IMPORTANT - HISTORICAL COURT DATA (analyzed ${courtData.totalCasesAnalyzed} cases, found ${courtData.matchingCasesCount} matching user's evidence):
 
@@ -386,14 +563,19 @@ Use a formal letter format with proper salutation and closing.`
       contestLetter = generateFallbackLetter(contest, contestGrounds, profile, ordinanceInfo);
     }
 
-    // Update contest record
+    // Update contest record with kit tracking data
     const { error: updateError } = await supabase
       .from('ticket_contests')
       .update({
         contest_letter: contestLetter,
         evidence_checklist: evidenceChecklist,
         contest_grounds: contestGrounds || [],
-        status: 'pending_review'
+        status: 'pending_review',
+        // Kit tracking fields
+        kit_used: kitEvaluation ? contest.violation_code : null,
+        argument_used: kitEvaluation?.selectedArgument.id || null,
+        weather_defense_used: kitEvaluation?.weatherDefense.applicable || (weatherDefenseText ? true : false),
+        estimated_win_rate: kitEvaluation ? Math.round(kitEvaluation.estimatedWinRate * 100) : null,
       })
       .eq('id', contestId);
 
@@ -406,7 +588,42 @@ Use a formal letter format with proper salutation and closing.`
       success: true,
       contestLetter,
       evidenceChecklist,
-      ordinanceInfo
+      ordinanceInfo,
+      weatherData: weatherData ? {
+        date: weatherData.date,
+        conditions: weatherData.weatherDescription,
+        defenseRelevant: weatherData.defenseRelevant,
+        defenseReason: weatherData.defenseReason,
+        snowfall: weatherData.snowfall,
+        precipitation: weatherData.precipitation,
+        temperature: weatherData.temperature,
+        relevanceType: weatherRelevanceType, // 'primary' | 'supporting' | 'emergency' | null
+        usedInLetter: !!weatherDefenseText,
+      } : null,
+      // Contest Kit evaluation results
+      kitEvaluation: kitEvaluation ? {
+        hasKit: true,
+        recommend: kitEvaluation.recommend,
+        estimatedWinRate: Math.round(kitEvaluation.estimatedWinRate * 100),
+        confidence: Math.round(kitEvaluation.confidence * 100),
+        selectedArgument: {
+          id: kitEvaluation.selectedArgument.id,
+          name: kitEvaluation.selectedArgument.name,
+          category: kitEvaluation.selectedArgument.category,
+          winRate: Math.round(kitEvaluation.selectedArgument.winRate * 100),
+        },
+        backupArgument: kitEvaluation.backupArgument ? {
+          id: kitEvaluation.backupArgument.id,
+          name: kitEvaluation.backupArgument.name,
+          winRate: Math.round(kitEvaluation.backupArgument.winRate * 100),
+        } : null,
+        weatherDefenseUsed: kitEvaluation.weatherDefense.applicable,
+        warnings: kitEvaluation.warnings,
+        tips: contestKit?.tips || [],
+        pitfalls: contestKit?.pitfalls || [],
+      } : {
+        hasKit: false,
+      },
     });
 
   } catch (error: any) {
