@@ -4,7 +4,7 @@
  */
 
 // Polyfill for structuredClone (needed by Supabase auth-js)
-if (typeof global.structuredClone === 'undefined') {
+if (typeof (global as any).structuredClone === 'undefined') {
   (global as any).structuredClone = <T>(obj: T): T => {
     if (obj === undefined) return undefined as T;
     if (obj === null) return null as T;

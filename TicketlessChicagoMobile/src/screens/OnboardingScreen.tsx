@@ -32,7 +32,7 @@ const SLIDES: OnboardingSlide[] = [
   {
     id: '1',
     icon: '🚗',
-    title: 'Welcome to Ticketless',
+    title: 'Welcome to Autopilot',
     description: 'Never get a parking ticket in Chicago again. We help you stay compliant with all parking rules.',
     backgroundColor: colors.primary,
   },
@@ -98,9 +98,9 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
 
       if (onComplete) {
         onComplete();
-      } else {
-        navigation.replace('Login');
       }
+      // Always navigate to Login after completing onboarding
+      navigation.replace('Login');
     } catch (error) {
       log.error('Error completing onboarding', error);
       setIsCompleting(false);

@@ -13,7 +13,19 @@ export interface SavedCarDevice {
 }
 
 const BleManagerModule = NativeModules.BleManager;
-const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
+
+// Lazily initialize the emitter to avoid crash when native module isn't ready
+let bleManagerEmitter: NativeEventEmitter | null = null;
+
+function getEmitter(): NativeEventEmitter {
+  if (!bleManagerEmitter) {
+    if (!BleManagerModule) {
+      throw new Error('BleManager native module is not available');
+    }
+    bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
+  }
+  return bleManagerEmitter;
+}
 
 class BluetoothServiceClass {
   private monitoringSubscription: any = null;
@@ -76,12 +88,13 @@ class BluetoothServiceClass {
     };
 
     // Add listeners and store subscriptions for cleanup
-    const discoverSubscription = bleManagerEmitter.addListener(
+    const emitter = getEmitter();
+    const discoverSubscription = emitter.addListener(
       'BleManagerDiscoverPeripheral',
       handleDiscoverPeripheral
     );
 
-    const stopSubscription = bleManagerEmitter.addListener(
+    const stopSubscription = emitter.addListener(
       'BleManagerStopScan',
       () => {
         // Clean up listeners when scan completes
@@ -171,7 +184,8 @@ class BluetoothServiceClass {
     this.savedDeviceId = savedDevice.id;
 
     // Listen for disconnect events
-    this.monitoringSubscription = bleManagerEmitter.addListener(
+    const emitter = getEmitter();
+    this.monitoringSubscription = emitter.addListener(
       'BleManagerDisconnectPeripheral',
       (data: any) => {
         if (data.peripheral === savedDevice.id) {
@@ -185,7 +199,7 @@ class BluetoothServiceClass {
     );
 
     // Listen for reconnection events (when device connects)
-    this.reconnectSubscription = bleManagerEmitter.addListener(
+    this.reconnectSubscription = emitter.addListener(
       'BleManagerConnectPeripheral',
       (data: any) => {
         if (data.peripheral === savedDevice.id) {
