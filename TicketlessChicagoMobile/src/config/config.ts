@@ -24,9 +24,9 @@ const ENV = {
 
 export default {
   // API Configuration
-  API_BASE_URL: __DEV__
-    ? 'http://localhost:3000' // Development
-    : 'https://autopilotamerica.com', // Production
+  // Note: Always use production API since localhost isn't reachable from physical devices
+  // For local backend testing, replace with your Mac's IP: 'http://192.168.x.x:3000'
+  API_BASE_URL: 'https://autopilotamerica.com',
 
   // App Info
   APP_VERSION,

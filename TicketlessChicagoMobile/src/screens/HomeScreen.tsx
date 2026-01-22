@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius } from '../theme';
@@ -155,7 +155,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       }
 
       // Small delay to ensure Android permission system is fully ready after grant
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise<void>(resolve => setTimeout(resolve, 300));
 
       // Initialize and start background task service for monitoring
       await BackgroundTaskService.initialize();
@@ -200,7 +200,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       }
 
       // Small delay to ensure Android permission system is fully ready after grant
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise<void>(resolve => setTimeout(resolve, 300));
 
       // Check if location services are enabled
       const servicesEnabled = await LocationService.checkLocationServicesEnabled();

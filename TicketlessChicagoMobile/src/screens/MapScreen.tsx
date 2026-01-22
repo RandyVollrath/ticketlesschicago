@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   Linking,
   Platform,
   Alert,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius } from '../theme';
@@ -78,7 +78,7 @@ const MapScreenContent: React.FC = () => {
 
         // Then request location permission (may show dialog)
         // Small delay to ensure UI is fully rendered before permission dialog
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise<void>(resolve => setTimeout(resolve, 300));
 
         if (isMountedRef.current) {
           await getCurrentLocationSilent();
@@ -198,7 +198,7 @@ const MapScreenContent: React.FC = () => {
       if (hasPermission) {
         // Delay to ensure Android permission system is fully ready
         // This prevents crashes when accessing location immediately after grant
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise<void>(resolve => setTimeout(resolve, 500));
 
         if (!isMountedRef.current) {
           log.debug('Component unmounted after permission delay');
@@ -292,6 +292,47 @@ const MapScreenContent: React.FC = () => {
       }
     }
   }, [currentLocation]);
+
+  // Save current location - gets location fresh and saves it
+  const saveCurrentLocation = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Request permission if needed
+      const hasPermission = await LocationService.requestLocationPermission();
+      if (!hasPermission) {
+        if (isMountedRef.current) {
+          setLocationPermissionDenied(true);
+          Alert.alert(
+            'Location Permission Required',
+            'Please enable location access in Settings to save your parking location.'
+          );
+        }
+        return;
+      }
+
+      // Get current location
+      const coords = await LocationService.getCurrentLocation();
+      if (isMountedRef.current) {
+        setCurrentLocation(coords);
+      }
+
+      // Check parking and save
+      const result = await LocationService.checkParkingLocation(coords);
+      await LocationService.saveParkingCheckResult(result);
+      if (isMountedRef.current) {
+        setLastLocation(result);
+      }
+    } catch (error) {
+      log.error('Error saving current location', error);
+      if (isMountedRef.current) {
+        Alert.alert('Error', 'Failed to save parking location. Please try again.');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
   const formatCoords = (coords: Coordinates): string => {
     return `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
@@ -460,15 +501,13 @@ const MapScreenContent: React.FC = () => {
                 Your last parking location will appear here when you disconnect
                 from your car's Bluetooth or manually check a location.
               </Text>
-              {currentLocation && (
-                <Button
-                  title="Save Current Location"
-                  variant="primary"
-                  onPress={checkCurrentLocation}
-                  disabled={isOffline}
-                  style={styles.saveButton}
-                />
-              )}
+              <Button
+                title="Save Current Location"
+                variant="primary"
+                onPress={saveCurrentLocation}
+                disabled={isOffline}
+                style={styles.saveButton}
+              />
             </View>
           </Card>
         )}

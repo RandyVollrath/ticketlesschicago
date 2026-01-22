@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Ticketless</string>
+	<string>Autopilot</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -38,7 +38,7 @@
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>We use Bluetooth to detect when you disconnect from your car to know when you've parked</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Use Face ID to quickly and securely sign in to Ticketless</string>
+	<string>Use Face ID to quickly and securely sign in to Autopilot</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We need your location in the background to automatically detect when you park and check for parking restrictions</string>
 	<key>NSLocationAlwaysUsageDescription</key>
@@ -68,5 +68,26 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>autopilotamerica</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>Google Sign-In</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.475235892792-5hbrtg6qmjtdnj6oagd6ipu0fe1igshd</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
