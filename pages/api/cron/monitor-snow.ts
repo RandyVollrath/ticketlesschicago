@@ -124,6 +124,8 @@ export default async function handler(
               forecast_period: snowData.forecastPeriod,
               detailed_forecast: snowData.detailedForecast,
               is_currently_snowing: snowData.isCurrentlySnowing,
+              snow_start_time: snowData.snowStartTime,
+              snow_start_formatted: snowData.snowStartFormatted, // e.g., "Sunday morning"
               checked_at: new Date().toISOString()
             }
           })
