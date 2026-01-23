@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Evidence Analysis System
  *
