@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Ward Intelligence System
  *

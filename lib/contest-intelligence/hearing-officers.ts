@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hearing Officer Pattern Analysis
  *

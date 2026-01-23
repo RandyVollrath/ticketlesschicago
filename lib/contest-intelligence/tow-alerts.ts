@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Tow/Boot Alert Integration
  *

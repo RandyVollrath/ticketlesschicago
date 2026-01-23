@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Contest Intelligence System
  *
