@@ -400,8 +400,11 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
     }
   }
 
-  // Extract forecast period from snow event metadata (e.g., "Sunday", "Tonight")
-  const forecastPeriod = snowEvent.metadata?.forecast_period || snowEvent.metadata?.latest_forecast_period;
+  // Extract snow timing from metadata - prefer the formatted version (e.g., "Sunday morning")
+  // Fall back to forecast_period (e.g., "Sunday") if formatted version not available
+  const forecastPeriod = snowEvent.metadata?.snow_start_formatted
+    || snowEvent.metadata?.forecast_period
+    || snowEvent.metadata?.latest_forecast_period;
 
   // Process users ON snow routes (urgent alerts with their specific street) - PARALLEL
   await processBatch(snowRouteUsersToNotify, async (user) => {

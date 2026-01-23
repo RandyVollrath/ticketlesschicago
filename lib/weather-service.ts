@@ -56,6 +56,65 @@ interface SnowfallData {
   forecastPeriod: string;
   detailedForecast: string;
   isCurrentlySnowing: boolean;
+  snowStartTime?: string; // ISO timestamp of when snow is expected to start
+  snowStartFormatted?: string; // Human-readable format like "Sunday morning" or "tonight around 8pm"
+}
+
+/**
+ * Format a snow start time in a natural, helpful way
+ * Examples: "tonight around 8pm", "Sunday morning", "tomorrow afternoon"
+ * Balances precision with not overselling certainty
+ */
+function formatSnowStartTime(startTimeISO: string): string {
+  const startDate = new Date(startTimeISO);
+  const now = new Date();
+
+  // Get Chicago time
+  const chicagoOptions: Intl.DateTimeFormatOptions = { timeZone: 'America/Chicago' };
+  const startHour = parseInt(startDate.toLocaleString('en-US', { ...chicagoOptions, hour: 'numeric', hour12: false }));
+  const startDayName = startDate.toLocaleString('en-US', { ...chicagoOptions, weekday: 'long' });
+  const nowDayName = now.toLocaleString('en-US', { ...chicagoOptions, weekday: 'long' });
+
+  // Determine time of day descriptor
+  let timeOfDay: string;
+  if (startHour >= 5 && startHour < 12) {
+    timeOfDay = 'morning';
+  } else if (startHour >= 12 && startHour < 17) {
+    timeOfDay = 'afternoon';
+  } else if (startHour >= 17 && startHour < 21) {
+    timeOfDay = 'evening';
+  } else {
+    timeOfDay = 'overnight';
+  }
+
+  // Calculate days difference
+  const startDateOnly = new Date(startDate.toLocaleDateString('en-US', chicagoOptions));
+  const nowDateOnly = new Date(now.toLocaleDateString('en-US', chicagoOptions));
+  const daysDiff = Math.round((startDateOnly.getTime() - nowDateOnly.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Format based on how far away it is
+  if (daysDiff === 0) {
+    // Today
+    if (timeOfDay === 'overnight') {
+      return 'tonight';
+    }
+    return `this ${timeOfDay}`;
+  } else if (daysDiff === 1) {
+    // Tomorrow
+    if (timeOfDay === 'overnight') {
+      return 'tomorrow night';
+    }
+    return `tomorrow ${timeOfDay}`;
+  } else if (daysDiff <= 6) {
+    // Within a week - use day name
+    if (timeOfDay === 'overnight') {
+      return `${startDayName} night`;
+    }
+    return `${startDayName} ${timeOfDay}`;
+  } else {
+    // More than a week out (rare for actionable forecasts)
+    return startDate.toLocaleDateString('en-US', { ...chicagoOptions, weekday: 'long', month: 'short', day: 'numeric' });
+  }
 }
 
 /**
@@ -290,13 +349,21 @@ export async function checkForSnow(): Promise<SnowfallData> {
     let maxSnowAmount = 0;
     let snowPeriod = '';
     let snowForecast = '';
+    let snowStartTime: string | undefined;
+    let firstSnowPeriodFound = false;
 
-    // Check next 48 hours (hourly forecast)
+    // Check next 48 hours (hourly forecast) - find FIRST period with snow for timing
     for (const period of hourlyForecast.slice(0, 48)) {
       const hasSnowMention = period.shortForecast.toLowerCase().includes('snow') ||
                              period.detailedForecast.toLowerCase().includes('snow');
 
       if (hasSnowMention) {
+        // Capture the FIRST time snow appears (for when to move car)
+        if (!firstSnowPeriodFound && period.startTime) {
+          snowStartTime = period.startTime;
+          firstSnowPeriodFound = true;
+        }
+
         const amount = parseSnowAmount(period.detailedForecast);
         if (amount > maxSnowAmount) {
           maxSnowAmount = amount;
@@ -312,6 +379,11 @@ export async function checkForSnow(): Promise<SnowfallData> {
                              period.detailedForecast.toLowerCase().includes('snow');
 
       if (hasSnowMention) {
+        // If we didn't find a start time from hourly, use the 12-hour period
+        if (!snowStartTime && period.startTime) {
+          snowStartTime = period.startTime;
+        }
+
         const amount = parseSnowAmount(period.detailedForecast);
         if (amount > maxSnowAmount) {
           maxSnowAmount = amount;
@@ -321,13 +393,18 @@ export async function checkForSnow(): Promise<SnowfallData> {
       }
     }
 
-    console.log('NWS weather check successful');
+    // Format the start time naturally (e.g., "Sunday morning", "tomorrow evening")
+    const snowStartFormatted = snowStartTime ? formatSnowStartTime(snowStartTime) : undefined;
+
+    console.log('NWS weather check successful', { snowStartTime, snowStartFormatted, snowPeriod });
     return {
       hasSnow: maxSnowAmount > 0 || isCurrentlySnowing,
       snowAmountInches: maxSnowAmount,
       forecastPeriod: snowPeriod,
       detailedForecast: snowForecast,
-      isCurrentlySnowing
+      isCurrentlySnowing,
+      snowStartTime,
+      snowStartFormatted
     };
 
   } catch (nwsError) {
