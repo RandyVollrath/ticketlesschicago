@@ -61,9 +61,13 @@ interface SnowfallData {
 }
 
 /**
- * Format a snow start time in a natural, helpful way
- * Examples: "tonight around 8pm", "Sunday morning", "tomorrow afternoon"
- * Balances precision with not overselling certainty
+ * Format when users need to move their car BY (before snow starts)
+ *
+ * IMPORTANT: This returns the DEADLINE to move, not when snow starts.
+ * If snow starts at 11am, we tell them "by Sunday morning" so they move BEFORE 11am.
+ * We give the START of the time window so they have the full window to act.
+ *
+ * Examples: "by tonight", "by Sunday morning", "by tomorrow evening"
  */
 function formatSnowStartTime(startTimeISO: string): string {
   const startDate = new Date(startTimeISO);
@@ -73,18 +77,27 @@ function formatSnowStartTime(startTimeISO: string): string {
   const chicagoOptions: Intl.DateTimeFormatOptions = { timeZone: 'America/Chicago' };
   const startHour = parseInt(startDate.toLocaleString('en-US', { ...chicagoOptions, hour: 'numeric', hour12: false }));
   const startDayName = startDate.toLocaleString('en-US', { ...chicagoOptions, weekday: 'long' });
-  const nowDayName = now.toLocaleString('en-US', { ...chicagoOptions, weekday: 'long' });
 
-  // Determine time of day descriptor
-  let timeOfDay: string;
-  if (startHour >= 5 && startHour < 12) {
-    timeOfDay = 'morning';
+  // Give a deadline that covers the ENTIRE time window before snow starts
+  // If snow starts at 11am, say "by morning" (meaning before morning ends)
+  // If snow starts at 3pm, say "by afternoon" (meaning before afternoon ends)
+  // This way users move their car with buffer time
+  let deadline: string;
+  if (startHour >= 0 && startHour < 6) {
+    // Snow starts overnight/early morning - need to move night before
+    deadline = 'before bed tonight';
+  } else if (startHour >= 6 && startHour < 12) {
+    // Snow starts morning - need to move early morning or night before
+    deadline = 'early morning';
   } else if (startHour >= 12 && startHour < 17) {
-    timeOfDay = 'afternoon';
+    // Snow starts afternoon - need to move by morning/midday
+    deadline = 'by noon';
   } else if (startHour >= 17 && startHour < 21) {
-    timeOfDay = 'evening';
+    // Snow starts evening - need to move by afternoon
+    deadline = 'by late afternoon';
   } else {
-    timeOfDay = 'overnight';
+    // Snow starts late night - need to move by evening
+    deadline = 'by evening';
   }
 
   // Calculate days difference
@@ -94,23 +107,24 @@ function formatSnowStartTime(startTimeISO: string): string {
 
   // Format based on how far away it is
   if (daysDiff === 0) {
-    // Today
-    if (timeOfDay === 'overnight') {
-      return 'tonight';
-    }
-    return `this ${timeOfDay}`;
+    // Today - just use the deadline
+    return deadline;
   } else if (daysDiff === 1) {
     // Tomorrow
-    if (timeOfDay === 'overnight') {
-      return 'tomorrow night';
+    if (startHour < 6) {
+      return 'tonight'; // Snow overnight means move tonight
     }
-    return `tomorrow ${timeOfDay}`;
+    return `tomorrow ${deadline}`;
   } else if (daysDiff <= 6) {
     // Within a week - use day name
-    if (timeOfDay === 'overnight') {
-      return `${startDayName} night`;
+    if (startHour < 6) {
+      // Get the day BEFORE since snow starts overnight
+      const dayBefore = new Date(startDate);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      const dayBeforeName = dayBefore.toLocaleString('en-US', { ...chicagoOptions, weekday: 'long' });
+      return `${dayBeforeName} night`;
     }
-    return `${startDayName} ${timeOfDay}`;
+    return `${startDayName} ${deadline}`;
   } else {
     // More than a week out (rare for actionable forecasts)
     return startDate.toLocaleDateString('en-US', { ...chicagoOptions, weekday: 'long', month: 'short', day: 'numeric' });
