@@ -1,5 +1,4 @@
 import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from 'react-native';
-import BleManager from 'react-native-ble-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
@@ -9,19 +8,34 @@ const log = Logger.createLogger('BluetoothService');
 export interface SavedCarDevice {
   id: string;
   name: string;
-  rssi?: number;
+  address?: string; // Bluetooth MAC address for Classic BT
+  isManualEntry?: boolean; // True if user manually entered the name
 }
 
-const BleManagerModule = NativeModules.BleManager;
+// Import Classic Bluetooth for Android
+let RNBluetoothClassic: any = null;
+if (Platform.OS === 'android') {
+  try {
+    RNBluetoothClassic = require('react-native-bluetooth-classic').default;
+  } catch (e) {
+    log.warn('react-native-bluetooth-classic not available');
+  }
+}
 
-// Lazily initialize the emitter to avoid crash when native module isn't ready
+// Keep BLE manager for monitoring (optional backup)
+let BleManager: any = null;
+let BleManagerModule: any = null;
 let bleManagerEmitter: NativeEventEmitter | null = null;
 
-function getEmitter(): NativeEventEmitter {
-  if (!bleManagerEmitter) {
-    if (!BleManagerModule) {
-      throw new Error('BleManager native module is not available');
-    }
+try {
+  BleManager = require('react-native-ble-manager').default;
+  BleManagerModule = NativeModules.BleManager;
+} catch (e) {
+  log.warn('react-native-ble-manager not available');
+}
+
+function getEmitter(): NativeEventEmitter | null {
+  if (!bleManagerEmitter && BleManagerModule) {
     bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
   }
   return bleManagerEmitter;
@@ -34,16 +48,27 @@ class BluetoothServiceClass {
   private reconnectCallback: (() => void) | null = null;
   private connectedDeviceId: string | null = null;
   private savedDeviceId: string | null = null;
+  private classicBtListener: any = null;
 
-  async initialize(): Promise<void> {
-    try {
-      await BleManager.start({ showAlert: false });
-      log.debug('BLE Manager initialized');
-    } catch (error) {
-      log.error('Error initializing BLE Manager', error);
+  /**
+   * Check if Bluetooth is available and enabled
+   */
+  async isBluetoothEnabled(): Promise<boolean> {
+    if (Platform.OS === 'android' && RNBluetoothClassic) {
+      try {
+        return await RNBluetoothClassic.isBluetoothEnabled();
+      } catch (error) {
+        log.error('Error checking Bluetooth state', error);
+        return false;
+      }
     }
+    // On iOS, we can't easily check - assume true
+    return true;
   }
 
+  /**
+   * Request Bluetooth permissions
+   */
   async requestBluetoothPermission(): Promise<boolean> {
     if (Platform.OS === 'ios') {
       return true; // iOS permissions handled via Info.plist
@@ -56,20 +81,252 @@ class BluetoothServiceClass {
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
       ]);
 
-      return (
+      const allGranted =
         granted['android.permission.BLUETOOTH_SCAN'] === PermissionsAndroid.RESULTS.GRANTED &&
         granted['android.permission.BLUETOOTH_CONNECT'] === PermissionsAndroid.RESULTS.GRANTED &&
-        granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED
-      );
+        granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED;
+
+      log.debug('Bluetooth permissions:', allGranted ? 'granted' : 'denied');
+      return allGranted;
     } catch (err) {
       log.error('Error requesting Bluetooth permission', err);
       return false;
     }
   }
 
-  async scanForDevices(callback: (devices: SavedCarDevice[]) => void): Promise<void> {
-    await this.initialize();
+  /**
+   * Get list of paired/bonded Bluetooth devices from the system
+   * This returns Classic Bluetooth devices on Android (like car audio)
+   * On iOS, returns empty array (Classic BT access is restricted)
+   */
+  async getPairedDevices(): Promise<SavedCarDevice[]> {
+    const hasPermission = await this.requestBluetoothPermission();
+    if (!hasPermission) {
+      throw new Error('Bluetooth permission denied');
+    }
 
+    if (Platform.OS === 'android' && RNBluetoothClassic) {
+      try {
+        const bondedDevices = await RNBluetoothClassic.getBondedDevices();
+        log.debug(`Found ${bondedDevices.length} bonded Classic BT devices`);
+
+        return bondedDevices.map((device: any) => ({
+          id: device.address || device.id,
+          name: device.name || 'Unknown Device',
+          address: device.address,
+          isManualEntry: false,
+        }));
+      } catch (error) {
+        log.error('Error getting bonded devices', error);
+        return [];
+      }
+    }
+
+    // iOS: Classic Bluetooth access is restricted to MFi devices
+    // Return empty array - user will need to manually enter car name
+    log.debug('iOS: Classic BT not accessible, returning empty list');
+    return [];
+  }
+
+  /**
+   * Check if Classic Bluetooth is supported on this device
+   */
+  supportsClassicBluetooth(): boolean {
+    return Platform.OS === 'android' && RNBluetoothClassic !== null;
+  }
+
+  /**
+   * Save a car device (either from paired list or manual entry)
+   */
+  async saveCarDevice(device: SavedCarDevice): Promise<void> {
+    try {
+      await AsyncStorage.setItem(StorageKeys.SAVED_CAR_DEVICE, JSON.stringify(device));
+      log.debug('Car device saved:', device.name);
+    } catch (error) {
+      log.error('Error saving car device', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save a manually entered car name
+   */
+  async saveManualCarDevice(name: string): Promise<SavedCarDevice> {
+    const device: SavedCarDevice = {
+      id: `manual_${Date.now()}`,
+      name: name.trim(),
+      isManualEntry: true,
+    };
+    await this.saveCarDevice(device);
+    return device;
+  }
+
+  async getSavedCarDevice(): Promise<SavedCarDevice | null> {
+    try {
+      const deviceJson = await AsyncStorage.getItem(StorageKeys.SAVED_CAR_DEVICE);
+      return deviceJson ? JSON.parse(deviceJson) : null;
+    } catch (error) {
+      log.error('Error getting saved car device', error);
+      return null;
+    }
+  }
+
+  async deleteSavedCarDevice(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(StorageKeys.SAVED_CAR_DEVICE);
+      this.stopMonitoring();
+      log.debug('Car device deleted');
+    } catch (error) {
+      log.error('Error deleting saved car device', error);
+      throw error;
+    }
+  }
+
+  async removeSavedCarDevice(): Promise<void> {
+    return this.deleteSavedCarDevice();
+  }
+
+  /**
+   * Check if currently connected to the saved car (Android Classic BT)
+   */
+  async isConnectedToSavedCar(): Promise<boolean> {
+    const savedDevice = await this.getSavedCarDevice();
+    if (!savedDevice) return false;
+
+    if (Platform.OS === 'android' && RNBluetoothClassic && savedDevice.address) {
+      try {
+        const connectedDevices = await RNBluetoothClassic.getConnectedDevices();
+        return connectedDevices.some((d: any) =>
+          d.address === savedDevice.address || d.name === savedDevice.name
+        );
+      } catch (error) {
+        log.debug('Error checking connected devices', error);
+        return false;
+      }
+    }
+
+    // For manual entries or iOS, we can't directly check
+    return false;
+  }
+
+  /**
+   * Monitor for car disconnection events (Android Classic BT)
+   */
+  async monitorCarConnection(
+    onDisconnect: () => void,
+    onReconnect?: () => void
+  ): Promise<void> {
+    const savedDevice = await this.getSavedCarDevice();
+    if (!savedDevice) {
+      throw new Error('No saved car device');
+    }
+
+    this.disconnectCallback = onDisconnect;
+    this.reconnectCallback = onReconnect || null;
+    this.savedDeviceId = savedDevice.id;
+
+    // Android: Use Classic Bluetooth events
+    if (Platform.OS === 'android' && RNBluetoothClassic && savedDevice.address) {
+      try {
+        // Listen for device disconnect/connect events
+        this.classicBtListener = RNBluetoothClassic.onStateChanged((event: any) => {
+          log.debug('Bluetooth state changed:', event);
+
+          if (event.device?.address === savedDevice.address) {
+            if (event.state === 'DISCONNECTED' || event.state === 'disconnected') {
+              log.info('Car disconnected (Classic BT):', savedDevice.name);
+              this.connectedDeviceId = null;
+              if (this.disconnectCallback) {
+                this.disconnectCallback();
+              }
+            } else if (event.state === 'CONNECTED' || event.state === 'connected') {
+              log.info('Car connected (Classic BT):', savedDevice.name);
+              this.connectedDeviceId = savedDevice.id;
+              if (this.reconnectCallback) {
+                this.reconnectCallback();
+              }
+            }
+          }
+        });
+
+        // Check initial connection state
+        const isConnected = await this.isConnectedToSavedCar();
+        this.connectedDeviceId = isConnected ? savedDevice.id : null;
+        log.info(`Car monitoring started. Currently ${isConnected ? 'connected' : 'not connected'} to ${savedDevice.name}`);
+
+      } catch (error) {
+        log.error('Error setting up Classic BT monitoring', error);
+        throw error;
+      }
+    } else {
+      // iOS or manual entry: Use BLE manager as fallback (limited functionality)
+      log.warn('Classic BT monitoring not available. Using limited monitoring.');
+
+      // For iOS/manual entries, we'll rely on periodic checks
+      // The actual monitoring will be handled by BackgroundTaskService
+    }
+  }
+
+  isConnectedToCar(): boolean {
+    return this.connectedDeviceId !== null && this.connectedDeviceId === this.savedDeviceId;
+  }
+
+  stopMonitoring(): void {
+    // Clean up Classic BT listener
+    if (this.classicBtListener) {
+      try {
+        this.classicBtListener.remove();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      this.classicBtListener = null;
+    }
+
+    // Clean up BLE listeners
+    if (this.monitoringSubscription) {
+      this.monitoringSubscription.remove();
+      this.monitoringSubscription = null;
+    }
+
+    if (this.reconnectSubscription) {
+      this.reconnectSubscription.remove();
+      this.reconnectSubscription = null;
+    }
+
+    this.connectedDeviceId = null;
+    this.disconnectCallback = null;
+    this.reconnectCallback = null;
+    this.savedDeviceId = null;
+    log.debug('Bluetooth monitoring stopped');
+  }
+
+  // =========================================
+  // Legacy BLE scanning (kept for compatibility)
+  // =========================================
+
+  async initialize(): Promise<void> {
+    if (BleManager) {
+      try {
+        await BleManager.start({ showAlert: false });
+        log.debug('BLE Manager initialized');
+      } catch (error) {
+        log.error('Error initializing BLE Manager', error);
+      }
+    }
+  }
+
+  /**
+   * @deprecated Use getPairedDevices() instead for car pairing
+   * This only scans for BLE devices, not Classic Bluetooth (car audio)
+   */
+  async scanForDevices(callback: (devices: SavedCarDevice[]) => void): Promise<void> {
+    log.warn('scanForDevices is deprecated for car pairing. Use getPairedDevices() instead.');
+
+    if (!BleManager) {
+      throw new Error('BLE Manager not available');
+    }
+
+    await this.initialize();
     const hasPermission = await this.requestBluetoothPermission();
     if (!hasPermission) {
       throw new Error('Bluetooth permission denied');
@@ -87,8 +344,11 @@ class BluetoothServiceClass {
       }
     };
 
-    // Add listeners and store subscriptions for cleanup
     const emitter = getEmitter();
+    if (!emitter) {
+      throw new Error('BLE emitter not available');
+    }
+
     const discoverSubscription = emitter.addListener(
       'BleManagerDiscoverPeripheral',
       handleDiscoverPeripheral
@@ -97,7 +357,6 @@ class BluetoothServiceClass {
     const stopSubscription = emitter.addListener(
       'BleManagerStopScan',
       () => {
-        // Clean up listeners when scan completes
         discoverSubscription.remove();
         stopSubscription.remove();
       }
@@ -106,152 +365,32 @@ class BluetoothServiceClass {
     try {
       await BleManager.scan([], 10, false);
     } catch (error) {
-      // Clean up listeners on error
       discoverSubscription.remove();
       stopSubscription.remove();
       throw error;
     }
   }
 
-  async saveCarDevice(device: SavedCarDevice): Promise<void> {
-    try {
-      await AsyncStorage.setItem(StorageKeys.SAVED_CAR_DEVICE, JSON.stringify(device));
-      log.debug('Car device saved', device.name);
-    } catch (error) {
-      log.error('Error saving car device', error);
-      throw error;
-    }
-  }
-
-  async getSavedCarDevice(): Promise<SavedCarDevice | null> {
-    try {
-      const deviceJson = await AsyncStorage.getItem(StorageKeys.SAVED_CAR_DEVICE);
-      return deviceJson ? JSON.parse(deviceJson) : null;
-    } catch (error) {
-      log.error('Error getting saved car device', error);
-      return null;
-    }
-  }
-
-  async deleteSavedCarDevice(): Promise<void> {
-    try {
-      await AsyncStorage.removeItem('savedCarDevice');
-      log.debug('Car device deleted');
-    } catch (error) {
-      log.error('Error deleting saved car device', error);
-      throw error;
-    }
-  }
-
-  // Alias for deleteSavedCarDevice
-  async removeSavedCarDevice(): Promise<void> {
-    return this.deleteSavedCarDevice();
-  }
-
-  // Alias for scanForDevices
+  /**
+   * @deprecated Use getPairedDevices() instead
+   */
   async startScanning(callback: (device: SavedCarDevice) => void): Promise<void> {
     await this.scanForDevices((devices) => {
-      // Call back with the most recent device
       if (devices.length > 0) {
         callback(devices[devices.length - 1]);
       }
     });
   }
 
-  // Stop Bluetooth scanning
   async stopScanning(): Promise<void> {
-    try {
-      await BleManager.stopScan();
-      log.debug('Bluetooth scanning stopped');
-    } catch (error) {
-      log.error('Error stopping Bluetooth scan', error);
-    }
-  }
-
-  async monitorCarConnection(
-    onDisconnect: () => void,
-    onReconnect?: () => void
-  ): Promise<void> {
-    await this.initialize();
-
-    const savedDevice = await this.getSavedCarDevice();
-    if (!savedDevice) {
-      throw new Error('No saved car device');
-    }
-
-    this.disconnectCallback = onDisconnect;
-    this.reconnectCallback = onReconnect || null;
-    this.savedDeviceId = savedDevice.id;
-
-    // Listen for disconnect events
-    const emitter = getEmitter();
-    this.monitoringSubscription = emitter.addListener(
-      'BleManagerDisconnectPeripheral',
-      (data: any) => {
-        if (data.peripheral === savedDevice.id) {
-          log.info('Car disconnected', data.peripheral);
-          this.connectedDeviceId = null;
-          if (this.disconnectCallback) {
-            this.disconnectCallback();
-          }
-        }
+    if (BleManager) {
+      try {
+        await BleManager.stopScan();
+        log.debug('BLE scanning stopped');
+      } catch (error) {
+        log.error('Error stopping BLE scan', error);
       }
-    );
-
-    // Listen for reconnection events (when device connects)
-    this.reconnectSubscription = emitter.addListener(
-      'BleManagerConnectPeripheral',
-      (data: any) => {
-        if (data.peripheral === savedDevice.id) {
-          log.info('Car reconnected', data.peripheral);
-          this.connectedDeviceId = savedDevice.id;
-          if (this.reconnectCallback) {
-            this.reconnectCallback();
-          }
-        }
-      }
-    );
-
-    // Try to connect to the device to monitor it
-    try {
-      await BleManager.connect(savedDevice.id);
-      this.connectedDeviceId = savedDevice.id;
-      log.info('Connected to car for monitoring', savedDevice.name);
-    } catch (error) {
-      // Device might not be in range, but we'll still monitor for when it connects/disconnects
-      log.debug('Could not connect to car (might not be in range)', error);
     }
-  }
-
-  /**
-   * Check if currently connected to the saved car device
-   */
-  isConnectedToCar(): boolean {
-    return this.connectedDeviceId !== null && this.connectedDeviceId === this.savedDeviceId;
-  }
-
-  stopMonitoring(): void {
-    if (this.monitoringSubscription) {
-      this.monitoringSubscription.remove();
-      this.monitoringSubscription = null;
-    }
-
-    if (this.reconnectSubscription) {
-      this.reconnectSubscription.remove();
-      this.reconnectSubscription = null;
-    }
-
-    if (this.connectedDeviceId) {
-      BleManager.disconnect(this.connectedDeviceId).catch((error) => {
-        log.error('Error disconnecting from device', error);
-      });
-      this.connectedDeviceId = null;
-    }
-
-    this.disconnectCallback = null;
-    this.reconnectCallback = null;
-    this.savedDeviceId = null;
-    log.debug('Bluetooth monitoring stopped');
   }
 }
 
