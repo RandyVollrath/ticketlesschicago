@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BluetoothService from './BluetoothService';
 import LocationService from './LocationService';
+import LocalNotificationService, { ParkingRestriction } from './LocalNotificationService';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
 
@@ -82,6 +83,9 @@ class BackgroundTaskServiceClass {
 
       // Create notification channel for background alerts
       await this.createNotificationChannel();
+
+      // Initialize local notification scheduling service
+      await LocalNotificationService.initialize();
 
       this.state.isInitialized = true;
       log.info('BackgroundTaskService initialized');
@@ -275,6 +279,9 @@ class BackgroundTaskServiceClass {
       // Send notification if there are restrictions
       if (result.rules.length > 0) {
         await this.sendParkingNotification(result, coords.accuracy);
+
+        // Schedule local notifications for upcoming restrictions
+        await this.scheduleRestrictionReminders(result, coords);
       } else {
         await this.sendSafeNotification(result.address, coords.accuracy);
       }
@@ -286,6 +293,126 @@ class BackgroundTaskServiceClass {
     } catch (error) {
       log.error('Failed to perform parking check', error);
       await this.sendErrorNotification();
+    }
+  }
+
+  /**
+   * Schedule local notifications for upcoming restrictions
+   * These fire before each restriction begins, giving user time to move
+   */
+  private async scheduleRestrictionReminders(
+    result: any,
+    coords: { latitude: number; longitude: number }
+  ): Promise<void> {
+    const restrictions: ParkingRestriction[] = [];
+
+    // Parse the API response to extract restriction times
+    // The result comes from LocationService.checkParkingLocation which returns
+    // data from the check-parking API with streetCleaning, winterOvernightBan, etc.
+
+    // Street cleaning reminder
+    if (result.streetCleaning?.hasRestriction && result.streetCleaning?.nextDate) {
+      // Street cleaning typically starts at 9am on the scheduled day
+      // Parse date carefully - nextDate is in YYYY-MM-DD format
+      const dateParts = result.streetCleaning.nextDate.split('-');
+      if (dateParts.length === 3) {
+        const cleaningDate = new Date(
+          parseInt(dateParts[0], 10),
+          parseInt(dateParts[1], 10) - 1, // Month is 0-indexed
+          parseInt(dateParts[2], 10),
+          9, 0, 0, 0 // 9 AM local time
+        );
+
+        // Only schedule if the date is valid and in the future
+        if (!isNaN(cleaningDate.getTime()) && cleaningDate.getTime() > Date.now()) {
+          restrictions.push({
+            type: 'street_cleaning',
+            restrictionStartTime: cleaningDate,
+            address: result.address,
+            details: result.streetCleaning.schedule || 'Street cleaning - move your car',
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          });
+        }
+      }
+    }
+
+    // Winter overnight ban reminder (3am-7am, Dec 1 - Apr 1)
+    if (result.winterOvernightBan?.active || result.winterBan?.found) {
+      const now = new Date();
+      const currentHour = now.getHours();
+
+      // Only schedule if NOT currently in ban hours (3am-7am)
+      if (currentHour < 3 || currentHour >= 7) {
+        const next3am = new Date(now);
+        next3am.setHours(3, 0, 0, 0);
+        next3am.setMinutes(0);
+        next3am.setSeconds(0);
+        next3am.setMilliseconds(0);
+
+        // If it's past 3am (meaning 7am or later), schedule for tomorrow 3am
+        if (currentHour >= 7) {
+          next3am.setDate(next3am.getDate() + 1);
+        }
+
+        restrictions.push({
+          type: 'winter_ban',
+          restrictionStartTime: next3am,
+          address: result.address,
+          details: 'Winter overnight parking ban (3am-7am)',
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+      }
+      // If currently in ban hours (3am-7am), don't schedule - user should already know
+    }
+
+    // Permit zone reminder
+    if (result.permitZone?.inPermitZone && !result.permitZone?.permitRequired) {
+      // Not currently enforced but will be - schedule reminder before enforcement starts
+      // Default permit enforcement is Mon-Fri 6am-6pm
+      const now = new Date();
+      const currentHour = now.getHours();
+      const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+
+      const next6am = new Date(now);
+      next6am.setHours(6, 0, 0, 0);
+      next6am.setMinutes(0);
+      next6am.setSeconds(0);
+      next6am.setMilliseconds(0);
+
+      // Determine if we need to move to a future date
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isPast6amToday = currentHour >= 6;
+
+      if (isWeekend || isPast6amToday) {
+        // Move to tomorrow first
+        next6am.setDate(next6am.getDate() + 1);
+
+        // Now check if tomorrow is a weekend and skip to Monday
+        let nextDay = next6am.getDay();
+        while (nextDay === 0 || nextDay === 6) {
+          next6am.setDate(next6am.getDate() + 1);
+          nextDay = next6am.getDay();
+        }
+      }
+
+      restrictions.push({
+        type: 'permit_zone',
+        restrictionStartTime: next6am,
+        address: result.address,
+        details: `${result.permitZone.zoneName || 'Permit zone'} - ${result.permitZone.restrictionSchedule || 'Mon-Fri 6am-6pm'}`,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+    }
+
+    // Snow ban - weather dependent, handled by push notifications from backend
+    // We could add a placeholder here but snow bans are triggered by weather, not time
+
+    if (restrictions.length > 0) {
+      await LocalNotificationService.scheduleNotificationsForParking(restrictions);
+      log.info(`Scheduled ${restrictions.length} local reminder notifications`);
     }
   }
 
@@ -478,6 +605,10 @@ class BackgroundTaskServiceClass {
     this.state.lastCarConnectionStatus = true;
     this.state.lastDisconnectTime = null;
     await this.saveState();
+
+    // Cancel any scheduled parking reminder notifications
+    await LocalNotificationService.cancelAllScheduledNotifications();
+    log.info('Cancelled scheduled parking reminders');
 
     // Call the reconnect callback if provided
     if (this.reconnectCallback) {

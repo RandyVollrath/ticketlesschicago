@@ -48,7 +48,8 @@ class BluetoothServiceClass {
   private reconnectCallback: (() => void) | null = null;
   private connectedDeviceId: string | null = null;
   private savedDeviceId: string | null = null;
-  private classicBtListener: any = null;
+  private classicBtDisconnectListener: any = null;
+  private classicBtConnectListener: any = null;
 
   /**
    * Check if Bluetooth is available and enabled
@@ -228,23 +229,38 @@ class BluetoothServiceClass {
     // Android: Use Classic Bluetooth events
     if (Platform.OS === 'android' && RNBluetoothClassic && savedDevice.address) {
       try {
-        // Listen for device disconnect/connect events
-        this.classicBtListener = RNBluetoothClassic.onStateChanged((event: any) => {
-          log.debug('Bluetooth state changed:', event);
+        // Listen for device DISCONNECTION events
+        this.classicBtDisconnectListener = RNBluetoothClassic.onDeviceDisconnected((event: any) => {
+          log.debug('Bluetooth device disconnected event:', JSON.stringify(event));
 
-          if (event.device?.address === savedDevice.address) {
-            if (event.state === 'DISCONNECTED' || event.state === 'disconnected') {
-              log.info('Car disconnected (Classic BT):', savedDevice.name);
-              this.connectedDeviceId = null;
-              if (this.disconnectCallback) {
-                this.disconnectCallback();
-              }
-            } else if (event.state === 'CONNECTED' || event.state === 'connected') {
-              log.info('Car connected (Classic BT):', savedDevice.name);
-              this.connectedDeviceId = savedDevice.id;
-              if (this.reconnectCallback) {
-                this.reconnectCallback();
-              }
+          // Check if this is our saved car (by address or name)
+          const eventAddress = event?.device?.address || event?.address;
+          const eventName = event?.device?.name || event?.name;
+
+          if (eventAddress === savedDevice.address ||
+              (savedDevice.name && eventName === savedDevice.name)) {
+            log.info('Car disconnected (Classic BT):', savedDevice.name);
+            this.connectedDeviceId = null;
+            if (this.disconnectCallback) {
+              this.disconnectCallback();
+            }
+          }
+        });
+
+        // Listen for device CONNECTION events
+        this.classicBtConnectListener = RNBluetoothClassic.onDeviceConnected((event: any) => {
+          log.debug('Bluetooth device connected event:', JSON.stringify(event));
+
+          // Check if this is our saved car (by address or name)
+          const eventAddress = event?.device?.address || event?.address;
+          const eventName = event?.device?.name || event?.name;
+
+          if (eventAddress === savedDevice.address ||
+              (savedDevice.name && eventName === savedDevice.name)) {
+            log.info('Car connected (Classic BT):', savedDevice.name);
+            this.connectedDeviceId = savedDevice.id;
+            if (this.reconnectCallback) {
+              this.reconnectCallback();
             }
           }
         });
@@ -252,7 +268,7 @@ class BluetoothServiceClass {
         // Check initial connection state
         const isConnected = await this.isConnectedToSavedCar();
         this.connectedDeviceId = isConnected ? savedDevice.id : null;
-        log.info(`Car monitoring started. Currently ${isConnected ? 'connected' : 'not connected'} to ${savedDevice.name}`);
+        log.info(`Car monitoring started. Currently ${isConnected ? 'connected' : 'not connected'} to ${savedDevice.name} (addr: ${savedDevice.address})`);
 
       } catch (error) {
         log.error('Error setting up Classic BT monitoring', error);
@@ -272,14 +288,24 @@ class BluetoothServiceClass {
   }
 
   stopMonitoring(): void {
-    // Clean up Classic BT listener
-    if (this.classicBtListener) {
+    // Clean up Classic BT disconnect listener
+    if (this.classicBtDisconnectListener) {
       try {
-        this.classicBtListener.remove();
+        this.classicBtDisconnectListener.remove();
       } catch (e) {
         // Ignore cleanup errors
       }
-      this.classicBtListener = null;
+      this.classicBtDisconnectListener = null;
+    }
+
+    // Clean up Classic BT connect listener
+    if (this.classicBtConnectListener) {
+      try {
+        this.classicBtConnectListener.remove();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      this.classicBtConnectListener = null;
     }
 
     // Clean up BLE listeners

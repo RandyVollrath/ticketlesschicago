@@ -269,10 +269,10 @@ export async function checkAllParkingRestrictions(
 
       if (result.snowBan.isBanActive) {
         result.snowBan.severity = 'critical';
-        result.snowBan.message = `SNOW BAN MAY BE ACTIVE on ${snowRouteData.street_name}! ${result.snowBan.snowAmount || 2}+ inches of snow detected. Check signs and move your car if needed.`;
+        result.snowBan.message = `2-INCH SNOW BAN ACTIVE on ${snowRouteData.street_name}! 2"+ snow has fallen - move your car now to avoid $150+ tow!`;
       } else {
         result.snowBan.severity = 'info';
-        result.snowBan.message = `${snowRouteData.street_name} is a snow route. No parking when 2"+ snow accumulates.`;
+        result.snowBan.message = `${snowRouteData.street_name} is a 2-inch snow route. No parking when 2"+ snow accumulates.`;
       }
     }
 
@@ -290,18 +290,18 @@ export async function checkAllParkingRestrictions(
       if (winterBanData.is_winter_season) {
         if (winterBanData.is_winter_ban_hours) {
           result.winterBan.severity = 'critical';
-          result.winterBan.message = `WINTER BAN ACTIVE on ${winterBanData.street_name}! No parking 3-7 AM. Move immediately!`;
+          result.winterBan.message = `WINTER OVERNIGHT BAN ACTIVE on ${winterBanData.street_name}! No parking 3-7 AM (nightly Dec 1 - Apr 1). Move now!`;
         } else if (banHoursInfo.hoursUntilBan <= 4) {
           result.winterBan.severity = 'warning';
-          result.winterBan.message = `Winter ban starts in ${Math.round(banHoursInfo.hoursUntilBan)} hour(s) on ${winterBanData.street_name}. Move before 3 AM.`;
+          result.winterBan.message = `Winter overnight ban starts in ${Math.round(banHoursInfo.hoursUntilBan)} hour(s) on ${winterBanData.street_name}. Move before 3 AM.`;
         } else {
           result.winterBan.severity = 'info';
-          result.winterBan.message = `${winterBanData.street_name} has winter overnight parking ban (3-7 AM, Dec 1 - Apr 1)`;
+          result.winterBan.message = `${winterBanData.street_name} has a winter overnight ban (no parking 3-7 AM nightly, Dec 1 - Apr 1)`;
         }
       } else {
         // Not winter season but on a winter ban street
         result.winterBan.severity = 'none';
-        result.winterBan.message = `${winterBanData.street_name} has winter overnight parking ban (Dec 1 - Apr 1, 3-7 AM). Currently outside ban season.`;
+        result.winterBan.message = `${winterBanData.street_name} has a winter overnight ban (3-7 AM, Dec 1 - Apr 1). Currently outside ban season.`;
       }
     } else {
       result.winterBan.isWinterSeason = isWinterSeason();
