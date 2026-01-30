@@ -46,9 +46,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "YOUR_APPLE_ID@example.com",
-        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        "appleId": "randyvollrath@gmail.com",
+        "ascAppId": "6758504333",
+        "appleTeamId": "V22BMBQJ67"
       },
       "android": {
         "serviceAccountKeyPath": "./credentials/play-store-key.json",

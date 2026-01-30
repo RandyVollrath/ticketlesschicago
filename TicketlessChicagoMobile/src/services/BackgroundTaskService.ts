@@ -14,6 +14,7 @@ import { Platform, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BluetoothService from './BluetoothService';
+import MotionActivityService from './MotionActivityService';
 import LocationService from './LocationService';
 import LocalNotificationService, { ParkingRestriction } from './LocalNotificationService';
 import Logger from '../utils/Logger';
@@ -173,19 +174,36 @@ class BackgroundTaskServiceClass {
 
   /**
    * Start foreground monitoring with interval checks
+   * Uses different strategies depending on platform:
+   * - iOS: Motion-based detection (speed/activity monitoring)
+   * - Android: Bluetooth Classic connection monitoring
    */
   private async startForegroundMonitoring(): Promise<void> {
     // Clear any existing interval
     this.stopForegroundMonitoring();
 
-    // Start Bluetooth connection monitoring with both disconnect and reconnect handlers
-    try {
-      await BluetoothService.monitorCarConnection(
-        this.handleCarDisconnection.bind(this),
-        this.handleCarReconnection.bind(this)
-      );
-    } catch (error) {
-      log.warn('Could not start Bluetooth monitoring:', error);
+    if (Platform.OS === 'ios') {
+      // iOS: Use motion-based detection since Classic Bluetooth is restricted
+      log.info('Starting motion-based parking detection for iOS');
+      try {
+        await MotionActivityService.startMonitoring(
+          this.handleCarDisconnection.bind(this),
+          this.handleCarReconnection.bind(this)
+        );
+      } catch (error) {
+        log.warn('Could not start motion monitoring:', error);
+      }
+    } else {
+      // Android: Use Bluetooth Classic connection monitoring
+      log.info('Starting Bluetooth-based parking detection for Android');
+      try {
+        await BluetoothService.monitorCarConnection(
+          this.handleCarDisconnection.bind(this),
+          this.handleCarReconnection.bind(this)
+        );
+      } catch (error) {
+        log.warn('Could not start Bluetooth monitoring:', error);
+      }
     }
 
     // Also run periodic checks as a backup
@@ -200,7 +218,7 @@ class BackgroundTaskServiceClass {
       this.scheduleDepartureConfirmation();
     }
 
-    log.debug('Foreground monitoring started with interval checks');
+    log.debug('Foreground monitoring started');
   }
 
   /**
@@ -219,6 +237,11 @@ class BackgroundTaskServiceClass {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
+    }
+
+    // Stop platform-specific monitoring
+    if (Platform.OS === 'ios') {
+      MotionActivityService.stopMonitoring();
     }
   }
 

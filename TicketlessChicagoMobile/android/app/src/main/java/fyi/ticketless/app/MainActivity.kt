@@ -1,4 +1,4 @@
-package com.ticketlesschicagomobile
+package fyi.ticketless.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

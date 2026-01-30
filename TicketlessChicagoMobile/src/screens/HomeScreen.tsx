@@ -7,6 +7,7 @@ import {
   View,
   Alert,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +17,7 @@ import { Button, Card, RuleCard, StatusBadge } from '../components';
 import LocationService, { ParkingCheckResult, Coordinates } from '../services/LocationService';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
+import MotionActivityService from '../services/MotionActivityService';
 import { ParkingHistoryService } from './HistoryScreen';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
@@ -41,6 +43,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [isOffline, setIsOffline] = useState(false);
   const [locationAccuracy, setLocationAccuracy] = useState<number | undefined>(undefined);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [currentActivity, setCurrentActivity] = useState<string>('unknown');
 
   // Update time every minute
   useEffect(() => {
@@ -83,6 +86,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     });
     return unsubscribe;
   }, [navigation]);
+
+  // Poll activity status on iOS when monitoring
+  useEffect(() => {
+    if (!isMonitoring || Platform.OS !== 'ios') return;
+
+    const updateActivity = async () => {
+      const activity = await MotionActivityService.getCurrentActivity();
+      if (activity) {
+        setCurrentActivity(activity.activity);
+      }
+    };
+
+    updateActivity();
+    const interval = setInterval(updateActivity, 10000); // Update every 10 seconds
+    return () => clearInterval(interval);
+  }, [isMonitoring]);
 
   const loadInitialData = async () => {
     await Promise.all([loadSavedCar(), loadLastCheck()]);
@@ -135,7 +154,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const startMonitoring = async () => {
-    if (!savedCar) {
+    // On Android, require a saved car for Bluetooth detection
+    // On iOS, we use motion detection so no car pairing needed
+    if (Platform.OS === 'android' && !savedCar) {
       Alert.alert('No Car Paired', 'Please pair your car Bluetooth device first', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Pair Now', onPress: () => navigation.navigate('BluetoothSettings') },
@@ -163,12 +184,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       if (started) {
         setIsMonitoring(true);
-        Alert.alert('Monitoring Started', "We'll check parking restrictions when you disconnect from your car");
+        const message = Platform.OS === 'ios'
+          ? "We'll automatically check parking when you stop driving and park."
+          : "We'll check parking restrictions when you disconnect from your car";
+        Alert.alert('Monitoring Started', message);
       } else {
-        Alert.alert(
-          'Could Not Start Monitoring',
-          'Please check that auto-check is enabled in Settings and your car is paired.'
-        );
+        const message = Platform.OS === 'ios'
+          ? 'Please check that auto-check is enabled in Settings.'
+          : 'Please check that auto-check is enabled in Settings and your car is paired.';
+        Alert.alert('Could Not Start Monitoring', message);
       }
     } catch (error) {
       log.error('Error starting monitoring', error);
@@ -328,13 +352,19 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         >
           <Text style={styles.cardDescription}>
             {isMonitoring
-              ? 'Monitoring your car connection. We\'ll automatically check parking when you disconnect.'
+              ? Platform.OS === 'ios'
+                ? `Monitoring your movement. Current: ${currentActivity === 'automotive' ? '🚗 Driving' : currentActivity === 'walking' ? '🚶 Walking' : currentActivity === 'stationary' ? '🅿️ Stationary' : currentActivity}. We'll check parking when you stop.`
+                : 'Monitoring your car connection. We\'ll automatically check parking when you disconnect.'
+              : Platform.OS === 'ios'
+              ? 'Enable to automatically detect when you park and check restrictions.'
               : savedCar
               ? 'Enable to automatically check parking when you leave your car.'
               : 'Pair your car to enable automatic parking detection.'}
           </Text>
           <View style={styles.cardActions}>
-            {savedCar ? (
+            {/* iOS: Always show monitoring button (no car pairing needed) */}
+            {/* Android: Require car pairing first */}
+            {(Platform.OS === 'ios' || savedCar) ? (
               <Button
                 title={isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
                 variant={isMonitoring ? 'secondary' : 'primary'}
