@@ -40,7 +40,6 @@ interface MotionState {
 }
 
 // Configuration
-const PARKING_CONFIRMATION_DELAY_MS = 90 * 1000; // 90 seconds after stopping to confirm parking
 const MIN_DRIVING_DURATION_MS = 60 * 1000; // Must be driving for at least 1 minute
 const PARKING_CHECK_COOLDOWN_MS = 5 * 60 * 1000; // Don't check parking more than once per 5 minutes
 
@@ -55,8 +54,7 @@ class MotionActivityServiceClass {
 
   private eventEmitter: NativeEventEmitter | null = null;
   private activitySubscription: any = null;
-  private parkingConfirmationTimeout: ReturnType<typeof setTimeout> | null = null;
-  private onParkingDetected: (() => void) | null = null;
+  private onParkingDetected: (() => Promise<void> | void) | null = null;
   private onDepartureDetected: (() => void) | null = null;
 
   constructor() {
@@ -152,11 +150,6 @@ class MotionActivityServiceClass {
       this.activitySubscription = null;
     }
 
-    if (this.parkingConfirmationTimeout) {
-      clearTimeout(this.parkingConfirmationTimeout);
-      this.parkingConfirmationTimeout = null;
-    }
-
     this.state.isMonitoring = false;
     this.onParkingDetected = null;
     this.onDepartureDetected = null;
@@ -181,13 +174,6 @@ class MotionActivityServiceClass {
     if (activity === 'automotive') {
       this.state.lastAutomotiveTime = Date.now();
       this.state.wasRecentlyDriving = true;
-
-      // Cancel any pending parking check - we're driving again
-      if (this.parkingConfirmationTimeout) {
-        log.debug('Cancelling pending parking check - user is driving');
-        clearTimeout(this.parkingConfirmationTimeout);
-        this.parkingConfirmationTimeout = null;
-      }
     }
 
     // Detect parking: Automotive → Stationary/Walking (with high/medium confidence)
@@ -236,18 +222,14 @@ class MotionActivityServiceClass {
       }
     }
 
-    log.info('Potential parking detected - waiting for confirmation...');
-
-    // Wait to confirm (not just a red light or traffic)
-    this.parkingConfirmationTimeout = setTimeout(() => {
-      this.confirmParking();
-    }, PARKING_CONFIRMATION_DELAY_MS);
+    log.info('Parking detected - triggering check immediately');
+    this.confirmParking().catch(err => log.error('Error in parking confirmation', err));
   }
 
   /**
-   * Confirm parking after delay
+   * Confirm parking and trigger check
    */
-  private confirmParking(): void {
+  private async confirmParking(): Promise<void> {
     // Verify still stationary/walking (not driving again)
     if (this.state.currentActivity === 'automotive') {
       log.info('User started driving again - parking not confirmed');
@@ -259,10 +241,10 @@ class MotionActivityServiceClass {
     this.state.wasRecentlyDriving = false;
 
     if (this.onParkingDetected) {
-      this.onParkingDetected();
+      await this.onParkingDetected();
     }
 
-    this.saveState();
+    await this.saveState();
   }
 
   /**
