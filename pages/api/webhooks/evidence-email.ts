@@ -29,7 +29,9 @@ const supabaseAdmin = createClient(
 
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: {
+      sizeLimit: '25mb', // Must be large enough for base64-encoded image attachments
+    },
   },
 };
 
@@ -313,32 +315,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ message: 'Not an evidence email' });
     }
 
-    // Find user by email using direct database query (more reliable than listUsers API)
-    const { data: userData } = await supabaseAdmin
-      .from('auth.users')
-      .select('id, email')
-      .ilike('email', fromEmail.trim())
-      .single();
-
-    // Fallback: try raw SQL if the above doesn't work
-    let user = userData;
-    if (!user) {
-      const { data: sqlUser } = await supabaseAdmin.rpc('get_user_by_email', {
-        user_email: fromEmail.trim().toLowerCase()
-      });
-      if (sqlUser && sqlUser.length > 0) {
-        user = sqlUser[0];
-      }
-    }
-
-    // Final fallback: use auth.admin API with pagination
-    if (!user) {
+    // Find user by email
+    // Method 1: Use auth.admin API (most reliable)
+    let user: { id: string; email: string | undefined } | null = null;
+    try {
       const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
       const foundUser = authUsers?.users?.find(u =>
         u.email?.toLowerCase() === fromEmail.trim().toLowerCase()
       );
       if (foundUser) {
         user = { id: foundUser.id, email: foundUser.email };
+      }
+    } catch (authErr: any) {
+      console.error('auth.admin.listUsers failed:', authErr.message);
+    }
+
+    // Method 2: Fallback to RPC function
+    if (!user) {
+      try {
+        const { data: sqlUser } = await supabaseAdmin.rpc('get_user_by_email', {
+          user_email: fromEmail.trim().toLowerCase()
+        });
+        if (sqlUser && sqlUser.length > 0) {
+          user = sqlUser[0];
+        }
+      } catch (rpcErr: any) {
+        console.error('get_user_by_email RPC failed:', rpcErr.message);
       }
     }
 

@@ -55,6 +55,9 @@ export default {
       console.log(`Sending to webhook: ${webhookUrl}`);
       console.log(`Text body length: ${parsedEmail.textBody.length}`);
       console.log(`Attachments: ${parsedEmail.attachments.length}`);
+      for (const att of parsedEmail.attachments) {
+        console.log(`  Attachment: ${att.filename} (${att.content_type}, encoding: ${att.encoding}, content length: ${att.content?.length || 0})`);
+      }
 
       // POST to webhook
       const response = await fetch(webhookUrl, {
@@ -127,13 +130,19 @@ async function streamToString(stream) {
  * Parse email content to extract text body, HTML body, and attachments
  * This is a simplified parser for common email formats
  */
-function parseEmail(rawEmail, headers) {
+function parseEmail(rawEmail, headers, depth = 0) {
   const contentType = headers.get('content-type') || 'text/plain';
   const result = {
     textBody: '',
     htmlBody: '',
     attachments: [],
   };
+
+  // Guard against infinite recursion
+  if (depth > 5) {
+    console.error('parseEmail: max recursion depth exceeded, stopping');
+    return result;
+  }
 
   // Check if multipart
   const boundaryMatch = contentType.match(/boundary=["']?([^"';\s]+)["']?/i);
@@ -158,17 +167,30 @@ function parseEmail(rawEmail, headers) {
       const contentDisposition = getHeader(partHeaders, 'content-disposition') || '';
       const contentTransferEncoding = getHeader(partHeaders, 'content-transfer-encoding') || '';
 
-      // Check if it's an attachment
-      if (contentDisposition.includes('attachment') || contentDisposition.includes('filename')) {
-        const filenameMatch = contentDisposition.match(/filename=["']?([^"';\s]+)["']?/i);
-        const filename = filenameMatch ? filenameMatch[1] : 'attachment';
+      // Check if it's an attachment or an image/file part
+      // Detect attachments by:
+      // 1. Content-Disposition contains "attachment" or "filename"
+      // 2. Content-Type is an image/*, application/pdf, or other file type (inline images from phones)
+      // 3. Content-Type has a name= parameter (some clients put filename here)
+      const mimeType = partContentType.split(';')[0].trim().toLowerCase();
+      const isExplicitAttachment = contentDisposition.includes('attachment') || contentDisposition.includes('filename');
+      const isImagePart = mimeType.startsWith('image/');
+      const isPdfPart = mimeType === 'application/pdf';
+      const hasNameInContentType = partContentType.match(/name=["']?([^"';\s]+)["']?/i);
+      const isFilePart = isExplicitAttachment || isImagePart || isPdfPart || !!hasNameInContentType;
+
+      if (isFilePart) {
+        // Extract filename from Content-Disposition or Content-Type name= parameter
+        const filenameMatch = contentDisposition.match(/filename=["']?([^"';\s]+)["']?/i)
+          || partContentType.match(/name=["']?([^"';\s]+)["']?/i);
+        const filename = filenameMatch ? filenameMatch[1] : `attachment.${mimeType.split('/')[1] || 'bin'}`;
 
         // Clean up the body (remove trailing boundary markers)
         partBody = partBody.replace(/\r?\n--.*$/, '').trim();
 
         result.attachments.push({
           filename: filename,
-          content_type: partContentType.split(';')[0].trim(),
+          content_type: mimeType,
           content: partBody, // Base64 or raw content
           encoding: contentTransferEncoding.toLowerCase(),
         });
@@ -177,11 +199,15 @@ function parseEmail(rawEmail, headers) {
       } else if (partContentType.includes('text/html')) {
         result.htmlBody = decodeBody(partBody, contentTransferEncoding);
       } else if (partContentType.includes('multipart/')) {
-        // Nested multipart - recursively parse
-        const nestedResult = parseEmail(part, new Headers([['content-type', partContentType]]));
-        if (!result.textBody && nestedResult.textBody) result.textBody = nestedResult.textBody;
-        if (!result.htmlBody && nestedResult.htmlBody) result.htmlBody = nestedResult.htmlBody;
-        result.attachments.push(...nestedResult.attachments);
+        // Nested multipart - recursively parse using partBody (not part, which
+        // includes redundant headers and can cause infinite recursion)
+        const nestedBoundaryMatch = partContentType.match(/boundary=["']?([^"';\s]+)["']?/i);
+        if (nestedBoundaryMatch) {
+          const nestedResult = parseEmail(partBody, new Headers([['content-type', partContentType]]), depth + 1);
+          if (!result.textBody && nestedResult.textBody) result.textBody = nestedResult.textBody;
+          if (!result.htmlBody && nestedResult.htmlBody) result.htmlBody = nestedResult.htmlBody;
+          result.attachments.push(...nestedResult.attachments);
+        }
       }
     }
   } else {
@@ -207,11 +233,14 @@ function parseEmail(rawEmail, headers) {
 
 /**
  * Get a header value from raw header string
+ * Handles MIME header folding (continuation lines starting with whitespace)
  */
 function getHeader(headers, name) {
-  const regex = new RegExp(`^${name}:\\s*(.+)`, 'im');
+  const regex = new RegExp(`^${name}:\\s*(.+(?:\\r?\\n[ \\t]+.+)*)`, 'im');
   const match = headers.match(regex);
-  return match ? match[1].trim() : null;
+  if (!match) return null;
+  // Unfold the header by replacing line breaks + whitespace with a single space
+  return match[1].replace(/\r?\n[ \t]+/g, ' ').trim();
 }
 
 /**

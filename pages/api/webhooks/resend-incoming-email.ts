@@ -19,7 +19,9 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: {
+      sizeLimit: '25mb', // Must be large enough for base64-encoded image attachments
+    },
   },
 };
 
