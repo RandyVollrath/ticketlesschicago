@@ -15,7 +15,6 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import { Button, Card, RuleCard, StatusBadge } from '../components';
 import LocationService, { ParkingCheckResult, Coordinates } from '../services/LocationService';
-import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import MotionActivityService from '../services/MotionActivityService';
 import { ParkingHistoryService } from './HistoryScreen';
@@ -35,7 +34,6 @@ type HomeScreenRouteParams = {
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const route = useRoute<RouteProp<{ Home: HomeScreenRouteParams }, 'Home'>>();
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [lastParkingCheck, setLastParkingCheck] = useState<ParkingCheckResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,6 +59,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   useEffect(() => {
     loadInitialData();
+    autoStartMonitoring();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -78,10 +77,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.autoCheck]);
 
-  // Reload car when returning from settings
+  // Reload last check when returning from other screens
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      loadSavedCar();
       loadLastCheck();
     });
     return unsubscribe;
@@ -104,12 +102,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, [isMonitoring]);
 
   const loadInitialData = async () => {
-    await Promise.all([loadSavedCar(), loadLastCheck()]);
+    await loadLastCheck();
   };
 
-  const loadSavedCar = async () => {
-    const device = await BluetoothService.getSavedCarDevice();
-    setSavedCar(device);
+  const autoStartMonitoring = async () => {
+    try {
+      const hasLocationPermission = await LocationService.requestLocationPermission(true);
+      if (!hasLocationPermission) {
+        log.debug('Location permission not granted, monitoring not auto-started');
+        return;
+      }
+
+      await BackgroundTaskService.initialize();
+      const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
+      if (started) {
+        setIsMonitoring(true);
+        log.info('Monitoring auto-started');
+      }
+    } catch (error) {
+      log.error('Error auto-starting monitoring', error);
+    }
   };
 
   const loadLastCheck = async () => {
@@ -131,81 +143,19 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   const handleCarDisconnect = async () => {
-    log.info('Car disconnected - checking parking location');
-    setLoading(true);
-
-    try {
-      const coords = await LocationService.getCurrentLocation();
-      const result = await LocationService.checkParkingLocation(coords);
-      await LocationService.saveParkingCheckResult(result);
-      await ParkingHistoryService.addToHistory(result.coords, result.rules, result.address);
-
-      setLastParkingCheck(result);
-
-      if (result.rules.length > 0) {
-        await LocationService.sendParkingAlert(result.rules);
-      }
-    } catch (error) {
-      log.error('Error handling car disconnect', error);
-      Alert.alert('Error', 'Failed to check parking location');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const startMonitoring = async () => {
-    // On Android, require a saved car for Bluetooth detection
-    // On iOS, we use motion detection so no car pairing needed
-    if (Platform.OS === 'android' && !savedCar) {
-      Alert.alert('No Car Paired', 'Please pair your car Bluetooth device first', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Pair Now', onPress: () => navigation.navigate('BluetoothSettings') },
-      ]);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Request location permission with background access for auto-detection
-      const hasLocationPermission = await LocationService.requestLocationPermission(true);
-      if (!hasLocationPermission) {
-        Alert.alert('Permission Denied', 'Location permission is required to check parking restrictions');
-        setLoading(false);
-        return;
-      }
-
-      // Small delay to ensure Android permission system is fully ready after grant
-      await new Promise<void>(resolve => setTimeout(resolve, 300));
-
-      // Initialize and start background task service for monitoring
-      await BackgroundTaskService.initialize();
-      const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
-
-      if (started) {
-        setIsMonitoring(true);
-        const message = Platform.OS === 'ios'
-          ? "We'll automatically check parking when you stop driving and park."
-          : "We'll check parking restrictions when you disconnect from your car";
-        Alert.alert('Monitoring Started', message);
-      } else {
-        const message = Platform.OS === 'ios'
-          ? 'Please check that auto-check is enabled in Settings.'
-          : 'Please check that auto-check is enabled in Settings and your car is paired.';
-        Alert.alert('Could Not Start Monitoring', message);
-      }
-    } catch (error) {
-      log.error('Error starting monitoring', error);
-      Alert.alert('Error', 'Failed to start monitoring');
-    } finally {
-      setLoading(false);
-    }
+    // BackgroundTaskService already handles the full parking check + notification.
+    // This callback just refreshes the UI with the saved result.
+    log.info('Parking detected - refreshing UI');
+    await loadLastCheck();
   };
 
   const stopMonitoring = async () => {
     await BackgroundTaskService.stopMonitoring();
     setIsMonitoring(false);
-    Alert.alert('Monitoring Stopped', 'Parking detection has been disabled');
+  };
+
+  const resumeMonitoring = async () => {
+    await autoStartMonitoring();
   };
 
   // Core parking check logic - used by both manual check and auto-check
@@ -344,7 +294,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           title="Auto-Detection"
           headerRight={
             <StatusBadge
-              text={isMonitoring ? 'Active' : 'Off'}
+              text={isMonitoring ? 'Active' : 'Paused'}
               variant={isMonitoring ? 'success' : 'neutral'}
               icon={isMonitoring ? '●' : '○'}
             />
@@ -353,52 +303,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.cardDescription}>
             {isMonitoring
               ? Platform.OS === 'ios'
-                ? `Monitoring your movement. Current: ${currentActivity === 'automotive' ? '🚗 Driving' : currentActivity === 'walking' ? '🚶 Walking' : currentActivity === 'stationary' ? '🅿️ Stationary' : currentActivity}. We'll check parking when you stop.`
-                : 'Monitoring your car connection. We\'ll automatically check parking when you disconnect.'
-              : Platform.OS === 'ios'
-              ? 'Enable to automatically detect when you park and check restrictions.'
-              : savedCar
-              ? 'Enable to automatically check parking when you leave your car.'
-              : 'Pair your car to enable automatic parking detection.'}
+                ? `Current: ${currentActivity === 'automotive' ? '🚗 Driving' : currentActivity === 'walking' ? '🚶 Walking' : currentActivity === 'stationary' ? '🅿️ Stationary' : currentActivity}. We'll check parking when you stop.`
+                : 'We\'ll automatically check parking when you park.'
+              : 'Parking detection is paused.'}
           </Text>
-          <View style={styles.cardActions}>
-            {/* iOS: Always show monitoring button (no car pairing needed) */}
-            {/* Android: Require car pairing first */}
-            {(Platform.OS === 'ios' || savedCar) ? (
-              <Button
-                title={isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
-                variant={isMonitoring ? 'secondary' : 'primary'}
-                onPress={isMonitoring ? stopMonitoring : startMonitoring}
-                disabled={loading}
-              />
-            ) : (
-              <Button
-                title="Pair Your Car"
-                variant="primary"
-                onPress={() => navigation.navigate('BluetoothSettings')}
-              />
-            )}
-          </View>
+          {isMonitoring ? (
+            <Button
+              title="Pause"
+              variant="ghost"
+              size="sm"
+              onPress={stopMonitoring}
+            />
+          ) : (
+            <Button
+              title="Resume"
+              variant="primary"
+              size="sm"
+              onPress={resumeMonitoring}
+            />
+          )}
         </Card>
-
-        {/* Paired Car Card */}
-        {savedCar && (
-          <Card title="Paired Vehicle">
-            <View style={styles.carRow}>
-              <Text style={styles.carIcon}>🚗</Text>
-              <View style={styles.carInfo}>
-                <Text style={styles.carName}>{savedCar.name}</Text>
-                <Text style={styles.carId}>{savedCar.id.substring(0, 17)}...</Text>
-              </View>
-              <Button
-                title="Change"
-                variant="ghost"
-                size="sm"
-                onPress={() => navigation.navigate('BluetoothSettings')}
-              />
-            </View>
-          </Card>
-        )}
 
         {/* Last Check Results */}
         {lastParkingCheck && (
@@ -524,30 +448,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: typography.sizes.base * typography.lineHeights.relaxed,
     marginBottom: spacing.md,
-  },
-  cardActions: {
-    marginTop: spacing.sm,
-  },
-  carRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  carIcon: {
-    fontSize: 28,
-    marginRight: spacing.md,
-  },
-  carInfo: {
-    flex: 1,
-  },
-  carName: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-  },
-  carId: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
   },
   locationRow: {
     flexDirection: 'row',

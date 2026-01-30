@@ -117,16 +117,13 @@ class BackgroundTaskServiceClass {
     onReconnect?: () => void
   ): Promise<boolean> {
     try {
-      const savedDevice = await BluetoothService.getSavedCarDevice();
-      if (!savedDevice) {
-        log.warn('No saved car device, cannot start monitoring');
-        return false;
-      }
-
-      // Check if auto-check is enabled in settings
+      // Check if auto-check is enabled in settings (defaults to true if never set)
       const settingsJson = await AsyncStorage.getItem(StorageKeys.APP_SETTINGS);
       const settings = settingsJson ? JSON.parse(settingsJson) : {};
-      if (!settings.autoCheckOnDisconnect) {
+      const autoCheck = settings.autoCheckOnDisconnect !== undefined
+        ? settings.autoCheckOnDisconnect
+        : true;
+      if (!autoCheck) {
         log.info('Auto-check on disconnect is disabled');
         return false;
       }
@@ -140,7 +137,7 @@ class BackgroundTaskServiceClass {
       await this.startForegroundMonitoring();
 
       await this.saveState();
-      log.info('Monitoring started for device:', savedDevice.name);
+      log.info('Monitoring started');
       return true;
     } catch (error) {
       log.error('Failed to start monitoring', error);
@@ -249,20 +246,15 @@ class BackgroundTaskServiceClass {
    * Handle car disconnection event
    */
   private async handleCarDisconnection(): Promise<void> {
-    log.info('Car disconnection detected');
+    log.info('Car disconnection detected - checking parking immediately');
 
     // Record disconnect time
     this.state.lastDisconnectTime = Date.now();
     this.state.lastCarConnectionStatus = false;
     await this.saveState();
 
-    // Wait briefly to avoid false positives from brief signal drops
-    setTimeout(async () => {
-      // Verify still disconnected
-      if (!this.state.lastCarConnectionStatus) {
-        await this.triggerParkingCheck();
-      }
-    }, MIN_DISCONNECT_DURATION_MS);
+    // Check parking immediately
+    await this.triggerParkingCheck();
 
     // Call the callback if provided
     if (this.disconnectCallback) {
