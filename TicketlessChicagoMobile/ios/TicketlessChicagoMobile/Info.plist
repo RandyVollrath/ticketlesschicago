@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Autopilot</string>
+	<string>Autopilot America</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -45,6 +45,8 @@
 	<string>We need your location in the background to automatically detect when you park and check for parking restrictions</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We need your location to check parking restrictions when you park your car</string>
+	<key>NSMotionUsageDescription</key>
+	<string>We use motion detection to know when you've stopped driving and parked your car</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIBackgroundModes</key>

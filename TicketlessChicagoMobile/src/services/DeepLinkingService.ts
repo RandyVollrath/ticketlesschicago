@@ -382,7 +382,7 @@ class DeepLinkingServiceClass {
    */
   getLinkingConfig() {
     return {
-      prefixes: [URL_SCHEME, 'ticketlesschicago://', 'https://ticketless.fyi', 'https://autopilotamerica.com'],
+      prefixes: [URL_SCHEME, 'ticketlesschicago://', 'https://autopilotamerica.com'],
       config: {
         screens: {
           Onboarding: 'onboarding',

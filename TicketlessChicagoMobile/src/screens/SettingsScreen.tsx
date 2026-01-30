@@ -137,7 +137,9 @@ const SettingsScreen: React.FC = () => {
         setShowManualEntry(false);
         Alert.alert(
           'Car Saved!',
-          `"${trimmedName}" has been saved. Note: On iOS, automatic disconnect detection is limited. You may need to manually check parking when you park.`
+          Platform.OS === 'ios'
+            ? `"${trimmedName}" has been saved. Enable Auto-Detection on the home screen to automatically check parking when you park.`
+            : `"${trimmedName}" has been saved. We'll monitor when you disconnect from it.`
         );
       }
     } catch (error) {
@@ -299,7 +301,7 @@ const SettingsScreen: React.FC = () => {
             ) : (
               <Text style={styles.instructions}>
                 {Platform.OS === 'ios'
-                  ? "Due to iOS restrictions, we can't automatically detect your car's Bluetooth. Please enter your car's name below (e.g., \"My Honda\" or \"Work Car\")."
+                  ? "On iOS, we detect parking using motion sensors. When you stop driving and become stationary, we'll automatically check parking restrictions. Enter a car name below to enable this feature."
                   : "Enter a name for your car below. This helps you identify which car you're monitoring."}
               </Text>
             )}
@@ -349,9 +351,9 @@ const SettingsScreen: React.FC = () => {
               '4. You\'ll get an instant notification if there are any restrictions'
             ) : (
               '1. Save your car name above\n' +
-              '2. When you park, open the app to check parking restrictions\n' +
-              '3. We\'ll show you any street cleaning, permit zones, or snow bans\n' +
-              '4. Set up alerts to stay notified about parking restrictions'
+              '2. Enable "Auto-Detection" on the home screen\n' +
+              '3. When you stop driving and park, we\'ll detect it automatically\n' +
+              '4. You\'ll get an instant notification with any parking restrictions'
             )}
           </Text>
         </View>

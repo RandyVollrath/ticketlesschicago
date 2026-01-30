@@ -1,13 +1,13 @@
 {
   "name": "TicketlessChicagoMobile",
-  "displayName": "Autopilot",
+  "displayName": "Autopilot America",
   "version": "1.0.0",
   "buildNumber": "1",
   "bundleIdentifier": "fyi.ticketless.app",
   "description": "Never get a parking ticket in Chicago again. Automatic parking violation detection and alerts.",
-  "author": "Ticketless Chicago",
-  "homepage": "https://ticketless.fyi",
-  "privacy": "https://ticketless.fyi/privacy",
+  "author": "Autopilot America",
+  "homepage": "https://autopilotamerica.com",
+  "privacy": "https://autopilotamerica.com/privacy",
   "keywords": [
     "parking",
     "chicago",
@@ -18,8 +18,8 @@
     "bluetooth"
   ],
   "expo": {
-    "name": "Ticketless Chicago",
-    "slug": "ticketless-chicago",
+    "name": "Autopilot America",
+    "slug": "autopilot-america",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -37,7 +37,7 @@
       "bundleIdentifier": "fyi.ticketless.app",
       "buildNumber": "1",
       "associatedDomains": [
-        "applinks:ticketless.fyi"
+        "applinks:autopilotamerica.com"
       ],
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Ticketless needs your location to check parking restrictions at your current location.",
@@ -87,7 +87,7 @@
             },
             {
               "scheme": "https",
-              "host": "ticketless.fyi",
+              "host": "autopilotamerica.com",
               "pathPrefix": "/auth"
             }
           ],
@@ -97,7 +97,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "ticketless-chicago"
+        "projectId": "a7c79ab5-5eda-4855-a28d-52c60cc917f2"
       }
     }
   }

@@ -1,4 +1,4 @@
-package com.ticketlesschicagomobile
+package fyi.ticketless.app
 
 import android.app.Application
 import com.facebook.react.PackageList

@@ -42,6 +42,7 @@ export const StorageKeys = {
 
   // Background Tasks
   BACKGROUND_TASK_STATE: 'backgroundTaskState',
+  MOTION_ACTIVITY_STATE: 'motionActivityState',
 } as const;
 
 // Type for storage keys
