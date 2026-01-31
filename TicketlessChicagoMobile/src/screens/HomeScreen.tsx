@@ -9,13 +9,15 @@ import {
   RefreshControl,
   Platform,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, RouteProp } from '@react-navigation/native';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { Button, Card, RuleCard, StatusBadge } from '../components';
-import LocationService, { ParkingCheckResult, Coordinates } from '../services/LocationService';
+import LocationService, { ParkingCheckResult, ParkingRule, Coordinates } from '../services/LocationService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import BluetoothService from '../services/BluetoothService';
 import MotionActivityService from '../services/MotionActivityService';
@@ -33,6 +35,95 @@ type HomeScreenRouteParams = {
   fromNotification?: boolean;
 };
 
+// ──────────────────────────────────────────────────────
+// Hero Card States
+// ──────────────────────────────────────────────────────
+type HeroState = 'ready' | 'driving' | 'checking' | 'clear' | 'violation' | 'paused';
+
+interface HeroConfig {
+  icon: string;
+  title: string;
+  subtitle: string;
+  bgColor: string;
+  iconColor: string;
+  textColor: string;
+}
+
+const getHeroConfig = (
+  state: HeroState,
+  ruleCount: number,
+  address?: string,
+): HeroConfig => {
+  switch (state) {
+    case 'driving':
+      return {
+        icon: 'car',
+        title: 'Driving',
+        subtitle: 'We\'ll check parking when you stop.',
+        bgColor: colors.primary,
+        iconColor: colors.white,
+        textColor: colors.white,
+      };
+    case 'checking':
+      return {
+        icon: 'radar',
+        title: 'Checking...',
+        subtitle: 'Scanning parking restrictions at your location.',
+        bgColor: colors.primary,
+        iconColor: colors.white,
+        textColor: colors.white,
+      };
+    case 'clear':
+      return {
+        icon: 'shield-check',
+        title: 'All Clear',
+        subtitle: address || 'No parking restrictions found.',
+        bgColor: colors.success,
+        iconColor: colors.white,
+        textColor: colors.white,
+      };
+    case 'violation':
+      return {
+        icon: 'alert-circle',
+        title: `${ruleCount} Issue${ruleCount > 1 ? 's' : ''} Found`,
+        subtitle: address || 'Parking restrictions detected.',
+        bgColor: colors.error,
+        iconColor: colors.white,
+        textColor: colors.white,
+      };
+    case 'paused':
+      return {
+        icon: 'pause-circle-outline',
+        title: 'Paused',
+        subtitle: 'Parking detection is paused.',
+        bgColor: colors.background,
+        iconColor: colors.textTertiary,
+        textColor: colors.textPrimary,
+      };
+    case 'ready':
+    default:
+      return {
+        icon: 'shield-check-outline',
+        title: 'Ready',
+        subtitle: 'Autopilot is watching for your next drive.',
+        bgColor: colors.cardBg,
+        iconColor: colors.primary,
+        textColor: colors.textPrimary,
+      };
+  }
+};
+
+// ──────────────────────────────────────────────────────
+// Protection Status - databases we check
+// ──────────────────────────────────────────────────────
+const PROTECTION_ITEMS = [
+  { icon: 'broom', label: 'Street Cleaning' },
+  { icon: 'snowflake', label: 'Winter Overnight Ban' },
+  { icon: 'weather-snowy-heavy', label: 'Snow Route Ban' },
+  { icon: 'parking', label: 'Permit Zones' },
+  { icon: 'car-clock', label: 'Rush Hour' },
+];
+
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const route = useRoute<RouteProp<{ Home: HomeScreenRouteParams }, 'Home'>>();
   const [isMonitoring, setIsMonitoring] = useState(false);
@@ -46,6 +137,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [currentActivity, setCurrentActivity] = useState<string>('unknown');
   const [isCarConnected, setIsCarConnected] = useState(false);
   const [savedCarName, setSavedCarName] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   // Update time every minute
   useEffect(() => {
@@ -71,9 +163,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     const handleAutoCheck = async () => {
       if (route.params?.autoCheck) {
-        // Clear the param to prevent re-triggering
         navigation.setParams({ autoCheck: undefined, fromNotification: undefined });
-        // Trigger parking check
         await performParkingCheck();
       }
     };
@@ -81,11 +171,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.autoCheck]);
 
-  // Reload data when returning from other screens (e.g. after pairing car)
+  // Reload data when returning from other screens
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       loadLastCheck();
-      // Refresh saved car name (in case user just paired)
       try {
         const savedDevice = await BluetoothService.getSavedCarDevice();
         setSavedCarName(savedDevice?.name || null);
@@ -108,11 +197,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     };
 
     updateActivity();
-    const interval = setInterval(updateActivity, 10000); // Update every 10 seconds
+    const interval = setInterval(updateActivity, 10000);
     return () => clearInterval(interval);
   }, [isMonitoring]);
 
-  // Load saved car name on all platforms; subscribe to BT events on Android
+  // Load saved car name; subscribe to BT events on Android
   useEffect(() => {
     const checkInitialStatus = async () => {
       try {
@@ -135,12 +224,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     checkInitialStatus();
 
-    // Subscribe to Bluetooth connect/disconnect events (Android only)
     if (Platform.OS === 'android') {
       const onConnect = () => setIsCarConnected(true);
       const onDisconnect = () => setIsCarConnected(false);
       BluetoothService.addConnectionListener(onConnect, onDisconnect);
-
       return () => {
         BluetoothService.removeConnectionListener(onConnect, onDisconnect);
       };
@@ -152,7 +239,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const autoStartMonitoring = async () => {
-    // Defer monitoring startup so the UI renders first
     setTimeout(async () => {
       try {
         const hasLocationPermission = await LocationService.requestLocationPermission(true);
@@ -192,8 +278,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   const handleCarDisconnect = async () => {
-    // BackgroundTaskService already handles the full parking check + notification.
-    // This callback just refreshes the UI with the saved result.
     log.info('Parking detected - refreshing UI');
     await loadLastCheck();
   };
@@ -207,7 +291,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     await autoStartMonitoring();
   };
 
-  // Core parking check logic - used by both manual check and auto-check
   const performParkingCheck = useCallback(async (showAllClearAlert: boolean = true, useHighAccuracy: boolean = true) => {
     setLoading(true);
     setIsGettingLocation(true);
@@ -222,10 +305,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         return;
       }
 
-      // Small delay to ensure Android permission system is fully ready after grant
       await new Promise<void>(resolve => setTimeout(resolve, 300));
 
-      // Check if location services are enabled
       const servicesEnabled = await LocationService.checkLocationServicesEnabled();
       if (!servicesEnabled) {
         await LocationService.promptEnableLocationServices();
@@ -234,10 +315,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         return;
       }
 
-      // Use high-accuracy location for parking checks to ensure we get the right street
       let coords: Coordinates;
       if (useHighAccuracy) {
-        // Wait for GPS to stabilize and get accuracy within 20 meters
         coords = await LocationService.getHighAccuracyLocation(20, 15000);
       } else {
         coords = await LocationService.getCurrentLocation('high');
@@ -292,12 +371,60 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return 'Just now';
   };
 
+  const getDirections = useCallback((coords: Coordinates) => {
+    const url = Platform.select({
+      ios: `http://maps.apple.com/?daddr=${coords.latitude},${coords.longitude}&dirflg=w`,
+      android: `google.navigation:q=${coords.latitude},${coords.longitude}&mode=w`,
+    });
+    if (url) {
+      Linking.openURL(url).catch(err => {
+        log.error('Failed to open directions', err);
+        Alert.alert('Error', 'Could not open navigation');
+      });
+    }
+  }, []);
+
+  // ──────────────────────────────────────────────────────
+  // Derive hero state from app state
+  // ──────────────────────────────────────────────────────
+  const getHeroState = (): HeroState => {
+    if (loading) return 'checking';
+    if (!isMonitoring) return 'paused';
+
+    // iOS: use CoreMotion activity
+    if (Platform.OS === 'ios') {
+      if (currentActivity === 'automotive') return 'driving';
+    }
+    // Android: use Bluetooth connection
+    if (Platform.OS === 'android') {
+      if (isCarConnected) return 'driving';
+    }
+
+    // If we have a recent check result (< 2 hours), show its state
+    if (lastParkingCheck) {
+      const ageMs = Date.now() - lastParkingCheck.timestamp;
+      if (ageMs < 2 * 60 * 60 * 1000) {
+        return lastParkingCheck.rules.length > 0 ? 'violation' : 'clear';
+      }
+    }
+
+    return 'ready';
+  };
+
+  const heroState = getHeroState();
+  const heroConfig = getHeroConfig(
+    heroState,
+    lastParkingCheck?.rules.length || 0,
+    lastParkingCheck?.address,
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       {isOffline && (
         <View style={styles.offlineBanner}>
-          <Text style={styles.offlineBannerText}>No internet connection</Text>
+          <MaterialCommunityIcons name="wifi-off" size={14} color={colors.textPrimary} />
+          <Text style={styles.offlineBannerText}> No internet connection</Text>
         </View>
       )}
       <ScrollView
@@ -316,7 +443,100 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.title}>Autopilot</Text>
         </View>
 
-        {/* Car Pairing Prompt - Android only (iOS uses motion sensors, no pairing needed) */}
+        {/* Hero Card - state-driven */}
+        <TouchableOpacity
+          style={[
+            styles.heroCard,
+            { backgroundColor: heroConfig.bgColor },
+            (heroState === 'ready' || heroState === 'paused') && styles.heroCardBorder,
+          ]}
+          onPress={() => {
+            if (heroState === 'clear' || heroState === 'violation') {
+              setShowDetails(!showDetails);
+            }
+          }}
+          activeOpacity={heroState === 'clear' || heroState === 'violation' ? 0.8 : 1}
+          accessibilityRole="text"
+          accessibilityLabel={`${heroConfig.title}. ${heroConfig.subtitle}`}
+        >
+          <View style={styles.heroContent}>
+            <View style={[styles.heroIconCircle, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+              <MaterialCommunityIcons
+                name={heroConfig.icon}
+                size={32}
+                color={heroConfig.iconColor}
+              />
+            </View>
+            <View style={styles.heroTextWrap}>
+              <Text style={[styles.heroTitle, { color: heroConfig.textColor }]}>
+                {heroConfig.title}
+              </Text>
+              <Text
+                style={[styles.heroSubtitle, { color: heroConfig.textColor, opacity: 0.85 }]}
+                numberOfLines={2}
+              >
+                {heroConfig.subtitle}
+              </Text>
+            </View>
+            {(heroState === 'clear' || heroState === 'violation') && (
+              <MaterialCommunityIcons
+                name={showDetails ? 'chevron-up' : 'chevron-down'}
+                size={24}
+                color={heroConfig.textColor}
+                style={{ opacity: 0.7 }}
+              />
+            )}
+          </View>
+
+          {/* Expanded details for clear/violation */}
+          {showDetails && lastParkingCheck && (
+            <View style={styles.heroExpanded}>
+              <View style={styles.heroDivider} />
+              {lastParkingCheck.rules.length > 0 ? (
+                lastParkingCheck.rules.map((rule, index) => (
+                  <View key={index} style={styles.heroRuleRow}>
+                    <MaterialCommunityIcons
+                      name="alert"
+                      size={16}
+                      color="rgba(255,255,255,0.9)"
+                    />
+                    <Text style={styles.heroRuleText}>{rule.message || rule.type}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.heroExpandedText}>
+                  No restrictions at this location. You're good to park here.
+                </Text>
+              )}
+              <View style={styles.heroActions}>
+                <TouchableOpacity
+                  style={styles.heroActionButton}
+                  onPress={() => getDirections(lastParkingCheck.coords)}
+                >
+                  <MaterialCommunityIcons name="navigation-variant" size={16} color={colors.white} />
+                  <Text style={styles.heroActionText}>Directions</Text>
+                </TouchableOpacity>
+                <Text style={styles.heroTimestamp}>
+                  {formatTimeSince(lastParkingCheck.timestamp)}
+                </Text>
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Pause/Resume - only when paused */}
+        {!isMonitoring && (
+          <Button
+            title="Resume Monitoring"
+            variant="primary"
+            size="md"
+            onPress={resumeMonitoring}
+            icon={<MaterialCommunityIcons name="play-circle-outline" size={20} color={colors.white} />}
+            style={styles.resumeButton}
+          />
+        )}
+
+        {/* Car Pairing Prompt - Android only */}
         {Platform.OS === 'android' && !savedCarName && (
           <TouchableOpacity
             style={styles.pairCarCard}
@@ -324,28 +544,29 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             activeOpacity={0.8}
           >
             <View style={styles.pairCarContent}>
-              <Text style={styles.pairCarIcon}>🚗</Text>
+              <MaterialCommunityIcons name="bluetooth-connect" size={28} color={colors.white} />
               <View style={styles.pairCarTextWrap}>
                 <Text style={styles.pairCarTitle}>Pair Your Car</Text>
                 <Text style={styles.pairCarSubtitle}>
-                  One-time setup so we can detect when you park and check for restrictions.
+                  One-time setup so we can detect when you park.
                 </Text>
               </View>
-              <Text style={styles.pairCarChevron}>›</Text>
+              <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.7)" />
             </View>
           </TouchableOpacity>
         )}
 
-        {/* Quick Action */}
+        {/* Quick Action Button */}
         <Button
           title={isGettingLocation ? 'Getting GPS...' : loading ? 'Checking...' : 'Check My Parking'}
           onPress={checkCurrentLocation}
           loading={loading}
           size="lg"
           style={styles.mainButton}
+          icon={!loading ? <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.white} /> : undefined}
         />
 
-        {/* Location Accuracy Indicator */}
+        {/* GPS Accuracy */}
         {locationAccuracy !== undefined && (
           <View style={styles.accuracyContainer}>
             <View style={[
@@ -353,127 +574,62 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               { backgroundColor: LocationService.getAccuracyDescription(locationAccuracy).color }
             ]} />
             <Text style={styles.accuracyText}>
-              GPS Accuracy: {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
+              GPS: {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
             </Text>
           </View>
         )}
 
-        {/* Monitoring Status Card */}
-        <Card
-          title="Auto-Detection"
-          headerRight={
-            <StatusBadge
-              text={isMonitoring ? 'Active' : 'Paused'}
-              variant={isMonitoring ? 'success' : 'neutral'}
-              icon={isMonitoring ? '●' : '○'}
+        {/* Android BT Status */}
+        {isMonitoring && Platform.OS === 'android' && (
+          <View style={styles.btStatusRow}>
+            <MaterialCommunityIcons
+              name={isCarConnected ? 'bluetooth-connect' : 'bluetooth-off'}
+              size={16}
+              color={isCarConnected ? colors.success : colors.textTertiary}
             />
-          }
-        >
-          {isMonitoring && Platform.OS === 'android' && (
-            <View style={styles.btStatusRow}>
-              <View style={[styles.btStatusDot, { backgroundColor: isCarConnected ? colors.success : colors.textTertiary }]} />
-              <Text style={styles.btStatusText}>
-                {savedCarName
-                  ? isCarConnected
-                    ? `Connected to ${savedCarName}`
-                    : `Not connected to ${savedCarName}`
-                  : 'No car paired — go to Settings to pair'}
-              </Text>
-            </View>
-          )}
-          <Text style={styles.cardDescription}>
-            {isMonitoring
-              ? Platform.OS === 'ios'
-                ? currentActivity === 'automotive'
-                  ? 'Driving detected. We\'ll check parking when you stop.'
-                  : currentActivity === 'stationary'
-                    ? 'Parked. We\'ll check again on your next drive.'
-                    : 'Ready.'
-                : isCarConnected
-                  ? 'Driving detected. We\'ll check parking when you stop.'
-                  : savedCarName
-                    ? 'Ready. Waiting for your next drive.'
-                    : 'Pair your car in Settings to enable auto-detection.'
-              : 'Parking detection is paused.'}
-          </Text>
-          {isMonitoring ? (
-            <Button
-              title="Pause"
-              variant="ghost"
-              size="sm"
-              onPress={stopMonitoring}
-            />
-          ) : (
-            <Button
-              title="Resume"
-              variant="primary"
-              size="sm"
-              onPress={resumeMonitoring}
-            />
-          )}
-        </Card>
+            <Text style={styles.btStatusText}>
+              {savedCarName
+                ? isCarConnected
+                  ? `Connected to ${savedCarName}`
+                  : `Waiting for ${savedCarName}`
+                : 'No car paired'}
+            </Text>
+          </View>
+        )}
 
-        {/* Last Check Results */}
-        {lastParkingCheck && (
-          <Card
-            title="Last Parking Check"
-            subtitle={formatTimeSince(lastParkingCheck.timestamp)}
+        {/* Monitoring Toggle (when active) */}
+        {isMonitoring && (
+          <TouchableOpacity
+            style={styles.pauseRow}
+            onPress={stopMonitoring}
+            accessibilityLabel="Pause parking detection"
           >
-            <View style={styles.locationRow}>
-              <Text style={styles.locationIcon}>📍</Text>
-              <Text style={styles.locationText} numberOfLines={2}>
-                {lastParkingCheck.address}
-              </Text>
-            </View>
-            {lastParkingCheck.rules.length > 0 ? (
-              <View style={styles.rulesContainer}>
-                {lastParkingCheck.rules.map((rule, index) => (
-                  <RuleCard key={index} rule={rule} />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.allClear}>
-                <Text style={styles.allClearIcon}>✅</Text>
-                <Text style={styles.allClearText}>No parking restrictions found</Text>
-              </View>
-            )}
-            <Button
-              title="View on Map"
-              variant="secondary"
-              size="sm"
-              onPress={() => navigation.navigate('Map')}
-              style={styles.viewMapButton}
-            />
-          </Card>
+            <MaterialCommunityIcons name="pause-circle-outline" size={18} color={colors.textTertiary} />
+            <Text style={styles.pauseText}>Pause detection</Text>
+          </TouchableOpacity>
         )}
 
-        {/* Tips Card */}
-        <Card title="Quick Tips">
-          <View style={styles.tip}>
-            <Text style={styles.tipIcon}>💡</Text>
-            <Text style={styles.tipText}>
-              Street cleaning usually happens between {Config.PARKING_RULES.STREET_CLEANING_START_HOUR} AM - {Config.PARKING_RULES.STREET_CLEANING_END_HOUR - 12} PM on scheduled days
-            </Text>
+        {/* Protection Status - what we check */}
+        <View style={styles.protectionCard}>
+          <Text style={styles.protectionTitle}>Protection Coverage</Text>
+          <View style={styles.protectionGrid}>
+            {PROTECTION_ITEMS.map((item, index) => (
+              <View key={index} style={styles.protectionItem}>
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={styles.protectionLabel}>{item.label}</Text>
+                <MaterialCommunityIcons
+                  name="check-circle"
+                  size={14}
+                  color={colors.success}
+                />
+              </View>
+            ))}
           </View>
-          <View style={styles.tip}>
-            <Text style={styles.tipIcon}>❄️</Text>
-            <Text style={styles.tipText}>
-              Winter overnight parking bans are active Dec {Config.PARKING_RULES.WINTER_BAN_START_DAY} - Apr {Config.PARKING_RULES.WINTER_BAN_END_DAY} ({Config.PARKING_RULES.WINTER_BAN_START_HOUR} AM - {Config.PARKING_RULES.WINTER_BAN_END_HOUR} AM)
-            </Text>
-          </View>
-          <View style={styles.tip}>
-            <Text style={styles.tipIcon}>🚨</Text>
-            <Text style={styles.tipText}>
-              Snow routes are enforced during {Config.PARKING_RULES.SNOW_BAN_INCHES}"+ snowfall events
-            </Text>
-          </View>
-          <View style={styles.tip}>
-            <Text style={styles.tipIcon}>🅿️</Text>
-            <Text style={styles.tipText}>
-              We also check permit zones - avoid tickets in residential permit areas
-            </Text>
-          </View>
-        </Card>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -488,7 +644,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warning,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.base,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   offlineBannerText: {
     color: colors.textPrimary,
@@ -512,14 +670,109 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
   },
+
+  // Hero Card
+  heroCard: {
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.base,
+    ...shadows.md,
+  },
+  heroCardBorder: {
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.base,
+  },
+  heroTextWrap: {
+    flex: 1,
+  },
+  heroTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    marginBottom: 4,
+  },
+  heroSubtitle: {
+    fontSize: typography.sizes.sm,
+    lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
+  },
+  heroExpanded: {
+    marginTop: spacing.md,
+  },
+  heroDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: spacing.md,
+  },
+  heroRuleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  heroRuleText: {
+    marginLeft: spacing.sm,
+    fontSize: typography.sizes.sm,
+    color: colors.white,
+    flex: 1,
+  },
+  heroExpandedText: {
+    fontSize: typography.sizes.sm,
+    color: colors.white,
+    opacity: 0.9,
+    marginBottom: spacing.sm,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  heroActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+  },
+  heroActionText: {
+    color: colors.white,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    marginLeft: spacing.xs,
+  },
+  heroTimestamp: {
+    color: colors.white,
+    fontSize: typography.sizes.xs,
+    opacity: 0.7,
+  },
+
+  // Resume button
+  resumeButton: {
+    marginBottom: spacing.base,
+  },
+
+  // Main button
   mainButton: {
     marginBottom: spacing.sm,
   },
+
+  // Accuracy
   accuracyContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     paddingVertical: spacing.xs,
   },
   accuracyDot: {
@@ -532,90 +785,41 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
   },
+
+  // BT status
   btStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
-  },
-  btStatusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: spacing.sm,
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
   },
   btStatusText: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-  },
-  cardDescription: {
-    fontSize: typography.sizes.base,
     color: colors.textSecondary,
-    lineHeight: typography.sizes.base * typography.lineHeights.relaxed,
-    marginBottom: spacing.md,
+    marginLeft: spacing.sm,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  locationIcon: {
-    fontSize: 16,
-    marginRight: spacing.sm,
-    marginTop: 2,
-  },
-  locationText: {
-    flex: 1,
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-    lineHeight: typography.sizes.base * typography.lineHeights.normal,
-  },
-  rulesContainer: {
-    marginTop: spacing.sm,
-  },
-  allClear: {
+
+  // Pause row
+  pauseRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.successBg,
-    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.xs,
   },
-  allClearIcon: {
-    fontSize: 20,
-    marginRight: spacing.sm,
-  },
-  allClearText: {
-    fontSize: typography.sizes.base,
-    color: colors.success,
-    fontWeight: typography.weights.medium,
-  },
-  viewMapButton: {
-    marginTop: spacing.md,
-  },
-  tip: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  tipIcon: {
-    fontSize: typography.sizes.md,
-    marginRight: spacing.sm,
-    marginTop: 2,
-  },
-  tipText: {
-    flex: 1,
+  pauseText: {
     fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
+    color: colors.textTertiary,
+    marginLeft: spacing.xs,
   },
+
+  // Car pairing card
   pairCarCard: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.lg,
@@ -626,27 +830,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  pairCarIcon: {
-    fontSize: 28,
-    marginRight: spacing.md,
-  },
   pairCarTextWrap: {
     flex: 1,
+    marginLeft: spacing.md,
   },
   pairCarTitle: {
-    fontSize: typography.sizes.lg,
+    fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
     color: colors.white,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   pairCarSubtitle: {
     fontSize: typography.sizes.sm,
     color: 'rgba(255,255,255,0.85)',
     lineHeight: 18,
   },
-  pairCarChevron: {
-    fontSize: 28,
-    color: 'rgba(255,255,255,0.7)',
+
+  // Protection status
+  protectionCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.base,
+    ...shadows.sm,
+  },
+  protectionTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  protectionGrid: {
+    gap: spacing.sm,
+  },
+  protectionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  protectionLabel: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
     marginLeft: spacing.sm,
   },
 });

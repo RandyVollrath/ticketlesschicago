@@ -11,10 +11,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { StatusBadge, RuleCard } from '../components';
 import { ParkingRule, Coordinates } from '../services/LocationService';
 import Logger from '../utils/Logger';
+import Config from '../config/config';
 import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('HistoryScreen');
@@ -61,7 +63,6 @@ export const ParkingHistoryService = {
         timestamp: Date.now(),
       };
 
-      // Add to beginning, limit size
       const updated = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
     } catch (error) {
@@ -106,6 +107,187 @@ export const ParkingHistoryService = {
   },
 };
 
+// ──────────────────────────────────────────────────────
+// Stats Header Component
+// ──────────────────────────────────────────────────────
+interface StatsProps {
+  totalChecks: number;
+  violationsFound: number;
+  estimatedSaved: number;
+}
+
+const StatsHeader: React.FC<StatsProps> = ({ totalChecks, violationsFound, estimatedSaved }) => (
+  <View style={styles.statsCard}>
+    <View style={styles.statItem}>
+      <MaterialCommunityIcons name="map-marker-check" size={20} color={colors.primary} />
+      <Text style={styles.statValue}>{totalChecks}</Text>
+      <Text style={styles.statLabel}>Checks</Text>
+    </View>
+    <View style={styles.statDivider} />
+    <View style={styles.statItem}>
+      <MaterialCommunityIcons name="alert-circle-outline" size={20} color={colors.warning} />
+      <Text style={styles.statValue}>{violationsFound}</Text>
+      <Text style={styles.statLabel}>Alerts</Text>
+    </View>
+    <View style={styles.statDivider} />
+    <View style={styles.statItem}>
+      <MaterialCommunityIcons name="piggy-bank-outline" size={20} color={colors.success} />
+      <Text style={[styles.statValue, styles.statHighlight]}>
+        ~${estimatedSaved}
+      </Text>
+      <Text style={styles.statLabel}>Saved</Text>
+    </View>
+  </View>
+);
+
+// ──────────────────────────────────────────────────────
+// Timeline Item Component
+// ──────────────────────────────────────────────────────
+interface TimelineItemProps {
+  item: ParkingHistoryItem;
+  isExpanded: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}
+
+const TimelineItem: React.FC<TimelineItemProps> = ({
+  item,
+  isExpanded,
+  isFirst,
+  isLast,
+  onPress,
+  onLongPress,
+}) => {
+  const hasViolations = item.rules.length > 0;
+  const hasCritical = item.rules.some(r => r.severity === 'critical');
+
+  const dotColor = hasCritical
+    ? colors.error
+    : hasViolations
+      ? colors.warning
+      : colors.success;
+
+  return (
+    <TouchableOpacity
+      style={styles.timelineRow}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Parking check at ${item.address || 'saved location'}. ${hasViolations ? `${item.rules.length} issues found` : 'Clear'}`}
+      accessibilityHint={isExpanded ? 'Tap to collapse. Hold to delete.' : 'Tap to expand. Hold to delete.'}
+    >
+      {/* Timeline spine */}
+      <View style={styles.timelineSpine}>
+        {!isFirst && <View style={[styles.timelineLine, styles.timelineLineTop]} />}
+        <View style={[styles.timelineDot, { backgroundColor: dotColor }]}>
+          <MaterialCommunityIcons
+            name={hasViolations ? 'alert' : 'check'}
+            size={10}
+            color={colors.white}
+          />
+        </View>
+        {!isLast && <View style={[styles.timelineLine, styles.timelineLineBottom]} />}
+      </View>
+
+      {/* Content card */}
+      <View style={[styles.timelineCard, isExpanded && styles.timelineCardExpanded]}>
+        <View style={styles.timelineHeader}>
+          <View style={styles.timelineDateWrap}>
+            <Text style={styles.timelineTime}>{formatTime(item.timestamp)}</Text>
+            <Text style={styles.timelineDate}>{formatDate(item.timestamp)}</Text>
+          </View>
+          <StatusBadge
+            text={hasViolations ? `${item.rules.length} issue${item.rules.length > 1 ? 's' : ''}` : 'Clear'}
+            variant={hasCritical ? 'error' : hasViolations ? 'warning' : 'success'}
+          />
+        </View>
+
+        <View style={styles.timelineAddress}>
+          <MaterialCommunityIcons name="map-marker" size={14} color={colors.textTertiary} />
+          <Text style={styles.timelineAddressText} numberOfLines={isExpanded ? 3 : 1}>
+            {item.address || `${item.coords.latitude.toFixed(4)}, ${item.coords.longitude.toFixed(4)}`}
+          </Text>
+        </View>
+
+        {/* Expanded: rules */}
+        {isExpanded && item.rules.length > 0 && (
+          <View style={styles.timelineRules}>
+            {item.rules.map((rule, index) => (
+              <RuleCard key={index} rule={rule} />
+            ))}
+          </View>
+        )}
+
+        {isExpanded && item.rules.length === 0 && (
+          <View style={styles.timelineClear}>
+            <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+            <Text style={styles.timelineClearText}>No parking restrictions found</Text>
+          </View>
+        )}
+
+        {/* Expanded: departure record */}
+        {isExpanded && item.departure && (
+          <View style={styles.departureRow}>
+            <MaterialCommunityIcons
+              name={item.departure.isConclusive ? 'location-exit' : 'map-marker-radius'}
+              size={16}
+              color={item.departure.isConclusive ? colors.success : colors.warning}
+            />
+            <View style={styles.departureInfo}>
+              <Text style={styles.departureText}>
+                Left at {formatTime(item.departure.confirmedAt)} ({Math.round(item.departure.distanceMeters)}m away)
+              </Text>
+              <Text style={[
+                styles.departureStatus,
+                { color: item.departure.isConclusive ? colors.success : colors.warning },
+              ]}>
+                {item.departure.isConclusive
+                  ? 'GPS-verified departure'
+                  : 'Still near parking spot'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Expand hint */}
+        <View style={styles.expandRow}>
+          <MaterialCommunityIcons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.textTertiary}
+          />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ──────────────────────────────────────────────────────
+// Formatting helpers
+// ──────────────────────────────────────────────────────
+const formatDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+const formatTime = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+// ──────────────────────────────────────────────────────
+// Main Screen
+// ──────────────────────────────────────────────────────
 const HistoryScreen: React.FC = () => {
   const [history, setHistory] = useState<ParkingHistoryItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -114,24 +296,18 @@ const HistoryScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
-  // Refs to prevent memory leaks and race conditions
   const isMountedRef = useRef(true);
   const deletingIdRef = useRef<string | null>(null);
   const clearingRef = useRef(false);
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
+    return () => { isMountedRef.current = false; };
   }, []);
 
   const loadHistory = useCallback(async () => {
     try {
       const items = await ParkingHistoryService.getHistory();
-      if (isMountedRef.current) {
-        setHistory(items);
-      }
+      if (isMountedRef.current) setHistory(items);
     } catch (error) {
       log.error('Error loading history', error);
     }
@@ -140,9 +316,7 @@ const HistoryScreen: React.FC = () => {
   useEffect(() => {
     const initLoad = async () => {
       await loadHistory();
-      if (isMountedRef.current) {
-        setIsInitialLoading(false);
-      }
+      if (isMountedRef.current) setIsInitialLoading(false);
     };
     initLoad();
   }, [loadHistory]);
@@ -150,188 +324,92 @@ const HistoryScreen: React.FC = () => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadHistory();
-    if (isMountedRef.current) {
-      setRefreshing(false);
-    }
+    if (isMountedRef.current) setRefreshing(false);
   }, [loadHistory]);
 
   const clearAllHistory = useCallback(() => {
     if (clearingRef.current) return;
-
-    Alert.alert(
-      'Clear History',
-      'Are you sure you want to clear all parking history?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: async () => {
-            clearingRef.current = true;
-            if (isMountedRef.current) setIsClearing(true);
-            try {
-              await ParkingHistoryService.clearHistory();
-              if (isMountedRef.current) {
-                setHistory([]);
-              }
-            } catch (error) {
-              log.error('Error clearing history', error);
-              if (isMountedRef.current) {
-                Alert.alert('Error', 'Failed to clear history. Please try again.');
-              }
-            } finally {
-              clearingRef.current = false;
-              if (isMountedRef.current) {
-                setIsClearing(false);
-              }
-            }
-          },
+    Alert.alert('Clear History', 'Are you sure you want to clear all parking history?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear', style: 'destructive',
+        onPress: async () => {
+          clearingRef.current = true;
+          if (isMountedRef.current) setIsClearing(true);
+          try {
+            await ParkingHistoryService.clearHistory();
+            if (isMountedRef.current) setHistory([]);
+          } catch (error) {
+            log.error('Error clearing history', error);
+            if (isMountedRef.current) Alert.alert('Error', 'Failed to clear history.');
+          } finally {
+            clearingRef.current = false;
+            if (isMountedRef.current) setIsClearing(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   }, []);
 
   const deleteItem = useCallback((id: string) => {
-    // Use ref to prevent concurrent deletes
     if (deletingIdRef.current !== null) return;
-
-    Alert.alert(
-      'Delete Entry',
-      'Remove this parking entry from history?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            deletingIdRef.current = id;
-            if (isMountedRef.current) setIsDeleting(true);
-            try {
-              await ParkingHistoryService.deleteItem(id);
-              if (isMountedRef.current) {
-                setHistory(prev => prev.filter(item => item.id !== id));
-              }
-            } catch (error) {
-              log.error('Error deleting history item', error);
-              if (isMountedRef.current) {
-                Alert.alert('Error', 'Failed to delete entry. Please try again.');
-              }
-            } finally {
-              deletingIdRef.current = null;
-              if (isMountedRef.current) {
-                setIsDeleting(false);
-              }
-            }
-          },
+    Alert.alert('Delete Entry', 'Remove this parking entry?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          deletingIdRef.current = id;
+          if (isMountedRef.current) setIsDeleting(true);
+          try {
+            await ParkingHistoryService.deleteItem(id);
+            if (isMountedRef.current) setHistory(prev => prev.filter(item => item.id !== id));
+          } catch (error) {
+            log.error('Error deleting', error);
+            if (isMountedRef.current) Alert.alert('Error', 'Failed to delete.');
+          } finally {
+            deletingIdRef.current = null;
+            if (isMountedRef.current) setIsDeleting(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   }, []);
 
-  const formatDate = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  // Compute stats from history
+  const stats = useMemo(() => {
+    const violations = history.filter(item => item.rules.length > 0).length;
+    return {
+      totalChecks: history.length,
+      violationsFound: violations,
+      estimatedSaved: Math.floor(violations * Config.STATS.VIOLATION_TO_TICKET_RATE) * Config.STATS.AVERAGE_TICKET_COST,
+    };
+  }, [history]);
 
-  const formatTime = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
-
-  const formatCoords = (coords: Coordinates): string => {
-    return `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
-  };
-
-  const renderHistoryItem = useCallback(({ item }: { item: ParkingHistoryItem }) => {
-    const isExpanded = expandedId === item.id;
-    const hasViolations = item.rules.length > 0;
-    const hasCritical = item.rules.some(r => r.severity === 'critical');
-    const statusText = hasViolations
-      ? `${item.rules.length} parking issue${item.rules.length > 1 ? 's' : ''} found`
-      : 'No restrictions';
-
-    return (
-      <TouchableOpacity
-        style={styles.historyCard}
-        onPress={() => setExpandedId(isExpanded ? null : item.id)}
-        onLongPress={() => deleteItem(item.id)}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={`Parking check from ${formatDate(item.timestamp)} at ${formatTime(item.timestamp)}. ${item.address || 'Location saved'}. ${statusText}`}
-        accessibilityHint={isExpanded ? 'Tap to collapse details. Long press to delete.' : 'Tap to expand details. Long press to delete.'}
-        accessibilityState={{ expanded: isExpanded }}
-      >
-        <View style={styles.historyHeader}>
-          <View style={styles.dateContainer}>
-            <Text style={styles.date}>{formatDate(item.timestamp)}</Text>
-            <Text style={styles.time}>{formatTime(item.timestamp)}</Text>
-          </View>
-          <StatusBadge
-            text={hasViolations ? `${item.rules.length} issue${item.rules.length > 1 ? 's' : ''}` : 'Clear'}
-            variant={hasCritical ? 'error' : hasViolations ? 'warning' : 'success'}
-            icon={hasViolations ? '⚠️' : '✓'}
-          />
-        </View>
-
-        <Text style={styles.coords} numberOfLines={2}>
-          📍 {item.address || formatCoords(item.coords)}
-        </Text>
-
-        {isExpanded && item.rules.length > 0 && (
-          <View style={styles.rulesContainer}>
-            {item.rules.map((rule, index) => (
-              <RuleCard key={index} rule={rule} />
-            ))}
-          </View>
-        )}
-
-        {isExpanded && item.rules.length === 0 && (
-          <View style={styles.clearContainer}>
-            <Text style={styles.clearText}>No parking restrictions found</Text>
-          </View>
-        )}
-
-        {isExpanded && item.departure && (
-          <View style={styles.departureContainer}>
-            <Text style={styles.departureTitle}>Departure Record</Text>
-            <Text style={styles.departureText}>
-              You were {Math.round(item.departure.distanceMeters)}m from your parking spot at {formatTime(item.departure.confirmedAt)}
-            </Text>
-            <Text style={[
-              styles.departureStatus,
-              { color: item.departure.isConclusive ? colors.success : colors.warning }
-            ]}>
-              {item.departure.isConclusive
-                ? 'GPS-verified proof you left this spot'
-                : 'Recorded but you were still near your car'}
-            </Text>
-          </View>
-        )}
-
-        <Text style={styles.expandHint}>
-          {isExpanded ? 'Tap to collapse' : 'Tap for details • Hold to delete'}
-        </Text>
-      </TouchableOpacity>
-    );
-  }, [expandedId, deleteItem]);
+  const renderTimelineItem = useCallback(({ item, index }: { item: ParkingHistoryItem; index: number }) => (
+    <TimelineItem
+      item={item}
+      isExpanded={expandedId === item.id}
+      isFirst={index === 0}
+      isLast={index === history.length - 1}
+      onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
+      onLongPress={() => deleteItem(item.id)}
+    />
+  ), [expandedId, history.length, deleteItem]);
 
   const renderEmptyState = useCallback(() => (
-    <View style={styles.emptyState} accessibilityRole="text">
-      <Text style={styles.emptyIcon}>📋</Text>
+    <View style={styles.emptyState}>
+      <MaterialCommunityIcons name="clock-outline" size={48} color={colors.textTertiary} />
       <Text style={styles.emptyTitle}>No Parking History</Text>
       <Text style={styles.emptyText}>
-        Your parking check history will appear here. Each time you check a
-        location or disconnect from your car, it will be saved.
+        Your parking checks will appear here as a timeline. Each check is saved automatically.
       </Text>
     </View>
   ), []);
+
+  const renderHeader = useCallback(() => {
+    if (history.length === 0) return null;
+    return <StatsHeader {...stats} />;
+  }, [history.length, stats]);
 
   if (isInitialLoading) {
     return (
@@ -361,7 +439,7 @@ const HistoryScreen: React.FC = () => {
             {isClearing ? (
               <ActivityIndicator size="small" color={colors.error} />
             ) : (
-              <Text style={styles.clearButton}>Clear All</Text>
+              <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.error} />
             )}
           </TouchableOpacity>
         )}
@@ -369,16 +447,13 @@ const HistoryScreen: React.FC = () => {
 
       <FlatList
         data={history}
-        renderItem={renderHistoryItem}
+        renderItem={renderTimelineItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
       />
@@ -414,102 +489,175 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
   },
-  clearButton: {
-    fontSize: typography.sizes.base,
-    color: colors.error,
-    fontWeight: typography.weights.medium,
-  },
   listContent: {
-    padding: spacing.base,
+    paddingHorizontal: spacing.base,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  historyCard: {
+
+  // Stats header
+  statsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.cardBg,
     borderRadius: borderRadius.lg,
     padding: spacing.base,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     ...shadows.sm,
   },
-  historyHeader: {
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginTop: spacing.xs,
+  },
+  statHighlight: {
+    color: colors.success,
+  },
+  statLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: colors.border,
+  },
+
+  // Timeline
+  timelineRow: {
+    flexDirection: 'row',
+    marginBottom: 0,
+  },
+  timelineSpine: {
+    width: 32,
+    alignItems: 'center',
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: colors.border,
+  },
+  timelineLineTop: {
+    marginBottom: 0,
+  },
+  timelineLineBottom: {
+    marginTop: 0,
+  },
+  timelineDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  timelineCard: {
+    flex: 1,
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginLeft: spacing.sm,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  timelineCardExpanded: {
+    ...shadows.md,
+  },
+  timelineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  dateContainer: {
-    flex: 1,
-  },
-  date: {
+  timelineDateWrap: {},
+  timelineTime: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
-  time: {
+  timelineDate: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginTop: 1,
+  },
+  timelineAddress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  timelineAddressText: {
+    flex: 1,
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginLeft: spacing.xs,
   },
-  coords: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  rulesContainer: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+  timelineRules: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  clearContainer: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+  timelineClear: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  clearText: {
-    fontSize: typography.sizes.base,
+  timelineClearText: {
+    fontSize: typography.sizes.sm,
     color: colors.success,
     fontWeight: typography.weights.medium,
+    marginLeft: spacing.sm,
   },
-  departureContainer: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+
+  // Departure
+  departureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  departureTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
+  departureInfo: {
+    flex: 1,
+    marginLeft: spacing.sm,
   },
   departureText: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
   },
   departureStatus: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-  },
-  expandHint: {
     fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
-    textAlign: 'center',
-    marginTop: spacing.sm,
+    fontWeight: typography.weights.medium,
+    marginTop: 2,
   },
+
+  // Expand hint
+  expandRow: {
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+
+  // Empty state
   emptyState: {
     alignItems: 'center',
     padding: spacing.xxl,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
+    marginTop: spacing.xxl,
   },
   emptyTitle: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
   emptyText: {
