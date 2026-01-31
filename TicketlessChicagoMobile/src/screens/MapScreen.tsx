@@ -499,8 +499,8 @@ const MapScreenContent: React.FC = () => {
               <Text style={styles.emptyIcon}>🚗</Text>
               <Text style={styles.emptyTitle}>No Parking Location Saved</Text>
               <Text style={styles.emptyText}>
-                Your last parking location will appear here when you disconnect
-                from your car's Bluetooth or manually check a location.
+                Your last parking location will appear here after an automatic
+                parking check or when you manually check a location.
               </Text>
               <Button
                 title="Save Current Location"

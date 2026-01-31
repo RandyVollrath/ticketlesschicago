@@ -47,7 +47,7 @@ const SLIDES: OnboardingSlide[] = [
     id: '3',
     icon: '🔔',
     title: 'Automatic Alerts',
-    description: 'Pair your car\'s Bluetooth and get automatic alerts when you park in a restricted zone.',
+    description: 'Automatically detects when you park and alerts you if there\'s a restriction.',
     backgroundColor: '#34C759',
   },
   {

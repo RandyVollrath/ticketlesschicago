@@ -175,10 +175,7 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Automatic Parking Detection</Text>
             <Text style={styles.instructions}>
-              Autopilot uses background location and motion sensors to automatically detect when you park. No setup needed - it works out of the box.
-            </Text>
-            <Text style={styles.instructions}>
-              You'll see a blue location indicator at the top of your screen while monitoring is active. This is normal and means the app is tracking your driving to detect parking.
+              Autopilot automatically detects when you park and checks for restrictions. No setup needed.
             </Text>
           </View>
 
@@ -186,10 +183,9 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.infoTitle}>How it works</Text>
             <Text style={styles.infoText}>
               {'1. Drive and park as usual\n' +
-               '2. Your iPhone detects the transition from driving to stopped\n' +
-               '3. After ~90 seconds stopped, we confirm you\'ve parked\n' +
-               '4. We check parking rules at your location\n' +
-               '5. You get a notification if there\'s a restriction'}
+               '2. Your iPhone detects when you stop driving\n' +
+               '3. We check parking rules at your location\n' +
+               '4. You get a notification with the result'}
             </Text>
           </View>
 
@@ -197,13 +193,6 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.infoTitle}>Location Permission</Text>
             <Text style={styles.infoText}>
               For best results, allow "Always" location access in Settings {'>'} Privacy {'>'} Location Services {'>'} Autopilot America. This lets the app detect parking even when it's in the background.
-            </Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.infoTitle}>Battery</Text>
-            <Text style={styles.infoText}>
-              Background location uses some battery. For best experience, charge your phone in your car while driving.
             </Text>
           </View>
         </ScrollView>
@@ -292,10 +281,10 @@ const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.infoTitle}>How it works</Text>
           <Text style={styles.infoText}>
-            {'1. Pick your car\'s Bluetooth from the list above (one-time setup)\n' +
+            {'1. Select your car\'s Bluetooth above (one-time setup)\n' +
              '2. Drive and park as usual\n' +
-             '3. When you turn off your car, Bluetooth disconnects\n' +
-             '4. We instantly check parking rules and notify you'}
+             '3. When you turn off your car, we detect it\n' +
+             '4. We check parking rules and notify you'}
           </Text>
         </View>
       </ScrollView>
