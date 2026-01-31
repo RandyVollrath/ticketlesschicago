@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BluetoothService from './BluetoothService';
 import MotionActivityService from './MotionActivityService';
+import BackgroundLocationService, { ParkingDetectedEvent } from './BackgroundLocationService';
 import LocationService from './LocationService';
 import LocalNotificationService, { ParkingRestriction } from './LocalNotificationService';
 import Logger from '../utils/Logger';
@@ -180,15 +181,54 @@ class BackgroundTaskServiceClass {
     this.stopForegroundMonitoring();
 
     if (Platform.OS === 'ios') {
-      // iOS: Use motion-based detection since Classic Bluetooth is restricted
-      log.info('Starting motion-based parking detection for iOS');
+      // iOS: Use background location + motion detection
+      // This keeps the app alive in the background via CLLocationManager
+      // CoreMotion detects driving→parked transitions
+      log.info('Starting background location parking detection for iOS');
       try {
-        await MotionActivityService.startMonitoring(
-          this.handleCarDisconnection.bind(this),
-          this.handleCarReconnection.bind(this)
-        );
+        if (BackgroundLocationService.isAvailable()) {
+          // Request permissions first
+          const permStatus = await BackgroundLocationService.requestPermissions();
+          log.info('Background location permission:', permStatus);
+
+          // Start monitoring - this handles everything:
+          // significant location changes, continuous updates, motion detection
+          await BackgroundLocationService.startMonitoring(
+            // onParkingDetected - fires when user stops driving for 90+ seconds
+            async (event: ParkingDetectedEvent) => {
+              log.info('Parking detected via background location', {
+                lat: event.latitude,
+                lng: event.longitude,
+                accuracy: event.accuracy,
+                drivingDuration: event.drivingDurationSec,
+              });
+              await this.handleCarDisconnection();
+            },
+            // onDrivingStarted - fires when user starts driving
+            () => {
+              log.info('Driving started - user departing');
+              this.handleCarReconnection();
+            }
+          );
+        } else {
+          // Fallback to motion-only (less reliable in background)
+          log.warn('BackgroundLocationModule not available, falling back to motion-only');
+          await MotionActivityService.startMonitoring(
+            this.handleCarDisconnection.bind(this),
+            this.handleCarReconnection.bind(this)
+          );
+        }
       } catch (error) {
-        log.warn('Could not start motion monitoring:', error);
+        log.warn('Could not start iOS monitoring:', error);
+        // Try motion as last resort
+        try {
+          await MotionActivityService.startMonitoring(
+            this.handleCarDisconnection.bind(this),
+            this.handleCarReconnection.bind(this)
+          );
+        } catch (motionError) {
+          log.error('Motion monitoring also failed:', motionError);
+        }
       }
     } else {
       // Android: Use Bluetooth Classic connection monitoring
@@ -238,6 +278,7 @@ class BackgroundTaskServiceClass {
 
     // Stop platform-specific monitoring
     if (Platform.OS === 'ios') {
+      BackgroundLocationService.stopMonitoring();
       MotionActivityService.stopMonitoring();
     }
   }
@@ -278,7 +319,26 @@ class BackgroundTaskServiceClass {
       } catch (error) {
         log.warn('High accuracy location failed, trying with retry logic', error);
         // Fall back to retry logic
-        coords = await LocationService.getLocationWithRetry(3);
+        try {
+          coords = await LocationService.getLocationWithRetry(3);
+        } catch (retryError) {
+          // Last resort on iOS: use the last driving location from BackgroundLocationService
+          if (Platform.OS === 'ios') {
+            const lastDriving = await BackgroundLocationService.getLastDrivingLocation();
+            if (lastDriving) {
+              log.info('Using last driving location as parking location fallback');
+              coords = {
+                latitude: lastDriving.latitude,
+                longitude: lastDriving.longitude,
+                accuracy: lastDriving.accuracy,
+              };
+            } else {
+              throw retryError;
+            }
+          } else {
+            throw retryError;
+          }
+        }
       }
 
       // Check parking rules
