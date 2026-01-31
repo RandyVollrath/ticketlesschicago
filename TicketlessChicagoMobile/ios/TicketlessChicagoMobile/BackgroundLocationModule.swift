@@ -21,7 +21,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   // Configuration
   private let minDrivingDurationSec: TimeInterval = 120  // 2 min of driving before we care about stops
-  private let minStopDurationSec: TimeInterval = 30      // 30 sec after CoreMotion confirms exit from car
+  private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
   private let minDrivingSpeedMps: Double = 2.5           // ~5.6 mph - threshold to START driving state via speed
 
   // Debounce timer for parking confirmation
@@ -256,6 +256,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     guard let location = locations.last else { return }
     let speed = location.speed  // m/s, -1 if unknown
 
+    // --- Recovery: app was killed and woken by significantLocationChange ---
+    // If we're not tracking driving but we just got a location update,
+    // check if CoreMotion says we recently drove and are now stopped.
+    // This catches the case where iOS killed us mid-drive.
+    if !isDriving && !coreMotionSaysAutomotive && isMonitoring {
+      checkForMissedParking(currentLocation: location)
+    }
+
     // --- Update driving location continuously while in driving state ---
     // Save at ANY speed while CoreMotion says automotive (captures 1 mph creep into spot)
     if isDriving || coreMotionSaysAutomotive {
@@ -283,9 +291,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       }
     } else if speed >= 0 && speed <= 0.5 {
       speedSaysMoving = false
-      // Speed is near zero but we do NOT start parking timer here.
-      // We wait for CoreMotion to confirm the user exited the vehicle.
-      // This prevents red light / traffic stop false positives.
     }
 
     // Send location updates to JS (only while continuous GPS is active to save overhead)
@@ -298,6 +303,70 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         "timestamp": location.timestamp.timeIntervalSince1970 * 1000,
         "coreMotionAutomotive": coreMotionSaysAutomotive,
       ])
+    }
+  }
+
+  /// Recovery check: query CoreMotion history to see if we missed a parking event
+  /// while the app was killed. Called when significantLocationChange wakes us.
+  private var hasCheckedForMissedParking = false
+
+  private func checkForMissedParking(currentLocation: CLLocation) {
+    // Only check once per app wake to avoid repeated queries
+    guard !hasCheckedForMissedParking else { return }
+    guard CMMotionActivityManager.isActivityAvailable() else { return }
+    hasCheckedForMissedParking = true
+
+    let now = Date()
+    let lookback = now.addingTimeInterval(-30 * 60) // Check last 30 minutes
+
+    activityManager.queryActivityStarting(from: lookback, to: now, to: .main) { [weak self] activities, error in
+      guard let self = self, let activities = activities, activities.count > 1 else { return }
+
+      // Look for pattern: automotive activity followed by stationary/walking
+      var lastAutomotiveEnd: Date? = nil
+      var wasRecentlyDriving = false
+      var automotiveDuration: TimeInterval = 0
+
+      for i in 0..<activities.count {
+        let activity = activities[i]
+        if activity.automotive && activity.confidence != .low {
+          wasRecentlyDriving = true
+          if lastAutomotiveEnd == nil {
+            // Track when automotive segment started
+          }
+          if i + 1 < activities.count {
+            lastAutomotiveEnd = activities[i + 1].startDate
+            automotiveDuration += activities[i + 1].startDate.timeIntervalSince(activity.startDate)
+          }
+        }
+      }
+
+      // Check if the most recent activity is stationary/walking
+      guard let lastActivity = activities.last else { return }
+      let currentlyStationary = lastActivity.stationary || lastActivity.walking
+
+      // If user drove for 2+ min and is now stationary, trigger retroactive parking check
+      if wasRecentlyDriving && currentlyStationary && automotiveDuration >= self.minDrivingDurationSec {
+        NSLog("[BackgroundLocation] RECOVERY: Detected missed parking event. Drove \(String(format: "%.0f", automotiveDuration))s, now stationary. Triggering retroactive check.")
+
+        var body: [String: Any] = [
+          "timestamp": now.timeIntervalSince1970 * 1000,
+          "latitude": currentLocation.coordinate.latitude,
+          "longitude": currentLocation.coordinate.longitude,
+          "accuracy": currentLocation.horizontalAccuracy,
+          "locationSource": "recovery_significant_change",
+          "drivingDurationSec": automotiveDuration,
+        ]
+
+        self.sendEvent(withName: "onParkingDetected", body: body)
+
+        // Re-start CoreMotion monitoring since we just woke up
+        if !self.coreMotionSaysAutomotive {
+          self.startMotionActivityMonitoring()
+        }
+      } else {
+        NSLog("[BackgroundLocation] Recovery check: no missed parking (drove: \(wasRecentlyDriving), stationary: \(currentlyStationary), duration: \(String(format: "%.0f", automotiveDuration))s)")
+      }
     }
   }
 
@@ -330,21 +399,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     if lastStationaryTime == nil {
       lastStationaryTime = Date()
-      NSLog("[BackgroundLocation] Parking timer started (\(minStopDurationSec)s). Drove \(String(format: "%.0f", drivingDuration))s.")
+      NSLog("[BackgroundLocation] Exit debounce started (\(exitDebounceSec)s). Drove \(String(format: "%.0f", drivingDuration))s.")
     }
 
-    // Cancel any existing timer and start fresh
+    // Cancel any existing timer and start fresh.
+    // 5 second debounce: just enough to ignore a momentary CoreMotion flicker
+    // (e.g. user leans out car door then gets back in).
     parkingConfirmationTimer?.invalidate()
-    parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: minStopDurationSec, repeats: false) { [weak self] _ in
+    parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: exitDebounceSec, repeats: false) { [weak self] _ in
       self?.confirmParking()
     }
   }
 
-  /// Final parking confirmation - fires 30s after CoreMotion says user left the car
+  /// Final parking confirmation - fires 5s after CoreMotion says user left the car
   private func confirmParking() {
     guard isDriving || drivingStartTime != nil else { return }
 
-    // If CoreMotion flipped back to automotive during the 30s window, abort
+    // If CoreMotion flipped back to automotive during the 5s debounce, abort
     if coreMotionSaysAutomotive {
       NSLog("[BackgroundLocation] CoreMotion says automotive again during confirmation - aborting")
       lastStationaryTime = nil
