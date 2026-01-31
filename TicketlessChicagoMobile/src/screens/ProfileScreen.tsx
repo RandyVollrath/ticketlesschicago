@@ -383,37 +383,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </Card>
 
-        {/* Paired Car */}
-        <Card title="Paired Vehicle">
-          {savedCar ? (
-            <View style={styles.carContainer}>
-              <View style={styles.carInfo}>
-                <Text style={styles.carIcon}>🚗</Text>
-                <View>
-                  <Text style={styles.carName}>{savedCar.name}</Text>
-                  <Text style={styles.carId}>{savedCar.id}</Text>
-                </View>
-              </View>
-              <Button
-                title="Change"
-                variant="secondary"
-                size="sm"
-                onPress={() => navigation.navigate('BluetoothSettings')}
-              />
-            </View>
-          ) : (
-            <View style={styles.noCarContainer}>
-              <Text style={styles.noCarText}>No vehicle paired</Text>
-              <Button
-                title="Pair Vehicle"
-                variant="primary"
-                size="sm"
-                onPress={() => navigation.navigate('BluetoothSettings')}
-              />
-            </View>
-          )}
-        </Card>
-
         {/* Notification Settings */}
         <Card title="Notifications">
           <SettingRow
@@ -433,6 +402,12 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Detection Settings */}
         <Card title="Auto-Detection">
+          <LinkRow
+            title={savedCar ? `Car: ${savedCar.name}` : 'Pair Your Car'}
+            icon="🚗"
+            onPress={() => navigation.navigate('BluetoothSettings')}
+          />
+          <View style={styles.settingDivider} />
           <SettingRow
             title="Auto Check on Disconnect"
             subtitle="Check parking when you leave your car"

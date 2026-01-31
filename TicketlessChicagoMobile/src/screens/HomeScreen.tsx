@@ -16,6 +16,7 @@ import { colors, typography, spacing, borderRadius } from '../theme';
 import { Button, Card, RuleCard, StatusBadge } from '../components';
 import LocationService, { ParkingCheckResult, Coordinates } from '../services/LocationService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
+import BluetoothService from '../services/BluetoothService';
 import MotionActivityService from '../services/MotionActivityService';
 import { ParkingHistoryService } from './HistoryScreen';
 import Logger from '../utils/Logger';
@@ -42,6 +43,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [locationAccuracy, setLocationAccuracy] = useState<number | undefined>(undefined);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<string>('unknown');
+  const [isCarConnected, setIsCarConnected] = useState(false);
+  const [savedCarName, setSavedCarName] = useState<string | null>(null);
 
   // Update time every minute
   useEffect(() => {
@@ -101,27 +104,64 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return () => clearInterval(interval);
   }, [isMonitoring]);
 
+  // Check Bluetooth status once and subscribe to events (Android)
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    // Check saved car name and initial connection state once
+    const checkInitialStatus = async () => {
+      try {
+        const savedDevice = await BluetoothService.getSavedCarDevice();
+        if (savedDevice) {
+          setSavedCarName(savedDevice.name);
+          const connected = BluetoothService.isConnectedToCar() ||
+            await BluetoothService.isConnectedToSavedCar();
+          setIsCarConnected(connected);
+        } else {
+          setSavedCarName(null);
+          setIsCarConnected(false);
+        }
+      } catch (error) {
+        log.debug('Error checking initial Bluetooth status', error);
+      }
+    };
+
+    checkInitialStatus();
+
+    // Subscribe to Bluetooth connect/disconnect events from the service
+    const onConnect = () => setIsCarConnected(true);
+    const onDisconnect = () => setIsCarConnected(false);
+    BluetoothService.addConnectionListener(onConnect, onDisconnect);
+
+    return () => {
+      BluetoothService.removeConnectionListener(onConnect, onDisconnect);
+    };
+  }, [isMonitoring]);
+
   const loadInitialData = async () => {
     await loadLastCheck();
   };
 
   const autoStartMonitoring = async () => {
-    try {
-      const hasLocationPermission = await LocationService.requestLocationPermission(true);
-      if (!hasLocationPermission) {
-        log.debug('Location permission not granted, monitoring not auto-started');
-        return;
-      }
+    // Defer monitoring startup so the UI renders first
+    setTimeout(async () => {
+      try {
+        const hasLocationPermission = await LocationService.requestLocationPermission(true);
+        if (!hasLocationPermission) {
+          log.debug('Location permission not granted, monitoring not auto-started');
+          return;
+        }
 
-      await BackgroundTaskService.initialize();
-      const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
-      if (started) {
-        setIsMonitoring(true);
-        log.info('Monitoring auto-started');
+        await BackgroundTaskService.initialize();
+        const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
+        if (started) {
+          setIsMonitoring(true);
+          log.info('Monitoring auto-started');
+        }
+      } catch (error) {
+        log.error('Error auto-starting monitoring', error);
       }
-    } catch (error) {
-      log.error('Error auto-starting monitoring', error);
-    }
+    }, 500);
   };
 
   const loadLastCheck = async () => {
@@ -300,11 +340,27 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             />
           }
         >
+          {isMonitoring && Platform.OS === 'android' && (
+            <View style={styles.btStatusRow}>
+              <View style={[styles.btStatusDot, { backgroundColor: isCarConnected ? colors.success : colors.textTertiary }]} />
+              <Text style={styles.btStatusText}>
+                {savedCarName
+                  ? isCarConnected
+                    ? `Connected to ${savedCarName}`
+                    : `Not connected to ${savedCarName}`
+                  : 'No car paired — go to Settings to pair'}
+              </Text>
+            </View>
+          )}
           <Text style={styles.cardDescription}>
             {isMonitoring
               ? Platform.OS === 'ios'
-                ? `Current: ${currentActivity === 'automotive' ? '🚗 Driving' : currentActivity === 'walking' ? '🚶 Walking' : currentActivity === 'stationary' ? '🅿️ Stationary' : currentActivity}. We'll check parking when you stop.`
-                : 'We\'ll automatically check parking when you park.'
+                ? `Current: ${currentActivity === 'automotive' ? 'Driving' : currentActivity === 'walking' ? 'Walking' : currentActivity === 'stationary' ? 'Stationary' : currentActivity}. We'll check parking when you stop.`
+                : isCarConnected
+                  ? 'Driving detected. We\'ll check parking when you disconnect.'
+                  : savedCarName
+                    ? 'Waiting for Bluetooth connection to your car.'
+                    : 'Pair your car in Settings to enable auto-detection.'
               : 'Parking detection is paused.'}
           </Text>
           {isMonitoring ? (
@@ -442,6 +498,26 @@ const styles = StyleSheet.create({
   accuracyText: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
+  },
+  btStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.sm,
+  },
+  btStatusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: spacing.sm,
+  },
+  btStatusText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
   },
   cardDescription: {
     fontSize: typography.sizes.base,

@@ -117,29 +117,35 @@ function App(): React.JSX.Element {
 
   const initializeApp = async () => {
     try {
-      // Check onboarding and login status in parallel
+      // Check onboarding/login status and initialize auth in parallel
       const [onboarded, seenLogin] = await Promise.all([
         AsyncStorage.getItem(StorageKeys.HAS_ONBOARDED),
         AsyncStorage.getItem(StorageKeys.HAS_SEEN_LOGIN),
+        AuthService.initialize(),
       ]);
 
       setHasOnboarded(onboarded === 'true');
       setHasSeenLogin(seenLogin === 'true');
 
-      // Initialize services - auth first, then others
-      await AuthService.initialize();
-      await PushNotificationService.initialize();
+      // Show UI immediately - push notifications can initialize in background
+      setIsLoading(false);
 
-      // If user is already authenticated, ensure push token is registered
-      if (AuthService.isAuthenticated()) {
-        const pushEnabled = await PushNotificationService.isEnabled();
-        if (pushEnabled) {
-          await PushNotificationService.registerTokenWithBackend();
+      // Defer non-critical services
+      setTimeout(async () => {
+        try {
+          await PushNotificationService.initialize();
+          if (AuthService.isAuthenticated()) {
+            const pushEnabled = await PushNotificationService.isEnabled();
+            if (pushEnabled) {
+              await PushNotificationService.registerTokenWithBackend();
+            }
+          }
+        } catch (error) {
+          log.error('Error initializing deferred services', error);
         }
-      }
+      }, 100);
     } catch (error) {
       log.error('Error initializing app', error);
-    } finally {
       setIsLoading(false);
     }
   };

@@ -41,6 +41,11 @@ function getEmitter(): NativeEventEmitter | null {
   return bleManagerEmitter;
 }
 
+type ConnectionListener = {
+  onConnect: () => void;
+  onDisconnect: () => void;
+};
+
 class BluetoothServiceClass {
   private monitoringSubscription: any = null;
   private reconnectSubscription: any = null;
@@ -50,6 +55,7 @@ class BluetoothServiceClass {
   private savedDeviceId: string | null = null;
   private classicBtDisconnectListener: any = null;
   private classicBtConnectListener: any = null;
+  private connectionListeners: ConnectionListener[] = [];
 
   /**
    * Check if Bluetooth is available and enabled
@@ -241,6 +247,7 @@ class BluetoothServiceClass {
               (savedDevice.name && eventName === savedDevice.name)) {
             log.info('Car disconnected (Classic BT):', savedDevice.name);
             this.connectedDeviceId = null;
+            this.notifyDisconnected();
             if (this.disconnectCallback) {
               this.disconnectCallback();
             }
@@ -259,6 +266,7 @@ class BluetoothServiceClass {
               (savedDevice.name && eventName === savedDevice.name)) {
             log.info('Car connected (Classic BT):', savedDevice.name);
             this.connectedDeviceId = savedDevice.id;
+            this.notifyConnected();
             if (this.reconnectCallback) {
               this.reconnectCallback();
             }
@@ -285,6 +293,28 @@ class BluetoothServiceClass {
 
   isConnectedToCar(): boolean {
     return this.connectedDeviceId !== null && this.connectedDeviceId === this.savedDeviceId;
+  }
+
+  /**
+   * Register a listener for Bluetooth connection state changes.
+   * No polling - fires only on actual connect/disconnect events.
+   */
+  addConnectionListener(onConnect: () => void, onDisconnect: () => void): void {
+    this.connectionListeners.push({ onConnect, onDisconnect });
+  }
+
+  removeConnectionListener(onConnect: () => void, onDisconnect: () => void): void {
+    this.connectionListeners = this.connectionListeners.filter(
+      l => l.onConnect !== onConnect || l.onDisconnect !== onDisconnect
+    );
+  }
+
+  private notifyConnected(): void {
+    this.connectionListeners.forEach(l => l.onConnect());
+  }
+
+  private notifyDisconnected(): void {
+    this.connectionListeners.forEach(l => l.onDisconnect());
   }
 
   stopMonitoring(): void {
