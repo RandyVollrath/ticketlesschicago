@@ -46,9 +46,19 @@ function computeStage(item: any): { stage: string; stage_label: string } {
     return { stage: 'letter_sent', stage_label: 'Letter Sent to City Hall' };
   }
 
-  // If evidence integrated, it's evidence letter
+  // If evidence integrated into the letter, it's evidence letter
   if (item.evidence_integrated) {
     return { stage: 'evidence_letter_generated', stage_label: 'Evidence Letter Generated' };
+  }
+
+  // If evidence received but not yet integrated into letter
+  if (item.has_evidence && item.letter_id) {
+    return { stage: 'evidence_letter_generated', stage_label: 'Evidence Received - Letter Updated' };
+  }
+
+  // If evidence received but no letter yet
+  if (item.has_evidence) {
+    return { stage: 'evidence_letter_generated', stage_label: 'Evidence Received' };
   }
 
   // If letter exists but no evidence, it's basic letter
