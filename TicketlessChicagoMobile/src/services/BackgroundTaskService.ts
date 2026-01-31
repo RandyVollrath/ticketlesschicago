@@ -18,6 +18,7 @@ import MotionActivityService from './MotionActivityService';
 import BackgroundLocationService, { ParkingDetectedEvent } from './BackgroundLocationService';
 import LocationService from './LocationService';
 import LocalNotificationService, { ParkingRestriction } from './LocalNotificationService';
+import { ParkingHistoryService } from '../screens/HistoryScreen';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
 
@@ -788,6 +789,25 @@ class BackgroundTaskServiceClass {
         distance: result.distance_from_parked_meters,
         isConclusive: result.is_conclusive,
       });
+
+      // Save departure data to the most recent parking history entry
+      try {
+        const recentItem = await ParkingHistoryService.getMostRecent();
+        if (recentItem) {
+          await ParkingHistoryService.updateItem(recentItem.id, {
+            departure: {
+              confirmedAt: Date.now(),
+              distanceMeters: result.distance_from_parked_meters,
+              isConclusive: result.is_conclusive,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            },
+          });
+          log.info('Departure data saved to history item', recentItem.id);
+        }
+      } catch (historyError) {
+        log.warn('Failed to save departure to history (non-critical)', historyError);
+      }
 
       // Clear pending confirmation on success
       this.state.pendingDepartureConfirmation = null;
