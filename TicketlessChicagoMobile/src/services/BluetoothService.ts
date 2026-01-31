@@ -1,4 +1,4 @@
-import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
@@ -9,7 +9,6 @@ export interface SavedCarDevice {
   id: string;
   name: string;
   address?: string; // Bluetooth MAC address for Classic BT
-  isManualEntry?: boolean; // True if user manually entered the name
 }
 
 // Import Classic Bluetooth for Android
@@ -22,24 +21,6 @@ if (Platform.OS === 'android') {
   }
 }
 
-// Keep BLE manager for monitoring (optional backup)
-let BleManager: any = null;
-let BleManagerModule: any = null;
-let bleManagerEmitter: NativeEventEmitter | null = null;
-
-try {
-  BleManager = require('react-native-ble-manager').default;
-  BleManagerModule = NativeModules.BleManager;
-} catch (e) {
-  log.warn('react-native-ble-manager not available');
-}
-
-function getEmitter(): NativeEventEmitter | null {
-  if (!bleManagerEmitter && BleManagerModule) {
-    bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
-  }
-  return bleManagerEmitter;
-}
 
 type ConnectionListener = {
   onConnect: () => void;
@@ -47,8 +28,6 @@ type ConnectionListener = {
 };
 
 class BluetoothServiceClass {
-  private monitoringSubscription: any = null;
-  private reconnectSubscription: any = null;
   private disconnectCallback: (() => void) | null = null;
   private reconnectCallback: (() => void) | null = null;
   private connectedDeviceId: string | null = null;
@@ -121,7 +100,6 @@ class BluetoothServiceClass {
           id: device.address || device.id,
           name: device.name || 'Unknown Device',
           address: device.address,
-          isManualEntry: false,
         }));
       } catch (error) {
         log.error('Error getting bonded devices', error);
@@ -153,19 +131,6 @@ class BluetoothServiceClass {
       log.error('Error saving car device', error);
       throw error;
     }
-  }
-
-  /**
-   * Save a manually entered car name
-   */
-  async saveManualCarDevice(name: string): Promise<SavedCarDevice> {
-    const device: SavedCarDevice = {
-      id: `manual_${Date.now()}`,
-      name: name.trim(),
-      isManualEntry: true,
-    };
-    await this.saveCarDevice(device);
-    return device;
   }
 
   async getSavedCarDevice(): Promise<SavedCarDevice | null> {
@@ -338,17 +303,6 @@ class BluetoothServiceClass {
       this.classicBtConnectListener = null;
     }
 
-    // Clean up BLE listeners
-    if (this.monitoringSubscription) {
-      this.monitoringSubscription.remove();
-      this.monitoringSubscription = null;
-    }
-
-    if (this.reconnectSubscription) {
-      this.reconnectSubscription.remove();
-      this.reconnectSubscription = null;
-    }
-
     this.connectedDeviceId = null;
     this.disconnectCallback = null;
     this.reconnectCallback = null;
@@ -356,100 +310,6 @@ class BluetoothServiceClass {
     log.debug('Bluetooth monitoring stopped');
   }
 
-  // =========================================
-  // Legacy BLE scanning (kept for compatibility)
-  // =========================================
-
-  async initialize(): Promise<void> {
-    if (BleManager) {
-      try {
-        await BleManager.start({ showAlert: false });
-        log.debug('BLE Manager initialized');
-      } catch (error) {
-        log.error('Error initializing BLE Manager', error);
-      }
-    }
-  }
-
-  /**
-   * Scan for nearby BLE devices (used on iOS for car discovery).
-   * On Android, use getPairedDevices() for Classic BT bonded devices instead.
-   * Scan runs for 10 seconds then stops automatically.
-   */
-  async scanForDevices(callback: (devices: SavedCarDevice[]) => void): Promise<void> {
-    log.debug('Starting BLE device scan');
-
-    if (!BleManager) {
-      throw new Error('BLE Manager not available');
-    }
-
-    await this.initialize();
-    const hasPermission = await this.requestBluetoothPermission();
-    if (!hasPermission) {
-      throw new Error('Bluetooth permission denied');
-    }
-
-    const devices: Map<string, SavedCarDevice> = new Map();
-
-    const handleDiscoverPeripheral = (peripheral: any) => {
-      if (peripheral.name && peripheral.id) {
-        devices.set(peripheral.id, {
-          id: peripheral.id,
-          name: peripheral.name,
-        });
-        callback(Array.from(devices.values()));
-      }
-    };
-
-    const emitter = getEmitter();
-    if (!emitter) {
-      throw new Error('BLE emitter not available');
-    }
-
-    const discoverSubscription = emitter.addListener(
-      'BleManagerDiscoverPeripheral',
-      handleDiscoverPeripheral
-    );
-
-    const stopSubscription = emitter.addListener(
-      'BleManagerStopScan',
-      () => {
-        discoverSubscription.remove();
-        stopSubscription.remove();
-      }
-    );
-
-    try {
-      await BleManager.scan([], 10, false);
-    } catch (error) {
-      discoverSubscription.remove();
-      stopSubscription.remove();
-      throw error;
-    }
-  }
-
-  /**
-   * Start scanning and call back with each newly discovered device.
-   * Convenience wrapper around scanForDevices.
-   */
-  async startScanning(callback: (device: SavedCarDevice) => void): Promise<void> {
-    await this.scanForDevices((devices) => {
-      if (devices.length > 0) {
-        callback(devices[devices.length - 1]);
-      }
-    });
-  }
-
-  async stopScanning(): Promise<void> {
-    if (BleManager) {
-      try {
-        await BleManager.stopScan();
-        log.debug('BLE scanning stopped');
-      } catch (error) {
-        log.error('Error stopping BLE scan', error);
-      }
-    }
-  }
 }
 
 export default new BluetoothServiceClass();
