@@ -387,10 +387,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 ? currentActivity === 'automotive'
                   ? 'Driving detected. We\'ll check parking when you stop.'
                   : currentActivity === 'stationary'
-                    ? 'Parked. Monitoring for your next drive.'
+                    ? 'Parked. We\'ll check again on your next drive.'
                     : currentActivity === 'walking'
-                      ? 'Walking. Monitoring for your next drive.'
-                      : 'Monitoring active.'
+                      ? 'On foot. We\'ll check again on your next drive.'
+                      : 'Ready. We\'ll check parking when you stop driving.'
                 : isCarConnected
                   ? 'Driving detected. We\'ll check parking when you disconnect.'
                   : savedCarName

@@ -302,15 +302,15 @@ const HistoryScreen: React.FC = () => {
           <View style={styles.departureContainer}>
             <Text style={styles.departureTitle}>Departure Record</Text>
             <Text style={styles.departureText}>
-              Left at {formatTime(item.departure.confirmedAt)} ({Math.round(item.departure.distanceMeters)}m from car)
+              You were {Math.round(item.departure.distanceMeters)}m from your parking spot at {formatTime(item.departure.confirmedAt)}
             </Text>
             <Text style={[
               styles.departureStatus,
               { color: item.departure.isConclusive ? colors.success : colors.warning }
             ]}>
               {item.departure.isConclusive
-                ? 'Verified departure - usable as evidence'
-                : 'Recorded but distance was short'}
+                ? 'GPS-verified proof you left this spot'
+                : 'Recorded but you were still near your car'}
             </Text>
           </View>
         )}
