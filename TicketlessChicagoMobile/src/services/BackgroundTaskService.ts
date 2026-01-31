@@ -201,8 +201,15 @@ class BackgroundTaskServiceClass {
                 lng: event.longitude,
                 accuracy: event.accuracy,
                 drivingDuration: event.drivingDurationSec,
+                locationSource: event.locationSource,
+                driftMeters: event.driftFromParkingMeters,
               });
-              await this.handleCarDisconnection();
+              // Pass the stop-start coordinates so we check parking rules
+              // at where the CAR is, not where the user walked to
+              const parkingCoords = event.latitude && event.longitude
+                ? { latitude: event.latitude, longitude: event.longitude, accuracy: event.accuracy }
+                : undefined;
+              await this.handleCarDisconnection(parkingCoords);
             },
             // onDrivingStarted - fires when user starts driving
             () => {
@@ -285,8 +292,15 @@ class BackgroundTaskServiceClass {
 
   /**
    * Handle car disconnection event
+   * @param parkingCoords - Optional pre-determined parking coordinates from
+   *   BackgroundLocationService (iOS). These are captured at the moment the car
+   *   stops, BEFORE the user walks away. Using these avoids the 90-second walk problem.
    */
-  private async handleCarDisconnection(): Promise<void> {
+  private async handleCarDisconnection(parkingCoords?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  }): Promise<void> {
     log.info('Car disconnection detected - checking parking immediately');
 
     // Record disconnect time
@@ -294,8 +308,8 @@ class BackgroundTaskServiceClass {
     this.state.lastCarConnectionStatus = false;
     await this.saveState();
 
-    // Check parking immediately
-    await this.triggerParkingCheck();
+    // Check parking - use provided coords if available (iOS background location)
+    await this.triggerParkingCheck(parkingCoords);
 
     // Call the callback if provided
     if (this.disconnectCallback) {
@@ -305,38 +319,51 @@ class BackgroundTaskServiceClass {
 
   /**
    * Trigger a parking check at current location
+   * @param presetCoords - If provided, skip GPS acquisition and use these coordinates.
+   *   This is used on iOS where BackgroundLocationModule captures the location at the
+   *   exact moment the car stops (before user walks away from it).
    */
-  private async triggerParkingCheck(): Promise<void> {
+  private async triggerParkingCheck(presetCoords?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  }): Promise<void> {
     try {
       log.info('Triggering parking check after car disconnection');
 
-      // Get high-accuracy location - this is critical for parking detection
-      // Use getHighAccuracyLocation to wait for GPS to stabilize (target 20m accuracy, max 15s wait)
       let coords;
-      try {
-        coords = await LocationService.getHighAccuracyLocation(20, 15000);
-        log.info(`Got high-accuracy location: ${coords.accuracy?.toFixed(1)}m accuracy`);
-      } catch (error) {
-        log.warn('High accuracy location failed, trying with retry logic', error);
-        // Fall back to retry logic
+
+      // On iOS with background location, we already have the parking spot coordinates
+      // captured at the moment the car stopped. Use those instead of getting a fresh fix.
+      if (presetCoords?.latitude && presetCoords?.longitude) {
+        coords = presetCoords;
+        log.info(`Using pre-captured parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
+      } else {
+        // Android (Bluetooth disconnect) or fallback: get fresh GPS
         try {
-          coords = await LocationService.getLocationWithRetry(3);
-        } catch (retryError) {
-          // Last resort on iOS: use the last driving location from BackgroundLocationService
-          if (Platform.OS === 'ios') {
-            const lastDriving = await BackgroundLocationService.getLastDrivingLocation();
-            if (lastDriving) {
-              log.info('Using last driving location as parking location fallback');
-              coords = {
-                latitude: lastDriving.latitude,
-                longitude: lastDriving.longitude,
-                accuracy: lastDriving.accuracy,
-              };
+          coords = await LocationService.getHighAccuracyLocation(20, 15000);
+          log.info(`Got high-accuracy location: ${coords.accuracy?.toFixed(1)}m accuracy`);
+        } catch (error) {
+          log.warn('High accuracy location failed, trying with retry logic', error);
+          try {
+            coords = await LocationService.getLocationWithRetry(3);
+          } catch (retryError) {
+            // Last resort on iOS: use the last driving location from BackgroundLocationService
+            if (Platform.OS === 'ios') {
+              const lastDriving = await BackgroundLocationService.getLastDrivingLocation();
+              if (lastDriving) {
+                log.info('Using last driving location as parking location fallback');
+                coords = {
+                  latitude: lastDriving.latitude,
+                  longitude: lastDriving.longitude,
+                  accuracy: lastDriving.accuracy,
+                };
+              } else {
+                throw retryError;
+              }
             } else {
               throw retryError;
             }
-          } else {
-            throw retryError;
           }
         }
       }
