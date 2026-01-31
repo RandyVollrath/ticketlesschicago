@@ -372,10 +372,10 @@ export default function LandingPage() {
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
           {[
-            { title: '1. Connect', text: 'Enter your license plate. We scan Chicago databases instantly.', icon: '🔗' },
-            { title: '2. Monitor', text: 'Our system checks for new violations every week.', icon: '👀' },
-            { title: '3. Fight', text: 'We auto-generate and mail the best legal defense based on 1.2M records.', icon: '⚖️' },
-            { title: '4. Relax', text: 'You get a notification when the ticket is dismissed. Total peace of mind.', icon: '🍹' }
+            { title: '1. Connect', text: 'Enter your license plate. We scan Chicago databases instantly.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>) },
+            { title: '2. Monitor', text: 'Our system checks for new violations every week.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>) },
+            { title: '3. Fight', text: 'We auto-generate and mail the best legal defense based on 1.2M records.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>) },
+            { title: '4. Relax', text: 'You get a notification when the ticket is dismissed. Total peace of mind.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) }
           ].map((step, i) => (
             <div key={i} style={{
               flex: '1 1 250px',
@@ -385,7 +385,7 @@ export default function LandingPage() {
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
               border: `1px solid ${COLORS.border}`,
             }}>
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>{step.icon}</div>
+              <div style={{ marginBottom: '16px', color: COLORS.primary }}>{step.icon}</div>
               <h3 style={{ fontFamily: FONTS.heading, fontSize: '20px', marginBottom: '10px', color: COLORS.primary }}>{step.title}</h3>
               <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0 }}>{step.text}</p>
             </div>

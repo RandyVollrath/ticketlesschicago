@@ -399,9 +399,9 @@ const HistoryScreen: React.FC = () => {
   const renderEmptyState = useCallback(() => (
     <View style={styles.emptyState}>
       <MaterialCommunityIcons name="clock-outline" size={48} color={colors.textTertiary} />
-      <Text style={styles.emptyTitle}>No Parking History</Text>
+      <Text style={styles.emptyTitle}>No history yet</Text>
       <Text style={styles.emptyText}>
-        Your parking checks will appear here as a timeline. Each check is saved automatically.
+        Every time you park, we'll check for restrictions and save the results here. Go park somewhere!
       </Text>
     </View>
   ), []);

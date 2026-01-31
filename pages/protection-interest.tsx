@@ -74,7 +74,11 @@ export default function ProtectionInterest() {
           textAlign: 'center',
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ fontSize: '64px', marginBottom: '24px' }}>✅</div>
+          <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
           <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '16px', margin: '0 0 16px 0' }}>
             Thank You!
           </h1>

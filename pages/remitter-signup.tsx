@@ -128,7 +128,7 @@ export default function RemitterSignup() {
             </div>
             <div className="bg-yellow-50 border border-yellow-300 rounded p-3">
               <p className="text-sm text-yellow-800 font-medium">
-                ⚠️ Important: Save this API key somewhere safe!
+                Important: Save this API key somewhere safe!
               </p>
               <p className="text-sm text-yellow-700 mt-1">
                 You will need this key to log into the remitter portal. It will not be shown again.

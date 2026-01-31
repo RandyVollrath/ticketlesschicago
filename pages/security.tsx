@@ -47,11 +47,12 @@ export default function SecurityPage() {
             borderRadius: '8px',
             background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
             display: 'flex',
-            alignments: 'center',
+            alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '22px',
           }}>
-            🛡️
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '20px', fontWeight: '700', color: '#000', letterSpacing: '-0.5px' }}>
@@ -91,7 +92,11 @@ export default function SecurityPage() {
         }}>
           <section style={{ marginBottom: '48px' }}>
             <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a1a1a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              🔐 Encryption
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Encryption
             </h2>
             <p style={{ lineHeight: '1.8', color: '#374151', marginBottom: '16px' }}>
               All of your documents are encrypted, like keeping them in a locked safe.
@@ -111,7 +116,11 @@ export default function SecurityPage() {
 
           <section style={{ marginBottom: '48px' }}>
             <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a1a1a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              🔒 Private Storage
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Private Storage
             </h2>
             <p style={{ lineHeight: '1.8', color: '#374151', marginBottom: '16px' }}>
               Your driver's license, utility bills, and other documents are stored in private cloud storage with strict access controls.
@@ -182,7 +191,13 @@ export default function SecurityPage() {
 
           <section style={{ marginBottom: '48px' }}>
             <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a1a1a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              👥 Who Can Access Your Documents
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              Who Can Access Your Documents
             </h2>
             <p style={{ lineHeight: '1.8', color: '#374151', marginBottom: '16px' }}>
               Only authorized personnel can access your documents, and only when necessary:
@@ -205,7 +220,12 @@ export default function SecurityPage() {
 
           <section style={{ marginBottom: '48px' }}>
             <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a1a1a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              📊 Transparency
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              Transparency
             </h2>
             <p style={{ lineHeight: '1.8', color: '#374151', marginBottom: '16px' }}>
               We believe in being transparent about how we handle your data:
@@ -245,8 +265,11 @@ export default function SecurityPage() {
           borderRadius: '12px',
           marginTop: '48px'
         }}>
-          <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e40af', marginBottom: '16px' }}>
-            🛡️ Security Commitment
+          <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e40af', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Security Commitment
           </h3>
           <p style={{ lineHeight: '1.8', color: '#1e3a8a' }}>
             We're committed to keeping your documents safe. Our security measures are regularly reviewed and updated to protect against new threats. If you ever have concerns about the security of your data, please don't hesitate to contact us.

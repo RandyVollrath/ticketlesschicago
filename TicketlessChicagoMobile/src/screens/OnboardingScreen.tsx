@@ -35,37 +35,37 @@ const BASE_SLIDES: OnboardingSlide[] = [
     id: '1',
     icon: 'car-connected',
     title: 'Welcome to Autopilot',
-    description: 'Never get a parking ticket in Chicago again. We help you stay compliant with all parking rules.',
+    description: 'The city has a system. Now, so do you. We keep you one step ahead of Chicago parking rules.',
     backgroundColor: colors.primary,
   },
   {
     id: '2',
     icon: 'map-marker-check',
-    title: 'Check Any Location',
-    description: 'Instantly check parking restrictions at your current location or anywhere in Chicago.',
+    title: 'Check Any Spot',
+    description: 'Tap once to see every restriction at your location. Street cleaning, permit zones, snow bans - all covered.',
     backgroundColor: '#5856D6',
   },
   {
     id: '3',
     icon: 'bell-ring-outline',
-    title: 'Automatic Alerts',
+    title: 'Alerts That Matter',
     description: Platform.OS === 'ios'
-      ? 'Automatically detects when you park and alerts you if there\'s a restriction.'
-      : 'Pair your car\'s Bluetooth once and get automatic alerts every time you park.',
+      ? 'We detect when you park and check the rules automatically. You just get a heads up.'
+      : 'Pair your car\'s Bluetooth once. After that, we check every time you park - no effort needed.',
     backgroundColor: '#34C759',
   },
   {
     id: '4',
     icon: 'broom',
     title: 'Street Cleaning',
-    description: 'Know exactly when street cleaning is scheduled so you can move your car in time.',
+    description: 'Never wake up to a $60 ticket again. We\'ll warn you before the sweepers come through.',
     backgroundColor: '#FF9500',
   },
   {
     id: '5',
     icon: 'snowflake',
     title: 'Snow Routes',
-    description: 'Get alerts for winter overnight parking bans and snow emergency routes.',
+    description: 'Winter overnight bans and snow emergencies - we\'ve got those covered too.',
     backgroundColor: '#5AC8FA',
   },
 ];
@@ -74,10 +74,10 @@ const BASE_SLIDES: OnboardingSlide[] = [
 const ANDROID_BT_SLIDE: OnboardingSlide = {
   id: '6',
   icon: 'bluetooth-connect',
-  title: 'Pair Your Car',
+  title: 'One-Time Setup',
   description:
-    'Connect your car\'s Bluetooth in Settings first, then select it in the app. ' +
-    'We detect when you turn off your engine and automatically check parking rules.',
+    'Just pair your car\'s Bluetooth and pick it in the app. ' +
+    'After that, we detect every time you park - completely hands-free.',
   backgroundColor: '#007AFF',
 };
 

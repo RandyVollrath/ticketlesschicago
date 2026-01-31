@@ -148,7 +148,7 @@ export default function LAStreetSweeping() {
                     </p>
                   )}
                   <p style={{ margin: '0', fontSize: '14px', color: '#666' }}>
-                    📍 {schedule.boundaries}
+                    {schedule.boundaries}
                   </p>
                   {schedule.council_district && (
                     <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#999' }}>
@@ -167,7 +167,7 @@ export default function LAStreetSweeping() {
               border: '1px solid #cce5ff'
             }}>
               <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: '600' }}>
-                🔔 Want Automatic Reminders?
+                Want Automatic Reminders?
               </h3>
               <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#333', lineHeight: '1.6' }}>
                 Sign up for free SMS and email reminders before every street cleaning day. Never get a ticket again!

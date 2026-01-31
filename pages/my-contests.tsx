@@ -207,7 +207,7 @@ export default function MyContests() {
             fontSize: '28px',
             boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
           }}>
-            🛡️
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '28px', fontWeight: '700', color: '#000' }}>
@@ -439,7 +439,7 @@ export default function MyContests() {
                       cursor: 'pointer'
                     }}
                   >
-                    📋 Copy Letter
+                    Copy Letter
                   </button>
                 </div>
               )}
@@ -463,8 +463,8 @@ export default function MyContests() {
                           gap: '8px'
                         }}
                       >
-                        <span style={{ fontSize: '18px' }}>
-                          {item.completed ? '✅' : item.required ? '⚠️' : '📄'}
+                        <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                          {item.completed ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : item.required ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
                         </span>
                         <span style={{ fontSize: '14px', color: '#374151', flex: 1 }}>
                           {item.item}
@@ -497,7 +497,7 @@ export default function MyContests() {
                       cursor: 'pointer'
                     }}
                   >
-                    📊 Report Outcome
+                    Report Outcome
                   </button>
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px', textAlign: 'center' }}>
                     Help improve our predictions by reporting how your contest turned out

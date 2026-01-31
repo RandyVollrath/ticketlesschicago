@@ -25,7 +25,7 @@ export default function Success() {
           textAlign: 'center',
           boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ fontSize: '64px', marginBottom: '24px' }}>🎉</div>
+          <div style={{ marginBottom: '24px', color: '#10B981' }}><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
           
           <h1 style={{ 
             fontSize: '36px', 
@@ -55,7 +55,7 @@ export default function Success() {
             border: '2px solid #fca5a5'
           }}>
             <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#991b1b' }}>
-              ⚠️ Required: Add Your Mailing Address
+              Required: Add Your Mailing Address
             </h3>
             <p style={{
               margin: '0 0 12px 0',
@@ -100,7 +100,7 @@ export default function Success() {
             textAlign: 'left'
           }}>
             <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#856404' }}>
-              📋 What happens next:
+              What happens next:
             </h3>
             <ul style={{
               margin: 0,

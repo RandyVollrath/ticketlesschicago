@@ -7,12 +7,14 @@ import { colors, typography, spacing, shadows } from '../theme';
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Home: { active: 'shield-check', inactive: 'shield-check-outline' },
   History: { active: 'history', inactive: 'clock-outline' },
+  Alerts: { active: 'bell-ring', inactive: 'bell-ring-outline' },
   Settings: { active: 'cog', inactive: 'cog-outline' },
 };
 
 const TAB_LABELS: Record<string, string> = {
   Home: 'Home',
   History: 'History',
+  Alerts: 'Alerts',
   Settings: 'Settings',
 };
 

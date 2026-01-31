@@ -168,12 +168,12 @@ export default function BlockGrade() {
     if (!neighborhoodData) return [];
 
     const incidents = [
-      { category: 'Crimes', count: neighborhoodData.crimes, icon: '🚨', color: '#7c3aed', description: `${neighborhoodData.violent} violent` },
-      { category: 'Traffic Crashes', count: neighborhoodData.crashes, icon: '💥', color: '#0891b2', description: neighborhoodData.fatal > 0 ? `${neighborhoodData.fatal} fatal` : `${neighborhoodData.injuries} injuries` },
-      { category: '311 Complaints', count: neighborhoodData.serviceRequests, icon: '📞', color: '#16a34a', description: 'city issues reported' },
-      { category: 'Code Violations', count: neighborhoodData.violations, icon: '🏚️', color: '#f59e0b', description: `${neighborhoodData.highRisk} high risk` },
-      { category: 'Ticket Cameras', count: neighborhoodData.cameras, icon: '📸', color: '#dc2626', description: 'speed & red light' },
-      { category: 'Pothole Repairs', count: neighborhoodData.potholes, icon: '🕳️', color: '#6b7280', description: 'fixed last year' },
+      { category: 'Crimes', count: neighborhoodData.crimes, icon: (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>), color: '#7c3aed', description: `${neighborhoodData.violent} violent` },
+      { category: 'Traffic Crashes', count: neighborhoodData.crashes, icon: (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>), color: '#0891b2', description: neighborhoodData.fatal > 0 ? `${neighborhoodData.fatal} fatal` : `${neighborhoodData.injuries} injuries` },
+      { category: '311 Complaints', count: neighborhoodData.serviceRequests, icon: (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>), color: '#16a34a', description: 'city issues reported' },
+      { category: 'Code Violations', count: neighborhoodData.violations, icon: (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>), color: '#f59e0b', description: `${neighborhoodData.highRisk} high risk` },
+      { category: 'Ticket Cameras', count: neighborhoodData.cameras, icon: (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>), color: '#dc2626', description: 'speed & red light' },
+      { category: 'Pothole Repairs', count: neighborhoodData.potholes, icon: (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>), color: '#6b7280', description: 'fixed last year' },
     ];
 
     return incidents
@@ -198,7 +198,7 @@ export default function BlockGrade() {
     : '';
 
   const shareText = score
-    ? `My block got a ${score.overallGrade} (${score.overallScore}/100) on the Chicago Chaos Grade! 🏙️ ${chaosLevel}. Check your address:`
+    ? `My block got a ${score.overallGrade} (${score.overallScore}/100) on the Chicago Chaos Grade! ${chaosLevel}. Check your address:`
     : '';
 
   const copyToClipboard = () => {
@@ -243,9 +243,17 @@ export default function BlockGrade() {
               fontSize: '28px',
               fontWeight: 'bold',
               color: 'white',
-              margin: '0 0 8px 0'
+              margin: '0 0 8px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
             }}>
-              🏙️ Chicago Block Grade
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              Chicago Block Grade
             </h1>
             <p style={{ color: '#a5b4fc', fontSize: '14px', margin: 0 }}>
               How chaotic is your block? Find out instantly.
@@ -300,7 +308,12 @@ export default function BlockGrade() {
               padding: '40px',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔍</div>
+              <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </div>
               <p style={{ color: 'white', margin: 0 }}>Analyzing neighborhood data...</p>
             </div>
           )}
@@ -347,9 +360,16 @@ export default function BlockGrade() {
                 backgroundColor: '#f9fafb',
                 borderBottom: '1px solid #e5e7eb',
                 fontSize: '13px',
-                color: '#6b7280'
+                color: '#6b7280',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}>
-                📍 {location?.display?.split(',').slice(0, 3).join(',')}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                {location?.display?.split(',').slice(0, 3).join(',')}
               </div>
 
               {/* Top Incidents */}
@@ -377,7 +397,7 @@ export default function BlockGrade() {
                         borderRadius: '10px',
                         borderLeft: `4px solid ${incident.color}`
                       }}>
-                        <span style={{ fontSize: '24px' }}>{incident.icon}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', color: incident.color }}>{incident.icon}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: '600', color: '#1f2937', fontSize: '14px' }}>
                             {incident.category}
@@ -398,7 +418,7 @@ export default function BlockGrade() {
                   </div>
                 ) : (
                   <p style={{ color: '#16a34a', textAlign: 'center', padding: '20px' }}>
-                    ✨ Surprisingly quiet block! No major incidents found.
+                    Surprisingly quiet block! No major incidents found.
                   </p>
                 )}
 
@@ -412,7 +432,7 @@ export default function BlockGrade() {
                     fontSize: '13px',
                     color: '#166534'
                   }}>
-                    <strong>✨ Good signs:</strong> {neighborhoodData.permits} building permits, {neighborhoodData.licenses} active businesses nearby
+                    <strong>Good signs:</strong> {neighborhoodData.permits} building permits, {neighborhoodData.licenses} active businesses nearby
                   </div>
                 )}
               </div>
@@ -445,7 +465,12 @@ export default function BlockGrade() {
                       gap: '6px'
                     }}
                   >
-                    📤 Share Your Grade
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Share Your Grade
                   </button>
                   <button
                     onClick={copyToClipboard}
@@ -460,7 +485,7 @@ export default function BlockGrade() {
                       cursor: 'pointer'
                     }}
                   >
-                    {copied ? '✓ Copied!' : '🔗 Copy Link'}
+                    {copied ? 'Copied!' : 'Copy Link'}
                   </button>
                 </div>
 
@@ -529,7 +554,7 @@ export default function BlockGrade() {
                     textDecoration: 'none',
                     fontSize: '14px'
                   }}>
-                    🎫 Contest a Parking Ticket (Free)
+                    Contest a Parking Ticket (Free)
                   </Link>
                   <Link href="/property-tax" style={{
                     display: 'block',
@@ -543,7 +568,7 @@ export default function BlockGrade() {
                     fontSize: '14px',
                     border: '1px solid rgba(255,255,255,0.2)'
                   }}>
-                    🏠 Appeal Your Property Taxes
+                    Appeal Your Property Taxes
                   </Link>
                   <Link href="/protection" style={{
                     display: 'block',
@@ -557,7 +582,7 @@ export default function BlockGrade() {
                     fontSize: '14px',
                     border: '1px solid rgba(255,255,255,0.2)'
                   }}>
-                    🛡️ Get Ticket Alerts & Protection
+                    Get Ticket Alerts & Protection
                   </Link>
                 </div>
               </div>
@@ -583,7 +608,12 @@ export default function BlockGrade() {
               padding: '30px 20px',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏘️</div>
+              <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              </div>
               <h2 style={{ color: 'white', fontSize: '18px', margin: '0 0 12px 0' }}>
                 Get Your Free Block Grade
               </h2>

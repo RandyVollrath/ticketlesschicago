@@ -105,10 +105,11 @@ export default function CourtStatistics() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '28px',
             boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
           }}>
-            🛡️
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '28px', fontWeight: '700', color: '#000' }}>
@@ -147,9 +148,17 @@ export default function CourtStatistics() {
             fontSize: '32px',
             fontWeight: 'bold',
             color: '#111827',
-            margin: '0 0 8px 0'
+            margin: '0 0 8px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
           }}>
-            📊 Court Statistics Dashboard
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            Court Statistics Dashboard
           </h1>
           <p style={{ fontSize: '16px', color: '#6b7280', margin: 0 }}>
             Historical data and trends from Chicago parking ticket contests
@@ -217,7 +226,13 @@ export default function CourtStatistics() {
             border: '1px solid #e5e7eb',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </div>
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
               No Data Yet
             </h3>
@@ -340,19 +355,22 @@ export default function CourtStatistics() {
               </h3>
               <div style={{ display: 'grid', gap: '16px' }}>
                 <EvidenceCard
-                  title="📸 Photographic Evidence"
+                  title="Photographic Evidence"
+                  icon={(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>)}
                   withRate={statistics.evidenceAnalysis.photos.withRate}
                   withoutRate={statistics.evidenceAnalysis.photos.withoutRate}
                   impact={statistics.evidenceAnalysis.photos.impact}
                 />
                 <EvidenceCard
-                  title="👥 Witness Statements"
+                  title="Witness Statements"
+                  icon={(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>)}
                   withRate={statistics.evidenceAnalysis.witnesses.withRate}
                   withoutRate={statistics.evidenceAnalysis.witnesses.withoutRate}
                   impact={statistics.evidenceAnalysis.witnesses.impact}
                 />
                 <EvidenceCard
-                  title="📄 Official Documentation"
+                  title="Official Documentation"
+                  icon={(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>)}
                   withRate={statistics.evidenceAnalysis.documentation.withRate}
                   withoutRate={statistics.evidenceAnalysis.documentation.withoutRate}
                   impact={statistics.evidenceAnalysis.documentation.impact}
@@ -425,14 +443,15 @@ function StatCard({ title, value, color }: { title: string; value: string; color
   );
 }
 
-function EvidenceCard({ title, withRate, withoutRate, impact }: { title: string; withRate: string; withoutRate: string; impact: number }) {
+function EvidenceCard({ title, icon, withRate, withoutRate, impact }: { title: string; icon?: React.ReactNode; withRate: string; withoutRate: string; impact: number }) {
   return (
     <div style={{
       padding: '16px',
       backgroundColor: '#f9fafb',
       borderRadius: '8px'
     }}>
-      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+      <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>}
         {title}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', fontSize: '14px' }}>

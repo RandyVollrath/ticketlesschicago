@@ -220,7 +220,7 @@ export default function AttorneyDashboard() {
             fontSize: '28px',
             boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
           }}>
-            🛡️
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '28px', fontWeight: '700', color: '#000' }}>
@@ -318,7 +318,7 @@ export default function AttorneyDashboard() {
             border: '1px solid #e5e7eb',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📬</div>
+            <div style={{ marginBottom: '16px', color: '#6b7280' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
               No Quote Requests Yet
             </h3>

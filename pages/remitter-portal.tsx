@@ -513,22 +513,36 @@ export default function RemitterPortal() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   onClick={exportTodayCSV}
-                  className="px-4 py-3 bg-green-600 text-white rounded-md font-medium hover:bg-green-700"
+                  className="px-4 py-3 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 flex items-center justify-center gap-2"
                 >
-                  📊 Export Today's Reconciliation CSV
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                  </svg>
+                  Export Today's Reconciliation CSV
                 </button>
                 <button
                   onClick={exportPDF}
-                  className="px-4 py-3 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700"
+                  className="px-4 py-3 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 flex items-center justify-center gap-2"
                 >
-                  📄 Export Renewal Batch PDF
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  Export Renewal Batch PDF
                 </button>
                 <button
                   disabled
                   title="Coming soon"
-                  className="px-4 py-3 bg-gray-400 text-white rounded-md font-medium cursor-not-allowed relative group"
+                  className="px-4 py-3 bg-gray-400 text-white rounded-md font-medium cursor-not-allowed relative group flex items-center justify-center gap-2"
                 >
-                  📤 Upload Documents
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Upload Documents
                   <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                     Coming Soon
                   </span>
@@ -691,7 +705,12 @@ export default function RemitterPortal() {
               <p className="text-center py-8 text-gray-500">Loading...</p>
             ) : filteredOrders.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-gray-400 text-5xl mb-4">📋</div>
+                <div className="mb-4 flex justify-center">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                  </svg>
+                </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
                 <p className="text-gray-600">
                   {searchQuery ? `No orders match "${searchQuery}"` : 'No orders to display.'}
@@ -850,7 +869,12 @@ export default function RemitterPortal() {
               <div className="text-center py-12">
                 {searchQuery ? (
                   <>
-                    <div className="text-gray-400 text-5xl mb-4">🔍</div>
+                    <div className="mb-4 flex justify-center">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      </svg>
+                    </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No matching orders</h3>
                     <p className="text-gray-600">No pending orders match "{searchQuery}"</p>
                     <button
@@ -862,7 +886,11 @@ export default function RemitterPortal() {
                   </>
                 ) : (
                   <>
-                    <div className="text-gray-400 text-5xl mb-4">✅</div>
+                    <div className="mb-4 flex justify-center">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
                     <p className="text-gray-600">No orders pending review at this time.</p>
                   </>
