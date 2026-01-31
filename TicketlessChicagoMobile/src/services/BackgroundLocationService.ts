@@ -33,6 +33,8 @@ export interface ParkingDetectedEvent {
   longitude?: number;
   accuracy?: number;
   drivingDurationSec?: number;
+  locationSource?: 'stop_start' | 'last_driving' | 'last_high_speed' | 'current_fallback';
+  driftFromParkingMeters?: number;  // How far user walked from car before confirmation
 }
 
 export interface LocationUpdateEvent {

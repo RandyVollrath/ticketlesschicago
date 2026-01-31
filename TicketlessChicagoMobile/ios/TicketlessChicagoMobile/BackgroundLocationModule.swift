@@ -11,14 +11,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   // Driving state tracking
   private var isDriving = false
+  private var coreMotionSaysAutomotive = false  // True when CoreMotion reports automotive
   private var drivingStartTime: Date? = nil
-  private var lastDrivingLocation: CLLocation? = nil
+  private var lastDrivingLocation: CLLocation? = nil  // Updated continuously while driving (any speed)
+  private var lastHighSpeedLocation: CLLocation? = nil // Updated only above speed threshold
+  private var locationAtStopStart: CLLocation? = nil   // Snapshot GPS at exact moment we stop
   private var lastStationaryTime: Date? = nil
 
   // Configuration
   private let minDrivingDurationSec: TimeInterval = 120  // 2 minutes of driving before we care about stops
   private let minStopDurationSec: TimeInterval = 90       // 90 seconds stopped = probably parked, not a light
-  private let minDrivingSpeedMps: Double = 2.5            // ~5.6 mph - above walking speed
+  private let minDrivingSpeedMps: Double = 2.5            // ~5.6 mph - threshold to START driving state
 
   // Debounce timer for parking detection
   private var parkingConfirmationTimer: Timer?
@@ -182,11 +185,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       guard let self = self, let activity = activity else { return }
 
       if activity.automotive && activity.confidence != .low {
-        // User is driving
+        // CoreMotion says user is in a vehicle
+        self.coreMotionSaysAutomotive = true
+
         if !self.isDriving {
           self.isDriving = true
           self.drivingStartTime = Date()
           self.lastStationaryTime = nil
+          self.locationAtStopStart = nil
           self.parkingConfirmationTimer?.invalidate()
           NSLog("[BackgroundLocation] Driving started (motion)")
           self.sendEvent(withName: "onDrivingStarted", body: [
@@ -194,9 +200,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           ])
         }
       } else if activity.stationary || activity.walking {
-        // User stopped - might be parking
+        let wasAutomotive = self.coreMotionSaysAutomotive
+        self.coreMotionSaysAutomotive = false
+
+        // Only treat as potential parking if we were driving
         if self.isDriving {
-          NSLog("[BackgroundLocation] Stopped moving (motion: \(activity.stationary ? "stationary" : "walking"))")
+          // Snapshot GPS right now - this is the moment the car stopped
+          // (before the user walks away)
+          if self.locationAtStopStart == nil {
+            self.locationAtStopStart = self.locationManager.location
+            NSLog("[BackgroundLocation] Captured stop-start location: \(self.locationAtStopStart?.coordinate.latitude ?? 0), \(self.locationAtStopStart?.coordinate.longitude ?? 0)")
+          }
+
+          NSLog("[BackgroundLocation] Stopped moving (motion: \(activity.stationary ? "stationary" : "walking"), wasAutomotive: \(wasAutomotive))")
           self.handlePotentialParking()
         }
       }
@@ -208,15 +224,25 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let location = locations.last else { return }
 
-    // Speed-based driving detection (backup for motion)
     let speed = location.speed  // m/s, -1 if unknown
 
+    // --- Update driving location continuously while in driving state ---
+    // This is the key fix: save position at ALL speeds while driving,
+    // so we capture the exact spot even when creeping at 1 mph into a parking spot
+    if isDriving || coreMotionSaysAutomotive {
+      lastDrivingLocation = location
+    }
+
+    // --- Speed-based driving detection (backup for CoreMotion) ---
     if speed > minDrivingSpeedMps {
-      // Moving fast enough to be driving
+      // Definitely driving based on speed
+      lastHighSpeedLocation = location
+
       if !isDriving {
         isDriving = true
         drivingStartTime = Date()
         lastStationaryTime = nil
+        locationAtStopStart = nil
         parkingConfirmationTimer?.invalidate()
         NSLog("[BackgroundLocation] Driving started (speed: \(String(format: "%.1f", speed)) m/s)")
         sendEvent(withName: "onDrivingStarted", body: [
@@ -224,10 +250,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "speed": speed,
         ])
       }
-      // Save location while driving - this becomes the parking spot reference
-      lastDrivingLocation = location
     } else if speed >= 0 && speed <= 0.5 && isDriving {
-      // Speed near zero while we were driving
+      // Speed near zero while we were driving - potential parking
+      // Snapshot the location at the moment we first stop
+      if locationAtStopStart == nil {
+        locationAtStopStart = location
+        NSLog("[BackgroundLocation] Captured stop-start location (GPS speed=0): \(location.coordinate.latitude), \(location.coordinate.longitude)")
+      }
       handlePotentialParking()
     }
 
@@ -290,8 +319,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     NSLog("[BackgroundLocation] PARKING CONFIRMED - triggering check")
 
-    // Grab location now for the parking spot
-    let parkingLocation = lastDrivingLocation ?? locationManager.location
+    // Priority order for parking location:
+    // 1. locationAtStopStart - GPS snapshot at the exact moment speed hit 0 (best)
+    // 2. lastDrivingLocation - last GPS while CoreMotion said automotive (very good)
+    // 3. lastHighSpeedLocation - last GPS above speed threshold (good)
+    // 4. locationManager.location - current GPS (worst - user may have walked away)
+    //
+    // We do NOT use current location because 90 seconds have passed since the car stopped.
+    // The user could have walked 100+ meters from their car by now.
+    let parkingLocation = locationAtStopStart ?? lastDrivingLocation ?? lastHighSpeedLocation
+
+    // Also capture current location for comparison/debugging
+    let currentLocation = locationManager.location
 
     var body: [String: Any] = [
       "timestamp": Date().timeIntervalSince1970 * 1000,
@@ -301,6 +340,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       body["latitude"] = loc.coordinate.latitude
       body["longitude"] = loc.coordinate.longitude
       body["accuracy"] = loc.horizontalAccuracy
+      body["locationSource"] = locationAtStopStart != nil ? "stop_start" :
+                               lastDrivingLocation != nil ? "last_driving" : "last_high_speed"
+      NSLog("[BackgroundLocation] Parking location (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m")
+    } else if let loc = currentLocation {
+      // Last resort - better than nothing
+      body["latitude"] = loc.coordinate.latitude
+      body["longitude"] = loc.coordinate.longitude
+      body["accuracy"] = loc.horizontalAccuracy
+      body["locationSource"] = "current_fallback"
+      NSLog("[BackgroundLocation] WARNING: Using current location as fallback (user may have walked)")
+    }
+
+    // Include current location separately so JS side can log the drift
+    if let cur = currentLocation, let park = parkingLocation {
+      let driftMeters = cur.distance(from: park)
+      body["driftFromParkingMeters"] = driftMeters
+      NSLog("[BackgroundLocation] Drift from parking spot: \(String(format: "%.0f", driftMeters))m")
     }
 
     if let drivingStart = drivingStartTime {
@@ -309,9 +365,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     sendEvent(withName: "onParkingDetected", body: body)
 
-    // Reset driving state
+    // Reset driving state but keep lastDrivingLocation for getLastDrivingLocation() API
     isDriving = false
+    coreMotionSaysAutomotive = false
     drivingStartTime = nil
     lastStationaryTime = nil
+    locationAtStopStart = nil
+    // Note: lastDrivingLocation is intentionally NOT cleared - it's the parking spot reference
   }
 }
