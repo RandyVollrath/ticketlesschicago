@@ -316,8 +316,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.title}>Autopilot</Text>
         </View>
 
-        {/* Car Pairing Prompt - shown prominently when no car is saved */}
-        {!savedCarName && (
+        {/* Car Pairing Prompt - Android only (iOS uses motion sensors, no pairing needed) */}
+        {Platform.OS === 'android' && !savedCarName && (
           <TouchableOpacity
             style={styles.pairCarCard}
             onPress={() => navigation.navigate('BluetoothSettings')}
@@ -328,7 +328,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.pairCarTextWrap}>
                 <Text style={styles.pairCarTitle}>Pair Your Car</Text>
                 <Text style={styles.pairCarSubtitle}>
-                  Connect via Bluetooth for automatic parking alerts when you park.
+                  Select your car's Bluetooth so we can alert you when you park in a violation zone.
                 </Text>
               </View>
               <Text style={styles.pairCarChevron}>›</Text>

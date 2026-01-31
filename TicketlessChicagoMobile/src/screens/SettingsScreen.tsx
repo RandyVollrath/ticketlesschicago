@@ -9,7 +9,6 @@ import {
   Alert,
   ScrollView,
   Platform,
-  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
@@ -20,27 +19,19 @@ const log = Logger.createLogger('SettingsScreen');
 
 const SettingsScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [pairedDevices, setPairedDevices] = useState<SavedCarDevice[]>([]);
-  const [nearbyDevices, setNearbyDevices] = useState<SavedCarDevice[]>([]);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
-  const [manualCarName, setManualCarName] = useState('');
-  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const isMountedRef = useRef(true);
   const loadingRef = useRef(false);
   const selectingRef = useRef(false);
   const removingRef = useRef(false);
 
-  const supportsClassicBT = BluetoothService.supportsClassicBluetooth();
-
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      // Stop any BLE scanning on unmount
-      BluetoothService.stopScanning().catch(() => {});
     };
   }, []);
 
@@ -59,7 +50,7 @@ const SettingsScreen: React.FC = () => {
     }
   }, []);
 
-  // Android: Load system-paired Classic Bluetooth devices
+  // Load system-paired Classic Bluetooth devices (Android only)
   const loadPairedDevices = useCallback(async () => {
     if (loadingRef.current) return;
     loadingRef.current = true;
@@ -73,7 +64,7 @@ const SettingsScreen: React.FC = () => {
         if (devices.length === 0) {
           Alert.alert(
             'No Paired Devices',
-            'No Bluetooth devices found. Make sure your car is paired in your phone\'s Bluetooth settings first.',
+            'No Bluetooth devices found. Make sure your car\'s Bluetooth is paired in your phone\'s Settings > Bluetooth first, then come back here.',
             [{ text: 'OK' }]
           );
         }
@@ -91,39 +82,6 @@ const SettingsScreen: React.FC = () => {
     }
   }, []);
 
-  // iOS: Scan for nearby BLE devices
-  const scanForNearbyDevices = useCallback(async () => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    setScanning(true);
-    setNearbyDevices([]);
-
-    try {
-      await BluetoothService.scanForDevices((devices) => {
-        if (isMountedRef.current) {
-          // Filter to show only named devices (likely car systems, not random beacons)
-          const named = devices.filter(d => d.name && d.name !== 'Unknown Device');
-          setNearbyDevices(named);
-        }
-      });
-
-      // Scan runs for 10 seconds, then stops automatically
-      setTimeout(() => {
-        loadingRef.current = false;
-        if (isMountedRef.current) {
-          setScanning(false);
-        }
-      }, 11000);
-    } catch (error) {
-      log.error('Error scanning for devices', error);
-      loadingRef.current = false;
-      if (isMountedRef.current) {
-        setScanning(false);
-        Alert.alert('Error', 'Failed to scan for Bluetooth devices. Make sure Bluetooth is enabled.');
-      }
-    }
-  }, []);
-
   const selectDevice = useCallback(async (device: SavedCarDevice) => {
     if (selectingRef.current) return;
     selectingRef.current = true;
@@ -134,13 +92,9 @@ const SettingsScreen: React.FC = () => {
       if (isMountedRef.current) {
         setSavedCar(device);
         setPairedDevices([]);
-        setNearbyDevices([]);
-        setShowManualEntry(false);
         Alert.alert(
-          'Car Saved!',
-          Platform.OS === 'ios'
-            ? `${device.name} has been saved. We'll automatically check parking when you stop driving.`
-            : `${device.name} has been saved. We'll check parking when you disconnect from it.`
+          'Car Paired!',
+          `${device.name} has been saved. We'll automatically check parking rules when you disconnect from it (turn off your car).`
         );
       }
     } catch (error) {
@@ -156,49 +110,12 @@ const SettingsScreen: React.FC = () => {
     }
   }, []);
 
-  const saveManualCar = useCallback(async () => {
-    const trimmedName = manualCarName.trim();
-    if (!trimmedName) {
-      Alert.alert('Error', 'Please enter a name for your car.');
-      return;
-    }
-
-    if (selectingRef.current) return;
-    selectingRef.current = true;
-    setIsSelecting(true);
-
-    try {
-      const device = await BluetoothService.saveManualCarDevice(trimmedName);
-      if (isMountedRef.current) {
-        setSavedCar(device);
-        setManualCarName('');
-        setShowManualEntry(false);
-        Alert.alert(
-          'Car Saved!',
-          Platform.OS === 'ios'
-            ? `"${trimmedName}" has been saved. We'll automatically check parking when you stop driving.`
-            : `"${trimmedName}" has been saved. We'll check parking when you disconnect from it.`
-        );
-      }
-    } catch (error) {
-      log.error('Error saving manual car', error);
-      if (isMountedRef.current) {
-        Alert.alert('Error', 'Failed to save car. Please try again.');
-      }
-    } finally {
-      selectingRef.current = false;
-      if (isMountedRef.current) {
-        setIsSelecting(false);
-      }
-    }
-  }, [manualCarName]);
-
   const removeCar = useCallback(() => {
     if (removingRef.current) return;
 
     Alert.alert(
       'Remove Car',
-      'Are you sure you want to remove your paired car?',
+      'Are you sure you want to remove your paired car? You\'ll stop getting automatic parking alerts.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -242,12 +159,44 @@ const SettingsScreen: React.FC = () => {
         <Text style={styles.deviceName}>{item.name || 'Unknown Device'}</Text>
         <Text style={styles.deviceId}>{item.address || item.id}</Text>
       </View>
-      {isSelecting && <ActivityIndicator size="small" color={colors.primary} />}
+      {isSelecting ? (
+        <ActivityIndicator size="small" color={colors.primary} />
+      ) : (
+        <Text style={styles.selectText}>Select</Text>
+      )}
     </TouchableOpacity>
   ), [isSelecting, selectDevice]);
 
-  const allDevices = [...pairedDevices, ...nearbyDevices];
+  // iOS doesn't support Classic Bluetooth pairing - detection uses motion sensors
+  if (Platform.OS === 'ios') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Automatic Parking Detection</Text>
+            <Text style={styles.instructions}>
+              On iPhone, parking detection works automatically using your phone's motion sensors. No Bluetooth pairing is needed.
+            </Text>
+            <Text style={styles.instructions}>
+              When you stop driving and park, we detect the transition from driving to stationary and immediately check parking rules at your location.
+            </Text>
+          </View>
 
+          <View style={styles.section}>
+            <Text style={styles.infoTitle}>How it works</Text>
+            <Text style={styles.infoText}>
+              {'1. Drive and park as usual\n' +
+               '2. Your iPhone detects when you stop moving\n' +
+               '3. We check parking rules at your location\n' +
+               '4. You get a notification if there\'s a restriction'}
+            </Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Android: Bluetooth pairing screen
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -259,7 +208,7 @@ const SettingsScreen: React.FC = () => {
               <View style={styles.savedCarInfo}>
                 <Text style={styles.savedCarName}>{savedCar.name}</Text>
                 <Text style={styles.savedCarId}>
-                  {savedCar.isManualEntry ? 'Manually entered' : (savedCar.address || savedCar.id)}
+                  {savedCar.address || savedCar.id}
                 </Text>
               </View>
               <TouchableOpacity
@@ -277,90 +226,48 @@ const SettingsScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.noCarText}>No car saved yet</Text>
+            <Text style={styles.noCarText}>No car paired yet</Text>
           )}
         </View>
 
-        {/* Pair Car Section */}
+        {/* Pair Car Section - only shown when no car is saved */}
         {!savedCar && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select Your Car</Text>
 
             <Text style={styles.instructions}>
-              {Platform.OS === 'android'
-                ? 'Make sure your car is paired in your phone\'s Bluetooth settings, then tap below to find it.'
-                : 'Make sure you\'re connected to your car\'s Bluetooth, then tap below to find it. If your car doesn\'t appear, you can enter the name manually.'}
+              Your phone's Bluetooth must already be paired with your car (in Settings {'>'} Bluetooth). Tap below to see your paired devices and pick your car.
             </Text>
 
-            {/* Find Bluetooth Devices Button */}
+            {/* Show Paired Devices Button */}
             <TouchableOpacity
-              style={[styles.actionButton, (loading || scanning) && styles.actionButtonDisabled]}
-              onPress={Platform.OS === 'android' && supportsClassicBT ? loadPairedDevices : scanForNearbyDevices}
-              disabled={loading || scanning}
+              style={[styles.actionButton, loading && styles.actionButtonDisabled]}
+              onPress={loadPairedDevices}
+              disabled={loading}
             >
-              {loading || scanning ? (
+              {loading ? (
                 <View style={styles.scanningRow}>
                   <ActivityIndicator color={colors.white} />
-                  <Text style={styles.actionButtonText}>
-                    {scanning ? '  Scanning for devices...' : '  Loading...'}
-                  </Text>
+                  <Text style={styles.actionButtonText}>  Loading paired devices...</Text>
                 </View>
               ) : (
-                <Text style={styles.actionButtonText}>Find Bluetooth Devices</Text>
+                <Text style={styles.actionButtonText}>Show My Bluetooth Devices</Text>
               )}
             </TouchableOpacity>
 
             {/* Device List */}
-            {allDevices.length > 0 && (
+            {pairedDevices.length > 0 && (
               <View style={styles.devicesList}>
                 <Text style={styles.devicesTitle}>
-                  Select your car ({allDevices.length} device{allDevices.length !== 1 ? 's' : ''} found):
+                  Tap your car ({pairedDevices.length} paired device{pairedDevices.length !== 1 ? 's' : ''}):
                 </Text>
                 <FlatList
-                  data={allDevices}
+                  data={pairedDevices}
                   renderItem={renderDevice}
                   keyExtractor={(item) => item.id}
                   style={styles.flatList}
                   scrollEnabled={false}
                 />
-              </View>
-            )}
-
-            {/* Manual entry fallback */}
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => setShowManualEntry(!showManualEntry)}
-            >
-              <Text style={styles.linkButtonText}>
-                {showManualEntry ? 'Hide manual entry' : "Can't find your car? Enter name manually"}
-              </Text>
-            </TouchableOpacity>
-
-            {showManualEntry && (
-              <View style={styles.manualEntrySection}>
-                <Text style={styles.manualEntryLabel}>Car Name</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g., My Honda, Family Car"
-                  placeholderTextColor={colors.textTertiary}
-                  value={manualCarName}
-                  onChangeText={setManualCarName}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  returnKeyType="done"
-                  onSubmitEditing={saveManualCar}
-                />
-                <TouchableOpacity
-                  style={[styles.actionButton, (!manualCarName.trim() || isSelecting) && styles.actionButtonDisabled]}
-                  onPress={saveManualCar}
-                  disabled={!manualCarName.trim() || isSelecting}
-                >
-                  {isSelecting ? (
-                    <ActivityIndicator color={colors.white} />
-                  ) : (
-                    <Text style={styles.actionButtonText}>Save Car</Text>
-                  )}
-                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -370,15 +277,10 @@ const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.infoTitle}>How it works</Text>
           <Text style={styles.infoText}>
-            {Platform.OS === 'android'
-              ? '1. Select your car\'s Bluetooth above (one-time setup)\n' +
-                '2. Drive and park as usual\n' +
-                '3. When you turn off your car, Bluetooth disconnects\n' +
-                '4. We instantly check parking rules and notify you'
-              : '1. Save your car above (one-time setup)\n' +
-                '2. Drive and park as usual\n' +
-                '3. When you stop and park, we detect it via motion sensors\n' +
-                '4. We instantly check parking rules and notify you'}
+            {'1. Pick your car\'s Bluetooth from the list above (one-time setup)\n' +
+             '2. Drive and park as usual\n' +
+             '3. When you turn off your car, Bluetooth disconnects\n' +
+             '4. We instantly check parking rules and notify you'}
           </Text>
         </View>
       </ScrollView>
@@ -476,38 +378,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  linkButton: {
-    marginTop: spacing.base,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  linkButtonText: {
-    color: colors.primary,
-    fontSize: typography.sizes.sm,
-    textDecorationLine: 'underline',
-  },
-  manualEntrySection: {
-    marginTop: spacing.base,
-    paddingTop: spacing.base,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  manualEntryLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  textInput: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: typography.sizes.md,
-    color: colors.textPrimary,
-    marginBottom: spacing.base,
-  },
   devicesList: {
     marginTop: spacing.base,
   },
@@ -518,7 +388,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   flatList: {
-    maxHeight: 300,
+    maxHeight: 400,
   },
   deviceCard: {
     flexDirection: 'row',
@@ -546,6 +416,12 @@ const styles = StyleSheet.create({
   deviceId: {
     fontSize: typography.sizes.sm,
     color: colors.textTertiary,
+  },
+  selectText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+    marginLeft: spacing.sm,
   },
   infoTitle: {
     fontSize: typography.sizes.md,
