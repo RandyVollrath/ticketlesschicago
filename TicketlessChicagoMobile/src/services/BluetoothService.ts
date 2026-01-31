@@ -372,11 +372,12 @@ class BluetoothServiceClass {
   }
 
   /**
-   * @deprecated Use getPairedDevices() instead for car pairing
-   * This only scans for BLE devices, not Classic Bluetooth (car audio)
+   * Scan for nearby BLE devices (used on iOS for car discovery).
+   * On Android, use getPairedDevices() for Classic BT bonded devices instead.
+   * Scan runs for 10 seconds then stops automatically.
    */
   async scanForDevices(callback: (devices: SavedCarDevice[]) => void): Promise<void> {
-    log.warn('scanForDevices is deprecated for car pairing. Use getPairedDevices() instead.');
+    log.debug('Starting BLE device scan');
 
     if (!BleManager) {
       throw new Error('BLE Manager not available');
@@ -428,7 +429,8 @@ class BluetoothServiceClass {
   }
 
   /**
-   * @deprecated Use getPairedDevices() instead
+   * Start scanning and call back with each newly discovered device.
+   * Convenience wrapper around scanForDevices.
    */
   async startScanning(callback: (device: SavedCarDevice) => void): Promise<void> {
     await this.scanForDevices((devices) => {

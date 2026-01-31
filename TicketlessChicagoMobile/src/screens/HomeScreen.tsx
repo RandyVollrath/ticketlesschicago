@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -80,10 +81,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.autoCheck]);
 
-  // Reload last check when returning from other screens
+  // Reload data when returning from other screens (e.g. after pairing car)
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', async () => {
       loadLastCheck();
+      // Refresh saved car name (in case user just paired)
+      try {
+        const savedDevice = await BluetoothService.getSavedCarDevice();
+        setSavedCarName(savedDevice?.name || null);
+      } catch (e) {
+        // ignore
+      }
     });
     return unsubscribe;
   }, [navigation]);
@@ -104,19 +112,18 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return () => clearInterval(interval);
   }, [isMonitoring]);
 
-  // Check Bluetooth status once and subscribe to events (Android)
+  // Load saved car name on all platforms; subscribe to BT events on Android
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
-    // Check saved car name and initial connection state once
     const checkInitialStatus = async () => {
       try {
         const savedDevice = await BluetoothService.getSavedCarDevice();
         if (savedDevice) {
           setSavedCarName(savedDevice.name);
-          const connected = BluetoothService.isConnectedToCar() ||
-            await BluetoothService.isConnectedToSavedCar();
-          setIsCarConnected(connected);
+          if (Platform.OS === 'android') {
+            const connected = BluetoothService.isConnectedToCar() ||
+              await BluetoothService.isConnectedToSavedCar();
+            setIsCarConnected(connected);
+          }
         } else {
           setSavedCarName(null);
           setIsCarConnected(false);
@@ -128,14 +135,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     checkInitialStatus();
 
-    // Subscribe to Bluetooth connect/disconnect events from the service
-    const onConnect = () => setIsCarConnected(true);
-    const onDisconnect = () => setIsCarConnected(false);
-    BluetoothService.addConnectionListener(onConnect, onDisconnect);
+    // Subscribe to Bluetooth connect/disconnect events (Android only)
+    if (Platform.OS === 'android') {
+      const onConnect = () => setIsCarConnected(true);
+      const onDisconnect = () => setIsCarConnected(false);
+      BluetoothService.addConnectionListener(onConnect, onDisconnect);
 
-    return () => {
-      BluetoothService.removeConnectionListener(onConnect, onDisconnect);
-    };
+      return () => {
+        BluetoothService.removeConnectionListener(onConnect, onDisconnect);
+      };
+    }
   }, [isMonitoring]);
 
   const loadInitialData = async () => {
@@ -306,6 +315,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.title}>Autopilot</Text>
         </View>
+
+        {/* Car Pairing Prompt - shown prominently when no car is saved */}
+        {!savedCarName && (
+          <TouchableOpacity
+            style={styles.pairCarCard}
+            onPress={() => navigation.navigate('BluetoothSettings')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.pairCarContent}>
+              <Text style={styles.pairCarIcon}>🚗</Text>
+              <View style={styles.pairCarTextWrap}>
+                <Text style={styles.pairCarTitle}>Pair Your Car</Text>
+                <Text style={styles.pairCarSubtitle}>
+                  Connect via Bluetooth for automatic parking alerts when you park.
+                </Text>
+              </View>
+              <Text style={styles.pairCarChevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Quick Action */}
         <Button
@@ -582,6 +611,39 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
+  },
+  pairCarCard: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.base,
+  },
+  pairCarContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pairCarIcon: {
+    fontSize: 28,
+    marginRight: spacing.md,
+  },
+  pairCarTextWrap: {
+    flex: 1,
+  },
+  pairCarTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.white,
+    marginBottom: 4,
+  },
+  pairCarSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 18,
+  },
+  pairCarChevron: {
+    fontSize: 28,
+    color: 'rgba(255,255,255,0.7)',
+    marginLeft: spacing.sm,
   },
 });
 
