@@ -27,14 +27,12 @@ const log = Logger.createLogger('ProfileScreen');
 
 interface AppSettings {
   notificationsEnabled: boolean;
-  backgroundLocationEnabled: boolean;
   autoCheckOnDisconnect: boolean;
   criticalAlertsEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
-  backgroundLocationEnabled: false,
   autoCheckOnDisconnect: true,
   criticalAlertsEnabled: true,
 };
@@ -413,30 +411,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             subtitle="Check parking when you leave your car"
             value={settings.autoCheckOnDisconnect}
             onValueChange={v => updateSetting('autoCheckOnDisconnect', v)}
-          />
-          <View style={styles.settingDivider} />
-          <SettingRow
-            title="Background Location"
-            subtitle="May increase battery usage. Required for automatic parking detection when app is closed."
-            value={settings.backgroundLocationEnabled}
-            onValueChange={v => {
-              if (v) {
-                // Show battery warning when enabling
-                Alert.alert(
-                  'Battery Usage Notice',
-                  'Enabling background location allows automatic parking detection when you disconnect from your car, even when the app is closed.\n\nThis may increase battery usage. You can disable this anytime if you notice significant battery drain.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Enable',
-                      onPress: () => updateSetting('backgroundLocationEnabled', true),
-                    },
-                  ]
-                );
-              } else {
-                updateSetting('backgroundLocationEnabled', false);
-              }
-            }}
           />
         </Card>
 
