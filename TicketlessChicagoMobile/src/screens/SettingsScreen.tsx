@@ -167,7 +167,7 @@ const SettingsScreen: React.FC = () => {
     </TouchableOpacity>
   ), [isSelecting, selectDevice]);
 
-  // iOS doesn't support Classic Bluetooth pairing - detection uses motion sensors
+  // iOS: Background location + motion sensors for parking detection
   if (Platform.OS === 'ios') {
     return (
       <SafeAreaView style={styles.container}>
@@ -175,10 +175,10 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Automatic Parking Detection</Text>
             <Text style={styles.instructions}>
-              On iPhone, parking detection works automatically using your phone's motion sensors. No Bluetooth pairing is needed.
+              Autopilot uses background location and motion sensors to automatically detect when you park. No setup needed - it works out of the box.
             </Text>
             <Text style={styles.instructions}>
-              When you stop driving and park, we detect the transition from driving to stationary and immediately check parking rules at your location.
+              You'll see a blue location indicator at the top of your screen while monitoring is active. This is normal and means the app is tracking your driving to detect parking.
             </Text>
           </View>
 
@@ -186,9 +186,24 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.infoTitle}>How it works</Text>
             <Text style={styles.infoText}>
               {'1. Drive and park as usual\n' +
-               '2. Your iPhone detects when you stop moving\n' +
-               '3. We check parking rules at your location\n' +
-               '4. You get a notification if there\'s a restriction'}
+               '2. Your iPhone detects the transition from driving to stopped\n' +
+               '3. After ~90 seconds stopped, we confirm you\'ve parked\n' +
+               '4. We check parking rules at your location\n' +
+               '5. You get a notification if there\'s a restriction'}
+            </Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.infoTitle}>Location Permission</Text>
+            <Text style={styles.infoText}>
+              For best results, allow "Always" location access in Settings {'>'} Privacy {'>'} Location Services {'>'} Autopilot America. This lets the app detect parking even when it's in the background.
+            </Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.infoTitle}>Battery</Text>
+            <Text style={styles.infoText}>
+              Background location uses some battery. For best experience, charge your phone in your car while driving.
             </Text>
           </View>
         </ScrollView>
