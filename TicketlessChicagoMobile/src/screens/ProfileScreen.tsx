@@ -9,11 +9,13 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, typography, spacing } from '../theme';
-import { Card, Button } from '../components';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { Button } from '../components';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import AuthService, { AuthState, User } from '../services/AuthService';
 import PushNotificationService from '../services/PushNotificationService';
@@ -23,7 +25,7 @@ import { clearUserData } from '../utils/storage';
 import { StorageKeys } from '../constants';
 import BiometricService, { BiometricType } from '../services/BiometricService';
 
-const log = Logger.createLogger('ProfileScreen');
+const log = Logger.createLogger('SettingsScreen');
 
 interface AppSettings {
   notificationsEnabled: boolean;
@@ -35,16 +37,23 @@ const DEFAULT_SETTINGS: AppSettings = {
   criticalAlertsEnabled: true,
 };
 
-// Extracted components to avoid re-creation on each render
+// ──────────────────────────────────────────────────────
+// Reusable Row Components
+// ──────────────────────────────────────────────────────
 interface SettingRowProps {
+  icon: string;
+  iconColor?: string;
   title: string;
   subtitle?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
 }
 
-const SettingRow: React.FC<SettingRowProps> = ({ title, subtitle, value, onValueChange }) => (
+const SettingRow: React.FC<SettingRowProps> = ({
+  icon, iconColor = colors.textSecondary, title, subtitle, value, onValueChange,
+}) => (
   <View style={styles.settingRow}>
+    <MaterialCommunityIcons name={icon} size={20} color={iconColor} style={styles.rowIcon} />
     <View style={styles.settingInfo}>
       <Text style={styles.settingTitle}>{title}</Text>
       {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
@@ -59,81 +68,95 @@ const SettingRow: React.FC<SettingRowProps> = ({ title, subtitle, value, onValue
 );
 
 interface LinkRowProps {
+  icon: string;
+  iconColor?: string;
   title: string;
   onPress: () => void;
-  icon?: string;
   danger?: boolean;
+  rightText?: string;
 }
 
-const LinkRow: React.FC<LinkRowProps> = ({ title, onPress, icon, danger }) => (
+const LinkRow: React.FC<LinkRowProps> = ({
+  icon, iconColor = colors.textSecondary, title, onPress, danger, rightText,
+}) => (
   <TouchableOpacity
     style={styles.linkRow}
     onPress={onPress}
     delayPressIn={100}
     activeOpacity={0.7}
   >
-    {icon && <Text style={styles.linkIcon}>{icon}</Text>}
+    <MaterialCommunityIcons
+      name={icon}
+      size={20}
+      color={danger ? colors.error : iconColor}
+      style={styles.rowIcon}
+    />
     <Text style={[styles.linkTitle, danger && styles.dangerText]}>{title}</Text>
-    <Text style={styles.chevron}>›</Text>
+    {rightText && <Text style={styles.rightText}>{rightText}</Text>}
+    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
   </TouchableOpacity>
 );
 
+// ──────────────────────────────────────────────────────
+// Section component
+// ──────────────────────────────────────────────────────
+interface SectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+const Section: React.FC<SectionProps> = ({ title, children }) => (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.sectionCard}>
+      {children}
+    </View>
+  </View>
+);
+
+const Divider = () => <View style={styles.divider} />;
+
+// ──────────────────────────────────────────────────────
+// Main Screen
+// ──────────────────────────────────────────────────────
 const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState({
-    totalChecks: 0,
-    violationsFound: 0,
-    daysSaved: 0,
-  });
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricName, setBiometricName] = useState('Biometric');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
-  // Refs to prevent memory leaks and race conditions
   const isMountedRef = useRef(true);
   const signingOutRef = useRef(false);
   const clearingRef = useRef(false);
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
+    return () => { isMountedRef.current = false; };
   }, []);
 
   useEffect(() => {
     loadSettings();
     loadSavedCar();
-    loadStats();
     loadBiometricStatus();
 
-    // Subscribe to auth state changes
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
-      if (isMountedRef.current) {
-        setUser(state.user);
-      }
+      if (isMountedRef.current) setUser(state.user);
     });
-
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadSavedCar();
-    });
+    const unsubscribe = navigation.addListener('focus', () => { loadSavedCar(); });
     return unsubscribe;
   }, [navigation]);
 
   const loadSettings = async () => {
     try {
       const stored = await AsyncStorage.getItem(StorageKeys.APP_SETTINGS);
-      if (stored) {
-        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
-      }
+      if (stored) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
     } catch (error) {
       log.error('Error loading settings', error);
     }
@@ -151,30 +174,9 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const loadSavedCar = useCallback(async () => {
     try {
       const device = await BluetoothService.getSavedCarDevice();
-      if (isMountedRef.current) {
-        setSavedCar(device);
-      }
+      if (isMountedRef.current) setSavedCar(device);
     } catch (error) {
       log.error('Error loading saved car', error);
-    }
-  }, []);
-
-  const loadStats = useCallback(async () => {
-    try {
-      const history = await AsyncStorage.getItem(StorageKeys.PARKING_HISTORY);
-      if (history && isMountedRef.current) {
-        const items = JSON.parse(history);
-        if (Array.isArray(items)) {
-          const violations = items.filter((item: any) => item.rules?.length > 0).length;
-          setStats({
-            totalChecks: items.length,
-            violationsFound: violations,
-            daysSaved: Math.floor(violations * Config.STATS.VIOLATION_TO_TICKET_RATE), // Configurable rate
-          });
-        }
-      }
-    } catch (error) {
-      log.error('Error loading stats', error);
     }
   }, []);
 
@@ -211,122 +213,72 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
-    const newSettings = { ...settings, [key]: value };
-    saveSettings(newSettings);
-  };
-
-  const openWebsite = () => {
-    Linking.openURL('https://autopilotamerica.com');
-  };
-
-  const openPrivacyPolicy = () => {
-    Linking.openURL('https://autopilotamerica.com/privacy');
-  };
-
-  const openTerms = () => {
-    Linking.openURL('https://autopilotamerica.com/terms');
-  };
-
-  const contactSupport = () => {
-    Linking.openURL('mailto:support@autopilotamerica.com?subject=Autopilot Mobile App Support');
+    saveSettings({ ...settings, [key]: value });
   };
 
   const handleSignOut = useCallback(() => {
     if (signingOutRef.current) return;
-
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            signingOutRef.current = true;
-            if (isMountedRef.current) setIsSigningOut(true);
-
-            try {
-              // Unregister push notifications
-              await PushNotificationService.unregister();
-              // Clear user-specific data (preserves app settings and onboarding state)
-              await clearUserData();
-              // Disable biometric if enabled
-              await BiometricService.disable();
-              // Sign out from Supabase
-              await AuthService.signOut();
-              // Navigate to login
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
-            } catch (error) {
-              log.error('Error signing out', error);
-              signingOutRef.current = false;
-              if (isMountedRef.current) {
-                setIsSigningOut(false);
-                Alert.alert('Error', 'Failed to sign out. Please try again.');
-              }
+    Alert.alert('Sign Out', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out', style: 'destructive',
+        onPress: async () => {
+          signingOutRef.current = true;
+          if (isMountedRef.current) setIsSigningOut(true);
+          try {
+            await PushNotificationService.unregister();
+            await clearUserData();
+            await BiometricService.disable();
+            await AuthService.signOut();
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          } catch (error) {
+            log.error('Error signing out', error);
+            signingOutRef.current = false;
+            if (isMountedRef.current) {
+              setIsSigningOut(false);
+              Alert.alert('Error', 'Failed to sign out.');
             }
-          },
+          }
         },
-      ]
-    );
+      },
+    ]);
   }, [navigation]);
 
   const clearAllData = useCallback(() => {
     if (clearingRef.current) return;
-
-    Alert.alert(
-      'Clear All Data',
-      'This will remove all saved data including your paired car, history, and settings. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Continue',
-          style: 'destructive',
-          onPress: () => {
-            // Second confirmation
-            Alert.alert(
-              'Are you absolutely sure?',
-              'All your parking history, saved vehicle, and settings will be permanently deleted.',
-              [
-                { text: 'No, keep my data', style: 'cancel' },
-                {
-                  text: 'Yes, delete everything',
-                  style: 'destructive',
-                  onPress: async () => {
-                    clearingRef.current = true;
-                    if (isMountedRef.current) setIsClearing(true);
-
-                    try {
-                      await AsyncStorage.clear();
-                      if (isMountedRef.current) {
-                        setSettings(DEFAULT_SETTINGS);
-                        setSavedCar(null);
-                        setStats({ totalChecks: 0, violationsFound: 0, daysSaved: 0 });
-                        setBiometricEnabled(false);
-                        Alert.alert('Done', 'All data has been cleared');
-                      }
-                    } catch (error) {
-                      log.error('Error clearing data', error);
-                      if (isMountedRef.current) {
-                        Alert.alert('Error', 'Failed to clear data. Please try again.');
-                      }
-                    } finally {
-                      clearingRef.current = false;
-                      if (isMountedRef.current) {
-                        setIsClearing(false);
-                      }
-                    }
-                  },
-                },
-              ]
-            );
-          },
+    Alert.alert('Clear All Data', 'This will remove all saved data. This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Continue', style: 'destructive',
+        onPress: () => {
+          Alert.alert('Are you sure?', 'All history, vehicle, and settings will be deleted.', [
+            { text: 'No', style: 'cancel' },
+            {
+              text: 'Delete Everything', style: 'destructive',
+              onPress: async () => {
+                clearingRef.current = true;
+                if (isMountedRef.current) setIsClearing(true);
+                try {
+                  await AsyncStorage.clear();
+                  if (isMountedRef.current) {
+                    setSettings(DEFAULT_SETTINGS);
+                    setSavedCar(null);
+                    setBiometricEnabled(false);
+                    Alert.alert('Done', 'All data has been cleared');
+                  }
+                } catch (error) {
+                  log.error('Error clearing data', error);
+                  if (isMountedRef.current) Alert.alert('Error', 'Failed to clear data.');
+                } finally {
+                  clearingRef.current = false;
+                  if (isMountedRef.current) setIsClearing(false);
+                }
+              },
+            },
+          ]);
         },
-      ]
-    );
+      },
+    ]);
   }, []);
 
   return (
@@ -334,122 +286,96 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Settings</Text>
 
-        {/* Account Card */}
+        {/* Account */}
         {user && (
-          <Card title="Account">
-            <View style={styles.accountContainer}>
+          <Section title="Account">
+            <View style={styles.accountRow}>
+              <MaterialCommunityIcons name="account-circle" size={40} color={colors.primary} />
               <View style={styles.accountInfo}>
-                <Text style={styles.accountIcon}>👤</Text>
-                <View style={styles.accountDetails}>
-                  <Text style={styles.accountName}>{user.name || 'User'}</Text>
-                  <Text style={styles.accountEmail}>{user.email}</Text>
-                </View>
+                <Text style={styles.accountName}>{user.name || 'User'}</Text>
+                <Text style={styles.accountEmail}>{user.email}</Text>
               </View>
-              <Button
-                title={isSigningOut ? 'Signing Out...' : 'Sign Out'}
-                variant="secondary"
-                size="sm"
-                onPress={handleSignOut}
-                disabled={isSigningOut}
-                loading={isSigningOut}
-              />
             </View>
-          </Card>
+          </Section>
         )}
 
-        {/* Stats Card */}
-        <Card title="Your Stats">
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.totalChecks}</Text>
-              <Text style={styles.statLabel}>Checks</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats.violationsFound}</Text>
-              <Text style={styles.statLabel}>Violations</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, styles.statHighlight]}>
-                ~${stats.daysSaved * Config.STATS.AVERAGE_TICKET_COST}
-              </Text>
-              <Text style={styles.statLabel}>Saved</Text>
-            </View>
-          </View>
-        </Card>
-
-        {/* Notification Settings */}
-        <Card title="Notifications">
+        {/* Preferences (merged notifications + security) */}
+        <Section title="Preferences">
           <SettingRow
+            icon="bell-outline"
+            iconColor={colors.primary}
             title="Push Notifications"
-            subtitle="Get alerts for parking violations"
+            subtitle="Parking violation alerts"
             value={settings.notificationsEnabled}
             onValueChange={v => updateSetting('notificationsEnabled', v)}
           />
-          <View style={styles.settingDivider} />
+          <Divider />
           <SettingRow
+            icon="bell-alert-outline"
+            iconColor={colors.warning}
             title="Critical Alerts"
-            subtitle="Bypass Do Not Disturb for urgent violations"
+            subtitle="Bypass Do Not Disturb"
             value={settings.criticalAlertsEnabled}
             onValueChange={v => updateSetting('criticalAlertsEnabled', v)}
           />
-        </Card>
+          {biometricAvailable && (
+            <>
+              <Divider />
+              <SettingRow
+                icon="fingerprint"
+                iconColor={colors.success}
+                title={`${biometricName} Lock`}
+                subtitle={`Secure app with ${biometricName}`}
+                value={biometricEnabled}
+                onValueChange={handleBiometricToggle}
+              />
+            </>
+          )}
+        </Section>
 
-        {/* Detection Settings */}
-        <Card title="Auto-Detection">
+        {/* Auto-Detection */}
+        <Section title="Auto-Detection">
           <LinkRow
-            title={savedCar ? `Car: ${savedCar.name}` : 'Pair Your Car'}
-            icon="🚗"
+            icon={savedCar ? 'car-connected' : 'bluetooth-connect'}
+            iconColor={colors.primary}
+            title={savedCar ? savedCar.name : 'Pair Your Car'}
+            rightText={savedCar ? 'Paired' : undefined}
             onPress={() => navigation.navigate('BluetoothSettings')}
           />
-        </Card>
+        </Section>
 
-        {/* Security Settings */}
-        {biometricAvailable && (
-          <Card title="Security">
-            <SettingRow
-              title={`${biometricName} Login`}
-              subtitle={`Use ${biometricName} to secure the app`}
-              value={biometricEnabled}
-              onValueChange={handleBiometricToggle}
-            />
-          </Card>
-        )}
-
-        {/* Links */}
-        <Card title="About">
-          <LinkRow title="Visit Website" icon="🌐" onPress={openWebsite} />
-          <View style={styles.settingDivider} />
-          <LinkRow title="Privacy Policy" icon="🔒" onPress={openPrivacyPolicy} />
-          <View style={styles.settingDivider} />
-          <LinkRow title="Terms of Service" icon="📄" onPress={openTerms} />
-          <View style={styles.settingDivider} />
-          <LinkRow title="Contact Support" icon="📧" onPress={contactSupport} />
-        </Card>
+        {/* About */}
+        <Section title="About">
+          <LinkRow icon="web" title="Website" onPress={() => Linking.openURL('https://autopilotamerica.com')} />
+          <Divider />
+          <LinkRow icon="shield-lock-outline" title="Privacy Policy" onPress={() => Linking.openURL('https://autopilotamerica.com/privacy')} />
+          <Divider />
+          <LinkRow icon="file-document-outline" title="Terms of Service" onPress={() => Linking.openURL('https://autopilotamerica.com/terms')} />
+          <Divider />
+          <LinkRow icon="email-outline" title="Contact Support" onPress={() => Linking.openURL('mailto:support@autopilotamerica.com?subject=Autopilot Mobile App Support')} />
+        </Section>
 
         {/* Danger Zone */}
-        <Card>
+        <Section title="">
           {user && (
             <>
               <LinkRow
+                icon="logout"
                 title={isSigningOut ? 'Signing Out...' : 'Sign Out'}
-                icon="🚪"
                 onPress={handleSignOut}
                 danger
               />
-              <View style={styles.settingDivider} />
+              <Divider />
             </>
           )}
           <LinkRow
+            icon="trash-can-outline"
             title="Clear All Data"
-            icon="🗑️"
             onPress={clearAllData}
             danger
           />
-        </Card>
+        </Section>
 
-        {/* Version */}
         <Text style={styles.version}>Autopilot v{Config.APP_VERSION}</Text>
       </ScrollView>
     </SafeAreaView>
@@ -463,24 +389,44 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.base,
+    paddingBottom: spacing.xxl,
   },
+  title: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+
+  // Sections
+  section: {
+    marginBottom: spacing.base,
+  },
+  sectionTitle: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
+  sectionCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+    overflow: 'hidden',
+  },
+
   // Account
-  accountContainer: {
+  accountRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    padding: spacing.base,
   },
   accountInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-  },
-  accountIcon: {
-    fontSize: 32,
-    marginRight: spacing.md,
-  },
-  accountDetails: {
-    flex: 1,
+    marginLeft: spacing.md,
   },
   accountName: {
     fontSize: typography.sizes.md,
@@ -492,81 +438,22 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
-  title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-  },
-  statHighlight: {
-    color: colors.success,
-  },
-  statLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border,
-  },
-  // Car
-  carContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  carInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  carIcon: {
-    fontSize: 24,
-    marginRight: spacing.md,
-  },
-  carName: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-  },
-  carId: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-  },
-  noCarContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  noCarText: {
-    fontSize: typography.sizes.base,
-    color: colors.textSecondary,
-  },
-  // Settings
+
+  // Setting rows
   settingRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+  },
+  rowIcon: {
+    marginRight: spacing.md,
+    width: 24,
+    textAlign: 'center',
   },
   settingInfo: {
     flex: 1,
-    marginRight: spacing.md,
+    marginRight: spacing.sm,
   },
   settingTitle: {
     fontSize: typography.sizes.base,
@@ -576,42 +463,44 @@ const styles = StyleSheet.create({
   settingSubtitle: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
-  settingDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.xs,
-  },
-  // Links
+
+  // Link rows
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.md,
-  },
-  linkIcon: {
-    fontSize: typography.sizes.md,
-    marginRight: spacing.md,
+    paddingHorizontal: spacing.base,
   },
   linkTitle: {
     flex: 1,
     fontSize: typography.sizes.base,
     color: colors.textPrimary,
   },
-  chevron: {
-    fontSize: typography.sizes.lg,
-    color: colors.textTertiary,
+  rightText: {
+    fontSize: typography.sizes.sm,
+    color: colors.success,
+    fontWeight: typography.weights.medium,
+    marginRight: spacing.xs,
   },
   dangerText: {
     color: colors.error,
   },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginLeft: 56, // icon width + padding to align with text
+  },
+
   // Version
   version: {
     textAlign: 'center',
     fontSize: typography.sizes.sm,
     color: colors.textTertiary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xxl,
+    marginTop: spacing.base,
   },
 });
 

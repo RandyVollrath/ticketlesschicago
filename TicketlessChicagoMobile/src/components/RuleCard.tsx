@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, borderRadius, spacing } from '../theme';
 import { ParkingRule } from '../services/LocationService';
 
@@ -10,19 +11,19 @@ interface RuleCardProps {
 const getRuleIcon = (type: ParkingRule['type']): string => {
   switch (type) {
     case 'street_cleaning':
-      return '🧹';
+      return 'broom';
     case 'snow_route':
-      return '❄️';
+      return 'weather-snowy-heavy';
     case 'permit_zone':
-      return '🅿️';
+      return 'parking';
     case 'winter_ban':
-      return '🌙';
+      return 'weather-night';
     case 'rush_hour':
-      return '🚗';
+      return 'car-clock';
     case 'tow_zone':
-      return '🚨';
+      return 'tow-truck';
     default:
-      return '⚠️';
+      return 'alert-circle-outline';
   }
 };
 
@@ -83,7 +84,12 @@ const RuleCard: React.FC<RuleCardProps> = ({ rule }) => {
       ]}
     >
       <View style={styles.header}>
-        <Text style={styles.icon}>{getRuleIcon(rule.type)}</Text>
+        <MaterialCommunityIcons
+          name={getRuleIcon(rule.type)}
+          size={18}
+          color={severityStyle.textColor}
+          style={styles.icon}
+        />
         <View style={styles.headerText}>
           <Text style={[styles.label, { color: severityStyle.textColor }]}>
             {getRuleLabel(rule.type)}
@@ -99,13 +105,23 @@ const RuleCard: React.FC<RuleCardProps> = ({ rule }) => {
       <Text style={styles.message}>{rule.message}</Text>
       {rule.schedule && (
         <View style={styles.scheduleRow}>
-          <Text style={styles.scheduleIcon}>📅</Text>
+          <MaterialCommunityIcons
+            name="calendar-outline"
+            size={12}
+            color={colors.textTertiary}
+            style={styles.scheduleIcon}
+          />
           <Text style={styles.scheduleText}>{rule.schedule}</Text>
         </View>
       )}
       {rule.nextDate && !rule.isActiveNow && (
         <View style={styles.scheduleRow}>
-          <Text style={styles.scheduleIcon}>⏰</Text>
+          <MaterialCommunityIcons
+            name="clock-outline"
+            size={12}
+            color={colors.textTertiary}
+            style={styles.scheduleIcon}
+          />
           <Text style={styles.scheduleText}>Next: {rule.nextDate}</Text>
         </View>
       )}
@@ -133,7 +149,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   icon: {
-    fontSize: typography.sizes.md,
     marginRight: spacing.sm,
     marginTop: 2,
   },
@@ -164,7 +179,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   scheduleIcon: {
-    fontSize: typography.sizes.xs,
     marginRight: spacing.xs,
   },
   scheduleText: {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing } from '../theme';
 import { Button } from '../components';
 import { StorageKeys } from '../constants';
@@ -23,30 +24,30 @@ const { width } = Dimensions.get('window');
 
 interface OnboardingSlide {
   id: string;
-  icon: string;
+  icon: string;  // MaterialCommunityIcons name
   title: string;
   description: string;
   backgroundColor: string;
 }
 
-const SLIDES: OnboardingSlide[] = [
+const BASE_SLIDES: OnboardingSlide[] = [
   {
     id: '1',
-    icon: '🚗',
+    icon: 'car-connected',
     title: 'Welcome to Autopilot',
     description: 'Never get a parking ticket in Chicago again. We help you stay compliant with all parking rules.',
     backgroundColor: colors.primary,
   },
   {
     id: '2',
-    icon: '📍',
+    icon: 'map-marker-check',
     title: 'Check Any Location',
     description: 'Instantly check parking restrictions at your current location or anywhere in Chicago.',
     backgroundColor: '#5856D6',
   },
   {
     id: '3',
-    icon: '🔔',
+    icon: 'bell-ring-outline',
     title: 'Automatic Alerts',
     description: Platform.OS === 'ios'
       ? 'Automatically detects when you park and alerts you if there\'s a restriction.'
@@ -55,19 +56,35 @@ const SLIDES: OnboardingSlide[] = [
   },
   {
     id: '4',
-    icon: '🧹',
+    icon: 'broom',
     title: 'Street Cleaning',
     description: 'Know exactly when street cleaning is scheduled so you can move your car in time.',
     backgroundColor: '#FF9500',
   },
   {
     id: '5',
-    icon: '❄️',
+    icon: 'snowflake',
     title: 'Snow Routes',
     description: 'Get alerts for winter overnight parking bans and snow emergency routes.',
     backgroundColor: '#5AC8FA',
   },
 ];
+
+// Android gets an extra slide for Bluetooth pairing
+const ANDROID_BT_SLIDE: OnboardingSlide = {
+  id: '6',
+  icon: 'bluetooth-connect',
+  title: 'Pair Your Car',
+  description:
+    'Connect your car\'s Bluetooth in Settings first, then select it in the app. ' +
+    'We detect when you turn off your engine and automatically check parking rules.',
+  backgroundColor: '#007AFF',
+};
+
+const SLIDES: OnboardingSlide[] =
+  Platform.OS === 'android'
+    ? [...BASE_SLIDES, ANDROID_BT_SLIDE]
+    : BASE_SLIDES;
 
 interface OnboardingScreenProps {
   navigation: any;
@@ -129,7 +146,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
       accessibilityRole="text"
       accessibilityLabel={`${item.title}. ${item.description}`}
     >
-      <Text style={styles.icon} accessibilityElementsHidden>{item.icon}</Text>
+      <View style={styles.iconContainer}>
+        <MaterialCommunityIcons
+          name={item.icon}
+          size={72}
+          color={colors.white}
+        />
+      </View>
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.description}>{item.description}</Text>
     </View>
@@ -219,7 +242,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
             size="lg"
             onPress={goToNextSlide}
             style={styles.nextButton}
-            accessibilityLabel={isLastSlide ? 'Get started with Ticketless' : `Go to next slide, ${currentIndex + 2} of ${SLIDES.length}`}
+            accessibilityLabel={isLastSlide ? 'Get started with Autopilot' : `Go to next slide, ${currentIndex + 2} of ${SLIDES.length}`}
           />
         </View>
       </View>
@@ -248,8 +271,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.xxl,
   },
-  icon: {
-    fontSize: 80,
+  iconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.xl,
   },
   title: {

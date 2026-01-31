@@ -1,13 +1,19 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { colors, typography, spacing } from '../theme';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { colors, typography, spacing, shadows } from '../theme';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
-  Home: { active: '🏠', inactive: '🏡' },
-  Map: { active: '📍', inactive: '📌' },
-  History: { active: '📋', inactive: '📄' },
-  Profile: { active: '⚙️', inactive: '⚙️' },
+  Home: { active: 'shield-check', inactive: 'shield-check-outline' },
+  History: { active: 'history', inactive: 'clock-outline' },
+  Settings: { active: 'cog', inactive: 'cog-outline' },
+};
+
+const TAB_LABELS: Record<string, string> = {
+  Home: 'Home',
+  History: 'History',
+  Settings: 'Settings',
 };
 
 const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
@@ -15,9 +21,9 @@ const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation })
     <View style={styles.container}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
-        const label = options.tabBarLabel ?? options.title ?? route.name;
+        const label = TAB_LABELS[route.name] || options.tabBarLabel || options.title || route.name;
         const isFocused = state.index === index;
-        const icons = TAB_ICONS[route.name] || { active: '●', inactive: '○' };
+        const icons = TAB_ICONS[route.name] || { active: 'circle', inactive: 'circle-outline' };
 
         const onPress = () => {
           const event = navigation.emit({
@@ -43,19 +49,22 @@ const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation })
             key={route.key}
             accessibilityRole="button"
             accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
+            accessibilityLabel={options.tabBarAccessibilityLabel || `${label} tab`}
             testID={(options as any).tabBarTestID}
             onPress={onPress}
             onLongPress={onLongPress}
             style={styles.tab}
           >
-            <Text style={styles.icon}>
-              {isFocused ? icons.active : icons.inactive}
-            </Text>
+            <View style={[styles.iconContainer, isFocused && styles.iconContainerActive]}>
+              <MaterialCommunityIcons
+                name={isFocused ? icons.active : icons.inactive}
+                size={22}
+                color={isFocused ? colors.primary : colors.textTertiary}
+              />
+            </View>
             <Text style={[styles.label, isFocused && styles.labelActive]}>
               {label as string}
             </Text>
-            {isFocused && <View style={styles.indicator} />}
           </TouchableOpacity>
         );
       })}
@@ -69,36 +78,35 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingBottom: spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? 0 : spacing.sm,
     paddingTop: spacing.sm,
+    ...shadows.sm,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    position: 'relative',
+    paddingVertical: spacing.xs,
   },
-  icon: {
-    fontSize: 20,
-    marginBottom: spacing.xs,
+  iconContainer: {
+    width: 48,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    marginBottom: 2,
+  },
+  iconContainerActive: {
+    backgroundColor: colors.primaryTint,
   },
   label: {
     fontSize: typography.sizes.xs,
-    color: colors.textSecondary,
+    color: colors.textTertiary,
     fontWeight: typography.weights.medium,
   },
   labelActive: {
     color: colors.primary,
     fontWeight: typography.weights.semibold,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 0,
-    width: 24,
-    height: 3,
-    backgroundColor: colors.primary,
-    borderRadius: 2,
   },
 });
 

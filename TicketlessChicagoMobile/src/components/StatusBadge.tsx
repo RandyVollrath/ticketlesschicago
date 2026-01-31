@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, borderRadius, spacing } from '../theme';
 
 type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
@@ -7,6 +8,7 @@ type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 interface StatusBadgeProps {
   text: string;
   variant?: BadgeVariant;
+  /** MaterialCommunityIcons icon name */
   icon?: string;
 }
 
@@ -55,7 +57,14 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
         { backgroundColor: variantStyles.backgroundColor },
       ]}
     >
-      {icon && <Text style={styles.icon}>{icon}</Text>}
+      {icon && (
+        <MaterialCommunityIcons
+          name={icon}
+          size={12}
+          color={variantStyles.textColor}
+          style={styles.icon}
+        />
+      )}
       <Text style={[styles.text, { color: variantStyles.textColor }]}>
         {text}
       </Text>
@@ -73,7 +82,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   icon: {
-    fontSize: typography.sizes.xs,
     marginRight: spacing.xs,
   },
   text: {
