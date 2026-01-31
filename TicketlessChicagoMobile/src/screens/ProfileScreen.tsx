@@ -27,13 +27,11 @@ const log = Logger.createLogger('ProfileScreen');
 
 interface AppSettings {
   notificationsEnabled: boolean;
-  autoCheckOnDisconnect: boolean;
   criticalAlertsEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
-  autoCheckOnDisconnect: true,
   criticalAlertsEnabled: true,
 };
 
@@ -404,13 +402,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             title={savedCar ? `Car: ${savedCar.name}` : 'Pair Your Car'}
             icon="🚗"
             onPress={() => navigation.navigate('BluetoothSettings')}
-          />
-          <View style={styles.settingDivider} />
-          <SettingRow
-            title="Auto Check on Disconnect"
-            subtitle="Check parking when you leave your car"
-            value={settings.autoCheckOnDisconnect}
-            onValueChange={v => updateSetting('autoCheckOnDisconnect', v)}
           />
         </Card>
 
