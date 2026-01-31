@@ -384,7 +384,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.cardDescription}>
             {isMonitoring
               ? Platform.OS === 'ios'
-                ? `Current: ${currentActivity === 'automotive' ? 'Driving' : currentActivity === 'walking' ? 'Walking' : currentActivity === 'stationary' ? 'Stationary' : currentActivity}. We'll check parking when you stop.`
+                ? currentActivity === 'automotive'
+                  ? 'Driving detected. We\'ll check parking when you stop.'
+                  : currentActivity === 'stationary'
+                    ? 'Parked. Monitoring for your next drive.'
+                    : currentActivity === 'walking'
+                      ? 'Walking. Monitoring for your next drive.'
+                      : 'Monitoring active.'
                 : isCarConnected
                   ? 'Driving detected. We\'ll check parking when you disconnect.'
                   : savedCarName

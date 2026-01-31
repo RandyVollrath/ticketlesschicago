@@ -19,12 +19,20 @@ import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('HistoryScreen');
 
-interface ParkingHistoryItem {
+export interface ParkingHistoryItem {
   id: string;
   coords: Coordinates;
   address?: string;
   rules: ParkingRule[];
   timestamp: number;
+  // Departure tracking (for ticket contesting)
+  departure?: {
+    confirmedAt: number;       // When departure was recorded
+    distanceMeters: number;    // Distance from parking spot
+    isConclusive: boolean;     // Far enough to prove departure
+    latitude: number;
+    longitude: number;
+  };
 }
 
 const HISTORY_KEY = StorageKeys.PARKING_HISTORY;
@@ -77,6 +85,24 @@ export const ParkingHistoryService = {
     } catch (error) {
       log.error('Error deleting history item', error);
     }
+  },
+
+  async updateItem(id: string, updates: Partial<ParkingHistoryItem>): Promise<void> {
+    try {
+      const history = await this.getHistory();
+      const updated = history.map(item =>
+        item.id === id ? { ...item, ...updates } : item
+      );
+      await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    } catch (error) {
+      log.error('Error updating history item', error);
+    }
+  },
+
+  /** Find the most recent history item (to attach departure data to) */
+  async getMostRecent(): Promise<ParkingHistoryItem | null> {
+    const history = await this.getHistory();
+    return history.length > 0 ? history[0] : null;
   },
 };
 
@@ -268,7 +294,24 @@ const HistoryScreen: React.FC = () => {
 
         {isExpanded && item.rules.length === 0 && (
           <View style={styles.clearContainer}>
-            <Text style={styles.clearText}>✅ No parking restrictions found</Text>
+            <Text style={styles.clearText}>No parking restrictions found</Text>
+          </View>
+        )}
+
+        {isExpanded && item.departure && (
+          <View style={styles.departureContainer}>
+            <Text style={styles.departureTitle}>Departure Record</Text>
+            <Text style={styles.departureText}>
+              Left at {formatTime(item.departure.confirmedAt)} ({Math.round(item.departure.distanceMeters)}m from car)
+            </Text>
+            <Text style={[
+              styles.departureStatus,
+              { color: item.departure.isConclusive ? colors.success : colors.warning }
+            ]}>
+              {item.departure.isConclusive
+                ? 'Verified departure - usable as evidence'
+                : 'Recorded but distance was short'}
+            </Text>
           </View>
         )}
 
@@ -426,6 +469,27 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: typography.sizes.base,
     color: colors.success,
+    fontWeight: typography.weights.medium,
+  },
+  departureContainer: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  departureTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  departureText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  departureStatus: {
+    fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
   },
   expandHint: {
