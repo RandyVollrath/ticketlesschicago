@@ -91,7 +91,7 @@ class LocationServiceClass {
           {
             title: 'Background Location Permission',
             message:
-              'Ticketless Chicago needs background location access to automatically check parking restrictions when you disconnect from your car, even when the app is closed.',
+              'Autopilot needs background location access to automatically check parking restrictions when you park, even when the app is closed.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',

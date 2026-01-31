@@ -328,7 +328,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.pairCarTextWrap}>
                 <Text style={styles.pairCarTitle}>Pair Your Car</Text>
                 <Text style={styles.pairCarSubtitle}>
-                  Select your car's Bluetooth so we can alert you when you park in a violation zone.
+                  One-time setup so we can detect when you park and check for restrictions.
                 </Text>
               </View>
               <Text style={styles.pairCarChevron}>›</Text>
@@ -390,9 +390,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     ? 'Parked. We\'ll check again on your next drive.'
                     : 'Ready.'
                 : isCarConnected
-                  ? 'Driving detected. We\'ll check parking when you disconnect.'
+                  ? 'Driving detected. We\'ll check parking when you stop.'
                   : savedCarName
-                    ? 'Waiting for Bluetooth connection to your car.'
+                    ? 'Ready. Waiting for your next drive.'
                     : 'Pair your car in Settings to enable auto-detection.'
               : 'Parking detection is paused.'}
           </Text>
