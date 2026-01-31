@@ -8,6 +8,7 @@ import {
   Animated,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,7 +48,9 @@ const SLIDES: OnboardingSlide[] = [
     id: '3',
     icon: '🔔',
     title: 'Automatic Alerts',
-    description: 'Automatically detects when you park and alerts you if there\'s a restriction.',
+    description: Platform.OS === 'ios'
+      ? 'Automatically detects when you park and alerts you if there\'s a restriction.'
+      : 'Pair your car\'s Bluetooth once and get automatic alerts every time you park.',
     backgroundColor: '#34C759',
   },
   {
