@@ -179,8 +179,13 @@ export default function TicketHeatmap() {
             >
               ← Back to Home
             </button>
-            <h1 style={{ margin: '0', fontSize: '32px', fontWeight: 'bold', color: '#111827' }}>
-              🎯 Chicago Parking Ticket Heatmap
+            <h1 style={{ margin: '0', fontSize: '32px', fontWeight: 'bold', color: '#111827', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+              Chicago Parking Ticket Heatmap
             </h1>
             <p style={{ margin: '10px 0 0 0', color: '#6b7280', fontSize: '16px' }}>
               See which neighborhoods and wards have the highest parking ticket risk (2020-2024 data)
@@ -199,8 +204,12 @@ export default function TicketHeatmap() {
             marginBottom: '20px',
             textAlign: 'center'
           }}>
-            <h2 style={{ margin: '0 0 12px 0', fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>
-              💰 Chicago Paid $259M in Car Tickets Last Year
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '24px', fontWeight: 'bold', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+              Chicago Paid $259M in Car Tickets Last Year
             </h2>
             <p style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af' }}>
               Average driver could lose $1,000+/year to preventable tickets. Don't be a statistic.
@@ -248,7 +257,7 @@ export default function TicketHeatmap() {
             textAlign: 'center'
           }}>
             <h2 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: 'bold', color: '#166534' }}>
-              🚗 Fleet Operator? Prevent tickets with location-based alerts
+              Fleet Operator? Prevent tickets with location-based alerts
             </h2>
             <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#166534' }}>
               API integration for car sharing, rental, and fleet management platforms
@@ -423,9 +432,15 @@ export default function TicketHeatmap() {
                   tickets in 2024
                 </p>
                 <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e5e7eb' }}>
-                  <p style={{ margin: '0', fontSize: '12px', color: '#6b7280' }}>
-                    {ward.yoy_change > 0 ? '📈' : ward.yoy_change < 0 ? '📉' : '➡️'}
-                    {' '}{ward.yoy_change > 0 ? '+' : ''}{ward.yoy_change}% YoY
+                  <p style={{ margin: '0', fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {ward.yoy_change > 0 ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    ) : ward.yoy_change < 0 ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'scaleY(-1)' }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    )}
+                    {ward.yoy_change > 0 ? '+' : ''}{ward.yoy_change}% YoY
                   </p>
                   <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
                     5yr avg: {ward.avg_per_year.toLocaleString()}/yr

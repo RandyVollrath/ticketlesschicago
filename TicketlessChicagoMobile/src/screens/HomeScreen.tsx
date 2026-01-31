@@ -58,8 +58,8 @@ const getHeroConfig = (
     case 'driving':
       return {
         icon: 'car',
-        title: 'Driving',
-        subtitle: 'We\'ll check parking when you stop.',
+        title: 'You\'re on the move',
+        subtitle: 'We\'ll check parking when you stop. Drive safe!',
         bgColor: colors.primary,
         iconColor: colors.white,
         textColor: colors.white,
@@ -67,7 +67,7 @@ const getHeroConfig = (
     case 'checking':
       return {
         icon: 'radar',
-        title: 'Checking...',
+        title: 'Checking your spot...',
         subtitle: 'Scanning parking restrictions at your location.',
         bgColor: colors.primary,
         iconColor: colors.white,
@@ -76,8 +76,8 @@ const getHeroConfig = (
     case 'clear':
       return {
         icon: 'shield-check',
-        title: 'All Clear',
-        subtitle: address || 'No parking restrictions found.',
+        title: 'You\'re good here',
+        subtitle: address || 'No parking restrictions found. Relax.',
         bgColor: colors.success,
         iconColor: colors.white,
         textColor: colors.white,
@@ -85,8 +85,10 @@ const getHeroConfig = (
     case 'violation':
       return {
         icon: 'alert-circle',
-        title: `${ruleCount} Issue${ruleCount > 1 ? 's' : ''} Found`,
-        subtitle: address || 'Parking restrictions detected.',
+        title: `Heads up!`,
+        subtitle: address
+          ? `${ruleCount} restriction${ruleCount > 1 ? 's' : ''} at ${address}`
+          : `${ruleCount} parking restriction${ruleCount > 1 ? 's' : ''} detected.`,
         bgColor: colors.error,
         iconColor: colors.white,
         textColor: colors.white,
@@ -94,19 +96,19 @@ const getHeroConfig = (
     case 'paused':
       return {
         icon: 'pause-circle-outline',
-        title: 'Paused',
-        subtitle: 'Parking detection is paused.',
-        bgColor: colors.background,
-        iconColor: colors.textTertiary,
+        title: 'Taking a break',
+        subtitle: 'Tap Resume to start watching again.',
+        bgColor: colors.primaryTint,
+        iconColor: colors.primary,
         textColor: colors.textPrimary,
       };
     case 'ready':
     default:
       return {
         icon: 'shield-check-outline',
-        title: 'Ready',
+        title: 'We\'ve got your back',
         subtitle: 'Autopilot is watching for your next drive.',
-        bgColor: colors.cardBg,
+        bgColor: colors.primaryTint,
         iconColor: colors.primary,
         textColor: colors.textPrimary,
       };
@@ -460,7 +462,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           accessibilityLabel={`${heroConfig.title}. ${heroConfig.subtitle}`}
         >
           <View style={styles.heroContent}>
-            <View style={[styles.heroIconCircle, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <View style={[
+              styles.heroIconCircle,
+              { backgroundColor: heroState === 'ready' || heroState === 'paused'
+                ? 'rgba(0,102,255,0.1)'
+                : 'rgba(255,255,255,0.2)' },
+            ]}>
               <MaterialCommunityIcons
                 name={heroConfig.icon}
                 size={32}
@@ -505,7 +512,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 ))
               ) : (
                 <Text style={styles.heroExpandedText}>
-                  No restrictions at this location. You're good to park here.
+                  No restrictions at this location. Park with peace of mind.
                 </Text>
               )}
               <View style={styles.heroActions}>

@@ -91,9 +91,16 @@ export default function HowItWorks() {
                 background: '#dbeafe',
                 borderRadius: '50%',
                 padding: '12px',
-                marginRight: '16px'
+                marginRight: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                <span style={{ fontSize: '24px' }}>🚨</span>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#2563eb' }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
               </div>
               <h3 style={{ 
                 fontSize: '20px', 
@@ -186,9 +193,15 @@ export default function HowItWorks() {
                 background: '#dcfce7',
                 borderRadius: '50%',
                 padding: '12px',
-                marginRight: '16px'
+                marginRight: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                <span style={{ fontSize: '24px' }}>📋</span>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#16a34a' }}>
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
               </div>
               <h3 style={{ 
                 fontSize: '20px', 

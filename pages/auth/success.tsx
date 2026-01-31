@@ -171,7 +171,7 @@ export default function AuthSuccess() {
                     fontWeight: 'bold', 
                     color: '#111827',
                     marginBottom: '8px'
-                  }}>🎉 Welcome to Ticketless!</h1>
+                  }}>Welcome to Ticketless!</h1>
                   
                   <p style={{
                     fontSize: '18px',
@@ -201,7 +201,7 @@ export default function AuthSuccess() {
                   color: 'white',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🚗💚✨</div>
+                  <div style={{ marginBottom: '8px' }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                   <h3 style={{ 
                     fontSize: '18px', 
                     fontWeight: '700',
@@ -231,7 +231,7 @@ export default function AuthSuccess() {
                     alignItems: 'center',
                     gap: '8px'
                   }}>
-                    🚀 What's Next
+                    What's Next
                   </h3>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

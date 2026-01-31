@@ -27,8 +27,13 @@ export default function FOIADemo() {
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '12px' }}>
-            🎯 FOIA Data Integration Demo
+          <h1 style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="6"/>
+              <circle cx="12" cy="12" r="2"/>
+            </svg>
+            FOIA Data Integration Demo
           </h1>
           <p style={{ fontSize: '18px', color: '#6b7280', marginBottom: '8px' }}>
             Testing 1.2M Chicago contested ticket records
@@ -46,8 +51,12 @@ export default function FOIADemo() {
           padding: '24px',
           marginBottom: '32px'
         }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e40af', marginBottom: '16px' }}>
-            📋 How to Test
+          <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e40af', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            </svg>
+            How to Test
           </h2>
           <ol style={{ color: '#1e3a8a', lineHeight: '1.8', marginLeft: '20px' }}>
             <li><strong>Click a violation code button below</strong> (or enter your own)</li>
@@ -156,16 +165,16 @@ export default function FOIADemo() {
           border: '1px solid #e5e7eb'
         }}>
           <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-            ✅ Success Checklist
+            Success Checklist
           </h3>
           <div style={{ color: '#374151', lineHeight: '2' }}>
-            <div>✅ Blue insights box appeared</div>
-            <div>✅ Shows win rate percentage (e.g., 57.2%)</div>
-            <div>✅ Shows "Based on X real cases"</div>
-            <div>✅ Shows green recommendation badge</div>
-            <div>✅ Shows best contest method (Mail vs In-Person)</div>
-            <div>✅ Shows top 3 dismissal reasons</div>
-            <div>✅ Shows data source "Chicago DOAH FOIA"</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Blue insights box appeared</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Shows win rate percentage (e.g., 57.2%)</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Shows "Based on X real cases"</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Shows green recommendation badge</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Shows best contest method (Mail vs In-Person)</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Shows top 3 dismissal reasons</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Shows data source "Chicago DOAH FOIA"</div>
           </div>
         </div>
 
@@ -177,8 +186,13 @@ export default function FOIADemo() {
           padding: '20px',
           marginTop: '24px'
         }}>
-          <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#166534', marginBottom: '12px' }}>
-            🧪 Tests to Run
+          <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#166534', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5h0c-1.4 0-2.5-1.1-2.5-2.5V2"/>
+              <path d="M8.5 2h7"/>
+              <path d="M14.5 16h-5"/>
+            </svg>
+            Tests to Run
           </h4>
           <div style={{ color: '#166534', fontSize: '14px', lineHeight: '1.8' }}>
             <p><strong>Test 1:</strong> Code 0976160B → Shows win rate from ALL records for this violation</p>

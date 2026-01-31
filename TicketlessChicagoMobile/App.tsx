@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import AlertsScreen from './src/screens/AlertsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -47,6 +48,7 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   History: undefined;
+  Alerts: undefined;
   Settings: undefined;
 };
 
@@ -74,6 +76,11 @@ function MainTabNavigator() {
         name="History"
         component={HistoryScreen}
         options={{ tabBarLabel: 'History' }}
+      />
+      <Tab.Screen
+        name="Alerts"
+        component={AlertsScreen}
+        options={{ tabBarLabel: 'Alerts' }}
       />
       <Tab.Screen
         name="Settings"

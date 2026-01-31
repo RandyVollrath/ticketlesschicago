@@ -305,7 +305,7 @@ export default function DashboardPage() {
               margin: '0 auto 24px',
               fontSize: 40,
             }}>
-              🚀
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={COLORS.highlight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             </div>
 
             <h1 style={{
@@ -552,7 +552,7 @@ export default function DashboardPage() {
         }>
           {tickets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+              <div style={{ marginBottom: 16, color: COLORS.accent }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <h4 style={{
                 margin: '0 0 8px',
                 fontSize: 18,
@@ -743,7 +743,7 @@ export default function DashboardPage() {
             }}
             onMouseOver={(e) => e.currentTarget.style.borderColor = COLORS.primary}
             onMouseOut={(e) => e.currentTarget.style.borderColor = COLORS.border}>
-              <div style={{ fontSize: 24, marginBottom: 10 }}>📋</div>
+              <div style={{ marginBottom: 10, color: COLORS.textMuted }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
               <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.primary, marginBottom: 4 }}>
                 View All Tickets
               </div>
@@ -765,7 +765,7 @@ export default function DashboardPage() {
             }}
             onMouseOver={(e) => e.currentTarget.style.borderColor = COLORS.primary}
             onMouseOut={(e) => e.currentTarget.style.borderColor = COLORS.border}>
-              <div style={{ fontSize: 24, marginBottom: 10 }}>🏛️</div>
+              <div style={{ marginBottom: 10, color: COLORS.textMuted }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg></div>
               <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.primary, marginBottom: 4 }}>
                 City of Chicago
               </div>

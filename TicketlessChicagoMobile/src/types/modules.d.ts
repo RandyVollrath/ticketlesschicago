@@ -73,6 +73,36 @@ declare module 'react-native-vector-icons/Ionicons' {
   export default class Ionicons extends Component<IconProps> {}
 }
 
+// React Native WebView
+declare module 'react-native-webview' {
+  import { Component } from 'react';
+  import { ViewProps } from 'react-native';
+
+  interface WebViewProps extends ViewProps {
+    source?: { uri: string } | { html: string };
+    injectedJavaScript?: string;
+    onLoadStart?: (event: any) => void;
+    onLoadEnd?: (event: any) => void;
+    onError?: (event: any) => void;
+    onHttpError?: (event: any) => void;
+    startInLoadingState?: boolean;
+    renderLoading?: () => React.ReactElement;
+    javaScriptEnabled?: boolean;
+    domStorageEnabled?: boolean;
+    sharedCookiesEnabled?: boolean;
+    thirdPartyCookiesEnabled?: boolean;
+    cacheEnabled?: boolean;
+    userAgent?: string;
+  }
+
+  export class WebView extends Component<WebViewProps> {
+    reload(): void;
+    goBack(): void;
+    goForward(): void;
+    injectJavaScript(script: string): void;
+  }
+}
+
 // NetInfo
 declare module '@react-native-community/netinfo' {
   export interface NetInfoState {

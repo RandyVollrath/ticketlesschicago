@@ -145,7 +145,7 @@ function TabNavigation({ activeTab, onTabChange }: { activeTab: 'dashboard' | 's
           gap: 8,
         }}
       >
-        <span style={{ fontSize: 18 }}>📊</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Dashboard
       </button>
       <button
@@ -168,7 +168,7 @@ function TabNavigation({ activeTab, onTabChange }: { activeTab: 'dashboard' | 's
           gap: 8,
         }}
       >
-        <span style={{ fontSize: 18 }}>⚙️</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Settings
       </button>
     </div>
@@ -254,7 +254,7 @@ function DashboardContent({
           margin: '0 auto 24px',
           fontSize: 40,
         }}>
-          🚀
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={COLORS.highlight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
 
         <h2 style={{
@@ -373,7 +373,7 @@ function DashboardContent({
           alignItems: 'center',
           gap: 16,
         }}>
-          <div style={{ fontSize: 32 }}>⚠️</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32 }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.danger} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
           <div style={{ flex: 1 }}>
             <h4 style={{ margin: '0 0 8px', color: COLORS.danger, fontWeight: 700, fontSize: 16, fontFamily: FONTS.heading }}>
               {needsApproval.length} ticket{needsApproval.length > 1 ? 's' : ''} need{needsApproval.length === 1 ? 's' : ''} your approval
@@ -395,7 +395,7 @@ function DashboardContent({
       }>
         {tickets.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+            <div style={{ marginBottom: 16, color: COLORS.accent }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <h4 style={{
               margin: '0 0 8px',
               fontSize: 18,
@@ -1374,7 +1374,7 @@ export default function SettingsPage() {
             marginBottom: 20,
           }}>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#991B1B' }}>
-              ⚠️ Action Required: Complete Your Profile
+              Action Required: Complete Your Profile
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 14, color: '#991B1B' }}>
               {(() => {
@@ -1741,9 +1741,9 @@ export default function SettingsPage() {
                 alignItems: 'center',
                 gap: 6,
               }}>
-                {wardLookupStatus === 'loading' && '⏳'}
-                {wardLookupStatus === 'success' && '✓'}
-                {wardLookupStatus === 'error' && '⚠'}
+                {wardLookupStatus === 'loading' && 'Loading...'}
+                {wardLookupStatus === 'success' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                {wardLookupStatus === 'error' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.danger} strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
                 {wardLookupMessage}
               </div>
             )}
@@ -2691,7 +2691,7 @@ export default function SettingsPage() {
               textAlign: 'center',
               color: COLORS.white,
             }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <div style={{ marginBottom: 12 }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <h2 style={{ margin: 0, fontSize: 24, fontFamily: FONTS.heading }}>
                 Welcome to Autopilot!
               </h2>

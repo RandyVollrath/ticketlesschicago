@@ -87,12 +87,12 @@ export default function Attorneys() {
 
   const getBadgeInfo = (badge: string) => {
     const badges: { [key: string]: { label: string; color: string } } = {
-      verified: { label: '✓ Verified', color: '#10b981' },
-      featured: { label: '⭐ Featured', color: '#f59e0b' },
-      high_win_rate: { label: '🏆 High Win Rate', color: '#3b82f6' },
-      highly_rated: { label: '⭐ Highly Rated', color: '#f59e0b' },
-      fast_response: { label: '⚡ Fast Response', color: '#8b5cf6' },
-      experienced: { label: '👨‍⚖️ Experienced', color: '#6b7280' }
+      verified: { label: 'Verified', color: '#10b981' },
+      featured: { label: 'Featured', color: '#f59e0b' },
+      high_win_rate: { label: 'High Win Rate', color: '#3b82f6' },
+      highly_rated: { label: 'Highly Rated', color: '#f59e0b' },
+      fast_response: { label: 'Fast Response', color: '#8b5cf6' },
+      experienced: { label: 'Experienced', color: '#6b7280' }
     };
 
     return badges[badge] || { label: badge, color: '#6b7280' };
@@ -148,7 +148,9 @@ export default function Attorneys() {
             fontSize: '28px',
             boxShadow: '0 2px 12px rgba(0,0,0,0.12)'
           }}>
-            🛡️
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
             <span style={{ fontSize: '28px', fontWeight: '700', color: '#000' }}>
@@ -298,7 +300,12 @@ export default function Attorneys() {
             border: '1px solid #e5e7eb',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>👨‍⚖️</div>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4M12 16h.01"/>
+              </svg>
+            </div>
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
               No Attorneys Found
             </h3>
@@ -487,14 +494,14 @@ function QuoteModal({ attorney, userId, onClose }: QuoteModalProps) {
         throw new Error(result.error || 'Failed to send quote request');
       }
 
-      setMessage('✅ Quote request sent! You should hear back within ' + (attorney.response_time_hours || 24) + ' hours.');
+      setMessage('Quote request sent! You should hear back within ' + (attorney.response_time_hours || 24) + ' hours.');
 
       setTimeout(() => {
         onClose();
       }, 2000);
     } catch (error: any) {
       console.error('Quote request error:', error);
-      setMessage(`❌ ${error.message}`);
+      setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -660,10 +667,10 @@ function QuoteModal({ attorney, userId, onClose }: QuoteModalProps) {
             <div style={{
               padding: '12px 16px',
               borderRadius: '8px',
-              backgroundColor: message.includes('❌') ? '#fef2f2' : '#f0fdf4',
-              color: message.includes('❌') ? '#dc2626' : '#166534',
+              backgroundColor: message.includes('Error') ? '#fef2f2' : '#f0fdf4',
+              color: message.includes('Error') ? '#dc2626' : '#166534',
               border: '1px solid',
-              borderColor: message.includes('❌') ? '#fecaca' : '#bbf7d0',
+              borderColor: message.includes('Error') ? '#fecaca' : '#bbf7d0',
               fontSize: '14px'
             }}>
               {message}
