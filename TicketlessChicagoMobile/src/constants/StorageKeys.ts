@@ -34,7 +34,6 @@ export const StorageKeys = {
 
   // User Preferences
   BACKGROUND_LOCATION_ENABLED: 'backgroundLocationEnabled',
-  AUTO_CHECK_ON_DISCONNECT: 'autoCheckOnDisconnect',
 
   // Cache
   LAST_API_RESPONSE_CACHE: 'lastApiResponseCache',

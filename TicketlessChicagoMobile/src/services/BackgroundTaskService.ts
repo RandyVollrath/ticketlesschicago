@@ -118,17 +118,6 @@ class BackgroundTaskServiceClass {
     onReconnect?: () => void
   ): Promise<boolean> {
     try {
-      // Check if auto-check is enabled in settings (defaults to true if never set)
-      const settingsJson = await AsyncStorage.getItem(StorageKeys.APP_SETTINGS);
-      const settings = settingsJson ? JSON.parse(settingsJson) : {};
-      const autoCheck = settings.autoCheckOnDisconnect !== undefined
-        ? settings.autoCheckOnDisconnect
-        : true;
-      if (!autoCheck) {
-        log.info('Auto-check on disconnect is disabled');
-        return false;
-      }
-
       this.disconnectCallback = onDisconnect || null;
       this.reconnectCallback = onReconnect || null;
       this.state.isMonitoring = true;
