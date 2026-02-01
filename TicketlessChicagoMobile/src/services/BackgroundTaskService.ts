@@ -10,7 +10,7 @@
  * Falls back to foreground-only monitoring if background fetch is not available.
  */
 
-import { Platform, AppState, AppStateStatus } from 'react-native';
+import { Platform, AppState, AppStateStatus, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BluetoothService from './BluetoothService';
@@ -91,11 +91,64 @@ class BackgroundTaskServiceClass {
       // Initialize local notification scheduling service
       await LocalNotificationService.initialize();
 
+      // iOS: Self-test native modules to catch build issues early
+      if (Platform.OS === 'ios') {
+        await this.iosSelfTest();
+      }
+
       this.state.isInitialized = true;
       log.info('BackgroundTaskService initialized');
     } catch (error) {
       log.error('Failed to initialize BackgroundTaskService', error);
     }
+  }
+
+  /**
+   * iOS self-test: verify native modules are actually loaded and responding.
+   * This catches the exact problem we had where .swift files existed on disk
+   * but weren't compiled into the app.
+   */
+  private async iosSelfTest(): Promise<void> {
+    const bgModule = NativeModules.BackgroundLocationModule;
+    const motionModule = NativeModules.MotionActivityModule;
+
+    const results: string[] = [];
+
+    // Test BackgroundLocationModule
+    if (!bgModule) {
+      results.push('BackgroundLocationModule: NOT LOADED (Swift file not compiled?)');
+      log.error('BackgroundLocationModule native module is NULL - not in Xcode build');
+    } else {
+      try {
+        const status = await bgModule.getPermissionStatus();
+        results.push(`BackgroundLocationModule: OK (perm=${status})`);
+        log.info(`BackgroundLocationModule self-test passed. Permission: ${status}`);
+      } catch (e) {
+        results.push(`BackgroundLocationModule: LOADED but error (${String(e)})`);
+        log.error('BackgroundLocationModule self-test call failed:', e);
+      }
+    }
+
+    // Test MotionActivityModule
+    if (!motionModule) {
+      results.push('MotionActivityModule: NOT LOADED');
+      log.error('MotionActivityModule native module is NULL - not in Xcode build');
+    } else {
+      try {
+        const available = await motionModule.isAvailable();
+        results.push(`MotionActivityModule: OK (available=${available})`);
+        log.info(`MotionActivityModule self-test passed. Available: ${available}`);
+      } catch (e) {
+        results.push(`MotionActivityModule: LOADED but error (${String(e)})`);
+        log.error('MotionActivityModule self-test call failed:', e);
+      }
+    }
+
+    // Send one diagnostic notification with all results
+    await this.sendDiagnosticNotification(
+      'iOS Module Check',
+      results.join('\n')
+    );
   }
 
   /**
