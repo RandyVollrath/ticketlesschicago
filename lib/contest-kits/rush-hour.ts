@@ -80,6 +80,18 @@ export const rushHourKit: ContestKit = {
     ],
     optional: [
       {
+        id: 'gps_departure_proof',
+        name: 'GPS Departure Evidence (Autopilot App)',
+        description: 'GPS-verified proof from the Autopilot app showing you moved your vehicle before rush hour restrictions began',
+        impactScore: 0.30,
+        example: 'App data showing GPS-confirmed departure at 6:45 AM, 15 minutes before the 7:00 AM rush hour start, with movement of 200 meters',
+        tips: [
+          'Automatically checked when generating a contest letter',
+          'Proves your vehicle was not there during restricted hours',
+          'GPS timestamps are verifiable digital evidence',
+        ],
+      },
+      {
         id: 'calendar_proof',
         name: 'Holiday/Weekend Proof',
         description: 'Evidence ticket was issued on holiday or weekend',

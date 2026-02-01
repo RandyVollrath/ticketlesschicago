@@ -88,6 +88,19 @@ export const streetCleaningKit: ContestKit = {
     ],
     optional: [
       {
+        id: 'gps_departure_proof',
+        name: 'GPS Departure Evidence (Autopilot App)',
+        description: 'GPS-verified proof from the Autopilot app showing you left your parking spot before street cleaning began',
+        impactScore: 0.35,
+        example: 'App data showing GPS-confirmed departure at 8:50 AM, 10 minutes before the 9:00 AM cleaning start time, with movement of 150 meters from parking spot',
+        tips: [
+          'This is automatically checked when you generate a contest letter',
+          'The app records when your car starts moving via Bluetooth and GPS',
+          'Departure must be confirmed by GPS (moved 50+ meters) for strongest evidence',
+          'Timestamps are GPS-verified and can serve as digital evidence',
+        ],
+      },
+      {
         id: 'weather_records',
         name: 'Weather Records',
         description: 'Weather data showing conditions that would have cancelled street cleaning',
@@ -203,7 +216,7 @@ As my vehicle was not present during the actual street cleaning period, I should
         conditions: [
           { field: 'vehicleWasMoved', operator: 'equals', value: true },
         ],
-        supportingEvidence: ['timestamp_evidence'],
+        supportingEvidence: ['timestamp_evidence', 'gps_departure_proof'],
         category: 'circumstantial',
       },
       {

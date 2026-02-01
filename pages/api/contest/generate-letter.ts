@@ -13,6 +13,11 @@ import {
   TicketFacts,
   UserEvidence,
 } from '../../../lib/contest-kits';
+import {
+  lookupParkingEvidence,
+  generateEvidenceParagraph,
+  ParkingEvidenceResult,
+} from '../../../lib/parking-evidence';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -310,6 +315,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hasPoliceReport: supportingDocs.some((d: any) => d.type === 'police_report'),
       hasMedicalDocs: supportingDocs.some((d: any) => d.type === 'medical'),
       docTypes: supportingDocs.map((d: any) => d.type),
+      hasLocationEvidence: false, // Will be updated after parking evidence lookup
     };
 
     // Get contest kit and evaluate if available
@@ -350,9 +356,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       contest.ticket_location,
       userEvidence
     );
-
-    // Generate evidence checklist
-    const evidenceChecklist = generateEvidenceChecklist(contest, contestGrounds, ordinanceInfo);
 
     // Check weather defense for relevant violation types
     let weatherData: HistoricalWeatherData | null = null;
@@ -433,6 +436,69 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
       }
     }
 
+    // Look up parking location evidence from the mobile app
+    let parkingEvidence: ParkingEvidenceResult | null = null;
+    let parkingEvidenceText = '';
+
+    try {
+      parkingEvidence = await lookupParkingEvidence(
+        supabase,
+        user.id,
+        contest.ticket_location,
+        contest.ticket_date || contest.extracted_data?.date,
+        contest.extracted_data?.time || null,
+        contest.violation_code,
+        contest.ticket_latitude || null,
+        contest.ticket_longitude || null,
+      );
+
+      if (parkingEvidence.hasEvidence) {
+        userEvidence.hasLocationEvidence = true;
+
+        // Generate the evidence paragraph that will go directly in the letter
+        const evidenceParagraph = generateEvidenceParagraph(
+          parkingEvidence,
+          contest.violation_code
+        );
+
+        parkingEvidenceText = `
+=== GPS PARKING EVIDENCE FROM USER'S MOBILE APP ===
+
+The user has the Autopilot parking protection app, which tracks their parking via Bluetooth vehicle connection and GPS. This data provides timestamped, GPS-verified evidence.
+
+${parkingEvidence.evidenceSummary}
+
+EVIDENCE STRENGTH: ${Math.round(parkingEvidence.evidenceStrength * 100)}%
+
+${parkingEvidence.departureProof ? `
+KEY DEPARTURE DATA:
+- Parked at: ${parkingEvidence.departureProof.parkedAt}
+- Departed at: ${parkingEvidence.departureProof.departureTimeFormatted}
+- Minutes before ticket: ${parkingEvidence.departureProof.minutesBeforeTicket}
+- Distance moved: ${parkingEvidence.departureProof.departureDistanceMeters}m
+- GPS conclusive: ${parkingEvidence.departureProof.isConclusive ? 'YES' : 'Partial'}
+` : ''}
+
+PRE-WRITTEN EVIDENCE PARAGRAPH TO INCORPORATE INTO THE LETTER:
+${evidenceParagraph}
+
+INSTRUCTIONS FOR USING THIS EVIDENCE:
+1. INCORPORATE the GPS departure proof as a STRONG supporting argument in the letter
+2. Present it as "digital evidence from my vehicle's connected parking application"
+3. Reference specific timestamps and distances - these are verifiable GPS records
+4. This is factual, timestamped data - present it confidently as evidence
+5. If departure proof exists, it should be one of the MAIN arguments alongside any other defenses
+6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided
+`;
+      }
+    } catch (evidenceError) {
+      console.error('Failed to look up parking evidence:', evidenceError);
+      // Continue without parking evidence
+    }
+
+    // Generate evidence checklist (after parking evidence lookup so it can include GPS data)
+    const evidenceChecklist = generateEvidenceChecklist(contest, contestGrounds, ordinanceInfo, parkingEvidence);
+
     // Generate contest letter using Claude
     let contestLetter = '';
     if (anthropic) {
@@ -486,13 +552,14 @@ ${kitEvaluation.warnings.length > 0 ? `WARNINGS:\n${kitEvaluation.warnings.map(w
 INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill in any remaining placeholders with the ticket facts. The template is based on proven successful arguments for this specific violation type.
 ` : ''}
 ${weatherDefenseText}
-
+${parkingEvidenceText}
 ${courtData.hasData ? `IMPORTANT - HISTORICAL COURT DATA (analyzed ${courtData.totalCasesAnalyzed} cases, found ${courtData.matchingCasesCount} matching user's evidence):
 
 User's Evidence Availability:
 - Has Photos: ${userEvidence.hasPhotos ? 'YES' : 'NO'}
 - Has Witnesses: ${userEvidence.hasWitnesses ? 'YES' : 'NO'}
 - Has Documentation: ${userEvidence.hasDocs ? 'YES' : 'NO'}
+- Has GPS Location Evidence: ${userEvidence.hasLocationEvidence ? 'YES - See GPS PARKING EVIDENCE section above' : 'NO'}
 
 Evidence Impact Analysis:
 ${courtData.evidenceGuidance.map(e => `  • ${e.type}: ${e.success_rate_with}% success WITH vs ${e.success_rate_without || 'N/A'}% WITHOUT (${e.cases_with} cases with ${e.type})`).join('\n')}
@@ -575,6 +642,8 @@ Use a formal letter format with proper salutation and closing.`
         kit_used: kitEvaluation ? contest.violation_code : null,
         argument_used: kitEvaluation?.selectedArgument.id || null,
         weather_defense_used: kitEvaluation?.weatherDefense.applicable || (weatherDefenseText ? true : false),
+        location_evidence_used: parkingEvidence?.hasEvidence || false,
+        location_evidence_strength: parkingEvidence?.hasEvidence ? Math.round(parkingEvidence.evidenceStrength * 100) : null,
         estimated_win_rate: kitEvaluation ? Math.round(kitEvaluation.estimatedWinRate * 100) : null,
       })
       .eq('id', contestId);
@@ -600,6 +669,26 @@ Use a formal letter format with proper salutation and closing.`
         relevanceType: weatherRelevanceType, // 'primary' | 'supporting' | 'emergency' | null
         usedInLetter: !!weatherDefenseText,
       } : null,
+      // GPS Parking Evidence
+      parkingEvidence: parkingEvidence?.hasEvidence ? {
+        hasEvidence: true,
+        evidenceStrength: Math.round(parkingEvidence.evidenceStrength * 100),
+        departureProof: parkingEvidence.departureProof ? {
+          departureTime: parkingEvidence.departureProof.departureTimeFormatted,
+          minutesBeforeTicket: parkingEvidence.departureProof.minutesBeforeTicket,
+          distanceMeters: parkingEvidence.departureProof.departureDistanceMeters,
+          isConclusive: parkingEvidence.departureProof.isConclusive,
+        } : null,
+        parkingDuration: parkingEvidence.parkingDuration ? {
+          durationMinutes: parkingEvidence.parkingDuration.durationMinutes,
+          durationFormatted: parkingEvidence.parkingDuration.durationFormatted,
+        } : null,
+        restrictionConflict: parkingEvidence.restrictionCapture?.hasConflict || false,
+        isRegularLocation: parkingEvidence.locationPattern?.isRegularLocation || false,
+        totalVisits: parkingEvidence.locationPattern?.totalVisits || 0,
+      } : {
+        hasEvidence: false,
+      },
       // Contest Kit evaluation results
       kitEvaluation: kitEvaluation ? {
         hasKit: true,
@@ -632,7 +721,7 @@ Use a formal letter format with proper salutation and closing.`
   }
 }
 
-function generateEvidenceChecklist(contest: any, contestGrounds: string[], ordinanceInfo: any) {
+function generateEvidenceChecklist(contest: any, contestGrounds: string[], ordinanceInfo: any, parkingEvidence?: ParkingEvidenceResult | null) {
   const checklist = [
     {
       item: 'Copy of the original ticket (front and back)',
@@ -653,6 +742,11 @@ function generateEvidenceChecklist(contest: any, contestGrounds: string[], ordin
       item: 'Timestamped photos showing vehicle was moved',
       required: contestGrounds?.includes('vehicle_moved_before_cleaning'),
       completed: false
+    },
+    {
+      item: 'GPS departure evidence from Autopilot app (auto-checked)',
+      required: false,
+      completed: parkingEvidence?.hasEvidence && parkingEvidence?.departureProof?.isConclusive || false,
     },
     {
       item: 'Proof of permit (if applicable)',

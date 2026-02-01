@@ -176,7 +176,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     emailSubject: 'Street Cleaning Ticket - Important: Did You See the Signs?',
     title: 'Street Cleaning Ticket - Signage Is Key!',
     winRate: 0.34,
-    intro: `Street cleaning tickets have about a 34% success rate. The most successful defense is proving the signage was missing, obscured, or confusing. We also check weather data automatically - if it rained or snowed, that's a valid defense!`,
+    intro: `Street cleaning tickets have about a 34% success rate. The most successful defense is proving the signage was missing, obscured, or confusing. We also check weather data automatically - if it rained or snowed, that's a valid defense! If you use the Autopilot app, we'll automatically check your GPS history for departure proof.`,
     questions: [
       {
         text: 'Do you have ANY photos of the street where you parked? Even if you didn\'t take them that day - can you go back and photograph the signage (or lack of signage)?',
@@ -197,11 +197,12 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
       },
       {
         text: 'Do you have any evidence your car was NOT there during the posted cleaning hours? (parking app receipt, photo timestamps, dashcam)',
-        whyItMatters: 'If you can prove you moved before cleaning time, the ticket is invalid.',
+        whyItMatters: 'If you can prove you moved before cleaning time, the ticket is invalid. The Autopilot app automatically checks your GPS departure records.',
         impactScore: 0.30,
       },
     ],
     quickTips: [
+      'If you use the Autopilot app, we automatically check GPS records proving you moved your car before cleaning!',
       'We automatically check weather for your ticket date - rain/snow = potential defense',
       'Go photograph the signs TODAY if you can - they may change them',
       'Check Google Street View for historical signage images',
@@ -754,7 +755,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     emailSubject: 'Snow Route Ticket - 30% Win Rate - Was the Alert Properly Posted?',
     title: 'Snow Route Ticket - Documentation Matters!',
     winRate: 0.30,
-    intro: `Snow route tickets have about a 30% success rate. The main defenses are: ban wasn't properly announced, signs were obscured, or emergency circumstances prevented you from moving.`,
+    intro: `Snow route tickets have about a 30% success rate. The main defenses are: ban wasn't properly announced, signs were obscured, or emergency circumstances prevented you from moving. Autopilot app users get automatic GPS departure verification.`,
     questions: [
       {
         text: 'Do you remember receiving a snow emergency alert? Check your email, phone alerts, and local news for that date.',
