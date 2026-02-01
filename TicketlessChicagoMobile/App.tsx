@@ -191,7 +191,7 @@ function App(): React.JSX.Element {
   // Determine initial route
   const getInitialRoute = (): keyof RootStackParamList => {
     if (!hasOnboarded) return 'Onboarding';
-    if (!hasSeenLogin && !authState?.isAuthenticated) return 'Login';
+    if (!authState?.isAuthenticated) return 'Login';
     return 'MainTabs';
   };
 
