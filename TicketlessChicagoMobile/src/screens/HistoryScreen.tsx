@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SectionList,
   RefreshControl,
   TouchableOpacity,
   Alert,
@@ -285,6 +285,58 @@ const formatTime = (timestamp: number): string => {
   });
 };
 
+const formatSectionDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (isSameDay(date, now)) return 'Today';
+  if (isSameDay(date, yesterday)) return 'Yesterday';
+
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+/** Get a date key (YYYY-MM-DD) for grouping */
+const getDateKey = (timestamp: number): string => {
+  const d = new Date(timestamp);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+interface HistorySection {
+  title: string;
+  data: ParkingHistoryItem[];
+}
+
+/** Group a flat history array into sections by date */
+const groupByDate = (items: ParkingHistoryItem[]): HistorySection[] => {
+  const map = new Map<string, ParkingHistoryItem[]>();
+  for (const item of items) {
+    const key = getDateKey(item.timestamp);
+    const group = map.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      map.set(key, [item]);
+    }
+  }
+  // Items are already in reverse-chronological order, so sections come out
+  // in the right order (most recent date first).
+  return Array.from(map.entries()).map(([, items]) => ({
+    title: formatSectionDate(items[0].timestamp),
+    data: items,
+  }));
+};
+
 // ──────────────────────────────────────────────────────
 // Main Screen
 // ──────────────────────────────────────────────────────
@@ -385,16 +437,29 @@ const HistoryScreen: React.FC = () => {
     };
   }, [history]);
 
-  const renderTimelineItem = useCallback(({ item, index }: { item: ParkingHistoryItem; index: number }) => (
+  // Group history items into date sections
+  const sections = useMemo(() => groupByDate(history), [history]);
+
+  const renderTimelineItem = useCallback(({ item, index, section }: {
+    item: ParkingHistoryItem;
+    index: number;
+    section: HistorySection;
+  }) => (
     <TimelineItem
       item={item}
       isExpanded={expandedId === item.id}
       isFirst={index === 0}
-      isLast={index === history.length - 1}
+      isLast={index === section.data.length - 1}
       onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
       onLongPress={() => deleteItem(item.id)}
     />
-  ), [expandedId, history.length, deleteItem]);
+  ), [expandedId, deleteItem]);
+
+  const renderSectionHeader = useCallback(({ section }: { section: HistorySection }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionHeaderText}>{section.title}</Text>
+    </View>
+  ), []);
 
   const renderEmptyState = useCallback(() => (
     <View style={styles.emptyState}>
@@ -445,18 +510,26 @@ const HistoryScreen: React.FC = () => {
         )}
       </View>
 
-      <FlatList
-        data={history}
-        renderItem={renderTimelineItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-      />
+      {history.length === 0 ? (
+        <>
+          {renderHeader()}
+          {renderEmptyState()}
+        </>
+      ) : (
+        <SectionList
+          sections={sections}
+          renderItem={renderTimelineItem}
+          renderSectionHeader={renderSectionHeader}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
+          ListHeaderComponent={renderHeader}
+          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -527,6 +600,20 @@ const styles = StyleSheet.create({
     width: 1,
     height: 40,
     backgroundColor: colors.border,
+  },
+
+  // Section headers
+  sectionHeader: {
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+    paddingLeft: 32 + spacing.sm, // align with card content (past the timeline spine)
+  },
+  sectionHeaderText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   // Timeline
