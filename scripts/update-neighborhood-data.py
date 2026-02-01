@@ -113,7 +113,7 @@ def process_311():
                     if not blocks[block_key]['ward']:
                         blocks[block_key]['ward'] = row.get('ward', '')
                     if not blocks[block_key]['address']:
-                        blocks[block_key]['address'] = row.get('street_address', '')
+                        blocks[block_key]['address'] = row.get('address', '')
 
                     created = row.get('created_date', '')
                     if created and created >= ninety_days_ago:
@@ -477,8 +477,8 @@ def process_potholes():
 
     try:
         data = fetch_data('wqdh-9gek', {
-            '$where': f"creation_date > '{one_year_ago}' AND latitude IS NOT NULL",
-            '$select': 'service_request_number,creation_date,completion_date,status,number_of_potholes_filled_on_block,street_address,latitude,longitude',
+            '$where': f"request_date > '{one_year_ago}' AND latitude IS NOT NULL",
+            '$select': 'service_request_number,request_date,completion_date,number_of_potholes_filled_on_block,address,latitude,longitude',
             '$limit': 50000
         })
 
@@ -506,7 +506,7 @@ def process_potholes():
                 blocks[block_key]['completed'] += 1
 
             if not blocks[block_key]['address']:
-                blocks[block_key]['address'] = row.get('street_address', '')
+                blocks[block_key]['address'] = row.get('address', '')
 
     except Exception as e:
         print(f"  Error fetching potholes: {e}")

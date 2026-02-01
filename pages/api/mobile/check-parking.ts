@@ -49,14 +49,6 @@ interface MobileCheckParkingResponse {
     severity?: 'critical' | 'warning' | 'info' | 'none';
     restrictionSchedule?: string;
   };
-  rushHour: {
-    hasRestriction: boolean;
-    message: string;
-    isActiveNow?: boolean;
-    activeRestriction?: 'MORNING' | 'EVENING' | null;
-    severity?: 'critical' | 'warning' | 'info' | 'none';
-    schedule?: string;
-  };
   timestamp: string;
   error?: string;
 }
@@ -133,15 +125,6 @@ export default async function handler(
         restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
       },
 
-      rushHour: {
-        hasRestriction: result.rushHour.found,
-        message: result.rushHour.message,
-        isActiveNow: result.rushHour.isActiveNow,
-        activeRestriction: result.rushHour.activeRestriction,
-        severity: result.rushHour.severity,
-        schedule: result.rushHour.schedule || undefined,
-      },
-
       timestamp: result.timestamp,
     };
 
@@ -157,7 +140,6 @@ export default async function handler(
       winterOvernightBan: { active: false, message: 'Error checking restrictions' },
       twoInchSnowBan: { active: false, message: 'Error checking restrictions' },
       permitZone: { inPermitZone: false, message: 'Error checking restrictions' },
-      rushHour: { hasRestriction: false, message: 'Error checking restrictions' },
       timestamp: new Date().toISOString(),
       error: sanitizeErrorMessage(error),
     });

@@ -107,21 +107,6 @@ const chicagoViolationCodes: ViolationCode[] = [
     signageRelated: false,
   },
   {
-    code: '9-64-100(a)',
-    description: 'Rush Hour Parking',
-    shortDescription: 'Parked during rush hour restrictions',
-    fineAmount: 100,
-    lateFee: 50,
-    contestable: true,
-    commonDefenses: [
-      'Signs not clearly posted',
-      'Vehicle breakdown/emergency',
-      'Temporary disability',
-    ],
-    weatherRelated: false,
-    signageRelated: true,
-  },
-  {
     code: '9-64-110(a)',
     description: 'Fire Hydrant',
     shortDescription: 'Parked within 15 feet of fire hydrant',
