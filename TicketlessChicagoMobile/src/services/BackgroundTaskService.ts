@@ -977,7 +977,15 @@ class BackgroundTaskServiceClass {
     await LocalNotificationService.cancelAllScheduledNotifications();
     log.info('Cancelled scheduled parking reminders');
 
-    // Call the reconnect callback if provided
+    // Clear stale parking data from AsyncStorage so HomeScreen doesn't show old results
+    try {
+      await AsyncStorage.removeItem(StorageKeys.LAST_PARKING_LOCATION);
+      log.info('Cleared stale parking data from AsyncStorage');
+    } catch (e) {
+      log.warn('Failed to clear stale parking data', e);
+    }
+
+    // Call the reconnect callback if provided (tells HomeScreen to clear UI)
     if (this.reconnectCallback) {
       this.reconnectCallback();
     }

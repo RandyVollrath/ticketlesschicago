@@ -321,7 +321,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       await BackgroundTaskService.initialize();
       log.info('BackgroundTaskService initialized, starting monitoring...');
-      const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
+      const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect, handleCarReconnect);
       if (started) {
         setIsMonitoring(true);
         log.info('Monitoring auto-started successfully');
@@ -353,7 +353,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleCarDisconnect = async () => {
     log.info('Parking detected - refreshing UI');
+    // Small delay to ensure AsyncStorage write from BackgroundTaskService completes
+    await new Promise(resolve => setTimeout(resolve, 300));
     await loadLastCheck();
+  };
+
+  const handleCarReconnect = () => {
+    log.info('Driving started - clearing old parking data from UI');
+    setLastParkingCheck(null);
+    setShowDetails(false);
   };
 
   const stopMonitoring = async () => {
