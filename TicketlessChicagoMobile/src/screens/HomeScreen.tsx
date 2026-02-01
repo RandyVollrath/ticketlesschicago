@@ -620,7 +620,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             ]}>
               <MaterialCommunityIcons
                 name={heroConfig.icon}
-                size={28}
+                size={32}
                 color={heroConfig.iconColor}
               />
             </View>
@@ -722,7 +722,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               >
                 <MaterialCommunityIcons
                   name={isCarConnected ? 'bluetooth-connect' : savedCarName ? 'bluetooth-off' : 'bluetooth'}
-                  size={18}
+                  size={22}
                   color={isCarConnected ? colors.success : colors.textTertiary}
                 />
                 <Text style={styles.statusRowText}>
@@ -733,7 +733,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     : 'Pair your car'}
                 </Text>
                 {!savedCarName && (
-                  <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
                 )}
               </TouchableOpacity>
             )}
@@ -743,7 +743,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.statusRow}>
                 <MaterialCommunityIcons
                   name={currentActivity === 'automotive' ? 'car' : 'walk'}
-                  size={18}
+                  size={22}
                   color={currentActivity === 'automotive' ? colors.primary : colors.textTertiary}
                 />
                 <Text style={styles.statusRowText}>
@@ -763,7 +763,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onPress={stopMonitoring}
               accessibilityLabel="Pause parking detection"
             >
-              <MaterialCommunityIcons name="pause-circle-outline" size={18} color={colors.textTertiary} />
+              <MaterialCommunityIcons name="pause-circle-outline" size={22} color={colors.textTertiary} />
               <Text style={styles.statusRowText}>Pause detection</Text>
             </TouchableOpacity>
           </View>
@@ -776,9 +776,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onPress={() => navigation.navigate('BluetoothSettings')}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="bluetooth" size={18} color={colors.primary} />
+            <MaterialCommunityIcons name="bluetooth" size={22} color={colors.primary} />
             <Text style={styles.setupBannerText}>Pair your car for auto-detection</Text>
-            <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
 
@@ -790,7 +790,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View key={index} style={styles.protectionChip}>
                 <MaterialCommunityIcons
                   name={item.icon}
-                  size={14}
+                  size={16}
                   color={colors.success}
                 />
                 <Text style={styles.protectionChipText}>{item.label}</Text>
@@ -822,23 +822,23 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
   },
   scrollView: {
-    padding: spacing.base,
-    paddingBottom: spacing.xxl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
-    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+    marginTop: spacing.sm,
   },
   greeting: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.base,
     color: colors.textSecondary,
     marginBottom: 2,
   },
   title: {
-    fontSize: typography.sizes.xxl,
+    fontSize: typography.sizes.xxxl,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
   },
@@ -912,10 +912,10 @@ const styles = StyleSheet.create({
 
   // ──── Hero Card ────
   heroCard: {
-    borderRadius: borderRadius.lg,
-    padding: spacing.base,
-    marginBottom: spacing.md,
-    ...shadows.sm,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    ...shadows.md,
   },
   heroCardBorder: {
     borderWidth: 1,
@@ -926,24 +926,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
+    marginRight: spacing.base,
   },
   heroTextWrap: {
     flex: 1,
   },
   heroTitle: {
-    fontSize: typography.sizes.lg,
+    fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   heroSubtitle: {
-    fontSize: typography.sizes.sm,
-    lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
+    fontSize: typography.sizes.base,
+    lineHeight: typography.sizes.base * typography.lineHeights.relaxed,
   },
   heroExpanded: {
     marginTop: spacing.md,
@@ -960,15 +960,15 @@ const styles = StyleSheet.create({
   },
   heroRuleText: {
     marginLeft: spacing.sm,
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.sm,
     color: colors.white,
     flex: 1,
   },
   heroExpandedText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.sm,
     color: colors.white,
     opacity: 0.9,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   heroActions: {
     flexDirection: 'row',
@@ -998,12 +998,12 @@ const styles = StyleSheet.create({
 
   // Resume button
   resumeButton: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
 
   // Main button
   mainButton: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
 
   // Accuracy
@@ -1011,44 +1011,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
-    paddingVertical: 2,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.xs,
   },
   accuracyDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginRight: spacing.xs,
   },
   accuracyText: {
-    fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
 
   // ──── Status Card (BT + Pause grouped) ────
   statusCard: {
     backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
     overflow: 'hidden',
     ...shadows.sm,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.base,
+    paddingHorizontal: spacing.lg,
   },
   statusRowText: {
     flex: 1,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.base,
     color: colors.textSecondary,
-    marginLeft: spacing.sm,
+    marginLeft: spacing.md,
   },
   statusDivider: {
     height: 1,
     backgroundColor: colors.border,
-    marginHorizontal: spacing.base,
+    marginHorizontal: spacing.lg,
   },
 
   // ──── Setup Banner (BT pair when not monitoring) ────
@@ -1056,24 +1056,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.base,
-    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.base,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
     ...shadows.sm,
   },
   setupBannerText: {
     flex: 1,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.base,
     color: colors.textSecondary,
-    marginLeft: spacing.sm,
+    marginLeft: spacing.md,
   },
 
-  // ──── Protection Coverage (compact chips) ────
+  // ──── Protection Coverage ────
   protectionCard: {
     backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
     marginBottom: spacing.base,
     ...shadows.sm,
   },
@@ -1083,24 +1083,25 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: typography.letterSpacing.wide,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   protectionStrip: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: spacing.sm,
   },
   protectionChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.successBg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    gap: 4,
+    gap: 6,
   },
   protectionChipText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     fontWeight: typography.weights.medium,
   },
