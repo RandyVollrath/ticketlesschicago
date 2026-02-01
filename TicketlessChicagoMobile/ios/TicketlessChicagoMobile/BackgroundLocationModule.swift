@@ -252,12 +252,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           ])
         }
 
-      } else if (activity.stationary || activity.walking) && activity.confidence != .low {
+      } else if (activity.stationary || activity.walking) && (activity.confidence != .low || !self.speedSaysMoving) {
         // ---- NOT IN CAR ----
-        // CoreMotion confirms user is NOT in a vehicle.
-        // Keep confidence gate for exit detection (medium/high) to avoid
-        // false parking triggers at red lights from brief low-confidence
-        // stationary readings.
+        // CoreMotion says user is NOT in a vehicle.
+        // Accept medium/high confidence always. Also accept LOW confidence
+        // when GPS speed corroborates (speed ≈ 0). This fixes the case where
+        // CoreMotion takes 30-60s to reach medium confidence after parking,
+        // while GPS immediately shows speed=0.
         let wasAutomotive = self.coreMotionSaysAutomotive
         self.coreMotionSaysAutomotive = false
 
@@ -318,6 +319,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       }
     } else if speed >= 0 && speed <= 0.5 {
       speedSaysMoving = false
+
+      // When GPS speed drops to 0 while driving, capture the location
+      // immediately. This is likely the parking spot, captured BEFORE the
+      // user walks away. Don't wait for CoreMotion confirmation.
+      if isDriving && locationAtStopStart == nil {
+        locationAtStopStart = lastDrivingLocation ?? location
+        NSLog("[BackgroundLocation] GPS speed≈0 while driving. Captured stop location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+      }
     }
 
     // Send location updates to JS (only while continuous GPS is active to save overhead)
