@@ -200,40 +200,44 @@ class BluetoothServiceClass {
     // Android: Use Classic Bluetooth events
     if (Platform.OS === 'android' && RNBluetoothClassic && savedDevice.address) {
       try {
-        // Listen for device DISCONNECTION events
+        // Listen for ALL device DISCONNECTION events (ACL level)
         this.classicBtDisconnectListener = RNBluetoothClassic.onDeviceDisconnected((event: any) => {
-          log.debug('Bluetooth device disconnected event:', JSON.stringify(event));
-
-          // Check if this is our saved car (by address or name)
           const eventAddress = event?.device?.address || event?.address;
           const eventName = event?.device?.name || event?.name;
+          log.info(`[BT EVENT] DISCONNECT: name="${eventName}" addr="${eventAddress}" (watching for: "${savedDevice.name}" addr="${savedDevice.address}")`);
 
+          // Check if this is our saved car (by address or name)
           if (eventAddress === savedDevice.address ||
               (savedDevice.name && eventName === savedDevice.name)) {
-            log.info('Car disconnected (Classic BT):', savedDevice.name);
+            log.info('CAR DISCONNECTED (Classic BT):', savedDevice.name);
             this.connectedDeviceId = null;
             this.notifyDisconnected();
             if (this.disconnectCallback) {
-              this.disconnectCallback();
+              Promise.resolve(this.disconnectCallback()).catch(err =>
+                log.error('Error in disconnect callback:', err)
+              );
             }
+          } else {
+            log.debug(`Ignoring disconnect from non-car device: ${eventName} (${eventAddress})`);
           }
         });
 
-        // Listen for device CONNECTION events
+        // Listen for ALL device CONNECTION events (ACL level)
         this.classicBtConnectListener = RNBluetoothClassic.onDeviceConnected((event: any) => {
-          log.debug('Bluetooth device connected event:', JSON.stringify(event));
-
-          // Check if this is our saved car (by address or name)
           const eventAddress = event?.device?.address || event?.address;
           const eventName = event?.device?.name || event?.name;
+          log.info(`[BT EVENT] CONNECT: name="${eventName}" addr="${eventAddress}" (watching for: "${savedDevice.name}" addr="${savedDevice.address}")`);
 
+          // Check if this is our saved car (by address or name)
           if (eventAddress === savedDevice.address ||
               (savedDevice.name && eventName === savedDevice.name)) {
-            log.info('Car connected (Classic BT):', savedDevice.name);
+            log.info('CAR CONNECTED (Classic BT):', savedDevice.name);
             this.connectedDeviceId = savedDevice.id;
             this.notifyConnected();
             if (this.reconnectCallback) {
-              this.reconnectCallback();
+              Promise.resolve(this.reconnectCallback()).catch(err =>
+                log.error('Error in reconnect callback:', err)
+              );
             }
           }
         });
@@ -241,16 +245,18 @@ class BluetoothServiceClass {
         // Check initial connection state
         const isConnected = await this.isConnectedToSavedCar();
         this.connectedDeviceId = isConnected ? savedDevice.id : null;
-        log.info(`Car monitoring started. Currently ${isConnected ? 'connected' : 'not connected'} to ${savedDevice.name} (addr: ${savedDevice.address})`);
+
+        // Also check bluetooth enabled state
+        const btEnabled = await this.isBluetoothEnabled();
+        log.info(`Car monitoring started. BT enabled: ${btEnabled}, Currently ${isConnected ? 'CONNECTED' : 'NOT connected'} to ${savedDevice.name} (addr: ${savedDevice.address})`);
 
       } catch (error) {
-        log.error('Error setting up Classic BT monitoring', error);
+        log.error('Error setting up Classic BT monitoring:', error);
         throw error;
       }
     } else {
-      // iOS or manual entry: Use BLE manager as fallback (limited functionality)
-      log.warn('Classic BT monitoring not available. Using limited monitoring.');
-
+      // iOS or manual entry
+      log.warn(`Classic BT monitoring not available. Platform=${Platform.OS}, hasLib=${!!RNBluetoothClassic}, hasAddr=${!!savedDevice.address}`);
       // For iOS/manual entries, we'll rely on periodic checks
       // The actual monitoring will be handled by BackgroundTaskService
     }

@@ -64,6 +64,7 @@ class BackgroundTaskServiceClass {
   private disconnectCallback: (() => void) | null = null;
   private reconnectCallback: (() => void) | null = null;
   private departureConfirmationTimeout: ReturnType<typeof setTimeout> | null = null;
+  private gpsCacheInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Initialize the background task service
@@ -181,12 +182,32 @@ class BackgroundTaskServiceClass {
           const permStatus = await BackgroundLocationService.requestPermissions();
           log.info('Background location permission:', permStatus);
 
+          if (permStatus === 'denied' || permStatus === 'restricted') {
+            log.error('Location permission denied/restricted - parking detection will NOT work');
+            await this.sendDiagnosticNotification(
+              'Location Permission Required',
+              'Autopilot needs "Always" location access to detect parking. Go to Settings > Privacy > Location Services > Autopilot and select "Always".'
+            );
+          } else if (permStatus === 'when_in_use') {
+            log.warn('Only "When In Use" permission - background detection may not work reliably');
+            await this.sendDiagnosticNotification(
+              'Upgrade Location Permission',
+              'For reliable parking detection, Autopilot needs "Always" location access. Go to Settings > Privacy > Location Services > Autopilot and change to "Always".'
+            );
+          } else if (permStatus === 'not_determined') {
+            log.warn('Location permission not yet determined - will prompt user');
+            await this.sendDiagnosticNotification(
+              'Location Permission Needed',
+              'Please allow location access when prompted. Choose "Always Allow" for automatic parking detection.'
+            );
+          }
+
           // Start monitoring - this handles everything:
           // significant location changes, continuous updates, motion detection
-          await BackgroundLocationService.startMonitoring(
+          const bgStarted = await BackgroundLocationService.startMonitoring(
             // onParkingDetected - fires when user stops driving for 90+ seconds
             async (event: ParkingDetectedEvent) => {
-              log.info('Parking detected via background location', {
+              log.info('PARKING DETECTED via background location', {
                 lat: event.latitude,
                 lng: event.longitude,
                 accuracy: event.accuracy,
@@ -194,6 +215,10 @@ class BackgroundTaskServiceClass {
                 locationSource: event.locationSource,
                 driftMeters: event.driftFromParkingMeters,
               });
+              await this.sendDiagnosticNotification(
+                'Parking Detected (iOS)',
+                `CoreMotion detected you parked. Duration: ${Math.round(event.drivingDurationSec || 0)}s driving. Checking parking rules...`
+              );
               // Pass the stop-start coordinates so we check parking rules
               // at where the CAR is, not where the user walked to
               const parkingCoords = event.latitude && event.longitude
@@ -203,13 +228,29 @@ class BackgroundTaskServiceClass {
             },
             // onDrivingStarted - fires when user starts driving
             () => {
-              log.info('Driving started - user departing');
+              log.info('DRIVING STARTED - user departing');
               this.handleCarReconnection();
             }
+          );
+          log.info(`BackgroundLocationService.startMonitoring returned: ${bgStarted}`);
+          if (!bgStarted) {
+            log.error('BackgroundLocationService failed to start - falling back to motion');
+            throw new Error('BackgroundLocationService.startMonitoring returned false');
+          }
+
+          // Send startup diagnostic with full status
+          const bgStatus = await BackgroundLocationService.getStatus();
+          await this.sendDiagnosticNotification(
+            'iOS Monitoring Active',
+            `Permission: ${permStatus}, CoreMotion: ${bgStatus.motionAvailable ? 'YES' : 'NO'}, Always: ${bgStatus.hasAlwaysPermission ? 'YES' : 'NO'}. Drive for 2+ min then park to test.`
           );
         } else {
           // Fallback to motion-only (less reliable in background)
           log.warn('BackgroundLocationModule not available, falling back to motion-only');
+          await this.sendDiagnosticNotification(
+            'iOS: Using Fallback Detection',
+            'BackgroundLocationModule not available. Using motion-only detection (less reliable in background).'
+          );
           await MotionActivityService.startMonitoring(
             this.handleCarDisconnection.bind(this),
             this.handleCarReconnection.bind(this)
@@ -223,20 +264,60 @@ class BackgroundTaskServiceClass {
             this.handleCarDisconnection.bind(this),
             this.handleCarReconnection.bind(this)
           );
+          log.info('Fallback motion monitoring started');
+          await this.sendDiagnosticNotification(
+            'iOS: Fallback Mode',
+            `Main detection failed (${String(error)}). Using motion-only fallback.`
+          );
         } catch (motionError) {
           log.error('Motion monitoring also failed:', motionError);
+          await this.sendDiagnosticNotification(
+            'Parking Detection Failed',
+            `Could not start any detection method. Main: ${String(error)}. Motion: ${String(motionError)}. Please restart the app.`
+          );
         }
       }
     } else {
       // Android: Use Bluetooth Classic connection monitoring
       log.info('Starting Bluetooth-based parking detection for Android');
-      try {
-        await BluetoothService.monitorCarConnection(
-          this.handleCarDisconnection.bind(this),
-          this.handleCarReconnection.bind(this)
+      const savedDevice = await BluetoothService.getSavedCarDevice();
+      if (!savedDevice) {
+        log.error('No saved car device - Bluetooth monitoring cannot start. User must pair a car in Settings.');
+        await this.sendDiagnosticNotification(
+          'No Car Paired',
+          'Go to Settings in the app and select your car from Bluetooth devices.'
         );
-      } catch (error) {
-        log.warn('Could not start Bluetooth monitoring:', error);
+        // Don't throw - periodic check will still run as backup
+      } else {
+        log.info(`Saved car device found: ${savedDevice.name} (${savedDevice.address || savedDevice.id})`);
+        try {
+          await BluetoothService.monitorCarConnection(
+            async () => {
+              log.info('BT DISCONNECT EVENT FIRED - triggering parking check');
+              await this.sendDiagnosticNotification(
+                'Bluetooth Disconnect Detected',
+                `${savedDevice.name} disconnected. Checking parking rules...`
+              );
+              await this.handleCarDisconnection();
+            },
+            async () => {
+              log.info('BT CONNECT EVENT FIRED - car reconnected');
+              await this.handleCarReconnection();
+            }
+          );
+          log.info('Bluetooth monitoring active for: ' + savedDevice.name);
+
+          // Pre-cache GPS location periodically while car is connected.
+          // This ensures we have a recent location when BT disconnect fires,
+          // even if background GPS acquisition fails at that moment.
+          this.startGpsCaching();
+        } catch (error) {
+          log.error('Could not start Bluetooth monitoring:', error);
+          await this.sendDiagnosticNotification(
+            'Bluetooth Monitoring Failed',
+            `Could not monitor ${savedDevice.name}. Error: ${error}`
+          );
+        }
       }
     }
 
@@ -273,10 +354,59 @@ class BackgroundTaskServiceClass {
       this.monitoringInterval = null;
     }
 
+    // Stop GPS caching
+    this.stopGpsCaching();
+
     // Stop platform-specific monitoring
     if (Platform.OS === 'ios') {
       BackgroundLocationService.stopMonitoring();
       MotionActivityService.stopMonitoring();
+    }
+  }
+
+  /**
+   * Pre-cache GPS location periodically (Android).
+   * While the car is connected via Bluetooth, we periodically get the user's
+   * location and cache it. When BT disconnect fires (possibly in background),
+   * we can use the cached location even if fresh GPS fails.
+   */
+  private startGpsCaching(): void {
+    this.stopGpsCaching();
+
+    // Cache GPS every 60 seconds while app is in foreground
+    const GPS_CACHE_INTERVAL = 60 * 1000;
+
+    // Get initial cache immediately
+    this.cacheCurrentGps();
+
+    this.gpsCacheInterval = setInterval(() => {
+      // Only cache when app is active (foreground) to save battery
+      if (AppState.currentState === 'active') {
+        this.cacheCurrentGps();
+      }
+    }, GPS_CACHE_INTERVAL);
+
+    log.debug('GPS pre-caching started (60s interval while foreground)');
+  }
+
+  private stopGpsCaching(): void {
+    if (this.gpsCacheInterval) {
+      clearInterval(this.gpsCacheInterval);
+      this.gpsCacheInterval = null;
+    }
+  }
+
+  private async cacheCurrentGps(): Promise<void> {
+    try {
+      const coords = await LocationService.getCurrentLocation('balanced');
+      // The location is automatically cached inside LocationService via getLocationWithRetry
+      // but getCurrentLocation doesn't cache, so let's do it manually
+      if (coords.latitude && coords.longitude) {
+        log.debug(`GPS cached: ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)} ±${coords.accuracy?.toFixed(0) || '?'}m`);
+      }
+    } catch (error) {
+      // Silent failure - this is just pre-caching
+      log.debug('GPS pre-cache failed (non-critical):', error);
     }
   }
 
@@ -291,7 +421,8 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
   }): Promise<void> {
-    log.info('Car disconnection detected - checking parking immediately');
+    log.info('=== CAR DISCONNECTION HANDLER TRIGGERED ===');
+    log.info(`Parking coords provided: ${parkingCoords ? `${parkingCoords.latitude.toFixed(6)}, ${parkingCoords.longitude.toFixed(6)}` : 'NO (will get GPS)'}`);
 
     // Record disconnect time
     this.state.lastDisconnectTime = Date.now();
@@ -301,9 +432,13 @@ class BackgroundTaskServiceClass {
     // Check parking - use provided coords if available (iOS background location)
     await this.triggerParkingCheck(parkingCoords);
 
-    // Call the callback if provided
+    // Call the callback if provided (HomeScreen UI refresh)
     if (this.disconnectCallback) {
-      this.disconnectCallback();
+      try {
+        await Promise.resolve(this.disconnectCallback());
+      } catch (err) {
+        log.error('Error in disconnect callback (UI refresh):', err);
+      }
     }
   }
 
@@ -319,47 +454,99 @@ class BackgroundTaskServiceClass {
     accuracy?: number;
   }): Promise<void> {
     try {
-      log.info('Triggering parking check after car disconnection');
+      log.info('=== TRIGGERING PARKING CHECK ===');
 
       let coords;
+      let gpsSource = 'unknown';
 
       // On iOS with background location, we already have the parking spot coordinates
       // captured at the moment the car stopped. Use those instead of getting a fresh fix.
       if (presetCoords?.latitude && presetCoords?.longitude) {
         coords = presetCoords;
+        gpsSource = 'pre-captured (iOS)';
         log.info(`Using pre-captured parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
       } else {
         // Android (Bluetooth disconnect) or fallback: get fresh GPS
-        try {
-          coords = await LocationService.getHighAccuracyLocation(20, 15000);
-          log.info(`Got high-accuracy location: ${coords.accuracy?.toFixed(1)}m accuracy`);
-        } catch (error) {
-          log.warn('High accuracy location failed, trying with retry logic', error);
+        // NOTE: On Android, BT disconnect may fire while app is in background.
+        // GPS access in background requires ACCESS_BACKGROUND_LOCATION permission.
+        // We try multiple strategies with generous timeouts to handle this.
+        log.info(`Getting GPS location... (Platform: ${Platform.OS}, appState: ${AppState.currentState})`);
+
+        // Strategy 1: Try cached location first (may be very recent if user just parked)
+        const cachedCoords = LocationService.getCachedLocation();
+        if (cachedCoords && cachedCoords.accuracy && cachedCoords.accuracy <= 50) {
+          log.info(`Using cached location (${cachedCoords.accuracy.toFixed(1)}m accuracy, very recent)`);
+          coords = cachedCoords;
+          gpsSource = `cached (${cachedCoords.accuracy.toFixed(1)}m)`;
+        } else {
+          // Strategy 2: Try high accuracy GPS with longer timeout for background
           try {
-            coords = await LocationService.getLocationWithRetry(3);
-          } catch (retryError) {
-            // Last resort on iOS: use the last driving location from BackgroundLocationService
-            if (Platform.OS === 'ios') {
-              const lastDriving = await BackgroundLocationService.getLastDrivingLocation();
-              if (lastDriving) {
-                log.info('Using last driving location as parking location fallback');
-                coords = {
-                  latitude: lastDriving.latitude,
-                  longitude: lastDriving.longitude,
-                  accuracy: lastDriving.accuracy,
-                };
+            const timeout = Platform.OS === 'android' ? 25000 : 15000; // Extra time on Android background
+            coords = await LocationService.getHighAccuracyLocation(50, timeout); // Accept up to 50m in background
+            gpsSource = `high-accuracy (${coords.accuracy?.toFixed(1)}m)`;
+            log.info(`Got high-accuracy location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1)}m`);
+          } catch (gpsError) {
+            log.warn('High accuracy GPS failed:', gpsError);
+
+            // Strategy 3: Retry with balanced accuracy
+            try {
+              log.info('Trying balanced accuracy GPS with retry...');
+              coords = await LocationService.getLocationWithRetry(3);
+              gpsSource = `retry-balanced (${coords.accuracy?.toFixed(1)}m)`;
+              log.info(`Got retry location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+            } catch (retryError) {
+              // Strategy 4: Use stale cached location (better than nothing)
+              const staleCoords = LocationService.getLastKnownLocation();
+              if (staleCoords) {
+                log.info('Using stale cached location as last resort');
+                coords = staleCoords;
+                gpsSource = `stale-cache (${staleCoords.accuracy?.toFixed(1) || '?'}m)`;
+              } else if (Platform.OS === 'ios') {
+                // Strategy 5 (iOS only): use the last driving location from BackgroundLocationService
+                const lastDriving = await BackgroundLocationService.getLastDrivingLocation();
+                if (lastDriving) {
+                  log.info('Using last driving location as parking location fallback');
+                  coords = {
+                    latitude: lastDriving.latitude,
+                    longitude: lastDriving.longitude,
+                    accuracy: lastDriving.accuracy,
+                  };
+                  gpsSource = 'last-driving-fallback';
+                } else {
+                  log.error('ALL GPS methods failed - no location available');
+                  await this.sendDiagnosticNotification(
+                    'GPS Failed',
+                    'Could not get your location. Make sure Location Services are enabled and set to "Always". Error: ' + String(retryError)
+                  );
+                  throw retryError;
+                }
               } else {
+                log.error('ALL GPS methods failed on Android');
+                await this.sendDiagnosticNotification(
+                  'GPS Failed',
+                  'Could not get your location. Make sure Location is set to "Allow all the time" in Android settings. Try opening the app and checking manually. Error: ' + String(retryError)
+                );
                 throw retryError;
               }
-            } else {
-              throw retryError;
             }
           }
         }
       }
 
+      log.info(`GPS acquired via ${gpsSource}. Now calling parking API...`);
+
       // Check parking rules
-      const result = await LocationService.checkParkingLocation(coords);
+      let result;
+      try {
+        result = await LocationService.checkParkingLocation(coords);
+      } catch (apiError) {
+        log.error('Parking API call failed:', apiError);
+        await this.sendDiagnosticNotification(
+          'Parking API Failed',
+          `Got GPS (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}) but API call failed: ${String(apiError)}`
+        );
+        throw apiError;
+      }
 
       // Save the result
       await LocationService.saveParkingCheckResult(result);
@@ -378,12 +565,15 @@ class BackgroundTaskServiceClass {
         await this.sendSafeNotification(result.address, coords.accuracy);
       }
 
-      log.info('Parking check completed', {
+      log.info('=== PARKING CHECK COMPLETE ===', {
         rulesFound: result.rules.length,
+        address: result.address,
+        gpsSource,
         accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
       });
     } catch (error) {
-      log.error('Failed to perform parking check', error);
+      log.error('=== PARKING CHECK FAILED ===', error);
+      // Only send generic error if we haven't already sent a specific diagnostic
       await this.sendErrorNotification();
     }
   }
@@ -571,6 +761,28 @@ class BackgroundTaskServiceClass {
         sound: 'default',
       },
     });
+  }
+
+  /**
+   * Send a diagnostic notification (visible to user for debugging)
+   * These help diagnose detection issues in the field
+   */
+  private async sendDiagnosticNotification(title: string, body: string): Promise<void> {
+    try {
+      await notifee.displayNotification({
+        title: `[Autopilot] ${title}`,
+        body,
+        android: {
+          channelId: 'parking-monitoring',
+          pressAction: { id: 'default' },
+        },
+        ios: {
+          sound: 'default',
+        },
+      });
+    } catch (error) {
+      log.error('Failed to send diagnostic notification', error);
+    }
   }
 
   /**
