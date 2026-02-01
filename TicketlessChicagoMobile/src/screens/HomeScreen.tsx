@@ -390,11 +390,38 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         return;
       }
 
-      let coords: Coordinates;
-      if (useHighAccuracy) {
-        coords = await LocationService.getHighAccuracyLocation(20, 15000);
-      } else {
-        coords = await LocationService.getCurrentLocation('high');
+      let coords: Coordinates | undefined;
+
+      // iOS: Try to use the car's parking location from native module first.
+      // The native module captures GPS at the moment the car stops, BEFORE
+      // the user walks away. This gives much more accurate parking check results.
+      if (Platform.OS === 'ios') {
+        try {
+          const parkingLoc = await BackgroundLocationService.getLastDrivingLocation();
+          if (parkingLoc && parkingLoc.latitude && parkingLoc.longitude) {
+            // Only use if reasonably recent (within last 2 hours)
+            const ageMs = Date.now() - parkingLoc.timestamp;
+            if (ageMs < 2 * 60 * 60 * 1000) {
+              coords = {
+                latitude: parkingLoc.latitude,
+                longitude: parkingLoc.longitude,
+                accuracy: parkingLoc.accuracy,
+              };
+              log.info(`Using car's parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(0)}m (${Math.round(ageMs / 60000)}min old)`);
+            }
+          }
+        } catch (e) {
+          log.debug('Could not get parking location from native module', e);
+        }
+      }
+
+      // Fallback: get user's current GPS location
+      if (!coords) {
+        if (useHighAccuracy) {
+          coords = await LocationService.getHighAccuracyLocation(20, 15000);
+        } else {
+          coords = await LocationService.getCurrentLocation('high');
+        }
       }
 
       setLocationAccuracy(coords.accuracy);
