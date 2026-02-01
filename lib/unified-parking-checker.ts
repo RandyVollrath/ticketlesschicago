@@ -194,6 +194,7 @@ export async function checkAllParkingRestrictions(
       winterBanData,
       permitZones,
       industrialZones,
+      zoneHoursData,
     ] = await Promise.all([
       // Street cleaning spatial query
       supabaseAdmin.rpc('get_street_cleaning_at_location_enhanced', {
@@ -247,6 +248,13 @@ export async function checkAllParkingRestrictions(
             .gte('address_range_high', result.location.parsedAddress.number)
             .then(r => r.data || []).catch(() => [])
         : Promise.resolve([]),
+
+      // Permit zone hours lookup (all zones - small table)
+      supabaseAdmin
+        .from('permit_zone_hours')
+        .select('zone, zone_type, restriction_schedule')
+        .eq('confidence', 'confirmed')
+        .then(r => r.data || []).catch(() => []),
     ]);
 
     // ==========================================
@@ -325,6 +333,12 @@ export async function checkAllParkingRestrictions(
     }
 
     // --- Permit Zone (Residential) ---
+    // Build a quick lookup map from permit_zone_hours table
+    const zoneHoursMap = new Map<string, string>();
+    for (const zh of zoneHoursData) {
+      zoneHoursMap.set(`${zh.zone_type}:${zh.zone}`, zh.restriction_schedule);
+    }
+
     if (permitZones.length > 0 && result.location.parsedAddress) {
       // Filter by odd/even if applicable
       const matchingZones = permitZones.filter(zone => {
@@ -338,25 +352,33 @@ export async function checkAllParkingRestrictions(
 
       if (matchingZones.length > 0) {
         const zone = matchingZones[0];
+        // Look up zone-specific hours, fall back to default
+        const knownSchedule = zoneHoursMap.get(`residential:${zone.zone}`);
+        const restrictionSchedule = knownSchedule || DEFAULT_PERMIT_RESTRICTION;
+        const hasKnownHours = !!knownSchedule;
+
         result.permitZone.found = true;
         result.permitZone.zoneName = `Zone ${zone.zone}`;
         result.permitZone.zoneType = 'residential';
-        result.permitZone.restrictionSchedule = DEFAULT_PERMIT_RESTRICTION;
+        result.permitZone.restrictionSchedule = restrictionSchedule;
 
         // Validate current time against restrictions
-        const zoneStatus = validatePermitZone(zone.zone, DEFAULT_PERMIT_RESTRICTION);
+        const zoneStatus = validatePermitZone(zone.zone, restrictionSchedule);
         result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
         result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
 
+        // Note when using estimated hours vs confirmed sign data
+        const hoursNote = hasKnownHours ? '' : ' (check posted signs for exact hours)';
+
         if (zoneStatus.is_currently_restricted) {
           result.permitZone.severity = 'critical';
-          result.permitZone.message = `PERMIT REQUIRED - Zone ${zone.zone}. ${DEFAULT_PERMIT_RESTRICTION}. $100 ticket risk.`;
+          result.permitZone.message = `PERMIT REQUIRED - Zone ${zone.zone}. ${restrictionSchedule}. $100 ticket risk.${hoursNote}`;
         } else if (zoneStatus.hours_until_restriction <= 2) {
           result.permitZone.severity = 'warning';
-          result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts in ${Math.round(zoneStatus.hours_until_restriction)} hour(s).`;
+          result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts in ${Math.round(zoneStatus.hours_until_restriction)} hour(s). ${restrictionSchedule}.${hoursNote}`;
         } else {
           result.permitZone.severity = 'info';
-          result.permitZone.message = `Zone ${zone.zone} - ${DEFAULT_PERMIT_RESTRICTION}. No permit needed currently.`;
+          result.permitZone.message = `Zone ${zone.zone} - ${restrictionSchedule}. No permit needed currently.${hoursNote}`;
         }
       }
     }
@@ -364,18 +386,20 @@ export async function checkAllParkingRestrictions(
     // --- Industrial Permit Zone (only if no residential zone found) ---
     if (!result.permitZone.found && industrialZones.length > 0) {
       const iZone = industrialZones[0];
-      // Build restriction schedule from zone data, or use default
+      // Check zone hours lookup first, then fall back to DB fields, then default
+      const knownIndustrialSchedule = zoneHoursMap.get(`industrial:${iZone.zone}`);
       // DB stores "8:00 AM - 3:00 PM", validator expects "8am-3pm"
       const formatHours = (h: string) => h
         .replace(/(\d+):00\s*/g, '$1')
         .replace(/\s*AM/gi, 'am')
         .replace(/\s*PM/gi, 'pm')
         .replace(/\s*-\s*/g, '-');
-      const restrictionSchedule = iZone.restriction_hours && iZone.restriction_days
-        ? `${iZone.restriction_days} ${formatHours(iZone.restriction_hours)}`
-        : iZone.restriction_days
-          ? `${iZone.restriction_days} 8am-3pm`
-          : 'Mon-Fri 8am-3pm';
+      const restrictionSchedule = knownIndustrialSchedule
+        || (iZone.restriction_hours && iZone.restriction_days
+          ? `${iZone.restriction_days} ${formatHours(iZone.restriction_hours)}`
+          : iZone.restriction_days
+            ? `${iZone.restriction_days} 8am-3pm`
+            : 'Mon-Fri 8am-3pm');
 
       result.permitZone.found = true;
       result.permitZone.zoneName = `Industrial Zone ${iZone.zone}`;
