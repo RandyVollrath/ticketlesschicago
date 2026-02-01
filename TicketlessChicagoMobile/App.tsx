@@ -179,7 +179,7 @@ function App(): React.JSX.Element {
     }
   };
 
-  if (isLoading || authState?.isLoading) {
+  if (isLoading || !authState || authState.isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />

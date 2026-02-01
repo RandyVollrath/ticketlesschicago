@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, shadows } from '../theme';
 
@@ -19,8 +20,9 @@ const TAB_LABELS: Record<string, string> = {
 };
 
 const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const label = TAB_LABELS[route.name] || options.tabBarLabel || options.title || route.name;
@@ -80,7 +82,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingBottom: Platform.OS === 'ios' ? 0 : spacing.sm,
     paddingTop: spacing.sm,
     ...shadows.sm,
   },
