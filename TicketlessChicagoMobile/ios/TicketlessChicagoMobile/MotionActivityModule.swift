@@ -1,5 +1,6 @@
 import Foundation
 import CoreMotion
+import React
 
 @objc(MotionActivityModule)
 class MotionActivityModule: RCTEventEmitter {

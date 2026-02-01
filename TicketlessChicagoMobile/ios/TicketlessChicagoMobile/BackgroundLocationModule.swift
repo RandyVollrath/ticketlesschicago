@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import CoreMotion
+import React
 
 @objc(BackgroundLocationModule)
 class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
