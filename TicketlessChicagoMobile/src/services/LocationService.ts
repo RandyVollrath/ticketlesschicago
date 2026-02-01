@@ -11,7 +11,7 @@ import { StorageKeys } from '../constants';
 const log = Logger.createLogger('LocationService');
 
 export interface ParkingRule {
-  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban' | 'rush_hour' | 'tow_zone';
+  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban' | 'tow_zone';
   message: string;
   severity: 'critical' | 'warning' | 'info';
   // Additional metadata for enhanced display
@@ -644,19 +644,6 @@ class LocationServiceClass {
         zoneName: data.permitZone.zoneName,
         schedule: data.permitZone.restrictionSchedule,
         isActiveNow: data.permitZone.permitRequired,
-      });
-    }
-
-    // Rush hour restrictions (when enabled on backend)
-    if (data?.rushHour?.hasRestriction) {
-      const severity = data.rushHour.isActiveNow ? 'critical' :
-                       (data.rushHour.severity || 'info');
-      rules.push({
-        type: 'rush_hour',
-        message: data.rushHour.message,
-        severity: severity as 'critical' | 'warning' | 'info',
-        schedule: data.rushHour.schedule,
-        isActiveNow: data.rushHour.isActiveNow,
       });
     }
 

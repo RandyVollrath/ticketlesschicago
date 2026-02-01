@@ -149,7 +149,6 @@ export const chicagoFines = {
   doubleParking: 100,
   fireHydrant: 150,
   overtimeParking: 65,
-  rushHourParking: 100,
   snowRouteViolation: 150,
   overnightBan: 65,
 };

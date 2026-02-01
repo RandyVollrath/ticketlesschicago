@@ -12,7 +12,6 @@ import { reverseGeocode, GeocodeResult } from './reverse-geocoder';
 import { parseChicagoAddress, ParsedAddress } from './address-parser';
 import { validatePermitZone } from './permit-zone-time-validator';
 import { getChicagoTime } from './chicago-timezone-utils';
-import { checkRushHourRestriction, RushHourResult } from './rush-hour-checker';
 
 // Default permit zone restriction hours
 const DEFAULT_PERMIT_RESTRICTION = 'Mon-Fri 6am-6pm';
@@ -74,19 +73,6 @@ export interface UnifiedParkingResult {
     message: string;
   };
 
-  // Rush Hour Restrictions (major arterials)
-  rushHour: {
-    found: boolean;
-    streetName: string | null;
-    isActiveNow: boolean;
-    activeRestriction: 'MORNING' | 'EVENING' | null;
-    nextRestrictionStart: string | null;
-    hoursUntilRestriction: number;
-    severity: 'critical' | 'warning' | 'info' | 'none';
-    message: string;
-    schedule: string | null;
-  };
-
   timestamp: string;
 }
 
@@ -146,17 +132,6 @@ export async function checkAllParkingRestrictions(
       hoursUntilRestriction: 999,
       severity: 'none',
       message: 'Not in a permit parking zone',
-    },
-    rushHour: {
-      found: false,
-      streetName: null,
-      isActiveNow: false,
-      activeRestriction: null,
-      nextRestrictionStart: null,
-      hoursUntilRestriction: 999,
-      severity: 'none',
-      message: 'No rush hour parking restrictions',
-      schedule: null,
     },
     timestamp,
   };
@@ -422,15 +397,6 @@ export async function checkAllParkingRestrictions(
         result.permitZone.message = `Industrial Zone ${iZone.zone} - ${restrictionSchedule}. No industrial permit needed currently.`;
       }
     }
-
-    // --- Rush Hour Restrictions ---
-    // DISABLED: Rush hour data is based on assumptions about major arterials,
-    // not actual segment-level restriction data. This causes false positives.
-    // TODO: Re-enable when we have accurate segment-level rush hour data.
-    // if (result.location.streetName) {
-    //   const rushHourResult = checkRushHourRestriction(result.location.streetName);
-    //   result.rushHour = rushHourResult;
-    // }
 
     return result;
 
