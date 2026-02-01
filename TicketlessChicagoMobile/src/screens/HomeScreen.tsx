@@ -551,14 +551,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             activeOpacity={0.8}
           >
             <View style={styles.pairCarContent}>
-              <MaterialCommunityIcons name="bluetooth-connect" size={28} color={colors.white} />
+              <View style={styles.pairCarIconCircle}>
+                <MaterialCommunityIcons name="bluetooth-connect" size={20} color={colors.primary} />
+              </View>
               <View style={styles.pairCarTextWrap}>
-                <Text style={styles.pairCarTitle}>Pair Your Car</Text>
+                <Text style={styles.pairCarTitle}>Pair your car via Bluetooth</Text>
                 <Text style={styles.pairCarSubtitle}>
-                  One-time setup so we can detect when you park.
+                  One-time setup for automatic parking detection
                 </Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.7)" />
+              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
             </View>
           </TouchableOpacity>
         )}
@@ -828,29 +830,40 @@ const styles = StyleSheet.create({
 
   // Car pairing card
   pairCarCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.cardBg,
     borderRadius: borderRadius.lg,
     padding: spacing.base,
     marginBottom: spacing.base,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
   },
   pairCarContent: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  pairCarIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pairCarTextWrap: {
     flex: 1,
     marginLeft: spacing.md,
   },
   pairCarTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.white,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   pairCarSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 18,
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
 
   // Protection status
