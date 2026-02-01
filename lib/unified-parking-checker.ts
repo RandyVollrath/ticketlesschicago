@@ -62,10 +62,11 @@ export interface UnifiedParkingResult {
     message: string;
   };
 
-  // Permit Zone (address match)
+  // Permit Zone (address match - residential or industrial)
   permitZone: {
     found: boolean;
     zoneName: string | null;
+    zoneType: 'residential' | 'industrial' | null;
     isCurrentlyRestricted: boolean;
     restrictionSchedule: string | null;
     hoursUntilRestriction: number;
@@ -139,6 +140,7 @@ export async function checkAllParkingRestrictions(
     permitZone: {
       found: false,
       zoneName: null,
+      zoneType: null,
       isCurrentlyRestricted: false,
       restrictionSchedule: null,
       hoursUntilRestriction: 999,
@@ -191,6 +193,7 @@ export async function checkAllParkingRestrictions(
       snowBanStatus,
       winterBanData,
       permitZones,
+      industrialZones,
     ] = await Promise.all([
       // Street cleaning spatial query
       supabaseAdmin.rpc('get_street_cleaning_at_location_enhanced', {
@@ -221,11 +224,23 @@ export async function checkAllParkingRestrictions(
         distance_meters: 30,
       }).then(r => r.data?.[0] || null).catch(() => null),
 
-      // Permit zones (for address matching) - only if we have parsed address
+      // Residential permit zones (address matching) - only if we have parsed address
       result.location.parsedAddress
         ? supabaseAdmin
             .from('parking_permit_zones')
             .select('zone, odd_even, address_range_low, address_range_high, street_direction, street_name, street_type')
+            .eq('street_name', result.location.parsedAddress.name)
+            .eq('status', 'ACTIVE')
+            .lte('address_range_low', result.location.parsedAddress.number)
+            .gte('address_range_high', result.location.parsedAddress.number)
+            .then(r => r.data || []).catch(() => [])
+        : Promise.resolve([]),
+
+      // Industrial permit zones (address matching) - only if we have parsed address
+      result.location.parsedAddress
+        ? supabaseAdmin
+            .from('industrial_parking_zones')
+            .select('zone, street_name, street_direction, street_type, address_range_low, address_range_high, restriction_hours, restriction_days')
             .eq('street_name', result.location.parsedAddress.name)
             .eq('status', 'ACTIVE')
             .lte('address_range_low', result.location.parsedAddress.number)
@@ -309,7 +324,7 @@ export async function checkAllParkingRestrictions(
       result.winterBan.hoursUntilBan = banHoursInfo.hoursUntilBan;
     }
 
-    // --- Permit Zone ---
+    // --- Permit Zone (Residential) ---
     if (permitZones.length > 0 && result.location.parsedAddress) {
       // Filter by odd/even if applicable
       const matchingZones = permitZones.filter(zone => {
@@ -325,6 +340,7 @@ export async function checkAllParkingRestrictions(
         const zone = matchingZones[0];
         result.permitZone.found = true;
         result.permitZone.zoneName = `Zone ${zone.zone}`;
+        result.permitZone.zoneType = 'residential';
         result.permitZone.restrictionSchedule = DEFAULT_PERMIT_RESTRICTION;
 
         // Validate current time against restrictions
@@ -342,6 +358,44 @@ export async function checkAllParkingRestrictions(
           result.permitZone.severity = 'info';
           result.permitZone.message = `Zone ${zone.zone} - ${DEFAULT_PERMIT_RESTRICTION}. No permit needed currently.`;
         }
+      }
+    }
+
+    // --- Industrial Permit Zone (only if no residential zone found) ---
+    if (!result.permitZone.found && industrialZones.length > 0) {
+      const iZone = industrialZones[0];
+      // Build restriction schedule from zone data, or use default
+      // DB stores "8:00 AM - 3:00 PM", validator expects "8am-3pm"
+      const formatHours = (h: string) => h
+        .replace(/(\d+):00\s*/g, '$1')
+        .replace(/\s*AM/gi, 'am')
+        .replace(/\s*PM/gi, 'pm')
+        .replace(/\s*-\s*/g, '-');
+      const restrictionSchedule = iZone.restriction_hours && iZone.restriction_days
+        ? `${iZone.restriction_days} ${formatHours(iZone.restriction_hours)}`
+        : iZone.restriction_days
+          ? `${iZone.restriction_days} 8am-3pm`
+          : 'Mon-Fri 8am-3pm';
+
+      result.permitZone.found = true;
+      result.permitZone.zoneName = `Industrial Zone ${iZone.zone}`;
+      result.permitZone.zoneType = 'industrial';
+      result.permitZone.restrictionSchedule = restrictionSchedule;
+
+      // Validate current time against industrial zone restrictions
+      const zoneStatus = validatePermitZone(`Industrial Zone ${iZone.zone}`, restrictionSchedule);
+      result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
+      result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
+
+      if (zoneStatus.is_currently_restricted) {
+        result.permitZone.severity = 'critical';
+        result.permitZone.message = `INDUSTRIAL PERMIT REQUIRED - Zone ${iZone.zone}. ${restrictionSchedule}. No parking without industrial permit.`;
+      } else if (zoneStatus.hours_until_restriction <= 2) {
+        result.permitZone.severity = 'warning';
+        result.permitZone.message = `Industrial Zone ${iZone.zone} - Restriction starts in ${Math.round(zoneStatus.hours_until_restriction)} hour(s). ${restrictionSchedule}.`;
+      } else {
+        result.permitZone.severity = 'info';
+        result.permitZone.message = `Industrial Zone ${iZone.zone} - ${restrictionSchedule}. No industrial permit needed currently.`;
       }
     }
 

@@ -44,6 +44,7 @@ interface MobileCheckParkingResponse {
     inPermitZone: boolean;
     message: string;
     zoneName?: string;
+    zoneType?: 'residential' | 'industrial';
     permitRequired?: boolean;
     severity?: 'critical' | 'warning' | 'info' | 'none';
     restrictionSchedule?: string;
@@ -126,6 +127,7 @@ export default async function handler(
         inPermitZone: result.permitZone.found,
         message: result.permitZone.message,
         zoneName: result.permitZone.zoneName || undefined,
+        zoneType: result.permitZone.zoneType || undefined,
         permitRequired: result.permitZone.isCurrentlyRestricted,
         severity: result.permitZone.severity,
         restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
