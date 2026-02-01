@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
   StatusBar,
@@ -21,6 +21,7 @@ import LocationService, { ParkingCheckResult, ParkingRule, Coordinates } from '.
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import BluetoothService from '../services/BluetoothService';
 import MotionActivityService from '../services/MotionActivityService';
+import BackgroundLocationService, { LocationUpdateEvent } from '../services/BackgroundLocationService';
 import { ParkingHistoryService } from './HistoryScreen';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
@@ -58,8 +59,8 @@ const getHeroConfig = (
     case 'driving':
       return {
         icon: 'car',
-        title: 'You\'re on the move',
-        subtitle: 'We\'ll check parking when you stop. Drive safe!',
+        title: 'Driving',
+        subtitle: 'Watching for when you park',
         bgColor: colors.primary,
         iconColor: colors.white,
         textColor: colors.white,
@@ -67,8 +68,8 @@ const getHeroConfig = (
     case 'checking':
       return {
         icon: 'radar',
-        title: 'Checking your spot...',
-        subtitle: 'Scanning parking restrictions at your location.',
+        title: 'Checking...',
+        subtitle: 'Scanning restrictions at your spot',
         bgColor: colors.primary,
         iconColor: colors.white,
         textColor: colors.white,
@@ -76,8 +77,8 @@ const getHeroConfig = (
     case 'clear':
       return {
         icon: 'shield-check',
-        title: 'You\'re good here',
-        subtitle: address || 'No parking restrictions found. Relax.',
+        title: 'All clear',
+        subtitle: address || 'No restrictions here',
         bgColor: colors.success,
         iconColor: colors.white,
         textColor: colors.white,
@@ -85,10 +86,8 @@ const getHeroConfig = (
     case 'violation':
       return {
         icon: 'alert-circle',
-        title: `Heads up!`,
-        subtitle: address
-          ? `${ruleCount} restriction${ruleCount > 1 ? 's' : ''} at ${address}`
-          : `${ruleCount} parking restriction${ruleCount > 1 ? 's' : ''} detected.`,
+        title: `${ruleCount} restriction${ruleCount > 1 ? 's' : ''} found`,
+        subtitle: address || 'Move your car',
         bgColor: colors.error,
         iconColor: colors.white,
         textColor: colors.white,
@@ -96,8 +95,8 @@ const getHeroConfig = (
     case 'paused':
       return {
         icon: 'pause-circle-outline',
-        title: 'Taking a break',
-        subtitle: 'Tap Resume to start watching again.',
+        title: 'Paused',
+        subtitle: 'Tap Resume below',
         bgColor: colors.primaryTint,
         iconColor: colors.primary,
         textColor: colors.textPrimary,
@@ -106,8 +105,8 @@ const getHeroConfig = (
     default:
       return {
         icon: 'shield-check-outline',
-        title: 'We\'ve got your back',
-        subtitle: 'Autopilot is watching for your next drive.',
+        title: 'Watching',
+        subtitle: 'Ready for your next drive',
         bgColor: colors.primaryTint,
         iconColor: colors.primary,
         textColor: colors.textPrimary,
@@ -116,15 +115,27 @@ const getHeroConfig = (
 };
 
 // ──────────────────────────────────────────────────────
-// Protection Status - databases we check
+// Protection Status - compact icon strip
 // ──────────────────────────────────────────────────────
 const PROTECTION_ITEMS = [
-  { icon: 'broom', label: 'Street Cleaning' },
-  { icon: 'snowflake', label: 'Winter Overnight Ban' },
-  { icon: 'weather-snowy-heavy', label: 'Snow Route Ban' },
-  { icon: 'parking', label: 'Permit Zones' },
-  { icon: 'car-clock', label: 'Rush Hour' },
+  { icon: 'broom', label: 'Cleaning' },
+  { icon: 'snowflake', label: 'Winter' },
+  { icon: 'weather-snowy-heavy', label: 'Snow' },
+  { icon: 'parking', label: 'Permits' },
+  { icon: 'car-clock', label: 'Rush Hr' },
 ];
+
+// ──────────────────────────────────────────────────────
+// iOS Debug Overlay Types
+// ──────────────────────────────────────────────────────
+interface DebugTransition {
+  time: string;
+  activity: string;
+  confidence: string;
+  speed: number;
+}
+
+const MAX_DEBUG_LOG = 30;
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const route = useRoute<RouteProp<{ Home: HomeScreenRouteParams }, 'Home'>>();
@@ -137,9 +148,18 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [locationAccuracy, setLocationAccuracy] = useState<number | undefined>(undefined);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<string>('unknown');
+  const [currentConfidence, setCurrentConfidence] = useState<string>('');
   const [isCarConnected, setIsCarConnected] = useState(false);
   const [savedCarName, setSavedCarName] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+
+  // iOS Debug Overlay state
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugSpeed, setDebugSpeed] = useState<number>(0);
+  const [debugAccuracy, setDebugAccuracy] = useState<number>(0);
+  const [debugTransitions, setDebugTransitions] = useState<DebugTransition[]>([]);
+  const [debugBgStatus, setDebugBgStatus] = useState<string>('');
+  const debugTransitionsRef = useRef<DebugTransition[]>([]);
 
   // Update time every minute
   useEffect(() => {
@@ -194,14 +214,64 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const updateActivity = async () => {
       const activity = await MotionActivityService.getCurrentActivity();
       if (activity) {
+        const prevActivity = currentActivity;
         setCurrentActivity(activity.activity);
+        setCurrentConfidence(activity.confidence);
+
+        // Log transitions for debug overlay
+        if (activity.activity !== prevActivity && showDebug) {
+          const now = new Date();
+          const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+          const entry: DebugTransition = {
+            time: timeStr,
+            activity: `${prevActivity} -> ${activity.activity}`,
+            confidence: activity.confidence,
+            speed: debugSpeed,
+          };
+          const updated = [entry, ...debugTransitionsRef.current].slice(0, MAX_DEBUG_LOG);
+          debugTransitionsRef.current = updated;
+          setDebugTransitions(updated);
+        }
       }
     };
 
     updateActivity();
-    const interval = setInterval(updateActivity, 10000);
+    const interval = setInterval(updateActivity, 5000); // Poll every 5s for debug
     return () => clearInterval(interval);
-  }, [isMonitoring]);
+  }, [isMonitoring, showDebug]);
+
+  // iOS debug: subscribe to real-time location updates for speed/accuracy
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !showDebug) return;
+
+    const removeListener = BackgroundLocationService.addLocationListener((event: LocationUpdateEvent) => {
+      setDebugSpeed(event.speed >= 0 ? event.speed : 0);
+      setDebugAccuracy(event.accuracy);
+    });
+
+    // Also poll background location status
+    const statusInterval = setInterval(async () => {
+      try {
+        const status = await BackgroundLocationService.getStatus();
+        const parts = [];
+        parts.push(status.isMonitoring ? 'MON:ON' : 'MON:OFF');
+        parts.push(status.isDriving ? 'DRV:YES' : 'DRV:NO');
+        parts.push(status.hasAlwaysPermission ? 'PERM:ALWAYS' : 'PERM:NO');
+        parts.push(status.motionAvailable ? 'CM:YES' : 'CM:NO');
+        if (status.drivingDurationSec) {
+          parts.push(`DUR:${status.drivingDurationSec}s`);
+        }
+        setDebugBgStatus(parts.join(' | '));
+      } catch (e) {
+        // ignore
+      }
+    }, 3000);
+
+    return () => {
+      removeListener();
+      clearInterval(statusInterval);
+    };
+  }, [showDebug]);
 
   // Load saved car name; subscribe to BT events on Android
   useEffect(() => {
@@ -420,13 +490,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     lastParkingCheck?.address,
   );
 
+  // Speed helper for debug (m/s to mph)
+  const speedMph = (ms: number) => (ms * 2.237).toFixed(0);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       {isOffline && (
         <View style={styles.offlineBanner}>
           <MaterialCommunityIcons name="wifi-off" size={14} color={colors.textPrimary} />
-          <Text style={styles.offlineBannerText}> No internet connection</Text>
+          <Text style={styles.offlineBannerText}> No internet</Text>
         </View>
       )}
       <ScrollView
@@ -441,11 +514,89 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.title}>Autopilot</Text>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.title}>Autopilot</Text>
+          </View>
+          {/* iOS Debug toggle - triple-tap the title area */}
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              onPress={() => setShowDebug(!showDebug)}
+              style={styles.debugToggle}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialCommunityIcons
+                name="bug-outline"
+                size={18}
+                color={showDebug ? colors.primary : colors.textTertiary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Hero Card - state-driven */}
+        {/* ──── iOS Debug Overlay ──── */}
+        {Platform.OS === 'ios' && showDebug && (
+          <View style={styles.debugPanel}>
+            <View style={styles.debugHeader}>
+              <Text style={styles.debugTitle}>iOS Motion Debug</Text>
+              <TouchableOpacity onPress={() => {
+                debugTransitionsRef.current = [];
+                setDebugTransitions([]);
+              }}>
+                <Text style={styles.debugClear}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Current state */}
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>Activity</Text>
+              <Text style={[
+                styles.debugValue,
+                currentActivity === 'automotive' && { color: colors.primary },
+                currentActivity === 'stationary' && { color: colors.success },
+              ]}>
+                {currentActivity.toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>Confidence</Text>
+              <Text style={styles.debugValue}>{currentConfidence || '---'}</Text>
+            </View>
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>Speed</Text>
+              <Text style={styles.debugValue}>
+                {debugSpeed > 0 ? `${speedMph(debugSpeed)} mph (${debugSpeed.toFixed(1)} m/s)` : '0 mph'}
+              </Text>
+            </View>
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>GPS Acc</Text>
+              <Text style={styles.debugValue}>{debugAccuracy > 0 ? `${debugAccuracy.toFixed(0)}m` : '---'}</Text>
+            </View>
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>Hero</Text>
+              <Text style={styles.debugValue}>{heroState}</Text>
+            </View>
+
+            {/* Background status */}
+            {debugBgStatus ? (
+              <Text style={styles.debugBgStatus}>{debugBgStatus}</Text>
+            ) : null}
+
+            {/* Transition log */}
+            {debugTransitions.length > 0 && (
+              <View style={styles.debugLogSection}>
+                <Text style={styles.debugLogTitle}>Transitions:</Text>
+                {debugTransitions.map((t, i) => (
+                  <Text key={i} style={styles.debugLogEntry}>
+                    {t.time} {t.activity} [{t.confidence}] {speedMph(t.speed)}mph
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ──── Hero Card ──── */}
         <TouchableOpacity
           style={[
             styles.heroCard,
@@ -458,7 +609,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }
           }}
           activeOpacity={heroState === 'clear' || heroState === 'violation' ? 0.8 : 1}
-          accessibilityRole="text"
           accessibilityLabel={`${heroConfig.title}. ${heroConfig.subtitle}`}
         >
           <View style={styles.heroContent}>
@@ -470,7 +620,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             ]}>
               <MaterialCommunityIcons
                 name={heroConfig.icon}
-                size={32}
+                size={28}
                 color={heroConfig.iconColor}
               />
             </View>
@@ -488,39 +638,33 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             {(heroState === 'clear' || heroState === 'violation') && (
               <MaterialCommunityIcons
                 name={showDetails ? 'chevron-up' : 'chevron-down'}
-                size={24}
+                size={20}
                 color={heroConfig.textColor}
                 style={{ opacity: 0.7 }}
               />
             )}
           </View>
 
-          {/* Expanded details for clear/violation */}
+          {/* Expanded details */}
           {showDetails && lastParkingCheck && (
             <View style={styles.heroExpanded}>
               <View style={styles.heroDivider} />
               {lastParkingCheck.rules.length > 0 ? (
                 lastParkingCheck.rules.map((rule, index) => (
                   <View key={index} style={styles.heroRuleRow}>
-                    <MaterialCommunityIcons
-                      name="alert"
-                      size={16}
-                      color="rgba(255,255,255,0.9)"
-                    />
+                    <MaterialCommunityIcons name="alert" size={14} color="rgba(255,255,255,0.9)" />
                     <Text style={styles.heroRuleText}>{rule.message || rule.type}</Text>
                   </View>
                 ))
               ) : (
-                <Text style={styles.heroExpandedText}>
-                  No restrictions at this location. Park with peace of mind.
-                </Text>
+                <Text style={styles.heroExpandedText}>No restrictions. Park with peace of mind.</Text>
               )}
               <View style={styles.heroActions}>
                 <TouchableOpacity
                   style={styles.heroActionButton}
                   onPress={() => getDirections(lastParkingCheck.coords)}
                 >
-                  <MaterialCommunityIcons name="navigation-variant" size={16} color={colors.white} />
+                  <MaterialCommunityIcons name="navigation-variant" size={14} color={colors.white} />
                   <Text style={styles.heroActionText}>Directions</Text>
                 </TouchableOpacity>
                 <Text style={styles.heroTimestamp}>
@@ -531,10 +675,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
         </TouchableOpacity>
 
-        {/* Pause/Resume - only when paused */}
+        {/* ──── Paused: Resume button ──── */}
         {!isMonitoring && (
           <Button
-            title="Resume Monitoring"
+            title="Resume"
             variant="primary"
             size="md"
             onPress={resumeMonitoring}
@@ -543,29 +687,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
         )}
 
-        {/* Car Pairing Prompt - Android only */}
-        {Platform.OS === 'android' && !savedCarName && (
-          <TouchableOpacity
-            style={styles.pairCarCard}
-            onPress={() => navigation.navigate('BluetoothSettings')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.pairCarContent}>
-              <View style={styles.pairCarIconCircle}>
-                <MaterialCommunityIcons name="bluetooth-connect" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.pairCarTextWrap}>
-                <Text style={styles.pairCarTitle}>Pair your car via Bluetooth</Text>
-                <Text style={styles.pairCarSubtitle}>
-                  One-time setup for automatic parking detection
-                </Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Quick Action Button */}
+        {/* ──── Check Parking Button ──── */}
         <Button
           title={isGettingLocation ? 'Getting GPS...' : loading ? 'Checking...' : 'Check My Parking'}
           onPress={checkCurrentLocation}
@@ -575,7 +697,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           icon={!loading ? <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.white} /> : undefined}
         />
 
-        {/* GPS Accuracy */}
+        {/* GPS Accuracy - inline after check */}
         {locationAccuracy !== undefined && (
           <View style={styles.accuracyContainer}>
             <View style={[
@@ -583,58 +705,95 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               { backgroundColor: LocationService.getAccuracyDescription(locationAccuracy).color }
             ]} />
             <Text style={styles.accuracyText}>
-              GPS: {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
+              {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
             </Text>
           </View>
         )}
 
-        {/* Android BT Status */}
-        {isMonitoring && Platform.OS === 'android' && (
-          <View style={styles.btStatusRow}>
-            <MaterialCommunityIcons
-              name={isCarConnected ? 'bluetooth-connect' : 'bluetooth-off'}
-              size={16}
-              color={isCarConnected ? colors.success : colors.textTertiary}
-            />
-            <Text style={styles.btStatusText}>
-              {savedCarName
-                ? isCarConnected
-                  ? `Connected to ${savedCarName}`
-                  : `Waiting for ${savedCarName}`
-                : 'No car paired'}
-            </Text>
-          </View>
-        )}
-
-        {/* Monitoring Toggle (when active) */}
+        {/* ──── Status Row: BT + Pause (grouped) ──── */}
         {isMonitoring && (
+          <View style={styles.statusCard}>
+            {/* Android: BT connection status */}
+            {Platform.OS === 'android' && (
+              <TouchableOpacity
+                style={styles.statusRow}
+                onPress={!savedCarName ? () => navigation.navigate('BluetoothSettings') : undefined}
+                activeOpacity={!savedCarName ? 0.7 : 1}
+              >
+                <MaterialCommunityIcons
+                  name={isCarConnected ? 'bluetooth-connect' : savedCarName ? 'bluetooth-off' : 'bluetooth'}
+                  size={18}
+                  color={isCarConnected ? colors.success : colors.textTertiary}
+                />
+                <Text style={styles.statusRowText}>
+                  {savedCarName
+                    ? isCarConnected
+                      ? `Connected to ${savedCarName}`
+                      : `Waiting for ${savedCarName}`
+                    : 'Pair your car'}
+                </Text>
+                {!savedCarName && (
+                  <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* iOS: motion activity */}
+            {Platform.OS === 'ios' && (
+              <View style={styles.statusRow}>
+                <MaterialCommunityIcons
+                  name={currentActivity === 'automotive' ? 'car' : 'walk'}
+                  size={18}
+                  color={currentActivity === 'automotive' ? colors.primary : colors.textTertiary}
+                />
+                <Text style={styles.statusRowText}>
+                  {currentActivity === 'automotive' ? 'Driving detected' :
+                   currentActivity === 'walking' ? 'Walking' :
+                   currentActivity === 'stationary' ? 'Stationary' : 'Monitoring'}
+                </Text>
+              </View>
+            )}
+
+            {/* Divider */}
+            <View style={styles.statusDivider} />
+
+            {/* Pause button */}
+            <TouchableOpacity
+              style={styles.statusRow}
+              onPress={stopMonitoring}
+              accessibilityLabel="Pause parking detection"
+            >
+              <MaterialCommunityIcons name="pause-circle-outline" size={18} color={colors.textTertiary} />
+              <Text style={styles.statusRowText}>Pause detection</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ──── Android: Pair car prompt (only if not paired AND not monitoring) ──── */}
+        {Platform.OS === 'android' && !savedCarName && !isMonitoring && (
           <TouchableOpacity
-            style={styles.pauseRow}
-            onPress={stopMonitoring}
-            accessibilityLabel="Pause parking detection"
+            style={styles.setupBanner}
+            onPress={() => navigation.navigate('BluetoothSettings')}
+            activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="pause-circle-outline" size={18} color={colors.textTertiary} />
-            <Text style={styles.pauseText}>Pause detection</Text>
+            <MaterialCommunityIcons name="bluetooth" size={18} color={colors.primary} />
+            <Text style={styles.setupBannerText}>Pair your car for auto-detection</Text>
+            <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
 
-        {/* Protection Status - what we check */}
+        {/* ──── Protection Coverage - compact horizontal strip ──── */}
         <View style={styles.protectionCard}>
-          <Text style={styles.protectionTitle}>Protection Coverage</Text>
-          <View style={styles.protectionGrid}>
+          <Text style={styles.protectionTitle}>We check for</Text>
+          <View style={styles.protectionStrip}>
             {PROTECTION_ITEMS.map((item, index) => (
-              <View key={index} style={styles.protectionItem}>
+              <View key={index} style={styles.protectionChip}>
                 <MaterialCommunityIcons
                   name={item.icon}
-                  size={18}
-                  color={colors.primary}
-                />
-                <Text style={styles.protectionLabel}>{item.label}</Text>
-                <MaterialCommunityIcons
-                  name="check-circle"
                   size={14}
                   color={colors.success}
                 />
+                <Text style={styles.protectionChipText}>{item.label}</Text>
               </View>
             ))}
           </View>
@@ -651,7 +810,7 @@ const styles = StyleSheet.create({
   },
   offlineBanner: {
     backgroundColor: colors.warning,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.base,
     flexDirection: 'row',
     alignItems: 'center',
@@ -659,33 +818,104 @@ const styles = StyleSheet.create({
   },
   offlineBannerText: {
     color: colors.textPrimary,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
     fontWeight: typography.weights.medium,
   },
   scrollView: {
     padding: spacing.base,
+    paddingBottom: spacing.xxl,
   },
   header: {
-    marginBottom: spacing.lg,
-    marginTop: spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
   },
   greeting: {
-    fontSize: typography.sizes.base,
+    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   title: {
-    fontSize: typography.sizes.xxxl,
+    fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
   },
+  debugToggle: {
+    padding: spacing.sm,
+    marginTop: spacing.xs,
+  },
 
-  // Hero Card
+  // ──── Debug Panel ────
+  debugPanel: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  debugHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  debugTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: '#00ff88',
+  },
+  debugClear: {
+    fontSize: typography.sizes.xs,
+    color: '#ff6b6b',
+  },
+  debugRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  debugLabel: {
+    fontSize: typography.sizes.xs,
+    color: '#888',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  debugValue: {
+    fontSize: typography.sizes.xs,
+    color: '#fff',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: typography.weights.bold,
+  },
+  debugBgStatus: {
+    fontSize: 9,
+    color: '#666',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  debugLogSection: {
+    marginTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    paddingTop: spacing.xs,
+  },
+  debugLogTitle: {
+    fontSize: typography.sizes.xs,
+    color: '#888',
+    marginBottom: 2,
+  },
+  debugLogEntry: {
+    fontSize: 9,
+    color: '#aaa',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    lineHeight: 14,
+  },
+
+  // ──── Hero Card ────
   heroCard: {
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.base,
-    ...shadows.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.md,
+    ...shadows.sm,
   },
   heroCardBorder: {
     borderWidth: 1,
@@ -696,20 +926,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.base,
+    marginRight: spacing.md,
   },
   heroTextWrap: {
     flex: 1,
   },
   heroTitle: {
-    fontSize: typography.sizes.xl,
+    fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   heroSubtitle: {
     fontSize: typography.sizes.sm,
@@ -721,42 +951,42 @@ const styles = StyleSheet.create({
   heroDivider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   heroRuleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   heroRuleText: {
     marginLeft: spacing.sm,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
     color: colors.white,
     flex: 1,
   },
   heroExpandedText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
     color: colors.white,
     opacity: 0.9,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   heroActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   heroActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
   },
   heroActionText: {
     color: colors.white,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
     fontWeight: typography.weights.semibold,
     marginLeft: spacing.xs,
   },
@@ -768,7 +998,7 @@ const styles = StyleSheet.create({
 
   // Resume button
   resumeButton: {
-    marginBottom: spacing.base,
+    marginBottom: spacing.md,
   },
 
   // Main button
@@ -781,118 +1011,98 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
-    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+    paddingVertical: 2,
   },
   accuracyDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     marginRight: spacing.xs,
   },
   accuracyText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
   },
 
-  // BT status
-  btStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.base,
+  // ──── Status Card (BT + Pause grouped) ────
+  statusCard: {
     backgroundColor: colors.cardBg,
     borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
     ...shadows.sm,
   },
-  btStatusText: {
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+  },
+  statusRowText: {
+    flex: 1,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    marginLeft: spacing.sm,
+  },
+  statusDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.base,
+  },
+
+  // ──── Setup Banner (BT pair when not monitoring) ────
+  setupBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  setupBannerText: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     marginLeft: spacing.sm,
   },
 
-  // Pause row
-  pauseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    paddingVertical: spacing.xs,
-  },
-  pauseText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textTertiary,
-    marginLeft: spacing.xs,
-  },
-
-  // Car pairing card
-  pairCarCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.base,
-    marginBottom: spacing.base,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-  },
-  pairCarContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  pairCarIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pairCarTextWrap: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  pairCarTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  pairCarSubtitle: {
-    fontSize: typography.sizes.xs,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
-
-  // Protection status
+  // ──── Protection Coverage (compact chips) ────
   protectionCard: {
     backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.base,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     marginBottom: spacing.base,
     ...shadows.sm,
   },
   protectionTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: typography.letterSpacing.wide,
+    marginBottom: spacing.sm,
   },
-  protectionGrid: {
+  protectionStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  protectionItem: {
+  protectionChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.successBg,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    gap: 4,
   },
-  protectionLabel: {
-    flex: 1,
-    fontSize: typography.sizes.sm,
+  protectionChipText: {
+    fontSize: typography.sizes.xs,
     color: colors.textSecondary,
-    marginLeft: spacing.sm,
+    fontWeight: typography.weights.medium,
   },
 });
 
