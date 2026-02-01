@@ -104,15 +104,21 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     // Start CoreMotion - this is the primary driving detection.
     // Runs on the M-series coprocessor, nearly zero battery.
-    if CMMotionActivityManager.isActivityAvailable() {
+    let coreMotionAvailable = CMMotionActivityManager.isActivityAvailable()
+    NSLog("[BackgroundLocation] CoreMotion available: \(coreMotionAvailable)")
+    if coreMotionAvailable {
       startMotionActivityMonitoring()
+      NSLog("[BackgroundLocation] CoreMotion activity monitoring started")
+    } else {
+      NSLog("[BackgroundLocation] WARNING: CoreMotion NOT available on this device")
     }
 
     // Do NOT start continuous GPS yet - wait until CoreMotion detects driving.
     // This saves significant battery when user is walking/stationary.
 
     isMonitoring = true
-    NSLog("[BackgroundLocation] Monitoring started (significantChanges + CoreMotion, GPS on-demand)")
+    let authStatus = locationManager.authorizationStatus
+    NSLog("[BackgroundLocation] Monitoring started (significantChanges + CoreMotion, GPS on-demand, authStatus=\(authStatus.rawValue))")
     resolve(true)
   }
 
@@ -201,10 +207,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     activityManager.startActivityUpdates(to: .main) { [weak self] activity in
       guard let self = self, let activity = activity else { return }
 
-      if activity.automotive && activity.confidence != .low {
+      // Log every CoreMotion update for diagnostics
+      NSLog("[BackgroundLocation] CoreMotion update: automotive=\(activity.automotive) stationary=\(activity.stationary) walking=\(activity.walking) confidence=\(self.confidenceString(activity.confidence))")
+
+      if activity.automotive {
         // ---- DRIVING ----
         // CoreMotion's M-series coprocessor detected vehicle vibration pattern.
-        // This is the gold standard - works at any speed including 1 mph.
+        // Accept ALL confidence levels - some devices consistently report .low
+        // for automotive even when genuinely driving.
         self.coreMotionSaysAutomotive = true
 
         // Cancel any pending parking timer - we're still in the car
@@ -218,7 +228,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           self.drivingStartTime = Date()
           // Spin up precise GPS now that we know user is driving
           self.startContinuousGps()
-          NSLog("[BackgroundLocation] Driving started (CoreMotion automotive)")
+          NSLog("[BackgroundLocation] Driving started (CoreMotion automotive, confidence: \(self.confidenceString(activity.confidence)))")
           self.sendEvent(withName: "onDrivingStarted", body: [
             "timestamp": Date().timeIntervalSince1970 * 1000,
             "source": "coremotion",
@@ -228,9 +238,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       } else if (activity.stationary || activity.walking) && activity.confidence != .low {
         // ---- NOT IN CAR ----
         // CoreMotion confirms user is NOT in a vehicle.
-        // This is the KEY gate: speed=0 at a red light keeps coreMotionSaysAutomotive=true
-        // because you're still sitting in the car. Only when you physically exit and walk
-        // does CoreMotion report stationary/walking.
+        // Keep confidence gate for exit detection (medium/high) to avoid
+        // false parking triggers at red lights from brief low-confidence
+        // stationary readings.
         let wasAutomotive = self.coreMotionSaysAutomotive
         self.coreMotionSaysAutomotive = false
 
@@ -329,7 +339,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
       for i in 0..<activities.count {
         let activity = activities[i]
-        if activity.automotive && activity.confidence != .low {
+        if activity.automotive {
           wasRecentlyDriving = true
           if lastAutomotiveEnd == nil {
             // Track when automotive segment started
