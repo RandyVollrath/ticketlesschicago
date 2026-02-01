@@ -2,7 +2,7 @@
  * San Francisco Tow-Away Zone Configuration
  *
  * SF has some of the strictest tow-away zones in the US.
- * Rush hour lanes become tow zones - NO EXEMPTIONS, not even disabled placards!
+ * Commute hour lanes become tow zones - NO EXEMPTIONS, not even disabled placards!
  */
 
 import { TowAwayRestriction } from '../../services/parking-map/restriction-types';

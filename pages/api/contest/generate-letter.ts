@@ -31,7 +31,6 @@ const WEATHER_RELEVANCE: Record<string, 'primary' | 'supporting' | 'emergency'> 
   // SUPPORTING - Weather contributes to circumstances
   '9-64-170': 'supporting', // Expired Meter - hard to return in storm
   '9-64-070': 'supporting', // Residential Permit - visibility issues
-  '9-64-190': 'supporting', // Rush Hour - hazardous conditions
   '9-64-130': 'supporting', // Fire Hydrant - obscured by snow
   '9-64-050': 'supporting', // Bus Stop - markings obscured
   '9-64-090': 'supporting', // Bike Lane - markings obscured by snow/ice

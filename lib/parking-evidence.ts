@@ -103,7 +103,6 @@ export interface LocationPattern {
 const DEPARTURE_RELEVANT_VIOLATIONS: Record<string, string> = {
   '9-64-010': 'street_cleaning',
   '9-64-100': 'snow_route',
-  '9-64-190': 'rush_hour',
   '9-64-170': 'expired_meter',
   '9-64-140': 'no_standing',
 };
@@ -572,11 +571,6 @@ export function generateEvidenceParagraph(
         case 'snow_route':
           paragraphs.push(
             `Additionally, GPS data from my vehicle's connected mobile application confirms I moved my vehicle from this location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was written. The GPS verified I traveled ${dp.departureDistanceMeters} meters from the parking spot. My vehicle was not present on this snow route at the time of citation and did not interfere with snow removal operations.`
-          );
-          break;
-        case 'rush_hour':
-          paragraphs.push(
-            `I also have GPS-verified evidence showing my vehicle departed from this location at ${dp.departureTimeFormatted}, which was ${dp.minutesBeforeTicket} minutes before this citation was issued. The GPS confirms I moved ${dp.departureDistanceMeters} meters from my parking spot, proving my vehicle was not parked at this location during the posted rush hour restriction period.`
           );
           break;
         case 'expired_meter':

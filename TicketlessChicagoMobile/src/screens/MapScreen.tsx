@@ -448,14 +448,6 @@ const MapScreenContent: React.FC = () => {
                   </View>
                   <Text style={styles.protectionCheck}>✓</Text>
                 </View>
-                <View style={styles.protectionItem}>
-                  <Text style={styles.protectionIcon}>🚗</Text>
-                  <View style={styles.protectionInfo}>
-                    <Text style={styles.protectionLabel}>Rush Hour Restrictions</Text>
-                    <Text style={styles.protectionStatus}>Checked</Text>
-                  </View>
-                  <Text style={styles.protectionCheck}>✓</Text>
-                </View>
               </View>
               {lastLocation.rules.length === 0 && (
                 <View style={styles.allClear}>

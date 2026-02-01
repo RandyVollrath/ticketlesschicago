@@ -35,7 +35,6 @@ const BASE_WIN_RATES: Record<string, number> = {
   missing_plate: 0.54,
   residential_permit: 0.54,
   fire_hydrant: 0.44,
-  rush_hour: 0.37,
   street_cleaning: 0.34,
   snow_route: 0.30,
   double_parking: 0.25,

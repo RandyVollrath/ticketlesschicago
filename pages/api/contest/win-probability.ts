@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'Signs were obscured by trees, snow, or other objects',
       'Meter was malfunctioning/broken',
       'Valid permit was displayed but not visible to officer',
-      'Ticket issued outside posted rush hour times'
+      'Ticket issued outside posted restriction times'
     ];
 
     const hasStrongGround = contestGrounds?.some((g: string) =>

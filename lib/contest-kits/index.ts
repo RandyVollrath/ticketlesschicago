@@ -13,7 +13,6 @@
  * - Residential Permit: 54%
  * - Missing Plate: 54%
  * - Fire Hydrant: 44%
- * - Rush Hour: 37%
  * - Street Cleaning: 34%
  * - Snow Route: 30%
  * - Double Parking: 25%
@@ -37,7 +36,6 @@ export { expiredMeterKit } from './expired-meter';
 
 // Kit exports - New kits
 export { fireHydrantKit } from './fire-hydrant';
-export { rushHourKit } from './rush-hour';
 export { busStopKit } from './bus-stop';
 export { bikeLaneKit } from './bike-lane';
 export { handicappedZoneKit } from './handicapped-zone';
@@ -55,7 +53,6 @@ import { residentialPermitKit } from './residential-permit';
 import { snowRouteKit } from './snow-route';
 import { expiredMeterKit } from './expired-meter';
 import { fireHydrantKit } from './fire-hydrant';
-import { rushHourKit } from './rush-hour';
 import { busStopKit } from './bus-stop';
 import { bikeLaneKit } from './bike-lane';
 import { handicappedZoneKit } from './handicapped-zone';
@@ -80,7 +77,6 @@ export const CONTEST_KITS: Record<string, ContestKit> = {
 
   // New kits
   '9-64-130': fireHydrantKit,
-  '9-64-190': rushHourKit,
   '9-64-050': busStopKit,
   '9-64-090': bikeLaneKit,
   '9-64-180': handicappedZoneKit,
@@ -103,7 +99,6 @@ export const VIOLATION_NAME_TO_CODE: Record<string, string> = {
   'snow_route': '9-64-100',
   'expired_meter': '9-64-170',
   'fire_hydrant': '9-64-130',
-  'rush_hour': '9-64-190',
   'bus_stop': '9-64-050',
   'bike_lane': '9-64-090',
   'disabled_zone': '9-64-180',

@@ -262,50 +262,6 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     weatherQuestion: 'Was there snow or ice that may have covered the hydrant or curb markings?',
   },
 
-  rush_hour: {
-    violationType: 'rush_hour',
-    emailSubject: 'Rush Hour Ticket - Check the Sign Times!',
-    title: 'Rush Hour Ticket - Timing Is Everything!',
-    winRate: 0.37,
-    intro: `Rush hour tickets have a 37% success rate. The key defenses are: ticket issued outside the actual restriction hours, holidays/weekends exempt, or confusing signage.`,
-    questions: [
-      {
-        text: 'What time does your ticket say it was issued? What were the posted rush hour restriction times on the sign?',
-        whyItMatters: 'If you were ticketed OUTSIDE the posted hours (even by 1 minute), the ticket should be dismissed.',
-        impactScore: 0.40,
-        goodExample: '"Sign says 7-9am, but ticket was issued at 6:52am"',
-      },
-      {
-        text: 'Was the ticket issued on a weekend or holiday? Most rush hour restrictions only apply Monday-Friday.',
-        whyItMatters: 'Rush hour restrictions typically don\'t apply on weekends or federal holidays.',
-        impactScore: 0.35,
-        goodExample: '"The ticket was issued on Saturday, but the sign says Mon-Fri"',
-      },
-      {
-        text: 'Do you have photos of the rush hour signs? Were they confusing, contradictory, or hard to read?',
-        whyItMatters: 'Confusing signage is a valid defense.',
-        impactScore: 0.30,
-      },
-      {
-        text: 'Were you dealing with an emergency or actively loading/unloading (not actually parked)?',
-        whyItMatters: 'Emergency circumstances and active loading may provide a defense.',
-        impactScore: 0.20,
-      },
-    ],
-    quickTips: [
-      'Check your ticket time vs. posted restriction hours EXACTLY',
-      'Weekend ticket? Probably invalid - most signs say Mon-Fri only',
-      'Holiday ticket? Federal holidays are usually exempt',
-      'Photograph the signs if you can',
-    ],
-    pitfalls: [
-      'Don\'t contest if you clearly parked during posted rush hour times',
-      'Don\'t assume holidays are exempt - verify the sign language',
-    ],
-    weatherRelevant: true,
-    weatherQuestion: 'Did weather conditions make it unsafe to move your vehicle?',
-  },
-
   disabled_zone: {
     violationType: 'disabled_zone',
     emailSubject: 'Handicapped Zone Ticket - 68% Win Rate - Placard Documentation Needed!',

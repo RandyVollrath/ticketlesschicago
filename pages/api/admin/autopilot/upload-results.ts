@@ -245,9 +245,6 @@ function normalizeViolationType(input: string): string {
   if (normalized.includes('street clean') || normalized.includes('sweeping')) {
     return 'street_cleaning';
   }
-  if (normalized.includes('rush hour') || normalized.includes('rush-hour') || normalized.includes('tow zone')) {
-    return 'rush_hour';
-  }
   if (normalized.includes('hydrant') || normalized.includes('fire')) {
     return 'fire_hydrant';
   }
@@ -260,7 +257,7 @@ function normalizeViolationType(input: string): string {
 
   // If already in correct format, return as-is
   const validTypes = ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
-                      'street_cleaning', 'rush_hour', 'fire_hydrant', 'speed_camera',
+                      'street_cleaning', 'fire_hydrant', 'speed_camera',
                       'red_light', 'other_unknown'];
   if (validTypes.includes(normalized)) {
     return normalized;
@@ -350,22 +347,6 @@ I respectfully request that this citation be DISMISSED for the following reasons
 4. WEATHER CANCELLATION: Street cleaning is often cancelled due to weather conditions. I request verification that cleaning was not cancelled on this date.
 
 I request that this ticket be dismissed. Street cleaning violations require proper notice through compliant signage, and without documentation of proper signage and actual cleaning activity, dismissal is appropriate.`,
-  },
-  rush_hour: {
-    type: 'rush_hour_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. SIGNAGE CLARITY: Rush hour restrictions must be clearly posted with signs indicating the specific hours and days of restriction. I request photographs of all signage at this location documenting that the restrictions were clearly posted and the signs were not contradictory or confusing.
-
-2. TIME VERIFICATION: The citation must accurately reflect that the violation occurred during posted rush hour restriction times. I request documentation of the precise time of the alleged violation and how it was verified to fall within restricted hours.
-
-3. SIGN VISIBILITY: Signs must be visible and not obscured by foliage, other signs, or obstructions. I request documentation that all required signs were visible from the parking location.
-
-4. CONFLICTING REGULATIONS: Many locations have multiple parking signs with different restrictions. If signs at this location presented conflicting or confusing information, dismissal is appropriate.
-
-I request that this ticket be dismissed. Rush hour restrictions require clear, unambiguous signage, and without documentation of compliant signage and accurate timing, dismissal is the appropriate remedy.`,
   },
   fire_hydrant: {
     type: 'distance_challenge',

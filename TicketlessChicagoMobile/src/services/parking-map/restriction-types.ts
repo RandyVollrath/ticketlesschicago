@@ -50,7 +50,7 @@ export interface AlternateSideRestriction {
 // =============================================================================
 
 export type TowAwaySubtype =
-  | 'commute-hours' // SF-style rush hour tow zones
+  | 'commute-hours' // SF-style commute hour tow zones
   | 'permanent' // No parking ever
   | 'event' // Game day, concert, etc.
   | 'construction' // Temporary
