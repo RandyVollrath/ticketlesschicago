@@ -13,6 +13,10 @@
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		C43826487FF1883095ABEF6C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		GSERVICEINFO001A68108700A75B /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */; };
+		A1B2C3D401000001BGLOC001 /* BackgroundLocationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001BGLOC002 /* BackgroundLocationModule.swift */; };
+		A1B2C3D401000001BGLOC003 /* BackgroundLocationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */; };
+		A1B2C3D401000001MOTIO001 /* MotionActivityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */; };
+		A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +31,10 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = TicketlessChicagoMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "TicketlessChicagoMobile/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		A1B2C3D401000001BGLOC002 /* BackgroundLocationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundLocationModule.swift; path = TicketlessChicagoMobile/BackgroundLocationModule.swift; sourceTree = "<group>"; };
+		A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackgroundLocationModule.m; path = TicketlessChicagoMobile/BackgroundLocationModule.m; sourceTree = "<group>"; };
+		A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MotionActivityModule.swift; path = TicketlessChicagoMobile/MotionActivityModule.swift; sourceTree = "<group>"; };
+		A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MotionActivityModule.m; path = TicketlessChicagoMobile/MotionActivityModule.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +54,10 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				A1B2C3D401000001BGLOC002 /* BackgroundLocationModule.swift */,
+				A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */,
+				A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */,
+				A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */,
 				GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -280,6 +292,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				A1B2C3D401000001BGLOC001 /* BackgroundLocationModule.swift in Sources */,
+				A1B2C3D401000001BGLOC003 /* BackgroundLocationModule.m in Sources */,
+				A1B2C3D401000001MOTIO001 /* MotionActivityModule.swift in Sources */,
+				A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
