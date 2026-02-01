@@ -710,79 +710,48 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         )}
 
-        {/* ──── Status Row: BT + Pause (grouped) ──── */}
-        {isMonitoring && (
-          <View style={styles.statusCard}>
-            {/* Android: BT connection status */}
-            {Platform.OS === 'android' && (
-              <TouchableOpacity
-                style={styles.statusRow}
-                onPress={!savedCarName ? () => navigation.navigate('BluetoothSettings') : undefined}
-                activeOpacity={!savedCarName ? 0.7 : 1}
-              >
-                <MaterialCommunityIcons
-                  name={isCarConnected ? 'bluetooth-connect' : savedCarName ? 'bluetooth-off' : 'bluetooth'}
-                  size={22}
-                  color={isCarConnected ? colors.success : colors.textTertiary}
-                />
-                <Text style={styles.statusRowText}>
-                  {savedCarName
-                    ? isCarConnected
-                      ? `Connected to ${savedCarName}`
-                      : `Waiting for ${savedCarName}`
-                    : 'Pair your car'}
-                </Text>
-                {!savedCarName && (
-                  <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-                )}
-              </TouchableOpacity>
-            )}
-
-            {/* iOS: motion activity */}
-            {Platform.OS === 'ios' && (
-              <View style={styles.statusRow}>
-                <MaterialCommunityIcons
-                  name={currentActivity === 'automotive' ? 'car' : 'walk'}
-                  size={22}
-                  color={currentActivity === 'automotive' ? colors.primary : colors.textTertiary}
-                />
-                <Text style={styles.statusRowText}>
-                  {currentActivity === 'automotive' ? 'Driving detected' :
-                   currentActivity === 'walking' ? 'Walking' :
-                   currentActivity === 'stationary' ? 'Stationary' : 'Monitoring'}
-                </Text>
-              </View>
-            )}
-
-            {/* Divider */}
-            <View style={styles.statusDivider} />
-
-            {/* Pause button */}
-            <TouchableOpacity
-              style={styles.statusRow}
-              onPress={stopMonitoring}
-              accessibilityLabel="Pause parking detection"
-            >
-              <MaterialCommunityIcons name="pause-circle-outline" size={22} color={colors.textTertiary} />
-              <Text style={styles.statusRowText}>Pause detection</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ──── Android: Pair car prompt (only if not paired AND not monitoring) ──── */}
-        {Platform.OS === 'android' && !savedCarName && !isMonitoring && (
+        {/* ──── Android: BT status or pair prompt ──── */}
+        {Platform.OS === 'android' && (
           <TouchableOpacity
-            style={styles.setupBanner}
-            onPress={() => navigation.navigate('BluetoothSettings')}
-            activeOpacity={0.7}
+            style={styles.statusCard}
+            onPress={!savedCarName ? () => navigation.navigate('BluetoothSettings') : undefined}
+            activeOpacity={!savedCarName ? 0.7 : 1}
           >
-            <MaterialCommunityIcons name="bluetooth" size={22} color={colors.primary} />
-            <Text style={styles.setupBannerText}>Pair your car for auto-detection</Text>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
+            <MaterialCommunityIcons
+              name={isCarConnected ? 'bluetooth-connect' : savedCarName ? 'bluetooth-off' : 'bluetooth'}
+              size={22}
+              color={isCarConnected ? colors.success : savedCarName ? colors.textTertiary : colors.primary}
+            />
+            <Text style={styles.statusRowText}>
+              {savedCarName
+                ? isCarConnected
+                  ? `Connected to ${savedCarName}`
+                  : `Waiting for ${savedCarName}`
+                : 'Pair your car for auto-detection'}
+            </Text>
+            {!savedCarName && (
+              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
+            )}
           </TouchableOpacity>
         )}
 
-        {/* ──── Protection Coverage - compact horizontal strip ──── */}
+        {/* ──── iOS: motion activity status ──── */}
+        {Platform.OS === 'ios' && isMonitoring && (
+          <View style={styles.statusCard}>
+            <MaterialCommunityIcons
+              name={currentActivity === 'automotive' ? 'car' : currentActivity === 'walking' ? 'walk' : 'shield-check-outline'}
+              size={22}
+              color={currentActivity === 'automotive' ? colors.primary : colors.textTertiary}
+            />
+            <Text style={styles.statusRowText}>
+              {currentActivity === 'automotive' ? 'Driving detected' :
+               currentActivity === 'walking' ? 'Walking' :
+               currentActivity === 'stationary' ? 'Stationary' : 'Monitoring'}
+            </Text>
+          </View>
+        )}
+
+        {/* ──── Protection Coverage ──── */}
         <View style={styles.protectionCard}>
           <Text style={styles.protectionTitle}>We check for</Text>
           <View style={styles.protectionStrip}>
@@ -798,6 +767,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             ))}
           </View>
         </View>
+
+        {/* ──── Pause (subtle, at the bottom) ──── */}
+        {isMonitoring && (
+          <TouchableOpacity
+            style={styles.pauseLink}
+            onPress={stopMonitoring}
+            accessibilityLabel="Pause parking detection"
+          >
+            <Text style={styles.pauseLinkText}>Pause detection</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -1025,44 +1005,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
-  // ──── Status Card (BT + Pause grouped) ────
+  // ──── Status Card (single row) ────
   statusCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.lg,
-    overflow: 'hidden',
-    ...shadows.sm,
-  },
-  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.lg,
     paddingVertical: spacing.base,
     paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    ...shadows.sm,
   },
   statusRowText: {
-    flex: 1,
-    fontSize: typography.sizes.base,
-    color: colors.textSecondary,
-    marginLeft: spacing.md,
-  },
-  statusDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.lg,
-  },
-
-  // ──── Setup Banner (BT pair when not monitoring) ────
-  setupBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.base,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    ...shadows.sm,
-  },
-  setupBannerText: {
     flex: 1,
     fontSize: typography.sizes.base,
     color: colors.textSecondary,
@@ -1104,6 +1058,16 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     fontWeight: typography.weights.medium,
+  },
+
+  // ──── Pause link (subtle, bottom of page) ────
+  pauseLink: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  pauseLinkText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
   },
 });
 
