@@ -42,7 +42,7 @@ interface CachedLocation {
   timestamp: number;
 }
 let lastKnownLocation: CachedLocation | null = null;
-const LOCATION_CACHE_MAX_AGE_MS = 60000; // 1 minute
+const LOCATION_CACHE_MAX_AGE_MS = 120000; // 2 minutes - allows using cached location from recent driving
 
 export interface ParkingCheckResult {
   coords: Coordinates;
@@ -184,6 +184,9 @@ class LocationServiceClass {
             lng: coords.longitude.toFixed(6),
             accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
           });
+
+          // Always cache successful location reads for background fallback
+          this.cacheLocation(coords);
 
           resolve(coords);
         },

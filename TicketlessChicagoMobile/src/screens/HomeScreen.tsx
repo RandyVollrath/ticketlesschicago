@@ -311,24 +311,27 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const autoStartMonitoring = async () => {
-    setTimeout(async () => {
-      try {
-        const hasLocationPermission = await LocationService.requestLocationPermission(true);
-        if (!hasLocationPermission) {
-          log.debug('Location permission not granted, monitoring not auto-started');
-          return;
-        }
-
-        await BackgroundTaskService.initialize();
-        const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
-        if (started) {
-          setIsMonitoring(true);
-          log.info('Monitoring auto-started');
-        }
-      } catch (error) {
-        log.error('Error auto-starting monitoring', error);
+    // Small delay to let the UI render first, but properly await everything
+    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const hasLocationPermission = await LocationService.requestLocationPermission(true);
+      if (!hasLocationPermission) {
+        log.warn('Location permission not granted, monitoring not auto-started');
+        return;
       }
-    }, 500);
+
+      await BackgroundTaskService.initialize();
+      log.info('BackgroundTaskService initialized, starting monitoring...');
+      const started = await BackgroundTaskService.startMonitoring(handleCarDisconnect);
+      if (started) {
+        setIsMonitoring(true);
+        log.info('Monitoring auto-started successfully');
+      } else {
+        log.warn('Monitoring returned false - may not be active');
+      }
+    } catch (error) {
+      log.error('Error auto-starting monitoring:', error);
+    }
   };
 
   const loadLastCheck = async () => {

@@ -92,6 +92,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       return
     }
 
+    // Warn if only "When In Use" - background detection needs "Always"
+    if status == .authorizedWhenInUse {
+      NSLog("[BackgroundLocation] WARNING: Only 'When In Use' permission. Background parking detection REQUIRES 'Always'. Requesting upgrade...")
+      locationManager.requestAlwaysAuthorization()
+      // Continue starting anyway - it will work in foreground at least
+    }
+
     guard !isMonitoring else {
       resolve(true)
       return
@@ -118,7 +125,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     isMonitoring = true
     let authStatus = locationManager.authorizationStatus
-    NSLog("[BackgroundLocation] Monitoring started (significantChanges + CoreMotion, GPS on-demand, authStatus=\(authStatus.rawValue))")
+    let authString: String
+    switch authStatus {
+    case .authorizedAlways: authString = "ALWAYS"
+    case .authorizedWhenInUse: authString = "WHEN_IN_USE (UPGRADE NEEDED)"
+    case .notDetermined: authString = "NOT_DETERMINED"
+    case .denied: authString = "DENIED"
+    case .restricted: authString = "RESTRICTED"
+    @unknown default: authString = "UNKNOWN"
+    }
+    NSLog("[BackgroundLocation] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=\(authString), coreMotion=\(coreMotionAvailable))")
     resolve(true)
   }
 
