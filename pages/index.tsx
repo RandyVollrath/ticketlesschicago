@@ -134,7 +134,6 @@ export default function LandingPage() {
     { label: 'No Standing/Time Restricted', pct: 58 },
     { label: 'Residential Permit Parking', pct: 54 },
     { label: 'Fire Hydrant', pct: 44 },
-    { label: 'Rush Hour Parking', pct: 37 },
     { label: 'Street Cleaning', pct: 34 },
     { label: 'Red Light Camera', pct: 20 },
     { label: 'Speed Camera', pct: 18 },

@@ -122,7 +122,6 @@ const PROTECTION_ITEMS = [
   { icon: 'snowflake', label: 'Winter' },
   { icon: 'weather-snowy-heavy', label: 'Snow' },
   { icon: 'parking', label: 'Permits' },
-  { icon: 'car-clock', label: 'Rush Hr' },
 ];
 
 // ──────────────────────────────────────────────────────

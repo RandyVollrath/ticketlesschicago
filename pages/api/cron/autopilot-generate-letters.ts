@@ -215,16 +215,6 @@ Additionally, I would note that street cleaning schedules can be difficult to tr
 
 I respectfully request that this ticket be dismissed or reduced.`,
   },
-  rush_hour: {
-    type: 'emergency_situation',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a rush hour parking violation.
-
-At the time this ticket was issued, I was dealing with an emergency situation that required me to briefly stop my vehicle. I was not parking but rather attending to an urgent matter.
-
-The signage at this location may also have been unclear about the specific hours of restriction.
-
-I respectfully request that this ticket be dismissed or reduced given the circumstances.`,
-  },
   fire_hydrant: {
     type: 'distance_dispute',
     template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking too close to a fire hydrant.

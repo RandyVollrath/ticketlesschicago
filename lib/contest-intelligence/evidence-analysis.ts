@@ -327,7 +327,7 @@ function calculateRelevanceScore(
   const categoryMatches: Record<string, string[]> = {
     parking_payment: ['expired_meter'],
     renewal_proof: ['expired_plates', 'no_city_sticker', 'residential_permit'],
-    signage_photo: ['street_cleaning', 'no_standing_time_restricted', 'residential_permit', 'rush_hour'],
+    signage_photo: ['street_cleaning', 'no_standing_time_restricted', 'residential_permit'],
     meter_photo: ['expired_meter'],
     location_proof: ['fire_hydrant', 'bus_stop', 'bike_lane', 'double_parking'],
     vehicle_photo: ['missing_plate', 'disabled_zone'],

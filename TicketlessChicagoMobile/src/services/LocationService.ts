@@ -698,7 +698,7 @@ class LocationServiceClass {
     departure_confirmation_delay_ms: number;
   }> {
     try {
-      const response = await ApiClient.post<any>('/api/mobile/clear-parked-location', {}, {
+      const response = await ApiClient.authPost<any>('/api/mobile/clear-parked-location', {}, {
         retries: 2,
         timeout: 15000,
         showErrorAlert: false,
@@ -745,7 +745,7 @@ class LocationServiceClass {
     is_conclusive: boolean;
   }> {
     try {
-      const response = await ApiClient.post<any>('/api/mobile/confirm-departure', {
+      const response = await ApiClient.authPost<any>('/api/mobile/confirm-departure', {
         parking_history_id: parkingHistoryId,
         latitude,
         longitude,

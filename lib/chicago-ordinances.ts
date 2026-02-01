@@ -279,32 +279,6 @@ export const CHICAGO_ORDINANCES: { [key: string]: Ordinance } = {
     ]
   },
 
-  '9-64-190': {
-    code: '9-64-190',
-    title: 'Rush Hour Parking Violation',
-    description: 'Parking during posted rush hour restrictions',
-    fineAmount: 100,
-    category: 'parking',
-    winProbability: 28,
-    contestGrounds: [
-      'Rush hour signage not present',
-      'Signs were contradictory or confusing',
-      'Ticket issued outside posted rush hour times',
-      'Vehicle was disabled',
-      'Sign did not specify days of week clearly'
-    ],
-    commonDefenses: [
-      'Photos of signage',
-      'Timestamp showing time outside restrictions',
-      'Documentation of sign confusion'
-    ],
-    requiredEvidence: [
-      'Photos of all relevant signage',
-      'Ticket timestamp analysis',
-      'Photos showing vehicle position'
-    ]
-  },
-
   // CAMERA ENFORCEMENT VIOLATIONS
   // Note: These have VERY LOW win rates (8-12%) - special handling required
 

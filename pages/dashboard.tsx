@@ -32,7 +32,6 @@ const VIOLATION_LABELS: Record<string, string> = {
   expired_meter: 'Expired Meter',
   disabled_zone: 'Disabled Zone',
   street_cleaning: 'Street Cleaning',
-  rush_hour: 'Rush Hour',
   fire_hydrant: 'Fire Hydrant',
   red_light: 'Red Light Camera',
   speed_camera: 'Speed Camera',

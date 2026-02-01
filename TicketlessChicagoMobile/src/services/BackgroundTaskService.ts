@@ -601,14 +601,24 @@ class BackgroundTaskServiceClass {
         throw apiError;
       }
 
-      // Save the result
+      // Save the result (overwrites LAST_PARKING_LOCATION for HomeScreen hero card)
       await LocationService.saveParkingCheckResult(result);
+
+      // Save to parking history so it shows up in the History tab.
+      // This includes all-clear results — the user should see a record of
+      // every auto-detected parking event, not just ones with restrictions.
+      try {
+        await ParkingHistoryService.addToHistory(coords, result.rules, result.address);
+        log.info('Auto-detection result saved to parking history');
+      } catch (historyError) {
+        log.error('Failed to save auto-detection to history (non-fatal):', historyError);
+      }
 
       // Update last check time
       this.state.lastParkingCheckTime = Date.now();
       await this.saveState();
 
-      // Send notification if there are restrictions
+      // Send notification — always notify so the user knows the scan ran
       if (result.rules.length > 0) {
         await this.sendParkingNotification(result, coords.accuracy);
 
@@ -765,8 +775,8 @@ class BackgroundTaskServiceClass {
     const accuracyNote = accuracy ? ` (GPS: ${accuracy.toFixed(0)}m)` : '';
 
     await notifee.displayNotification({
-      title: hasCritical ? 'Parking Restriction Active!' : 'Parking Alert',
-      body: `At ${result.address}${accuracyNote}:\n${result.rules.map(r => r.message).join('\n')}`,
+      title: hasCritical ? '⚠️ Parked — Restriction Active!' : '⚠️ Parked — Heads Up',
+      body: `${result.address}${accuracyNote}\n${result.rules.map(r => r.message).join('\n')}`,
       android: {
         channelId: 'parking-monitoring',
         importance: AndroidImportance.HIGH,
@@ -785,10 +795,10 @@ class BackgroundTaskServiceClass {
    * Send notification that parking is safe
    */
   private async sendSafeNotification(address: string, accuracy?: number): Promise<void> {
-    const accuracyNote = accuracy ? ` (GPS: ${accuracy.toFixed(0)}m)` : '';
+    const accuracyNote = accuracy ? ` (GPS: ±${accuracy.toFixed(0)}m)` : '';
     await notifee.displayNotification({
-      title: 'Parking Check Complete',
-      body: `No restrictions found at ${address}${accuracyNote}. You're good to park!`,
+      title: '✅ Parked — All Clear',
+      body: `${address}${accuracyNote}\nNo active restrictions. You're good to park here!`,
       android: {
         channelId: 'parking-monitoring',
         pressAction: { id: 'default' },

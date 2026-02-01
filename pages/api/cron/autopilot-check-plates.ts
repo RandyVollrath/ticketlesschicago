@@ -43,7 +43,6 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
   '0976160': 'expired_meter', // Expired Meter / No Pay
   '0976170': 'expired_meter', // Overtime Parking
   '0964170': 'street_cleaning', // Street Cleaning
-  '0976240': 'rush_hour', // Rush Hour
   '0964175': 'fire_hydrant', // Fire Hydrant
   '0976120': 'disabled_zone', // Disabled Parking Zone
   '0964190': 'other_unknown', // Default

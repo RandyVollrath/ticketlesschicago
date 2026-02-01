@@ -62,7 +62,6 @@ const TICKET_TYPES = [
   { id: 'missing_plate', label: 'Missing/Noncompliant Plate', winRate: 54 },
   { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 59 },
   { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
-  { id: 'rush_hour', label: 'Rush Hour Parking', winRate: 37 },
   { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
   { id: 'red_light', label: 'Red Light Camera', winRate: 20 },
   { id: 'speed_camera', label: 'Speed Camera', winRate: 18 },
