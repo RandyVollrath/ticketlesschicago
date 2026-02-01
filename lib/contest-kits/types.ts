@@ -210,4 +210,6 @@ export interface UserEvidence {
   hasReceipts: boolean;
   hasPoliceReport: boolean;
   hasMedicalDocs: boolean;
+  /** Whether GPS parking/departure evidence is available from the mobile app */
+  hasLocationEvidence?: boolean;
 }

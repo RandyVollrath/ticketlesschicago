@@ -80,6 +80,18 @@ export const residentialPermitKit: ContestKit = {
     ],
     optional: [
       {
+        id: 'gps_parking_history',
+        name: 'GPS Parking History (Autopilot App)',
+        description: 'GPS records from the Autopilot app showing you regularly park at this location, supporting residency and zone familiarity',
+        impactScore: 0.20,
+        example: 'App records showing 15+ parking visits at this location over the past 30 days, confirming you are a regular resident who parks here daily',
+        tips: [
+          'Automatically checked when generating a contest letter',
+          'Frequent parking at the location supports your permit zone residency',
+          'Also confirms you are familiar with the area and parking rules',
+        ],
+      },
+      {
         id: 'visitor_permit_docs',
         name: 'Visitor Permit Documentation',
         description: 'Documentation of valid visitor permit or guest pass',

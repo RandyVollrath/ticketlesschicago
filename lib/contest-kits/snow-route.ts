@@ -80,6 +80,18 @@ export const snowRouteKit: ContestKit = {
     ],
     optional: [
       {
+        id: 'gps_departure_proof',
+        name: 'GPS Departure Evidence (Autopilot App)',
+        description: 'GPS-verified proof from the Autopilot app showing you moved your vehicle before snow removal began',
+        impactScore: 0.30,
+        example: 'App data showing GPS-confirmed departure before plowing operations, with movement of 200 meters from parking spot',
+        tips: [
+          'Automatically checked when generating a contest letter',
+          'Shows timestamped proof your car left the snow route',
+          'GPS-verified movement of 50+ meters is conclusive evidence',
+        ],
+      },
+      {
         id: 'location_photos',
         name: 'Parking Location Photos',
         description: 'Photos showing where you parked',
@@ -201,7 +213,7 @@ Since my vehicle did not interfere with snow removal operations, I respectfully 
         conditions: [
           { field: 'vehicleWasMoved', operator: 'equals', value: true },
         ],
-        supportingEvidence: ['timing_evidence'],
+        supportingEvidence: ['timing_evidence', 'gps_departure_proof'],
         category: 'circumstantial',
       },
       {
