@@ -89,9 +89,9 @@ class LocationServiceClass {
         const backgroundGranted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
           {
-            title: 'Background Location Permission',
+            title: 'Allow Background Location',
             message:
-              'Autopilot needs background location access to automatically check parking restrictions when you park, even when the app is closed.',
+              'To automatically check parking restrictions when you park, please select "Allow all the time" on the next screen. This lets Autopilot protect you even when the app is closed.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',

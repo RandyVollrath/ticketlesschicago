@@ -45,25 +45,22 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, []);
 
-  const token = AuthService.getToken();
+  // Get the full Supabase session to inject into WebView
+  const authStateObj = AuthService.getAuthState();
+  const session = authStateObj?.session;
 
-  // Inject Supabase session into WebView so the settings page recognizes the user
-  const injectedJavaScript = token
+  // Build the injected JS - pass the full session so the website's
+  // Supabase client can use it (including refresh_token)
+  const sessionJson = session ? JSON.stringify(session).replace(/'/g, "\\'") : '';
+
+  const injectedJavaScript = session
     ? `
       (function() {
         try {
-          // Set the Supabase auth token in localStorage so the page picks it up
           var key = 'sb-dzhqolbhuqdcpngdayuq-auth-token';
           var existing = localStorage.getItem(key);
           if (!existing) {
-            var session = {
-              access_token: '${token}',
-              token_type: 'bearer',
-              expires_in: 3600,
-              refresh_token: '',
-            };
-            localStorage.setItem(key, JSON.stringify(session));
-            // Reload to pick up the session
+            localStorage.setItem(key, '${sessionJson}');
             window.location.reload();
           }
 
@@ -77,7 +74,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             var el = document.querySelector('[data-section="notifications"]');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }, 1500);
-        } catch(e) {}
+        } catch(e) { console.error('Injection error:', e); }
       })();
       true;
     `
