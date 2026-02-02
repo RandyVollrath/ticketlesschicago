@@ -586,6 +586,13 @@ class BackgroundTaskServiceClass {
     log.info('=== CAR DISCONNECTION HANDLER TRIGGERED ===');
     log.info(`Parking coords provided: ${parkingCoords ? `${parkingCoords.latitude.toFixed(6)}, ${parkingCoords.longitude.toFixed(6)}` : 'NO (will get GPS)'}`);
 
+    // Stop GPS pre-caching from driving — we don't want stale driving positions
+    // being used as the parking location. Clear the in-app location cache so
+    // triggerParkingCheck gets a FRESH GPS fix at the actual parking spot.
+    this.stopGpsCaching();
+    LocationService.clearLocationCache();
+    log.info('Cleared driving GPS cache before parking check');
+
     // Record disconnect time
     this.state.lastDisconnectTime = Date.now();
     this.state.lastCarConnectionStatus = false;
@@ -640,36 +647,45 @@ class BackgroundTaskServiceClass {
         // Android (Bluetooth disconnect) or fallback: get fresh GPS
         // NOTE: On Android, BT disconnect may fire while app is in background.
         // GPS access in background requires ACCESS_BACKGROUND_LOCATION permission.
-        // We try multiple strategies with generous timeouts to handle this.
+        //
+        // IMPORTANT: Always try fresh GPS first. The in-app cache may contain a
+        // stale position from while the user was DRIVING (GPS pre-caching runs
+        // every 60s while BT is connected). Using a driving position as the
+        // parking location causes the check to report restrictions for the wrong
+        // address (e.g., 1128 W Fullerton when parked at Belden & Sheffield).
+        // handleCarDisconnection clears the cache, but we also guard here.
         log.info(`Getting GPS location... (Platform: ${Platform.OS}, appState: ${AppState.currentState})`);
 
-        // Strategy 1: Try cached location first (may be very recent if user just parked)
-        const cachedCoords = LocationService.getCachedLocation();
-        if (cachedCoords && cachedCoords.accuracy && cachedCoords.accuracy <= 50) {
-          log.info(`Using cached location (${cachedCoords.accuracy.toFixed(1)}m accuracy, very recent)`);
-          coords = cachedCoords;
-          gpsSource = `cached (${cachedCoords.accuracy.toFixed(1)}m)`;
-        } else {
-          // Strategy 2: Try high accuracy GPS with longer timeout for background
-          try {
-            const timeout = Platform.OS === 'android' ? 25000 : 15000; // Extra time on Android background
-            coords = await LocationService.getHighAccuracyLocation(50, timeout); // Accept up to 50m in background
-            gpsSource = `high-accuracy (${coords.accuracy?.toFixed(1)}m)`;
-            log.info(`Got high-accuracy location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1)}m`);
-          } catch (gpsError) {
-            log.warn('High accuracy GPS failed:', gpsError);
+        // Strategy 1: Try high accuracy GPS (fresh fix at actual parking spot)
+        // forceNoCache=true ensures the OS doesn't return a stale position from driving
+        try {
+          const timeout = Platform.OS === 'android' ? 25000 : 15000;
+          coords = await LocationService.getHighAccuracyLocation(50, timeout, true);
+          gpsSource = `high-accuracy (${coords.accuracy?.toFixed(1)}m)`;
+          log.info(`Got high-accuracy location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1)}m`);
+        } catch (gpsError) {
+          log.warn('High accuracy GPS failed:', gpsError);
 
-            // Strategy 3: Retry with balanced accuracy
-            try {
-              log.info('Trying balanced accuracy GPS with retry...');
-              coords = await LocationService.getLocationWithRetry(3);
-              gpsSource = `retry-balanced (${coords.accuracy?.toFixed(1)}m)`;
-              log.info(`Got retry location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
-            } catch (retryError) {
-              // Strategy 4: Use stale cached location (better than nothing)
+          // Strategy 2: Retry with balanced accuracy
+          try {
+            log.info('Trying balanced accuracy GPS with retry...');
+            coords = await LocationService.getLocationWithRetry(3, undefined, true);
+            gpsSource = `retry-balanced (${coords.accuracy?.toFixed(1)}m)`;
+            log.info(`Got retry location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+          } catch (retryError) {
+            // Strategy 3: Use cached location as last resort (better than nothing)
+            // NOTE: handleCarDisconnection clears the driving cache, so this will
+            // only have data if getCurrentLocation succeeded and cached during retries.
+            const cachedCoords = LocationService.getCachedLocation();
+            if (cachedCoords) {
+              log.info(`Using cached location as last resort: ${cachedCoords.accuracy?.toFixed(1) || '?'}m accuracy`);
+              coords = cachedCoords;
+              gpsSource = `cache-fallback (${cachedCoords.accuracy?.toFixed(1) || '?'}m)`;
+            } else {
+              // Strategy 4: Stale cache (any age)
               const staleCoords = LocationService.getLastKnownLocation();
               if (staleCoords) {
-                log.info('Using stale cached location as last resort');
+                log.info('Using stale cached location as absolute last resort');
                 coords = staleCoords;
                 gpsSource = `stale-cache (${staleCoords.accuracy?.toFixed(1) || '?'}m)`;
               } else if (Platform.OS === 'ios') {
