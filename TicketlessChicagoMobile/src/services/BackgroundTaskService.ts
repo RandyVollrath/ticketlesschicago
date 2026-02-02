@@ -719,12 +719,14 @@ class BackgroundTaskServiceClass {
    * @param presetCoords - If provided, skip GPS acquisition and use these coordinates.
    *   This is used on iOS where BackgroundLocationModule captures the location at the
    *   exact moment the car stops (before user walks away from it).
+   * @param isRealParkingEvent - If true, this was triggered by an actual BT disconnect
+   *   or iOS parking detection. If false (periodic check), failures are silent.
    */
   private async triggerParkingCheck(presetCoords?: {
     latitude: number;
     longitude: number;
     accuracy?: number;
-  }): Promise<void> {
+  }, isRealParkingEvent: boolean = true): Promise<void> {
     // Guard against duplicate parking checks (e.g., from app state changes re-triggering)
     if (this.state.lastParkingCheckTime) {
       const timeSinceLastCheck = Date.now() - this.state.lastParkingCheckTime;
@@ -873,16 +875,20 @@ class BackgroundTaskServiceClass {
       });
     } catch (error) {
       log.error('=== PARKING CHECK FAILED ===', error);
-      // Only send error notification if we haven't successfully checked recently.
-      // A recent successful check means this failure is likely a spurious retry,
-      // and showing "check failed" would confuse the user who already got results.
-      const recentCheckAge = this.state.lastParkingCheckTime
-        ? Date.now() - this.state.lastParkingCheckTime
-        : Infinity;
-      if (recentCheckAge > MIN_PARKING_CHECK_INTERVAL_MS) {
-        await this.sendErrorNotification();
+      // Only show "Parking Check Failed" notification if ALL of these are true:
+      // 1. This was a real parking event (BT disconnect or iOS detection), not a periodic check
+      // 2. We haven't successfully checked recently (avoids duplicate error after success)
+      if (!isRealParkingEvent) {
+        log.info('Suppressing error notification - periodic check failure (not a real parking event)');
       } else {
-        log.info('Suppressing error notification - successful check was recent');
+        const recentCheckAge = this.state.lastParkingCheckTime
+          ? Date.now() - this.state.lastParkingCheckTime
+          : Infinity;
+        if (recentCheckAge > MIN_PARKING_CHECK_INTERVAL_MS) {
+          await this.sendErrorNotification();
+        } else {
+          log.info('Suppressing error notification - successful check was recent');
+        }
       }
     }
   }
@@ -1129,7 +1135,8 @@ class BackgroundTaskServiceClass {
           timeSinceDisconnect > MIN_DISCONNECT_DURATION_MS &&
           timeSinceLastCheck > CHECK_INTERVAL_MS
         ) {
-          await this.triggerParkingCheck();
+          // isRealParkingEvent=false: periodic checks should not show error notifications
+          await this.triggerParkingCheck(undefined, false);
         }
       }
     } catch (error) {

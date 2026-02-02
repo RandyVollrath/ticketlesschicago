@@ -14,6 +14,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 
     <application
       android:name=".MainApplication"
@@ -50,5 +51,13 @@
             <data android:scheme="https" android:host="autopilotamerica.com" android:pathPrefix="/auth" />
         </intent-filter>
       </activity>
+
+      <!-- Foreground service for persistent Bluetooth monitoring -->
+      <!-- Keeps ACL BroadcastReceiver alive when app is backgrounded -->
+      <service
+        android:name=".BluetoothMonitorService"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="connectedDevice" />
     </application>
 </manifest>
