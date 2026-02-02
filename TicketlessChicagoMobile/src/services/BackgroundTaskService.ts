@@ -31,6 +31,7 @@ const BACKGROUND_TASK_ID = 'ticketless-parking-check';
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const MIN_DISCONNECT_DURATION_MS = 30 * 1000; // 30 seconds (to avoid false positives)
 const DEPARTURE_CONFIRMATION_DELAY_MS = 120 * 1000; // 2 minutes after car starts
+const MIN_PARKING_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes - prevent duplicate checks
 
 interface BackgroundTaskState {
   isInitialized: boolean;
@@ -614,6 +615,15 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
   }): Promise<void> {
+    // Guard against duplicate parking checks (e.g., from app state changes re-triggering)
+    if (this.state.lastParkingCheckTime) {
+      const timeSinceLastCheck = Date.now() - this.state.lastParkingCheckTime;
+      if (timeSinceLastCheck < MIN_PARKING_CHECK_INTERVAL_MS) {
+        log.info(`Skipping parking check - last check was ${Math.round(timeSinceLastCheck / 1000)}s ago (min interval: ${MIN_PARKING_CHECK_INTERVAL_MS / 1000}s)`);
+        return;
+      }
+    }
+
     try {
       log.info('=== TRIGGERING PARKING CHECK ===');
 
@@ -744,8 +754,17 @@ class BackgroundTaskServiceClass {
       });
     } catch (error) {
       log.error('=== PARKING CHECK FAILED ===', error);
-      // Only send generic error if we haven't already sent a specific diagnostic
-      await this.sendErrorNotification();
+      // Only send error notification if we haven't successfully checked recently.
+      // A recent successful check means this failure is likely a spurious retry,
+      // and showing "check failed" would confuse the user who already got results.
+      const recentCheckAge = this.state.lastParkingCheckTime
+        ? Date.now() - this.state.lastParkingCheckTime
+        : Infinity;
+      if (recentCheckAge > MIN_PARKING_CHECK_INTERVAL_MS) {
+        await this.sendErrorNotification();
+      } else {
+        log.info('Suppressing error notification - successful check was recent');
+      }
     }
   }
 
@@ -1001,16 +1020,31 @@ class BackgroundTaskServiceClass {
 
   /**
    * Handle app state changes (foreground/background)
+   *
+   * IMPORTANT: We must NOT call startForegroundMonitoring() here because that
+   * tears down and re-registers BT listeners. Re-registering BT monitoring
+   * when the car is already disconnected (user parked and walked away) can
+   * cause false disconnect events, triggering a SECOND parking check at the
+   * wrong GPS location (stale/cached position instead of actual parking spot).
    */
   private handleAppStateChange(nextAppState: AppStateStatus): void {
     log.debug('App state changed:', nextAppState);
 
     if (nextAppState === 'active' && this.state.isMonitoring) {
-      // App came to foreground, restart monitoring
-      this.startForegroundMonitoring();
+      // App came to foreground - only restart periodic check timer if needed
+      // Do NOT re-register BT listeners (they persist across app state changes)
+      if (!this.monitoringInterval) {
+        log.info('App foregrounded: restarting periodic check interval');
+        this.monitoringInterval = setInterval(
+          () => this.performPeriodicCheck(),
+          CHECK_INTERVAL_MS
+        );
+      } else {
+        log.debug('App foregrounded: monitoring interval already active');
+      }
     } else if (nextAppState === 'background' && this.state.isMonitoring) {
       // App went to background
-      // Foreground monitoring continues, background fetch handles the rest
+      // BT listeners and periodic checks continue running
       log.info('App entered background, monitoring continues');
     }
   }

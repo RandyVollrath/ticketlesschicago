@@ -23,8 +23,8 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 };
 
 const config: LoggerConfig = {
-  enableInProduction: false,
-  minLevel: __DEV__ ? 'debug' : 'error',
+  enableInProduction: true, // Enable logging in release builds for diagnostics via adb logcat
+  minLevel: __DEV__ ? 'debug' : 'info', // In production, log info+ (skip debug noise)
 };
 
 const shouldLog = (level: LogLevel): boolean => {
