@@ -17,6 +17,8 @@
 		A1B2C3D401000001BGLOC003 /* BackgroundLocationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */; };
 		A1B2C3D401000001MOTIO001 /* MotionActivityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */; };
 		A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */; };
+		A1B2C3D401000001SPEEC001 /* SpeechModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001SPEEC002 /* SpeechModule.swift */; };
+		A1B2C3D401000001SPEEC003 /* SpeechModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001SPEEC004 /* SpeechModule.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +37,8 @@
 		A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackgroundLocationModule.m; path = TicketlessChicagoMobile/BackgroundLocationModule.m; sourceTree = "<group>"; };
 		A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MotionActivityModule.swift; path = TicketlessChicagoMobile/MotionActivityModule.swift; sourceTree = "<group>"; };
 		A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MotionActivityModule.m; path = TicketlessChicagoMobile/MotionActivityModule.m; sourceTree = "<group>"; };
+		A1B2C3D401000001SPEEC002 /* SpeechModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechModule.swift; path = TicketlessChicagoMobile/SpeechModule.swift; sourceTree = "<group>"; };
+		A1B2C3D401000001SPEEC004 /* SpeechModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SpeechModule.m; path = TicketlessChicagoMobile/SpeechModule.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +62,8 @@
 				A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */,
 				A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */,
 				A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */,
+				A1B2C3D401000001SPEEC002 /* SpeechModule.swift */,
+				A1B2C3D401000001SPEEC004 /* SpeechModule.m */,
 				GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -296,6 +302,8 @@
 				A1B2C3D401000001BGLOC003 /* BackgroundLocationModule.m in Sources */,
 				A1B2C3D401000001MOTIO001 /* MotionActivityModule.swift in Sources */,
 				A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */,
+				A1B2C3D401000001SPEEC001 /* SpeechModule.swift in Sources */,
+				A1B2C3D401000001SPEEC003 /* SpeechModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
