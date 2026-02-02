@@ -18,11 +18,24 @@
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Tts from 'react-native-tts';
 import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('CameraAlertService');
+
+// Lazy-load TTS to avoid NativeEventEmitter crash on iOS
+// react-native-tts creates a NativeEventEmitter(null) if native module isn't linked
+let Tts: any = null;
+function getTts(): any {
+  if (!Tts) {
+    try {
+      Tts = require('react-native-tts').default;
+    } catch (e) {
+      log.warn('react-native-tts not available');
+    }
+  }
+  return Tts;
+}
 
 // ============================================================================
 // Configuration
@@ -110,14 +123,20 @@ class CameraAlertServiceClass {
     if (this.ttsInitialized) return;
 
     try {
+      const tts = getTts();
+      if (!tts) {
+        log.warn('TTS not available on this platform');
+        return;
+      }
+
       // Configure TTS
-      await Tts.setDefaultLanguage('en-US');
-      await Tts.setDefaultRate(Platform.OS === 'ios' ? 0.52 : 0.5);
-      await Tts.setDefaultPitch(1.0);
+      await tts.setDefaultLanguage('en-US');
+      await tts.setDefaultRate(Platform.OS === 'ios' ? 0.52 : 0.5);
+      await tts.setDefaultPitch(1.0);
 
       // iOS: allow mixing with other audio (navigation, music)
       if (Platform.OS === 'ios') {
-        await Tts.setDucking(true);
+        await tts.setDucking(true);
       }
 
       this.ttsInitialized = true;
@@ -171,7 +190,8 @@ class CameraAlertServiceClass {
   stop(): void {
     this.isActive = false;
     this.alertedCameras.clear();
-    Tts.stop();
+    const tts = getTts();
+    if (tts) tts.stop();
     log.info('Camera alert monitoring stopped');
   }
 
@@ -286,7 +306,8 @@ class CameraAlertServiceClass {
     log.info(`CAMERA ALERT: ${message} - ${camera.address}`);
 
     try {
-      Tts.speak(message);
+      const tts = getTts();
+      if (tts) tts.speak(message);
     } catch (error) {
       log.error('TTS speak failed', error);
     }
