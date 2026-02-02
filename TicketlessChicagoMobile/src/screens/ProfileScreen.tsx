@@ -200,32 +200,56 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         return;
       }
 
-      // No local value — try to pre-populate from server user_profiles
+      // No local value — try to derive from user profile
       if (AuthService.isAuthenticated()) {
         try {
           const userId = AuthService.getUser()?.id;
-          if (userId) {
-            const response = await ApiClient.authGet<any>(`/api/user-profile?userId=${userId}`, {
-              retries: 1,
-              timeout: 10000,
-              showErrorAlert: false,
-            });
-            if (response.success && response.data) {
-              // Check for permit_zone_number from Autopilot America data
-              const serverZone = response.data.permit_zone_number ||
-                                 response.data.vehicle_zone || '';
-              if (serverZone && isMountedRef.current) {
-                const zoneStr = String(serverZone);
-                setHomePermitZone(zoneStr);
-                setPermitZoneInput(zoneStr);
-                await AsyncStorage.setItem(StorageKeys.HOME_PERMIT_ZONE, zoneStr);
-                log.info(`Pre-populated home permit zone from server: ${zoneStr}`);
+          if (!userId) return;
+
+          const response = await ApiClient.authGet<any>(`/api/user-profile?userId=${userId}`, {
+            retries: 1,
+            timeout: 10000,
+            showErrorAlert: false,
+          });
+          if (!response.success || !response.data) return;
+
+          // 1. Check if permit_zone_number is already set on profile
+          const serverZone = response.data.permit_zone_number ||
+                             response.data.vehicle_zone || '';
+          if (serverZone && isMountedRef.current) {
+            const zoneStr = String(serverZone);
+            setHomePermitZone(zoneStr);
+            setPermitZoneInput(zoneStr);
+            await AsyncStorage.setItem(StorageKeys.HOME_PERMIT_ZONE, zoneStr);
+            log.info(`Pre-populated home permit zone from profile: ${zoneStr}`);
+            return;
+          }
+
+          // 2. No zone stored — try to derive from their home address
+          const homeAddress = response.data.home_address_full ||
+                              response.data.street_address || '';
+          if (homeAddress && isMountedRef.current) {
+            try {
+              const zoneResponse = await ApiClient.get<any>(
+                `/api/check-permit-zone?address=${encodeURIComponent(homeAddress)}`,
+                { retries: 1, timeout: 10000, showErrorAlert: false }
+              );
+              if (zoneResponse.success && zoneResponse.data?.hasPermitZone && zoneResponse.data.zones?.length > 0) {
+                const derivedZone = String(zoneResponse.data.zones[0].zone);
+                if (isMountedRef.current) {
+                  setHomePermitZone(derivedZone);
+                  setPermitZoneInput(derivedZone);
+                  await AsyncStorage.setItem(StorageKeys.HOME_PERMIT_ZONE, derivedZone);
+                  log.info(`Derived home permit zone from address "${homeAddress}": ${derivedZone}`);
+                }
               }
+            } catch (zoneErr) {
+              log.debug('Could not derive permit zone from address (non-fatal):', zoneErr);
             }
           }
         } catch (serverError) {
           // Non-fatal — user can set it manually
-          log.debug('Could not fetch permit zone from server (non-fatal):', serverError);
+          log.debug('Could not fetch profile for permit zone (non-fatal):', serverError);
         }
       }
     } catch (error) {

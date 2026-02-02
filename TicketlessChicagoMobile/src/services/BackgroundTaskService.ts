@@ -963,25 +963,32 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Filter out permit zone restriction if user is parked in their own zone.
-   * Returns a copy of the result with the permit_zone rule removed if it
-   * matches the user's home permit zone.
+   * Filter permit zone notifications based on user's home zone.
+   *
+   * Logic:
+   * - No home zone set → REMOVE permit rule (most people don't have permits, don't bug them)
+   * - Home zone matches parked zone → REMOVE (they're in their own zone)
+   * - Home zone set but DIFFERENT from parked → KEEP (warn them, wrong zone)
    */
   private async filterOwnPermitZone(result: any): Promise<any> {
     try {
-      const homeZone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
-      if (!homeZone) return result;
-
       const permitRule = result.rules?.find((r: any) => r.type === 'permit_zone');
       if (!permitRule) return result;
 
-      // Compare zone names (case-insensitive, trim whitespace)
-      const parkedZone = (permitRule.zoneName || '').trim().toLowerCase();
-      const userZone = homeZone.trim().toLowerCase();
+      const homeZone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
 
-      // Match "Zone 383" == "383" or "Zone 383" == "Zone 383"
-      const parkedZoneNum = parkedZone.replace(/^zone\s*/i, '');
-      const userZoneNum = userZone.replace(/^zone\s*/i, '');
+      if (!homeZone) {
+        // No permit zone set — most people don't have permits, don't notify
+        log.info('No home permit zone set — filtering out permit zone notification');
+        return {
+          ...result,
+          rules: result.rules.filter((r: any) => r.type !== 'permit_zone'),
+        };
+      }
+
+      // Compare zone names (case-insensitive, trim whitespace)
+      const parkedZoneNum = (permitRule.zoneName || '').trim().toLowerCase().replace(/^zone\s*/i, '');
+      const userZoneNum = homeZone.trim().toLowerCase().replace(/^zone\s*/i, '');
 
       if (parkedZoneNum === userZoneNum) {
         log.info(`Filtering out permit zone notification — user is in their own zone (${homeZone})`);
@@ -990,6 +997,9 @@ class BackgroundTaskServiceClass {
           rules: result.rules.filter((r: any) => r.type !== 'permit_zone'),
         };
       }
+
+      // User has a permit but is in a DIFFERENT zone — keep the warning
+      log.info(`User has permit for zone ${homeZone} but parked in ${permitRule.zoneName} — keeping notification`);
     } catch (error) {
       log.warn('Error checking home permit zone (non-fatal):', error);
     }
@@ -1529,54 +1539,24 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Send notification that departure was recorded but not conclusive
+   * Log departure recorded (not shown to user — internal tracking only)
    */
   private async sendDepartureRecordedNotification(distanceMeters: number): Promise<void> {
-    await notifee.displayNotification({
-      title: 'Departure Recorded',
-      body: `Location recorded ${distanceMeters}m from parking spot. Drive further for stronger evidence.`,
-      android: {
-        channelId: 'parking-monitoring',
-        pressAction: { id: 'default' },
-      },
-      ios: {
-        sound: 'default',
-      },
-    });
+    log.info(`Departure recorded: ${distanceMeters}m from parking spot`);
   }
 
   /**
-   * Send notification that departure confirmation failed
+   * Log departure tracking failure (not shown to user)
    */
   private async sendDepartureFailedNotification(): Promise<void> {
-    await notifee.displayNotification({
-      title: 'Departure Tracking Failed',
-      body: 'Could not record your departure location. Open the app to retry manually.',
-      android: {
-        channelId: 'parking-monitoring',
-        pressAction: { id: 'default' },
-      },
-      ios: {
-        sound: 'default',
-      },
-    });
+    log.warn('Departure tracking failed — could not record departure location');
   }
 
   /**
-   * Send notification that departure was confirmed
+   * Log departure confirmed (not shown to user)
    */
   private async sendDepartureConfirmedNotification(distanceMeters: number): Promise<void> {
-    await notifee.displayNotification({
-      title: 'Departure Recorded',
-      body: `Your departure has been recorded. You moved ${distanceMeters}m from your parking spot. This can be used as evidence if needed.`,
-      android: {
-        channelId: 'parking-monitoring',
-        pressAction: { id: 'default' },
-      },
-      ios: {
-        sound: 'default',
-      },
-    });
+    log.info(`Departure confirmed: moved ${distanceMeters}m from parking spot`);
   }
 
   /**
