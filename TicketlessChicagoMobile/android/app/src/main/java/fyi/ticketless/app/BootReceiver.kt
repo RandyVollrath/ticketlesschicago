@@ -44,7 +44,12 @@ class BootReceiver : BroadcastReceiver() {
             }
 
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    // Android 12+: startForegroundService can throw if the app is
+                    // in the background and doesn't have the right exemptions.
+                    // Boot completion is an allowed exemption, but wrap defensively.
+                    context.startForegroundService(serviceIntent)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent)
                 } else {
                     context.startService(serviceIntent)
@@ -52,6 +57,7 @@ class BootReceiver : BroadcastReceiver() {
                 Log.i(TAG, "BT monitor service restarted after boot")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to restart BT monitor service after boot: ${e.message}", e)
+                // Don't crash the boot receiver — just log and move on
             }
         } else {
             Log.i(TAG, "No saved car device found - BT monitor not needed")

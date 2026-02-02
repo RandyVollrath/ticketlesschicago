@@ -10,6 +10,7 @@ import {
   Platform,
   TouchableOpacity,
   Linking,
+  NativeModules,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,6 +28,9 @@ import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
 import { StorageKeys } from '../constants';
+
+// Native module for querying BT connection state directly from foreground service
+const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
 
 const log = Logger.createLogger('HomeScreen');
 
@@ -192,19 +196,69 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.autoCheck]);
 
+  // Check BT connection status from all available sources
+  const refreshBtStatus = useCallback(async () => {
+    if (Platform.OS !== 'android') return;
+    try {
+      const savedDevice = await BluetoothService.getSavedCarDevice();
+      if (!savedDevice) {
+        setSavedCarName(null);
+        setIsCarConnected(false);
+        return;
+      }
+      setSavedCarName(savedDevice.name);
+
+      // Check multiple sources — any one being true means connected:
+      // 1. BluetoothService JS-side state (set by event listeners)
+      let connected = BluetoothService.isConnectedToCar();
+
+      // 2. Query OS-level connected devices directly
+      if (!connected) {
+        connected = await BluetoothService.isConnectedToSavedCar();
+      }
+
+      // 3. Query the native foreground service state (most reliable)
+      if (!connected && BluetoothMonitorModule) {
+        try {
+          connected = await BluetoothMonitorModule.isCarConnected();
+        } catch (e) {
+          // Module may not be ready yet
+        }
+      }
+
+      setIsCarConnected(connected);
+    } catch (error) {
+      log.debug('Error checking Bluetooth status', error);
+    }
+  }, []);
+
+  // Load saved car name; subscribe to BT events on Android
+  useEffect(() => {
+    refreshBtStatus();
+
+    if (Platform.OS === 'android') {
+      const onConnect = () => setIsCarConnected(true);
+      const onDisconnect = () => setIsCarConnected(false);
+      BluetoothService.addConnectionListener(onConnect, onDisconnect);
+
+      // Re-check after a delay to catch late-initializing native service
+      const recheckTimer = setTimeout(refreshBtStatus, 3000);
+
+      return () => {
+        BluetoothService.removeConnectionListener(onConnect, onDisconnect);
+        clearTimeout(recheckTimer);
+      };
+    }
+  }, [isMonitoring, refreshBtStatus]);
+
   // Reload data when returning from other screens
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       loadLastCheck();
-      try {
-        const savedDevice = await BluetoothService.getSavedCarDevice();
-        setSavedCarName(savedDevice?.name || null);
-      } catch (e) {
-        // ignore
-      }
+      refreshBtStatus();
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, refreshBtStatus]);
 
   // Poll activity status on iOS when monitoring
   useEffect(() => {
@@ -271,39 +325,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       clearInterval(statusInterval);
     };
   }, [showDebug]);
-
-  // Load saved car name; subscribe to BT events on Android
-  useEffect(() => {
-    const checkInitialStatus = async () => {
-      try {
-        const savedDevice = await BluetoothService.getSavedCarDevice();
-        if (savedDevice) {
-          setSavedCarName(savedDevice.name);
-          if (Platform.OS === 'android') {
-            const connected = BluetoothService.isConnectedToCar() ||
-              await BluetoothService.isConnectedToSavedCar();
-            setIsCarConnected(connected);
-          }
-        } else {
-          setSavedCarName(null);
-          setIsCarConnected(false);
-        }
-      } catch (error) {
-        log.debug('Error checking initial Bluetooth status', error);
-      }
-    };
-
-    checkInitialStatus();
-
-    if (Platform.OS === 'android') {
-      const onConnect = () => setIsCarConnected(true);
-      const onDisconnect = () => setIsCarConnected(false);
-      BluetoothService.addConnectionListener(onConnect, onDisconnect);
-      return () => {
-        BluetoothService.removeConnectionListener(onConnect, onDisconnect);
-      };
-    }
-  }, [isMonitoring]);
 
   const loadInitialData = async () => {
     await loadLastCheck();

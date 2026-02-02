@@ -108,6 +108,15 @@ class BluetoothMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // CRITICAL: Android requires startForeground() within ~5 seconds of
+        // startForegroundService(). Call it IMMEDIATELY before any conditional
+        // logic to prevent ForegroundServiceDidNotStartInTimeException crashes.
+        try {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to call startForeground: ${e.message}", e)
+        }
+
         when (intent?.action) {
             ACTION_STOP -> {
                 Log.i(TAG, "Stopping BT monitor service")
@@ -127,15 +136,16 @@ class BluetoothMonitorService : Service() {
                     // Store for persistence across process restarts
                     storeTargetDevice(targetAddress!!, targetName ?: "Car")
 
-                    // Start as foreground service
-                    startForeground(NOTIFICATION_ID, buildNotification())
+                    // Update notification with car name now that we know it
+                    updateNotification("Monitoring ${targetName ?: "your car"}")
 
                     // Register our own ACL BroadcastReceiver
                     registerAclReceiver()
 
                     Log.i(TAG, "BT monitor started for: $targetName ($targetAddress)")
                 } else {
-                    Log.e(TAG, "No target device address provided, stopping")
+                    Log.w(TAG, "No target device address provided, stopping service")
+                    stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                     return START_NOT_STICKY
                 }

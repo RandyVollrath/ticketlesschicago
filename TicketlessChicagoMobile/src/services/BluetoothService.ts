@@ -242,9 +242,15 @@ class BluetoothServiceClass {
           }
         });
 
-        // Check initial connection state
+        // Check initial connection state and notify listeners immediately.
+        // Without this, HomeScreen gets stuck on "Waiting" because listeners
+        // only fire on transitions — if the car is already connected, no
+        // transition event ever fires.
         const isConnected = await this.isConnectedToSavedCar();
         this.connectedDeviceId = isConnected ? savedDevice.id : null;
+        if (isConnected) {
+          this.notifyConnected();
+        }
 
         // Also check bluetooth enabled state
         const btEnabled = await this.isBluetoothEnabled();
