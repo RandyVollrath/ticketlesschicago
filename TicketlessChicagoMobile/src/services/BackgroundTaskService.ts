@@ -11,6 +11,7 @@
  */
 
 import { Platform, AppState, AppStateStatus, NativeModules } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BluetoothService from './BluetoothService';
@@ -19,6 +20,7 @@ import BackgroundLocationService, { ParkingDetectedEvent } from './BackgroundLoc
 import LocationService from './LocationService';
 import LocalNotificationService, { ParkingRestriction } from './LocalNotificationService';
 import { ParkingHistoryService } from '../screens/HistoryScreen';
+import CameraAlertService from './CameraAlertService';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
 
@@ -65,6 +67,8 @@ class BackgroundTaskServiceClass {
   private reconnectCallback: (() => void) | null = null;
   private departureConfirmationTimeout: ReturnType<typeof setTimeout> | null = null;
   private gpsCacheInterval: ReturnType<typeof setInterval> | null = null;
+  private cameraLocationUnsubscribe: (() => void) | null = null;
+  private androidDrivingGpsWatchId: number | null = null;
 
   /**
    * Initialize the background task service
@@ -90,6 +94,9 @@ class BackgroundTaskServiceClass {
 
       // Initialize local notification scheduling service
       await LocalNotificationService.initialize();
+
+      // Initialize camera alert service (TTS for speed/red light cameras)
+      await CameraAlertService.initialize();
 
       // iOS: Self-test native modules to catch build issues early
       if (Platform.OS === 'ios') {
@@ -268,6 +275,7 @@ class BackgroundTaskServiceClass {
                 locationSource: event.locationSource,
                 driftMeters: event.driftFromParkingMeters,
               });
+              this.stopCameraAlerts();
               await this.sendDiagnosticNotification(
                 'Parking Detected (iOS)',
                 `CoreMotion detected you parked. Duration: ${Math.round(event.drivingDurationSec || 0)}s driving. Checking parking rules...`
@@ -282,6 +290,7 @@ class BackgroundTaskServiceClass {
             // onDrivingStarted - fires when user starts driving
             () => {
               log.info('DRIVING STARTED - user departing');
+              this.startCameraAlerts();
               this.handleCarReconnection();
             }
           );
@@ -347,6 +356,7 @@ class BackgroundTaskServiceClass {
           await BluetoothService.monitorCarConnection(
             async () => {
               log.info('BT DISCONNECT EVENT FIRED - triggering parking check');
+              this.stopCameraAlerts();
               await this.sendDiagnosticNotification(
                 'Bluetooth Disconnect Detected',
                 `${savedDevice.name} disconnected. Checking parking rules...`
@@ -355,6 +365,7 @@ class BackgroundTaskServiceClass {
             },
             async () => {
               log.info('BT CONNECT EVENT FIRED - car reconnected');
+              this.startCameraAlerts();
               await this.handleCarReconnection();
             }
           );
@@ -410,6 +421,9 @@ class BackgroundTaskServiceClass {
     // Stop GPS caching
     this.stopGpsCaching();
 
+    // Stop camera alerts
+    this.stopCameraAlerts();
+
     // Stop platform-specific monitoring
     if (Platform.OS === 'ios') {
       BackgroundLocationService.stopMonitoring();
@@ -446,6 +460,100 @@ class BackgroundTaskServiceClass {
     if (this.gpsCacheInterval) {
       clearInterval(this.gpsCacheInterval);
       this.gpsCacheInterval = null;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Camera Alert Helpers
+  // --------------------------------------------------------------------------
+
+  /**
+   * Start camera proximity alerts while driving.
+   * On iOS: subscribes to BackgroundLocationService location updates.
+   * On Android: uses the GPS caching interval to feed camera checks.
+   */
+  private startCameraAlerts(): void {
+    if (!CameraAlertService.isAlertEnabled()) return;
+
+    CameraAlertService.start();
+
+    if (Platform.OS === 'ios') {
+      // Subscribe to continuous GPS updates from the native module
+      this.cameraLocationUnsubscribe = BackgroundLocationService.addLocationListener(
+        (event) => {
+          CameraAlertService.onLocationUpdate(
+            event.latitude,
+            event.longitude,
+            event.speed
+          );
+        }
+      );
+      log.info('Camera alerts: subscribed to iOS location updates');
+    } else if (Platform.OS === 'android') {
+      // Start continuous GPS watching for camera proximity while driving
+      this.startAndroidDrivingGps();
+    }
+  }
+
+  /**
+   * Stop camera proximity alerts.
+   */
+  private stopCameraAlerts(): void {
+    CameraAlertService.stop();
+
+    if (this.cameraLocationUnsubscribe) {
+      this.cameraLocationUnsubscribe();
+      this.cameraLocationUnsubscribe = null;
+      log.info('Camera alerts: unsubscribed from iOS location updates');
+    }
+
+    this.stopAndroidDrivingGps();
+  }
+
+  /**
+   * Start continuous GPS on Android while driving (BT connected).
+   * Uses Geolocation.watchPosition with 10m distance filter for camera alerts.
+   */
+  private startAndroidDrivingGps(): void {
+    if (Platform.OS !== 'android') return;
+    this.stopAndroidDrivingGps(); // Clear any existing watch
+
+    try {
+      this.androidDrivingGpsWatchId = Geolocation.watchPosition(
+        (position) => {
+          CameraAlertService.onLocationUpdate(
+            position.coords.latitude,
+            position.coords.longitude,
+            position.coords.speed ?? -1
+          );
+        },
+        (error) => {
+          log.warn('Android driving GPS error:', error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 10, // Update every ~10 meters
+          interval: 3000, // 3 second intervals
+          fastestInterval: 1000,
+          forceRequestLocation: true,
+          forceLocationManager: true,
+          showLocationDialog: false,
+        }
+      );
+      log.info('Android driving GPS started for camera alerts');
+    } catch (error) {
+      log.error('Failed to start Android driving GPS', error);
+    }
+  }
+
+  /**
+   * Stop Android driving GPS watch.
+   */
+  private stopAndroidDrivingGps(): void {
+    if (this.androidDrivingGpsWatchId !== null) {
+      Geolocation.clearWatch(this.androidDrivingGpsWatchId);
+      this.androidDrivingGpsWatchId = null;
+      log.info('Android driving GPS stopped');
     }
   }
 
