@@ -12,29 +12,90 @@
  * 4. Speaks via TTS when within alert radius (~200m)
  * 5. Tracks alerted cameras to avoid repeating until user moves away (~500m)
  *
+ * TTS Strategy:
+ * - iOS: Uses native SpeechModule (AVSpeechSynthesizer) — zero pod dependencies
+ * - Android: Uses react-native-tts (lazy-loaded to avoid iOS crash)
+ *
  * Performance: The bounding box pre-filter means we only compute
  * Haversine for ~2-5 cameras per GPS update, even with 510 total.
  */
 
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('CameraAlertService');
 
-// Lazy-load TTS to avoid NativeEventEmitter crash on iOS
-// react-native-tts creates a NativeEventEmitter(null) if native module isn't linked
-let Tts: any = null;
-function getTts(): any {
-  if (!Tts) {
+// ============================================================================
+// TTS Abstraction — platform-specific speech
+// ============================================================================
+
+/**
+ * iOS: Use our native SpeechModule (AVSpeechSynthesizer).
+ * No pods needed — it's built into iOS and registered in Xcode project.
+ */
+const SpeechModule = Platform.OS === 'ios' ? NativeModules.SpeechModule : null;
+
+/**
+ * Android: Lazy-load react-native-tts to avoid NativeEventEmitter crash on iOS.
+ * react-native-tts creates NativeEventEmitter(null) if the native module isn't linked.
+ */
+let AndroidTts: any = null;
+function getAndroidTts(): any {
+  if (Platform.OS !== 'android') return null;
+  if (!AndroidTts) {
     try {
-      Tts = require('react-native-tts').default;
+      AndroidTts = require('react-native-tts').default;
     } catch (e) {
-      log.warn('react-native-tts not available');
+      log.warn('react-native-tts not available on Android');
     }
   }
-  return Tts;
+  return AndroidTts;
+}
+
+/**
+ * Speak a message using the platform-appropriate TTS engine.
+ */
+async function speak(message: string): Promise<void> {
+  if (Platform.OS === 'ios') {
+    if (SpeechModule) {
+      try {
+        await SpeechModule.speak(message);
+      } catch (e) {
+        log.error('iOS SpeechModule.speak failed', e);
+      }
+    } else {
+      log.warn('iOS SpeechModule not available — native module not linked');
+    }
+  } else {
+    const tts = getAndroidTts();
+    if (tts) {
+      try {
+        tts.speak(message);
+      } catch (e) {
+        log.error('Android TTS speak failed', e);
+      }
+    } else {
+      log.warn('Android TTS not available');
+    }
+  }
+}
+
+/**
+ * Stop any current speech.
+ */
+async function stopSpeech(): Promise<void> {
+  if (Platform.OS === 'ios') {
+    if (SpeechModule) {
+      try { await SpeechModule.stop(); } catch (_) {}
+    }
+  } else {
+    const tts = getAndroidTts();
+    if (tts) {
+      try { tts.stop(); } catch (_) {}
+    }
+  }
 }
 
 // ============================================================================
@@ -113,7 +174,7 @@ class CameraAlertServiceClass {
         await this.initTts();
       }
 
-      log.info(`CameraAlertService initialized. Enabled: ${this.isEnabled}, Cameras: ${CHICAGO_CAMERAS.length}`);
+      log.info(`CameraAlertService initialized. Enabled: ${this.isEnabled}, Cameras: ${CHICAGO_CAMERAS.length}, Platform: ${Platform.OS}`);
     } catch (error) {
       log.error('Failed to initialize CameraAlertService', error);
     }
@@ -123,24 +184,35 @@ class CameraAlertServiceClass {
     if (this.ttsInitialized) return;
 
     try {
-      const tts = getTts();
-      if (!tts) {
-        log.warn('TTS not available on this platform');
-        return;
-      }
-
-      // Configure TTS
-      await tts.setDefaultLanguage('en-US');
-      await tts.setDefaultRate(Platform.OS === 'ios' ? 0.52 : 0.5);
-      await tts.setDefaultPitch(1.0);
-
-      // iOS: allow mixing with other audio (navigation, music)
       if (Platform.OS === 'ios') {
-        await tts.setDucking(true);
-      }
+        // iOS: SpeechModule uses AVSpeechSynthesizer — no setup needed.
+        // Audio session is configured in the native module's init().
+        if (SpeechModule) {
+          const available = await SpeechModule.isAvailable();
+          if (available) {
+            this.ttsInitialized = true;
+            log.info('iOS native SpeechModule ready (AVSpeechSynthesizer)');
+          } else {
+            log.warn('iOS SpeechModule reported not available');
+          }
+        } else {
+          log.warn('iOS SpeechModule native module not found — camera audio alerts will not work');
+        }
+      } else {
+        // Android: Configure react-native-tts
+        const tts = getAndroidTts();
+        if (!tts) {
+          log.warn('Android TTS not available');
+          return;
+        }
 
-      this.ttsInitialized = true;
-      log.info('TTS engine initialized');
+        await tts.setDefaultLanguage('en-US');
+        await tts.setDefaultRate(0.5);
+        await tts.setDefaultPitch(1.0);
+
+        this.ttsInitialized = true;
+        log.info('Android TTS engine initialized (react-native-tts)');
+      }
     } catch (error) {
       log.error('Failed to initialize TTS', error);
     }
@@ -190,8 +262,7 @@ class CameraAlertServiceClass {
   stop(): void {
     this.isActive = false;
     this.alertedCameras.clear();
-    const tts = getTts();
-    if (tts) tts.stop();
+    stopSpeech();
     log.info('Camera alert monitoring stopped');
   }
 
@@ -305,12 +376,7 @@ class CameraAlertServiceClass {
 
     log.info(`CAMERA ALERT: ${message} - ${camera.address}`);
 
-    try {
-      const tts = getTts();
-      if (tts) tts.speak(message);
-    } catch (error) {
-      log.error('TTS speak failed', error);
-    }
+    speak(message);
   }
 
   // --------------------------------------------------------------------------
