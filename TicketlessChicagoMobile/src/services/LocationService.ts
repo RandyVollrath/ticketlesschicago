@@ -203,7 +203,7 @@ class LocationServiceClass {
           // If high accuracy fails, try balanced accuracy as fallback
           if (accuracy === 'high') {
             log.info('Falling back to balanced accuracy');
-            this.getCurrentLocation('balanced')
+            this.getCurrentLocation('balanced', forceNoCache)
               .then(resolve)
               .catch(reject);
           } else {
@@ -377,7 +377,7 @@ class LocationServiceClass {
             resolve(bestPosition);
           } else {
             // Fall back to regular getCurrentLocation
-            this.getCurrentLocation('balanced')
+            this.getCurrentLocation('balanced', forceNoCache)
               .then(resolve)
               .catch(reject);
           }
