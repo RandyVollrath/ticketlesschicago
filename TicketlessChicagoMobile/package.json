@@ -38,6 +38,7 @@
     "react-native-reanimated": "^4.2.1",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.18.0",
+    "react-native-tts": "^4.1.1",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.3.0",
     "react-native-webview": "^13.16.0",

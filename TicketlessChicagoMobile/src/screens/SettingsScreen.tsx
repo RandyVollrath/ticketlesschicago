@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Switch,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
+import CameraAlertService from '../services/CameraAlertService';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import Logger from '../utils/Logger';
 
@@ -23,6 +25,7 @@ const SettingsScreen: React.FC = () => {
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
 
   const isMountedRef = useRef(true);
   const loadingRef = useRef(false);
@@ -37,6 +40,7 @@ const SettingsScreen: React.FC = () => {
 
   useEffect(() => {
     loadSavedCar();
+    setCameraAlertsEnabled(CameraAlertService.isAlertEnabled());
   }, []);
 
   const loadSavedCar = useCallback(async () => {
@@ -147,6 +151,12 @@ const SettingsScreen: React.FC = () => {
     );
   }, []);
 
+  const toggleCameraAlerts = useCallback(async (value: boolean) => {
+    setCameraAlertsEnabled(value);
+    await CameraAlertService.setEnabled(value);
+    log.info(`Camera alerts ${value ? 'enabled' : 'disabled'}`);
+  }, []);
+
   const renderDevice = useCallback(({ item }: { item: SavedCarDevice }) => (
     <TouchableOpacity
       style={[styles.deviceCard, isSelecting && styles.deviceCardDisabled]}
@@ -194,6 +204,25 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.infoText}>
               For best results, allow "Always" location access in Settings {'>'} Privacy {'>'} Location Services {'>'} Autopilot America. This lets the app detect parking even when it's in the background.
             </Text>
+          </View>
+
+          {/* Camera Alerts Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Camera Alerts</Text>
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleInfo}>
+                <Text style={styles.toggleLabel}>Speed & Red Light Camera Alerts</Text>
+                <Text style={styles.toggleDescription}>
+                  Audio alerts when approaching speed cameras or red light cameras while driving
+                </Text>
+              </View>
+              <Switch
+                value={cameraAlertsEnabled}
+                onValueChange={toggleCameraAlerts}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.white}
+              />
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -286,6 +315,25 @@ const SettingsScreen: React.FC = () => {
              '3. When you turn off your car, we detect it\n' +
              '4. We check parking rules and notify you'}
           </Text>
+        </View>
+
+        {/* Camera Alerts Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Camera Alerts</Text>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleInfo}>
+              <Text style={styles.toggleLabel}>Speed & Red Light Camera Alerts</Text>
+              <Text style={styles.toggleDescription}>
+                Audio alerts when approaching speed cameras or red light cameras while driving
+              </Text>
+            </View>
+            <Switch
+              value={cameraAlertsEnabled}
+              onValueChange={toggleCameraAlerts}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.white}
+            />
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -437,6 +485,26 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     lineHeight: 22,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  toggleLabel: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  toggleDescription: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });
 
