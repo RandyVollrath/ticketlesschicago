@@ -204,10 +204,10 @@ export default async function handler(
         // Only send once per parking session
         // Skip if user is parked in their own permit zone
         if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.permit_zone && isWeekday(chicagoTime) && !vehicle.permit_zone_notified_at) {
-          // Only notify if user has a permit zone set and it DOESN'T match.
-          // Most people don't have residential permits, so no zone set = no notification.
-          // If they DO have a permit and park in the wrong zone, warn them.
-          let shouldNotify = false;
+          // Permit zones are restricted — you WILL be ticketed without a permit.
+          // Always notify UNLESS the user has a permit for this exact zone.
+          // No zone set = no permit = definitely notify.
+          let isOwnZone = false;
           try {
             const { data: userProfile } = await supabaseAdmin
               .from('user_profiles')
@@ -219,25 +219,19 @@ export default async function handler(
               const homeZone = (userProfile.permit_zone_number || userProfile.vehicle_zone || '').toString().trim().toLowerCase().replace(/^zone\s*/i, '');
               const parkedZone = (vehicle.permit_zone || '').trim().toLowerCase().replace(/^zone\s*/i, '');
 
-              if (!homeZone) {
-                // No permit zone set — don't bother them
-                console.log(`No permit zone set for ${vehicle.user_id} — skipping notification`);
-              } else if (homeZone === parkedZone) {
-                // Parked in own zone — all good
-                console.log(`Skipping permit zone notification for ${vehicle.user_id} - parked in own zone (${vehicle.permit_zone})`);
-              } else {
-                // Has a permit but parked in a DIFFERENT zone — warn them
-                shouldNotify = true;
-                console.log(`User ${vehicle.user_id} has permit for zone ${homeZone} but parked in ${parkedZone} — notifying`);
+              if (homeZone && parkedZone && homeZone === parkedZone) {
+                isOwnZone = true;
+                console.log(`Skipping permit zone notification for ${vehicle.user_id} — parked in own zone (${vehicle.permit_zone})`);
               }
+              // No homeZone = no permit = notify them
             }
-            // No profile found = no permit = don't notify
+            // No profile = no permit = notify them
           } catch (profileErr) {
-            // Can't look up profile — don't notify (most people don't have permits)
-            console.warn(`Could not check permit zone for ${vehicle.user_id} — skipping:`, profileErr);
+            // Can't look up profile — notify to be safe (they might not have a permit)
+            console.warn(`Could not check permit zone for ${vehicle.user_id} — notifying to be safe:`, profileErr);
           }
 
-          if (shouldNotify) {
+          if (!isOwnZone) {
             const restrictionStartHour = getPermitRestrictionStartHour(vehicle.permit_restriction_schedule) || 8;
 
             // Send reminder at 7am for 8am enforcement

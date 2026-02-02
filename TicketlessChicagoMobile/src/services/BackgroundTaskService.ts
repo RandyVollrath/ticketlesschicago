@@ -963,12 +963,12 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Filter permit zone notifications based on user's home zone.
+   * Filter permit zone notifications ONLY if user is parked in their own zone.
    *
-   * Logic:
-   * - No home zone set → REMOVE permit rule (most people don't have permits, don't bug them)
-   * - Home zone matches parked zone → REMOVE (they're in their own zone)
-   * - Home zone set but DIFFERENT from parked → KEEP (warn them, wrong zone)
+   * Permit zones are restricted — you WILL be ticketed without a permit.
+   * - No home zone set → KEEP (they don't have a permit, warn them!)
+   * - Home zone matches parked zone → REMOVE (they have a permit here)
+   * - Home zone set but different → KEEP (their permit doesn't cover this zone)
    */
   private async filterOwnPermitZone(result: any): Promise<any> {
     try {
@@ -976,29 +976,26 @@ class BackgroundTaskServiceClass {
       if (!permitRule) return result;
 
       const homeZone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
-
       if (!homeZone) {
-        // No permit zone set — most people don't have permits, don't notify
-        log.info('No home permit zone set — filtering out permit zone notification');
-        return {
-          ...result,
-          rules: result.rules.filter((r: any) => r.type !== 'permit_zone'),
-        };
+        // No permit zone set — they probably don't have a permit, keep the warning
+        log.info('No home permit zone set — keeping permit zone notification (user needs a permit here)');
+        return result;
       }
 
-      // Compare zone names (case-insensitive, trim whitespace)
+      // Compare zone names (case-insensitive, strip "Zone " prefix)
       const parkedZoneNum = (permitRule.zoneName || '').trim().toLowerCase().replace(/^zone\s*/i, '');
       const userZoneNum = homeZone.trim().toLowerCase().replace(/^zone\s*/i, '');
 
       if (parkedZoneNum === userZoneNum) {
-        log.info(`Filtering out permit zone notification — user is in their own zone (${homeZone})`);
+        // Parked in their own zone — they have a permit, no need to warn
+        log.info(`Filtering out permit zone notification — parked in own zone (${homeZone})`);
         return {
           ...result,
           rules: result.rules.filter((r: any) => r.type !== 'permit_zone'),
         };
       }
 
-      // User has a permit but is in a DIFFERENT zone — keep the warning
+      // Different zone — their permit doesn't help here, keep the warning
       log.info(`User has permit for zone ${homeZone} but parked in ${permitRule.zoneName} — keeping notification`);
     } catch (error) {
       log.warn('Error checking home permit zone (non-fatal):', error);
