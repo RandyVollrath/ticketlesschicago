@@ -19,6 +19,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import AuthService, { AuthState } from './src/services/AuthService';
 import PushNotificationService from './src/services/PushNotificationService';
 import DeepLinkingService from './src/services/DeepLinkingService';
+import ApiClient from './src/utils/ApiClient';
 
 // Components
 import TabBar from './src/navigation/TabBar';
@@ -115,6 +116,49 @@ function App(): React.JSX.Element {
   // Note: Deep linking and push notification navigation refs are set in
   // NavigationContainer's onReady callback to ensure navigation is ready
 
+  /**
+   * Pre-populate the user's home permit zone from their profile address.
+   * Runs once at app startup if authenticated and zone not already cached.
+   */
+  const ensurePermitZoneSet = async () => {
+    try {
+      const existing = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
+      if (existing) return; // Already set (by user or previous derivation)
+
+      const userId = AuthService.getUser()?.id;
+      if (!userId) return;
+
+      const response = await ApiClient.authGet<any>(`/api/user-profile?userId=${userId}`, {
+        retries: 1, timeout: 10000, showErrorAlert: false,
+      });
+      if (!response.success || !response.data) return;
+
+      // 1. Check if permit_zone_number is already on their profile
+      const profileZone = response.data.permit_zone_number || response.data.vehicle_zone || '';
+      if (profileZone) {
+        await AsyncStorage.setItem(StorageKeys.HOME_PERMIT_ZONE, String(profileZone));
+        log.info(`Permit zone set from profile: ${profileZone}`);
+        return;
+      }
+
+      // 2. Derive from home address via permit zone lookup
+      const homeAddress = response.data.home_address_full || response.data.street_address || '';
+      if (!homeAddress) return;
+
+      const zoneResponse = await ApiClient.get<any>(
+        `/api/check-permit-zone?address=${encodeURIComponent(homeAddress)}`,
+        { retries: 1, timeout: 10000, showErrorAlert: false },
+      );
+      if (zoneResponse.success && zoneResponse.data?.hasPermitZone && zoneResponse.data.zones?.length > 0) {
+        const derivedZone = String(zoneResponse.data.zones[0].zone);
+        await AsyncStorage.setItem(StorageKeys.HOME_PERMIT_ZONE, derivedZone);
+        log.info(`Permit zone derived from address "${homeAddress}": ${derivedZone}`);
+      }
+    } catch (error) {
+      log.debug('Permit zone pre-population failed (non-fatal):', error);
+    }
+  };
+
   const initializeApp = async () => {
     try {
       // Check onboarding/login status and initialize auth in parallel
@@ -139,6 +183,10 @@ function App(): React.JSX.Element {
             if (pushEnabled) {
               await PushNotificationService.registerTokenWithBackend();
             }
+
+            // Pre-populate permit zone from user's address if not already set.
+            // This runs at sign-in so the zone is ready before they ever park.
+            await ensurePermitZoneSet();
           }
         } catch (error) {
           log.error('Error initializing deferred services', error);
