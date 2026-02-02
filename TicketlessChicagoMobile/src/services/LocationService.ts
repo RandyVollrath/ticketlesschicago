@@ -668,6 +668,60 @@ class LocationServiceClass {
     };
   }
 
+  /**
+   * Save parked location to the server for cron-based push notification reminders.
+   * This populates the user_parked_vehicles table, enabling the server-side
+   * mobile-parking-reminders cron to send timed notifications (9pm winter ban,
+   * 8pm/7am street cleaning, 7am permit zone).
+   *
+   * @param coords Parking coordinates
+   * @param parkingData Restriction data from the check-parking API response
+   * @param address Street address
+   * @param fcmToken Firebase Cloud Messaging token for push delivery
+   */
+  async saveParkedLocationToServer(
+    coords: Coordinates,
+    parkingData: any,
+    address: string,
+    fcmToken: string
+  ): Promise<{ success: boolean; id?: string }> {
+    try {
+      const payload: any = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        address,
+        fcm_token: fcmToken,
+        on_winter_ban_street: !!(parkingData?.winterOvernightBan?.active || parkingData?.winterBan?.found),
+        winter_ban_street_name: parkingData?.winterOvernightBan?.streetName || null,
+        on_snow_route: !!(parkingData?.twoInchSnowBan?.active || parkingData?.snowRoute),
+        snow_route_name: parkingData?.twoInchSnowBan?.streetName || null,
+        street_cleaning_date: parkingData?.streetCleaning?.nextDate || null,
+        street_cleaning_ward: parkingData?.streetCleaning?.ward || null,
+        street_cleaning_section: parkingData?.streetCleaning?.section || null,
+        permit_zone: parkingData?.permitZone?.zoneName || null,
+        permit_restriction_schedule: parkingData?.permitZone?.restrictionSchedule || null,
+      };
+
+      const response = await ApiClient.authPost<any>('/api/mobile/save-parked-location', payload, {
+        retries: 2,
+        timeout: 15000,
+        showErrorAlert: false,
+      });
+
+      if (response.success && response.data) {
+        log.info('Parked location saved to server', { id: response.data.id });
+        return { success: true, id: response.data.id };
+      }
+
+      log.warn('Failed to save parked location to server', response.error);
+      return { success: false };
+    } catch (error) {
+      // Non-fatal: server save is for cron reminders, local notifications still work
+      log.error('Error saving parked location to server (non-fatal)', error);
+      return { success: false };
+    }
+  }
+
   async saveLastParkingLocation(coords: Coordinates, rules: ParkingRule[], address?: string): Promise<void> {
     try {
       await AsyncStorage.setItem(

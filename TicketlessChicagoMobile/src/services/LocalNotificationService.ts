@@ -33,10 +33,13 @@ const NOTIFICATION_PREFIX = {
 };
 
 // Default reminder times (hours before restriction starts)
+// NOTE: BackgroundTaskService now sends pre-computed notification times
+// (9pm night before, 7am morning of, etc.) so these defaults are only used
+// as fallbacks when the restriction time IS the notification time (hoursBefore=0).
 const DEFAULT_REMINDER_HOURS = {
-  STREET_CLEANING: 12, // 12 hours before (evening before)
-  WINTER_BAN: 6, // 6 hours before 3am = 9pm
-  PERMIT_ZONE: 1, // 1 hour before enforcement starts
+  STREET_CLEANING: 0, // Pre-computed: 9pm night before + 7am morning of
+  WINTER_BAN: 0, // Pre-computed: 9pm notification time sent directly
+  PERMIT_ZONE: 0, // Pre-computed: 7am notification time sent directly
 };
 
 export interface ReminderPreferences {
@@ -164,19 +167,26 @@ class LocalNotificationServiceClass {
 
     switch (type) {
       case 'street_cleaning':
-        hoursBefore = this.preferences.streetCleaningHoursBefore;
+        hoursBefore = 0; // Time is pre-computed by BackgroundTaskService
         notificationId = `${NOTIFICATION_PREFIX.STREET_CLEANING}${Date.now()}`;
         channelId = 'reminders';
-        title = 'Street Cleaning Tomorrow!';
-        body = `Street cleaning scheduled at ${address}. ${details || 'Move your car to avoid a $65 ticket.'}`;
+        // Detect if this is the morning-of (7am) or night-before (9pm) notification
+        if (details?.includes('MOVE YOUR CAR NOW')) {
+          title = 'Street Cleaning Today - Move Now!';
+          body = `Street cleaning starts at 9am at ${address}. Move your car NOW to avoid a $65 ticket.`;
+          channelId = 'parking-alerts'; // Higher priority for urgent morning alert
+        } else {
+          title = 'Street Cleaning Tomorrow!';
+          body = `Street cleaning scheduled tomorrow at ${address}. ${details || 'Move your car tonight to avoid a $65 ticket.'}`;
+        }
         break;
 
       case 'winter_ban':
-        hoursBefore = this.preferences.winterBanHoursBefore;
+        hoursBefore = 0; // Time is pre-computed (9pm)
         notificationId = `${NOTIFICATION_PREFIX.WINTER_BAN}${Date.now()}`;
         channelId = 'parking-alerts';
-        title = 'Winter Parking Ban Reminder';
-        body = `Winter ban starts at 3am at ${address}. Move before 3am to avoid towing ($150+).`;
+        title = 'Winter Parking Ban Tonight';
+        body = `Your car at ${address} is on a winter ban street. Move before 3am to avoid towing ($150+).`;
         break;
 
       case 'snow_ban':
@@ -190,11 +200,11 @@ class LocalNotificationServiceClass {
         break;
 
       case 'permit_zone':
-        hoursBefore = this.preferences.permitZoneHoursBefore;
+        hoursBefore = 0; // Time is pre-computed (7am)
         notificationId = `${NOTIFICATION_PREFIX.PERMIT_ZONE}${Date.now()}`;
         channelId = 'reminders';
-        title = 'Permit Zone Reminder';
-        body = `Permit enforcement starts soon at ${address}. ${details || 'Move your car or risk a $65 ticket.'}`;
+        title = 'Permit Zone - Move by 8am';
+        body = `Your car at ${address} needs a permit. ${details || 'Enforcement starts at 8am - move your car or risk a $65 ticket.'}`;
         break;
 
       default:

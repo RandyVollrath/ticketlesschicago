@@ -19,6 +19,8 @@ import MotionActivityService from './MotionActivityService';
 import BackgroundLocationService, { ParkingDetectedEvent } from './BackgroundLocationService';
 import LocationService from './LocationService';
 import LocalNotificationService, { ParkingRestriction } from './LocalNotificationService';
+import PushNotificationService from './PushNotificationService';
+import AuthService from './AuthService';
 import { ParkingHistoryService } from '../screens/HistoryScreen';
 import CameraAlertService from './CameraAlertService';
 import Logger from '../utils/Logger';
@@ -868,18 +870,41 @@ class BackgroundTaskServiceClass {
         log.error('Failed to save auto-detection to history (non-fatal):', historyError);
       }
 
+      // Save parked location to server for cron-based push notification reminders.
+      // This populates user_parked_vehicles, enabling timed server-side notifications:
+      // - 9pm winter ban reminder (before 3am ban)
+      // - 8pm night-before + 7am morning-of street cleaning reminders
+      // - 7am permit zone reminder (before 8am enforcement)
+      // - Snow ban push notifications to parked users on snow routes
+      try {
+        const fcmToken = await PushNotificationService.getToken();
+        if (fcmToken && AuthService.isAuthenticated()) {
+          // Get the raw API response data for mapping to server fields
+          const rawData = await this.getRawParkingData(result);
+          await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
+        } else {
+          log.debug('Skipping server save: no FCM token or not authenticated');
+        }
+      } catch (serverSaveError) {
+        // Non-fatal — local notifications still work without server save
+        log.warn('Failed to save parked location to server (non-fatal):', serverSaveError);
+      }
+
       // Update last check time
       this.state.lastParkingCheckTime = Date.now();
       await this.saveState();
 
+      // Check if user is parked in their own permit zone — if so, filter it out
+      const filteredResult = await this.filterOwnPermitZone(result);
+
       // Send notification — always notify so the user knows the scan ran
-      if (result.rules.length > 0) {
-        await this.sendParkingNotification(result, coords.accuracy);
+      if (filteredResult.rules.length > 0) {
+        await this.sendParkingNotification(filteredResult, coords.accuracy);
 
         // Schedule local notifications for upcoming restrictions
-        await this.scheduleRestrictionReminders(result, coords);
+        await this.scheduleRestrictionReminders(filteredResult, coords);
       } else {
-        await this.sendSafeNotification(result.address, coords.accuracy);
+        await this.sendSafeNotification(filteredResult.address, coords.accuracy);
       }
 
       log.info('=== PARKING CHECK COMPLETE ===', {
@@ -909,8 +934,76 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Schedule local notifications for upcoming restrictions
-   * These fire before each restriction begins, giving user time to move
+   * Extract raw parking data from the check result for server save.
+   * The result from checkParkingLocation has processed rules[], but
+   * save-parked-location needs the raw API fields.
+   */
+  private async getRawParkingData(result: any): Promise<any> {
+    // The result object from LocationService.checkParkingLocation already
+    // has the parsed data we need — reconstruct the API response shape
+    const winterRule = result.rules?.find((r: any) => r.type === 'winter_ban');
+    const snowRule = result.rules?.find((r: any) => r.type === 'snow_route');
+    const cleaningRule = result.rules?.find((r: any) => r.type === 'street_cleaning');
+    const permitRule = result.rules?.find((r: any) => r.type === 'permit_zone');
+
+    return {
+      winterOvernightBan: winterRule ? { active: true, streetName: null } : null,
+      twoInchSnowBan: snowRule ? { active: true, streetName: null } : null,
+      streetCleaning: cleaningRule ? {
+        hasRestriction: true,
+        nextDate: cleaningRule.nextDate || null,
+        schedule: cleaningRule.schedule || null,
+      } : null,
+      permitZone: permitRule ? {
+        inPermitZone: true,
+        zoneName: permitRule.zoneName || null,
+        restrictionSchedule: permitRule.schedule || null,
+      } : null,
+    };
+  }
+
+  /**
+   * Filter out permit zone restriction if user is parked in their own zone.
+   * Returns a copy of the result with the permit_zone rule removed if it
+   * matches the user's home permit zone.
+   */
+  private async filterOwnPermitZone(result: any): Promise<any> {
+    try {
+      const homeZone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
+      if (!homeZone) return result;
+
+      const permitRule = result.rules?.find((r: any) => r.type === 'permit_zone');
+      if (!permitRule) return result;
+
+      // Compare zone names (case-insensitive, trim whitespace)
+      const parkedZone = (permitRule.zoneName || '').trim().toLowerCase();
+      const userZone = homeZone.trim().toLowerCase();
+
+      // Match "Zone 383" == "383" or "Zone 383" == "Zone 383"
+      const parkedZoneNum = parkedZone.replace(/^zone\s*/i, '');
+      const userZoneNum = userZone.replace(/^zone\s*/i, '');
+
+      if (parkedZoneNum === userZoneNum) {
+        log.info(`Filtering out permit zone notification — user is in their own zone (${homeZone})`);
+        return {
+          ...result,
+          rules: result.rules.filter((r: any) => r.type !== 'permit_zone'),
+        };
+      }
+    } catch (error) {
+      log.warn('Error checking home permit zone (non-fatal):', error);
+    }
+    return result;
+  }
+
+  /**
+   * Schedule local notifications for upcoming restrictions.
+   *
+   * Timing strategy (user-requested):
+   * - Street cleaning: 9pm night before + 7am morning of
+   * - Winter ban: 9pm (before 3am ban)
+   * - Permit zone: 7am (before 8am enforcement start)
+   * - Snow ban: handled by server push notifications (weather-dependent)
    */
   private async scheduleRestrictionReminders(
     result: any,
@@ -922,10 +1015,9 @@ class BackgroundTaskServiceClass {
     // The result comes from LocationService.checkParkingLocation which returns
     // data from the check-parking API with streetCleaning, winterOvernightBan, etc.
 
-    // Street cleaning reminder
+    // Street cleaning reminders — 9pm night before + 7am morning of
     if (result.streetCleaning?.hasRestriction && result.streetCleaning?.nextDate) {
       // Street cleaning typically starts at 9am on the scheduled day
-      // Parse date carefully - nextDate is in YYYY-MM-DD format
       const dateParts = result.streetCleaning.nextDate.split('-');
       if (dateParts.length === 3) {
         const cleaningDate = new Date(
@@ -935,92 +1027,110 @@ class BackgroundTaskServiceClass {
           9, 0, 0, 0 // 9 AM local time
         );
 
-        // Only schedule if the date is valid and in the future
         if (!isNaN(cleaningDate.getTime()) && cleaningDate.getTime() > Date.now()) {
+          // Notification 1: 9pm the night before cleaning
+          const nightBefore9pm = new Date(cleaningDate);
+          nightBefore9pm.setDate(nightBefore9pm.getDate() - 1);
+          nightBefore9pm.setHours(21, 0, 0, 0); // 9 PM
+
+          if (nightBefore9pm.getTime() > Date.now()) {
+            restrictions.push({
+              type: 'street_cleaning',
+              restrictionStartTime: nightBefore9pm, // We set the time directly
+              address: result.address,
+              details: result.streetCleaning.schedule || 'Street cleaning tomorrow - move your car tonight',
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            });
+          }
+
+          // Notification 2: 7am morning of cleaning
+          const morningOf7am = new Date(cleaningDate);
+          morningOf7am.setHours(7, 0, 0, 0); // 7 AM
+
+          if (morningOf7am.getTime() > Date.now()) {
+            restrictions.push({
+              type: 'street_cleaning',
+              restrictionStartTime: morningOf7am,
+              address: result.address,
+              details: 'Street cleaning starts at 9am - MOVE YOUR CAR NOW',
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            });
+          }
+        }
+      }
+    }
+
+    // Winter overnight ban reminder — 9pm (before 3am ban)
+    if (result.winterOvernightBan?.active || result.winterBan?.found) {
+      const now = new Date();
+      const currentHour = now.getHours();
+
+      // Schedule for 9pm tonight if before 9pm, or 9pm tomorrow if already past
+      if (currentHour < 3 || currentHour >= 7) {
+        const next9pm = new Date(now);
+        next9pm.setHours(21, 0, 0, 0); // 9 PM
+
+        // If it's already past 9pm, schedule for tomorrow 9pm
+        if (currentHour >= 21) {
+          next9pm.setDate(next9pm.getDate() + 1);
+        }
+
+        if (next9pm.getTime() > Date.now()) {
           restrictions.push({
-            type: 'street_cleaning',
-            restrictionStartTime: cleaningDate,
+            type: 'winter_ban',
+            restrictionStartTime: next9pm,
             address: result.address,
-            details: result.streetCleaning.schedule || 'Street cleaning - move your car',
+            details: 'Winter overnight parking ban starts at 3am - move before 3am!',
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
         }
       }
-    }
-
-    // Winter overnight ban reminder (3am-7am, Dec 1 - Apr 1)
-    if (result.winterOvernightBan?.active || result.winterBan?.found) {
-      const now = new Date();
-      const currentHour = now.getHours();
-
-      // Only schedule if NOT currently in ban hours (3am-7am)
-      if (currentHour < 3 || currentHour >= 7) {
-        const next3am = new Date(now);
-        next3am.setHours(3, 0, 0, 0);
-        next3am.setMinutes(0);
-        next3am.setSeconds(0);
-        next3am.setMilliseconds(0);
-
-        // If it's past 3am (meaning 7am or later), schedule for tomorrow 3am
-        if (currentHour >= 7) {
-          next3am.setDate(next3am.getDate() + 1);
-        }
-
-        restrictions.push({
-          type: 'winter_ban',
-          restrictionStartTime: next3am,
-          address: result.address,
-          details: 'Winter overnight parking ban (3am-7am)',
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        });
-      }
       // If currently in ban hours (3am-7am), don't schedule - user should already know
     }
 
-    // Permit zone reminder
+    // Permit zone reminder — 7am before 8am enforcement
     if (result.permitZone?.inPermitZone && !result.permitZone?.permitRequired) {
-      // Not currently enforced but will be - schedule reminder before enforcement starts
-      // Default permit enforcement is Mon-Fri 6am-6pm
       const now = new Date();
       const currentHour = now.getHours();
       const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
 
-      const next6am = new Date(now);
-      next6am.setHours(6, 0, 0, 0);
-      next6am.setMinutes(0);
-      next6am.setSeconds(0);
-      next6am.setMilliseconds(0);
+      // Schedule for 7am (1 hour before typical 8am enforcement start)
+      const next7am = new Date(now);
+      next7am.setHours(7, 0, 0, 0);
+      next7am.setMinutes(0);
+      next7am.setSeconds(0);
+      next7am.setMilliseconds(0);
 
-      // Determine if we need to move to a future date
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      const isPast6amToday = currentHour >= 6;
+      const isPast7amToday = currentHour >= 7;
 
-      if (isWeekend || isPast6amToday) {
-        // Move to tomorrow first
-        next6am.setDate(next6am.getDate() + 1);
-
-        // Now check if tomorrow is a weekend and skip to Monday
-        let nextDay = next6am.getDay();
+      if (isWeekend || isPast7amToday) {
+        next7am.setDate(next7am.getDate() + 1);
+        // Skip weekends
+        let nextDay = next7am.getDay();
         while (nextDay === 0 || nextDay === 6) {
-          next6am.setDate(next6am.getDate() + 1);
-          nextDay = next6am.getDay();
+          next7am.setDate(next7am.getDate() + 1);
+          nextDay = next7am.getDay();
         }
       }
 
-      restrictions.push({
-        type: 'permit_zone',
-        restrictionStartTime: next6am,
-        address: result.address,
-        details: `${result.permitZone.zoneName || 'Permit zone'} - ${result.permitZone.restrictionSchedule || 'Mon-Fri 6am-6pm'}`,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      });
+      if (next7am.getTime() > Date.now()) {
+        restrictions.push({
+          type: 'permit_zone',
+          restrictionStartTime: next7am,
+          address: result.address,
+          details: `${result.permitZone.zoneName || 'Permit zone'} - enforcement starts at 8am`,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+      }
     }
 
     // Snow ban - weather dependent, handled by push notifications from backend
-    // We could add a placeholder here but snow bans are triggered by weather, not time
+    // Server cron sends push to users with on_snow_route=true in user_parked_vehicles
 
     if (restrictions.length > 0) {
       await LocalNotificationService.scheduleNotificationsForParking(restrictions);
