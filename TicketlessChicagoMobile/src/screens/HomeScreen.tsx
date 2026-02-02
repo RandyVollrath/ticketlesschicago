@@ -359,9 +359,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleCarReconnect = () => {
-    log.info('Driving started - clearing old parking data from UI');
-    setLastParkingCheck(null);
-    setShowDetails(false);
+    log.info('Driving started - keeping last parking result visible');
+    // Don't clear the last parking result — user wants to see it at all times.
+    // It will only be replaced when a new parking check completes.
   };
 
   const stopMonitoring = async () => {
@@ -496,35 +496,35 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // ──────────────────────────────────────────────────────
   // Derive hero state from app state
   // ──────────────────────────────────────────────────────
+  const isDriving = (() => {
+    if (Platform.OS === 'ios') return currentActivity === 'automotive';
+    if (Platform.OS === 'android') return isCarConnected;
+    return false;
+  })();
+
   const getHeroState = (): HeroState => {
     if (loading) return 'checking';
     if (!isMonitoring) return 'paused';
 
-    // iOS: use CoreMotion activity
-    if (Platform.OS === 'ios') {
-      if (currentActivity === 'automotive') return 'driving';
-    }
-    // Android: use Bluetooth connection
-    if (Platform.OS === 'android') {
-      if (isCarConnected) return 'driving';
-    }
-
-    // If we have a recent check result (< 2 hours), show its state
+    // Always show last parking result if we have one — this is what the user
+    // cares about most. Driving status is shown separately in the status row.
     if (lastParkingCheck) {
-      const ageMs = Date.now() - lastParkingCheck.timestamp;
-      if (ageMs < 2 * 60 * 60 * 1000) {
-        return lastParkingCheck.rules.length > 0 ? 'violation' : 'clear';
-      }
+      return lastParkingCheck.rules.length > 0 ? 'violation' : 'clear';
     }
 
+    // No parking result yet — show driving or ready
+    if (isDriving) return 'driving';
     return 'ready';
   };
 
   const heroState = getHeroState();
+  const heroAddress = lastParkingCheck
+    ? `${lastParkingCheck.address} · ${formatTimeSince(lastParkingCheck.timestamp)}`
+    : undefined;
   const heroConfig = getHeroConfig(
     heroState,
     lastParkingCheck?.rules.length || 0,
-    lastParkingCheck?.address,
+    heroAddress,
   );
 
   // Speed helper for debug (m/s to mph)
@@ -681,6 +681,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               />
             )}
           </View>
+
+          {/* Driving overlay badge — show when hero displays parking result but user is driving */}
+          {isDriving && (heroState === 'clear' || heroState === 'violation') && (
+            <View style={styles.drivingBadge}>
+              <MaterialCommunityIcons name="car" size={12} color={colors.white} />
+              <Text style={styles.drivingBadgeText}>Driving</Text>
+            </View>
+          )}
 
           {/* Expanded details */}
           {showDetails && lastParkingCheck && (
@@ -1011,6 +1019,22 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.sizes.xs,
     opacity: 0.7,
+  },
+  drivingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    marginTop: spacing.sm,
+    gap: 4,
+  },
+  drivingBadgeText: {
+    fontSize: typography.sizes.xs,
+    color: colors.white,
+    fontWeight: typography.weights.semibold,
   },
 
   // Resume button
