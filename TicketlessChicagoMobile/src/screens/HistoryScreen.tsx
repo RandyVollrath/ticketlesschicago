@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
@@ -341,6 +342,7 @@ const groupByDate = (items: ParkingHistoryItem[]): HistorySection[] => {
 // Main Screen
 // ──────────────────────────────────────────────────────
 const HistoryScreen: React.FC = () => {
+  const navigation = useNavigation();
   const [history, setHistory] = useState<ParkingHistoryItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -372,6 +374,14 @@ const HistoryScreen: React.FC = () => {
     };
     initLoad();
   }, [loadHistory]);
+
+  // Reload history when switching to this tab (catches background parking events)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadHistory();
+    });
+    return unsubscribe;
+  }, [navigation, loadHistory]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
