@@ -69,16 +69,29 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
             }
 
             // Start the foreground service
-            val intent = Intent(reactApplicationContext, BluetoothMonitorService::class.java).apply {
+            val serviceIntent = Intent(reactApplicationContext, BluetoothMonitorService::class.java).apply {
                 action = BluetoothMonitorService.ACTION_START
                 putExtra(BluetoothMonitorService.EXTRA_DEVICE_ADDRESS, address)
                 putExtra(BluetoothMonitorService.EXTRA_DEVICE_NAME, name)
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                reactApplicationContext.startForegroundService(intent)
-            } else {
-                reactApplicationContext.startService(intent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    reactApplicationContext.startForegroundService(serviceIntent)
+                } else {
+                    reactApplicationContext.startService(serviceIntent)
+                }
+            } catch (e: Exception) {
+                // On some devices/OS versions, starting a foreground service from
+                // background can fail. Fall back to regular startService.
+                Log.w(TAG, "startForegroundService failed, falling back to startService: ${e.message}")
+                try {
+                    reactApplicationContext.startService(serviceIntent)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "startService also failed: ${e2.message}")
+                    promise.reject("START_FAILED", "Cannot start BT monitor service: ${e2.message}", e2)
+                    return
+                }
             }
 
             promise.resolve(true)
