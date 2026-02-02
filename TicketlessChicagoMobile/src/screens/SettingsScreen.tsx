@@ -208,12 +208,12 @@ const SettingsScreen: React.FC = () => {
 
           {/* Camera Alerts Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Camera Alerts</Text>
+            <Text style={styles.sectionTitle}>Camera Alerts <Text style={styles.betaBadge}>BETA</Text></Text>
             <View style={styles.toggleRow}>
               <View style={styles.toggleInfo}>
                 <Text style={styles.toggleLabel}>Speed & Red Light Camera Alerts</Text>
                 <Text style={styles.toggleDescription}>
-                  Audio alerts when approaching speed cameras or red light cameras while driving
+                  Audio alerts when approaching speed cameras or red light cameras while driving (510 Chicago cameras)
                 </Text>
               </View>
               <Switch
@@ -319,12 +319,12 @@ const SettingsScreen: React.FC = () => {
 
         {/* Camera Alerts Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Camera Alerts</Text>
+          <Text style={styles.sectionTitle}>Camera Alerts <Text style={styles.betaBadge}>BETA</Text></Text>
           <View style={styles.toggleRow}>
             <View style={styles.toggleInfo}>
               <Text style={styles.toggleLabel}>Speed & Red Light Camera Alerts</Text>
               <Text style={styles.toggleDescription}>
-                Audio alerts when approaching speed cameras or red light cameras while driving
+                Audio alerts when approaching speed cameras or red light cameras while driving (510 Chicago cameras)
               </Text>
             </View>
             <Switch
@@ -505,6 +505,16 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     lineHeight: 18,
+  },
+  betaBadge: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+    color: colors.primary,
+    backgroundColor: colors.infoBg,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
 });
 

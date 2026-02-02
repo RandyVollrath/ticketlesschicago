@@ -23,7 +23,7 @@ import Logger from '../utils/Logger';
 import Config from '../config/config';
 import { clearUserData } from '../utils/storage';
 import { StorageKeys } from '../constants';
-import BiometricService, { BiometricType } from '../services/BiometricService';
+// BiometricService removed — users stay logged in via Supabase sessions
 
 const log = Logger.createLogger('SettingsScreen');
 
@@ -123,9 +123,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [biometricName, setBiometricName] = useState('Biometric');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -140,8 +137,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     loadSettings();
     loadSavedCar();
-    loadBiometricStatus();
-
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
     });
@@ -180,38 +175,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, []);
 
-  const loadBiometricStatus = async () => {
-    try {
-      await BiometricService.initialize();
-      const status = BiometricService.getStatus();
-      setBiometricAvailable(status.available);
-      setBiometricEnabled(status.enabled);
-      setBiometricName(status.typeName);
-    } catch (error) {
-      log.error('Error loading biometric status', error);
-    }
-  };
-
-  const handleBiometricToggle = async (enabled: boolean) => {
-    try {
-      if (enabled) {
-        const success = await BiometricService.enable();
-        if (success) {
-          setBiometricEnabled(true);
-          Alert.alert('Success', `${biometricName} authentication enabled`);
-        } else {
-          Alert.alert('Failed', `Could not enable ${biometricName} authentication`);
-        }
-      } else {
-        await BiometricService.disable();
-        setBiometricEnabled(false);
-      }
-    } catch (error) {
-      log.error('Error toggling biometric', error);
-      Alert.alert('Error', 'Failed to update biometric settings');
-    }
-  };
-
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
     saveSettings({ ...settings, [key]: value });
   };
@@ -228,7 +191,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           try {
             await PushNotificationService.unregister();
             await clearUserData();
-            await BiometricService.disable();
             await AuthService.signOut();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           } catch (error) {
@@ -318,19 +280,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             value={settings.criticalAlertsEnabled}
             onValueChange={v => updateSetting('criticalAlertsEnabled', v)}
           />
-          {biometricAvailable && (
-            <>
-              <Divider />
-              <SettingRow
-                icon="fingerprint"
-                iconColor={colors.success}
-                title={`${biometricName} Lock`}
-                subtitle={`Secure app with ${biometricName}`}
-                value={biometricEnabled}
-                onValueChange={handleBiometricToggle}
-              />
-            </>
-          )}
         </Section>
 
         {/* Auto-Detection */}
