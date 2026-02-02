@@ -21,7 +21,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var continuousGpsActive = false              // Whether high-frequency GPS is running
 
   // Configuration
-  private let minDrivingDurationSec: TimeInterval = 120  // 2 min of driving before we care about stops
+  private let minDrivingDurationSec: TimeInterval = 60   // 1 min of driving before we care about stops (was 120, lowered to catch short trips)
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
   private let minDrivingSpeedMps: Double = 2.5           // ~5.6 mph - threshold to START driving state via speed
 
@@ -346,7 +346,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
          let drivingStart = drivingStartTime,
          Date().timeIntervalSince(drivingStart) >= minDrivingDurationSec,
          speedZeroTimer == nil {
-        NSLog("[BackgroundLocation] GPS speed≈0 after 2+min driving. Starting 8s speed-based parking timer.")
+        NSLog("[BackgroundLocation] GPS speed≈0 after 1+min driving. Starting 8s speed-based parking timer.")
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
           guard let self = self else { return }
           if !self.speedSaysMoving {
