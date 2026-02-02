@@ -393,8 +393,32 @@ class BackgroundTaskServiceClass {
             this.nativeBtDisconnectSub = eventEmitter.addListener(
               'BtMonitorCarDisconnected',
               async (event: any) => {
-                log.info('NATIVE BT DISCONNECT EVENT - triggering parking check', event);
+                log.info('NATIVE BT DISCONNECT EVENT received', event);
                 this.stopCameraAlerts();
+
+                // Brief delay to filter out transient BT glitches (e.g., signal
+                // drops at red lights, momentary disconnects in parking garages).
+                // If the car reconnects within 10 seconds, skip the parking check.
+                await new Promise<void>(r => setTimeout(r, 10000));
+
+                // Verify still disconnected after the delay
+                const reconnected = BluetoothService.isConnectedToCar();
+                let osReconnected = false;
+                if (!reconnected) {
+                  try {
+                    osReconnected = await BluetoothService.isConnectedToSavedCar();
+                  } catch (e) {
+                    // ignore
+                  }
+                }
+
+                if (reconnected || osReconnected) {
+                  log.info('BT reconnected within 10s — ignoring transient disconnect (not parked)');
+                  this.startCameraAlerts();
+                  return;
+                }
+
+                log.info('BT still disconnected after 10s — triggering parking check');
                 await this.sendDiagnosticNotification(
                   'Car Disconnected (Native)',
                   `${event?.deviceName || savedDevice.name} disconnected. Checking parking rules...`
@@ -416,12 +440,20 @@ class BackgroundTaskServiceClass {
             try {
               const pending = await BluetoothMonitorModule.checkPendingEvents();
               if (pending?.pendingDisconnect) {
-                log.info('Found PENDING disconnect from native service - triggering parking check');
-                await this.sendDiagnosticNotification(
-                  'Pending BT Disconnect',
-                  'Bluetooth disconnect was detected while app was sleeping. Checking parking now...'
-                );
-                await this.handleCarDisconnection();
+                // Verify the car is ACTUALLY disconnected right now before triggering
+                // a parking check. Stale pending events from crashes or restarts can
+                // cause false parking detections while the user is still driving.
+                const stillConnected = await BluetoothService.isConnectedToSavedCar();
+                if (stillConnected) {
+                  log.info('Found pending disconnect but car is currently CONNECTED — ignoring stale event');
+                } else {
+                  log.info('Found PENDING disconnect from native service — car confirmed disconnected, triggering parking check');
+                  await this.sendDiagnosticNotification(
+                    'Pending BT Disconnect',
+                    'Bluetooth disconnect was detected while app was sleeping. Checking parking now...'
+                  );
+                  await this.handleCarDisconnection();
+                }
               } else if (pending?.pendingConnect) {
                 log.info('Found PENDING connect from native service');
                 this.startCameraAlerts();
@@ -483,8 +515,20 @@ class BackgroundTaskServiceClass {
     try {
       await BluetoothService.monitorCarConnection(
         async () => {
-          log.info('JS-SIDE BT DISCONNECT EVENT - triggering parking check');
+          log.info('JS-SIDE BT DISCONNECT EVENT received');
           this.stopCameraAlerts();
+
+          // Same 10-second debounce as native handler to filter glitches
+          await new Promise<void>(r => setTimeout(r, 10000));
+
+          const reconnected = BluetoothService.isConnectedToCar();
+          if (reconnected) {
+            log.info('BT reconnected within 10s (JS fallback) — ignoring transient disconnect');
+            this.startCameraAlerts();
+            return;
+          }
+
+          log.info('JS-SIDE BT DISCONNECT confirmed after 10s — triggering parking check');
           await this.sendDiagnosticNotification(
             'BT Disconnect (JS fallback)',
             `${savedDevice.name} disconnected. Note: JS-side monitoring may miss events in background.`
