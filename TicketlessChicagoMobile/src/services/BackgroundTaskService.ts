@@ -372,6 +372,19 @@ class BackgroundTaskServiceClass {
             );
             log.info('Native BT foreground service started for: ' + savedDevice.name);
 
+            // Request battery optimization exemption so Android doesn't kill the service
+            try {
+              const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
+              if (!exempt) {
+                log.info('App is NOT exempt from battery optimization — requesting exemption');
+                await BluetoothMonitorModule.requestBatteryOptimizationExemption();
+              } else {
+                log.info('App is already exempt from battery optimization');
+              }
+            } catch (batteryError) {
+              log.warn('Failed to check/request battery optimization exemption:', batteryError);
+            }
+
             // Subscribe to native events from the foreground service
             const eventEmitter = new NativeEventEmitter(BluetoothMonitorModule);
 
