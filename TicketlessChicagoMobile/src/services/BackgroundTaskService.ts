@@ -600,7 +600,8 @@ class BackgroundTaskServiceClass {
           CameraAlertService.onLocationUpdate(
             event.latitude,
             event.longitude,
-            event.speed
+            event.speed,
+            event.heading ?? -1
           );
         }
       );
@@ -641,7 +642,8 @@ class BackgroundTaskServiceClass {
           CameraAlertService.onLocationUpdate(
             position.coords.latitude,
             position.coords.longitude,
-            position.coords.speed ?? -1
+            position.coords.speed ?? -1,
+            position.coords.heading ?? -1
           );
         },
         (error) => {

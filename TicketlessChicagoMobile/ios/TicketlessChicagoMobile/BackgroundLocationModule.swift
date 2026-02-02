@@ -366,6 +366,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         "longitude": location.coordinate.longitude,
         "accuracy": location.horizontalAccuracy,
         "speed": location.speed,
+        "heading": location.course,  // CLLocation.course: 0-360 degrees, -1 if invalid
         "timestamp": location.timestamp.timeIntervalSince1970 * 1000,
         "coreMotionAutomotive": coreMotionSaysAutomotive,
       ])

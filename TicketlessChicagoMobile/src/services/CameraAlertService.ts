@@ -5,12 +5,14 @@
  * or red light cameras in Chicago.
  *
  * How it works:
- * 1. Receives GPS updates from BackgroundLocationService (iOS) or
- *    the Android foreground GPS service
+ * 1. Receives GPS updates (lat, lng, speed, heading) from
+ *    BackgroundLocationService (iOS) or Android foreground GPS
  * 2. Filters 510 cameras down to nearby ones using a fast bounding box check
  * 3. Calculates exact distance via Haversine formula
- * 4. Speaks via TTS when within alert radius (~200m)
- * 5. Tracks alerted cameras to avoid repeating until user moves away (~500m)
+ * 4. Filters by direction: only alerts if user's heading matches camera's
+ *    monitored approach directions (±45° tolerance)
+ * 5. Speaks via TTS when within alert radius (~100m)
+ * 6. Tracks alerted cameras to avoid repeating until user moves away (~300m)
  *
  * TTS Strategy:
  * - iOS: Uses native SpeechModule (AVSpeechSynthesizer) — zero pod dependencies
@@ -128,6 +130,68 @@ const BBOX_DEGREES = 0.0015;
 
 /** AsyncStorage key for camera alerts enabled setting */
 const STORAGE_KEY_ENABLED = 'cameraAlertsEnabled';
+
+// ============================================================================
+// Direction Matching
+// ============================================================================
+
+/**
+ * Maps approach direction codes to compass headings (degrees).
+ * These are the directions the CAMERA watches — meaning the direction
+ * traffic is TRAVELING when the camera captures them.
+ *
+ * GPS heading: 0°=North, 90°=East, 180°=South, 270°=West
+ */
+const APPROACH_TO_HEADING: Record<string, number> = {
+  NB: 0,     // Northbound — heading north (0°)
+  NEB: 45,   // Northeastbound
+  EB: 90,    // Eastbound — heading east (90°)
+  SEB: 135,  // Southeastbound
+  SB: 180,   // Southbound — heading south (180°)
+  SWB: 225,  // Southwestbound
+  WB: 270,   // Westbound — heading west (270°)
+  NWB: 315,  // Northwestbound
+};
+
+/**
+ * Maximum angular difference (degrees) between GPS heading and camera
+ * approach direction to consider a match. ±45° means if a camera watches
+ * NB (0°), headings from 315° to 45° will match.
+ */
+const HEADING_TOLERANCE_DEGREES = 45;
+
+/**
+ * Check if the user's GPS heading matches any of the camera's approach directions.
+ * Returns true if heading is within ±HEADING_TOLERANCE_DEGREES of any approach.
+ *
+ * If heading is unavailable (-1) or camera has no approaches, returns true
+ * (fail-open — better to alert than miss).
+ */
+function isHeadingMatch(heading: number, approaches: string[]): boolean {
+  // No heading data — fail open, alert anyway
+  if (heading < 0) return true;
+
+  // No approach data on camera — fail open
+  if (approaches.length === 0) return true;
+
+  for (const approach of approaches) {
+    const targetHeading = APPROACH_TO_HEADING[approach];
+    if (targetHeading === undefined) {
+      // Unknown approach code — fail open
+      return true;
+    }
+
+    // Angular difference accounting for wrap-around (0° ↔ 360°)
+    let diff = Math.abs(heading - targetHeading);
+    if (diff > 180) diff = 360 - diff;
+
+    if (diff <= HEADING_TOLERANCE_DEGREES) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 // ============================================================================
 // Types
@@ -286,8 +350,9 @@ class CameraAlertServiceClass {
    * @param latitude Current latitude
    * @param longitude Current longitude
    * @param speed Current speed in m/s (-1 if unavailable)
+   * @param heading Current heading in degrees (0-360, -1 if unavailable)
    */
-  onLocationUpdate(latitude: number, longitude: number, speed: number): void {
+  onLocationUpdate(latitude: number, longitude: number, speed: number, heading: number = -1): void {
     if (!this.isActive || !this.isEnabled) return;
 
     // Don't alert if not moving fast enough (filters out walking, sitting)
@@ -299,8 +364,8 @@ class CameraAlertServiceClass {
     // Clear cooldowns for cameras we've moved far from
     this.clearDistantCooldowns(latitude, longitude);
 
-    // Find cameras within alert radius
-    const nearbyCameras = this.findNearbyCameras(latitude, longitude);
+    // Find cameras within alert radius that match our travel direction
+    const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading);
 
     if (nearbyCameras.length === 0) return;
 
@@ -327,10 +392,14 @@ class CameraAlertServiceClass {
    * Fast bounding box + Haversine search for nearby cameras.
    * Pre-filters with bounding box (O(n) but very fast comparison),
    * then computes exact distance only for candidates.
+   * Finally filters by heading direction match.
+   *
+   * @param heading GPS heading in degrees (0-360), -1 if unavailable
    */
   private findNearbyCameras(
     lat: number,
-    lng: number
+    lng: number,
+    heading: number = -1
   ): Array<{ index: number; camera: CameraLocation; distance: number }> {
     const results: Array<{ index: number; camera: CameraLocation; distance: number }> = [];
 
@@ -349,7 +418,11 @@ class CameraAlertServiceClass {
       // Exact distance
       const distance = this.haversineMeters(lat, lng, cam.latitude, cam.longitude);
       if (distance <= ALERT_RADIUS_METERS) {
-        results.push({ index: i, camera: cam, distance });
+        // Direction filter: only alert if user is traveling in a direction
+        // this camera monitors. Fail-open if heading unavailable.
+        if (isHeadingMatch(heading, cam.approaches)) {
+          results.push({ index: i, camera: cam, distance });
+        }
       }
     }
 

@@ -42,6 +42,8 @@ export interface LocationUpdateEvent {
   longitude: number;
   accuracy: number;
   speed: number;
+  /** Heading in degrees (0-360), -1 if unavailable. iOS: CLLocation.course */
+  heading: number;
   timestamp: number;
 }
 
