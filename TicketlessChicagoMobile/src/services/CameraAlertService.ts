@@ -102,20 +102,29 @@ async function stopSpeech(): Promise<void> {
 // Configuration
 // ============================================================================
 
-/** Distance in meters at which to trigger the alert */
-const ALERT_RADIUS_METERS = 200;
+/**
+ * Distance in meters at which to trigger the alert.
+ * 100m ≈ 7 seconds at 30 mph — enough time to react.
+ * Stays well under Chicago's ~200m block width so cameras
+ * on a parallel street won't trigger false alerts.
+ */
+const ALERT_RADIUS_METERS = 100;
 
 /** Distance user must move from camera before it can re-alert */
-const COOLDOWN_RADIUS_METERS = 500;
+const COOLDOWN_RADIUS_METERS = 300;
 
 /** Minimum speed (m/s) to trigger alerts - ~10 mph, filters out walking */
 const MIN_SPEED_MPS = 4.5;
 
 /** Minimum time between any two TTS announcements (ms) */
-const MIN_ANNOUNCE_INTERVAL_MS = 8000;
+const MIN_ANNOUNCE_INTERVAL_MS = 5000;
 
-/** Bounding box size in degrees for fast pre-filter (~250m at Chicago latitude) */
-const BBOX_DEGREES = 0.0025;
+/**
+ * Bounding box size in degrees for fast pre-filter.
+ * ~150m at Chicago latitude — slightly larger than ALERT_RADIUS_METERS
+ * to ensure no cameras at the edge are missed.
+ */
+const BBOX_DEGREES = 0.0015;
 
 /** AsyncStorage key for camera alerts enabled setting */
 const STORAGE_KEY_ENABLED = 'cameraAlertsEnabled';
