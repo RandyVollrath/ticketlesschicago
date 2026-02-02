@@ -1204,11 +1204,19 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Send a diagnostic notification (visible to user for debugging)
-   * These help diagnose detection issues in the field
+   * Log a diagnostic message. In debug mode (user opt-in via Settings),
+   * also shows a visible notification. Otherwise log-only to avoid
+   * spamming users with internal diagnostics.
    */
   private async sendDiagnosticNotification(title: string, body: string): Promise<void> {
+    // Always log for debugging via adb logcat / Xcode console
+    log.info(`[Diagnostic] ${title}: ${body}`);
+
+    // Only show visible notification if user has enabled debug mode
     try {
+      const debugEnabled = await AsyncStorage.getItem('debug_notifications_enabled');
+      if (debugEnabled !== 'true') return;
+
       await notifee.displayNotification({
         title: `[Autopilot] ${title}`,
         body,
@@ -1217,7 +1225,7 @@ class BackgroundTaskServiceClass {
           pressAction: { id: 'default' },
         },
         ios: {
-          sound: 'default',
+          sound: undefined, // Silent even in debug mode
         },
       });
     } catch (error) {

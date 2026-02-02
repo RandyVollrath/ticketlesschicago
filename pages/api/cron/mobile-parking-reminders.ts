@@ -222,9 +222,8 @@ export default async function handler(
               }
             }
           } catch (profileErr) {
-            // If we can't verify, skip the notification (safer than spamming users in own zone)
-            isOwnZone = true;
-            console.warn(`Could not verify home zone for ${vehicle.user_id} — skipping notification to be safe:`, profileErr);
+            // If we can't look up their profile, assume they DON'T have a permit — notify them
+            console.warn(`Could not check home zone for ${vehicle.user_id} — notifying to be safe:`, profileErr);
           }
 
           if (!isOwnZone) {
