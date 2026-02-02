@@ -5,8 +5,8 @@
  * in restricted zones before restrictions take effect.
  *
  * Runs at:
- * - 5am CT: Permit zone reminders (most zones start at 6am)
- * - 7am CT: Street cleaning reminders (cleaning starts at 9am)
+ * - 7am CT: Permit zone reminders (enforcement starts at 8am) + Street cleaning morning-of
+ * - 8pm CT: Street cleaning night-before reminders (cleaning tomorrow)
  * - 9pm CT: Winter ban reminders (ban starts at 3am)
  */
 
@@ -199,34 +199,59 @@ export default async function handler(
           }
         }
 
-        // Permit zone reminder (5-6am check, most zones start at 6am)
+        // Permit zone reminder (7am check, enforcement typically starts at 8am)
         // Only on weekdays since most permit zones are Mon-Fri
         // Only send once per parking session
-        if (chicagoHour >= 5 && chicagoHour <= 6 && vehicle.permit_zone && isWeekday(chicagoTime) && !vehicle.permit_zone_notified_at) {
-          const restrictionStartHour = getPermitRestrictionStartHour(vehicle.permit_restriction_schedule);
+        // Skip if user is parked in their own permit zone
+        if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.permit_zone && isWeekday(chicagoTime) && !vehicle.permit_zone_notified_at) {
+          // Check if this is the user's home permit zone — don't notify if so
+          let isOwnZone = false;
+          try {
+            const { data: userProfile } = await supabaseAdmin
+              .from('user_profiles')
+              .select('permit_zone_number, vehicle_zone')
+              .eq('user_id', vehicle.user_id)
+              .single();
 
-          // Send reminder if restriction starts within the next 1-2 hours
-          if (restrictionStartHour && chicagoHour < restrictionStartHour && (restrictionStartHour - chicagoHour) <= 2) {
-            const result = await sendPushNotification(vehicle.fcm_token, {
-              title: 'Permit Zone Reminder',
-              body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit required starting at ${restrictionStartHour}am. Move now or risk a $65 ticket.`,
-              data: {
-                type: 'permit_reminder',
-                lat: vehicle.latitude?.toString(),
-                lng: vehicle.longitude?.toString(),
-              },
-            });
-            if (result.success) {
-              await supabaseAdmin.from('user_parked_vehicles')
-                .update({ permit_zone_notified_at: new Date().toISOString() })
-                .eq('id', vehicle.id);
-              results.permitZoneReminders++;
-              console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
-            } else if (result.invalidToken) {
-              await supabaseAdmin.from('user_parked_vehicles')
-                .update({ is_active: false })
-                .eq('id', vehicle.id);
-              console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+            if (userProfile) {
+              const homeZone = (userProfile.permit_zone_number || userProfile.vehicle_zone || '').toString().trim().toLowerCase().replace(/^zone\s*/i, '');
+              const parkedZone = (vehicle.permit_zone || '').trim().toLowerCase().replace(/^zone\s*/i, '');
+              if (homeZone && parkedZone && homeZone === parkedZone) {
+                isOwnZone = true;
+                console.log(`Skipping permit zone notification for ${vehicle.user_id} - parked in own zone (${vehicle.permit_zone})`);
+              }
+            }
+          } catch (profileErr) {
+            // Non-fatal — send the notification anyway
+            console.warn(`Could not check home zone for ${vehicle.user_id}:`, profileErr);
+          }
+
+          if (!isOwnZone) {
+            const restrictionStartHour = getPermitRestrictionStartHour(vehicle.permit_restriction_schedule) || 8;
+
+            // Send reminder at 7am for 8am enforcement
+            if (chicagoHour < restrictionStartHour) {
+              const result = await sendPushNotification(vehicle.fcm_token, {
+                title: 'Permit Zone - Move by 8am',
+                body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Enforcement starts at ${restrictionStartHour}am. Move now or risk a $65 ticket.`,
+                data: {
+                  type: 'permit_reminder',
+                  lat: vehicle.latitude?.toString(),
+                  lng: vehicle.longitude?.toString(),
+                },
+              });
+              if (result.success) {
+                await supabaseAdmin.from('user_parked_vehicles')
+                  .update({ permit_zone_notified_at: new Date().toISOString() })
+                  .eq('id', vehicle.id);
+                results.permitZoneReminders++;
+                console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
+              } else if (result.invalidToken) {
+                await supabaseAdmin.from('user_parked_vehicles')
+                  .update({ is_active: false })
+                  .eq('id', vehicle.id);
+                console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+              }
             }
           }
         }

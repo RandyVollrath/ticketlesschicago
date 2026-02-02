@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -19,6 +20,7 @@ import { Button } from '../components';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import AuthService, { AuthState, User } from '../services/AuthService';
 import PushNotificationService from '../services/PushNotificationService';
+import ApiClient from '../utils/ApiClient';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import { clearUserData } from '../utils/storage';
@@ -126,6 +128,9 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [homePermitZone, setHomePermitZone] = useState<string>('');
+  const [permitZoneEditing, setPermitZoneEditing] = useState(false);
+  const [permitZoneInput, setPermitZoneInput] = useState('');
 
   const isMountedRef = useRef(true);
   const signingOutRef = useRef(false);
@@ -138,6 +143,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     loadSettings();
     loadSavedCar();
+    loadHomePermitZone();
     setCameraAlertsEnabled(CameraAlertService.isAlertEnabled());
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
@@ -174,6 +180,72 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       if (isMountedRef.current) setSavedCar(device);
     } catch (error) {
       log.error('Error loading saved car', error);
+    }
+  }, []);
+
+  /**
+   * Load home permit zone from AsyncStorage (local cache).
+   * On first load, also try to fetch from user_profiles on server
+   * (pre-populated from Autopilot America addresses).
+   */
+  const loadHomePermitZone = useCallback(async () => {
+    try {
+      // Check local storage first
+      const stored = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
+      if (stored) {
+        if (isMountedRef.current) {
+          setHomePermitZone(stored);
+          setPermitZoneInput(stored);
+        }
+        return;
+      }
+
+      // No local value — try to pre-populate from server user_profiles
+      if (AuthService.isAuthenticated()) {
+        try {
+          const userId = AuthService.getUser()?.id;
+          if (userId) {
+            const response = await ApiClient.authGet<any>(`/api/user-profile?userId=${userId}`, {
+              retries: 1,
+              timeout: 10000,
+              showErrorAlert: false,
+            });
+            if (response.success && response.data) {
+              // Check for permit_zone_number from Autopilot America data
+              const serverZone = response.data.permit_zone_number ||
+                                 response.data.vehicle_zone || '';
+              if (serverZone && isMountedRef.current) {
+                const zoneStr = String(serverZone);
+                setHomePermitZone(zoneStr);
+                setPermitZoneInput(zoneStr);
+                await AsyncStorage.setItem(StorageKeys.HOME_PERMIT_ZONE, zoneStr);
+                log.info(`Pre-populated home permit zone from server: ${zoneStr}`);
+              }
+            }
+          }
+        } catch (serverError) {
+          // Non-fatal — user can set it manually
+          log.debug('Could not fetch permit zone from server (non-fatal):', serverError);
+        }
+      }
+    } catch (error) {
+      log.error('Error loading home permit zone', error);
+    }
+  }, []);
+
+  const saveHomePermitZone = useCallback(async (zone: string) => {
+    const trimmed = zone.trim();
+    try {
+      if (trimmed) {
+        await AsyncStorage.setItem(StorageKeys.HOME_PERMIT_ZONE, trimmed);
+      } else {
+        await AsyncStorage.removeItem(StorageKeys.HOME_PERMIT_ZONE);
+      }
+      setHomePermitZone(trimmed);
+      setPermitZoneEditing(false);
+      log.info(`Home permit zone ${trimmed ? `set to: ${trimmed}` : 'cleared'}`);
+    } catch (error) {
+      log.error('Error saving home permit zone', error);
     }
   }, []);
 
@@ -232,7 +304,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   if (isMountedRef.current) {
                     setSettings(DEFAULT_SETTINGS);
                     setSavedCar(null);
-                    setBiometricEnabled(false);
+                    setHomePermitZone('');
+                    setPermitZoneInput('');
                     Alert.alert('Done', 'All data has been cleared');
                   }
                 } catch (error) {
@@ -296,6 +369,57 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             value={cameraAlertsEnabled}
             onValueChange={toggleCameraAlerts}
           />
+        </Section>
+
+        {/* Permit Zone */}
+        <Section title="Your Permit Zone">
+          <View style={styles.permitZoneRow}>
+            <MaterialCommunityIcons name="parking" size={20} color={colors.primary} style={styles.rowIcon} />
+            <View style={styles.settingInfo}>
+              {permitZoneEditing ? (
+                <View style={styles.permitZoneEditRow}>
+                  <TextInput
+                    style={styles.permitZoneInput}
+                    value={permitZoneInput}
+                    onChangeText={setPermitZoneInput}
+                    placeholder="e.g. 383"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="default"
+                    autoCapitalize="characters"
+                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={() => saveHomePermitZone(permitZoneInput)}
+                  />
+                  <TouchableOpacity
+                    style={styles.permitZoneSaveBtn}
+                    onPress={() => saveHomePermitZone(permitZoneInput)}
+                  >
+                    <Text style={styles.permitZoneSaveBtnText}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.permitZoneCancelBtn}
+                    onPress={() => { setPermitZoneEditing(false); setPermitZoneInput(homePermitZone); }}
+                  >
+                    <Text style={styles.permitZoneCancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => { setPermitZoneEditing(true); setPermitZoneInput(homePermitZone); }}>
+                  <Text style={styles.settingTitle}>
+                    {homePermitZone ? `Zone ${homePermitZone}` : 'Set your home zone'}
+                  </Text>
+                  <Text style={styles.settingSubtitle}>
+                    {homePermitZone
+                      ? "You won't be notified when parked in this zone"
+                      : 'Tap to set - avoids unnecessary permit zone alerts'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {!permitZoneEditing && (
+              <MaterialCommunityIcons name="pencil" size={18} color={colors.textTertiary} />
+            )}
+          </View>
         </Section>
 
         {/* Auto-Detection */}
@@ -451,6 +575,49 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: colors.error,
+  },
+
+  // Permit zone
+  permitZoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+  },
+  permitZoneEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  permitZoneInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? spacing.sm : spacing.xs,
+    fontSize: typography.sizes.base,
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
+  },
+  permitZoneSaveBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  permitZoneSaveBtnText: {
+    color: '#fff',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+  },
+  permitZoneCancelBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  permitZoneCancelBtnText: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
   },
 
   // Divider

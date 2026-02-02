@@ -34,6 +34,7 @@ export const StorageKeys = {
 
   // User Preferences
   BACKGROUND_LOCATION_ENABLED: 'backgroundLocationEnabled',
+  HOME_PERMIT_ZONE: 'homePermitZone', // User's home permit zone number
 
   // Cache
   LAST_API_RESPONSE_CACHE: 'lastApiResponseCache',

@@ -28,6 +28,43 @@ export default async function handler(
   try {
     const today = new Date().toISOString().split('T')[0];
 
+    // Auto-deactivate stale snow events older than 48 hours.
+    // Without this, snow_route_status.is_active gets stuck true indefinitely
+    // (was stuck since Dec 6, 2025). Snow events are per-storm, so 48h is generous.
+    const cutoffDate = new Date();
+    cutoffDate.setHours(cutoffDate.getHours() - 48);
+    const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+    const { data: deactivated } = await supabaseAdmin
+      .from('snow_events')
+      .update({ is_active: false })
+      .eq('is_active', true)
+      .lt('event_date', cutoffStr)
+      .select('id, event_date');
+
+    if (deactivated && deactivated.length > 0) {
+      console.log(`Auto-deactivated ${deactivated.length} stale snow event(s):`, deactivated.map(e => e.event_date));
+
+      // Also deactivate snow_route_status if no more active events remain
+      const { data: remainingActive } = await supabaseAdmin
+        .from('snow_events')
+        .select('id')
+        .eq('is_active', true)
+        .limit(1);
+
+      if (!remainingActive || remainingActive.length === 0) {
+        const { data: routeUpdate } = await supabaseAdmin
+          .from('snow_route_status')
+          .update({ is_active: false })
+          .eq('is_active', true)
+          .select('id');
+
+        if (routeUpdate && routeUpdate.length > 0) {
+          console.log(`Deactivated snow_route_status (no active snow events remaining)`);
+        }
+      }
+    }
+
     const { data: activeEvent } = await supabaseAdmin
       .from('snow_events')
       .select('*')
