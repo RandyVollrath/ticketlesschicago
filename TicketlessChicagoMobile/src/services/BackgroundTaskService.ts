@@ -10,7 +10,7 @@
  * Falls back to foreground-only monitoring if background fetch is not available.
  */
 
-import { Platform, AppState, AppStateStatus, NativeModules } from 'react-native';
+import { Platform, AppState, AppStateStatus, NativeModules, NativeEventEmitter } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
@@ -23,6 +23,9 @@ import { ParkingHistoryService } from '../screens/HistoryScreen';
 import CameraAlertService from './CameraAlertService';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
+
+// Native module for persistent Android BT monitoring foreground service
+const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
 
 const log = Logger.createLogger('BackgroundTaskService');
 
@@ -70,6 +73,9 @@ class BackgroundTaskServiceClass {
   private gpsCacheInterval: ReturnType<typeof setInterval> | null = null;
   private cameraLocationUnsubscribe: (() => void) | null = null;
   private androidDrivingGpsWatchId: number | null = null;
+  // Native BT monitor service event subscriptions (Android only)
+  private nativeBtDisconnectSub: any = null;
+  private nativeBtConnectSub: any = null;
 
   /**
    * Initialize the background task service
@@ -341,7 +347,10 @@ class BackgroundTaskServiceClass {
         }
       }
     } else {
-      // Android: Use Bluetooth Classic connection monitoring
+      // Android: Use native foreground service for persistent BT monitoring.
+      // This survives app backgrounding because the service has its own
+      // BroadcastReceiver that never gets unregistered (unlike react-native-bluetooth-classic
+      // which unregisters receivers in onHostPause).
       log.info('Starting Bluetooth-based parking detection for Android');
       const savedDevice = await BluetoothService.getSavedCarDevice();
       if (!savedDevice) {
@@ -353,35 +362,75 @@ class BackgroundTaskServiceClass {
         // Don't throw - periodic check will still run as backup
       } else {
         log.info(`Saved car device found: ${savedDevice.name} (${savedDevice.address || savedDevice.id})`);
-        try {
-          await BluetoothService.monitorCarConnection(
-            async () => {
-              log.info('BT DISCONNECT EVENT FIRED - triggering parking check');
-              this.stopCameraAlerts();
-              await this.sendDiagnosticNotification(
-                'Bluetooth Disconnect Detected',
-                `${savedDevice.name} disconnected. Checking parking rules...`
-              );
-              await this.handleCarDisconnection();
-            },
-            async () => {
-              log.info('BT CONNECT EVENT FIRED - car reconnected');
-              this.startCameraAlerts();
-              await this.handleCarReconnection();
-            }
-          );
-          log.info('Bluetooth monitoring active for: ' + savedDevice.name);
 
-          // Pre-cache GPS location periodically while car is connected.
-          // This ensures we have a recent location when BT disconnect fires,
-          // even if background GPS acquisition fails at that moment.
-          this.startGpsCaching();
-        } catch (error) {
-          log.error('Could not start Bluetooth monitoring:', error);
-          await this.sendDiagnosticNotification(
-            'Bluetooth Monitoring Failed',
-            `Could not monitor ${savedDevice.name}. Error: ${error}`
-          );
+        // Try native foreground service first (reliable, survives background)
+        if (BluetoothMonitorModule) {
+          try {
+            await BluetoothMonitorModule.startMonitoring(
+              savedDevice.address || savedDevice.id,
+              savedDevice.name
+            );
+            log.info('Native BT foreground service started for: ' + savedDevice.name);
+
+            // Subscribe to native events from the foreground service
+            const eventEmitter = new NativeEventEmitter(BluetoothMonitorModule);
+
+            this.nativeBtDisconnectSub = eventEmitter.addListener(
+              'BtMonitorCarDisconnected',
+              async (event: any) => {
+                log.info('NATIVE BT DISCONNECT EVENT - triggering parking check', event);
+                this.stopCameraAlerts();
+                await this.sendDiagnosticNotification(
+                  'Car Disconnected (Native)',
+                  `${event?.deviceName || savedDevice.name} disconnected. Checking parking rules...`
+                );
+                await this.handleCarDisconnection();
+              }
+            );
+
+            this.nativeBtConnectSub = eventEmitter.addListener(
+              'BtMonitorCarConnected',
+              async (event: any) => {
+                log.info('NATIVE BT CONNECT EVENT - car reconnected', event);
+                this.startCameraAlerts();
+                await this.handleCarReconnection();
+              }
+            );
+
+            // Check for pending events (service may have fired while JS was dead)
+            try {
+              const pending = await BluetoothMonitorModule.checkPendingEvents();
+              if (pending?.pendingDisconnect) {
+                log.info('Found PENDING disconnect from native service - triggering parking check');
+                await this.sendDiagnosticNotification(
+                  'Pending BT Disconnect',
+                  'Bluetooth disconnect was detected while app was sleeping. Checking parking now...'
+                );
+                await this.handleCarDisconnection();
+              } else if (pending?.pendingConnect) {
+                log.info('Found PENDING connect from native service');
+                this.startCameraAlerts();
+                await this.handleCarReconnection();
+              }
+            } catch (pendingError) {
+              log.warn('Error checking pending BT events:', pendingError);
+            }
+
+            // Pre-cache GPS location periodically while car is connected.
+            this.startGpsCaching();
+
+            await this.sendDiagnosticNotification(
+              'BT Monitor Active',
+              `Native foreground service monitoring ${savedDevice.name}. BT disconnect detection works even when app is in background.`
+            );
+          } catch (nativeError) {
+            log.error('Native BT monitor failed, falling back to JS-side monitoring:', nativeError);
+            await this.startJsSideBluetoothMonitoring(savedDevice);
+          }
+        } else {
+          // Native module not available, use JS-side monitoring (unreliable in background)
+          log.warn('BluetoothMonitorModule not available, using JS-side BT monitoring');
+          await this.startJsSideBluetoothMonitoring(savedDevice);
         }
       }
     }
@@ -411,6 +460,44 @@ class BackgroundTaskServiceClass {
   }
 
   /**
+   * Fallback: JS-side Bluetooth monitoring via react-native-bluetooth-classic.
+   * This is unreliable in background (receivers get unregistered in onHostPause)
+   * but serves as a fallback if the native foreground service fails to start.
+   */
+  private async startJsSideBluetoothMonitoring(savedDevice: { name: string; address?: string; id: string }): Promise<void> {
+    try {
+      await BluetoothService.monitorCarConnection(
+        async () => {
+          log.info('JS-SIDE BT DISCONNECT EVENT - triggering parking check');
+          this.stopCameraAlerts();
+          await this.sendDiagnosticNotification(
+            'BT Disconnect (JS fallback)',
+            `${savedDevice.name} disconnected. Note: JS-side monitoring may miss events in background.`
+          );
+          await this.handleCarDisconnection();
+        },
+        async () => {
+          log.info('JS-SIDE BT CONNECT EVENT - car reconnected');
+          this.startCameraAlerts();
+          await this.handleCarReconnection();
+        }
+      );
+      log.info('JS-side Bluetooth monitoring active for: ' + savedDevice.name);
+      this.startGpsCaching();
+      await this.sendDiagnosticNotification(
+        'BT Monitor (Fallback)',
+        `Using JS-side monitoring for ${savedDevice.name}. This may miss events when app is in background.`
+      );
+    } catch (error) {
+      log.error('Could not start JS-side Bluetooth monitoring:', error);
+      await this.sendDiagnosticNotification(
+        'Bluetooth Monitoring Failed',
+        `Could not monitor ${savedDevice.name}. Error: ${error}`
+      );
+    }
+  }
+
+  /**
    * Stop foreground monitoring
    */
   private stopForegroundMonitoring(): void {
@@ -425,10 +512,25 @@ class BackgroundTaskServiceClass {
     // Stop camera alerts
     this.stopCameraAlerts();
 
+    // Clean up native BT monitor subscriptions (Android)
+    if (this.nativeBtDisconnectSub) {
+      this.nativeBtDisconnectSub.remove();
+      this.nativeBtDisconnectSub = null;
+    }
+    if (this.nativeBtConnectSub) {
+      this.nativeBtConnectSub.remove();
+      this.nativeBtConnectSub = null;
+    }
+
     // Stop platform-specific monitoring
     if (Platform.OS === 'ios') {
       BackgroundLocationService.stopMonitoring();
       MotionActivityService.stopMonitoring();
+    } else if (Platform.OS === 'android' && BluetoothMonitorModule) {
+      // Stop the native foreground service
+      BluetoothMonitorModule.stopMonitoring().catch((e: any) =>
+        log.warn('Error stopping native BT monitor:', e)
+      );
     }
   }
 
@@ -513,7 +615,8 @@ class BackgroundTaskServiceClass {
 
   /**
    * Start continuous GPS on Android while driving (BT connected).
-   * Uses Geolocation.watchPosition with 10m distance filter for camera alerts.
+   * Interval set to 1s so alerts fire as close to 200m as possible —
+   * at 30mph you cover ~13m/s, so 1s means ±13m accuracy on trigger distance.
    */
   private startAndroidDrivingGps(): void {
     if (Platform.OS !== 'android') return;
@@ -533,9 +636,9 @@ class BackgroundTaskServiceClass {
         },
         {
           enableHighAccuracy: true,
-          distanceFilter: 10, // Update every ~10 meters
-          interval: 3000, // 3 second intervals
-          fastestInterval: 1000,
+          distanceFilter: 5, // Update every ~5m for tight camera proximity
+          interval: 1000, // 1s — fast enough for immediate 200m alerts
+          fastestInterval: 500,
           forceRequestLocation: true,
           forceLocationManager: true,
           showLocationDialog: false,
