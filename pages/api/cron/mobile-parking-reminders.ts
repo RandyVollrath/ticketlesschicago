@@ -222,8 +222,9 @@ export default async function handler(
               }
             }
           } catch (profileErr) {
-            // Non-fatal — send the notification anyway
-            console.warn(`Could not check home zone for ${vehicle.user_id}:`, profileErr);
+            // If we can't verify, skip the notification (safer than spamming users in own zone)
+            isOwnZone = true;
+            console.warn(`Could not verify home zone for ${vehicle.user_id} — skipping notification to be safe:`, profileErr);
           }
 
           if (!isOwnZone) {

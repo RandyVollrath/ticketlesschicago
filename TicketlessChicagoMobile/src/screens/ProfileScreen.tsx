@@ -365,7 +365,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             icon="camera"
             iconColor={colors.info}
             title="Camera Alerts (BETA)"
-            subtitle="Audio alerts near speed & red light cameras while driving"
+            subtitle="Audio alerts when approaching speed & red light cameras while driving"
             value={cameraAlertsEnabled}
             onValueChange={toggleCameraAlerts}
           />
