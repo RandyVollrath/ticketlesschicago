@@ -1,7 +1,10 @@
 package fyi.ticketless.app
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.LifecycleEventListener
@@ -140,6 +143,47 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
             promise.resolve(connected)
         } catch (e: Exception) {
             promise.reject("CHECK_FAILED", e.message, e)
+        }
+    }
+
+    /**
+     * Check if the app is exempt from battery optimization (doze mode).
+     * When not exempt, Android can kill the foreground service to save battery.
+     */
+    @ReactMethod
+    fun isBatteryOptimizationExempt(promise: Promise) {
+        try {
+            val pm = reactApplicationContext.getSystemService(PowerManager::class.java)
+            val exempt = pm?.isIgnoringBatteryOptimizations(reactApplicationContext.packageName) ?: false
+            promise.resolve(exempt)
+        } catch (e: Exception) {
+            promise.reject("CHECK_FAILED", e.message, e)
+        }
+    }
+
+    /**
+     * Request the user to disable battery optimization for this app.
+     * Opens the system settings dialog directly.
+     */
+    @ReactMethod
+    fun requestBatteryOptimizationExemption(promise: Promise) {
+        try {
+            val pm = reactApplicationContext.getSystemService(PowerManager::class.java)
+            if (pm?.isIgnoringBatteryOptimizations(reactApplicationContext.packageName) == true) {
+                Log.i(TAG, "Already exempt from battery optimization")
+                promise.resolve(true)
+                return
+            }
+
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${reactApplicationContext.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            reactApplicationContext.startActivity(intent)
+            promise.resolve(false) // false = dialog opened, not yet confirmed
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to request battery optimization exemption", e)
+            promise.reject("REQUEST_FAILED", e.message, e)
         }
     }
 
