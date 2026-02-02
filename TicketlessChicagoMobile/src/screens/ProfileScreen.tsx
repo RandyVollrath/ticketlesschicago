@@ -23,7 +23,7 @@ import Logger from '../utils/Logger';
 import Config from '../config/config';
 import { clearUserData } from '../utils/storage';
 import { StorageKeys } from '../constants';
-// BiometricService removed — users stay logged in via Supabase sessions
+import CameraAlertService from '../services/CameraAlertService';
 
 const log = Logger.createLogger('SettingsScreen');
 
@@ -123,6 +123,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -137,6 +138,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     loadSettings();
     loadSavedCar();
+    setCameraAlertsEnabled(CameraAlertService.isAlertEnabled());
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
     });
@@ -173,6 +175,11 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     } catch (error) {
       log.error('Error loading saved car', error);
     }
+  }, []);
+
+  const toggleCameraAlerts = useCallback(async (value: boolean) => {
+    setCameraAlertsEnabled(value);
+    await CameraAlertService.setEnabled(value);
   }, []);
 
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
@@ -279,6 +286,15 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             subtitle="Bypass Do Not Disturb"
             value={settings.criticalAlertsEnabled}
             onValueChange={v => updateSetting('criticalAlertsEnabled', v)}
+          />
+          <Divider />
+          <SettingRow
+            icon="camera"
+            iconColor={colors.info}
+            title="Camera Alerts (BETA)"
+            subtitle="Audio alerts near speed & red light cameras while driving"
+            value={cameraAlertsEnabled}
+            onValueChange={toggleCameraAlerts}
           />
         </Section>
 
