@@ -163,8 +163,15 @@ class LocationServiceClass {
    * 2. Wait for better accuracy if initial reading is poor
    * 3. Fall back to balanced accuracy if high accuracy fails
    */
-  getCurrentLocation(accuracy: LocationAccuracy = 'high'): Promise<Coordinates> {
+  getCurrentLocation(accuracy: LocationAccuracy = 'high', forceNoCache: boolean = false): Promise<Coordinates> {
     const options: GeoOptions = this.getLocationOptions(accuracy);
+
+    // When forceNoCache is true, never accept cached positions from the OS.
+    // This is critical for parking checks where the device cache may contain
+    // a stale position from while driving (which could be blocks away).
+    if (forceNoCache) {
+      options.maximumAge = 0;
+    }
 
     return new Promise((resolve, reject) => {
       Geolocation.getCurrentPosition(
@@ -251,17 +258,18 @@ class LocationServiceClass {
    */
   async getHighAccuracyLocation(
     targetAccuracyMeters: number = 50,
-    maxWaitMs: number = 20000
+    maxWaitMs: number = 20000,
+    forceNoCache: boolean = false
   ): Promise<Coordinates> {
     // On Android, we need to prioritize accuracy over speed
     // The forceLocationManager option means we use Android's LocationManager
     // which can be slower but is more reliable than FusedLocationProvider
     if (Platform.OS === 'android') {
-      log.info('Android: Getting high accuracy location (target: ' + targetAccuracyMeters + 'm)');
+      log.info(`Android: Getting high accuracy location (target: ${targetAccuracyMeters}m, noCache: ${forceNoCache})`);
 
       // Try high accuracy first - this is what we want
       try {
-        const coords = await this.getCurrentLocation('high');
+        const coords = await this.getCurrentLocation('high', forceNoCache);
         const accuracy = coords.accuracy || 9999;
         log.info(`Android: High accuracy returned ${accuracy.toFixed(1)}m`);
 
@@ -274,7 +282,7 @@ class LocationServiceClass {
         if (accuracy > 500) {
           log.info('Android: Accuracy poor, trying balanced...');
           try {
-            const balanced = await this.getCurrentLocation('balanced');
+            const balanced = await this.getCurrentLocation('balanced', forceNoCache);
             const balancedAcc = balanced.accuracy || 9999;
             log.info(`Android: Balanced returned ${balancedAcc.toFixed(1)}m`);
             // Return whichever is better
@@ -291,7 +299,7 @@ class LocationServiceClass {
 
       // Fallback to balanced
       try {
-        const coords = await this.getCurrentLocation('balanced');
+        const coords = await this.getCurrentLocation('balanced', forceNoCache);
         log.info(`Android: Balanced fallback returned ${coords.accuracy?.toFixed(1) || 'unknown'}m`);
         return coords;
       } catch (balancedError) {
@@ -300,7 +308,7 @@ class LocationServiceClass {
 
       // Final fallback: low accuracy
       log.info('Android: Using low accuracy as last resort');
-      return this.getCurrentLocation('low');
+      return this.getCurrentLocation('low', forceNoCache);
     }
 
     // iOS: Use watchPosition for better accuracy
@@ -442,7 +450,8 @@ class LocationServiceClass {
    */
   async getLocationWithRetry(
     maxRetries: number = 3,
-    onRetry?: (attempt: number, maxAttempts: number) => void
+    onRetry?: (attempt: number, maxAttempts: number) => void,
+    forceNoCache: boolean = false
   ): Promise<Coordinates> {
     let lastError: Error | null = null;
 
@@ -450,7 +459,7 @@ class LocationServiceClass {
       try {
         // Use high accuracy for first attempt, fall back to balanced for retries
         const accuracy: LocationAccuracy = attempt === 1 ? 'high' : 'balanced';
-        const coords = await this.getCurrentLocation(accuracy);
+        const coords = await this.getCurrentLocation(accuracy, forceNoCache);
 
         // Cache successful location
         this.cacheLocation(coords);
