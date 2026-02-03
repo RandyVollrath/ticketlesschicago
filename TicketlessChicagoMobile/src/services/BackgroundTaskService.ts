@@ -908,8 +908,9 @@ class BackgroundTaskServiceClass {
       // This includes all-clear results — the user should see a record of
       // every auto-detected parking event, not just ones with restrictions.
       try {
+        log.info(`Saving to parking history: addr="${result.address}", rules=${result.rules.length}, coords=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}`);
         await ParkingHistoryService.addToHistory(coords, result.rules, result.address);
-        log.info('Auto-detection result saved to parking history');
+        log.info('Auto-detection result saved to parking history ✓');
       } catch (historyError) {
         log.error('Failed to save auto-detection to history (non-fatal):', historyError);
       }

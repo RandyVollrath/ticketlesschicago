@@ -7,18 +7,25 @@ class SpeechModule: RCTEventEmitter, AVSpeechSynthesizerDelegate {
 
   private let synthesizer = AVSpeechSynthesizer()
   private var isSpeaking = false
+  private var audioSessionConfigured = false
 
   override init() {
     super.init()
     synthesizer.delegate = self
+  }
 
-    // Configure audio session for mixing with navigation/music
+  /// Configure audio session lazily — only when speech is actually needed.
+  /// Avoids ducking the user's music/podcast at app startup.
+  private func configureAudioSessionIfNeeded() {
+    guard !audioSessionConfigured else { return }
     do {
       try AVAudioSession.sharedInstance().setCategory(
         .playback,
         mode: .voicePrompt,
         options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
       )
+      audioSessionConfigured = true
+      NSLog("[SpeechModule] Audio session configured (lazy, on first speak)")
     } catch {
       NSLog("[SpeechModule] Failed to configure audio session: \(error)")
     }
@@ -41,6 +48,9 @@ class SpeechModule: RCTEventEmitter, AVSpeechSynthesizerDelegate {
       if self.synthesizer.isSpeaking {
         self.synthesizer.stopSpeaking(at: .immediate)
       }
+
+      // Configure audio session lazily on first speak
+      self.configureAudioSessionIfNeeded()
 
       // Activate audio session
       do {
