@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { appleAuth } from '@invertase/react-native-apple-authentication';
+import { Platform } from 'react-native';
 import Config from '../config/config';
 import Logger from '../utils/Logger';
 
@@ -241,6 +243,63 @@ class AuthServiceClass {
       }
 
       return { success: false, error: error.message || 'Google sign-in failed' };
+    }
+  }
+
+  async signInWithApple(): Promise<{ success: boolean; error?: string }> {
+    if (Platform.OS !== 'ios') {
+      return { success: false, error: 'Sign in with Apple is only available on iOS' };
+    }
+
+    if (!appleAuth.isSupported) {
+      return { success: false, error: 'Sign in with Apple is not supported on this device' };
+    }
+
+    try {
+      // Perform the Apple auth request
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
+      });
+
+      // Ensure the request was successful
+      const credentialState = await appleAuth.getCredentialStateForUser(
+        appleAuthRequestResponse.user,
+      );
+
+      if (credentialState !== appleAuth.State.AUTHORIZED) {
+        return { success: false, error: 'Apple authorization failed' };
+      }
+
+      if (!appleAuthRequestResponse.identityToken) {
+        log.error('No identityToken in Apple auth response');
+        return { success: false, error: 'Failed to get Apple identity token. Please try again.' };
+      }
+
+      log.info('Got Apple identity token, authenticating with Supabase');
+
+      // Authenticate with Supabase using the Apple identity token
+      const { data, error } = await this.supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: appleAuthRequestResponse.identityToken,
+      });
+
+      if (error) {
+        log.error('Supabase Apple auth error', error);
+        return { success: false, error: error.message };
+      }
+
+      log.info('Supabase Apple authentication successful');
+      return { success: true };
+    } catch (error: any) {
+      log.error('Apple sign-in error', error);
+
+      // Handle user cancellation
+      if (error.code === appleAuth.Error.CANCELED) {
+        return { success: false, error: 'Sign in was cancelled' };
+      }
+
+      return { success: false, error: error.message || 'Apple sign-in failed' };
     }
   }
 

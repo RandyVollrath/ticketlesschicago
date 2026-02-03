@@ -215,15 +215,19 @@ function App(): React.JSX.Element {
     await AsyncStorage.setItem(StorageKeys.HAS_SEEN_LOGIN, 'true');
     setHasSeenLogin(true);
 
-    // Request push notification permissions after login
-    await PushNotificationService.requestPermissionAndRegister();
-
-    // Navigate to main app after login
+    // Navigate to main app FIRST so the user sees immediate feedback
     if (navigationRef.current) {
       navigationRef.current.reset({
         index: 0,
         routes: [{ name: 'MainTabs' }],
       });
+    }
+
+    // Request push notification permissions AFTER navigation (non-blocking)
+    try {
+      await PushNotificationService.requestPermissionAndRegister();
+    } catch (error) {
+      log.error('Push notification registration failed (non-fatal)', error);
     }
   };
 

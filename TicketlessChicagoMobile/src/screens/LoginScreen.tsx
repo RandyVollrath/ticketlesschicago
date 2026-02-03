@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, commonStyles, shadows } from '../theme';
 import AuthService from '../services/AuthService';
 import GoogleLogo from '../components/GoogleLogo';
@@ -34,6 +35,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
@@ -87,10 +89,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     }
   };
 
-  const handleSkip = () => {
-    onAuthSuccess?.();
-  };
-
   const handleGoogleSignIn = async () => {
     if (isProcessingRef.current) return;
 
@@ -116,6 +114,38 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     } finally {
       if (isMountedRef.current) {
         setGoogleLoading(false);
+      }
+      isProcessingRef.current = false;
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (isProcessingRef.current) return;
+
+    isProcessingRef.current = true;
+    setAppleLoading(true);
+    setError(null);
+
+    try {
+      const result = await AuthService.signInWithApple();
+
+      if (!isMountedRef.current) return;
+
+      if (result.success) {
+        onAuthSuccess?.();
+      } else {
+        if (result.error !== 'Sign in was cancelled') {
+          setError(result.error || 'Apple sign-in failed');
+        }
+      }
+    } catch (err) {
+      log.error('Apple sign-in error', err);
+      if (isMountedRef.current) {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setAppleLoading(false);
       }
       isProcessingRef.current = false;
     }
@@ -159,10 +189,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           >
             <Text style={styles.changeEmailText}>Use a different email</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-            <Text style={styles.skipText}>Continue without account</Text>
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -176,7 +202,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
         >
           {/* Header */}
           <View style={styles.header}>
@@ -216,11 +242,29 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               />
             </View>
 
+            {/* Apple Sign In Button (iOS only) */}
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.appleButton, appleLoading && styles.buttonDisabled]}
+                onPress={handleAppleSignIn}
+                disabled={appleLoading || googleLoading || loading}
+              >
+                {appleLoading ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="apple" size={20} color={colors.white} />
+                    <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
             {/* Google Sign In Button */}
             <TouchableOpacity
               style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
               onPress={handleGoogleSignIn}
-              disabled={googleLoading || loading}
+              disabled={googleLoading || appleLoading || loading}
             >
               {googleLoading ? (
                 <ActivityIndicator color={colors.textPrimary} />
@@ -267,11 +311,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               </View>
             </View>
           </View>
-
-          {/* Skip Button */}
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-            <Text style={styles.skipText}>Continue without account</Text>
-          </TouchableOpacity>
 
           <Text style={styles.disclaimer}>
             By continuing, you agree to our Terms of Service and Privacy Policy
@@ -355,6 +394,22 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     color: colors.textPrimary,
   },
+  appleButton: {
+    backgroundColor: '#000000',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+    minHeight: 48,
+  },
+  appleButtonText: {
+    color: '#FFFFFF',
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+  },
   googleButton: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
@@ -421,14 +476,6 @@ const styles = StyleSheet.create({
   benefitText: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-  },
-  skipButton: {
-    alignItems: 'center',
-    marginTop: spacing.xl,
-  },
-  skipText: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.base,
   },
   disclaimer: {
     color: colors.textTertiary,
