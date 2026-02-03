@@ -55,7 +55,10 @@ export const ParkingHistoryService = {
 
   async addToHistory(coords: Coordinates, rules: ParkingRule[], address?: string): Promise<void> {
     try {
-      const history = await this.getHistory();
+      // Read existing history directly (avoid `this` binding issues when called cross-module)
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
+
       const newItem: ParkingHistoryItem = {
         id: Date.now().toString(),
         coords,
@@ -66,6 +69,7 @@ export const ParkingHistoryService = {
 
       const updated = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      log.info(`Saved to parking history: "${newItem.address}" (${rules.length} rules, ${updated.length} total items)`);
     } catch (error) {
       log.error('Error adding to parking history', error);
     }
@@ -81,7 +85,8 @@ export const ParkingHistoryService = {
 
   async deleteItem(id: string): Promise<void> {
     try {
-      const history = await this.getHistory();
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
       const updated = history.filter(item => item.id !== id);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
     } catch (error) {
@@ -91,7 +96,8 @@ export const ParkingHistoryService = {
 
   async updateItem(id: string, updates: Partial<ParkingHistoryItem>): Promise<void> {
     try {
-      const history = await this.getHistory();
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
       const updated = history.map(item =>
         item.id === id ? { ...item, ...updates } : item
       );
@@ -103,8 +109,14 @@ export const ParkingHistoryService = {
 
   /** Find the most recent history item (to attach departure data to) */
   async getMostRecent(): Promise<ParkingHistoryItem | null> {
-    const history = await this.getHistory();
-    return history.length > 0 ? history[0] : null;
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
+      return history.length > 0 ? history[0] : null;
+    } catch (error) {
+      log.error('Error getting most recent history item', error);
+      return null;
+    }
   },
 };
 

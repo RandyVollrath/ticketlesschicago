@@ -19,6 +19,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var locationAtStopStart: CLLocation? = nil   // Snapshot GPS at exact moment car stops
   private var lastStationaryTime: Date? = nil
   private var continuousGpsActive = false              // Whether high-frequency GPS is running
+  private var coreMotionActive = false                  // Whether CoreMotion activity updates are running
 
   // Configuration
   private let minDrivingDurationSec: TimeInterval = 60   // 1 min of driving before we care about stops (was 120, lowered to catch short trips)
@@ -144,7 +145,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   @objc func stopMonitoring(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     locationManager.stopMonitoringSignificantLocationChanges()
     stopContinuousGps()
-    activityManager.stopActivityUpdates()
+    stopMotionActivityMonitoring()
 
     parkingConfirmationTimer?.invalidate()
     parkingConfirmationTimer = nil
@@ -171,6 +172,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "isDriving": isDriving,
       "coreMotionAutomotive": coreMotionSaysAutomotive,
       "continuousGpsActive": continuousGpsActive,
+      "coreMotionActive": coreMotionActive,
       "hasAlwaysPermission": locationManager.authorizationStatus == .authorizedAlways,
       "motionAvailable": CMMotionActivityManager.isActivityAvailable(),
     ]
@@ -224,6 +226,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   // MARK: - CoreMotion: Primary Driving Detection
 
   private func startMotionActivityMonitoring() {
+    guard !coreMotionActive else {
+      NSLog("[BackgroundLocation] CoreMotion already active, skipping restart")
+      return
+    }
+    coreMotionActive = true
     activityManager.startActivityUpdates(to: .main) { [weak self] activity in
       guard let self = self, let activity = activity else { return }
 
@@ -283,6 +290,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
   }
 
+  /// Stop CoreMotion activity updates to save power while parked.
+  /// significantLocationChange remains active and will restart CoreMotion
+  /// when the user moves ~100-500m (cell tower change).
+  private func stopMotionActivityMonitoring() {
+    guard coreMotionActive else { return }
+    activityManager.stopActivityUpdates()
+    coreMotionActive = false
+    NSLog("[BackgroundLocation] CoreMotion activity updates STOPPED (parked, saving power)")
+  }
+
   // MARK: - CLLocationManagerDelegate
 
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -294,6 +311,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // check if CoreMotion says we recently drove and are now stopped.
     // This catches the case where iOS killed us mid-drive.
     if !isDriving && !coreMotionSaysAutomotive && isMonitoring {
+      // Restart CoreMotion if it was stopped after parking.
+      // significantLocationChange fired, meaning user moved ~100-500m,
+      // so they may be starting a new drive.
+      if !coreMotionActive && CMMotionActivityManager.isActivityAvailable() {
+        NSLog("[BackgroundLocation] significantLocationChange woke us — restarting CoreMotion")
+        startMotionActivityMonitoring()
+      }
       checkForMissedParking(currentLocation: location)
     }
 
@@ -552,6 +576,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     // Stop continuous GPS to save battery - back to significantChanges only
     stopContinuousGps()
+
+    // Stop CoreMotion to save power while parked.
+    // significantLocationChange will restart it when user moves ~100-500m.
+    stopMotionActivityMonitoring()
   }
 
   // MARK: - Helpers

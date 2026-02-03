@@ -289,7 +289,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     };
 
     updateActivity();
-    const interval = setInterval(updateActivity, 5000); // Poll every 5s for debug
+    const interval = setInterval(updateActivity, 15000); // Poll every 15s — cosmetic only, native module handles real detection
     return () => clearInterval(interval);
   }, [isMonitoring, showDebug]);
 
