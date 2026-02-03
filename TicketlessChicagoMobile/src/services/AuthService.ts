@@ -278,10 +278,13 @@ class AuthServiceClass {
 
       log.info('Got Apple identity token, authenticating with Supabase');
 
-      // Authenticate with Supabase using the Apple identity token
+      // Authenticate with Supabase using the Apple identity token.
+      // The library auto-generates a nonce (hashed) in the identity token,
+      // so we must pass the raw nonce to Supabase for verification.
       const { data, error } = await this.supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: appleAuthRequestResponse.identityToken,
+        nonce: appleAuthRequestResponse.nonce,
       });
 
       if (error) {
