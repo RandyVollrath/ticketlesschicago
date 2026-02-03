@@ -319,6 +319,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
+				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = TicketlessChicagoMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -349,6 +350,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
+				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
 				INFOPLIST_FILE = TicketlessChicagoMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
