@@ -23,7 +23,7 @@ const TICKET_COSTS = {
   expired_sticker: 200,
   expired_plate: 100,
   snow_ban: 150,
-  permit_zone: 100,
+  permit_zone: 75,
 }
 
 interface SavingsData {
