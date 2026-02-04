@@ -23,6 +23,11 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Session key: changes when auth state changes, forcing WebView to remount
+  // with fresh injected scripts. Without this, the WebView keeps the stale
+  // injection from its initial mount (injectedJavaScriptBeforeContentLoaded
+  // only runs once per WebView instance).
+  const [webViewKey, setWebViewKey] = useState(0);
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
@@ -37,6 +42,23 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return unsubscribe;
   }, [navigation]);
 
+  // Subscribe to auth state changes so we catch login/logout from any screen
+  useEffect(() => {
+    const unsubscribe = AuthService.subscribe((state) => {
+      const wasAuth = isAuthenticated;
+      const nowAuth = state.isAuthenticated;
+      setIsAuthenticated(nowAuth);
+
+      // When user transitions from logged-out to logged-in (or vice versa),
+      // bump the key to force a full WebView remount with the new session.
+      if (wasAuth !== nowAuth) {
+        setWebViewKey(prev => prev + 1);
+        if (!nowAuth) setIsLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [isAuthenticated]);
+
   const checkAuth = useCallback(() => {
     const authenticated = AuthService.isAuthenticated();
     setIsAuthenticated(authenticated);
@@ -45,7 +67,8 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, []);
 
-  // Get the full Supabase session to inject into WebView
+  // Read session fresh each render — combined with webViewKey, this ensures
+  // the WebView always gets the current session tokens when it mounts.
   const authStateObj = AuthService.getAuthState();
   const session = authStateObj?.session;
 
@@ -232,6 +255,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
       ) : (
         <WebView
+          key={`alerts-webview-${webViewKey}`}
           ref={webViewRef}
           source={{ uri: SETTINGS_URL }}
           style={styles.webView}
