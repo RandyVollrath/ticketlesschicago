@@ -74,9 +74,6 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
   const [showMap, setShowMap] = useState(false);
   const [snowForecast, setSnowForecast] = useState<{
     hasSignificantSnow: boolean;
-    maxAccumulation: number;
-    message: string;
-    periods: { name: string; summary: string; inchesHigh: number }[];
   } | null>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -361,7 +358,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               restrictions.permitZone?.severity || 'none',
             )}
 
-            {/* Snow Forecast */}
+            {/* Snow Forecast — simple 2"+ yes/no */}
             {snowForecast && (
               <View style={[
                 styles.snowForecastCard,
@@ -381,26 +378,10 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                   </Text>
                 </View>
                 <Text style={styles.snowForecastMessage}>
-                  {snowForecast.message}
+                  {snowForecast.hasSignificantSnow
+                    ? '2+ inches of snow is in the forecast. The 2-inch snow parking ban could be activated.'
+                    : 'No 2+ inches of snow in the 7-day forecast.'}
                 </Text>
-                {snowForecast.hasSignificantSnow && snowForecast.periods.length > 0 && (
-                  <View style={styles.snowPeriods}>
-                    {snowForecast.periods
-                      .filter(p => p.inchesHigh >= 1)
-                      .slice(0, 4)
-                      .map((p, i) => (
-                        <View key={i} style={styles.snowPeriodRow}>
-                          <Text style={styles.snowPeriodName}>{p.name}</Text>
-                          <Text style={[
-                            styles.snowPeriodAmount,
-                            p.inchesHigh >= 2 && { color: colors.warning, fontWeight: typography.weights.bold },
-                          ]}>
-                            {p.summary}
-                          </Text>
-                        </View>
-                      ))}
-                  </View>
-                )}
               </View>
             )}
 
@@ -692,25 +673,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
     marginLeft: 24,
-  },
-  snowPeriods: {
-    marginTop: spacing.sm,
-    marginLeft: 24,
-    gap: 4,
-  },
-  snowPeriodRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  snowPeriodName: {
-    fontSize: typography.sizes.xs,
-    color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
-  },
-  snowPeriodAmount: {
-    fontSize: typography.sizes.xs,
-    color: colors.textSecondary,
   },
 
   // Map
