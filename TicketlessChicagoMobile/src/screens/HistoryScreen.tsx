@@ -19,6 +19,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { StatusBadge, RuleCard } from '../components';
 import { ParkingRule, Coordinates } from '../services/LocationService';
+import AuthService from '../services/AuthService';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
@@ -44,12 +45,141 @@ export interface ParkingHistoryItem {
 const HISTORY_KEY = StorageKeys.PARKING_HISTORY;
 const MAX_HISTORY_ITEMS = 50;
 
-// Service to manage parking history
+// ──────────────────────────────────────────────────────
+// Supabase sync helpers (fire-and-forget, never blocks UI)
+// ──────────────────────────────────────────────────────
+
+/** Push a new history item to Supabase. Fails silently. */
+const syncAddToServer = async (item: ParkingHistoryItem): Promise<void> => {
+  try {
+    if (!AuthService.isAuthenticated()) return;
+    const userId = AuthService.getUser()?.id;
+    if (!userId) return;
+
+    const supabase = AuthService.getSupabaseClient();
+    const { error } = await supabase.from('parking_location_history').insert({
+      user_id: userId,
+      latitude: item.coords.latitude,
+      longitude: item.coords.longitude,
+      address: item.address || null,
+      parked_at: new Date(item.timestamp).toISOString(),
+      // Map rules to known columns
+      on_winter_ban_street: item.rules.some(r => r.type === 'winter_ban'),
+      winter_ban_street_name: item.rules.find(r => r.type === 'winter_ban')?.streetName || null,
+      on_snow_route: item.rules.some(r => r.type === 'snow_route'),
+      snow_route_name: item.rules.find(r => r.type === 'snow_route')?.streetName || null,
+      street_cleaning_date: item.rules.find(r => r.type === 'street_cleaning')?.nextDate || null,
+      street_cleaning_ward: item.rules.find(r => r.type === 'street_cleaning')?.ward || null,
+      street_cleaning_section: item.rules.find(r => r.type === 'street_cleaning')?.section || null,
+      permit_zone: item.rules.find(r => r.type === 'permit_zone')?.zone || null,
+      permit_restriction_schedule: item.rules.find(r => r.type === 'permit_zone')?.schedule || null,
+    });
+    if (error) log.debug('Sync add failed (non-fatal)', error.message);
+    else log.debug('History synced to server');
+  } catch (e) {
+    log.debug('Sync add exception (non-fatal)', e);
+  }
+};
+
+/** Push departure data update to Supabase. Fails silently. */
+const syncDepartureToServer = async (item: ParkingHistoryItem): Promise<void> => {
+  try {
+    if (!AuthService.isAuthenticated() || !item.departure) return;
+    const userId = AuthService.getUser()?.id;
+    if (!userId) return;
+
+    const supabase = AuthService.getSupabaseClient();
+    // Match on user + parked_at timestamp (unique enough per user)
+    const { error } = await supabase
+      .from('parking_location_history')
+      .update({
+        departure_latitude: item.departure.latitude,
+        departure_longitude: item.departure.longitude,
+        departure_confirmed_at: new Date(item.departure.confirmedAt).toISOString(),
+        departure_distance_meters: item.departure.distanceMeters,
+        cleared_at: new Date(item.departure.confirmedAt).toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('parked_at', new Date(item.timestamp).toISOString());
+    if (error) log.debug('Sync departure failed (non-fatal)', error.message);
+  } catch (e) {
+    log.debug('Sync departure exception (non-fatal)', e);
+  }
+};
+
+/** Restore history from Supabase when local storage is empty. */
+const restoreFromServer = async (): Promise<ParkingHistoryItem[]> => {
+  try {
+    if (!AuthService.isAuthenticated()) return [];
+    const supabase = AuthService.getSupabaseClient();
+    const { data, error } = await supabase
+      .from('parking_location_history')
+      .select('*')
+      .order('parked_at', { ascending: false })
+      .limit(MAX_HISTORY_ITEMS);
+
+    if (error || !data || data.length === 0) return [];
+
+    // Convert server rows back to ParkingHistoryItem format
+    const items: ParkingHistoryItem[] = data.map((row: any) => {
+      const rules: ParkingRule[] = [];
+      if (row.on_winter_ban_street) {
+        rules.push({ type: 'winter_ban', severity: 'critical', streetName: row.winter_ban_street_name || '', description: 'Winter overnight parking ban' } as ParkingRule);
+      }
+      if (row.on_snow_route) {
+        rules.push({ type: 'snow_route', severity: 'warning', streetName: row.snow_route_name || '', description: 'Snow route' } as ParkingRule);
+      }
+      if (row.street_cleaning_date) {
+        rules.push({ type: 'street_cleaning', severity: 'warning', nextDate: row.street_cleaning_date, ward: row.street_cleaning_ward || '', section: row.street_cleaning_section || '', description: 'Street cleaning' } as ParkingRule);
+      }
+      if (row.permit_zone) {
+        rules.push({ type: 'permit_zone', severity: 'info', zone: row.permit_zone, schedule: row.permit_restriction_schedule || '', description: `Permit zone ${row.permit_zone}` } as ParkingRule);
+      }
+
+      const item: ParkingHistoryItem = {
+        id: new Date(row.parked_at).getTime().toString(),
+        coords: { latitude: parseFloat(row.latitude), longitude: parseFloat(row.longitude) },
+        address: row.address || undefined,
+        rules,
+        timestamp: new Date(row.parked_at).getTime(),
+      };
+
+      if (row.departure_confirmed_at) {
+        item.departure = {
+          confirmedAt: new Date(row.departure_confirmed_at).getTime(),
+          distanceMeters: row.departure_distance_meters || 0,
+          isConclusive: (row.departure_distance_meters || 0) > 50,
+          latitude: row.departure_latitude || 0,
+          longitude: row.departure_longitude || 0,
+        };
+      }
+      return item;
+    });
+
+    // Save restored data locally so subsequent reads are fast
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+    log.info(`Restored ${items.length} history items from server`);
+    return items;
+  } catch (e) {
+    log.debug('Restore from server failed (non-fatal)', e);
+    return [];
+  }
+};
+
+// ──────────────────────────────────────────────────────
+// Service to manage parking history (local-first + server sync)
+// ──────────────────────────────────────────────────────
 export const ParkingHistoryService = {
   async getHistory(): Promise<ParkingHistoryItem[]> {
     try {
       const stored = await AsyncStorage.getItem(HISTORY_KEY);
-      return stored ? JSON.parse(stored) : [];
+      const local: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
+
+      // If local is empty but user is authenticated, try restoring from server
+      if (local.length === 0 && AuthService.isAuthenticated()) {
+        return await restoreFromServer();
+      }
+      return local;
     } catch (error) {
       log.error('Error getting parking history', error);
       return [];
@@ -73,6 +203,9 @@ export const ParkingHistoryService = {
       const updated = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
       log.info(`Saved to parking history: "${newItem.address}" (${rules.length} rules, ${updated.length} total items)`);
+
+      // Fire-and-forget sync to server
+      syncAddToServer(newItem);
     } catch (error) {
       log.error('Error adding to parking history', error);
     }
@@ -105,6 +238,12 @@ export const ParkingHistoryService = {
         item.id === id ? { ...item, ...updates } : item
       );
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+
+      // If departure data was added, sync it to server
+      if (updates.departure) {
+        const updatedItem = updated.find(item => item.id === id);
+        if (updatedItem) syncDepartureToServer(updatedItem);
+      }
     } catch (error) {
       log.error('Error updating history item', error);
     }

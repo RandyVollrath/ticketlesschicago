@@ -45,8 +45,9 @@ export default function DestinationMapPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <style>{`
-          html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+          html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; touch-action: none; }
           #__next { height: 100%; }
+          .leaflet-container { touch-action: none; }
         `}</style>
       </Head>
       <DestinationMapView />

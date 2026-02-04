@@ -72,6 +72,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
   const [restrictions, setRestrictions] = useState<RestrictionResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [mapTouched, setMapTouched] = useState(false);
   const [snowForecast, setSnowForecast] = useState<{
     hasSignificantSnow: boolean;
     significantSnowWhen: string | null;
@@ -284,6 +285,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={!mapTouched}
       >
         {/* Search Card */}
         <View style={styles.card}>
@@ -438,13 +440,21 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                   <Icon name="map" size={18} color={colors.primary} />
                   <Text style={styles.mapHeaderText}>Area Restrictions Map</Text>
                 </View>
-                <View style={styles.mapContainer}>
+                <View
+                  style={styles.mapContainer}
+                  onTouchStart={() => setMapTouched(true)}
+                  onTouchEnd={() => setMapTouched(false)}
+                  onTouchCancel={() => setMapTouched(false)}
+                >
                   <WebView
                     source={{ uri: mapUrl }}
                     style={styles.webView}
                     javaScriptEnabled
                     domStorageEnabled
                     startInLoadingState
+                    nestedScrollEnabled
+                    scalesPageToFit={false}
+                    overScrollMode="never"
                     renderLoading={() => (
                       <View style={styles.mapLoading}>
                         <ActivityIndicator size="small" color={colors.primary} />
