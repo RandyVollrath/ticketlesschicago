@@ -12,6 +12,7 @@ import {
   Linking,
   NativeModules,
   Share,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -709,8 +710,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 try {
                   if (BluetoothMonitorModule) {
                     await BluetoothMonitorModule.requestBatteryOptimizationExemption();
-                    const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
-                    if (exempt) setShowBatteryWarning(false);
+                    // The system dialog is now showing — re-check when user comes back
+                    const checkWhenReturned = (nextState: string) => {
+                      if (nextState === 'active') {
+                        AppState.removeEventListener?.('change', checkWhenReturned);
+                        // Small delay to let the system update
+                        setTimeout(async () => {
+                          try {
+                            const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
+                            if (exempt) {
+                              setShowBatteryWarning(false);
+                              await AsyncStorage.setItem(BATTERY_WARNING_DISMISSED_KEY, 'true');
+                            }
+                          } catch (_) {}
+                        }, 500);
+                      }
+                    };
+                    const sub = AppState.addEventListener('change', checkWhenReturned);
+                    // Clean up after 30 seconds in case user never returns
+                    setTimeout(() => sub.remove(), 30000);
                   }
                 } catch (e) {
                   log.debug('Battery exemption request failed', e);
