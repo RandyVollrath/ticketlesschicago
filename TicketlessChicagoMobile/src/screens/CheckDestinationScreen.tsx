@@ -183,15 +183,18 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     }
   }, [address]);
 
-  // Count active restrictions
-  const activeCount = restrictions
+  // Count active restrictions — only warning/critical severity counts.
+  // 'info' (e.g. cleaning on a future date) and 'none' are not actionable now.
+  const isSevere = (s?: string) => s === 'warning' || s === 'critical';
+  const activeRestrictions = restrictions
     ? [
-        restrictions.streetCleaning?.hasRestriction,
-        restrictions.winterOvernightBan?.active,
-        restrictions.twoInchSnowBan?.active,
-        restrictions.permitZone?.inPermitZone,
-      ].filter(Boolean).length
-    : 0;
+        isSevere(restrictions.streetCleaning?.severity) && 'Street Cleaning',
+        isSevere(restrictions.twoInchSnowBan?.severity) && 'Snow Ban',
+        isSevere(restrictions.winterOvernightBan?.severity) && 'Winter Ban',
+        isSevere(restrictions.permitZone?.severity) && 'Permit Zone',
+      ].filter(Boolean) as string[]
+    : [];
+  const activeCount = activeRestrictions.length;
 
   // Build WebView URL
   const mapUrl = geocoded
@@ -301,6 +304,11 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                     ? 'All Clear'
                     : `${activeCount} Restriction${activeCount > 1 ? 's' : ''} Found`}
                 </Text>
+                {activeCount > 0 && (
+                  <Text style={styles.summaryDetail}>
+                    {activeRestrictions.join(', ')}
+                  </Text>
+                )}
                 <Text style={styles.summarySubtitle}>
                   {geocoded.address}
                   {geocoded.ward ? ` — Ward ${geocoded.ward}` : ''}
@@ -553,6 +561,12 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
+  },
+  summaryDetail: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.warning,
+    marginTop: 2,
   },
   summarySubtitle: {
     fontSize: typography.sizes.sm,
