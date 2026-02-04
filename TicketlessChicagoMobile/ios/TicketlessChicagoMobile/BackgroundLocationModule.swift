@@ -363,9 +363,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       }
 
       // Start GPS speed-based parking timer: if speed stays ≈0 for 8 seconds
-      // after driving 2+ min, confirm parking immediately - don't wait for
-      // CoreMotion which can lag 30-60s. Red-light false positives are harmless
-      // (just an extra restriction check). Missing a violation is not.
+      // after driving 1+ min AND CoreMotion no longer reports automotive,
+      // confirm parking. We require CoreMotion agreement to avoid false
+      // positives at red lights (engine running → CoreMotion stays automotive).
       if isDriving,
          let drivingStart = drivingStartTime,
          Date().timeIntervalSince(drivingStart) >= minDrivingDurationSec,
@@ -373,11 +373,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         NSLog("[BackgroundLocation] GPS speed≈0 after 1+min driving. Starting 8s speed-based parking timer.")
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
           guard let self = self else { return }
-          if !self.speedSaysMoving {
-            NSLog("[BackgroundLocation] Speed-based parking timer fired (8s at speed≈0). Confirming parking via GPS.")
-            self.confirmParking(source: "gps_speed")
-          } else {
+          if self.speedSaysMoving {
             NSLog("[BackgroundLocation] Speed timer fired but speed resumed. Was a red light.")
+          } else if self.coreMotionSaysAutomotive {
+            NSLog("[BackgroundLocation] Speed timer fired but CoreMotion still says automotive (engine running — red light or idling). Skipping.")
+          } else {
+            NSLog("[BackgroundLocation] Speed-based parking confirmed (8s at speed≈0, CoreMotion not automotive).")
+            self.confirmParking(source: "gps_speed")
           }
         }
       }
@@ -503,15 +505,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   }
 
   /// Final parking confirmation
-  /// source: "coremotion" (5s after CoreMotion exit) or "gps_speed" (8s at speed≈0)
+  /// source: "coremotion" (5s after CoreMotion exit) or "gps_speed" (8s at speed≈0 + CoreMotion not automotive)
   private func confirmParking(source: String = "coremotion") {
     guard isDriving || drivingStartTime != nil else { return }
 
-    // If CoreMotion flipped back to automotive during debounce, abort
-    // UNLESS triggered by GPS speed - GPS is definitive about being stopped,
-    // even if CoreMotion's motion classifier still says automotive
-    if coreMotionSaysAutomotive && source != "gps_speed" {
-      NSLog("[BackgroundLocation] CoreMotion says automotive again during confirmation - aborting")
+    // If CoreMotion still reports automotive (engine running / vehicle vibrations),
+    // abort parking confirmation regardless of source. This prevents false
+    // positives at red lights where GPS speed is 0 but the car is still running.
+    if coreMotionSaysAutomotive {
+      NSLog("[BackgroundLocation] CoreMotion still says automotive — aborting parking confirmation (source: \(source))")
       lastStationaryTime = nil
       locationAtStopStart = nil
       return
