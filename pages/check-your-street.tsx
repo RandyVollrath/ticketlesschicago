@@ -1113,7 +1113,7 @@ export default function CheckYourStreet() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '28px', height: '4px', backgroundColor: '#ff00ff', borderRadius: '2px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: '#ff00ff' }}>Magenta:</strong> 2" Snow Ban</span>
+                <span style={{ color: COLORS.slate }}><strong style={{ color: '#ff00ff' }}>Magenta:</strong> 2-in. Snow Ban (no parking after 2″+ snowfall)</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '28px', height: '4px', backgroundColor: '#00ff00', borderRadius: '2px' }}></div>
