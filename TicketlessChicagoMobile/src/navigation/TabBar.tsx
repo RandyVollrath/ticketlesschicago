@@ -7,6 +7,7 @@ import { colors, typography, spacing, shadows } from '../theme';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Home: { active: 'shield-check', inactive: 'shield-check-outline' },
+  Search: { active: 'map-search', inactive: 'map-search-outline' },
   History: { active: 'history', inactive: 'clock-outline' },
   Alerts: { active: 'bell-ring', inactive: 'bell-ring-outline' },
   Settings: { active: 'cog', inactive: 'cog-outline' },
@@ -14,6 +15,7 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
 
 const TAB_LABELS: Record<string, string> = {
   Home: 'Home',
+  Search: 'Search',
   History: 'History',
   Alerts: 'Alerts',
   Settings: 'Settings',
@@ -62,7 +64,7 @@ const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation })
             <View style={[styles.iconContainer, isFocused && styles.iconContainerActive]}>
               <MaterialCommunityIcons
                 name={isFocused ? icons.active : icons.inactive}
-                size={22}
+                size={20}
                 color={isFocused ? colors.primary : colors.textTertiary}
               />
             </View>
