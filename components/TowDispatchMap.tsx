@@ -24,9 +24,7 @@ export default function TowDispatchMap({ data }: TowDispatchMapProps) {
     let cancelled = false;
 
     async function initMap() {
-      // Dynamic imports to avoid Turbopack static analysis issues
       const L = (await import('leaflet')).default;
-      await import('leaflet.markercluster' as any);
 
       if (cancelled || !containerRef.current) return;
 
@@ -48,29 +46,8 @@ export default function TowDispatchMap({ data }: TowDispatchMapProps) {
         maxZoom: 19,
       }).addTo(map);
 
-      const cluster = (L as any).markerClusterGroup({
-        maxClusterRadius: 50,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        iconCreateFunction: (c: any) => {
-          const count = c.getChildCount();
-          let dim = 36;
-          if (count > 100) { dim = 50; }
-          else if (count > 25) { dim = 42; }
-          return L.divIcon({
-            html: `<div style="
-              width:${dim}px;height:${dim}px;border-radius:50%;
-              background:rgba(225,29,72,0.85);color:white;
-              display:flex;align-items:center;justify-content:center;
-              font-size:${count > 100 ? 13 : 12}px;font-weight:700;
-              border:2px solid rgba(255,255,255,0.9);
-              box-shadow:0 2px 6px rgba(0,0,0,0.25);
-            ">${count}</div>`,
-            className: '',
-            iconSize: [dim, dim],
-          });
-        },
-      });
+      // Use a LayerGroup instead of markerCluster for Turbopack compatibility
+      const markerGroup = L.layerGroup();
 
       const icon = L.divIcon({
         className: '',
@@ -99,10 +76,10 @@ export default function TowDispatchMap({ data }: TowDispatchMapProps) {
           </div>
         `;
         marker.bindPopup(popup, { maxWidth: 280 });
-        cluster.addLayer(marker);
+        markerGroup.addLayer(marker);
       });
 
-      map.addLayer(cluster);
+      map.addLayer(markerGroup);
 
       // Fit bounds to data
       if (data.length > 0) {
@@ -152,7 +129,7 @@ export default function TowDispatchMap({ data }: TowDispatchMapProps) {
           <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#e11d48', marginRight: '6px' }}></span>
           {data.length.toLocaleString()} mapped tow dispatches
         </span>
-        <span>Click clusters to zoom, markers for details</span>
+        <span>Click markers for details</span>
       </div>
     </div>
   );
