@@ -394,7 +394,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
               />
               <View style={styles.departureInfo}>
                 <Text style={styles.departureText}>
-                  Left at {formatTime(item.departure.confirmedAt)} ({Math.round(item.departure.distanceMeters)}m away)
+                  Left at {formatTime(item.departure.confirmedAt)}
                 </Text>
                 <Text style={[
                   styles.departureStatus,
