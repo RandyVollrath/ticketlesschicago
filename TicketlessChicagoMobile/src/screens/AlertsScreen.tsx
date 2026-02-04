@@ -77,7 +77,13 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // so we write the Supabase session directly to localStorage.
   // The web Supabase client finds it during initialization and the user
   // is authenticated before any React component mounts.
-  const SUPABASE_STORAGE_KEY = 'sb-dzhqolbhuqdcpngdayuq-auth-token';
+  //
+  // IMPORTANT: The storage key is derived from the Supabase URL hostname.
+  // Production web app uses custom domain https://auth.autopilotamerica.com,
+  // so the key is sb-auth-auth-token (first segment of hostname).
+  // The mobile app uses https://dzhqolbhuqdcpngdayuq.supabase.co directly,
+  // but the WEBVIEW loads the web app, which uses the custom domain key.
+  const SUPABASE_STORAGE_KEY = 'sb-auth-auth-token';
 
   const sessionJson = session
     ? JSON.stringify({
