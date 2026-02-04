@@ -80,6 +80,7 @@ export default function CheckYourStreet() {
   const [permitZoneResult, setPermitZoneResult] = useState<{ hasPermitZone: boolean; zones: any[] } | null>(null)
   const [snowForecast, setSnowForecast] = useState<{
     hasSignificantSnow: boolean;
+    significantSnowWhen: string | null;
   } | null>(null)
 
   // Load map data on mount
@@ -696,7 +697,7 @@ export default function CheckYourStreet() {
                   <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
                     {snowForecast.hasSignificantSnow
                       ? <>
-                          <strong style={{ color: COLORS.danger }}>2+ inches of snow is in the forecast.</strong>{' '}
+                          <strong style={{ color: COLORS.danger }}>2+ inches of snow forecast{snowForecast.significantSnowWhen ? `: ${snowForecast.significantSnowWhen}` : ''}.</strong>{' '}
                           The 2-inch snow parking ban could be activated.
                         </>
                       : 'No 2+ inches of snow in the 7-day forecast.'}
