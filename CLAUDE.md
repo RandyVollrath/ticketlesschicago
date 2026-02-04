@@ -75,6 +75,9 @@ These are hard-won lessons. Always account for these when writing WebView code:
 7. **Supabase localStorage key depends on the URL used by the web app, not the mobile app.**
    The Supabase JS client generates its storage key as `sb-{first segment of hostname}-auth-token`. If the web app uses a custom domain (e.g. `https://auth.autopilotamerica.com`), the key is `sb-auth-auth-token`. The mobile app uses the direct Supabase URL (`dzhqolbhuqdcpngdayuq.supabase.co`) but when injecting auth into a WebView that loads the WEB app, you must use the WEB app's storage key, not the mobile app's.
 
+8. **NEVER use localStorage injection for WebView auth. Use URL query params instead.**
+   `injectedJavaScriptBeforeContentLoaded` writing to localStorage is unreliable on iOS WKWebView. The Supabase client singleton initializes at import time and caches "no session" BEFORE the injection script runs — a race condition that cannot be fixed with timing hacks. The reliable approach: pass `mobile_access_token` and `mobile_refresh_token` as URL query params, and have the web page call `supabase.auth.setSession()` with them before checking `getSession()`. URL params are available synchronously to page JS — no race, no iOS-specific bugs.
+
 ### Fonts / Icons
 - iOS requires `UIAppFonts` entries in `Info.plist` for custom fonts. Even if the font files are bundled via CocoaPods, iOS won't find them without this plist entry. Android auto-discovers fonts from the assets folder.
 - Current fonts: `MaterialCommunityIcons.ttf`, `Ionicons.ttf`
