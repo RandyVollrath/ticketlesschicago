@@ -1806,11 +1806,13 @@ class BackgroundTaskServiceClass {
       this.state.pendingDepartureConfirmation = null;
       await this.saveState();
 
-      // Log result (notifications are silent/internal only)
+      // Only notify user for conclusive departures (car actually drove away)
+      // Inconclusive departures (< 100m) are saved silently — they likely mean
+      // the user walked away from their car, not that the car left
       if (isConclusive) {
         await this.sendDepartureConfirmedNotification(distanceMeters);
       } else {
-        await this.sendDepartureRecordedNotification(distanceMeters);
+        log.info(`Inconclusive departure (${Math.round(distanceMeters)}m) — saved silently, no notification`);
       }
     } catch (error) {
       log.error('Failed to confirm departure', error);
@@ -1913,14 +1915,14 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Notify user: departure confirmed, moved significantly from parking spot
+   * Notify user: departure confirmed, car moved significantly from parking spot
    */
   private async sendDepartureConfirmedNotification(distanceMeters: number): Promise<void> {
     log.info(`Departure confirmed: moved ${distanceMeters}m from parking spot`);
     try {
       await notifee.displayNotification({
         title: 'Departure Confirmed',
-        body: `Recorded ${Math.round(distanceMeters)}m from your parking spot. Saved to your history for ticket contesting.`,
+        body: `Your car's departure has been recorded. Saved to your history for ticket contesting.`,
         android: {
           channelId: 'parking-monitoring',
           pressAction: { id: 'default' },
