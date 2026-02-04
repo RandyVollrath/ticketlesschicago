@@ -79,8 +79,7 @@ export default function CheckYourStreet() {
   const [loadingAlternatives, setLoadingAlternatives] = useState(false)
   const [permitZoneResult, setPermitZoneResult] = useState<{ hasPermitZone: boolean; zones: any[] } | null>(null)
   const [snowForecast, setSnowForecast] = useState<{
-    hasSignificantSnow: boolean; maxAccumulation: number; message: string;
-    periods: { name: string; summary: string; inchesHigh: number }[];
+    hasSignificantSnow: boolean;
   } | null>(null)
 
   // Load map data on mount
@@ -658,7 +657,7 @@ export default function CheckYourStreet() {
               </div>
             )}
 
-            {/* Snow Forecast */}
+            {/* Snow Forecast — simple 2"+ yes/no */}
             {snowForecast && (
               <div style={{
                 backgroundColor: snowForecast.hasSignificantSnow ? 'rgba(37, 99, 235, 0.06)' : 'white',
@@ -695,34 +694,13 @@ export default function CheckYourStreet() {
                     7-Day Snow Forecast
                   </div>
                   <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
-                    {snowForecast.message}
+                    {snowForecast.hasSignificantSnow
+                      ? <>
+                          <strong style={{ color: COLORS.danger }}>2+ inches of snow is in the forecast.</strong>{' '}
+                          The 2-inch snow parking ban could be activated.
+                        </>
+                      : 'No 2+ inches of snow in the 7-day forecast.'}
                   </div>
-                  {snowForecast.hasSignificantSnow && snowForecast.periods.length > 0 && (
-                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {snowForecast.periods
-                        .filter((p: any) => p.inchesHigh >= 1)
-                        .slice(0, 4)
-                        .map((p: any, i: number) => (
-                          <div key={i} style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '6px 12px',
-                            backgroundColor: p.inchesHigh >= 2 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(0,0,0,0.02)',
-                            borderRadius: '8px',
-                          }}>
-                            <span style={{ fontSize: '14px', fontWeight: 500, color: COLORS.graphite }}>{p.name}</span>
-                            <span style={{
-                              fontSize: '14px',
-                              fontWeight: p.inchesHigh >= 2 ? 700 : 400,
-                              color: p.inchesHigh >= 2 ? COLORS.warning : COLORS.slate,
-                            }}>
-                              {p.summary}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
