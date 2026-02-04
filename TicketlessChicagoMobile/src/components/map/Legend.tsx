@@ -48,7 +48,7 @@ const legendItems = [
   { color: LAYER_COLORS.warning, label: 'Restriction soon' },
   { color: LAYER_COLORS.permitRequired, label: 'Permit required' },
   { color: LAYER_COLORS.metered, label: 'Metered parking' },
-  { color: LAYER_COLORS.conditional, label: 'Snow route' },
+  { color: LAYER_COLORS.conditional, label: '2″ Snow route' },
   { color: LAYER_COLORS.unknown, label: 'Check signs' },
 ];
 

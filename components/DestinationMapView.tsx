@@ -316,7 +316,7 @@ export default function DestinationMapView() {
           {/* Snow & winter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.snowRoute, borderRadius: '2px', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>Snow ban route</span>
+            <span style={{ color: '#374151' }}>2″ Snow ban route</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.winterBan, borderRadius: '2px', flexShrink: 0 }} />
