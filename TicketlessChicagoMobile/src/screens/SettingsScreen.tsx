@@ -392,7 +392,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   flatList: {
-    maxHeight: 400,
   },
   deviceCard: {
     flexDirection: 'row',

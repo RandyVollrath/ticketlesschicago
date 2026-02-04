@@ -172,6 +172,7 @@ export default function MobileNav({ user, protectionStatus = 'none', onLogout }:
     { label: 'Protection', href: '/protection', icon: Icons.shield, badge: protectionStatus === 'active' ? 'Active' : undefined, badgeColor: COLORS.signal },
     { label: 'Free Alerts', href: '/alerts/signup', icon: Icons.bell },
     { label: 'Street Cleaning', href: '/check-your-street', icon: Icons.map },
+    { label: 'Ticket Explorer', href: '/ticket-explorer', icon: Icons.map },
   ];
 
   const userNavLinks: NavLink[] = user ? [

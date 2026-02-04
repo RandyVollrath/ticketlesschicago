@@ -90,7 +90,7 @@ function MainTabNavigator() {
       <Tab.Screen
         name="Alerts"
         component={AlertsScreen}
-        options={{ tabBarLabel: 'Alerts' }}
+        options={{ tabBarLabel: 'Alerts', lazy: false }}
       />
       <Tab.Screen
         name="Settings"

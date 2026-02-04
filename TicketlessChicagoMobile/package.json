@@ -1,7 +1,7 @@
 {
   "name": "ticketless-chicago-mobile",
   "displayName": "Autopilot America",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Never get a parking ticket in Chicago again. Automatic parking violation detection and alerts.",
   "author": "Autopilot America <support@autopilotamerica.com>",

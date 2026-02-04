@@ -12,7 +12,6 @@ import {
   Linking,
   NativeModules,
   Share,
-  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -364,14 +363,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
 
     // Android: check battery optimization status
+    // Always check actual exemption — show banner if not exempt, regardless of prior dismissal
     if (Platform.OS === 'android' && BluetoothMonitorModule) {
       try {
-        const batteryDismissed = await AsyncStorage.getItem(BATTERY_WARNING_DISMISSED_KEY);
-        if (!batteryDismissed) {
-          const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
-          if (!exempt) {
-            setShowBatteryWarning(true);
-          }
+        const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
+        if (!exempt) {
+          setShowBatteryWarning(true);
         }
       } catch (e) {
         // Non-critical - module may not support this method
@@ -388,13 +385,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, []);
 
-  const dismissBatteryWarning = useCallback(async () => {
+  const dismissBatteryWarning = useCallback(() => {
+    // Only dismiss for current session — will re-appear on next launch
+    // if exemption still hasn't been granted
     setShowBatteryWarning(false);
-    try {
-      await AsyncStorage.setItem(BATTERY_WARNING_DISMISSED_KEY, 'true');
-    } catch (e) {
-      // Non-critical
-    }
   }, []);
 
   const autoStartMonitoring = async () => {
@@ -710,25 +704,21 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 try {
                   if (BluetoothMonitorModule) {
                     await BluetoothMonitorModule.requestBatteryOptimizationExemption();
-                    // The system dialog is now showing — re-check when user comes back
-                    const checkWhenReturned = (nextState: string) => {
-                      if (nextState === 'active') {
-                        AppState.removeEventListener?.('change', checkWhenReturned);
-                        // Small delay to let the system update
-                        setTimeout(async () => {
-                          try {
-                            const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
-                            if (exempt) {
-                              setShowBatteryWarning(false);
-                              await AsyncStorage.setItem(BATTERY_WARNING_DISMISSED_KEY, 'true');
-                            }
-                          } catch (_) {}
-                        }, 500);
-                      }
-                    };
-                    const sub = AppState.addEventListener('change', checkWhenReturned);
-                    // Clean up after 30 seconds in case user never returns
-                    setTimeout(() => sub.remove(), 30000);
+                    // System dialog overlays the app (no AppState change),
+                    // so poll every second until exemption is granted or timeout
+                    let checks = 0;
+                    const pollInterval = setInterval(async () => {
+                      checks++;
+                      try {
+                        const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
+                        if (exempt) {
+                          clearInterval(pollInterval);
+                          setShowBatteryWarning(false);
+                          await AsyncStorage.setItem(BATTERY_WARNING_DISMISSED_KEY, 'true');
+                        }
+                      } catch (_) {}
+                      if (checks >= 15) clearInterval(pollInterval); // Stop after 15s
+                    }, 1000);
                   }
                 } catch (e) {
                   log.debug('Battery exemption request failed', e);
