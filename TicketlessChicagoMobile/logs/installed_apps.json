@@ -1,0 +1,43 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "info",
+      "apps",
+      "--device",
+      "F1CE7526-A9E9-5EBA-B8FA-6EBEDE0BC756",
+      "--json-output",
+      "/Users/randyvollrath/ticketlesschicago/TicketlessChicagoMobile/logs/installed_apps.json"
+    ],
+    "commandType" : "devicectl.device.info.apps",
+    "environment" : {
+      "TERM" : "xterm-256color"
+    },
+    "jsonVersion" : 3,
+    "outcome" : "success",
+    "version" : "506.6"
+  },
+  "result" : {
+    "apps" : [
+      {
+        "appClip" : false,
+        "builtByDeveloper" : true,
+        "bundleIdentifier" : "fyi.ticketless.app",
+        "bundleVersion" : "3",
+        "defaultApp" : false,
+        "hidden" : false,
+        "internalApp" : false,
+        "name" : "Autopilot America",
+        "removable" : true,
+        "url" : "file:///private/var/containers/Bundle/Application/DB10DF74-B172-4D67-A469-EBADCD09051D/Autopilot.app/",
+        "version" : "1.0.1"
+      }
+    ],
+    "defaultAppsIncluded" : false,
+    "deviceIdentifier" : "F1CE7526-A9E9-5EBA-B8FA-6EBEDE0BC756",
+    "hiddenAppsIncluded" : false,
+    "internalAppsIncluded" : false,
+    "removableAppsIncluded" : true
+  }
+}
