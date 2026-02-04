@@ -72,32 +72,20 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const authStateObj = AuthService.getAuthState();
   const session = authStateObj?.session;
 
-  // Auth mechanism: inject session into localStorage BEFORE page JS runs.
-  // iOS WKWebView can mangle URL hash fragments (encoding # as %23),
-  // so we write the Supabase session directly to localStorage.
-  // The web Supabase client finds it during initialization and the user
-  // is authenticated before any React component mounts.
+  // Auth mechanism: pass tokens as URL query params.
+  // The web settings page reads mobile_access_token & mobile_refresh_token
+  // from the URL and calls supabase.auth.setSession() before loadData().
   //
-  // IMPORTANT: The storage key is derived from the Supabase URL hostname.
-  // Production web app uses custom domain https://auth.autopilotamerica.com,
-  // so the key is sb-auth-auth-token (first segment of hostname).
-  // The mobile app uses https://dzhqolbhuqdcpngdayuq.supabase.co directly,
-  // but the WEBVIEW loads the web app, which uses the custom domain key.
-  const SUPABASE_STORAGE_KEY = 'sb-auth-auth-token';
+  // WHY NOT localStorage injection?
+  // iOS WKWebView has a race condition: the Supabase client singleton
+  // initializes and caches "no session" at import time, BEFORE
+  // injectedJavaScriptBeforeContentLoaded can write to localStorage.
+  // URL query params are available synchronously — no race condition.
+  const settingsUrl = session
+    ? `${SETTINGS_URL}?mobile_access_token=${encodeURIComponent(session.access_token)}&mobile_refresh_token=${encodeURIComponent(session.refresh_token)}`
+    : SETTINGS_URL;
 
-  const sessionJson = session
-    ? JSON.stringify({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        expires_in: session.expires_in,
-        expires_at: session.expires_at || Math.floor(Date.now() / 1000) + session.expires_in,
-        token_type: 'bearer',
-        user: session.user,
-      })
-    : '';
-
-  // Runs at DOCUMENT START — before any page JS executes.
-  // Sets auth + forces mobile viewport + injects CSS early.
+  // Runs at DOCUMENT START — forces mobile viewport + injects CSS early.
   const injectedJavaScriptBeforeContentLoaded = `
     (function() {
       try {
@@ -110,10 +98,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         }
         vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
 
-        // 2. Inject auth session into localStorage
-        ${sessionJson ? `localStorage.setItem('${SUPABASE_STORAGE_KEY}', ${JSON.stringify(sessionJson)});` : ''}
-
-        // 3. Inject mobile CSS early (will apply to all DOM elements as they appear)
+        // 2. Inject mobile CSS early (will apply to all DOM elements as they appear)
         var style = document.createElement('style');
         style.id = '__autopilot_mobile_css';
         style.textContent = [
@@ -263,7 +248,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <WebView
           key={`alerts-webview-${webViewKey}`}
           ref={webViewRef}
-          source={{ uri: SETTINGS_URL }}
+          source={{ uri: settingsUrl }}
           style={styles.webView}
           injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
           injectedJavaScript={injectedJavaScript}

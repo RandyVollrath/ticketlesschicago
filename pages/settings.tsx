@@ -712,7 +712,28 @@ export default function SettingsPage() {
   const initialLoadRef = useRef(true);
 
   useEffect(() => {
-    loadData();
+    // Check for mobile app auth tokens in query params.
+    // The mobile WebView passes access_token & refresh_token so we can
+    // call setSession() before loadData() — this bypasses the localStorage
+    // race condition on iOS WKWebView where injectedJavaScript can run
+    // AFTER the Supabase client has already initialized with no session.
+    const params = new URLSearchParams(window.location.search);
+    const mobileAccessToken = params.get('mobile_access_token');
+    const mobileRefreshToken = params.get('mobile_refresh_token');
+
+    if (mobileAccessToken && mobileRefreshToken) {
+      supabase.auth.setSession({
+        access_token: mobileAccessToken,
+        refresh_token: mobileRefreshToken,
+      }).then(() => {
+        loadData();
+      }).catch((err) => {
+        console.error('Mobile setSession failed:', err);
+        loadData(); // Fall back to normal flow
+      });
+    } else {
+      loadData();
+    }
   }, []);
 
   // Handle checkout success - must wait for router to be ready
