@@ -49,15 +49,31 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const authStateObj = AuthService.getAuthState();
   const session = authStateObj?.session;
 
-  // Primary auth mechanism: pass tokens in the URL hash fragment.
-  // The web Supabase client has detectSessionInUrl: true, so during its
-  // initialize() call it parses the hash, calls setSession(), and the user
-  // is authenticated before any React component mounts.  This is the same
-  // mechanism Supabase uses for OAuth redirect callbacks — no JS injection
-  // timing issues, works on both Android and iOS.
-  const webViewUrl = session
-    ? `${SETTINGS_URL}#access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}&expires_in=${session.expires_in}&expires_at=${session.expires_at || Math.floor(Date.now() / 1000) + session.expires_in}&token_type=bearer`
-    : SETTINGS_URL;
+  // Auth mechanism: inject session into localStorage BEFORE page JS runs.
+  // iOS WKWebView can mangle URL hash fragments (encoding # as %23),
+  // so instead we write the Supabase session directly to localStorage.
+  // The web Supabase client finds it during initialization and the user
+  // is authenticated before any React component mounts.
+  const SUPABASE_STORAGE_KEY = `sb-dzhqolbhuqdcpngdayuq-auth-token`;
+
+  const injectedJavaScriptBeforeContentLoaded = session
+    ? `
+    (function() {
+      try {
+        var sessionData = ${JSON.stringify(JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_in: session.expires_in,
+          expires_at: session.expires_at || Math.floor(Date.now() / 1000) + session.expires_in,
+          token_type: 'bearer',
+          user: session.user,
+        }))};
+        localStorage.setItem('${SUPABASE_STORAGE_KEY}', sessionData);
+      } catch(e) {}
+    })();
+    true;
+  `
+    : 'true;';
 
   // CSS & cleanup — runs AFTER page loads.
   // Hides site chrome and fixes layout for narrow mobile viewports.
@@ -189,8 +205,9 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       ) : (
         <WebView
           ref={webViewRef}
-          source={{ uri: webViewUrl }}
+          source={{ uri: SETTINGS_URL }}
           style={styles.webView}
+          injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
           injectedJavaScript={injectedJavaScript}
           onLoadStart={() => setIsLoading(true)}
           onLoadEnd={() => setIsLoading(false)}
