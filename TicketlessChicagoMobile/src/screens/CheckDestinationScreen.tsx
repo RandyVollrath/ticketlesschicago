@@ -64,7 +64,8 @@ const SEVERITY_CONFIG: Record<string, { bg: string; border: string; icon: string
   none: { bg: colors.successBg, border: colors.success, icon: 'check-circle', iconColor: colors.success },
 };
 
-export default function CheckDestinationScreen({ navigation }: any) {
+export default function CheckDestinationScreen({ navigation, route }: any) {
+  const isTab = route?.params?.isTab ?? !navigation.canGoBack();
   const [address, setAddress] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [geocoded, setGeocoded] = useState<GeocodedResult | null>(null);
@@ -201,15 +202,19 @@ export default function CheckDestinationScreen({ navigation }: any) {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-        >
-          <Icon name="arrow-left" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Check Destination</Text>
+        {isTab ? (
+          <View style={{ width: 40 }} />
+        ) : (
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Icon name="arrow-left" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+        )}
+        <Text style={styles.headerTitle}>{isTab ? 'Check Street' : 'Check Destination'}</Text>
         <View style={{ width: 40 }} />
       </View>
 

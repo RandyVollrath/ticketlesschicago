@@ -50,6 +50,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
+  Search: undefined;
   History: undefined;
   Alerts: undefined;
   Settings: undefined;
@@ -74,6 +75,12 @@ function MainTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name="Search"
+        component={CheckDestinationScreen}
+        options={{ tabBarLabel: 'Search' }}
+        initialParams={{ isTab: true }}
       />
       <Tab.Screen
         name="History"
