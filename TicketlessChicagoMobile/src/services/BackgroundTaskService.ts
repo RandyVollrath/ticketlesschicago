@@ -1253,6 +1253,49 @@ class BackgroundTaskServiceClass {
     // Snow ban - weather dependent, handled by push notifications from backend
     // Server cron sends push to users with on_snow_route=true in user_parked_vehicles
 
+    // Enforcement risk follow-up — HIGH urgency only, max once per parking event.
+    // Schedule a reminder partway through the peak enforcement window so users
+    // feel the data actively watching out for them.
+    const risk = result?.enforcementRisk;
+    if (risk?.urgency === 'high' && risk.in_peak_window && risk.peak_window) {
+      const { end_hour, hours_remaining } = risk.peak_window;
+
+      // Schedule follow-up at ~halfway through remaining peak window, minimum 30 min out
+      const followUpDelayMs = Math.max(
+        (hours_remaining / 2) * 60 * 60 * 1000,
+        30 * 60 * 1000 // at least 30 minutes from now
+      );
+
+      // But cap at 2 hours — don't schedule a notification 4 hours out
+      const cappedDelayMs = Math.min(followUpDelayMs, 2 * 60 * 60 * 1000);
+
+      const followUpTime = new Date(Date.now() + cappedDelayMs);
+
+      // Only schedule if it's still within the peak window
+      const todayEndHour = new Date();
+      todayEndHour.setHours(end_hour, 0, 0, 0);
+
+      if (followUpTime.getTime() < todayEndHour.getTime()) {
+        const blockInfo = risk.total_block_tickets
+          ? `${risk.total_block_tickets.toLocaleString()} tickets on record`
+          : 'High enforcement activity';
+        const endFormatted = end_hour > 12
+          ? `${end_hour - 12}pm`
+          : end_hour === 12 ? '12pm' : `${end_hour}am`;
+
+        restrictions.push({
+          type: 'street_cleaning', // reuse existing type — the notification content makes the difference
+          restrictionStartTime: followUpTime,
+          address: result.address || '',
+          details: `MOVE YOUR CAR NOW — You're still in the peak enforcement window (until ${endFormatted}). ${blockInfo}. ${risk.top_violation ? `Most common violation: ${risk.top_violation}.` : ''}`,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+
+        log.info(`Scheduled HIGH urgency follow-up in ${Math.round(cappedDelayMs / 60000)} minutes`);
+      }
+    }
+
     if (restrictions.length > 0) {
       await LocalNotificationService.scheduleNotificationsForParking(restrictions);
       log.info(`Scheduled ${restrictions.length} local reminder notifications`);
@@ -1317,7 +1360,90 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Send notification about parking restrictions
+   * Build enforcement risk context string from FOIA ticket analysis.
+   * Returns a concise, human-readable risk summary for notification bodies.
+   *
+   * 3 urgency tiers:
+   * - HIGH: "You're in the peak enforcement window" — urgent, actionable
+   * - MEDIUM: "Enforcement likely today" — awareness
+   * - LOW: informational only — light context
+   */
+  private buildEnforcementRiskContext(rawData: any): string | null {
+    const risk = rawData?.enforcementRisk;
+    if (!risk) return null;
+
+    const { urgency, risk_score, has_block_data, insight, in_peak_window,
+            peak_window, total_block_tickets, city_rank, top_violation,
+            current_hour_pct } = risk;
+
+    switch (urgency) {
+      case 'high': {
+        // Peak enforcement window — most actionable alert
+        const parts: string[] = [];
+        parts.push(`Risk: HIGH (${risk_score}/100)`);
+
+        if (in_peak_window && peak_window) {
+          const endFormatted = peak_window.end_hour > 12
+            ? `${peak_window.end_hour - 12}pm`
+            : peak_window.end_hour === 12 ? '12pm' : `${peak_window.end_hour}am`;
+          parts.push(`Peak enforcement window — ends at ${endFormatted}`);
+        }
+
+        if (has_block_data && total_block_tickets) {
+          const rankStr = city_rank ? ` (#${city_rank} most ticketed block)` : '';
+          parts.push(`${total_block_tickets.toLocaleString()} tickets issued here${rankStr}`);
+        }
+
+        if (current_hour_pct && current_hour_pct > 5) {
+          parts.push(`${current_hour_pct.toFixed(0)}% of this block's tickets happen at this hour`);
+        }
+
+        if (top_violation) {
+          parts.push(`Most common: ${top_violation}`);
+        }
+
+        return parts.join('\n');
+      }
+
+      case 'medium': {
+        // Enforcement likely today — moderate awareness
+        const parts: string[] = [];
+        parts.push(`Risk: MEDIUM (${risk_score}/100)`);
+
+        if (insight) {
+          // Use the server-generated insight which is already well-written
+          parts.push(insight);
+        } else if (has_block_data && total_block_tickets) {
+          parts.push(`${total_block_tickets.toLocaleString()} tickets on record for this block`);
+          if (top_violation) {
+            parts.push(`Most common: ${top_violation}`);
+          }
+        }
+
+        return parts.join('\n');
+      }
+
+      case 'low': {
+        // Informational — light context, don't overwhelm
+        if (!has_block_data) {
+          return 'Risk: LOW — Limited enforcement data for this block';
+        }
+
+        if (total_block_tickets && total_block_tickets > 50) {
+          return `Risk: LOW (${risk_score}/100) — ${total_block_tickets.toLocaleString()} tickets on record, but not during this time`;
+        }
+
+        return `Risk: LOW (${risk_score}/100)`;
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Send notification about parking restrictions.
+   * Now includes enforcement risk intelligence from 1.18M FOIA ticket records.
    */
   private async sendParkingNotification(
     result: {
@@ -1332,6 +1458,12 @@ class BackgroundTaskServiceClass {
 
     // Build the body with rule messages
     let body = `${result.address}${accuracyNote}\n${result.rules.map(r => r.message).join('\n')}`;
+
+    // Add enforcement risk intelligence
+    const riskContext = this.buildEnforcementRiskContext(rawData);
+    if (riskContext) {
+      body += `\n\n${riskContext}`;
+    }
 
     // Add upcoming context that isn't already in the active rules
     // (e.g., if there's a permit zone warning but also upcoming street cleaning)
@@ -1351,8 +1483,19 @@ class BackgroundTaskServiceClass {
       }
     }
 
+    // Determine urgency-aware title
+    const riskUrgency = rawData?.enforcementRisk?.urgency;
+    let title: string;
+    if (hasCritical) {
+      title = '⚠️ Parked — Restriction Active!';
+    } else if (riskUrgency === 'high') {
+      title = '⚠️ Parked — Peak Enforcement Window';
+    } else {
+      title = '⚠️ Parked — Heads Up';
+    }
+
     await notifee.displayNotification({
-      title: hasCritical ? '⚠️ Parked — Restriction Active!' : '⚠️ Parked — Heads Up',
+      title,
       body,
       android: {
         channelId: 'parking-monitoring',
@@ -1370,31 +1513,47 @@ class BackgroundTaskServiceClass {
 
   /**
    * Send notification that parking is safe.
-   * Includes upcoming restriction context so users know what's coming.
+   * Includes upcoming restriction context and enforcement risk intelligence.
    */
   private async sendSafeNotification(address: string, accuracy?: number, rawData?: any): Promise<void> {
     const accuracyNote = accuracy ? ` (GPS: ±${accuracy.toFixed(0)}m)` : '';
 
     let body = `${address}${accuracyNote}\nNo active restrictions right now.`;
 
+    // Add enforcement risk context even when "all clear" — users want to
+    // understand the risk profile of where they parked
+    const riskContext = this.buildEnforcementRiskContext(rawData);
+    if (riskContext) {
+      body += `\n\n${riskContext}`;
+    }
+
     // Append upcoming restrictions so users know what to watch for
     if (rawData) {
       const upcomingContext = this.buildUpcomingContext(rawData);
       if (upcomingContext) {
         body += `\n\nComing up:\n${upcomingContext}\nWe'll remind you before these start.`;
-      } else {
+      } else if (!riskContext) {
         body += ' You\'re good to park here!';
       }
-    } else {
+    } else if (!riskContext) {
       body += ' You\'re good to park here!';
     }
 
+    // Use risk-aware title for high urgency even when no active restriction
+    const riskUrgency = rawData?.enforcementRisk?.urgency;
+    const title = riskUrgency === 'high'
+      ? '⚠️ Parked — Peak Enforcement Area'
+      : '✅ Parked — All Clear';
+
     await notifee.displayNotification({
-      title: '✅ Parked — All Clear',
+      title,
       body,
       android: {
         channelId: 'parking-monitoring',
+        // Boost importance when high risk, even though technically "all clear"
+        importance: riskUrgency === 'high' ? AndroidImportance.HIGH : undefined,
         pressAction: { id: 'default' },
+        smallIcon: riskUrgency === 'high' ? 'ic_notification' : undefined,
       },
       ios: {
         sound: 'default',

@@ -170,8 +170,15 @@ class LocalNotificationServiceClass {
         hoursBefore = 0; // Time is pre-computed by BackgroundTaskService
         notificationId = `${NOTIFICATION_PREFIX.STREET_CLEANING}${Date.now()}`;
         channelId = 'reminders';
-        // Detect if this is the morning-of (7am) or night-before (9pm) notification
-        if (details?.includes('MOVE YOUR CAR NOW')) {
+        // Detect notification subtype from details content:
+        // 1. Enforcement risk follow-up (peak window reminder)
+        // 2. Morning-of street cleaning (7am, MOVE NOW)
+        // 3. Night-before street cleaning (9pm, plan ahead)
+        if (details?.includes('peak enforcement window')) {
+          title = '⚠️ Still in Peak Enforcement Window';
+          body = `${address}\n${details}`;
+          channelId = 'parking-alerts'; // High priority
+        } else if (details?.includes('MOVE YOUR CAR NOW')) {
           title = '🧹 Street Cleaning Today — Move Now!';
           body = `${address}\n${details || 'Street cleaning starts at 9am. Move your car NOW — $60 ticket.'}`;
           channelId = 'parking-alerts'; // Higher priority for urgent morning alert

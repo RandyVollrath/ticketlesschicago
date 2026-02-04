@@ -666,6 +666,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     heroAddress,
   );
 
+  // Override hero color for high-risk "all clear" — amber instead of green
+  const riskUrgency = lastParkingCheck?.rawApiData?.enforcementRisk?.urgency;
+  if (heroState === 'clear' && riskUrgency === 'high') {
+    heroConfig.bgColor = colors.warning; // amber — safe now but high enforcement area
+    heroConfig.title = 'Clear — High Risk Area';
+  }
+
   // Speed helper for debug (m/s to mph)
   const speedMph = (ms: number) => (ms * 2.237).toFixed(0);
 
@@ -968,6 +975,35 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               ) : (
                 <Text style={styles.heroExpandedText}>No restrictions. Park with peace of mind.</Text>
               )}
+
+              {/* Enforcement risk intelligence */}
+              {lastParkingCheck.rawApiData?.enforcementRisk && (() => {
+                const risk = lastParkingCheck.rawApiData.enforcementRisk;
+                const riskIcon = risk.urgency === 'high' ? 'shield-alert'
+                  : risk.urgency === 'medium' ? 'shield-half-full' : 'shield-check';
+                const riskLabel = risk.urgency === 'high' ? 'HIGH RISK'
+                  : risk.urgency === 'medium' ? 'MEDIUM RISK' : 'LOW RISK';
+                return (
+                  <View style={styles.heroRiskSection}>
+                    <View style={styles.heroRiskHeader}>
+                      <MaterialCommunityIcons name={riskIcon} size={14} color="rgba(255,255,255,0.9)" />
+                      <Text style={styles.heroRiskLabel}>
+                        {riskLabel} ({risk.risk_score}/100)
+                      </Text>
+                    </View>
+                    {risk.insight && (
+                      <Text style={styles.heroRiskInsight}>{risk.insight}</Text>
+                    )}
+                    {risk.has_block_data && risk.total_block_tickets && (
+                      <Text style={styles.heroRiskDetail}>
+                        {risk.total_block_tickets.toLocaleString()} tickets on record
+                        {risk.city_rank ? ` · #${risk.city_rank} citywide` : ''}
+                        {risk.top_violation ? ` · Top: ${risk.top_violation}` : ''}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })()}
               <View style={styles.heroActions}>
                 <TouchableOpacity
                   style={styles.heroActionButton}
@@ -1477,6 +1513,37 @@ const styles = StyleSheet.create({
     color: colors.white,
     opacity: 0.9,
     marginBottom: spacing.sm,
+  },
+  heroRiskSection: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+  },
+  heroRiskHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  heroRiskLabel: {
+    marginLeft: spacing.xs,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold as any,
+    color: colors.white,
+    letterSpacing: 0.5,
+  },
+  heroRiskInsight: {
+    fontSize: typography.sizes.xs,
+    color: colors.white,
+    opacity: 0.9,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  heroRiskDetail: {
+    fontSize: typography.sizes.xs,
+    color: colors.white,
+    opacity: 0.7,
+    marginTop: 2,
   },
   heroActions: {
     flexDirection: 'row',
