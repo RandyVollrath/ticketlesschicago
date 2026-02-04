@@ -13,6 +13,42 @@ import { checkAllParkingRestrictions, UnifiedParkingResult } from '../../../lib/
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { supabaseAdmin } from '../../../lib/supabase';
 
+/** Enforcement risk data from FOIA ticket analysis */
+interface EnforcementRisk {
+  /** 0-100 risk score */
+  risk_score: number;
+  /** 3-tier urgency: low (informational), medium (enforcement likely today), high (peak window NOW) */
+  urgency: 'low' | 'medium' | 'high';
+  /** Whether we have block-specific historical data */
+  has_block_data: boolean;
+  /** Normalized block address used for lookup */
+  block_address: string;
+  /** Total historical tickets on this block */
+  total_block_tickets?: number;
+  /** City-wide rank (1 = most ticketed block) */
+  city_rank?: number;
+  /** Whether current time is in the peak enforcement window */
+  in_peak_window?: boolean;
+  /** Peak enforcement window details */
+  peak_window?: {
+    start_hour: number;
+    end_hour: number;
+    hours_remaining: number;
+  };
+  /** % of this block's tickets that happen at the current hour */
+  current_hour_pct?: number;
+  /** Cumulative % of tickets issued by this hour */
+  cumulative_pct?: number;
+  /** Hourly ticket distribution {0: count, 1: count, ...} */
+  hourly_histogram?: Record<string, number>;
+  /** Day-of-week ticket distribution {0: count, ...} (0=Sun) */
+  dow_histogram?: Record<string, number>;
+  /** Most common violation type on this block */
+  top_violation?: string;
+  /** Human-readable risk insight */
+  insight: string;
+}
+
 interface MobileCheckParkingResponse {
   success: boolean;
   address: string;
@@ -50,6 +86,8 @@ interface MobileCheckParkingResponse {
     severity?: 'critical' | 'warning' | 'info' | 'none';
     restrictionSchedule?: string;
   };
+  /** Enforcement risk scoring based on 1.18M FOIA ticket records */
+  enforcementRisk?: EnforcementRisk;
   /** Map-snap metadata - if the GPS coordinate was snapped to a known street */
   locationSnap?: {
     wasSnapped: boolean;
@@ -153,6 +191,36 @@ export default async function handler(
     // Step 2: Check all parking restrictions using (possibly snapped) coordinates
     const result = await checkAllParkingRestrictions(checkLat, checkLng);
 
+    // Step 3: Compute enforcement risk score from FOIA ticket data.
+    // Uses the parsed address (street number + direction + name) to look up
+    // block-level enforcement profiles and combine with citywide hour/dow baselines.
+    let enforcementRisk: EnforcementRisk | undefined;
+    if (result.location.parsedAddress && supabaseAdmin) {
+      try {
+        const chicagoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+        const currentHour = chicagoNow.getHours();
+        const currentDow = chicagoNow.getDay(); // 0=Sun matches Postgres DOW
+
+        const { data: riskData, error: riskError } = await supabaseAdmin.rpc(
+          'compute_parking_risk',
+          {
+            p_street_number: String(result.location.parsedAddress.number),
+            p_street_direction: result.location.parsedAddress.direction || '',
+            p_street_name: result.location.parsedAddress.name || '',
+            p_current_hour: currentHour,
+            p_current_dow: currentDow,
+          }
+        );
+
+        if (!riskError && riskData) {
+          enforcementRisk = riskData as EnforcementRisk;
+        }
+      } catch (riskErr) {
+        // Risk scoring is non-critical — log and continue
+        console.warn('[check-parking] Risk scoring failed (non-fatal):', riskErr);
+      }
+    }
+
     // Transform to mobile API response format
     const response: MobileCheckParkingResponse = {
       success: true,
@@ -195,6 +263,9 @@ export default async function handler(
         severity: result.permitZone.severity,
         restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
       },
+
+      // Enforcement risk scoring from 1.18M FOIA ticket records
+      enforcementRisk,
 
       // Include snap metadata so mobile app knows what happened
       locationSnap: snapResult ? {
