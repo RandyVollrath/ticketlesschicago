@@ -202,6 +202,7 @@ export default function LandingPage() {
         {/* Desktop Nav */}
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }} className="desktop-nav">
           <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>How it works</a>
+          <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Check Your Street</Link>
           <a href="#pricing" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Pricing</a>
           <a href="#faq" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>FAQ</a>
           {user ? (
@@ -240,6 +241,7 @@ export default function LandingPage() {
           gap: '16px',
         }}>
           <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>How it works</a>
+          <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Check Your Street</Link>
           <a href="#pricing" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Pricing</a>
           <a href="#faq" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>FAQ</a>
           {user ? (
@@ -390,6 +392,66 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Free Tools Banner */}
+      <section style={{
+        padding: '0 5%',
+        maxWidth: '1200px',
+        margin: '0 auto 20px',
+      }}>
+        <Link href="/check-your-street" style={{ textDecoration: 'none' }}>
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '28px 32px',
+            borderRadius: '16px',
+            border: `1px solid ${COLORS.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '20px',
+            cursor: 'pointer',
+            transition: 'box-shadow 0.2s, transform 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(0,0,0,0.1)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontFamily: FONTS.heading, fontSize: '18px', fontWeight: 600, color: COLORS.primary, marginBottom: '4px' }}>
+                  Check Your Street
+                </div>
+                <div style={{ fontSize: '14px', color: COLORS.textMuted, lineHeight: 1.5 }}>
+                  See street cleaning schedules, snow ban routes, winter parking bans, and permit zones on an interactive map.
+                </div>
+              </div>
+            </div>
+            <div style={{ color: COLORS.textMuted, flexShrink: 0 }}>
+              <ArrowRight />
+            </div>
+          </div>
+        </Link>
       </section>
 
       {/* Data Section */}

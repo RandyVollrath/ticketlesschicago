@@ -77,6 +77,7 @@ export default function CheckYourStreet() {
   const [winterBanRoutes, setWinterBanRoutes] = useState<any[]>([])
   const [alternativeZones, setAlternativeZones] = useState<any[]>([])
   const [loadingAlternatives, setLoadingAlternatives] = useState(false)
+  const [permitZoneResult, setPermitZoneResult] = useState<{ hasPermitZone: boolean; zones: any[] } | null>(null)
 
   // Load map data on mount
   useEffect(() => {
@@ -168,18 +169,36 @@ export default function CheckYourStreet() {
     setError(null)
     setSearchResult(null)
     setHighlightZone(null)
+    setPermitZoneResult(null)
 
     try {
-      const response = await fetch(`/api/find-section?address=${encodeURIComponent(address)}`)
-      const data = await response.json()
+      // Fetch section data and permit zone data in parallel
+      const [sectionResponse, permitResponse] = await Promise.all([
+        fetch(`/api/find-section?address=${encodeURIComponent(address)}`),
+        fetch(`/api/check-permit-zone?address=${encodeURIComponent(address)}`).catch(() => null),
+      ])
 
-      if (!response.ok) {
+      const data = await sectionResponse.json()
+
+      if (!sectionResponse.ok) {
         setError(data.message || data.error || 'Address not found')
         return
       }
 
       setSearchResult(data)
       setHighlightZone({ ward: data.ward, section: data.section })
+
+      // Process permit zone result (non-blocking)
+      if (permitResponse && permitResponse.ok) {
+        try {
+          const permitData = await permitResponse.json()
+          if (permitData.hasPermitZone) {
+            setPermitZoneResult({ hasPermitZone: true, zones: permitData.zones || [] })
+          }
+        } catch {
+          // Permit zone check is non-critical
+        }
+      }
     } catch (err: any) {
       setError('Failed to search address. Please try again.')
       console.error('Search error:', err)
@@ -574,6 +593,50 @@ export default function CheckYourStreet() {
                   <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
                     <strong style={{ color: COLORS.graphite }}>{searchResult.snowRouteStreet}</strong> is subject to Chicago's 2-inch snow parking ban.
                     Parking prohibited year-round when 2+ inches of snow falls until streets are cleared.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Permit Zone Warning */}
+            {permitZoneResult?.hasPermitZone && permitZoneResult.zones.length > 0 && (
+              <div style={{
+                backgroundColor: 'white',
+                padding: '24px',
+                borderRadius: '16px',
+                marginBottom: '16px',
+                border: `1px solid ${COLORS.border}`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '16px'
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 8h4a2 2 0 0 1 0 4H9V8z"/>
+                    <path d="M9 12h3"/>
+                    <line x1="9" y1="16" x2="9" y2="12"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                    Residential Permit Parking Zone{permitZoneResult.zones.length > 1 ? 's' : ''}
+                  </div>
+                  <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
+                    This address is in permit parking zone{permitZoneResult.zones.length > 1 ? 's' : ''}{' '}
+                    <strong style={{ color: '#8B5CF6' }}>
+                      {permitZoneResult.zones.map((z: any) => z.zone || z.zone_number).join(', ')}
+                    </strong>.
+                    {' '}You may need a residential parking permit to park on this street. Check for posted signs.
                   </div>
                 </div>
               </div>
@@ -991,6 +1054,10 @@ export default function CheckYourStreet() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '28px', height: '4px', backgroundColor: '#00ff00', borderRadius: '2px' }}></div>
                 <span style={{ color: COLORS.slate }}><strong style={{ color: '#00cc00' }}>Green Line:</strong> Winter Ban</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '14px', height: '14px', backgroundColor: '#8B5CF6', borderRadius: '3px' }}></div>
+                <span style={{ color: COLORS.slate }}><strong style={{ color: '#8B5CF6' }}>Purple:</strong> Permit Zone</span>
               </div>
             </div>
           </div>
