@@ -31,7 +31,27 @@ export interface Coordinates {
   speed?: number | null;
 }
 
+/**
+ * Enhanced coordinates with confidence metadata from burst sampling
+ */
+export interface EnhancedCoordinates extends Coordinates {
+  /** Number of GPS samples that contributed to this position */
+  sampleCount: number;
+  /** Standard deviation of samples in meters - lower is better */
+  spreadMeters: number;
+  /** Confidence tier based on accuracy + sample consistency */
+  confidence: LocationConfidence;
+}
+
+export type LocationConfidence = 'high' | 'medium' | 'low' | 'very_low';
+
 export type LocationAccuracy = 'high' | 'balanced' | 'low';
+
+// Constants for burst sampling
+const BURST_MIN_SAMPLES = 3;
+const BURST_TARGET_SAMPLES = 8;
+const BURST_MAX_WAIT_MS = 10000; // 10 seconds of sampling
+const BURST_OUTLIER_THRESHOLD_METERS = 50; // discard samples >50m from median
 
 // Watch subscription ID for continuous tracking
 let watchId: number | null = null;
@@ -49,6 +69,8 @@ export interface ParkingCheckResult {
   address: string;
   rules: ParkingRule[];
   timestamp: number;
+  /** Raw API response data — used by BackgroundTaskService for scheduling advance reminders */
+  rawApiData?: any;
 }
 
 class LocationServiceClass {
@@ -254,64 +276,17 @@ class LocationServiceClass {
   /**
    * Get high-accuracy location by waiting for GPS to stabilize
    * This method waits for a position with accuracy better than the threshold
-   * or times out after the specified duration
+   * or times out after the specified duration.
+   *
+   * Returns plain Coordinates for backward compatibility.
+   * Use getParkingLocation() for the full burst-sampled + confidence result.
    */
   async getHighAccuracyLocation(
     targetAccuracyMeters: number = 50,
     maxWaitMs: number = 20000,
     forceNoCache: boolean = false
   ): Promise<Coordinates> {
-    // On Android, we need to prioritize accuracy over speed
-    // The forceLocationManager option means we use Android's LocationManager
-    // which can be slower but is more reliable than FusedLocationProvider
-    if (Platform.OS === 'android') {
-      log.info(`Android: Getting high accuracy location (target: ${targetAccuracyMeters}m, noCache: ${forceNoCache})`);
-
-      // Try high accuracy first - this is what we want
-      try {
-        const coords = await this.getCurrentLocation('high', forceNoCache);
-        const accuracy = coords.accuracy || 9999;
-        log.info(`Android: High accuracy returned ${accuracy.toFixed(1)}m`);
-
-        // If accuracy is good enough, return it
-        if (accuracy <= targetAccuracyMeters) {
-          return coords;
-        }
-
-        // If accuracy is poor (>500m), try balanced as it might do better
-        if (accuracy > 500) {
-          log.info('Android: Accuracy poor, trying balanced...');
-          try {
-            const balanced = await this.getCurrentLocation('balanced', forceNoCache);
-            const balancedAcc = balanced.accuracy || 9999;
-            log.info(`Android: Balanced returned ${balancedAcc.toFixed(1)}m`);
-            // Return whichever is better
-            return balancedAcc < accuracy ? balanced : coords;
-          } catch {
-            return coords; // Return high accuracy result even if poor
-          }
-        }
-
-        return coords;
-      } catch (highError) {
-        log.warn('Android: High accuracy failed, trying balanced', highError);
-      }
-
-      // Fallback to balanced
-      try {
-        const coords = await this.getCurrentLocation('balanced', forceNoCache);
-        log.info(`Android: Balanced fallback returned ${coords.accuracy?.toFixed(1) || 'unknown'}m`);
-        return coords;
-      } catch (balancedError) {
-        log.warn('Android: Balanced failed, trying low', balancedError);
-      }
-
-      // Final fallback: low accuracy
-      log.info('Android: Using low accuracy as last resort');
-      return this.getCurrentLocation('low', forceNoCache);
-    }
-
-    // iOS: Use watchPosition for better accuracy
+    // Use watchPosition on BOTH platforms for consistent burst behavior
     return new Promise((resolve, reject) => {
       let bestPosition: Coordinates | null = null;
       let resolved = false;
@@ -319,16 +294,20 @@ class LocationServiceClass {
 
       const options = {
         enableHighAccuracy: true,
-        distanceFilter: 0, // Get all updates
-        interval: 1000, // Android: check every second
-        fastestInterval: 500, // Android: accept faster updates
+        distanceFilter: 0,
+        interval: 1000,
+        fastestInterval: 500,
         forceRequestLocation: true,
-        forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
+        forceLocationManager: true,
         showLocationDialog: true,
       };
 
+      log.info(`Getting high accuracy location (target: ${targetAccuracyMeters}m, platform: ${Platform.OS})`);
+
       const id = Geolocation.watchPosition(
         (position: GeoPosition) => {
+          if (resolved) return;
+
           const coords: Coordinates = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -350,17 +329,31 @@ class LocationServiceClass {
           }
 
           // If we've achieved target accuracy, resolve immediately
-          if (coords.accuracy && coords.accuracy <= targetAccuracyMeters && !resolved) {
+          if (coords.accuracy && coords.accuracy <= targetAccuracyMeters) {
             resolved = true;
             Geolocation.clearWatch(id);
-            log.info(`Achieved target accuracy: ${coords.accuracy.toFixed(1)}m`);
+            log.info(`Achieved target accuracy: ${coords.accuracy.toFixed(1)}m in ${Date.now() - startTime}ms`);
+            this.cacheLocation(coords);
             resolve(coords);
           }
         },
         (error: GeoError) => {
           if (!resolved) {
+            resolved = true;
             Geolocation.clearWatch(id);
-            reject(error);
+            log.error('watchPosition error in getHighAccuracyLocation', { code: error.code, message: error.message });
+
+            // Return best position if we have one, otherwise fall back
+            if (bestPosition) {
+              log.info(`Watch errored but have best position: ${bestPosition.accuracy?.toFixed(1)}m`);
+              this.cacheLocation(bestPosition);
+              resolve(bestPosition);
+            } else {
+              // Fall back to single getCurrentPosition
+              this.getCurrentLocation('high', forceNoCache)
+                .then((coords) => { this.cacheLocation(coords); resolve(coords); })
+                .catch(reject);
+            }
           }
         },
         options
@@ -373,17 +366,269 @@ class LocationServiceClass {
           Geolocation.clearWatch(id);
 
           if (bestPosition) {
-            log.info(`Timeout reached, using best position: ${bestPosition.accuracy?.toFixed(1)}m accuracy`);
+            log.info(`Timeout reached (${maxWaitMs}ms), using best: ${bestPosition.accuracy?.toFixed(1)}m`);
+            this.cacheLocation(bestPosition);
             resolve(bestPosition);
           } else {
-            // Fall back to regular getCurrentLocation
             this.getCurrentLocation('balanced', forceNoCache)
-              .then(resolve)
+              .then((coords) => { this.cacheLocation(coords); resolve(coords); })
               .catch(reject);
           }
         }
       }, maxWaitMs);
     });
+  }
+
+  /**
+   * Burst-sample GPS for parking location.
+   *
+   * Collects multiple GPS fixes over ~10 seconds, discards outliers,
+   * and returns the weighted-average position with confidence metadata.
+   *
+   * This is the primary method to call when the car parks (BT disconnects).
+   * It produces a much more accurate "where am I parked" coordinate than
+   * a single getCurrentPosition call.
+   */
+  async getParkingLocation(): Promise<EnhancedCoordinates> {
+    return new Promise((resolve, reject) => {
+      const samples: Coordinates[] = [];
+      let resolved = false;
+      const startTime = Date.now();
+
+      const options = {
+        enableHighAccuracy: true,
+        distanceFilter: 0,
+        interval: 800,
+        fastestInterval: 400,
+        forceRequestLocation: true,
+        forceLocationManager: true,
+        showLocationDialog: true,
+      };
+
+      log.info('Starting burst sampling for parking location');
+
+      const id = Geolocation.watchPosition(
+        (position: GeoPosition) => {
+          if (resolved) return;
+
+          const coords: Coordinates = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            altitude: position.coords.altitude,
+            altitudeAccuracy: position.coords.altitudeAccuracy,
+            heading: position.coords.heading,
+            speed: position.coords.speed,
+          };
+
+          // Only keep samples with reported accuracy under 100m
+          if (coords.accuracy && coords.accuracy <= 100) {
+            samples.push(coords);
+            log.debug(`Burst sample ${samples.length}: ${coords.accuracy.toFixed(1)}m`, {
+              lat: coords.latitude.toFixed(6),
+              lng: coords.longitude.toFixed(6),
+            });
+          }
+
+          // Resolve early if we have enough high-quality samples
+          if (samples.length >= BURST_TARGET_SAMPLES) {
+            resolved = true;
+            Geolocation.clearWatch(id);
+            const result = this.processBurstSamples(samples);
+            log.info(`Burst complete (early): ${samples.length} samples, ${result.accuracy?.toFixed(1)}m accuracy, confidence=${result.confidence}`);
+            this.cacheLocation(result);
+            resolve(result);
+          }
+        },
+        (error: GeoError) => {
+          if (!resolved) {
+            log.warn('Burst sampling watch error', { code: error.code, message: error.message });
+            // Don't reject yet - wait for timeout to use whatever samples we have
+          }
+        },
+        options
+      );
+
+      // After BURST_MAX_WAIT_MS, process whatever we have
+      setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        Geolocation.clearWatch(id);
+
+        if (samples.length >= BURST_MIN_SAMPLES) {
+          const result = this.processBurstSamples(samples);
+          log.info(`Burst complete (timeout): ${samples.length} samples, ${result.accuracy?.toFixed(1)}m accuracy, confidence=${result.confidence}`);
+          this.cacheLocation(result);
+          resolve(result);
+        } else if (samples.length > 0) {
+          // Not enough for proper averaging - use single best
+          const best = samples.reduce((a, b) =>
+            (a.accuracy || 9999) < (b.accuracy || 9999) ? a : b
+          );
+          const result: EnhancedCoordinates = {
+            ...best,
+            sampleCount: samples.length,
+            spreadMeters: 0,
+            confidence: this.computeConfidence(best.accuracy || 9999, 0, samples.length),
+          };
+          log.info(`Burst incomplete: ${samples.length} samples, using best at ${best.accuracy?.toFixed(1)}m`);
+          this.cacheLocation(result);
+          resolve(result);
+        } else {
+          // No samples at all - fall back to single-shot
+          log.warn('Burst sampling got 0 samples, falling back to single-shot');
+          this.getHighAccuracyLocation(50, 15000, true)
+            .then((coords) => {
+              resolve({
+                ...coords,
+                sampleCount: 1,
+                spreadMeters: 0,
+                confidence: this.computeConfidence(coords.accuracy || 9999, 0, 1),
+              });
+            })
+            .catch(reject);
+        }
+      }, BURST_MAX_WAIT_MS);
+    });
+  }
+
+  /**
+   * Process burst samples: discard outliers, compute weighted average.
+   *
+   * Algorithm:
+   * 1. Compute the median position (robust to outliers)
+   * 2. Discard any sample > BURST_OUTLIER_THRESHOLD_METERS from median
+   * 3. Compute accuracy-weighted average of remaining samples
+   * 4. Calculate spread (standard deviation) as a consistency metric
+   * 5. Assign a confidence tier
+   */
+  private processBurstSamples(samples: Coordinates[]): EnhancedCoordinates {
+    if (samples.length === 0) {
+      throw new Error('Cannot process empty sample set');
+    }
+
+    if (samples.length === 1) {
+      return {
+        ...samples[0],
+        sampleCount: 1,
+        spreadMeters: 0,
+        confidence: this.computeConfidence(samples[0].accuracy || 9999, 0, 1),
+      };
+    }
+
+    // Step 1: Find median position (sort by lat, pick middle)
+    const sortedByLat = [...samples].sort((a, b) => a.latitude - b.latitude);
+    const sortedByLng = [...samples].sort((a, b) => a.longitude - b.longitude);
+    const midIdx = Math.floor(samples.length / 2);
+    const medianLat = sortedByLat[midIdx].latitude;
+    const medianLng = sortedByLng[midIdx].longitude;
+
+    // Step 2: Discard outliers
+    const filtered = samples.filter((s) => {
+      const dist = this.haversineDistance(s.latitude, s.longitude, medianLat, medianLng);
+      return dist <= BURST_OUTLIER_THRESHOLD_METERS;
+    });
+
+    // If too aggressive, fall back to all samples
+    const usable = filtered.length >= BURST_MIN_SAMPLES ? filtered : samples;
+
+    // Step 3: Accuracy-weighted average
+    // Weight = 1 / accuracy^2 (inverse variance weighting)
+    let totalWeight = 0;
+    let weightedLat = 0;
+    let weightedLng = 0;
+    let bestAccuracy = 9999;
+    let bestHeading: number | null = null;
+    let bestSpeed: number | null = null;
+
+    for (const s of usable) {
+      const acc = s.accuracy || 50; // default 50m if missing
+      const weight = 1 / (acc * acc);
+      totalWeight += weight;
+      weightedLat += s.latitude * weight;
+      weightedLng += s.longitude * weight;
+
+      if (acc < bestAccuracy) {
+        bestAccuracy = acc;
+        bestHeading = s.heading ?? null;
+        bestSpeed = s.speed ?? null;
+      }
+    }
+
+    const avgLat = weightedLat / totalWeight;
+    const avgLng = weightedLng / totalWeight;
+
+    // Step 4: Compute spread (RMS distance from average)
+    let sumSquaredDist = 0;
+    for (const s of usable) {
+      const dist = this.haversineDistance(s.latitude, s.longitude, avgLat, avgLng);
+      sumSquaredDist += dist * dist;
+    }
+    const spreadMeters = Math.sqrt(sumSquaredDist / usable.length);
+
+    // The effective accuracy is the better of: best reported accuracy, or the spread
+    // This accounts for cases where GPS reports good accuracy but samples scatter
+    const effectiveAccuracy = Math.max(Math.min(bestAccuracy, spreadMeters * 2), spreadMeters);
+
+    // Step 5: Confidence
+    const confidence = this.computeConfidence(effectiveAccuracy, spreadMeters, usable.length);
+
+    return {
+      latitude: avgLat,
+      longitude: avgLng,
+      accuracy: effectiveAccuracy,
+      altitude: usable[0].altitude,
+      altitudeAccuracy: usable[0].altitudeAccuracy,
+      heading: bestHeading,
+      speed: bestSpeed,
+      sampleCount: usable.length,
+      spreadMeters,
+      confidence,
+    };
+  }
+
+  /**
+   * Compute confidence tier based on accuracy, spread, and sample count.
+   *
+   * high:     accuracy <= 15m AND spread <= 10m AND samples >= 3
+   * medium:   accuracy <= 30m AND spread <= 25m AND samples >= 2
+   * low:      accuracy <= 75m
+   * very_low: everything else
+   */
+  private computeConfidence(
+    accuracyMeters: number,
+    spreadMeters: number,
+    sampleCount: number
+  ): LocationConfidence {
+    if (accuracyMeters <= 15 && spreadMeters <= 10 && sampleCount >= 3) {
+      return 'high';
+    }
+    if (accuracyMeters <= 30 && spreadMeters <= 25 && sampleCount >= 2) {
+      return 'medium';
+    }
+    if (accuracyMeters <= 75) {
+      return 'low';
+    }
+    return 'very_low';
+  }
+
+  /**
+   * Haversine distance between two lat/lng points in meters.
+   * Used for outlier detection and spread calculation.
+   */
+  private haversineDistance(
+    lat1: number, lng1: number,
+    lat2: number, lng2: number
+  ): number {
+    const R = 6371000; // Earth radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   /**
@@ -550,6 +795,23 @@ class LocationServiceClass {
     }
   }
 
+  /**
+   * Get confidence description for UI display.
+   * Uses the richer EnhancedCoordinates confidence tier if available.
+   */
+  getConfidenceDescription(confidence: LocationConfidence): { label: string; color: string; caveat: string } {
+    switch (confidence) {
+      case 'high':
+        return { label: 'High Confidence', color: '#10B981', caveat: '' };
+      case 'medium':
+        return { label: 'Good', color: '#10B981', caveat: '' };
+      case 'low':
+        return { label: 'Approximate', color: '#F59E0B', caveat: 'Restrictions shown may include nearby streets.' };
+      case 'very_low':
+        return { label: 'Low Accuracy', color: '#EF4444', caveat: 'Location uncertain. Please verify restrictions manually.' };
+    }
+  }
+
   async checkParkingRules(coords: Coordinates): Promise<ParkingRule[]> {
     const result = await this.checkParkingLocation(coords);
     return result.rules;
@@ -567,7 +829,12 @@ class LocationServiceClass {
       log.warn(coordValidation.warning);
     }
 
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}`;
+    // Pass accuracy to server so it can decide whether to snap-to-street
+    const accuracyParam = coords.accuracy ? `&accuracy=${coords.accuracy.toFixed(1)}` : '';
+    const confidenceParam = (coords as EnhancedCoordinates).confidence
+      ? `&confidence=${(coords as EnhancedCoordinates).confidence}`
+      : '';
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(
@@ -665,6 +932,7 @@ class LocationServiceClass {
       address: data?.address || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
       rules,
       timestamp: Date.now(),
+      rawApiData: data, // Preserve for BackgroundTaskService advance reminder scheduling
     };
   }
 

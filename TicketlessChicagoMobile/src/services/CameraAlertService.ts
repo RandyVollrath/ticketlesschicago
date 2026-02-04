@@ -11,8 +11,10 @@
  * 3. Calculates exact distance via Haversine formula
  * 4. Filters by direction: only alerts if user's heading matches camera's
  *    monitored approach directions (±45° tolerance)
- * 5. Speaks via TTS when within alert radius (~100m)
- * 6. Tracks alerted cameras to avoid repeating until user moves away (~300m)
+ * 4b. Filters by bearing: only alerts if camera is AHEAD of user (±30° cone),
+ *     not to the side on a parallel street
+ * 5. Speaks via TTS when within speed-adaptive alert radius (150-250m)
+ * 6. Tracks alerted cameras to avoid repeating until user moves away (~400m)
  *
  * TTS Strategy:
  * - iOS: Uses native SpeechModule (AVSpeechSynthesizer) — zero pod dependencies
@@ -105,15 +107,30 @@ async function stopSpeech(): Promise<void> {
 // ============================================================================
 
 /**
- * Distance in meters at which to trigger the alert.
- * 100m ≈ 7 seconds at 30 mph — enough time to react.
- * Stays well under Chicago's ~200m block width so cameras
- * on a parallel street won't trigger false alerts.
+ * Base alert distance — used when speed is unknown or very low.
+ * At higher speeds the radius scales up automatically to give ~10 seconds of warning.
  */
-const ALERT_RADIUS_METERS = 100;
+const BASE_ALERT_RADIUS_METERS = 150;
+
+/**
+ * Maximum alert radius cap to prevent false alerts from parallel streets.
+ * Chicago blocks are ~200m wide, so 250m keeps us safely on the correct street.
+ */
+const MAX_ALERT_RADIUS_METERS = 250;
+
+/**
+ * Target warning time in seconds. The alert radius = speed × this value,
+ * clamped between BASE and MAX. This gives a consistent ~10-second warning
+ * regardless of speed.
+ *
+ * At 30 mph (13.4 m/s): 13.4 × 10 = 134m → alert at ~134m
+ * At 35 mph (15.6 m/s): 15.6 × 10 = 156m → alert at ~156m
+ * At 45 mph (20.1 m/s): 20.1 × 10 = 201m → alert at ~201m
+ */
+const TARGET_WARNING_SECONDS = 10;
 
 /** Distance user must move from camera before it can re-alert */
-const COOLDOWN_RADIUS_METERS = 300;
+const COOLDOWN_RADIUS_METERS = 400;
 
 /** Minimum speed (m/s) to trigger alerts - ~10 mph, filters out walking */
 const MIN_SPEED_MPS = 4.5;
@@ -123,10 +140,10 @@ const MIN_ANNOUNCE_INTERVAL_MS = 5000;
 
 /**
  * Bounding box size in degrees for fast pre-filter.
- * ~150m at Chicago latitude — slightly larger than ALERT_RADIUS_METERS
- * to ensure no cameras at the edge are missed.
+ * ~280m at Chicago latitude — larger than MAX_ALERT_RADIUS_METERS
+ * to ensure no cameras at the edge are missed at any speed.
  */
-const BBOX_DEGREES = 0.0015;
+const BBOX_DEGREES = 0.0025;
 
 /** AsyncStorage key for camera alerts enabled setting */
 const STORAGE_KEY_ENABLED = 'cameraAlertsEnabled';
@@ -159,6 +176,20 @@ const APPROACH_TO_HEADING: Record<string, number> = {
  * NB (0°), headings from 315° to 45° will match.
  */
 const HEADING_TOLERANCE_DEGREES = 45;
+
+/**
+ * Maximum bearing-off-heading (degrees) for a camera to be considered
+ * "ahead" of the user. This is the angle between the user's travel
+ * direction and the bearing FROM the user TO the camera.
+ *
+ * 30° means the camera must be within a ±30° cone in front of the user.
+ * A camera one block to the side on a parallel street (~90° off heading)
+ * is filtered out. This prevents false alerts from parallel streets
+ * even when the alert radius is large (150-250m).
+ *
+ * Fail-open when heading is unavailable (heading = -1).
+ */
+const MAX_BEARING_OFF_HEADING_DEGREES = 30;
 
 /**
  * Check if the user's GPS heading matches any of the camera's approach directions.
@@ -364,8 +395,11 @@ class CameraAlertServiceClass {
     // Clear cooldowns for cameras we've moved far from
     this.clearDistantCooldowns(latitude, longitude);
 
+    // Compute speed-adaptive alert radius: faster = earlier warning
+    const alertRadius = this.getAlertRadius(speed);
+
     // Find cameras within alert radius that match our travel direction
-    const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading);
+    const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius);
 
     if (nearbyCameras.length === 0) return;
 
@@ -377,11 +411,23 @@ class CameraAlertServiceClass {
       if (this.alertedCameras.has(index)) continue;
 
       // New camera in range - speak alert
-      this.announceCamera(camera, distance);
+      this.announceCamera(camera, distance, speed);
       this.alertedCameras.set(index, { index, alertedAt: now });
       this.lastAnnounceTime = now;
       break; // Only announce one per GPS update
     }
+  }
+
+  /**
+   * Compute the alert radius based on current speed.
+   * Scales linearly with speed to give ~TARGET_WARNING_SECONDS of warning.
+   * Clamped between BASE and MAX to avoid false alerts at high speeds
+   * and ensure a minimum useful range at low speeds.
+   */
+  private getAlertRadius(speed: number): number {
+    if (speed < 0) return BASE_ALERT_RADIUS_METERS; // Speed unknown
+    const dynamicRadius = speed * TARGET_WARNING_SECONDS;
+    return Math.max(BASE_ALERT_RADIUS_METERS, Math.min(dynamicRadius, MAX_ALERT_RADIUS_METERS));
   }
 
   // --------------------------------------------------------------------------
@@ -392,14 +438,17 @@ class CameraAlertServiceClass {
    * Fast bounding box + Haversine search for nearby cameras.
    * Pre-filters with bounding box (O(n) but very fast comparison),
    * then computes exact distance only for candidates.
-   * Finally filters by heading direction match.
+   * Filters by: (1) heading vs camera approach direction, and
+   * (2) bearing-to-camera vs heading (camera must be AHEAD, not to the side).
    *
    * @param heading GPS heading in degrees (0-360), -1 if unavailable
+   * @param alertRadius Speed-adaptive alert distance in meters
    */
   private findNearbyCameras(
     lat: number,
     lng: number,
-    heading: number = -1
+    heading: number = -1,
+    alertRadius: number = BASE_ALERT_RADIUS_METERS
   ): Array<{ index: number; camera: CameraLocation; distance: number }> {
     const results: Array<{ index: number; camera: CameraLocation; distance: number }> = [];
 
@@ -417,12 +466,16 @@ class CameraAlertServiceClass {
 
       // Exact distance
       const distance = this.haversineMeters(lat, lng, cam.latitude, cam.longitude);
-      if (distance <= ALERT_RADIUS_METERS) {
+      if (distance <= alertRadius) {
         // Direction filter: only alert if user is traveling in a direction
         // this camera monitors. Fail-open if heading unavailable.
-        if (isHeadingMatch(heading, cam.approaches)) {
-          results.push({ index: i, camera: cam, distance });
-        }
+        if (!isHeadingMatch(heading, cam.approaches)) continue;
+
+        // Bearing filter: only alert if camera is ahead of us (within ±30° cone).
+        // This prevents false alerts from cameras on parallel streets one block over.
+        if (!this.isCameraAhead(lat, lng, cam.latitude, cam.longitude, heading)) continue;
+
+        results.push({ index: i, camera: cam, distance });
       }
     }
 
@@ -449,14 +502,17 @@ class CameraAlertServiceClass {
   // TTS Announcement
   // --------------------------------------------------------------------------
 
-  private announceCamera(camera: CameraLocation, distanceMeters: number): void {
+  private announceCamera(camera: CameraLocation, distanceMeters: number, speed: number = -1): void {
     const type = camera.type === 'speed' ? 'Speed camera' : 'Red light camera';
     const dist = Math.round(distanceMeters);
 
     // Keep it short and clear for driving
     const message = `${type} ahead, ${dist} meters`;
 
-    log.info(`CAMERA ALERT: ${message} - ${camera.address}`);
+    // Log with speed context for debugging alert timing
+    const speedMph = speed >= 0 ? Math.round(speed * 2.237) : -1;
+    const secondsToCamera = speed > 0 ? (distanceMeters / speed).toFixed(1) : '?';
+    log.info(`CAMERA ALERT: ${message} - ${camera.address} (speed: ${speedMph} mph, ~${secondsToCamera}s away, alertRadius: ${this.getAlertRadius(speed)}m)`);
 
     speak(message);
   }
@@ -490,6 +546,56 @@ class CameraAlertServiceClass {
 
   private toRad(deg: number): number {
     return (deg * Math.PI) / 180;
+  }
+
+  /**
+   * Calculate the initial bearing (forward azimuth) from point 1 to point 2.
+   * Returns degrees 0-360 (0°=North, 90°=East, 180°=South, 270°=West).
+   */
+  private bearingTo(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+  ): number {
+    const dLng = this.toRad(lng2 - lng1);
+    const lat1Rad = this.toRad(lat1);
+    const lat2Rad = this.toRad(lat2);
+
+    const y = Math.sin(dLng) * Math.cos(lat2Rad);
+    const x =
+      Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+      Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+
+    const bearingRad = Math.atan2(y, x);
+    return ((bearingRad * 180) / Math.PI + 360) % 360;
+  }
+
+  /**
+   * Check if a camera is roughly ahead of the user (within their forward cone).
+   * Computes the bearing from the user to the camera, then checks if that bearing
+   * is within ±MAX_BEARING_OFF_HEADING_DEGREES of the user's GPS heading.
+   *
+   * This filters out cameras on parallel streets to the side.
+   * Fail-open if heading is unavailable.
+   */
+  private isCameraAhead(
+    userLat: number,
+    userLng: number,
+    camLat: number,
+    camLng: number,
+    heading: number
+  ): boolean {
+    // No heading — fail open
+    if (heading < 0) return true;
+
+    const bearingToCamera = this.bearingTo(userLat, userLng, camLat, camLng);
+
+    // Angular difference accounting for wrap-around
+    let diff = Math.abs(heading - bearingToCamera);
+    if (diff > 180) diff = 360 - diff;
+
+    return diff <= MAX_BEARING_OFF_HEADING_DEGREES;
   }
 
   // --------------------------------------------------------------------------

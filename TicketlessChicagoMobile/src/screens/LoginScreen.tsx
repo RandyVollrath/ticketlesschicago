@@ -175,6 +175,9 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             style={styles.resendButton}
             onPress={handleResendLink}
             disabled={loading}
+            accessibilityLabel="Resend magic link"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: loading }}
           >
             {loading ? (
               <ActivityIndicator color={colors.primary} />
@@ -186,6 +189,8 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           <TouchableOpacity
             style={styles.changeEmailButton}
             onPress={() => setMagicLinkSent(false)}
+            accessibilityLabel="Use a different email"
+            accessibilityRole="button"
           >
             <Text style={styles.changeEmailText}>Use a different email</Text>
           </TouchableOpacity>
@@ -218,7 +223,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             </Text>
 
             {error && (
-              <View style={styles.errorContainer}>
+              <View style={styles.errorContainer} accessibilityRole="alert" accessibilityLiveRegion="assertive">
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
@@ -239,6 +244,8 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoFocus
+                accessibilityLabel="Email address"
+                accessibilityHint="Enter your email to receive a magic link"
               />
             </View>
 
@@ -248,6 +255,9 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                 style={[styles.appleButton, appleLoading && styles.buttonDisabled]}
                 onPress={handleAppleSignIn}
                 disabled={appleLoading || googleLoading || loading}
+                accessibilityLabel="Continue with Apple"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: appleLoading || googleLoading || loading }}
               >
                 {appleLoading ? (
                   <ActivityIndicator color={colors.white} />
@@ -265,6 +275,9 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
               onPress={handleGoogleSignIn}
               disabled={googleLoading || appleLoading || loading}
+              accessibilityLabel="Continue with Google"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: googleLoading || appleLoading || loading }}
             >
               {googleLoading ? (
                 <ActivityIndicator color={colors.textPrimary} />
@@ -288,6 +301,10 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               style={[styles.primaryButton, loading && styles.buttonDisabled]}
               onPress={handleMagicLink}
               disabled={loading || googleLoading}
+              accessibilityLabel="Send magic link"
+              accessibilityRole="button"
+              accessibilityHint="Sends a sign-in link to your email"
+              accessibilityState={{ disabled: loading || googleLoading }}
             >
               {loading ? (
                 <ActivityIndicator color={colors.white} />

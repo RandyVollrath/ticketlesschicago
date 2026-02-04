@@ -49,45 +49,67 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const authStateObj = AuthService.getAuthState();
   const session = authStateObj?.session;
 
-  // Build the injected JS - pass the full session so the website's
-  // Supabase client can use it (including refresh_token)
-  const sessionJson = session ? JSON.stringify(session).replace(/'/g, "\\'") : '';
+  // Primary auth mechanism: pass tokens in the URL hash fragment.
+  // The web Supabase client has detectSessionInUrl: true, so during its
+  // initialize() call it parses the hash, calls setSession(), and the user
+  // is authenticated before any React component mounts.  This is the same
+  // mechanism Supabase uses for OAuth redirect callbacks — no JS injection
+  // timing issues, works on both Android and iOS.
+  const webViewUrl = session
+    ? `${SETTINGS_URL}#access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}&expires_in=${session.expires_in}&expires_at=${session.expires_at || Math.floor(Date.now() / 1000) + session.expires_in}&token_type=bearer`
+    : SETTINGS_URL;
 
-  const injectedJavaScript = session
-    ? `
-      (function() {
-        try {
-          var key = 'sb-dzhqolbhuqdcpngdayuq-auth-token';
-          var existing = localStorage.getItem(key);
-          if (!existing) {
-            localStorage.setItem(key, '${sessionJson}');
-            window.location.reload();
+  // CSS & cleanup — runs AFTER page loads.
+  // Hides site chrome and fixes layout for narrow mobile viewports.
+  const injectedJavaScript = `
+    (function() {
+      try {
+        // Hide the dark header div that sits between <nav> and <main>
+        var main = document.querySelector('main');
+        if (main) {
+          var el = main.previousElementSibling;
+          while (el) {
+            el.style.display = 'none';
+            el = el.previousElementSibling;
           }
+        }
 
-          // Hide site navigation/header/footer for cleaner in-app experience
-          var style = document.createElement('style');
-          style.textContent = 'nav, header, footer, .site-header, .site-footer, .site-nav { display: none !important; } body { padding-top: 0 !important; }';
-          document.head.appendChild(style);
+        var style = document.createElement('style');
+        style.textContent = [
+          /* --- hide site chrome --- */
+          'nav, footer, .site-header, .site-footer, .site-nav { display: none !important; }',
+          'body { padding-top: 0 !important; margin: 0 !important; }',
 
-          // Scroll to notification preferences section if visible
-          setTimeout(function() {
-            var el = document.querySelector('[data-section="notifications"]');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }, 1500);
-        } catch(e) { console.error('Injection error:', e); }
-      })();
-      true;
-    `
-    : `
-      (function() {
-        try {
-          var style = document.createElement('style');
-          style.textContent = 'nav, header, footer, .site-header, .site-footer, .site-nav { display: none !important; } body { padding-top: 0 !important; }';
-          document.head.appendChild(style);
-        } catch(e) {}
-      })();
-      true;
-    `;
+          /* --- full-width layout for WebView --- */
+          'main { max-width: 100% !important; padding: 10px 10px 24px !important; margin-top: 0 !important; }',
+
+          /* --- tighter card padding --- */
+          'main > div { margin-bottom: 14px !important; }',
+          'main > div > div:last-child { padding: 16px !important; }',
+          'main > div > div:first-child { padding: 12px 16px !important; }',
+          'main > div > div:first-child h3 { font-size: 16px !important; }',
+
+          /* --- toggle rows: prevent label from pushing toggle off-screen --- */
+          'main > div > div:last-child > div { gap: 8px !important; }',
+          'main > div > div:last-child > div > div:first-child { min-width: 0; flex: 1 1 0%; }',
+          'main > div > div:last-child > div > div:first-child h4 { font-size: 14px !important; word-break: break-word; }',
+          'main > div > div:last-child > div > div:first-child p { font-size: 12px !important; word-break: break-word; }',
+
+          /* --- day-selector checkboxes: tighter fit --- */
+          'main label[style*="cursor: pointer"] { padding: 6px 8px !important; font-size: 13px !important; gap: 6px !important; }',
+
+          /* --- renewal date / flex-wrap sections: stack on narrow screens --- */
+          'main div[style*="flex-wrap: wrap"] { gap: 8px !important; }',
+          'main div[style*="flex: 1 1"] { flex: 1 1 100% !important; }',
+
+          /* --- inputs inside cards --- */
+          'main input, main select { font-size: 14px !important; padding: 8px 10px !important; }',
+        ].join(' ');
+        document.head.appendChild(style);
+      } catch(e) { console.error('Injection error:', e); }
+    })();
+    true;
+  `;
 
   if (!isAuthenticated) {
     return (
@@ -109,6 +131,9 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             style={styles.signInButton}
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.8}
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to sign-in screen"
           >
             <Text style={styles.signInButtonText}>Sign In</Text>
           </TouchableOpacity>
@@ -124,7 +149,8 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {!isLoading && !hasError && (
           <TouchableOpacity
             onPress={() => webViewRef.current?.reload()}
-            accessibilityLabel="Refresh"
+            accessibilityLabel="Refresh alerts settings"
+            accessibilityRole="button"
           >
             <MaterialCommunityIcons
               name="refresh"
@@ -136,7 +162,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
 
       {hasError ? (
-        <View style={styles.errorContainer}>
+        <View style={styles.errorContainer} accessibilityRole="alert">
           <MaterialCommunityIcons
             name="wifi-off"
             size={48}
@@ -154,6 +180,8 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               webViewRef.current?.reload();
             }}
             activeOpacity={0.8}
+            accessibilityLabel="Retry loading settings"
+            accessibilityRole="button"
           >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -161,7 +189,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       ) : (
         <WebView
           ref={webViewRef}
-          source={{ uri: SETTINGS_URL }}
+          source={{ uri: webViewUrl }}
           style={styles.webView}
           injectedJavaScript={injectedJavaScript}
           onLoadStart={() => setIsLoading(true)}

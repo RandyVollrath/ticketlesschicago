@@ -11,6 +11,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkAllParkingRestrictions, UnifiedParkingResult } from '../../../lib/unified-parking-checker';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { supabaseAdmin } from '../../../lib/supabase';
 
 interface MobileCheckParkingResponse {
   success: boolean;
@@ -49,6 +50,15 @@ interface MobileCheckParkingResponse {
     severity?: 'critical' | 'warning' | 'info' | 'none';
     restrictionSchedule?: string;
   };
+  /** Map-snap metadata - if the GPS coordinate was snapped to a known street */
+  locationSnap?: {
+    wasSnapped: boolean;
+    snapDistanceMeters: number;
+    streetName: string | null;
+    snapSource: string | null;
+    /** The original (pre-snap) coordinates */
+    originalCoordinates: { latitude: number; longitude: number };
+  };
   timestamp: string;
   error?: string;
 }
@@ -78,15 +88,76 @@ export default async function handler(
     return res.status(400).json({ error: 'Coordinates must be within Chicago area' });
   }
 
+  // Accept optional accuracy and confidence from mobile client
+  const accuracyMeters = parseFloat(
+    (req.method === 'GET' ? req.query.accuracy : req.body.accuracy_meters) as string
+  ) || undefined;
+  const confidence = (req.method === 'GET' ? req.query.confidence : req.body.confidence) as string || undefined;
+
   try {
-    // Single unified check - ONE geocode, ONE batch of queries
-    const result = await checkAllParkingRestrictions(latitude, longitude);
+    // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
+    // This corrects for urban canyon drift (10-30m) that can put you on the wrong block.
+    // Only snap if accuracy is reasonable (under 75m) - very poor GPS shouldn't be "corrected".
+    let checkLat = latitude;
+    let checkLng = longitude;
+    let snapResult: {
+      wasSnapped: boolean;
+      snapDistanceMeters: number;
+      streetName: string | null;
+      snapSource: string | null;
+    } | null = null;
+
+    const shouldSnap = !accuracyMeters || accuracyMeters <= 75;
+
+    if (shouldSnap && supabaseAdmin) {
+      try {
+        // Use a search radius proportional to reported accuracy, clamped 25-50m
+        const searchRadius = accuracyMeters
+          ? Math.min(Math.max(accuracyMeters * 1.5, 25), 50)
+          : 40;
+
+        const { data: snapData, error: snapError } = await supabaseAdmin.rpc(
+          'snap_to_nearest_street',
+          {
+            user_lat: latitude,
+            user_lng: longitude,
+            search_radius_meters: searchRadius,
+          }
+        );
+
+        if (!snapError && snapData && snapData.length > 0 && snapData[0].was_snapped) {
+          const snap = snapData[0];
+
+          // Only apply snap if the correction is meaningful but not too large.
+          // If snap distance > reported accuracy, GPS was probably right and we'd be making it worse.
+          const maxSnapDistance = accuracyMeters ? Math.max(accuracyMeters, 30) : 40;
+
+          if (snap.snap_distance_meters <= maxSnapDistance) {
+            checkLat = snap.snapped_lat;
+            checkLng = snap.snapped_lng;
+            snapResult = {
+              wasSnapped: true,
+              snapDistanceMeters: snap.snap_distance_meters,
+              streetName: snap.street_name,
+              snapSource: snap.snap_source,
+            };
+            console.log(`[check-parking] Snapped ${snap.snap_distance_meters.toFixed(1)}m to ${snap.street_name} (${snap.snap_source})`);
+          }
+        }
+      } catch (snapErr) {
+        // Snap is optional - log and continue with original coordinates
+        console.warn('[check-parking] Snap-to-street failed (non-fatal):', snapErr);
+      }
+    }
+
+    // Step 2: Check all parking restrictions using (possibly snapped) coordinates
+    const result = await checkAllParkingRestrictions(checkLat, checkLng);
 
     // Transform to mobile API response format
     const response: MobileCheckParkingResponse = {
       success: true,
       address: result.location.address,
-      coordinates: { latitude, longitude },
+      coordinates: { latitude: checkLat, longitude: checkLng },
 
       streetCleaning: {
         hasRestriction: result.streetCleaning.found,
@@ -124,6 +195,12 @@ export default async function handler(
         severity: result.permitZone.severity,
         restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
       },
+
+      // Include snap metadata so mobile app knows what happened
+      locationSnap: snapResult ? {
+        ...snapResult,
+        originalCoordinates: { latitude, longitude },
+      } : undefined,
 
       timestamp: result.timestamp,
     };

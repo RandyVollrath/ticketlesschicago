@@ -38,6 +38,14 @@ const MIN_DISCONNECT_DURATION_MS = 30 * 1000; // 30 seconds (to avoid false posi
 const DEPARTURE_CONFIRMATION_DELAY_MS = 120 * 1000; // 2 minutes after car starts
 const MIN_PARKING_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes - prevent duplicate checks
 
+// Periodic rescan: re-check parking at last location every 4 hours while parked
+const RESCAN_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+// Snow forecast check interval (every 2 hours while parked on a snow route)
+const SNOW_FORECAST_CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
+// OpenWeatherMap-compatible API for Chicago snow forecast (free tier)
+const CHICAGO_WEATHER_LAT = 41.8781;
+const CHICAGO_WEATHER_LNG = -87.6298;
+
 interface BackgroundTaskState {
   isInitialized: boolean;
   isMonitoring: boolean;
@@ -46,11 +54,12 @@ interface BackgroundTaskState {
   lastParkingCheckTime: number | null;
   // Departure tracking
   pendingDepartureConfirmation: {
-    parkingHistoryId: string;
+    parkingHistoryId: string | null; // null = local-only mode (API failed)
     parkedLocation: { latitude: number; longitude: number };
     clearedAt: string;
     retryCount: number;
     scheduledAt: number; // timestamp when confirmation was scheduled
+    localHistoryItemId?: string; // local history item to update (local-only mode)
   } | null;
 }
 
@@ -78,6 +87,11 @@ class BackgroundTaskServiceClass {
   // Native BT monitor service event subscriptions (Android only)
   private nativeBtDisconnectSub: any = null;
   private nativeBtConnectSub: any = null;
+  // Periodic rescan timer (re-checks parking rules at last parked location)
+  private rescanInterval: ReturnType<typeof setInterval> | null = null;
+  // Snow forecast monitoring timers
+  private snowForecastInterval: ReturnType<typeof setInterval> | null = null;
+  private snowForecastInitialTimeout: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Initialize the background task service
@@ -224,6 +238,10 @@ class BackgroundTaskServiceClass {
       this.departureConfirmationTimeout = null;
     }
 
+    // Stop parking-while-parked timers
+    this.stopRescanTimer();
+    this.stopSnowForecastMonitoring();
+
     this.disconnectCallback = null;
     this.reconnectCallback = null;
     await this.saveState();
@@ -365,6 +383,10 @@ class BackgroundTaskServiceClass {
       } else {
         log.info(`Saved car device found: ${savedDevice.name} (${savedDevice.address || savedDevice.id})`);
 
+        // Ensure BluetoothService has the saved device ID loaded so that
+        // setCarConnected() and isConnectedToCar() work correctly.
+        await BluetoothService.ensureSavedDeviceLoaded();
+
         // Try native foreground service first (reliable, survives background)
         if (BluetoothMonitorModule) {
           try {
@@ -394,6 +416,9 @@ class BackgroundTaskServiceClass {
               'BtMonitorCarDisconnected',
               async (event: any) => {
                 log.info('NATIVE BT DISCONNECT EVENT received', event);
+                // Sync JS-side BluetoothService state so isConnectedToCar()
+                // returns false and HomeScreen's connectionListeners are notified
+                BluetoothService.setCarConnected(false);
                 this.stopCameraAlerts();
 
                 // Brief delay to filter out transient BT glitches (e.g., signal
@@ -414,6 +439,7 @@ class BackgroundTaskServiceClass {
 
                 if (reconnected || osReconnected) {
                   log.info('BT reconnected within 10s — ignoring transient disconnect (not parked)');
+                  BluetoothService.setCarConnected(true);
                   this.startCameraAlerts();
                   return;
                 }
@@ -431,6 +457,9 @@ class BackgroundTaskServiceClass {
               'BtMonitorCarConnected',
               async (event: any) => {
                 log.info('NATIVE BT CONNECT EVENT - car reconnected', event);
+                // Sync JS-side BluetoothService state so isConnectedToCar()
+                // returns true and HomeScreen's connectionListeners are notified
+                BluetoothService.setCarConnected(true);
                 this.startCameraAlerts();
                 await this.handleCarReconnection();
               }
@@ -448,6 +477,7 @@ class BackgroundTaskServiceClass {
                   log.info('Found pending disconnect but car is currently CONNECTED — ignoring stale event');
                 } else {
                   log.info('Found PENDING disconnect from native service — car confirmed disconnected, triggering parking check');
+                  BluetoothService.setCarConnected(false);
                   await this.sendDiagnosticNotification(
                     'Pending BT Disconnect',
                     'Bluetooth disconnect was detected while app was sleeping. Checking parking now...'
@@ -456,11 +486,24 @@ class BackgroundTaskServiceClass {
                 }
               } else if (pending?.pendingConnect) {
                 log.info('Found PENDING connect from native service');
+                BluetoothService.setCarConnected(true);
                 this.startCameraAlerts();
                 await this.handleCarReconnection();
               }
             } catch (pendingError) {
               log.warn('Error checking pending BT events:', pendingError);
+            }
+
+            // Sync initial connection state from native service to JS-side
+            // BluetoothService. This ensures isConnectedToCar() returns the
+            // correct value and HomeScreen's BT indicator shows the right icon
+            // immediately after startup (before any ACL events fire).
+            try {
+              const initiallyConnected = await BluetoothMonitorModule.isCarConnected();
+              BluetoothService.setCarConnected(initiallyConnected);
+              log.info(`Initial BT state from native service: ${initiallyConnected ? 'CONNECTED' : 'NOT connected'}`);
+            } catch (e) {
+              log.debug('Could not get initial BT state from native service:', e);
             }
 
             // Pre-cache GPS location periodically while car is connected.
@@ -822,15 +865,16 @@ class BackgroundTaskServiceClass {
         // handleCarDisconnection clears the cache, but we also guard here.
         log.info(`Getting GPS location... (Platform: ${Platform.OS}, appState: ${AppState.currentState})`);
 
-        // Strategy 1: Try high accuracy GPS (fresh fix at actual parking spot)
-        // forceNoCache=true ensures the OS doesn't return a stale position from driving
+        // Strategy 1: Burst-sample GPS for parking location
+        // Collects 3-8 GPS fixes over ~10s, discards outliers, returns weighted average.
+        // Massively improves accuracy vs single getCurrentPosition, especially in urban canyons.
         try {
-          const timeout = Platform.OS === 'android' ? 25000 : 15000;
-          coords = await LocationService.getHighAccuracyLocation(50, timeout, true);
-          gpsSource = `high-accuracy (${coords.accuracy?.toFixed(1)}m)`;
-          log.info(`Got high-accuracy location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1)}m`);
+          const burstResult = await LocationService.getParkingLocation();
+          coords = burstResult;
+          gpsSource = `burst-${burstResult.sampleCount}x (${burstResult.accuracy?.toFixed(1)}m, spread=${burstResult.spreadMeters.toFixed(1)}m, confidence=${burstResult.confidence})`;
+          log.info(`Burst-sampled parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1)}m [${burstResult.sampleCount} samples, ${burstResult.spreadMeters.toFixed(1)}m spread, confidence=${burstResult.confidence}]`);
         } catch (gpsError) {
-          log.warn('High accuracy GPS failed:', gpsError);
+          log.warn('Burst sampling failed:', gpsError);
 
           // Strategy 2: Retry with balanced accuracy
           try {
@@ -924,8 +968,8 @@ class BackgroundTaskServiceClass {
       try {
         const fcmToken = await PushNotificationService.getToken();
         if (fcmToken && AuthService.isAuthenticated()) {
-          // Get the raw API response data for mapping to server fields
-          const rawData = await this.getRawParkingData(result);
+          // Use raw API response data for mapping to server fields
+          const rawData = result.rawApiData || await this.getRawParkingData(result);
           await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
         } else {
           log.debug('Skipping server save: no FCM token or not authenticated');
@@ -939,17 +983,37 @@ class BackgroundTaskServiceClass {
       this.state.lastParkingCheckTime = Date.now();
       await this.saveState();
 
+      // Save parked coordinates for periodic rescan and snow monitoring
+      await this.saveParkedCoords(coords, result.address, result.rawApiData);
+
+      // Start periodic rescan timer (re-checks restrictions every 4 hours)
+      this.startRescanTimer();
+
+      // If parked on a snow route, start monitoring local weather
+      if (result.rawApiData?.twoInchSnowBan || result.rules?.some((r: any) => r.type === 'snow_route')) {
+        this.startSnowForecastMonitoring();
+      }
+
       // Check if user is parked in their own permit zone — if so, filter it out
       const filteredResult = await this.filterOwnPermitZone(result);
 
       // Send notification — always notify so the user knows the scan ran
+      const rawData = result.rawApiData || await this.getRawParkingData(result);
       if (filteredResult.rules.length > 0) {
-        await this.sendParkingNotification(filteredResult, coords.accuracy);
-
-        // Schedule local notifications for upcoming restrictions
-        await this.scheduleRestrictionReminders(filteredResult, coords);
+        await this.sendParkingNotification(filteredResult, coords.accuracy, rawData);
       } else {
-        await this.sendSafeNotification(filteredResult.address, coords.accuracy);
+        await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData);
+      }
+
+      // Schedule advance reminder notifications for upcoming restrictions.
+      // IMPORTANT: Always call this, even when rules.length === 0, because
+      // the spot may be clear NOW but have upcoming restrictions (e.g., street
+      // cleaning tomorrow). Use rawApiData which has the full response including
+      // UPCOMING timing, not the filtered rules array.
+      try {
+        await this.scheduleRestrictionReminders(rawData, coords);
+      } catch (reminderError) {
+        log.warn('Failed to schedule restriction reminders (non-fatal):', reminderError);
       }
 
       log.info('=== PARKING CHECK COMPLETE ===', {
@@ -1069,7 +1133,7 @@ class BackgroundTaskServiceClass {
 
     // Street cleaning reminders — 9pm night before + 7am morning of
     if (result.streetCleaning?.hasRestriction && result.streetCleaning?.nextDate) {
-      // Street cleaning typically starts at 9am on the scheduled day
+      const schedule = result.streetCleaning.schedule || '9am–3pm (estimated)';
       const dateParts = result.streetCleaning.nextDate.split('-');
       if (dateParts.length === 3) {
         const cleaningDate = new Date(
@@ -1080,6 +1144,9 @@ class BackgroundTaskServiceClass {
         );
 
         if (!isNaN(cleaningDate.getTime()) && cleaningDate.getTime() > Date.now()) {
+          const dayName = cleaningDate.toLocaleDateString('en-US', { weekday: 'long' });
+          const monthDay = cleaningDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
           // Notification 1: 9pm the night before cleaning
           const nightBefore9pm = new Date(cleaningDate);
           nightBefore9pm.setDate(nightBefore9pm.getDate() - 1);
@@ -1088,9 +1155,9 @@ class BackgroundTaskServiceClass {
           if (nightBefore9pm.getTime() > Date.now()) {
             restrictions.push({
               type: 'street_cleaning',
-              restrictionStartTime: nightBefore9pm, // We set the time directly
-              address: result.address,
-              details: result.streetCleaning.schedule || 'Street cleaning tomorrow - move your car tonight',
+              restrictionStartTime: nightBefore9pm,
+              address: result.address || '',
+              details: `Street cleaning ${dayName} ${monthDay}, ${schedule}. Move your car tonight to avoid a $60 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -1104,8 +1171,8 @@ class BackgroundTaskServiceClass {
             restrictions.push({
               type: 'street_cleaning',
               restrictionStartTime: morningOf7am,
-              address: result.address,
-              details: 'Street cleaning starts at 9am - MOVE YOUR CAR NOW',
+              address: result.address || '',
+              details: `Street cleaning starts at 9am today (${schedule}). MOVE YOUR CAR NOW — $60 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -1133,8 +1200,8 @@ class BackgroundTaskServiceClass {
           restrictions.push({
             type: 'winter_ban',
             restrictionStartTime: next9pm,
-            address: result.address,
-            details: 'Winter overnight parking ban starts at 3am - move before 3am!',
+            address: result.address || '',
+            details: 'Winter overnight parking ban 3am–7am. Move before 3am or risk towing ($150+).',
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -1170,11 +1237,13 @@ class BackgroundTaskServiceClass {
       }
 
       if (next7am.getTime() > Date.now()) {
+        const zoneName = result.permitZone.zoneName || 'Permit zone';
+        const schedule = result.permitZone.restrictionSchedule || 'Mon–Fri 8am–6pm (estimated)';
         restrictions.push({
           type: 'permit_zone',
           restrictionStartTime: next7am,
-          address: result.address,
-          details: `${result.permitZone.zoneName || 'Permit zone'} - enforcement starts at 8am`,
+          address: result.address || '',
+          details: `${zoneName} — enforcement: ${schedule}. Move by 8am or risk a $60 ticket.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
@@ -1191,6 +1260,63 @@ class BackgroundTaskServiceClass {
   }
 
   /**
+   * Build a human-readable summary of upcoming restrictions from the raw API data.
+   * This tells the user WHAT is coming and WHEN, even when they're currently safe.
+   */
+  private buildUpcomingContext(rawData: any): string {
+    const parts: string[] = [];
+
+    // Street cleaning upcoming
+    if (rawData?.streetCleaning?.hasRestriction && rawData.streetCleaning.nextDate) {
+      const schedule = rawData.streetCleaning.schedule || '9am–3pm (estimated)';
+      const nextDate = rawData.streetCleaning.nextDate;
+      // Format the date nicely (e.g., "Feb 5")
+      try {
+        const dateParts = nextDate.split('-');
+        if (dateParts.length === 3) {
+          const d = new Date(
+            parseInt(dateParts[0], 10),
+            parseInt(dateParts[1], 10) - 1,
+            parseInt(dateParts[2], 10)
+          );
+          const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+          const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          parts.push(`🧹 Street cleaning ${dayName} ${monthDay}, ${schedule} — $60 ticket`);
+        } else {
+          parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $60 ticket`);
+        }
+      } catch {
+        parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $60 ticket`);
+      }
+    }
+
+    // Winter overnight ban (active on this street — happens nightly Dec-Apr 3am-7am)
+    if (rawData?.winterOvernightBan?.active) {
+      parts.push('❄️ Winter ban street — no parking 3am–7am, tow risk ($150+)');
+    }
+
+    // Snow route (street is a designated snow route, even if no snow now)
+    // The twoInchSnowBan.active field only means snow HAS fallen. The message
+    // field mentions snow route status regardless.
+    if (rawData?.twoInchSnowBan?.active) {
+      parts.push('🌨️ 2-inch snow ban ACTIVE — move now or risk towing');
+    }
+
+    // Permit zone
+    if (rawData?.permitZone?.inPermitZone) {
+      const zone = rawData.permitZone.zoneName || 'this zone';
+      const schedule = rawData.permitZone.restrictionSchedule || 'check posted signs';
+      if (rawData.permitZone.permitRequired) {
+        parts.push(`🅿️ Permit zone ${zone} enforced now — ${schedule}`);
+      } else {
+        parts.push(`🅿️ Permit zone ${zone} — enforcement: ${schedule}`);
+      }
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
    * Send notification about parking restrictions
    */
   private async sendParkingNotification(
@@ -1198,19 +1324,41 @@ class BackgroundTaskServiceClass {
       address: string;
       rules: Array<{ message: string; severity: string }>;
     },
-    accuracy?: number
+    accuracy?: number,
+    rawData?: any
   ): Promise<void> {
     const hasCritical = result.rules.some(r => r.severity === 'critical');
     const accuracyNote = accuracy ? ` (GPS: ${accuracy.toFixed(0)}m)` : '';
 
+    // Build the body with rule messages
+    let body = `${result.address}${accuracyNote}\n${result.rules.map(r => r.message).join('\n')}`;
+
+    // Add upcoming context that isn't already in the active rules
+    // (e.g., if there's a permit zone warning but also upcoming street cleaning)
+    if (rawData) {
+      const upcomingContext = this.buildUpcomingContext(rawData);
+      // Filter out lines that are already covered by active rules
+      const activeTypes = result.rules.map((r: any) => r.type || '');
+      const extraLines = upcomingContext.split('\n').filter(line => {
+        if (line.includes('Street cleaning') && activeTypes.includes('street_cleaning')) return false;
+        if (line.includes('Winter ban') && activeTypes.includes('winter_ban')) return false;
+        if (line.includes('snow ban') && activeTypes.includes('snow_route')) return false;
+        if (line.includes('Permit zone') && activeTypes.includes('permit_zone')) return false;
+        return true;
+      });
+      if (extraLines.length > 0) {
+        body += '\n\nAlso:\n' + extraLines.join('\n');
+      }
+    }
+
     await notifee.displayNotification({
       title: hasCritical ? '⚠️ Parked — Restriction Active!' : '⚠️ Parked — Heads Up',
-      body: `${result.address}${accuracyNote}\n${result.rules.map(r => r.message).join('\n')}`,
+      body,
       android: {
         channelId: 'parking-monitoring',
         importance: AndroidImportance.HIGH,
         pressAction: { id: 'default' },
-        smallIcon: 'ic_notification', // You'll need to add this icon
+        smallIcon: 'ic_notification',
       },
       ios: {
         sound: 'default',
@@ -1221,13 +1369,29 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Send notification that parking is safe
+   * Send notification that parking is safe.
+   * Includes upcoming restriction context so users know what's coming.
    */
-  private async sendSafeNotification(address: string, accuracy?: number): Promise<void> {
+  private async sendSafeNotification(address: string, accuracy?: number, rawData?: any): Promise<void> {
     const accuracyNote = accuracy ? ` (GPS: ±${accuracy.toFixed(0)}m)` : '';
+
+    let body = `${address}${accuracyNote}\nNo active restrictions right now.`;
+
+    // Append upcoming restrictions so users know what to watch for
+    if (rawData) {
+      const upcomingContext = this.buildUpcomingContext(rawData);
+      if (upcomingContext) {
+        body += `\n\nComing up:\n${upcomingContext}\nWe'll remind you before these start.`;
+      } else {
+        body += ' You\'re good to park here!';
+      }
+    } else {
+      body += ' You\'re good to park here!';
+    }
+
     await notifee.displayNotification({
       title: '✅ Parked — All Clear',
-      body: `${address}${accuracyNote}\nNo active restrictions. You're good to park here!`,
+      body,
       android: {
         channelId: 'parking-monitoring',
         pressAction: { id: 'default' },
@@ -1430,12 +1594,22 @@ class BackgroundTaskServiceClass {
     await LocalNotificationService.cancelAllScheduledNotifications();
     log.info('Cancelled scheduled parking reminders');
 
-    // Clear stale parking data from AsyncStorage so HomeScreen doesn't show old results
+    // Stop periodic rescan and snow monitoring
+    this.stopRescanTimer();
+    this.stopSnowForecastMonitoring();
+
+    // Clear parked state data
     try {
-      await AsyncStorage.removeItem(StorageKeys.LAST_PARKING_LOCATION);
-      log.info('Cleared stale parking data from AsyncStorage');
+      await AsyncStorage.multiRemove([
+        StorageKeys.LAST_PARKING_LOCATION,
+        StorageKeys.LAST_PARKED_COORDS,
+        StorageKeys.RESCAN_LAST_RUN,
+        StorageKeys.SNOW_FORECAST_LAST_CHECK,
+        StorageKeys.SNOW_FORECAST_NOTIFIED,
+      ]);
+      log.info('Cleared parking data and rescan/snow state from AsyncStorage');
     } catch (e) {
-      log.warn('Failed to clear stale parking data', e);
+      log.warn('Failed to clear parking data', e);
     }
 
     // Call the reconnect callback if provided (tells HomeScreen to clear UI)
@@ -1443,17 +1617,19 @@ class BackgroundTaskServiceClass {
       this.reconnectCallback();
     }
 
-    // Clear the parked location and get history ID for departure confirmation
+    // Try server-side clear first, fall back to local-only departure tracking
+    let serverSucceeded = false;
+
     try {
       const response = await LocationService.clearParkedLocation();
 
       if (response.parking_history_id && response.parked_location) {
-        log.info('Parked location cleared, scheduling departure confirmation', {
+        log.info('Parked location cleared via server, scheduling departure confirmation', {
           historyId: response.parking_history_id,
           delayMs: DEPARTURE_CONFIRMATION_DELAY_MS,
         });
 
-        // Store pending departure confirmation
+        // Store pending departure confirmation (server mode)
         this.state.pendingDepartureConfirmation = {
           parkingHistoryId: response.parking_history_id,
           parkedLocation: response.parked_location,
@@ -1462,12 +1638,43 @@ class BackgroundTaskServiceClass {
           scheduledAt: Date.now(),
         };
         await this.saveState();
-
-        // Schedule departure confirmation after delay
         this.scheduleDepartureConfirmation();
+        serverSucceeded = true;
       }
     } catch (error) {
-      log.error('Failed to clear parked location on reconnect', error);
+      log.warn('Server clear-parked-location failed (will use local fallback)', error);
+    }
+
+    // Local-only fallback: use the most recent parking history item's coords
+    // This ensures departure tracking works even without network or auth
+    if (!serverSucceeded) {
+      try {
+        const recentItem = await ParkingHistoryService.getMostRecent();
+        if (recentItem && recentItem.coords) {
+          log.info('Using local-only departure tracking fallback', {
+            historyItemId: recentItem.id,
+            parkedAt: `${recentItem.coords.latitude.toFixed(6)}, ${recentItem.coords.longitude.toFixed(6)}`,
+          });
+
+          this.state.pendingDepartureConfirmation = {
+            parkingHistoryId: null, // null = local-only mode
+            parkedLocation: {
+              latitude: recentItem.coords.latitude,
+              longitude: recentItem.coords.longitude,
+            },
+            clearedAt: new Date().toISOString(),
+            retryCount: 0,
+            scheduledAt: Date.now(),
+            localHistoryItemId: recentItem.id,
+          };
+          await this.saveState();
+          this.scheduleDepartureConfirmation();
+        } else {
+          log.warn('No recent parking history item found for local departure tracking');
+        }
+      } catch (localError) {
+        log.error('Local departure tracking fallback also failed', localError);
+      }
     }
   }
 
@@ -1489,8 +1696,11 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Confirm departure by capturing current location
-   * This proves the user was no longer at their parking spot at this time
+   * Confirm departure by capturing current location.
+   * Two modes:
+   *   1. Server mode (parkingHistoryId != null): call confirm-departure API + update local history
+   *   2. Local-only mode (parkingHistoryId == null): calculate distance locally + update local history
+   * Local-only mode ensures departure tracking works even without network or auth.
    */
   private async confirmDeparture(): Promise<void> {
     if (!this.state.pendingDepartureConfirmation) {
@@ -1499,9 +1709,13 @@ class BackgroundTaskServiceClass {
     }
 
     const pending = this.state.pendingDepartureConfirmation;
+    const isLocalOnly = !pending.parkingHistoryId;
 
     try {
-      log.info('Confirming departure...', { attempt: pending.retryCount + 1 });
+      log.info('Confirming departure...', {
+        attempt: pending.retryCount + 1,
+        mode: isLocalOnly ? 'local-only' : 'server',
+      });
 
       // Get current location with high accuracy
       let coords;
@@ -1513,33 +1727,76 @@ class BackgroundTaskServiceClass {
         coords = await LocationService.getLocationWithRetry(3);
       }
 
-      // Call the confirm-departure API
-      const result = await LocationService.confirmDeparture(
-        pending.parkingHistoryId,
-        coords.latitude,
-        coords.longitude,
-        coords.accuracy
-      );
+      let distanceMeters: number;
+      let isConclusive: boolean;
 
-      log.info('Departure confirmed:', {
-        distance: result.distance_from_parked_meters,
-        isConclusive: result.is_conclusive,
-      });
+      if (isLocalOnly) {
+        // Local-only mode: calculate distance from parking spot ourselves
+        distanceMeters = this.haversineDistance(
+          pending.parkedLocation.latitude,
+          pending.parkedLocation.longitude,
+          coords.latitude,
+          coords.longitude
+        );
+        // Consider conclusive if moved more than 100m from parking spot
+        isConclusive = distanceMeters > 100;
 
-      // Save departure data to the most recent parking history entry
+        log.info('Local departure calculation:', {
+          distanceMeters: Math.round(distanceMeters),
+          isConclusive,
+        });
+
+        // Also try to send to server as a best-effort (non-blocking)
+        // This way if auth/network recovered, server gets the data too
+        this.tryServerDepartureConfirmation(coords, pending).catch(() => {});
+      } else {
+        // Server mode: call the confirm-departure API
+        const result = await LocationService.confirmDeparture(
+          pending.parkingHistoryId!,
+          coords.latitude,
+          coords.longitude,
+          coords.accuracy
+        );
+
+        distanceMeters = result.distance_from_parked_meters;
+        isConclusive = result.is_conclusive;
+
+        log.info('Server departure confirmed:', {
+          distance: distanceMeters,
+          isConclusive,
+        });
+      }
+
+      // Save departure data to the correct parking history entry
       try {
-        const recentItem = await ParkingHistoryService.getMostRecent();
-        if (recentItem) {
-          await ParkingHistoryService.updateItem(recentItem.id, {
+        const targetItemId = pending.localHistoryItemId;
+        if (targetItemId) {
+          // Local-only mode: update the specific history item we tracked
+          await ParkingHistoryService.updateItem(targetItemId, {
             departure: {
               confirmedAt: Date.now(),
-              distanceMeters: result.distance_from_parked_meters,
-              isConclusive: result.is_conclusive,
+              distanceMeters,
+              isConclusive,
               latitude: coords.latitude,
               longitude: coords.longitude,
             },
           });
-          log.info('Departure data saved to history item', recentItem.id);
+          log.info('Departure data saved to history item (local mode)', targetItemId);
+        } else {
+          // Server mode: update the most recent history item
+          const recentItem = await ParkingHistoryService.getMostRecent();
+          if (recentItem) {
+            await ParkingHistoryService.updateItem(recentItem.id, {
+              departure: {
+                confirmedAt: Date.now(),
+                distanceMeters,
+                isConclusive,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              },
+            });
+            log.info('Departure data saved to history item (server mode)', recentItem.id);
+          }
         }
       } catch (historyError) {
         log.warn('Failed to save departure to history (non-critical)', historyError);
@@ -1549,13 +1806,11 @@ class BackgroundTaskServiceClass {
       this.state.pendingDepartureConfirmation = null;
       await this.saveState();
 
-      // Notify user if departure is conclusive
-      if (result.is_conclusive) {
-        await this.sendDepartureConfirmedNotification(result.distance_from_parked_meters);
+      // Log result (notifications are silent/internal only)
+      if (isConclusive) {
+        await this.sendDepartureConfirmedNotification(distanceMeters);
       } else {
-        // Not conclusive - user hasn't moved far enough yet
-        // Send a softer notification
-        await this.sendDepartureRecordedNotification(result.distance_from_parked_meters);
+        await this.sendDepartureRecordedNotification(distanceMeters);
       }
     } catch (error) {
       log.error('Failed to confirm departure', error);
@@ -1581,24 +1836,100 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Log departure recorded (not shown to user — internal tracking only)
+   * Best-effort: try to also send departure data to the server even in local-only mode.
+   * If auth/network recovered since the initial failure, the server gets the data too.
+   */
+  private async tryServerDepartureConfirmation(
+    coords: { latitude: number; longitude: number; accuracy?: number },
+    pending: NonNullable<BackgroundTaskState['pendingDepartureConfirmation']>
+  ): Promise<void> {
+    try {
+      if (!AuthService.isAuthenticated()) return;
+      const response = await LocationService.clearParkedLocation();
+      if (response.parking_history_id) {
+        await LocationService.confirmDeparture(
+          response.parking_history_id,
+          coords.latitude,
+          coords.longitude,
+          coords.accuracy
+        );
+        log.info('Best-effort server departure confirmation succeeded');
+      }
+    } catch (e) {
+      // Expected to fail sometimes — that's fine, local data is already saved
+      log.debug('Best-effort server departure confirmation failed (expected)', e);
+    }
+  }
+
+  /**
+   * Calculate distance between two lat/lng points using the Haversine formula.
+   * Returns distance in meters.
+   */
+  private haversineDistance(
+    lat1: number, lng1: number,
+    lat2: number, lng2: number
+  ): number {
+    const R = 6371000; // Earth radius in meters
+    const dLat = this.toRad(lat2 - lat1);
+    const dLng = this.toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRad(deg: number): number {
+    return (deg * Math.PI) / 180;
+  }
+
+  /**
+   * Notify user: departure recorded but still near parking spot
    */
   private async sendDepartureRecordedNotification(distanceMeters: number): Promise<void> {
     log.info(`Departure recorded: ${distanceMeters}m from parking spot`);
+    try {
+      await notifee.displayNotification({
+        title: 'Departure Recorded',
+        body: `You're ${Math.round(distanceMeters)}m from your parking spot. This record can help contest tickets.`,
+        android: {
+          channelId: 'parking-monitoring',
+          pressAction: { id: 'default' },
+          smallIcon: 'ic_notification',
+        },
+      });
+    } catch (e) {
+      log.debug('Failed to show departure recorded notification', e);
+    }
   }
 
   /**
-   * Log departure tracking failure (not shown to user)
+   * Notify user: departure tracking failed (all retries exhausted)
    */
   private async sendDepartureFailedNotification(): Promise<void> {
     log.warn('Departure tracking failed — could not record departure location');
+    // Silent — don't bother user with failures
   }
 
   /**
-   * Log departure confirmed (not shown to user)
+   * Notify user: departure confirmed, moved significantly from parking spot
    */
   private async sendDepartureConfirmedNotification(distanceMeters: number): Promise<void> {
     log.info(`Departure confirmed: moved ${distanceMeters}m from parking spot`);
+    try {
+      await notifee.displayNotification({
+        title: 'Departure Confirmed',
+        body: `Recorded ${Math.round(distanceMeters)}m from your parking spot. Saved to your history for ticket contesting.`,
+        android: {
+          channelId: 'parking-monitoring',
+          pressAction: { id: 'default' },
+          smallIcon: 'ic_notification',
+        },
+      });
+    } catch (e) {
+      log.debug('Failed to show departure confirmed notification', e);
+    }
   }
 
   /**
@@ -1623,6 +1954,350 @@ class BackgroundTaskServiceClass {
    */
   hasPendingDepartureConfirmation(): boolean {
     return this.state.pendingDepartureConfirmation !== null;
+  }
+
+  // ==========================================================================
+  // Periodic Rescan — re-check parking restrictions at last parked location
+  // ==========================================================================
+
+  /**
+   * Save the parked coordinates so periodic rescan can re-check later.
+   */
+  private async saveParkedCoords(
+    coords: { latitude: number; longitude: number },
+    address: string,
+    rawApiData?: any
+  ): Promise<void> {
+    try {
+      await AsyncStorage.setItem(StorageKeys.LAST_PARKED_COORDS, JSON.stringify({
+        lat: coords.latitude,
+        lng: coords.longitude,
+        address,
+        parkedAt: new Date().toISOString(),
+        onSnowRoute: !!(rawApiData?.twoInchSnowBan || rawApiData?.snowRoute),
+      }));
+    } catch (e) {
+      log.warn('Failed to save parked coords for rescan', e);
+    }
+  }
+
+  /**
+   * Start a 4-hour recurring timer to re-check parking restrictions.
+   * Catches changed conditions: new snow ban, approaching street cleaning day, etc.
+   */
+  private startRescanTimer(): void {
+    this.stopRescanTimer();
+
+    // First rescan after 4 hours
+    this.rescanInterval = setInterval(async () => {
+      await this.performRescan();
+    }, RESCAN_INTERVAL_MS);
+
+    log.info('Rescan timer started (every 4 hours while parked)');
+  }
+
+  private stopRescanTimer(): void {
+    if (this.rescanInterval) {
+      clearInterval(this.rescanInterval);
+      this.rescanInterval = null;
+    }
+  }
+
+  /**
+   * Re-check parking restrictions at the last parked location.
+   * If conditions changed, send a new notification and reschedule reminders.
+   */
+  private async performRescan(): Promise<void> {
+    try {
+      const parkedJson = await AsyncStorage.getItem(StorageKeys.LAST_PARKED_COORDS);
+      if (!parkedJson) {
+        log.debug('Rescan skipped — no parked coords saved');
+        return;
+      }
+
+      const parked = JSON.parse(parkedJson);
+      log.info('Performing periodic rescan at last parked location', {
+        lat: parked.lat.toFixed(4),
+        lng: parked.lng.toFixed(4),
+        parkedAt: parked.parkedAt,
+      });
+
+      // Re-call the parking API with the saved coordinates
+      const result = await LocationService.checkParkingLocation({
+        latitude: parked.lat,
+        longitude: parked.lng,
+      });
+
+      // Save updated result
+      await LocationService.saveParkingCheckResult(result);
+
+      // Update last rescan time
+      await AsyncStorage.setItem(StorageKeys.RESCAN_LAST_RUN, new Date().toISOString());
+
+      // Filter own permit zone
+      const filteredResult = await this.filterOwnPermitZone(result);
+      const rawData = result.rawApiData || await this.getRawParkingData(result);
+
+      // Only notify if there are active restrictions (don't spam "All Clear" every 4 hours)
+      if (filteredResult.rules.length > 0) {
+        await notifee.displayNotification({
+          title: '🔄 Parking Update — Conditions Changed',
+          body: `${filteredResult.address}\n${filteredResult.rules.map((r: any) => r.message).join('\n')}`,
+          android: {
+            channelId: 'parking-monitoring',
+            importance: AndroidImportance.HIGH,
+            pressAction: { id: 'default' },
+            smallIcon: 'ic_notification',
+          },
+          ios: {
+            sound: 'default',
+          },
+        });
+        log.info('Rescan found active restrictions — notified user');
+      }
+
+      // Re-schedule advance reminders with updated data
+      try {
+        await this.scheduleRestrictionReminders(rawData, { latitude: parked.lat, longitude: parked.lng });
+      } catch (e) {
+        log.warn('Failed to reschedule reminders after rescan', e);
+      }
+
+      log.info('Periodic rescan complete', { rules: result.rules.length });
+    } catch (error) {
+      log.warn('Periodic rescan failed (non-fatal)', error);
+    }
+  }
+
+  // ==========================================================================
+  // Snow Forecast Monitoring — local weather check while parked on snow route
+  // ==========================================================================
+
+  /**
+   * Start periodic weather checks when parked on a designated snow route.
+   * Uses the National Weather Service (NWS) API — free, no API key needed.
+   * Checks if 2" or more snow is forecast OR has recently fallen.
+   */
+  private startSnowForecastMonitoring(): void {
+    this.stopSnowForecastMonitoring();
+
+    // Run an initial check after 5 minutes (give time for settlement)
+    this.snowForecastInitialTimeout = setTimeout(() => {
+      this.snowForecastInitialTimeout = null;
+      this.checkSnowForecast().catch(e =>
+        log.warn('Initial snow forecast check failed', e)
+      );
+    }, 5 * 60 * 1000);
+
+    // Then check every 2 hours
+    this.snowForecastInterval = setInterval(async () => {
+      await this.checkSnowForecast();
+    }, SNOW_FORECAST_CHECK_INTERVAL_MS);
+
+    log.info('Snow forecast monitoring started (parked on snow route)');
+  }
+
+  private stopSnowForecastMonitoring(): void {
+    if (this.snowForecastInitialTimeout) {
+      clearTimeout(this.snowForecastInitialTimeout);
+      this.snowForecastInitialTimeout = null;
+    }
+    if (this.snowForecastInterval) {
+      clearInterval(this.snowForecastInterval);
+      this.snowForecastInterval = null;
+    }
+  }
+
+  /**
+   * Check the NWS forecast for Chicago snow accumulation.
+   * Uses api.weather.gov which is free and doesn't require an API key.
+   * Notifies the user if 2" or more snow is forecast.
+   *
+   * Urgency scales with how soon the snow is expected:
+   * - Within ~6 hours: URGENT (critical alert, sound)
+   * - Within ~12-24 hours: WARNING (heads up, plan to move)
+   * - 24+ hours out: INFO (FYI, keep an eye on it)
+   */
+  private async checkSnowForecast(): Promise<void> {
+    try {
+      // Check if already notified about this snow event
+      const alreadyNotified = await AsyncStorage.getItem(StorageKeys.SNOW_FORECAST_NOTIFIED);
+      if (alreadyNotified === 'true') {
+        log.debug('Snow forecast check skipped — already notified about current event');
+        return;
+      }
+
+      // Verify we're still parked on a snow route
+      const parkedJson = await AsyncStorage.getItem(StorageKeys.LAST_PARKED_COORDS);
+      if (!parkedJson) return;
+      const parked = JSON.parse(parkedJson);
+      if (!parked.onSnowRoute) {
+        log.debug('Snow forecast check skipped — not on a snow route');
+        return;
+      }
+
+      log.info('Checking NWS forecast for snow...');
+
+      // NWS API: Get forecast for Chicago (with 15-second timeouts)
+      // Step 1: Get the grid point for Chicago coordinates
+      const pointAbort = new AbortController();
+      const pointTimer = setTimeout(() => pointAbort.abort(), 15000);
+
+      let pointResponse: Response;
+      try {
+        pointResponse = await fetch(
+          `https://api.weather.gov/points/${CHICAGO_WEATHER_LAT},${CHICAGO_WEATHER_LNG}`,
+          {
+            headers: {
+              'User-Agent': 'TicketlessChicago/1.0 (parking app)',
+              Accept: 'application/geo+json',
+            },
+            signal: pointAbort.signal,
+          }
+        );
+      } finally {
+        clearTimeout(pointTimer);
+      }
+
+      if (!pointResponse.ok) {
+        log.warn('NWS point lookup failed:', pointResponse.status);
+        return;
+      }
+
+      const pointData = await pointResponse.json();
+      const forecastUrl = pointData?.properties?.forecast;
+      if (!forecastUrl) {
+        log.warn('No forecast URL in NWS point response');
+        return;
+      }
+
+      // Step 2: Get the detailed forecast
+      const forecastAbort = new AbortController();
+      const forecastTimer = setTimeout(() => forecastAbort.abort(), 15000);
+
+      let forecastResponse: Response;
+      try {
+        forecastResponse = await fetch(forecastUrl, {
+          headers: {
+            'User-Agent': 'TicketlessChicago/1.0 (parking app)',
+            Accept: 'application/geo+json',
+          },
+          signal: forecastAbort.signal,
+        });
+      } finally {
+        clearTimeout(forecastTimer);
+      }
+
+      if (!forecastResponse.ok) {
+        log.warn('NWS forecast fetch failed:', forecastResponse.status);
+        return;
+      }
+
+      const forecastData = await forecastResponse.json();
+      const periods = forecastData?.properties?.periods || [];
+
+      // Check the next 4 periods (~48 hours) for snow
+      let snowForecast: { amount: number; period: string; hoursAway: number } | null = null;
+
+      for (const period of periods.slice(0, 4)) {
+        const forecast = (period.detailedForecast || '').toLowerCase();
+        const shortForecast = (period.shortForecast || '').toLowerCase();
+
+        // Look for snow accumulation mentions
+        // NWS uses patterns like "snow accumulation of 2 to 4 inches"
+        // or "new snow accumulation of around 3 inches"
+        const accumMatch = forecast.match(
+          /(?:snow|snowfall)\s+(?:accumulation|accumulations?)\s+(?:of\s+)?(?:around\s+)?(\d+)(?:\s*to\s*(\d+))?\s*inch/i
+        );
+
+        let snowAmount = 0;
+
+        if (accumMatch) {
+          const lowInches = parseInt(accumMatch[1], 10);
+          const highInches = accumMatch[2] ? parseInt(accumMatch[2], 10) : lowInches;
+          snowAmount = (lowInches + highInches) / 2;
+        } else if (
+          (shortForecast.includes('snow') || forecast.includes('snow')) &&
+          (forecast.includes('heavy') || forecast.includes('considerable'))
+        ) {
+          snowAmount = 2; // Conservative estimate for heavy snow without specific inches
+        }
+
+        if (snowAmount >= 2) {
+          // Calculate hours until this forecast period starts
+          const periodStart = period.startTime ? new Date(period.startTime).getTime() : Date.now();
+          const hoursAway = Math.max(0, (periodStart - Date.now()) / (60 * 60 * 1000));
+
+          snowForecast = { amount: snowAmount, period: period.name, hoursAway };
+          break;
+        }
+      }
+
+      await AsyncStorage.setItem(StorageKeys.SNOW_FORECAST_LAST_CHECK, new Date().toISOString());
+
+      if (snowForecast) {
+        log.info('Snow forecast detected!', snowForecast);
+        await AsyncStorage.setItem(StorageKeys.SNOW_FORECAST_NOTIFIED, 'true');
+
+        // Scale urgency based on how soon the snow is expected
+        const isImminent = snowForecast.hoursAway <= 6;   // Within 6 hours — urgent
+        const isSoon = snowForecast.hoursAway <= 24;       // Within 24 hours — warning
+        // else: 24+ hours out — informational
+
+        let title: string;
+        let body: string;
+        let channelId: string;
+        let importance: AndroidImportance;
+        let isCritical: boolean;
+
+        if (isImminent) {
+          // Snow within hours — urgent, needs action now
+          title = '🌨️ Snow Alert — Move Your Car!';
+          body = `${snowForecast.amount}" of snow expected ${snowForecast.period}.\n\n${parked.address}\nYour car is on a snow route. 2" snow ban = towing risk ($150+). Move your car now.`;
+          channelId = 'parking-alerts';
+          importance = AndroidImportance.HIGH;
+          isCritical = true;
+        } else if (isSoon) {
+          // Snow within a day — heads up, plan to move
+          title = '🌨️ Snow Coming — Plan to Move';
+          body = `${snowForecast.amount}" of snow forecast for ${snowForecast.period}.\n\n${parked.address}\nYour car is on a snow route. Plan to move before it starts — 2" triggers a tow-risk snow ban.`;
+          channelId = 'reminders';
+          importance = AndroidImportance.DEFAULT;
+          isCritical = false;
+        } else {
+          // Snow 24+ hours out — FYI
+          title = '🌨️ Snow in the Forecast';
+          body = `${snowForecast.amount}" of snow forecast for ${snowForecast.period} (~${Math.round(snowForecast.hoursAway)} hours from now).\n\n${parked.address}\nYour car is on a snow route. Keep an eye on it — we'll alert you again if it gets closer.`;
+          channelId = 'reminders';
+          importance = AndroidImportance.LOW;
+          isCritical = false;
+          // For distant forecasts, allow re-notification when it gets closer
+          await AsyncStorage.removeItem(StorageKeys.SNOW_FORECAST_NOTIFIED);
+        }
+
+        await notifee.displayNotification({
+          title,
+          body,
+          android: {
+            channelId,
+            importance,
+            pressAction: { id: 'default' },
+            smallIcon: 'ic_notification',
+          },
+          ios: {
+            sound: isCritical ? 'default' : undefined,
+            critical: isCritical,
+            criticalVolume: isCritical ? 1.0 : undefined,
+          },
+        });
+
+        log.info(`Snow forecast notification sent (urgency: ${isImminent ? 'URGENT' : isSoon ? 'WARNING' : 'INFO'}, ${snowForecast.hoursAway.toFixed(1)}h away)`);
+      } else {
+        log.debug('No significant snow in forecast');
+      }
+    } catch (error) {
+      log.warn('Snow forecast check failed (non-fatal)', error);
+    }
   }
 
   /**

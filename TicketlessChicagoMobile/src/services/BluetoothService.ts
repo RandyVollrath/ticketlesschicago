@@ -1,7 +1,10 @@
-import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
+
+// Native module for persistent Android BT monitoring foreground service
+const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
 
 const log = Logger.createLogger('BluetoothService');
 
@@ -160,21 +163,50 @@ class BluetoothServiceClass {
 
   /**
    * Check if currently connected to the saved car (Android Classic BT)
+   *
+   * Uses multiple sources in priority order:
+   * 1. Native foreground service (BluetoothMonitorModule) - most reliable,
+   *    tracks ACL events which cover A2DP/HFP audio profiles used by cars
+   * 2. react-native-bluetooth-classic getConnectedDevices() - only finds
+   *    RFCOMM (SPP) connections, NOT A2DP audio. Unreliable for car stereos.
    */
   async isConnectedToSavedCar(): Promise<boolean> {
     const savedDevice = await this.getSavedCarDevice();
     if (!savedDevice) return false;
 
-    if (Platform.OS === 'android' && RNBluetoothClassic && savedDevice.address) {
-      try {
-        const connectedDevices = await RNBluetoothClassic.getConnectedDevices();
-        return connectedDevices.some((d: any) =>
-          d.address === savedDevice.address || d.name === savedDevice.name
-        );
-      } catch (error) {
-        log.debug('Error checking connected devices', error);
-        return false;
+    if (Platform.OS === 'android') {
+      // Source 1: Native foreground service state (ACL-based, most reliable)
+      // This tracks BluetoothDevice.ACTION_ACL_CONNECTED/DISCONNECTED which
+      // fire for ALL Bluetooth profiles including A2DP audio.
+      if (BluetoothMonitorModule) {
+        try {
+          const nativeConnected = await BluetoothMonitorModule.isCarConnected();
+          if (nativeConnected) {
+            log.debug('Car connected (native service ACL state)');
+            return true;
+          }
+        } catch (e) {
+          log.debug('Native module isCarConnected check failed:', e);
+        }
       }
+
+      // Source 2: react-native-bluetooth-classic (RFCOMM only, less reliable for cars)
+      if (RNBluetoothClassic && savedDevice.address) {
+        try {
+          const connectedDevices = await RNBluetoothClassic.getConnectedDevices();
+          const rfcommConnected = connectedDevices.some((d: any) =>
+            d.address === savedDevice.address || d.name === savedDevice.name
+          );
+          if (rfcommConnected) {
+            log.debug('Car connected (RFCOMM/SPP profile)');
+            return true;
+          }
+        } catch (error) {
+          log.debug('Error checking RFCOMM connected devices', error);
+        }
+      }
+
+      return false;
     }
 
     // For manual entries or iOS, we can't directly check
@@ -270,6 +302,43 @@ class BluetoothServiceClass {
 
   isConnectedToCar(): boolean {
     return this.connectedDeviceId !== null && this.connectedDeviceId === this.savedDeviceId;
+  }
+
+  /**
+   * Set the car connection state from an external source (e.g., the native
+   * foreground service). When the native BluetoothMonitorModule fires
+   * BtMonitorCarConnected/Disconnected events, BackgroundTaskService calls
+   * this to keep JS-side state in sync and notify UI listeners.
+   */
+  setCarConnected(connected: boolean): void {
+    if (connected) {
+      // Use savedDeviceId to make isConnectedToCar() return true
+      if (this.savedDeviceId) {
+        this.connectedDeviceId = this.savedDeviceId;
+      } else {
+        // If savedDeviceId is not loaded yet, use a placeholder
+        this.connectedDeviceId = '__native_connected__';
+      }
+      this.notifyConnected();
+      log.debug('Car connection state set to CONNECTED (external)');
+    } else {
+      this.connectedDeviceId = null;
+      this.notifyDisconnected();
+      log.debug('Car connection state set to DISCONNECTED (external)');
+    }
+  }
+
+  /**
+   * Ensure savedDeviceId is populated (needed for isConnectedToCar).
+   * Call this during initialization so native service events can correctly
+   * update the JS-side connection state.
+   */
+  async ensureSavedDeviceLoaded(): Promise<void> {
+    if (this.savedDeviceId) return;
+    const saved = await this.getSavedCarDevice();
+    if (saved) {
+      this.savedDeviceId = saved.id;
+    }
   }
 
   /**

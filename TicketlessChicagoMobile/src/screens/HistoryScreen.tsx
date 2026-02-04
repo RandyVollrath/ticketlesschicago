@@ -8,6 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Linking,
+  Platform,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -243,25 +246,72 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
 
         {/* Expanded: departure record */}
         {isExpanded && item.departure && (
-          <View style={styles.departureRow}>
-            <MaterialCommunityIcons
-              name={item.departure.isConclusive ? 'location-exit' : 'map-marker-radius'}
-              size={16}
-              color={item.departure.isConclusive ? colors.success : colors.warning}
-            />
-            <View style={styles.departureInfo}>
-              <Text style={styles.departureText}>
-                Left at {formatTime(item.departure.confirmedAt)} ({Math.round(item.departure.distanceMeters)}m away)
-              </Text>
-              <Text style={[
-                styles.departureStatus,
-                { color: item.departure.isConclusive ? colors.success : colors.warning },
-              ]}>
-                {item.departure.isConclusive
-                  ? 'GPS-verified departure'
-                  : 'Still near parking spot'}
-              </Text>
+          <View style={styles.departureSection}>
+            <View style={styles.departureRow}>
+              <MaterialCommunityIcons
+                name={item.departure.isConclusive ? 'location-exit' : 'map-marker-radius'}
+                size={16}
+                color={item.departure.isConclusive ? colors.success : colors.warning}
+              />
+              <View style={styles.departureInfo}>
+                <Text style={styles.departureText}>
+                  Left at {formatTime(item.departure.confirmedAt)} ({Math.round(item.departure.distanceMeters)}m away)
+                </Text>
+                <Text style={[
+                  styles.departureStatus,
+                  { color: item.departure.isConclusive ? colors.success : colors.warning },
+                ]}>
+                  {item.departure.isConclusive
+                    ? 'GPS-verified departure'
+                    : 'Still near parking spot'}
+                </Text>
+              </View>
             </View>
+            <Text style={styles.departureExplainer}>
+              Departure records help you contest unfair tickets by proving when you left.
+            </Text>
+          </View>
+        )}
+
+        {/* Expanded: no departure data */}
+        {isExpanded && !item.departure && (
+          <View style={styles.noDepartureRow}>
+            <MaterialCommunityIcons name="car-off" size={14} color={colors.textTertiary} />
+            <Text style={styles.noDepartureText}>Departure not recorded</Text>
+          </View>
+        )}
+
+        {/* Expanded: action buttons (map + share) */}
+        {isExpanded && (
+          <View style={styles.historyActions}>
+            <TouchableOpacity
+              style={styles.historyActionBtn}
+              onPress={() => {
+                const { latitude, longitude } = item.coords;
+                const url = Platform.select({
+                  ios: `http://maps.apple.com/?ll=${latitude},${longitude}&q=${encodeURIComponent(item.address || 'Parking spot')}`,
+                  android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(item.address || 'Parking spot')})`,
+                });
+                if (url) Linking.openURL(url).catch(() => {});
+              }}
+            >
+              <MaterialCommunityIcons name="map-outline" size={14} color={colors.primary} />
+              <Text style={styles.historyActionText}>Open in Maps</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.historyActionBtn}
+              onPress={async () => {
+                const status = item.rules.length > 0
+                  ? `${item.rules.length} restriction${item.rules.length > 1 ? 's' : ''}`
+                  : 'All clear';
+                const mapUrl = `https://maps.google.com/?q=${item.coords.latitude},${item.coords.longitude}`;
+                const msg = `${status} at ${item.address || 'my parking spot'} (${formatDate(item.timestamp)} ${formatTime(item.timestamp)})\n${mapUrl}`;
+                try { await Share.share({ message: msg }); } catch (e) { /* cancelled */ }
+              }}
+            >
+              <MaterialCommunityIcons name="share-variant" size={14} color={colors.primary} />
+              <Text style={styles.historyActionText}>Share</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -728,13 +778,15 @@ const styles = StyleSheet.create({
   },
 
   // Departure
-  departureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  departureSection: {
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  departureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   departureInfo: {
     flex: 1,
@@ -748,6 +800,51 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.medium,
     marginTop: 2,
+  },
+  departureExplainer: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
+    marginLeft: spacing.sm + 16, // align with departure text (icon width + marginLeft)
+  },
+  noDepartureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  noDepartureText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+  },
+
+  // History item actions
+  historyActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  historyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.primaryTint,
+    borderRadius: borderRadius.sm,
+  },
+  historyActionText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colors.primary,
   },
 
   // Expand hint

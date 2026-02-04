@@ -374,7 +374,7 @@ const MapScreenContent: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       {isOffline && (
-        <View style={styles.offlineBanner}>
+        <View style={styles.offlineBanner} accessibilityRole="alert" accessibilityLabel="No internet connection">
           <Text style={styles.offlineBannerText}>No internet connection</Text>
         </View>
       )}
@@ -416,41 +416,41 @@ const MapScreenContent: React.FC = () => {
             {/* Protection Status - Shows all databases checked */}
             <Card title="Protection Status">
               <View style={styles.protectionList}>
-                <View style={styles.protectionItem}>
+                <View style={styles.protectionItem} accessibilityLabel="Street cleaning, checked">
                   <Text style={styles.protectionIcon}>🧹</Text>
                   <View style={styles.protectionInfo}>
                     <Text style={styles.protectionLabel}>Street Cleaning</Text>
                     <Text style={styles.protectionStatus}>Checked</Text>
                   </View>
-                  <Text style={styles.protectionCheck}>✓</Text>
+                  <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
                 </View>
-                <View style={styles.protectionItem}>
+                <View style={styles.protectionItem} accessibilityLabel="Winter overnight ban, checked">
                   <Text style={styles.protectionIcon}>❄️</Text>
                   <View style={styles.protectionInfo}>
                     <Text style={styles.protectionLabel}>Winter Overnight Ban</Text>
                     <Text style={styles.protectionStatus}>Checked</Text>
                   </View>
-                  <Text style={styles.protectionCheck}>✓</Text>
+                  <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
                 </View>
-                <View style={styles.protectionItem}>
+                <View style={styles.protectionItem} accessibilityLabel="Snow route ban, checked">
                   <Text style={styles.protectionIcon}>🌨️</Text>
                   <View style={styles.protectionInfo}>
                     <Text style={styles.protectionLabel}>Snow Route Ban</Text>
                     <Text style={styles.protectionStatus}>Checked</Text>
                   </View>
-                  <Text style={styles.protectionCheck}>✓</Text>
+                  <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
                 </View>
-                <View style={styles.protectionItem}>
+                <View style={styles.protectionItem} accessibilityLabel="Permit parking zones, checked">
                   <Text style={styles.protectionIcon}>🅿️</Text>
                   <View style={styles.protectionInfo}>
                     <Text style={styles.protectionLabel}>Permit Parking Zones</Text>
                     <Text style={styles.protectionStatus}>Checked</Text>
                   </View>
-                  <Text style={styles.protectionCheck}>✓</Text>
+                  <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
                 </View>
               </View>
               {lastLocation.rules.length === 0 && (
-                <View style={styles.allClear}>
+                <View style={styles.allClear} accessibilityRole="text" accessibilityLabel="All clear, no active restrictions">
                   <Text style={styles.allClearIcon}>✅</Text>
                   <Text style={styles.allClearText}>All clear - no active restrictions!</Text>
                 </View>
@@ -475,7 +475,7 @@ const MapScreenContent: React.FC = () => {
               </Card>
             ) : locationPermissionDenied ? (
               <Card>
-                <View style={styles.permissionDenied}>
+                <View style={styles.permissionDenied} accessibilityRole="text" accessibilityLabel="Location unavailable. Enable location access in Settings to check restrictions at your current location.">
                   <Text style={styles.permissionIcon}>📍</Text>
                   <Text style={styles.permissionTitle}>Location Unavailable</Text>
                   <Text style={styles.permissionText}>

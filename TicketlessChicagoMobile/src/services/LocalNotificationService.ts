@@ -172,12 +172,12 @@ class LocalNotificationServiceClass {
         channelId = 'reminders';
         // Detect if this is the morning-of (7am) or night-before (9pm) notification
         if (details?.includes('MOVE YOUR CAR NOW')) {
-          title = 'Street Cleaning Today - Move Now!';
-          body = `Street cleaning starts at 9am at ${address}. Move your car NOW to avoid a $65 ticket.`;
+          title = '🧹 Street Cleaning Today — Move Now!';
+          body = `${address}\n${details || 'Street cleaning starts at 9am. Move your car NOW — $60 ticket.'}`;
           channelId = 'parking-alerts'; // Higher priority for urgent morning alert
         } else {
-          title = 'Street Cleaning Tomorrow!';
-          body = `Street cleaning scheduled tomorrow at ${address}. ${details || 'Move your car tonight to avoid a $65 ticket.'}`;
+          title = '🧹 Street Cleaning Tomorrow';
+          body = `${address}\n${details || 'Move your car tonight to avoid a $60 ticket.'}`;
         }
         break;
 
@@ -185,17 +185,16 @@ class LocalNotificationServiceClass {
         hoursBefore = 0; // Time is pre-computed (9pm)
         notificationId = `${NOTIFICATION_PREFIX.WINTER_BAN}${Date.now()}`;
         channelId = 'parking-alerts';
-        title = 'Winter Parking Ban Tonight';
-        body = `Your car at ${address} is on a winter ban street. Move before 3am to avoid towing ($150+).`;
+        title = '❄️ Winter Parking Ban Tonight';
+        body = `${address}\n${details || 'Winter overnight parking ban 3am–7am. Move before 3am or risk towing ($150+).'}`;
         break;
 
       case 'snow_ban':
         // Snow ban is weather-dependent, immediate notification
         notificationId = `${NOTIFICATION_PREFIX.SNOW_BAN}${Date.now()}`;
         channelId = 'parking-alerts';
-        title = '2-Inch Snow Ban Alert!';
-        body = `Snow ban may be active at ${address}. ${details || 'Check conditions and move if needed.'}`;
-        // For snow ban, schedule for 30 minutes from now as a reminder
+        title = '🌨️ Snow Ban Alert!';
+        body = `${address}\n${details || 'Snow ban may be active. Check conditions and move if needed.'}`;
         hoursBefore = 0;
         break;
 
@@ -203,8 +202,8 @@ class LocalNotificationServiceClass {
         hoursBefore = 0; // Time is pre-computed (7am)
         notificationId = `${NOTIFICATION_PREFIX.PERMIT_ZONE}${Date.now()}`;
         channelId = 'reminders';
-        title = 'Permit Zone - Move by 8am';
-        body = `Your car at ${address} needs a permit. ${details || 'Enforcement starts at 8am - move your car or risk a $65 ticket.'}`;
+        title = '🅿️ Permit Zone — Move by 8am';
+        body = `${address}\n${details || 'Enforcement starts at 8am — move your car or risk a $60 ticket.'}`;
         break;
 
       default:

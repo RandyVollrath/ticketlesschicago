@@ -11,6 +11,7 @@ import {
   Linking,
   ActivityIndicator,
   Platform,
+  Animated as RNAnimated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -54,7 +55,7 @@ interface SettingRowProps {
 const SettingRow: React.FC<SettingRowProps> = ({
   icon, iconColor = colors.textSecondary, title, subtitle, value, onValueChange,
 }) => (
-  <View style={styles.settingRow}>
+  <View style={styles.settingRow} accessibilityLabel={`${title}${subtitle ? `, ${subtitle}` : ''}, ${value ? 'on' : 'off'}`}>
     <MaterialCommunityIcons name={icon} size={20} color={iconColor} style={styles.rowIcon} />
     <View style={styles.settingInfo}>
       <Text style={styles.settingTitle}>{title}</Text>
@@ -65,6 +66,9 @@ const SettingRow: React.FC<SettingRowProps> = ({
       onValueChange={onValueChange}
       trackColor={{ false: colors.border, true: colors.primaryLight }}
       thumbColor={value ? colors.primary : colors.textTertiary}
+      accessibilityLabel={title}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
     />
   </View>
 );
@@ -86,6 +90,8 @@ const LinkRow: React.FC<LinkRowProps> = ({
     onPress={onPress}
     delayPressIn={100}
     activeOpacity={0.7}
+    accessibilityLabel={`${title}${rightText ? `, ${rightText}` : ''}`}
+    accessibilityRole="button"
   >
     <MaterialCommunityIcons
       name={icon}
@@ -132,13 +138,37 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [permitZoneEditing, setPermitZoneEditing] = useState(false);
   const [permitZoneInput, setPermitZoneInput] = useState('');
 
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const feedbackOpacity = useRef(new RNAnimated.Value(0)).current;
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isMountedRef = useRef(true);
   const signingOutRef = useRef(false);
   const clearingRef = useRef(false);
 
   useEffect(() => {
-    return () => { isMountedRef.current = false; };
+    return () => {
+      isMountedRef.current = false;
+      if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    };
   }, []);
+
+  const showFeedback = useCallback((message: string) => {
+    if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+    setFeedbackMessage(message);
+    RNAnimated.timing(feedbackOpacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    feedbackTimeout.current = setTimeout(() => {
+      RNAnimated.timing(feedbackOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => setFeedbackMessage(null));
+    }, 2500);
+  }, [feedbackOpacity]);
 
   useEffect(() => {
     loadSettings();
@@ -268,18 +298,25 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setHomePermitZone(trimmed);
       setPermitZoneEditing(false);
       log.info(`Home permit zone ${trimmed ? `set to: ${trimmed}` : 'cleared'}`);
+      showFeedback(trimmed ? `Home zone set to ${trimmed}` : 'Home zone cleared');
     } catch (error) {
       log.error('Error saving home permit zone', error);
     }
-  }, []);
+  }, [showFeedback]);
 
   const toggleCameraAlerts = useCallback(async (value: boolean) => {
     setCameraAlertsEnabled(value);
     await CameraAlertService.setEnabled(value);
-  }, []);
+    showFeedback(value ? 'Camera alerts enabled' : 'Camera alerts disabled');
+  }, [showFeedback]);
 
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
     saveSettings({ ...settings, [key]: value });
+    const labels: Record<keyof AppSettings, string> = {
+      notificationsEnabled: 'Push notifications',
+      criticalAlertsEnabled: 'Critical alerts',
+    };
+    showFeedback(`${labels[key]} ${value ? 'enabled' : 'disabled'}`);
   };
 
   const handleSignOut = useCallback(() => {
@@ -349,6 +386,18 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Inline feedback banner */}
+      {feedbackMessage && (
+        <RNAnimated.View
+          style={[styles.feedbackBanner, { opacity: feedbackOpacity }]}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={feedbackMessage}
+        >
+          <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+          <Text style={styles.feedbackText}>{feedbackMessage}</Text>
+        </RNAnimated.View>
+      )}
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Settings</Text>
 
@@ -413,22 +462,33 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     autoFocus
                     returnKeyType="done"
                     onSubmitEditing={() => saveHomePermitZone(permitZoneInput)}
+                    accessibilityLabel="Home permit zone number"
+                    accessibilityHint="Enter your zone number, for example 383"
                   />
                   <TouchableOpacity
                     style={styles.permitZoneSaveBtn}
                     onPress={() => saveHomePermitZone(permitZoneInput)}
+                    accessibilityLabel="Save permit zone"
+                    accessibilityRole="button"
                   >
                     <Text style={styles.permitZoneSaveBtnText}>Save</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.permitZoneCancelBtn}
                     onPress={() => { setPermitZoneEditing(false); setPermitZoneInput(homePermitZone); }}
+                    accessibilityLabel="Cancel editing"
+                    accessibilityRole="button"
                   >
                     <Text style={styles.permitZoneCancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
-                <TouchableOpacity onPress={() => { setPermitZoneEditing(true); setPermitZoneInput(homePermitZone); }}>
+                <TouchableOpacity
+                  onPress={() => { setPermitZoneEditing(true); setPermitZoneInput(homePermitZone); }}
+                  accessibilityLabel={homePermitZone ? `Home permit zone ${homePermitZone}. Tap to edit.` : 'Set your home permit zone'}
+                  accessibilityRole="button"
+                  accessibilityHint="Opens zone number editor"
+                >
                   <Text style={styles.settingTitle}>
                     {homePermitZone ? `Zone ${homePermitZone}` : 'Set your home zone'}
                   </Text>
@@ -649,6 +709,22 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginLeft: 56, // icon width + padding to align with text
+  },
+
+  // Feedback banner
+  feedbackBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.successBg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+    gap: spacing.sm,
+  },
+  feedbackText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.success,
   },
 
   // Version
