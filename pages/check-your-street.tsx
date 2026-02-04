@@ -78,6 +78,10 @@ export default function CheckYourStreet() {
   const [alternativeZones, setAlternativeZones] = useState<any[]>([])
   const [loadingAlternatives, setLoadingAlternatives] = useState(false)
   const [permitZoneResult, setPermitZoneResult] = useState<{ hasPermitZone: boolean; zones: any[] } | null>(null)
+  const [snowForecast, setSnowForecast] = useState<{
+    hasSignificantSnow: boolean; maxAccumulation: number; message: string;
+    periods: { name: string; summary: string; inchesHigh: number }[];
+  } | null>(null)
 
   // Load map data on mount
   useEffect(() => {
@@ -170,12 +174,14 @@ export default function CheckYourStreet() {
     setSearchResult(null)
     setHighlightZone(null)
     setPermitZoneResult(null)
+    setSnowForecast(null)
 
     try {
-      // Fetch section data and permit zone data in parallel
-      const [sectionResponse, permitResponse] = await Promise.all([
+      // Fetch section data, permit zone data, and snow forecast in parallel
+      const [sectionResponse, permitResponse, snowResponse] = await Promise.all([
         fetch(`/api/find-section?address=${encodeURIComponent(address)}`),
         fetch(`/api/check-permit-zone?address=${encodeURIComponent(address)}`).catch(() => null),
+        fetch(`/api/snow-forecast?lat=41.8781&lng=-87.6298`).catch(() => null),
       ])
 
       const data = await sectionResponse.json()
@@ -197,6 +203,16 @@ export default function CheckYourStreet() {
           }
         } catch {
           // Permit zone check is non-critical
+        }
+      }
+
+      // Process snow forecast (non-blocking)
+      if (snowResponse && snowResponse.ok) {
+        try {
+          const snowData = await snowResponse.json()
+          setSnowForecast(snowData)
+        } catch {
+          // Snow forecast is non-critical
         }
       }
     } catch (err: any) {
@@ -638,6 +654,75 @@ export default function CheckYourStreet() {
                     </strong>.
                     {' '}You may need a residential parking permit to park on this street. Check for posted signs.
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Snow Forecast */}
+            {snowForecast && (
+              <div style={{
+                backgroundColor: snowForecast.hasSignificantSnow ? 'rgba(37, 99, 235, 0.06)' : 'white',
+                padding: '24px',
+                borderRadius: '16px',
+                marginBottom: '16px',
+                border: `1px solid ${snowForecast.hasSignificantSnow ? COLORS.regulatory : COLORS.border}`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '16px'
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  backgroundColor: snowForecast.hasSignificantSnow ? 'rgba(37, 99, 235, 0.1)' : 'rgba(100, 116, 139, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={snowForecast.hasSignificantSnow ? COLORS.regulatory : COLORS.slate} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/>
+                    <line x1="8" y1="16" x2="8.01" y2="16"/>
+                    <line x1="8" y1="20" x2="8.01" y2="20"/>
+                    <line x1="12" y1="18" x2="12.01" y2="18"/>
+                    <line x1="12" y1="22" x2="12.01" y2="22"/>
+                    <line x1="16" y1="16" x2="16.01" y2="16"/>
+                    <line x1="16" y1="20" x2="16.01" y2="20"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                    7-Day Snow Forecast
+                  </div>
+                  <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
+                    {snowForecast.message}
+                  </div>
+                  {snowForecast.hasSignificantSnow && snowForecast.periods.length > 0 && (
+                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {snowForecast.periods
+                        .filter((p: any) => p.inchesHigh >= 1)
+                        .slice(0, 4)
+                        .map((p: any, i: number) => (
+                          <div key={i} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '6px 12px',
+                            backgroundColor: p.inchesHigh >= 2 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(0,0,0,0.02)',
+                            borderRadius: '8px',
+                          }}>
+                            <span style={{ fontSize: '14px', fontWeight: 500, color: COLORS.graphite }}>{p.name}</span>
+                            <span style={{
+                              fontSize: '14px',
+                              fontWeight: p.inchesHigh >= 2 ? 700 : 400,
+                              color: p.inchesHigh >= 2 ? COLORS.warning : COLORS.slate,
+                            }}>
+                              {p.summary}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

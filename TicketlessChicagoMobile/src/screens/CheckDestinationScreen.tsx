@@ -72,6 +72,12 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
   const [restrictions, setRestrictions] = useState<RestrictionResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [snowForecast, setSnowForecast] = useState<{
+    hasSignificantSnow: boolean;
+    maxAccumulation: number;
+    message: string;
+    periods: { name: string; summary: string; inchesHigh: number }[];
+  } | null>(null);
   const inputRef = useRef<TextInput>(null);
 
   const handleCheck = useCallback(async () => {
@@ -84,6 +90,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     setRestrictions(null);
     setGeocoded(null);
     setShowMap(false);
+    setSnowForecast(null);
 
     try {
       // Step 1: Geocode the address via find-section
@@ -107,8 +114,8 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         section: geoRes.data.section,
       };
 
-      // Step 2: Check all restrictions at the location + check permit zone
-      const [parkingRes, permitRes] = await Promise.all([
+      // Step 2: Check all restrictions at the location + check permit zone + snow forecast
+      const [parkingRes, permitRes, snowRes] = await Promise.all([
         ApiClient.get<any>(
           `/api/mobile/check-parking?lat=${lat}&lng=${lng}&accuracy=10&confidence=high`,
           { timeout: 12000, showErrorAlert: false },
@@ -117,6 +124,10 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           `/api/check-permit-zone?address=${encodeURIComponent(trimmed)}`,
           { timeout: 8000, showErrorAlert: false },
         ),
+        ApiClient.get<any>(
+          `/api/snow-forecast?lat=${lat}&lng=${lng}`,
+          { timeout: 10000, showErrorAlert: false },
+        ).catch(() => null),
       ]);
 
       const result: RestrictionResult = {};
@@ -170,6 +181,11 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
             severity: 'none',
           };
         }
+      }
+
+      // Parse snow forecast
+      if (snowRes?.success && snowRes.data) {
+        setSnowForecast(snowRes.data);
       }
 
       setGeocoded(geo);
@@ -343,6 +359,49 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               'card-account-details',
               restrictions.permitZone?.message || '',
               restrictions.permitZone?.severity || 'none',
+            )}
+
+            {/* Snow Forecast */}
+            {snowForecast && (
+              <View style={[
+                styles.snowForecastCard,
+                snowForecast.hasSignificantSnow && styles.snowForecastCardAlert,
+              ]}>
+                <View style={styles.snowForecastHeader}>
+                  <Icon
+                    name="weather-snowy-heavy"
+                    size={18}
+                    color={snowForecast.hasSignificantSnow ? colors.info : colors.textTertiary}
+                  />
+                  <Text style={[
+                    styles.snowForecastTitle,
+                    snowForecast.hasSignificantSnow && { color: colors.info },
+                  ]}>
+                    7-Day Snow Forecast
+                  </Text>
+                </View>
+                <Text style={styles.snowForecastMessage}>
+                  {snowForecast.message}
+                </Text>
+                {snowForecast.hasSignificantSnow && snowForecast.periods.length > 0 && (
+                  <View style={styles.snowPeriods}>
+                    {snowForecast.periods
+                      .filter(p => p.inchesHigh >= 1)
+                      .slice(0, 4)
+                      .map((p, i) => (
+                        <View key={i} style={styles.snowPeriodRow}>
+                          <Text style={styles.snowPeriodName}>{p.name}</Text>
+                          <Text style={[
+                            styles.snowPeriodAmount,
+                            p.inchesHigh >= 2 && { color: colors.warning, fontWeight: typography.weights.bold },
+                          ]}>
+                            {p.summary}
+                          </Text>
+                        </View>
+                      ))}
+                  </View>
+                )}
+              </View>
             )}
 
             {/* Map */}
@@ -602,6 +661,56 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginLeft: 24,
     marginTop: 2,
+  },
+
+  // Snow Forecast
+  snowForecastCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.border,
+  },
+  snowForecastCardAlert: {
+    borderLeftColor: colors.info,
+    backgroundColor: colors.infoBg,
+  },
+  snowForecastHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
+  snowForecastTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textTertiary,
+  },
+  snowForecastMessage: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginLeft: 24,
+  },
+  snowPeriods: {
+    marginTop: spacing.sm,
+    marginLeft: 24,
+    gap: 4,
+  },
+  snowPeriodRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  snowPeriodName: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+  },
+  snowPeriodAmount: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
   },
 
   // Map
