@@ -303,9 +303,10 @@ class BackgroundTaskServiceClass {
                 driftMeters: event.driftFromParkingMeters,
               });
               this.stopCameraAlerts();
-              await this.sendDiagnosticNotification(
+              // Fire-and-forget: don't block the parking check waiting for a diagnostic notification
+              this.sendDiagnosticNotification(
                 'Parking Detected (iOS)',
-                `CoreMotion detected you parked. Duration: ${Math.round(event.drivingDurationSec || 0)}s driving. Checking parking rules...`
+                `Detected you parked. Duration: ${Math.round(event.drivingDurationSec || 0)}s driving. Checking parking rules...`
               );
               // Pass the stop-start coordinates so we check parking rules
               // at where the CAR is, not where the user walked to

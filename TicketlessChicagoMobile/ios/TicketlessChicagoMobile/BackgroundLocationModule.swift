@@ -25,8 +25,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let minDrivingDurationSec: TimeInterval = 60   // 1 min of driving before we care about stops (was 120, lowered to catch short trips)
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
   private let minDrivingSpeedMps: Double = 2.5           // ~5.6 mph - threshold to START driving state via speed
-  private let speedCheckIntervalSec: TimeInterval = 5    // Re-check parking every 5s while speed≈0
-  private let speedZeroOverrideSec: TimeInterval = 15    // Override CoreMotion after 15s of sustained zero speed
+  private let speedCheckIntervalSec: TimeInterval = 3    // Re-check parking every 3s while speed≈0
+  private let speedZeroOverrideSec: TimeInterval = 10    // Override CoreMotion after 10s of sustained zero speed
 
   // Debounce timer for parking confirmation
   private var parkingConfirmationTimer: Timer?
