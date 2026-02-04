@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 interface SnowPeriod {
   name: string;        // e.g. "Tonight", "Wednesday"
+  startTime: string;   // ISO 8601 from NWS, e.g. "2026-02-05T18:00:00-06:00"
   inches: number;      // parsed accumulation (midpoint of range)
   inchesLow: number;
   inchesHigh: number;
@@ -19,6 +20,7 @@ interface SnowPeriod {
 
 interface SnowForecastResult {
   hasSignificantSnow: boolean;   // true if any period has 2"+ forecast
+  significantSnowWhen: string | null; // e.g. "Wednesday Night (Feb 5) — 3 to 5 inches expected"
   maxAccumulation: number;       // highest single-period inches
   totalAccumulation: number;     // sum across all periods
   periods: SnowPeriod[];        // only periods with snow
@@ -173,6 +175,7 @@ async function getSnowForecast(lat: number, lng: number): Promise<SnowForecastRe
 
     snowPeriods.push({
       name: period.name,
+      startTime: period.startTime || '',
       inches: Math.round(inches * 10) / 10,
       inchesLow: Math.round(inchesLow * 10) / 10,
       inchesHigh: Math.round(inchesHigh * 10) / 10,
@@ -185,6 +188,21 @@ async function getSnowForecast(lat: number, lng: number): Promise<SnowForecastRe
     : 0;
   const totalAccumulation = snowPeriods.reduce((sum, p) => sum + p.inches, 0);
   const hasSignificantSnow = maxAccumulation >= 2;
+
+  // Build the "when" string for the heaviest 2"+ period
+  let significantSnowWhen: string | null = null;
+  if (hasSignificantSnow) {
+    const heaviest = snowPeriods.reduce((a, b) => a.inchesHigh > b.inchesHigh ? a : b);
+    // Format the date from startTime (e.g. "2026-02-05T18:00:00-06:00" → "Feb 5")
+    let datePart = '';
+    if (heaviest.startTime) {
+      try {
+        const dt = new Date(heaviest.startTime);
+        datePart = ` (${dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })})`;
+      } catch { /* ignore parse errors */ }
+    }
+    significantSnowWhen = `${heaviest.name}${datePart} — ${heaviest.summary}`;
+  }
 
   let message: string;
   if (snowPeriods.length === 0) {
@@ -199,6 +217,7 @@ async function getSnowForecast(lat: number, lng: number): Promise<SnowForecastRe
 
   const result: SnowForecastResult = {
     hasSignificantSnow,
+    significantSnowWhen,
     maxAccumulation: Math.round(maxAccumulation * 10) / 10,
     totalAccumulation: Math.round(totalAccumulation * 10) / 10,
     periods: snowPeriods,

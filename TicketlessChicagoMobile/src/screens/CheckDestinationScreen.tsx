@@ -74,6 +74,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
   const [showMap, setShowMap] = useState(false);
   const [snowForecast, setSnowForecast] = useState<{
     hasSignificantSnow: boolean;
+    significantSnowWhen: string | null;
   } | null>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -379,7 +380,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                 </View>
                 <Text style={styles.snowForecastMessage}>
                   {snowForecast.hasSignificantSnow
-                    ? '2+ inches of snow is in the forecast. The 2-inch snow parking ban could be activated.'
+                    ? `2+ inches of snow forecast${snowForecast.significantSnowWhen ? `: ${snowForecast.significantSnowWhen}` : ''}. The 2-inch snow parking ban could be activated.`
                     : 'No 2+ inches of snow in the 7-day forecast.'}
                 </Text>
               </View>
