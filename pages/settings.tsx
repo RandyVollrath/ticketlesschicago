@@ -1599,7 +1599,7 @@ export default function SettingsPage() {
 
         {/* Vehicle Information */}
         <Card title="Vehicle Information">
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 20 }}>
             {/* License Plate */}
             <div>
               <label style={{
@@ -1666,7 +1666,7 @@ export default function SettingsPage() {
             </div>
 
             {/* VIN */}
-            <div style={{ flex: '1 1 200px', maxWidth: 280 }}>
+            <div>
               <label style={{
                 display: 'block',
                 fontSize: 12,
