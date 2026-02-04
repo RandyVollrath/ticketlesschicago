@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Linking,
   NativeModules,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -140,6 +141,9 @@ interface DebugTransition {
 
 const MAX_DEBUG_LOG = 30;
 
+const QUICK_START_DISMISSED_KEY = 'quickStartDismissed';
+const BATTERY_WARNING_DISMISSED_KEY = 'batteryWarningDismissed';
+
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const route = useRoute<RouteProp<{ Home: HomeScreenRouteParams }, 'Home'>>();
   const [isMonitoring, setIsMonitoring] = useState(false);
@@ -155,6 +159,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [isCarConnected, setIsCarConnected] = useState(false);
   const [savedCarName, setSavedCarName] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showQuickStart, setShowQuickStart] = useState(false);
+  const [checkingAddress, setCheckingAddress] = useState<string | null>(null);
+  const [showBatteryWarning, setShowBatteryWarning] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
+
+  // Guard against double-tap on parking check
+  const isCheckingRef = useRef(false);
 
   // iOS Debug Overlay state
   const [showDebug, setShowDebug] = useState(false);
@@ -251,14 +262,24 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [isMonitoring, refreshBtStatus]);
 
-  // Reload data when returning from other screens
+  // Reload data when returning from other screens (or from Settings app)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       loadLastCheck();
       refreshBtStatus();
+      // Re-check location permission (user may have just enabled it in Settings)
+      if (locationDenied) {
+        const hasPermission = await LocationService.requestLocationPermission(true);
+        if (hasPermission) {
+          setLocationDenied(false);
+          if (!isMonitoring) {
+            autoStartMonitoring();
+          }
+        }
+      }
     });
     return unsubscribe;
-  }, [navigation, refreshBtStatus]);
+  }, [navigation, refreshBtStatus, locationDenied, isMonitoring]);
 
   // Poll activity status on iOS when monitoring
   useEffect(() => {
@@ -328,7 +349,50 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const loadInitialData = async () => {
     await loadLastCheck();
+
+    // Show Quick Start card if not previously dismissed
+    try {
+      const dismissed = await AsyncStorage.getItem(QUICK_START_DISMISSED_KEY);
+      if (!dismissed) {
+        setShowQuickStart(true);
+      }
+    } catch (e) {
+      // Non-critical
+    }
+
+    // Android: check battery optimization status
+    if (Platform.OS === 'android' && BluetoothMonitorModule) {
+      try {
+        const batteryDismissed = await AsyncStorage.getItem(BATTERY_WARNING_DISMISSED_KEY);
+        if (!batteryDismissed) {
+          const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
+          if (!exempt) {
+            setShowBatteryWarning(true);
+          }
+        }
+      } catch (e) {
+        // Non-critical - module may not support this method
+      }
+    }
   };
+
+  const dismissQuickStart = useCallback(async () => {
+    setShowQuickStart(false);
+    try {
+      await AsyncStorage.setItem(QUICK_START_DISMISSED_KEY, 'true');
+    } catch (e) {
+      // Non-critical
+    }
+  }, []);
+
+  const dismissBatteryWarning = useCallback(async () => {
+    setShowBatteryWarning(false);
+    try {
+      await AsyncStorage.setItem(BATTERY_WARNING_DISMISSED_KEY, 'true');
+    } catch (e) {
+      // Non-critical
+    }
+  }, []);
 
   const autoStartMonitoring = async () => {
     // Small delay to let the UI render first, but properly await everything
@@ -337,8 +401,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       const hasLocationPermission = await LocationService.requestLocationPermission(true);
       if (!hasLocationPermission) {
         log.warn('Location permission not granted, monitoring not auto-started');
+        setLocationDenied(true);
         return;
       }
+      setLocationDenied(false);
 
       await BackgroundTaskService.initialize();
       log.info('BackgroundTaskService initialized, starting monitoring...');
@@ -380,9 +446,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleCarReconnect = () => {
-    log.info('Driving started - keeping last parking result visible');
-    // Don't clear the last parking result — user wants to see it at all times.
-    // It will only be replaced when a new parking check completes.
+    log.info('Driving started - clearing stale parking result');
+    // Clear the parking result so user sees a clean "monitoring" state
+    // while driving. BackgroundTaskService.markCarReconnected() already
+    // cleared AsyncStorage; we also clear React state so the UI updates.
+    setLastParkingCheck(null);
+    setIsCarConnected(true);
   };
 
   const stopMonitoring = async () => {
@@ -395,9 +464,28 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const performParkingCheck = useCallback(async (showAllClearAlert: boolean = true, useHighAccuracy: boolean = true) => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+
     setLoading(true);
     setIsGettingLocation(true);
     setLocationAccuracy(undefined);
+    setCheckingAddress(null);
+
+    // Overall timeout — show a helpful message if the whole check takes too long
+    const OVERALL_TIMEOUT_MS = 30000;
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setLoading(false);
+      setIsGettingLocation(false);
+      setCheckingAddress(null);
+      isCheckingRef.current = false;
+      Alert.alert(
+        'Check Timed Out',
+        'GPS or network is too slow right now. Try moving to an open area with better signal, then try again.',
+      );
+    }, OVERALL_TIMEOUT_MS);
 
     try {
       const hasPermission = await LocationService.requestLocationPermission();
@@ -417,6 +505,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         setIsGettingLocation(false);
         return;
       }
+
+      if (timedOut) return;
 
       let coords: Coordinates | undefined;
 
@@ -452,10 +542,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         }
       }
 
+      if (timedOut) return;
+
       setLocationAccuracy(coords.accuracy);
       setIsGettingLocation(false);
+      setCheckingAddress('Scanning restrictions...');
 
       const result = await LocationService.checkParkingLocation(coords);
+      if (timedOut) return;
+
+      setCheckingAddress(result.address);
       await LocationService.saveParkingCheckResult(result);
       await ParkingHistoryService.addToHistory(result.coords, result.rules, result.address);
 
@@ -470,11 +566,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         Alert.alert('All Clear!', `No parking restrictions at ${result.address}${accuracyInfo}`);
       }
     } catch (error) {
+      if (timedOut) return;
       log.error('Error checking location', error);
       Alert.alert('Error', 'Failed to check parking location. Please try again.');
     } finally {
-      setLoading(false);
-      setIsGettingLocation(false);
+      clearTimeout(timeoutId);
+      if (!timedOut) {
+        setLoading(false);
+        setIsGettingLocation(false);
+        setCheckingAddress(null);
+        isCheckingRef.current = false;
+      }
     }
   }, []);
 
@@ -500,6 +602,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     if (minutes > 0) return `${minutes}m ago`;
     return 'Just now';
   };
+
+  const shareParkingResult = useCallback(async () => {
+    if (!lastParkingCheck) return;
+    const { address, rules, coords } = lastParkingCheck;
+    const status = rules.length > 0
+      ? `${rules.length} parking restriction${rules.length > 1 ? 's' : ''} found`
+      : 'No parking restrictions';
+    const ruleList = rules.length > 0
+      ? '\n' + rules.map(r => `• ${r.message || r.type}`).join('\n')
+      : '';
+    const mapUrl = `https://maps.google.com/?q=${coords.latitude},${coords.longitude}`;
+    const message = `${status} at ${address}${ruleList}\n\n${mapUrl}\n\nChecked with Ticketless Chicago`;
+
+    try {
+      await Share.share({ message });
+    } catch (error) {
+      log.debug('Share cancelled or failed', error);
+    }
+  }, [lastParkingCheck]);
 
   const getDirections = useCallback((coords: Coordinates) => {
     const url = Platform.select({
@@ -555,9 +676,84 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       {isOffline && (
-        <View style={styles.offlineBanner}>
+        <View style={styles.offlineBanner} accessibilityRole="alert" accessibilityLabel="No internet connection. Camera alerts still work offline.">
           <MaterialCommunityIcons name="wifi-off" size={14} color={colors.textPrimary} />
-          <Text style={styles.offlineBannerText}> No internet</Text>
+          <Text style={styles.offlineBannerText}> No internet — camera alerts still work offline</Text>
+        </View>
+      )}
+      {showBatteryWarning && Platform.OS === 'android' && (
+        <View style={styles.batteryBanner}>
+          <View style={styles.batteryBannerContent}>
+            <MaterialCommunityIcons name="battery-alert-variant-outline" size={18} color={colors.warning} />
+            <View style={styles.batteryBannerTextWrap}>
+              <Text style={styles.batteryBannerTitle}>Background detection may be restricted</Text>
+              <Text style={styles.batteryBannerBody}>
+                Your phone may kill the app in the background. Tap to fix.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={dismissBatteryWarning}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Dismiss battery warning"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="close" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.batteryBannerActions}>
+            <TouchableOpacity
+              style={styles.batteryBannerBtn}
+              onPress={async () => {
+                try {
+                  if (BluetoothMonitorModule) {
+                    await BluetoothMonitorModule.requestBatteryOptimizationExemption();
+                    const exempt = await BluetoothMonitorModule.isBatteryOptimizationExempt();
+                    if (exempt) setShowBatteryWarning(false);
+                  }
+                } catch (e) {
+                  log.debug('Battery exemption request failed', e);
+                }
+              }}
+              accessibilityLabel="Disable battery optimization"
+              accessibilityRole="button"
+              accessibilityHint="Prevents your phone from killing background parking detection"
+            >
+              <Text style={styles.batteryBannerBtnText}>Disable Optimization</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.batteryBannerBtnSecondary}
+              onPress={() => Linking.openURL('https://dontkillmyapp.com')}
+              accessibilityLabel="Device guide"
+              accessibilityRole="link"
+              accessibilityHint="Opens dontkillmyapp.com with device-specific instructions"
+            >
+              <Text style={styles.batteryBannerBtnSecondaryText}>Device Guide</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {locationDenied && (
+        <View style={styles.permissionBanner} accessibilityRole="alert">
+          <View style={styles.permissionBannerContent}>
+            <MaterialCommunityIcons name="map-marker-off" size={18} color={colors.error} />
+            <View style={styles.permissionBannerTextWrap}>
+              <Text style={styles.permissionBannerTitle}>Location access required</Text>
+              <Text style={styles.permissionBannerBody}>
+                {Platform.OS === 'ios'
+                  ? 'Set location to "Always" so we can check parking rules when you park and send advance tow warnings.'
+                  : 'Allow location "All the time" so we can auto-check parking when your car\'s Bluetooth disconnects.'}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.permissionBannerBtn}
+            onPress={() => Linking.openSettings()}
+            accessibilityLabel="Open device settings"
+            accessibilityRole="button"
+            accessibilityHint="Opens system settings to grant location permission"
+          >
+            <Text style={styles.permissionBannerBtnText}>Open Settings</Text>
+          </TouchableOpacity>
         </View>
       )}
       <ScrollView
@@ -668,6 +864,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           }}
           activeOpacity={heroState === 'clear' || heroState === 'violation' ? 0.8 : 1}
           accessibilityLabel={`${heroConfig.title}. ${heroConfig.subtitle}`}
+          accessibilityRole={heroState === 'clear' || heroState === 'violation' ? 'button' : 'summary'}
+          accessibilityHint={heroState === 'clear' || heroState === 'violation' ? 'Double tap to toggle details' : undefined}
         >
           <View style={styles.heroContent}>
             <View style={[
@@ -703,9 +901,44 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             )}
           </View>
 
-          {/* Driving overlay badge — show when hero displays parking result but user is driving */}
-          {isDriving && (heroState === 'clear' || heroState === 'violation') && (
-            <View style={styles.drivingBadge}>
+          {/* Parking timer — show elapsed time since parking check */}
+          {lastParkingCheck && (heroState === 'clear' || heroState === 'violation') && (
+            <View style={styles.heroTimerRow}>
+              <View style={styles.heroTimerBadge}>
+                <MaterialCommunityIcons name="timer-outline" size={12} color={heroConfig.textColor} />
+                <Text style={[styles.heroTimerText, { color: heroConfig.textColor }]}>
+                  Parked {formatTimeSince(lastParkingCheck.timestamp)}
+                </Text>
+              </View>
+              {isDriving && (
+                <View style={styles.drivingBadge}>
+                  <MaterialCommunityIcons name="car" size={12} color={colors.white} />
+                  <Text style={styles.drivingBadgeText}>Driving</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Stale result warning — restrictions may have changed */}
+          {lastParkingCheck && (heroState === 'clear' || heroState === 'violation') &&
+           (currentTime.getTime() - lastParkingCheck.timestamp > 2 * 60 * 60 * 1000) && (
+            <TouchableOpacity
+              style={styles.staleWarning}
+              onPress={checkCurrentLocation}
+              activeOpacity={0.7}
+              accessibilityLabel="Result may be outdated. Tap to re-check parking restrictions."
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="refresh" size={12} color={colors.warning} />
+              <Text style={styles.staleWarningText}>
+                Result may be outdated — tap to re-check
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Driving overlay badge — show only when no parking result */}
+          {isDriving && heroState !== 'clear' && heroState !== 'violation' && (
+            <View style={[styles.drivingBadge, { marginTop: spacing.sm }]}>
               <MaterialCommunityIcons name="car" size={12} color={colors.white} />
               <Text style={styles.drivingBadgeText}>Driving</Text>
             </View>
@@ -729,9 +962,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.heroActionButton}
                   onPress={() => getDirections(lastParkingCheck.coords)}
+                  accessibilityLabel="Get directions to parked car"
+                  accessibilityRole="button"
                 >
                   <MaterialCommunityIcons name="navigation-variant" size={14} color={colors.white} />
                   <Text style={styles.heroActionText}>Directions</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.heroActionButton}
+                  onPress={shareParkingResult}
+                  accessibilityLabel="Share parking result"
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="share-variant" size={14} color={colors.white} />
+                  <Text style={styles.heroActionText}>Share</Text>
                 </TouchableOpacity>
                 <Text style={styles.heroTimestamp}>
                   {formatTimeSince(lastParkingCheck.timestamp)}
@@ -740,6 +984,63 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </View>
           )}
         </TouchableOpacity>
+
+        {/* ──── Quick Start Tips ──── */}
+        {showQuickStart && (
+          <View style={styles.quickStartCard}>
+            <View style={styles.quickStartHeader}>
+              <MaterialCommunityIcons name="rocket-launch-outline" size={20} color={colors.primary} />
+              <Text style={styles.quickStartTitle}>Quick Start</Text>
+              <TouchableOpacity
+                onPress={dismissQuickStart}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Dismiss quick start tips"
+              >
+                <MaterialCommunityIcons name="close" size={18} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            {Platform.OS === 'android' && !savedCarName && (
+              <TouchableOpacity
+                style={styles.quickStartItem}
+                onPress={() => navigation.navigate('BluetoothSettings')}
+                accessibilityLabel="Pair your car's Bluetooth for auto-detection"
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="bluetooth-connect" size={16} color={colors.warning} />
+                <Text style={styles.quickStartItemText}>Pair your car's Bluetooth for auto-detection</Text>
+                <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            )}
+            {Platform.OS === 'ios' && (
+              <View style={styles.quickStartItem}>
+                <MaterialCommunityIcons name="map-marker-check" size={16} color={colors.success} />
+                <Text style={styles.quickStartItemText}>Allow "Always" location for background parking detection</Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.quickStartItem}
+              onPress={() => navigation.navigate('Settings')}
+              accessibilityLabel="Enable Camera Alerts in Settings for speed and red light warnings"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="camera" size={16} color={colors.info} />
+              <Text style={styles.quickStartItemText}>Enable Camera Alerts in Settings for speed/red light warnings</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
+            <View style={styles.quickStartItem}>
+              <MaterialCommunityIcons name="parking" size={16} color={colors.primary} />
+              <Text style={styles.quickStartItemText}>Set your home permit zone in Settings to avoid false alerts</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.quickStartDismiss}
+              onPress={dismissQuickStart}
+              accessibilityLabel="Got it, dismiss quick start tips"
+              accessibilityRole="button"
+            >
+              <Text style={styles.quickStartDismissText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ──── Paused: Resume button ──── */}
         {!isMonitoring && (
@@ -763,8 +1064,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           icon={!loading ? <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.white} /> : undefined}
         />
 
+        {/* Check progress / address display */}
+        {loading && checkingAddress && (
+          <View style={styles.checkingProgress}>
+            <MaterialCommunityIcons name="map-marker" size={14} color={colors.primary} />
+            <Text style={styles.checkingProgressText} numberOfLines={1}>{checkingAddress}</Text>
+          </View>
+        )}
+        {loading && isGettingLocation && !checkingAddress && (
+          <View style={styles.checkingProgress}>
+            <MaterialCommunityIcons name="crosshairs-gps" size={14} color={colors.textTertiary} />
+            <Text style={styles.checkingProgressText}>Acquiring GPS signal...</Text>
+          </View>
+        )}
+
         {/* GPS Accuracy - inline after check */}
-        {locationAccuracy !== undefined && (
+        {locationAccuracy !== undefined && !loading && (
           <View style={styles.accuracyContainer}>
             <View style={[
               styles.accuracyDot,
@@ -773,6 +1088,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.accuracyText}>
               {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
             </Text>
+            {locationAccuracy > 50 && (
+              <Text style={styles.accuracyHint}> — try moving outdoors</Text>
+            )}
           </View>
         )}
 
@@ -782,6 +1100,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             style={styles.statusCard}
             onPress={!savedCarName ? () => navigation.navigate('BluetoothSettings') : undefined}
             activeOpacity={!savedCarName ? 0.7 : 1}
+            accessibilityLabel={
+              savedCarName
+                ? isCarConnected
+                  ? `Connected to ${savedCarName}`
+                  : `Waiting for ${savedCarName}`
+                : 'Pair your car for auto-detection'
+            }
+            accessibilityRole={!savedCarName ? 'button' : 'text'}
+            accessibilityHint={!savedCarName ? 'Opens Bluetooth pairing screen' : undefined}
           >
             <MaterialCommunityIcons
               name={isCarConnected ? 'bluetooth-connect' : savedCarName ? 'bluetooth-off' : 'bluetooth'}
@@ -803,7 +1130,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* ──── iOS: motion activity status ──── */}
         {Platform.OS === 'ios' && isMonitoring && (
-          <View style={styles.statusCard}>
+          <View
+            style={styles.statusCard}
+            accessibilityLabel={`Motion status: ${
+              currentActivity === 'automotive' ? 'Driving detected' :
+              currentActivity === 'walking' ? 'Walking' :
+              currentActivity === 'stationary' ? 'Stationary' : 'Monitoring'
+            }`}
+            accessibilityRole="text"
+          >
             <MaterialCommunityIcons
               name={currentActivity === 'automotive' ? 'car' : currentActivity === 'walking' ? 'walk' : 'shield-check-outline'}
               size={22}
@@ -817,12 +1152,30 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         )}
 
+        {/* ──── Check Destination Parking ──── */}
+        <TouchableOpacity
+          style={styles.destinationCard}
+          onPress={() => navigation.getParent()?.navigate('CheckDestination')}
+          accessibilityLabel="Check destination parking"
+          accessibilityRole="button"
+          activeOpacity={0.7}
+        >
+          <View style={styles.destinationIcon}>
+            <MaterialCommunityIcons name="map-search" size={22} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.destinationTitle}>Check Destination Parking</Text>
+            <Text style={styles.destinationSubtitle}>See restrictions before you go</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textTertiary} />
+        </TouchableOpacity>
+
         {/* ──── Protection Coverage ──── */}
         <View style={styles.protectionCard}>
           <Text style={styles.protectionTitle}>We check for</Text>
           <View style={styles.protectionStrip}>
             {PROTECTION_ITEMS.map((item, index) => (
-              <View key={index} style={styles.protectionChip}>
+              <View key={index} style={styles.protectionChip} accessibilityLabel={`${item.label} checked`}>
                 <MaterialCommunityIcons
                   name={item.icon}
                   size={16}
@@ -866,6 +1219,105 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.medium,
+    flex: 1,
+  },
+
+  // ──── Battery Warning Banner ────
+  batteryBanner: {
+    backgroundColor: '#FFF8E1',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFE082',
+  },
+  batteryBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  batteryBannerTextWrap: {
+    flex: 1,
+  },
+  batteryBannerTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  batteryBannerBody: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  batteryBannerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginLeft: 26, // aligned with text (icon width + gap)
+  },
+  batteryBannerBtn: {
+    backgroundColor: colors.warning,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.sm,
+  },
+  batteryBannerBtnText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.white,
+  },
+  batteryBannerBtnSecondary: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  batteryBannerBtnSecondaryText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.warning,
+  },
+
+  // ──── Permission Banner ────
+  permissionBanner: {
+    backgroundColor: '#FDE8E8',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5C6C6',
+  },
+  permissionBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  permissionBannerTextWrap: {
+    flex: 1,
+  },
+  permissionBannerTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  permissionBannerBody: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  permissionBannerBtn: {
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.sm,
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    marginLeft: 26,
+  },
+  permissionBannerBtnText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.white,
   },
   scrollView: {
     padding: spacing.lg,
@@ -1018,9 +1470,9 @@ const styles = StyleSheet.create({
   },
   heroActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing.xs,
+    gap: spacing.sm,
   },
   heroActionButton: {
     flexDirection: 'row',
@@ -1040,6 +1492,43 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.sizes.xs,
     opacity: 0.7,
+    marginLeft: 'auto',
+  },
+  staleWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,193,7,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    marginTop: spacing.xs,
+    gap: 4,
+  },
+  staleWarningText: {
+    fontSize: typography.sizes.xs,
+    color: colors.warning,
+    fontWeight: typography.weights.medium,
+  },
+  heroTimerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  heroTimerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    gap: 4,
+  },
+  heroTimerText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    opacity: 0.85,
   },
   drivingBadge: {
     flexDirection: 'row',
@@ -1049,13 +1538,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: borderRadius.full,
-    marginTop: spacing.sm,
     gap: 4,
   },
   drivingBadgeText: {
     fontSize: typography.sizes.xs,
     color: colors.white,
     fontWeight: typography.weights.semibold,
+  },
+
+  // ──── Quick Start Tips ────
+  quickStartCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    ...shadows.sm,
+  },
+  quickStartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  quickStartTitle: {
+    flex: 1,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  quickStartItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  quickStartItemText: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  quickStartDismiss: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  quickStartDismissText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
   },
 
   // Resume button
@@ -1066,6 +1599,21 @@ const styles = StyleSheet.create({
   // Main button
   mainButton: {
     marginBottom: spacing.md,
+  },
+
+  // Checking progress
+  checkingProgress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  checkingProgressText: {
+    fontSize: typography.sizes.sm,
+    color: colors.primary,
+    fontWeight: typography.weights.medium,
   },
 
   // Accuracy
@@ -1086,6 +1634,11 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
   },
+  accuracyHint: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+  },
 
   // ──── Status Card (single row) ────
   statusCard: {
@@ -1103,6 +1656,36 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     color: colors.textSecondary,
     marginLeft: spacing.md,
+  },
+
+  // ──── Check Destination ────
+  destinationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.base,
+    ...shadows.sm,
+  },
+  destinationIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primaryTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  destinationTitle: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  destinationSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
 
   // ──── Protection Coverage ────

@@ -14,6 +14,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import CheckDestinationScreen from './src/screens/CheckDestinationScreen';
 
 // Services
 import AuthService, { AuthState } from './src/services/AuthService';
@@ -44,6 +45,7 @@ export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
   BluetoothSettings: undefined;
+  CheckDestination: undefined;
 };
 
 export type MainTabParamList = {
@@ -284,6 +286,14 @@ function App(): React.JSX.Element {
             )}
           </Stack.Screen>
           <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+          <Stack.Screen
+            name="CheckDestination"
+            component={CheckDestinationScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
           <Stack.Screen
             name="BluetoothSettings"
             component={SettingsScreen}
