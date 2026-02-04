@@ -722,13 +722,25 @@ export default function SettingsPage() {
     const mobileRefreshToken = params.get('mobile_refresh_token');
 
     if (mobileAccessToken && mobileRefreshToken) {
+      // setSession returns { data, error } as a resolved promise — it does NOT
+      // reject on auth errors. We must check the return value explicitly.
       supabase.auth.setSession({
         access_token: mobileAccessToken,
         refresh_token: mobileRefreshToken,
-      }).then(() => {
+      }).then(({ data, error }) => {
+        if (error || !data.session) {
+          // Access token likely expired. Use the refresh token to get a new session.
+          console.warn('setSession failed, trying refreshSession:', error?.message);
+          return supabase.auth.refreshSession({ refresh_token: mobileRefreshToken });
+        }
+        return { data, error: null };
+      }).then((result) => {
+        if (result && 'error' in result && result.error) {
+          console.error('refreshSession also failed:', result.error.message);
+        }
         loadData();
       }).catch((err) => {
-        console.error('Mobile setSession failed:', err);
+        console.error('Mobile auth failed:', err);
         loadData(); // Fall back to normal flow
       });
     } else {
