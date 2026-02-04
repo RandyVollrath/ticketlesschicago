@@ -82,7 +82,9 @@ export function Legend({ style, compact = false }: LegendProps) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_evt, gestureState) => {
-        // Only capture vertical drags (avoid interfering with map panning)
+        // Never steal pinch-to-zoom (2+ fingers)
+        if (gestureState.numberActiveTouches > 1) return false;
+        // Only capture vertical single-finger drags (avoid interfering with map)
         return (
           Math.abs(gestureState.dy) > 8 &&
           Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.5

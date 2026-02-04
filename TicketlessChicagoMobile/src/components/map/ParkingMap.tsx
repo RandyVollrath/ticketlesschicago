@@ -203,6 +203,9 @@ export function ParkingMap({
         showsUserLocation
         showsMyLocationButton
         showsCompass
+        zoomEnabled
+        zoomTapEnabled
+        scrollEnabled
         rotateEnabled={false}
         pitchEnabled={false}
       >

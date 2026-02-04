@@ -85,6 +85,9 @@ export default function DestinationMapView() {
         zoom: 16,
         zoomControl: true,
         scrollWheelZoom: true,
+        touchZoom: true,
+        dragging: true,
+        tap: true,
         attributionControl: false,
       });
 
@@ -254,7 +257,7 @@ export default function DestinationMapView() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       {/* Map container */}
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={containerRef} style={{ width: '100%', height: '100%', touchAction: 'none' }} />
 
       {/* Loading overlay */}
       {loading && (

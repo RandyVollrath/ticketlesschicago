@@ -51,36 +51,70 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // Auth mechanism: inject session into localStorage BEFORE page JS runs.
   // iOS WKWebView can mangle URL hash fragments (encoding # as %23),
-  // so instead we write the Supabase session directly to localStorage.
+  // so we write the Supabase session directly to localStorage.
   // The web Supabase client finds it during initialization and the user
   // is authenticated before any React component mounts.
-  const SUPABASE_STORAGE_KEY = `sb-dzhqolbhuqdcpngdayuq-auth-token`;
+  const SUPABASE_STORAGE_KEY = 'sb-dzhqolbhuqdcpngdayuq-auth-token';
 
-  const injectedJavaScriptBeforeContentLoaded = session
-    ? `
+  const sessionJson = session
+    ? JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_in: session.expires_in,
+        expires_at: session.expires_at || Math.floor(Date.now() / 1000) + session.expires_in,
+        token_type: 'bearer',
+        user: session.user,
+      })
+    : '';
+
+  // Runs at DOCUMENT START — before any page JS executes.
+  // Sets auth + forces mobile viewport + injects CSS early.
+  const injectedJavaScriptBeforeContentLoaded = `
     (function() {
       try {
-        var sessionData = ${JSON.stringify(JSON.stringify({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-          expires_in: session.expires_in,
-          expires_at: session.expires_at || Math.floor(Date.now() / 1000) + session.expires_in,
-          token_type: 'bearer',
-          user: session.user,
-        }))};
-        localStorage.setItem('${SUPABASE_STORAGE_KEY}', sessionData);
+        // 1. Force mobile viewport (iOS WKWebView needs this)
+        var vp = document.querySelector('meta[name="viewport"]');
+        if (!vp) {
+          vp = document.createElement('meta');
+          vp.name = 'viewport';
+          document.head.appendChild(vp);
+        }
+        vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+
+        // 2. Inject auth session into localStorage
+        ${sessionJson ? `localStorage.setItem('${SUPABASE_STORAGE_KEY}', ${JSON.stringify(sessionJson)});` : ''}
+
+        // 3. Inject mobile CSS early (will apply to all DOM elements as they appear)
+        var style = document.createElement('style');
+        style.id = '__autopilot_mobile_css';
+        style.textContent = [
+          'nav, footer, .site-header, .site-footer, .site-nav { display: none !important; }',
+          'body { padding-top: 0 !important; margin: 0 !important; }',
+          'main { max-width: 100% !important; padding: 10px 10px 24px !important; margin-top: 0 !important; }',
+          'main > div { margin-bottom: 14px !important; }',
+          'main > div > div:last-child { padding: 16px !important; }',
+          'main > div > div:first-child { padding: 12px 16px !important; }',
+          'main > div > div:first-child h3 { font-size: 16px !important; }',
+          'main > div > div:last-child > div { gap: 8px !important; }',
+          'main > div > div:last-child > div > div:first-child { min-width: 0; flex: 1 1 0%; }',
+          'main > div > div:last-child > div > div:first-child h4 { font-size: 14px !important; word-break: break-word; }',
+          'main > div > div:last-child > div > div:first-child p { font-size: 12px !important; word-break: break-word; }',
+          'main label[style*="cursor: pointer"] { padding: 6px 8px !important; font-size: 13px !important; gap: 6px !important; }',
+          'main div[style*="flex-wrap: wrap"] { gap: 8px !important; }',
+          'main div[style*="flex: 1 1"] { flex: 1 1 100% !important; }',
+          'main input, main select { font-size: 14px !important; padding: 8px 10px !important; }',
+        ].join(' ');
+        document.head.appendChild(style);
       } catch(e) {}
     })();
     true;
-  `
-    : 'true;';
+  `;
 
-  // CSS & cleanup — runs AFTER page loads.
-  // Hides site chrome and fixes layout for narrow mobile viewports.
+  // Runs at DOCUMENT END — clean up site chrome that rendered after the SPA hydrated.
   const injectedJavaScript = `
     (function() {
       try {
-        // Hide the dark header div that sits between <nav> and <main>
+        // Hide elements between nav and main (dark header bar, etc.)
         var main = document.querySelector('main');
         if (main) {
           var el = main.previousElementSibling;
@@ -90,39 +124,33 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           }
         }
 
-        var style = document.createElement('style');
-        style.textContent = [
-          /* --- hide site chrome --- */
-          'nav, footer, .site-header, .site-footer, .site-nav { display: none !important; }',
-          'body { padding-top: 0 !important; margin: 0 !important; }',
+        // Re-inject CSS if it got wiped by SPA navigation
+        if (!document.getElementById('__autopilot_mobile_css')) {
+          var style = document.createElement('style');
+          style.id = '__autopilot_mobile_css';
+          style.textContent = [
+            'nav, footer, .site-header, .site-footer, .site-nav { display: none !important; }',
+            'body { padding-top: 0 !important; margin: 0 !important; }',
+            'main { max-width: 100% !important; padding: 10px 10px 24px !important; margin-top: 0 !important; }',
+            'main > div { margin-bottom: 14px !important; }',
+            'main > div > div:last-child { padding: 16px !important; }',
+            'main > div > div:first-child { padding: 12px 16px !important; }',
+            'main > div > div:first-child h3 { font-size: 16px !important; }',
+            'main > div > div:last-child > div { gap: 8px !important; }',
+            'main > div > div:last-child > div > div:first-child { min-width: 0; flex: 1 1 0%; }',
+            'main > div > div:last-child > div > div:first-child h4 { font-size: 14px !important; word-break: break-word; }',
+            'main > div > div:last-child > div > div:first-child p { font-size: 12px !important; word-break: break-word; }',
+            'main label[style*="cursor: pointer"] { padding: 6px 8px !important; font-size: 13px !important; gap: 6px !important; }',
+            'main div[style*="flex-wrap: wrap"] { gap: 8px !important; }',
+            'main div[style*="flex: 1 1"] { flex: 1 1 100% !important; }',
+            'main input, main select { font-size: 14px !important; padding: 8px 10px !important; }',
+          ].join(' ');
+          document.head.appendChild(style);
+        }
 
-          /* --- full-width layout for WebView --- */
-          'main { max-width: 100% !important; padding: 10px 10px 24px !important; margin-top: 0 !important; }',
-
-          /* --- tighter card padding --- */
-          'main > div { margin-bottom: 14px !important; }',
-          'main > div > div:last-child { padding: 16px !important; }',
-          'main > div > div:first-child { padding: 12px 16px !important; }',
-          'main > div > div:first-child h3 { font-size: 16px !important; }',
-
-          /* --- toggle rows: prevent label from pushing toggle off-screen --- */
-          'main > div > div:last-child > div { gap: 8px !important; }',
-          'main > div > div:last-child > div > div:first-child { min-width: 0; flex: 1 1 0%; }',
-          'main > div > div:last-child > div > div:first-child h4 { font-size: 14px !important; word-break: break-word; }',
-          'main > div > div:last-child > div > div:first-child p { font-size: 12px !important; word-break: break-word; }',
-
-          /* --- day-selector checkboxes: tighter fit --- */
-          'main label[style*="cursor: pointer"] { padding: 6px 8px !important; font-size: 13px !important; gap: 6px !important; }',
-
-          /* --- renewal date / flex-wrap sections: stack on narrow screens --- */
-          'main div[style*="flex-wrap: wrap"] { gap: 8px !important; }',
-          'main div[style*="flex: 1 1"] { flex: 1 1 100% !important; }',
-
-          /* --- inputs inside cards --- */
-          'main input, main select { font-size: 14px !important; padding: 8px 10px !important; }',
-        ].join(' ');
-        document.head.appendChild(style);
-      } catch(e) { console.error('Injection error:', e); }
+        // Signal injection complete
+        window.ReactNativeWebView && window.ReactNativeWebView.postMessage('injection_done');
+      } catch(e) {}
     })();
     true;
   `;
@@ -235,6 +263,14 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           domStorageEnabled={true}
           sharedCookiesEnabled={true}
           thirdPartyCookiesEnabled={true}
+          onMessage={(event) => {
+            // Required for injectedJavaScript to execute on iOS WKWebView.
+            // Also receives our 'injection_done' signal.
+            const msg = event.nativeEvent.data;
+            if (msg === 'injection_done') {
+              log.debug('WebView CSS/auth injection confirmed');
+            }
+          }}
           cacheEnabled={true}
           userAgent={`AutopilotMobile/${Config.APP_VERSION} (${Platform.OS})`}
         />
