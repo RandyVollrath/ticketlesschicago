@@ -91,11 +91,23 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     setSnowForecast(null);
 
     try {
-      // Step 1: Geocode the address via find-section
-      const geoRes = await ApiClient.get<any>(
-        `/api/find-section?address=${encodeURIComponent(trimmed)}`,
-        { timeout: 12000, showErrorAlert: false },
-      );
+      // Run all 3 calls in parallel — find-section is the heavy one (geocode + PostGIS),
+      // permit-zone and snow-forecast only need the address string / fixed coords.
+      const [geoRes, permitRes, snowRes] = await Promise.all([
+        ApiClient.get<any>(
+          `/api/find-section?address=${encodeURIComponent(trimmed)}`,
+          { timeout: 12000, showErrorAlert: false },
+        ),
+        ApiClient.get<any>(
+          `/api/check-permit-zone?address=${encodeURIComponent(trimmed)}`,
+          { timeout: 8000, showErrorAlert: false },
+        ),
+        // Snow forecast is city-wide — use fixed Chicago coords
+        ApiClient.get<any>(
+          `/api/snow-forecast?lat=41.8781&lng=-87.6298`,
+          { timeout: 10000, showErrorAlert: false },
+        ).catch(() => null),
+      ]);
 
       if (!geoRes.success || !geoRes.data?.coordinates) {
         setErrorMsg('Could not find that address in Chicago. Try including the street number and name.');
@@ -103,61 +115,94 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         return;
       }
 
-      const { lat, lng } = geoRes.data.coordinates;
+      const d = geoRes.data;
+      const { lat, lng } = d.coordinates;
       const geo: GeocodedResult = {
         lat,
         lng,
-        address: geoRes.data.address || trimmed,
-        ward: geoRes.data.ward,
-        section: geoRes.data.section,
+        address: d.address || trimmed,
+        ward: d.ward,
+        section: d.section,
       };
 
-      // Step 2: Check all restrictions at the location + check permit zone + snow forecast
-      const [parkingRes, permitRes, snowRes] = await Promise.all([
-        ApiClient.get<any>(
-          `/api/mobile/check-parking?lat=${lat}&lng=${lng}&accuracy=10&confidence=high`,
-          { timeout: 12000, showErrorAlert: false },
-        ),
-        ApiClient.get<any>(
-          `/api/check-permit-zone?address=${encodeURIComponent(trimmed)}`,
-          { timeout: 8000, showErrorAlert: false },
-        ),
-        ApiClient.get<any>(
-          `/api/snow-forecast?lat=${lat}&lng=${lng}`,
-          { timeout: 10000, showErrorAlert: false },
-        ).catch(() => null),
-      ]);
-
+      // Compute severity from find-section data (no redundant check-parking call)
       const result: RestrictionResult = {};
 
-      // Parse parking check results
-      if (parkingRes.success && parkingRes.data) {
-        const d = parkingRes.data;
-        result.streetCleaning = d.streetCleaning
-          ? {
-              hasRestriction: d.streetCleaning.hasRestriction,
-              message: d.streetCleaning.message || 'No street cleaning info',
-              severity: d.streetCleaning.severity || 'none',
-              nextDate: d.streetCleaning.nextDate,
-              schedule: d.streetCleaning.schedule,
-            }
-          : { hasRestriction: false, message: 'No street cleaning scheduled', severity: 'none' };
+      // Street cleaning severity based on nextCleaningDate
+      if (d.nextCleaningDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const cleaning = new Date(d.nextCleaningDate + 'T00:00:00');
+        const diffDays = Math.round((cleaning.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const dateStr = cleaning.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-        result.winterOvernightBan = d.winterOvernightBan
-          ? {
-              active: d.winterOvernightBan.active,
-              message: d.winterOvernightBan.message || 'No winter ban',
-              severity: d.winterOvernightBan.severity || 'none',
-            }
-          : { active: false, message: 'Not on a winter ban street', severity: 'none' };
+        let severity: string = 'none';
+        let message: string;
+        if (diffDays === 0) {
+          severity = 'critical';
+          message = `Street cleaning TODAY (${dateStr}). Move your car!`;
+        } else if (diffDays === 1) {
+          severity = 'warning';
+          message = `Street cleaning tomorrow (${dateStr})`;
+        } else if (diffDays <= 3) {
+          severity = 'info';
+          message = `Street cleaning ${dateStr} (${diffDays} days)`;
+        } else {
+          message = `Next cleaning: ${dateStr}`;
+        }
 
-        result.twoInchSnowBan = d.twoInchSnowBan
-          ? {
-              active: d.twoInchSnowBan.active,
-              message: d.twoInchSnowBan.message || 'No snow ban',
-              severity: d.twoInchSnowBan.severity || 'none',
-            }
-          : { active: false, message: 'Not on a snow ban route', severity: 'none' };
+        result.streetCleaning = {
+          hasRestriction: diffDays <= 1,
+          message,
+          severity,
+          nextDate: d.nextCleaningDate,
+        };
+      } else {
+        result.streetCleaning = { hasRestriction: false, message: 'No upcoming street cleaning scheduled', severity: 'none' };
+      }
+
+      // Winter overnight ban — Dec 1 - Apr 1, 3am-7am
+      if (d.onWinterBan) {
+        const now = new Date();
+        const month = now.getMonth() + 1; // 1-indexed
+        const inSeason = month >= 12 || month <= 3;
+        const hour = now.getHours();
+        const isActiveNow = inSeason && (hour >= 3 && hour < 7);
+        const hoursUntilBan = inSeason
+          ? (hour < 3 ? 3 - hour : hour >= 7 ? 24 - hour + 3 : 0)
+          : -1;
+
+        let severity: string = 'none';
+        let message: string;
+        if (isActiveNow) {
+          severity = 'critical';
+          message = `Winter parking ban ACTIVE on ${d.winterBanStreet || 'this street'}! No parking 3-7 AM.`;
+        } else if (inSeason && hoursUntilBan <= 7) {
+          severity = 'warning';
+          message = `Winter ban in ${hoursUntilBan}h on ${d.winterBanStreet || 'this street'}. No parking 3-7 AM.`;
+        } else if (inSeason) {
+          message = `Winter overnight ban street (${d.winterBanStreet || 'this street'}). No parking 3-7 AM Dec-Apr.`;
+        } else {
+          message = `Winter overnight ban street (active Dec 1 - Apr 1, 3-7 AM)`;
+        }
+
+        result.winterOvernightBan = { active: isActiveNow, message, severity };
+      } else {
+        result.winterOvernightBan = { active: false, message: 'Not on a winter overnight ban street', severity: 'none' };
+      }
+
+      // 2-inch snow ban
+      if (d.onSnowRoute) {
+        const banActive = d.snowBanActive || false;
+        result.twoInchSnowBan = {
+          active: banActive,
+          message: banActive
+            ? `2-INCH SNOW BAN ACTIVE on ${d.snowRouteStreet || 'this street'}! Move your car to avoid tow.`
+            : `On a 2" snow ban route (${d.snowRouteStreet || 'this street'}). Ban not currently active.`,
+          severity: banActive ? 'critical' : 'none',
+        };
+      } else {
+        result.twoInchSnowBan = { active: false, message: 'Not on a 2" snow ban route', severity: 'none' };
       }
 
       // Parse permit zone result

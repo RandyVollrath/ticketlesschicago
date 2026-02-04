@@ -370,6 +370,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Location search successful:', foundWard, foundSection, nextCleaningDate);
 
+    // Check snow ban active status (single-row table, very fast)
+    let snowBanActive = false;
+    try {
+      const { data: snowStatus } = await supabase
+        .from('snow_route_status')
+        .select('is_active')
+        .eq('id', 1)
+        .single();
+      snowBanActive = snowStatus?.is_active || false;
+    } catch { /* non-critical */ }
+
     // Check if address is on a 2-inch snow ban route
     let snowRouteInfo = { isOnSnowRoute: false, route: null, streetName: null };
     let winterBanInfo = { isOnWinterBan: false, street: null, streetName: null };
@@ -402,6 +413,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       matchType: matchType,
       onSnowRoute: snowRouteInfo.isOnSnowRoute,
       snowRouteStreet: snowRouteInfo.route?.on_street || null,
+      snowBanActive: snowBanActive,
       onWinterBan: winterBanInfo.isOnWinterBan,
       winterBanStreet: winterBanInfo.street?.street_name || null,
     };
