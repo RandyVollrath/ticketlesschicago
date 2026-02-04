@@ -176,12 +176,12 @@ class AuthServiceClass {
 
   async signInWithMagicLink(email: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use the web callback URL with mobile=true parameter
-      // The web page will detect this and redirect to the app's custom scheme
+      // Redirect directly to the app's custom scheme — bypasses the slow web callback page
+      // Supabase will 302 redirect to this URL with tokens in the hash fragment
       const { error } = await this.supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: 'https://autopilotamerica.com/auth/callback?mobile=true',
+          emailRedirectTo: 'ticketlesschicago://auth/callback',
         },
       });
 

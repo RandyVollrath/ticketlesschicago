@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "V22BMBQJ67.fyi.ticketless.app",
+        "paths": ["/auth/*", "/auth/callback"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["V22BMBQJ67.fyi.ticketless.app"]
+  }
+}

@@ -79,6 +79,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>autopilotamerica</string>
+				<string>ticketlesschicago</string>
 			</array>
 		</dict>
 		<dict>

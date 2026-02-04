@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fyi.ticketless.app",
+      "sha256_cert_fingerprints": [
+        "00:BD:DC:36:FB:60:AC:39:E8:4E:6A:88:E7:34:A0:5F:DC:D0:74:B4:85:A4:A0:34:16:5E:E7:A0:63:43:89:20",
+        "B1:6A:78:33:91:FA:83:E3:BB:1B:2D:B1:0E:24:CC:86:84:9B:FC:5E:02:AE:6E:3A:8E:AC:4B:75:C9:5C:05:C2"
+      ]
+    }
+  }
+]
