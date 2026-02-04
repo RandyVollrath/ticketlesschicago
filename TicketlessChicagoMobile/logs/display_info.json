@@ -1,0 +1,53 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "info",
+      "displays",
+      "--device",
+      "F1CE7526-A9E9-5EBA-B8FA-6EBEDE0BC756",
+      "--json-output",
+      "/Users/randyvollrath/ticketlesschicago/TicketlessChicagoMobile/logs/display_info.json"
+    ],
+    "commandType" : "devicectl.device.info.displays",
+    "environment" : {
+      "TERM" : "xterm-256color"
+    },
+    "jsonVersion" : 3,
+    "outcome" : "success",
+    "version" : "506.6"
+  },
+  "result" : {
+    "backlightState" : "off",
+    "displays" : [
+      {
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            1125,
+            2436
+          ]
+        ],
+        "currentOrientation" : "rot0",
+        "displayId" : 1,
+        "name" : "LCD",
+        "nativeOrientation" : "rot0",
+        "nativeSize" : [
+          1080,
+          2340
+        ],
+        "pointScale" : 3,
+        "primary" : true
+      }
+    ],
+    "orientation" : {
+      "currentDeviceNonFlatOrientation" : "portrait",
+      "currentDeviceOrientation" : "faceDown",
+      "currentDeviceOrientationLocked" : false
+    }
+  }
+}
