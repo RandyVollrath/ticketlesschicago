@@ -7,6 +7,8 @@ import { supabase } from '../../lib/supabase'
 export default function AuthCallback() {
   const router = useRouter()
   const [debugInfo, setDebugInfo] = React.useState<string>('')
+  const [mobileAppUrl, setMobileAppUrl] = React.useState<string | null>(null)
+  const [showFallback, setShowFallback] = React.useState(false)
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -27,20 +29,59 @@ export default function AuthCallback() {
           const error = hashParams.get('error') || searchParams.get('error');
           const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
 
-          let mobileRedirectUrl = 'ticketlesschicago://auth/callback';
+          let queryString = '';
 
           if (error) {
-            mobileRedirectUrl += `?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`;
+            queryString = `?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`;
           } else if (accessToken) {
-            mobileRedirectUrl += `?access_token=${encodeURIComponent(accessToken)}`;
+            queryString = `?access_token=${encodeURIComponent(accessToken)}`;
             if (refreshToken) {
-              mobileRedirectUrl += `&refresh_token=${encodeURIComponent(refreshToken)}`;
+              queryString += `&refresh_token=${encodeURIComponent(refreshToken)}`;
             }
           }
 
-          console.log('📱 Mobile app detected, redirecting to:', mobileRedirectUrl);
-          setDebugInfo('📱 Redirecting to mobile app...');
-          window.location.href = mobileRedirectUrl;
+          const customSchemeUrl = `ticketlesschicago://auth/callback${queryString}`;
+
+          // Detect Android to use Intent URL (Chrome blocks custom scheme redirects via JS)
+          const ua = navigator.userAgent || '';
+          const isAndroid = /android/i.test(ua);
+
+          // Detect WebView (Samsung Email, Outlook, etc.) — these don't support intent:// either
+          const isWebView = /wv|WebView/i.test(ua) || /FBAN|FBAV|Instagram|Line\//i.test(ua);
+
+          // Build the intent URL for Chrome/Custom Tabs on Android
+          const intentUrl = `intent://auth/callback${queryString}#Intent;scheme=ticketlesschicago;package=fyi.ticketless.app;end`;
+
+          // Store the fallback URL — always use custom scheme for the clickable link
+          // (user taps bypass Chrome's JS restriction)
+          setMobileAppUrl(customSchemeUrl);
+
+          if (isAndroid) {
+            if (isWebView) {
+              // WebViews don't support intent:// — try custom scheme directly,
+              // then immediately show the fallback button
+              console.log('📱 Android WebView detected, using custom scheme + fallback');
+              setDebugInfo('📱 Opening app...');
+              window.location.href = customSchemeUrl;
+              // Show fallback immediately since WebViews usually block this
+              setShowFallback(true);
+            } else {
+              // Chrome / Custom Tabs — intent:// is the reliable path
+              console.log('📱 Android Chrome detected, using Intent URL');
+              setDebugInfo('📱 Opening app...');
+              window.location.href = intentUrl;
+            }
+          } else {
+            // iOS — custom scheme works reliably via JS
+            console.log('📱 iOS detected, redirecting to:', customSchemeUrl);
+            setDebugInfo('📱 Redirecting to mobile app...');
+            window.location.href = customSchemeUrl;
+          }
+
+          // Fallback: if auto-redirect didn't fire after 1.5 seconds, show button
+          setTimeout(() => {
+            setShowFallback(true);
+          }, 1500);
           return;
         }
 
@@ -536,6 +577,20 @@ export default function AuthCallback() {
         {debugInfo && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-left">
             <p className="font-mono text-xs">{debugInfo}</p>
+          </div>
+        )}
+        {showFallback && mobileAppUrl && (
+          <div className="mt-6 border-t pt-4">
+            <p className="text-gray-500 text-sm mb-3">Didn&apos;t open automatically? Tap the button below.</p>
+            <a
+              href={mobileAppUrl}
+              className="inline-block bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors text-lg"
+            >
+              Open Autopilot America
+            </a>
+            <p className="text-gray-400 text-xs mt-3">
+              If the app still doesn&apos;t open, make sure it&apos;s installed, then try tapping the link in your email again.
+            </p>
           </div>
         )}
       </div>

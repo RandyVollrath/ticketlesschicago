@@ -66,11 +66,21 @@ function parseUrl(url: string): { protocol: string; host: string; pathname: stri
 const JWT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/;
 
 /**
- * Validate if a string looks like a valid JWT token
+ * Validate if a string looks like a valid JWT access token
  */
-function isValidToken(token: string | undefined): boolean {
+function isValidAccessToken(token: string | undefined): boolean {
   if (!token || typeof token !== 'string') return false;
   return JWT_REGEX.test(token);
+}
+
+/**
+ * Validate if a string looks like a valid refresh token
+ * Supabase refresh tokens are opaque strings (NOT JWTs), so just check
+ * that it's a non-empty string with URL-safe characters
+ */
+function isValidRefreshToken(token: string | undefined): boolean {
+  if (!token || typeof token !== 'string') return false;
+  return token.length >= 10 && /^[A-Za-z0-9_-]+[A-Za-z0-9_.\-=]*$/.test(token);
 }
 
 /**
@@ -157,8 +167,13 @@ class DeepLinkingServiceClass {
       }
 
       // Validate token format before using
-      if (!isValidToken(accessToken) || !isValidToken(refreshToken)) {
-        log.error('Invalid token format in auth callback');
+      if (!isValidAccessToken(accessToken) || !isValidRefreshToken(refreshToken)) {
+        log.error('Invalid token format in auth callback', {
+          hasAccess: !!accessToken,
+          hasRefresh: !!refreshToken,
+          accessValid: isValidAccessToken(accessToken),
+          refreshValid: isValidRefreshToken(refreshToken),
+        });
         Alert.alert('Authentication Error', 'Invalid authentication link. Please request a new one.');
         return;
       }
@@ -204,7 +219,7 @@ class DeepLinkingServiceClass {
       const type = params.type;
 
       // Validate token format
-      if (!isValidToken(accessToken) || !isValidToken(refreshToken)) {
+      if (!isValidAccessToken(accessToken) || !isValidRefreshToken(refreshToken)) {
         log.error('Invalid token format in password reset callback');
         Alert.alert('Error', 'Invalid password reset link. Please request a new one.');
         return;
@@ -288,14 +303,20 @@ class DeepLinkingServiceClass {
       if (url.startsWith(URL_SCHEME) || url.startsWith('ticketlesschicago://')) {
         const scheme = url.startsWith(URL_SCHEME) ? URL_SCHEME : 'ticketlesschicago://';
         const withoutScheme = url.substring(scheme.length);
-        const [pathPart, queryPart] = withoutScheme.split('?');
+
+        // Split hash fragment FIRST — Supabase puts tokens in the hash
+        // e.g. ticketlesschicago://auth/callback#access_token=...&refresh_token=...
+        const hashIndex = withoutScheme.indexOf('#');
+        const beforeHash = hashIndex !== -1 ? withoutScheme.substring(0, hashIndex) : withoutScheme;
+        const hashPart = hashIndex !== -1 ? withoutScheme.substring(hashIndex + 1) : '';
+
+        // Then split path and query params
+        const [pathPart, queryPart] = beforeHash.split('?');
         path = pathPart;
         params = parseQueryString(queryPart || '');
 
-        // Also parse hash fragment for OAuth callbacks
-        const hashIndex = (queryPart || '').indexOf('#');
-        if (hashIndex !== -1) {
-          const hashPart = (queryPart || '').substring(hashIndex + 1);
+        // Parse hash fragment params (Supabase auth tokens come here)
+        if (hashPart) {
           params = { ...params, ...parseQueryString(hashPart) };
         }
       }
