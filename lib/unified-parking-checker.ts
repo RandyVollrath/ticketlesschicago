@@ -289,7 +289,7 @@ export async function checkAllParkingRestrictions(
         if (winterBanData.is_winter_ban_hours) {
           result.winterBan.severity = 'critical';
           result.winterBan.message = `WINTER OVERNIGHT BAN ACTIVE on ${winterBanData.street_name}! No parking 3-7 AM (nightly Dec 1 - Apr 1). Move now!`;
-        } else if (banHoursInfo.hoursUntilBan <= 4) {
+        } else if (banHoursInfo.hoursUntilBan <= 7) {
           result.winterBan.severity = 'warning';
           result.winterBan.message = `Winter overnight ban starts in ${Math.round(banHoursInfo.hoursUntilBan)} hour(s) on ${winterBanData.street_name}. Move before 3 AM.`;
         } else {
@@ -348,7 +348,7 @@ export async function checkAllParkingRestrictions(
         if (zoneStatus.is_currently_restricted) {
           result.permitZone.severity = 'critical';
           result.permitZone.message = `PERMIT REQUIRED - Zone ${zone.zone}. ${restrictionSchedule}. $100 ticket risk.${hoursNote}`;
-        } else if (zoneStatus.hours_until_restriction <= 2) {
+        } else if (zoneStatus.hours_until_restriction <= 3) {
           result.permitZone.severity = 'warning';
           result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts in ${Math.round(zoneStatus.hours_until_restriction)} hour(s). ${restrictionSchedule}.${hoursNote}`;
         } else {
@@ -389,7 +389,7 @@ export async function checkAllParkingRestrictions(
       if (zoneStatus.is_currently_restricted) {
         result.permitZone.severity = 'critical';
         result.permitZone.message = `INDUSTRIAL PERMIT REQUIRED - Zone ${iZone.zone}. ${restrictionSchedule}. No parking without industrial permit.`;
-      } else if (zoneStatus.hours_until_restriction <= 2) {
+      } else if (zoneStatus.hours_until_restriction <= 3) {
         result.permitZone.severity = 'warning';
         result.permitZone.message = `Industrial Zone ${iZone.zone} - Restriction starts in ${Math.round(zoneStatus.hours_until_restriction)} hour(s). ${restrictionSchedule}.`;
       } else {
