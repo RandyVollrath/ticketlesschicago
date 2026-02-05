@@ -42,14 +42,11 @@ export type DetectionEventType =
   | 'DEPARTURE_DETECTED'     // User started driving again (BT reconnect)
   | 'MONITORING_STARTED'     // User started monitoring (car paired)
   | 'MONITORING_STOPPED'     // User stopped monitoring
-  | 'ACTIVITY_DRIVING'       // Activity Recognition: IN_VEHICLE detected
-  | 'ACTIVITY_STILL'         // Activity Recognition: STILL/WALKING detected
   | 'STATE_RESTORED';        // State restored from persistence on app restart
 
 export type DetectionSource =
   | 'bt_acl'              // Android BT Classic ACL event
   | 'bt_profile_proxy'    // Android BT profile proxy check
-  | 'activity_recognition'// Google Activity Recognition API
   | 'periodic_check'      // 15-minute periodic fallback
   | 'user_manual'         // User triggered manually
   | 'system';             // Internal (timers, persistence, initialization)
@@ -120,13 +117,6 @@ class ParkingDetectionStateMachineClass {
   // Track initialization
   private _initialized = false;
 
-  // What put us into DRIVING state? If Activity Recognition (no BT), then
-  // Activity Recognition STILL/WALKING should also trigger parking.
-  // If BT put us into DRIVING, only BT disconnect triggers parking.
-  private _drivingSource: DetectionSource | null = null;
-
-  // Longer debounce for Activity Recognition (less precise than BT disconnect)
-  private static readonly AR_DEBOUNCE_DURATION_MS = 15_000; // 15 seconds
 
   // ---------------------------------------------------------------------------
   // Public API — Reading State
@@ -368,56 +358,6 @@ class ParkingDetectionStateMachineClass {
     this.transition('IDLE', 'MONITORING_STOPPED', 'system');
   }
 
-  /**
-   * Activity Recognition: driving detected (IN_VEHICLE ENTER).
-   *
-   * Two roles:
-   * 1. For BT users: secondary confirmation signal (logged for diagnostics).
-   *    BT is the primary trigger — AR just adds confidence.
-   * 2. For non-BT users: primary driving signal. Transitions IDLE/PARKED → DRIVING.
-   */
-  activityDriving(metadata?: Record<string, any>): void {
-    if (this._state === 'PARKED' || this._state === 'IDLE' || this._state === 'INITIALIZING') {
-      this.transition('DRIVING', 'ACTIVITY_DRIVING', 'activity_recognition', metadata);
-    } else if (this._state === 'PARKING_PENDING') {
-      // AR says driving while we're in debounce — cancel the parking, go back to DRIVING
-      if (this._debounceTimer) {
-        clearTimeout(this._debounceTimer);
-        this._debounceTimer = null;
-        this.logEvent('DEBOUNCE_CANCELLED', 'activity_recognition', metadata);
-      }
-      this.transition('DRIVING', 'ACTIVITY_DRIVING', 'activity_recognition', metadata);
-    } else {
-      // Already DRIVING — just log for diagnostics
-      this.logEvent('ACTIVITY_DRIVING', 'activity_recognition', metadata);
-    }
-  }
-
-  /**
-   * Activity Recognition: still/walking detected (IN_VEHICLE EXIT or STILL/WALKING ENTER).
-   *
-   * Two roles:
-   * 1. For BT users: logged for diagnostics only. BT disconnect is the parking trigger.
-   * 2. For non-BT users (drivingSource === 'activity_recognition'): triggers parking
-   *    with a longer debounce (15s instead of 3s, since AR is less precise than BT).
-   */
-  activityStill(metadata?: Record<string, any>): void {
-    if (this._state === 'DRIVING' && this._drivingSource === 'activity_recognition') {
-      // AR was the primary signal that detected driving, so AR STILL should
-      // trigger parking. Use longer debounce since AR has ~1 min latency and
-      // can produce brief false transitions at intersections.
-      log.info('Activity Recognition STILL while AR-driven DRIVING → starting AR parking debounce (15s)');
-      this.transition('PARKING_PENDING', 'ACTIVITY_STILL', 'activity_recognition', metadata);
-      this.startDebounce('activity_recognition', ParkingDetectionStateMachineClass.AR_DEBOUNCE_DURATION_MS);
-    } else {
-      // BT-driven DRIVING or non-DRIVING state: just log for diagnostics
-      this.logEvent('ACTIVITY_STILL', 'activity_recognition', {
-        ...metadata,
-        note: this._state === 'DRIVING' ? 'BT-driven, AR STILL logged only' : 'not driving',
-      });
-    }
-  }
-
   // ---------------------------------------------------------------------------
   // Public API — Listeners
   // ---------------------------------------------------------------------------
@@ -498,13 +438,6 @@ class ParkingDetectionStateMachineClass {
     this._state = newState;
     this._lastEventType = eventType;
     this._lastEventTime = Date.now();
-
-    // Track what put us into DRIVING (BT vs Activity Recognition)
-    if (newState === 'DRIVING') {
-      this._drivingSource = source;
-    } else if (newState === 'IDLE' || newState === 'INITIALIZING') {
-      this._drivingSource = null;
-    }
 
     const event = this.logEvent(eventType, source, metadata);
 

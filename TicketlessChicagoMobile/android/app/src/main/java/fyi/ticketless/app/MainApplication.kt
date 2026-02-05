@@ -16,7 +16,6 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages.apply {
           // Custom native modules
           add(BluetoothMonitorPackage())
-          add(ActivityRecognitionPackage())
         },
     )
   }
