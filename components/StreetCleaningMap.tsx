@@ -76,10 +76,10 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 
         if (showSnowSafeMode) {
           div.innerHTML = `
-            <div style="font-weight: bold; margin-bottom: 4px;">❄️ Snow Ban Routes</div>
+            <div style="font-weight: bold; margin-bottom: 4px;">❄️ 2″ Snow Ban Routes</div>
             <div style="display: flex; align-items: center; margin-bottom: 2px;">
               <div style="width: 12px; height: 12px; background: #ff1493; margin-right: 5px; border: 1px solid #333;"></div>
-              <span>No Parking (Snow Ban)</span>
+              <span>No Parking (2″ Snow Ban)</span>
             </div>
             <div style="display: flex; align-items: center;">
               <div style="width: 12px; height: 12px; background: #10b981; margin-right: 5px; border: 1px solid #333;"></div>

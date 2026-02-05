@@ -432,10 +432,10 @@ const MapScreenContent: React.FC = () => {
                   </View>
                   <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
                 </View>
-                <View style={styles.protectionItem} accessibilityLabel="Snow route ban, checked">
+                <View style={styles.protectionItem} accessibilityLabel="2 inch snow route ban, checked">
                   <Text style={styles.protectionIcon}>🌨️</Text>
                   <View style={styles.protectionInfo}>
-                    <Text style={styles.protectionLabel}>Snow Route Ban</Text>
+                    <Text style={styles.protectionLabel}>2″ Snow Route Ban</Text>
                     <Text style={styles.protectionStatus}>Checked</Text>
                   </View>
                   <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
