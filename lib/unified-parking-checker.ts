@@ -347,7 +347,7 @@ export async function checkAllParkingRestrictions(
 
         if (zoneStatus.is_currently_restricted) {
           result.permitZone.severity = 'critical';
-          result.permitZone.message = `PERMIT REQUIRED - Zone ${zone.zone}. ${restrictionSchedule}. $100 ticket risk.${hoursNote}`;
+          result.permitZone.message = `PERMIT REQUIRED - Zone ${zone.zone}. ${restrictionSchedule}. $75 ticket risk.${hoursNote}`;
         } else if (zoneStatus.hours_until_restriction <= 3) {
           result.permitZone.severity = 'warning';
           result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts in ${Math.round(zoneStatus.hours_until_restriction)} hour(s). ${restrictionSchedule}.${hoursNote}`;

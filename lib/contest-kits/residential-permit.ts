@@ -12,7 +12,7 @@ export const residentialPermitKit: ContestKit = {
   name: 'Residential Permit Parking Violation',
   description: 'Parking in residential permit zone without valid permit',
   category: 'parking',
-  fineAmount: 100,
+  fineAmount: 75,
   baseWinRate: 0.54, // From FOIA data - 54%
 
   eligibility: {
