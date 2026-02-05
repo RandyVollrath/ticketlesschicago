@@ -512,22 +512,24 @@ class BackgroundTaskServiceClass {
               log.debug('Could not get initial BT state from native service:', e);
             }
 
-            // Delayed re-check: the native service's checkInitialConnectionState()
-            // uses getProfileProxy which is async. Give it 2 seconds to update
-            // SharedPreferences, then re-read.
-            setTimeout(async () => {
+            // Delayed re-checks: the native service's checkInitialConnectionState()
+            // uses getProfileProxy which is async (100-2000ms). Check at 2s and 5s
+            // to catch it even on slow devices.
+            const doDelayedBtCheck = async (delaySec: number) => {
               try {
                 if (!BluetoothMonitorModule) return;
                 const delayedCheck = await BluetoothMonitorModule.isCarConnected();
                 const currentJsState = BluetoothService.isConnectedToCar();
                 if (delayedCheck && !currentJsState) {
-                  log.info('Delayed BT check: native says CONNECTED — syncing JS state');
+                  log.info(`Delayed BT check (${delaySec}s): native says CONNECTED — syncing JS state`);
                   BluetoothService.setCarConnected(true);
                 }
               } catch (e) {
                 // ignore
               }
-            }, 2000);
+            };
+            setTimeout(() => doDelayedBtCheck(2), 2000);
+            setTimeout(() => doDelayedBtCheck(5), 5000);
 
             // Pre-cache GPS location periodically while car is connected.
             this.startGpsCaching();
@@ -656,20 +658,24 @@ class BackgroundTaskServiceClass {
         log.debug('Could not get initial BT state:', e);
       }
 
-      // Delayed re-check: the native service's profile proxy callback fires
-      // asynchronously. Give it 2 seconds then re-read the connection state.
-      setTimeout(async () => {
+      // Delayed re-checks: the native service's checkInitialConnectionState()
+      // uses getProfileProxy which is async (100-2000ms). Check at 2s and 5s
+      // to catch it even on slow devices.
+      const doDelayedCheck = async (delaySec: number) => {
         try {
+          if (!BluetoothMonitorModule) return;
           const delayedCheck = await BluetoothMonitorModule.isCarConnected();
           const currentJsState = BluetoothService.isConnectedToCar();
           if (delayedCheck && !currentJsState) {
-            log.info('Delayed BT check: native says CONNECTED but JS said not — syncing to CONNECTED');
+            log.info(`Delayed BT check (${delaySec}s): native says CONNECTED but JS said not — syncing to CONNECTED`);
             BluetoothService.setCarConnected(true);
           }
         } catch (e) {
           // ignore
         }
-      }, 2000);
+      };
+      setTimeout(() => doDelayedCheck(2), 2000);
+      setTimeout(() => doDelayedCheck(5), 5000);
 
       // Ensure monitoring state is set
       this.state.isMonitoring = true;
