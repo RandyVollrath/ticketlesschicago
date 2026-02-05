@@ -80,28 +80,40 @@ async function getAndroidTts(): Promise<any> {
 
 /**
  * Speak a message using the platform-appropriate TTS engine.
+ * Returns true if speech was initiated, false if TTS unavailable.
  */
-async function speak(message: string): Promise<void> {
+async function speak(message: string): Promise<boolean> {
+  log.info(`TTS speak requested: "${message}"`);
+
   if (Platform.OS === 'ios') {
     if (SpeechModule) {
       try {
         await SpeechModule.speak(message);
+        log.info('iOS TTS speak succeeded');
+        return true;
       } catch (e) {
         log.error('iOS SpeechModule.speak failed', e);
+        return false;
       }
     } else {
       log.warn('iOS SpeechModule not available — native module not linked');
+      return false;
     }
   } else {
     const tts = await getAndroidTts();
     if (tts) {
       try {
+        log.info('Android TTS: calling tts.speak()...');
         await tts.speak(message);
+        log.info('Android TTS speak succeeded');
+        return true;
       } catch (e) {
         log.error('Android TTS speak failed', e);
+        return false;
       }
     } else {
-      log.warn('Android TTS not available');
+      log.warn('Android TTS not available (getAndroidTts returned null)');
+      return false;
     }
   }
 }
@@ -366,9 +378,11 @@ class CameraAlertServiceClass {
   /**
    * Play a sample camera alert so the user can hear what it sounds like.
    * Used by the Settings screen preview button and useful for App Store review.
+   * Returns true if speech started, false if TTS unavailable.
    */
-  async previewAlert(): Promise<void> {
-    await speak('Speed camera ahead, 150 meters');
+  async previewAlert(): Promise<boolean> {
+    const success = await speak('Speed camera ahead, 150 meters');
+    return success;
   }
 
   // --------------------------------------------------------------------------

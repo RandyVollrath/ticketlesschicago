@@ -977,21 +977,18 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </View>
           )}
 
-          {/* Stale result warning — restrictions may have changed */}
+          {/* Stale result info — show how long ago the check was */}
           {lastParkingCheck && (heroState === 'clear' || heroState === 'violation') &&
            (currentTime.getTime() - lastParkingCheck.timestamp > 2 * 60 * 60 * 1000) && (
-            <TouchableOpacity
-              style={styles.staleWarning}
-              onPress={checkCurrentLocation}
-              activeOpacity={0.7}
-              accessibilityLabel="Result may be outdated. Tap to re-check parking restrictions."
-              accessibilityRole="button"
+            <View
+              style={styles.staleInfo}
+              accessibilityLabel={`Parked ${Math.floor((currentTime.getTime() - lastParkingCheck.timestamp) / (60 * 60 * 1000))} hours ago`}
             >
-              <MaterialCommunityIcons name="refresh" size={12} color={colors.warning} />
-              <Text style={styles.staleWarningText}>
-                Result may be outdated — tap to re-check
+              <MaterialCommunityIcons name="clock-outline" size={12} color={colors.textTertiary} />
+              <Text style={styles.staleInfoText}>
+                Parked {Math.floor((currentTime.getTime() - lastParkingCheck.timestamp) / (60 * 60 * 1000))}h ago
               </Text>
-            </TouchableOpacity>
+            </View>
           )}
 
           {/* Driving overlay badge — show only when no parking result */}
@@ -1175,9 +1172,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.accuracyText}>
               {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
             </Text>
-            {locationAccuracy > 50 && (
-              <Text style={styles.accuracyHint}> — try moving outdoors</Text>
-            )}
           </View>
         )}
 
@@ -1634,21 +1628,18 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginLeft: 'auto',
   },
-  staleWarning: {
+  staleInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,193,7,0.2)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
-    borderRadius: borderRadius.full,
     marginTop: spacing.xs,
     gap: 4,
   },
-  staleWarningText: {
+  staleInfoText: {
     fontSize: typography.sizes.xs,
-    color: colors.warning,
-    fontWeight: typography.weights.medium,
+    color: colors.textTertiary,
   },
   heroTimerRow: {
     flexDirection: 'row',
@@ -1774,12 +1765,6 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
   },
-  accuracyHint: {
-    fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
-    fontStyle: 'italic',
-  },
-
   // ──── Status Card (single row) ────
   statusCard: {
     flexDirection: 'row',
