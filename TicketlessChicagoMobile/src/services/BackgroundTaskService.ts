@@ -217,6 +217,16 @@ class BackgroundTaskServiceClass {
       this.startGpsCaching();
     });
 
+    // When ANY state transitions to DRIVING:
+    // -> reset the parking check time guard so the NEXT parking event isn't
+    //    blocked by a stale 5-minute cooldown from the previous parking check.
+    // -> also reset the disconnect handler debounce for the same reason.
+    ParkingDetectionStateMachine.onTransition('*->DRIVING', () => {
+      log.info('StateMachine: *->DRIVING -> resetting parking check guards');
+      this.state.lastParkingCheckTime = null;
+      this.lastDisconnectHandlerTime = 0;
+    });
+
     // Sync state machine to BluetoothService for backward compatibility.
     // Components that still use BluetoothService.isConnectedToCar() will
     // continue to work during the migration.
