@@ -1234,7 +1234,7 @@ class BackgroundTaskServiceClass {
         }
 
         // Phase 2: Kick off burst-sampling in the background.
-        // If the refined location differs significantly (>50m), re-run the
+        // If the refined location differs significantly (>25m), re-run the
         // parking check and update the notification + history silently.
         const initialCoords = { ...coords };
         this.backgroundBurstRefine(initialCoords, nativeTimestamp);
@@ -1359,7 +1359,7 @@ class BackgroundTaskServiceClass {
    *
    * This is fire-and-forget — errors are logged but never bubble up.
    * The user already received a notification from Phase 1; this only
-   * corrects it if the initial GPS was materially wrong (>50m off).
+   * corrects it if the initial GPS was materially wrong (>25m off).
    */
   private async backgroundBurstRefine(
     initialCoords: { latitude: number; longitude: number; accuracy?: number },
@@ -2315,9 +2315,9 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Schedule departure confirmation after a delay.
-   * The departure GPS was already captured at reconnection time —
-   * this delay just confirms distance from the parked spot.
+   * Schedule clearance record capture after a delay.
+   * After 60s of driving, we capture fresh GPS and compare against
+   * the parked location to prove the car has left the block.
    */
   private scheduleDepartureConfirmation(): void {
     // Clear any existing timeout
@@ -2333,7 +2333,7 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Immediately finalize a pending departure WITHOUT waiting for the 2-min confirmation.
+   * Immediately finalize a pending departure WITHOUT waiting for the 60s confirmation.
    * Called when a NEW parking event fires while the old departure is still pending.
    * This prevents the timeline from showing: "parked at spot B" BEFORE "left spot A".
    *
