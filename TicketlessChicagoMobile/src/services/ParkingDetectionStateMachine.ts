@@ -82,7 +82,7 @@ type TransitionCallback = (event: DetectionEvent) => void | Promise<void>;
 const STORAGE_KEY = 'parkingStateMachine';
 const EVENT_LOG_STORAGE_KEY = 'parkingDetectionEventLog';
 const MAX_EVENT_LOG_SIZE = 100;
-const DEBOUNCE_DURATION_MS = 10_000; // 10 seconds — filters red light disconnects
+const DEBOUNCE_DURATION_MS = 3_000; // 3 seconds — just enough to filter BT signal glitches
 
 // ---------------------------------------------------------------------------
 // Valid state transitions
@@ -126,7 +126,7 @@ class ParkingDetectionStateMachineClass {
   private _drivingSource: DetectionSource | null = null;
 
   // Longer debounce for Activity Recognition (less precise than BT disconnect)
-  private static readonly AR_DEBOUNCE_DURATION_MS = 30_000; // 30 seconds
+  private static readonly AR_DEBOUNCE_DURATION_MS = 15_000; // 15 seconds
 
   // ---------------------------------------------------------------------------
   // Public API — Reading State
