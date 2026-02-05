@@ -495,6 +495,17 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             value={cameraAlertsEnabled}
             onValueChange={toggleCameraAlerts}
           />
+          {cameraAlertsEnabled && (
+            <>
+              <Divider />
+              <LinkRow
+                icon="volume-high"
+                iconColor={colors.info}
+                title="Preview Alert Sound"
+                onPress={() => CameraAlertService.previewAlert()}
+              />
+            </>
+          )}
         </Section>
 
         {/* Permit Zone */}

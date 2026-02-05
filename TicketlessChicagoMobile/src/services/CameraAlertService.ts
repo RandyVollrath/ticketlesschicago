@@ -343,6 +343,14 @@ class CameraAlertServiceClass {
     return this.isEnabled;
   }
 
+  /**
+   * Play a sample camera alert so the user can hear what it sounds like.
+   * Used by the Settings screen preview button and useful for App Store review.
+   */
+  async previewAlert(): Promise<void> {
+    await speak('Speed camera ahead, 150 meters');
+  }
+
   // --------------------------------------------------------------------------
   // Start / Stop (called when driving starts/stops)
   // --------------------------------------------------------------------------
