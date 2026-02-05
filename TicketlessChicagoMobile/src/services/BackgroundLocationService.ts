@@ -63,7 +63,7 @@ class BackgroundLocationServiceClass {
   private drivingSubscription: any = null;
   private locationSubscription: any = null;
   private onParkingDetected: ((event: ParkingDetectedEvent) => void) | null = null;
-  private onDrivingStarted: (() => void) | null = null;
+  private onDrivingStarted: ((timestamp?: number) => void) | null = null;
   private isStarted = false;
 
   constructor() {
@@ -121,7 +121,7 @@ class BackgroundLocationServiceClass {
    */
   async startMonitoring(
     onParkingDetected: (event: ParkingDetectedEvent) => void,
-    onDrivingStarted?: () => void
+    onDrivingStarted?: (timestamp?: number) => void
   ): Promise<boolean> {
     if (!this.isAvailable()) {
       log.warn('Background location not available on this platform');
@@ -157,10 +157,10 @@ class BackgroundLocationServiceClass {
 
         this.drivingSubscription = this.eventEmitter.addListener(
           'onDrivingStarted',
-          () => {
-            log.debug('Driving started');
+          (event: { timestamp?: number; source?: string; speed?: number }) => {
+            log.debug('Driving started', { timestamp: event?.timestamp, source: event?.source });
             if (this.onDrivingStarted) {
-              this.onDrivingStarted();
+              this.onDrivingStarted(event?.timestamp);
             }
           }
         );

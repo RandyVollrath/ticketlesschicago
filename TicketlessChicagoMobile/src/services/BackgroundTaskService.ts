@@ -59,6 +59,7 @@ interface BackgroundTaskState {
     clearedAt: string;
     retryCount: number;
     scheduledAt: number; // timestamp when confirmation was scheduled
+    departedAt: number; // timestamp when driving actually started (not when confirmed)
     localHistoryItemId?: string; // local history item to update (local-only mode)
   } | null;
 }
@@ -313,13 +314,17 @@ class BackgroundTaskServiceClass {
               const parkingCoords = event.latitude && event.longitude
                 ? { latitude: event.latitude, longitude: event.longitude, accuracy: event.accuracy }
                 : undefined;
-              await this.handleCarDisconnection(parkingCoords);
+              // Pass the native event timestamp so parking history records
+              // when the car ACTUALLY stopped, not when the check completes.
+              await this.handleCarDisconnection(parkingCoords, event.timestamp);
             },
             // onDrivingStarted - fires when user starts driving
-            () => {
-              log.info('DRIVING STARTED - user departing');
+            (drivingTimestamp?: number) => {
+              log.info('DRIVING STARTED - user departing', {
+                nativeTimestamp: drivingTimestamp ? new Date(drivingTimestamp).toISOString() : 'none',
+              });
               this.startCameraAlerts();
-              this.handleCarReconnection();
+              this.handleCarReconnection(drivingTimestamp);
             }
           );
           log.info(`BackgroundLocationService.startMonitoring returned: ${bgStarted}`);
@@ -678,9 +683,9 @@ class BackgroundTaskServiceClass {
    * Handle car reconnection event (Bluetooth reconnects)
    * This triggers departure tracking
    */
-  private async handleCarReconnection(): Promise<void> {
+  private async handleCarReconnection(nativeDrivingTimestamp?: number): Promise<void> {
     log.info('Car reconnection detected via Bluetooth');
-    await this.markCarReconnected();
+    await this.markCarReconnected(nativeDrivingTimestamp);
   }
 
   /**
@@ -923,9 +928,21 @@ class BackgroundTaskServiceClass {
     latitude: number;
     longitude: number;
     accuracy?: number;
-  }): Promise<void> {
+  }, nativeTimestamp?: number): Promise<void> {
     log.info('=== CAR DISCONNECTION HANDLER TRIGGERED ===');
     log.info(`Parking coords provided: ${parkingCoords ? `${parkingCoords.latitude.toFixed(6)}, ${parkingCoords.longitude.toFixed(6)}` : 'NO (will get GPS)'}`);
+    if (nativeTimestamp) {
+      const delayMs = Date.now() - nativeTimestamp;
+      log.info(`Native event timestamp: ${new Date(nativeTimestamp).toISOString()} (${Math.round(delayMs / 1000)}s ago)`);
+    }
+
+    // If there's a pending departure from a PREVIOUS parking spot, finalize it NOW
+    // with the current time as the departure time (since driving has clearly happened).
+    // This prevents the old departure timer from firing AFTER the new parking is recorded.
+    if (this.state.pendingDepartureConfirmation) {
+      log.info('Finalizing previous departure before recording new parking');
+      await this.finalizePendingDepartureImmediately();
+    }
 
     // Stop GPS pre-caching from driving — we don't want stale driving positions
     // being used as the parking location. Clear the in-app location cache so
@@ -940,7 +957,7 @@ class BackgroundTaskServiceClass {
     await this.saveState();
 
     // Check parking - use provided coords if available (iOS background location)
-    await this.triggerParkingCheck(parkingCoords);
+    await this.triggerParkingCheck(parkingCoords, true, nativeTimestamp);
 
     // Call the callback if provided (HomeScreen UI refresh)
     if (this.disconnectCallback) {
@@ -964,7 +981,7 @@ class BackgroundTaskServiceClass {
     latitude: number;
     longitude: number;
     accuracy?: number;
-  }, isRealParkingEvent: boolean = true): Promise<void> {
+  }, isRealParkingEvent: boolean = true, nativeTimestamp?: number): Promise<void> {
     // Guard against duplicate parking checks (e.g., from app state changes re-triggering)
     if (this.state.lastParkingCheckTime) {
       const timeSinceLastCheck = Date.now() - this.state.lastParkingCheckTime;
@@ -1086,8 +1103,8 @@ class BackgroundTaskServiceClass {
       // This includes all-clear results — the user should see a record of
       // every auto-detected parking event, not just ones with restrictions.
       try {
-        log.info(`Saving to parking history: addr="${result.address}", rules=${result.rules.length}, coords=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}`);
-        await ParkingHistoryService.addToHistory(coords, result.rules, result.address);
+        log.info(`Saving to parking history: addr="${result.address}", rules=${result.rules.length}, coords=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}${nativeTimestamp ? `, nativeTime=${new Date(nativeTimestamp).toISOString()}` : ''}`);
+        await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp);
         log.info('Auto-detection result saved to parking history ✓');
       } catch (historyError) {
         log.error('Failed to save auto-detection to history (non-fatal):', historyError);
@@ -1876,8 +1893,14 @@ class BackgroundTaskServiceClass {
    * Mark car as reconnected (user feedback or detection)
    * This triggers the clear parked location API and schedules departure confirmation
    */
-  async markCarReconnected(): Promise<void> {
+  async markCarReconnected(nativeDrivingTimestamp?: number): Promise<void> {
     log.info('Car reconnection detected');
+    // Use the native driving-start timestamp as the departure time
+    const departureTime = nativeDrivingTimestamp || Date.now();
+    if (nativeDrivingTimestamp) {
+      const delayMs = Date.now() - nativeDrivingTimestamp;
+      log.info(`Native driving-start timestamp: ${new Date(nativeDrivingTimestamp).toISOString()} (${Math.round(delayMs / 1000)}s ago)`);
+    }
 
     this.state.lastCarConnectionStatus = true;
     this.state.lastDisconnectTime = null;
@@ -1929,6 +1952,7 @@ class BackgroundTaskServiceClass {
           clearedAt: response.cleared_at,
           retryCount: 0,
           scheduledAt: Date.now(),
+          departedAt: departureTime, // When driving actually started (native timestamp)
         };
         await this.saveState();
         this.scheduleDepartureConfirmation();
@@ -1958,6 +1982,7 @@ class BackgroundTaskServiceClass {
             clearedAt: new Date().toISOString(),
             retryCount: 0,
             scheduledAt: Date.now(),
+            departedAt: departureTime, // When driving actually started (native timestamp)
             localHistoryItemId: recentItem.id,
           };
           await this.saveState();
@@ -1986,6 +2011,59 @@ class BackgroundTaskServiceClass {
     }, DEPARTURE_CONFIRMATION_DELAY_MS);
 
     log.info(`Departure confirmation scheduled in ${DEPARTURE_CONFIRMATION_DELAY_MS / 1000}s`);
+  }
+
+  /**
+   * Immediately finalize a pending departure WITHOUT waiting for the 2-min confirmation.
+   * Called when a NEW parking event fires while the old departure is still pending.
+   * This prevents the timeline from showing: "parked at spot B" BEFORE "left spot A".
+   *
+   * Since the user has clearly driven to a new spot (new parking detected), we don't
+   * need GPS proof that they left — the new parking IS the proof. We record the
+   * departure with the departedAt timestamp and mark it as conclusive.
+   */
+  private async finalizePendingDepartureImmediately(): Promise<void> {
+    const pending = this.state.pendingDepartureConfirmation;
+    if (!pending) return;
+
+    // Cancel the pending timer
+    if (this.departureConfirmationTimeout) {
+      clearTimeout(this.departureConfirmationTimeout);
+      this.departureConfirmationTimeout = null;
+    }
+
+    const departureTime = pending.departedAt || Date.now();
+    log.info(`Immediately finalizing departure from previous spot at ${new Date(departureTime).toISOString()}`);
+
+    try {
+      const departureData = {
+        departure: {
+          confirmedAt: departureTime,
+          distanceMeters: 0, // Unknown — we didn't wait for GPS
+          isConclusive: true, // User clearly left (they parked somewhere new)
+          latitude: 0,
+          longitude: 0,
+        },
+      };
+
+      const targetItemId = pending.localHistoryItemId;
+      if (targetItemId) {
+        await ParkingHistoryService.updateItem(targetItemId, departureData);
+        log.info('Previous departure finalized (local mode)', targetItemId);
+      } else {
+        const recentItem = await ParkingHistoryService.getMostRecent();
+        if (recentItem) {
+          await ParkingHistoryService.updateItem(recentItem.id, departureData);
+          log.info('Previous departure finalized (server mode)', recentItem.id);
+        }
+      }
+    } catch (error) {
+      log.warn('Failed to finalize previous departure (non-critical)', error);
+    }
+
+    // Clear the pending state
+    this.state.pendingDepartureConfirmation = null;
+    await this.saveState();
   }
 
   /**
@@ -2060,14 +2138,20 @@ class BackgroundTaskServiceClass {
         });
       }
 
-      // Save departure data to the correct parking history entry
+      // Save departure data to the correct parking history entry.
+      // Use departedAt (when driving actually started) instead of Date.now()
+      // (which is 2+ minutes later after the confirmation delay).
+      const departureTime = pending.departedAt || Date.now();
+      const confirmationDelay = Math.round((Date.now() - departureTime) / 1000);
+      log.info(`Departure time: ${new Date(departureTime).toISOString()} (${confirmationDelay}s before confirmation)`);
+
       try {
         const targetItemId = pending.localHistoryItemId;
         if (targetItemId) {
           // Local-only mode: update the specific history item we tracked
           await ParkingHistoryService.updateItem(targetItemId, {
             departure: {
-              confirmedAt: Date.now(),
+              confirmedAt: departureTime,
               distanceMeters,
               isConclusive,
               latitude: coords.latitude,
@@ -2081,7 +2165,7 @@ class BackgroundTaskServiceClass {
           if (recentItem) {
             await ParkingHistoryService.updateItem(recentItem.id, {
               departure: {
-                confirmedAt: Date.now(),
+                confirmedAt: departureTime,
                 distanceMeters,
                 isConclusive,
                 latitude: coords.latitude,

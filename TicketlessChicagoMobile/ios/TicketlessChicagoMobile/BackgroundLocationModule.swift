@@ -154,7 +154,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     parkingConfirmationTimer = nil
     speedZeroTimer?.invalidate()
     speedZeroTimer = nil
-
     isMonitoring = false
     isDriving = false
     coreMotionSaysAutomotive = false
@@ -568,8 +567,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     let parkingLocation = locationAtStopStart ?? lastDrivingLocation
     let currentLocation = locationManager.location
 
+    // Use the parking location's GPS timestamp if available — this is when the car
+    // ACTUALLY stopped, not when the confirmation timer fires (which can be 5-13s later).
+    // Falls back to the current time if no parking location timestamp is available.
+    let parkingTimestamp: Double
+    if let loc = parkingLocation {
+      parkingTimestamp = loc.timestamp.timeIntervalSince1970 * 1000
+      NSLog("[BackgroundLocation] Using parking location GPS timestamp: \(loc.timestamp) (\(String(format: "%.0f", Date().timeIntervalSince(loc.timestamp)))s ago)")
+    } else {
+      parkingTimestamp = Date().timeIntervalSince1970 * 1000
+    }
+
     var body: [String: Any] = [
-      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "timestamp": parkingTimestamp,
     ]
 
     if let loc = parkingLocation {
