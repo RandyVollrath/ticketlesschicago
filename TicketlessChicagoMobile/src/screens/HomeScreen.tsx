@@ -443,6 +443,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // Small delay to ensure AsyncStorage write from BackgroundTaskService completes
     await new Promise(resolve => setTimeout(resolve, 300));
     await loadLastCheck();
+
+    // On iOS, force currentActivity to 'stationary' immediately.
+    // The native parking detection module already confirmed the user stopped
+    // driving — CoreMotion activity polling can lag minutes behind, leaving
+    // the hero card stuck on "Driving" even though parking was detected.
+    if (Platform.OS === 'ios') {
+      setCurrentActivity('stationary');
+      setCurrentConfidence('high');
+    }
   };
 
   const handleCarReconnect = () => {
