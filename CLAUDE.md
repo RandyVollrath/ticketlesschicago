@@ -31,6 +31,8 @@ After completing any feature or fix, always deploy everything:
 6. **Always push to GitHub after making changes** — the user expects all work deployed to production.
 
 ## Version Bumping
+**Only bump versions for actual releases** (new features, app store submissions, or when Firebase App Distribution needs a distinct build). Do NOT bump for every bug fix or deploy — rebuilding and reinstalling the same version is fine.
+
 When releasing, bump ALL THREE locations and keep them in sync:
 
 1. **Android**: `TicketlessChicagoMobile/android/app/build.gradle`
