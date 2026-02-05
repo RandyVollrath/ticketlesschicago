@@ -68,6 +68,8 @@ class BluetoothServiceClass {
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        // Activity Recognition for driving/parking detection (Android 10+)
+        PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
       ]);
 
       const allGranted =
@@ -75,7 +77,9 @@ class BluetoothServiceClass {
         granted['android.permission.BLUETOOTH_CONNECT'] === PermissionsAndroid.RESULTS.GRANTED &&
         granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED;
 
-      log.debug('Bluetooth permissions:', allGranted ? 'granted' : 'denied');
+      // Activity Recognition is optional — don't fail BT setup if denied
+      const arGranted = granted['android.permission.ACTIVITY_RECOGNITION'] === PermissionsAndroid.RESULTS.GRANTED;
+      log.debug('Bluetooth permissions:', allGranted ? 'granted' : 'denied', 'Activity Recognition:', arGranted ? 'granted' : 'denied');
       return allGranted;
     } catch (err) {
       log.error('Error requesting Bluetooth permission', err);

@@ -29,6 +29,8 @@ import { StorageKeys } from '../constants';
 
 // Native module for persistent Android BT monitoring foreground service
 const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
+// Native module for Google Activity Recognition (driving/parking detection)
+const ActivityRecognitionModule = Platform.OS === 'android' ? NativeModules.ActivityRecognitionModule : null;
 
 const log = Logger.createLogger('BackgroundTaskService');
 
@@ -94,6 +96,8 @@ class BackgroundTaskServiceClass {
   // Snow forecast monitoring timers
   private snowForecastInterval: ReturnType<typeof setInterval> | null = null;
   private snowForecastInitialTimeout: ReturnType<typeof setTimeout> | null = null;
+  // Activity Recognition event subscriptions (Android only)
+  private activityRecognitionSubscriptions: any[] = [];
   // Debounce: timestamp of last handleCarDisconnection call (prevents duplicate triggers
   // from native service + JS-side listeners + pending events all firing for the same disconnect)
   private lastDisconnectHandlerTime: number = 0;
@@ -140,6 +144,13 @@ class BackgroundTaskServiceClass {
           savedDevice?.address ?? null
         );
         this.registerStateMachineCallbacks();
+
+        // Start Activity Recognition as a secondary detection signal.
+        // Works alongside Bluetooth (improves confidence) and as a standalone
+        // fallback for users without paired car Bluetooth.
+        // Cost: FREE (Google Play Services). Battery: near-zero (uses phone's
+        // low-power motion coprocessor, only fires on transitions).
+        this.startActivityRecognition();
       }
 
       // iOS: Self-test native modules to catch build issues early
@@ -214,6 +225,96 @@ class BackgroundTaskServiceClass {
     });
 
     log.info('State machine transition callbacks registered');
+  }
+
+  /**
+   * Start Google Activity Recognition Transition API monitoring.
+   * Subscribes to IN_VEHICLE enter/exit, STILL enter, and WALKING enter.
+   * Feeds events into the ParkingDetectionStateMachine.
+   *
+   * This serves TWO purposes:
+   * 1. Secondary signal for BT users: confirms driving/parking alongside BT
+   * 2. Primary signal for non-BT users: detects driving without any car pairing
+   *
+   * Cost: FREE (Google Play Services). Battery: near-zero (transition API uses
+   * the phone's low-power motion coprocessor and only fires on state changes).
+   */
+  private async startActivityRecognition(): Promise<void> {
+    if (!ActivityRecognitionModule) {
+      log.warn('ActivityRecognitionModule not available');
+      return;
+    }
+
+    try {
+      // Check permission (Android 10+ requires runtime permission)
+      let hasPermission = await ActivityRecognitionModule.hasPermission();
+      if (!hasPermission) {
+        // Try to request it — this will show a system dialog
+        try {
+          const { PermissionsAndroid } = require('react-native');
+          const result = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
+          );
+          hasPermission = result === PermissionsAndroid.RESULTS.GRANTED;
+          log.info(`Activity Recognition permission ${hasPermission ? 'granted' : 'denied'} by user`);
+        } catch (e) {
+          log.warn('Could not request Activity Recognition permission:', e);
+        }
+        if (!hasPermission) {
+          log.info('Activity Recognition permission denied — BT-only detection active');
+          return;
+        }
+      }
+
+      // Start monitoring
+      await ActivityRecognitionModule.startMonitoring();
+      log.info('Activity Recognition monitoring started');
+
+      // Subscribe to native events
+      const emitter = new NativeEventEmitter(ActivityRecognitionModule);
+
+      this.activityRecognitionSubscriptions = [
+        emitter.addListener('ActivityDrivingStarted', (event: any) => {
+          log.info(`Activity Recognition: DRIVING STARTED (${event.activityType})`);
+          ParkingDetectionStateMachine.activityDriving({
+            activityType: event.activityType,
+            timestamp: event.timestamp,
+            source: 'activity_recognition',
+          });
+        }),
+        emitter.addListener('ActivityDrivingStopped', (event: any) => {
+          log.info(`Activity Recognition: DRIVING STOPPED (${event.activityType})`);
+          ParkingDetectionStateMachine.activityStill({
+            activityType: event.activityType,
+            timestamp: event.timestamp,
+            source: 'activity_recognition',
+          });
+        }),
+      ];
+
+      // Check for pending events that fired while JS was inactive
+      const pending = await ActivityRecognitionModule.checkPendingEvents();
+      if (pending.pendingDrivingStart) {
+        log.info('Found pending Activity Recognition driving start event');
+        ParkingDetectionStateMachine.activityDriving({
+          source: 'pending_event',
+        });
+      }
+      if (pending.pendingDrivingStop) {
+        log.info('Found pending Activity Recognition driving stop event');
+        ParkingDetectionStateMachine.activityStill({
+          source: 'pending_event',
+        });
+      }
+
+      await this.sendDiagnosticNotification(
+        'Activity Recognition Active',
+        'Driving detection via motion sensors is active. This works even without car Bluetooth.'
+      );
+    } catch (error) {
+      log.error('Failed to start Activity Recognition:', error);
+      // Non-fatal — BT-based detection still works
+    }
   }
 
   private async iosSelfTest(): Promise<void> {
