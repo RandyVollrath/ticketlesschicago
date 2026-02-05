@@ -2421,7 +2421,7 @@ class BackgroundTaskServiceClass {
 
       let distanceMeters: number;
       let isConclusive: boolean;
-      const CONCLUSIVE_DISTANCE_M = 30; // 30m — half a city block should count
+      const CONCLUSIVE_DISTANCE_M = 100; // 100m — must be off the block entirely to be useful for contesting
 
       if (isLocalOnly) {
         distanceMeters = this.haversineDistance(
