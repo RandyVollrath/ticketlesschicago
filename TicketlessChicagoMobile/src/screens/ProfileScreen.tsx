@@ -130,7 +130,7 @@ const Divider = () => <View style={styles.divider} />;
 const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(AuthService.getUser());
   const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -530,17 +530,13 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Danger Zone */}
         <Section title="">
-          {user && (
-            <>
-              <LinkRow
-                icon="logout"
-                title={isSigningOut ? 'Signing Out...' : 'Sign Out'}
-                onPress={handleSignOut}
-                danger
-              />
-              <Divider />
-            </>
-          )}
+          <LinkRow
+            icon="logout"
+            title={isSigningOut ? 'Signing Out...' : 'Sign Out'}
+            onPress={handleSignOut}
+            danger
+          />
+          <Divider />
           <LinkRow
             icon="trash-can-outline"
             title="Clear All Data"
