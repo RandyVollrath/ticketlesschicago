@@ -218,7 +218,7 @@ function App(): React.JSX.Element {
                       {rule.type === 'street_cleaning'
                         ? '🧹 Street Cleaning'
                         : rule.type === 'snow_route'
-                        ? '❄️ Snow Route'
+                        ? '❄️ 2″ Snow Route'
                         : '🅿️ Permit Zone'}
                     </Text>
                     <Text style={styles.ruleMessage}>{rule.message}</Text>
