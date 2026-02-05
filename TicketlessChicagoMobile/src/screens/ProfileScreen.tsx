@@ -503,13 +503,20 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 iconColor={colors.info}
                 title="Preview Alert Sound"
                 onPress={async () => {
-                  const success = await CameraAlertService.previewAlert();
-                  if (!success) {
-                    Alert.alert(
-                      'Text-to-Speech Unavailable',
-                      'Could not play audio. Please ensure your device has a TTS engine installed (Settings > Accessibility > Text-to-Speech).',
-                      [{ text: 'OK' }]
-                    );
+                  // Show immediate feedback that we're trying
+                  Alert.alert('Testing...', 'Attempting to speak. Check your volume is up.');
+
+                  try {
+                    const success = await CameraAlertService.previewAlert();
+                    if (!success) {
+                      Alert.alert(
+                        'Text-to-Speech Unavailable',
+                        'Could not initialize TTS. Please check Settings > Accessibility > Text-to-Speech and ensure a TTS engine is installed.',
+                        [{ text: 'OK' }]
+                      );
+                    }
+                  } catch (err: any) {
+                    Alert.alert('TTS Error', err?.message || String(err));
                   }
                 }}
               />
