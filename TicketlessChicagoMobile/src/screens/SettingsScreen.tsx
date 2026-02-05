@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
+import BackgroundTaskService from '../services/BackgroundTaskService';
 import { colors, typography, spacing, borderRadius } from '../theme';
 import Logger from '../utils/Logger';
 
@@ -89,6 +90,18 @@ const SettingsScreen: React.FC = () => {
 
     try {
       await BluetoothService.saveCarDevice(device);
+
+      // Start (or restart) the native Bluetooth foreground service so
+      // it can detect ACL connect/disconnect events for this device.
+      // Without this, the BroadcastReceiver is never registered and
+      // connection events are silently missed.
+      try {
+        await BackgroundTaskService.restartBluetoothMonitoring();
+        log.info('BT monitoring started for newly selected car:', device.name);
+      } catch (btError) {
+        log.warn('Failed to start BT monitoring after device selection:', btError);
+      }
+
       if (isMountedRef.current) {
         setSavedCar(device);
         setPairedDevices([]);

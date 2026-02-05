@@ -541,6 +541,104 @@ class BackgroundTaskServiceClass {
   }
 
   /**
+   * Restart Android Bluetooth monitoring with the current saved car device.
+   * Call this after the user selects a new car in Settings — the native
+   * foreground service needs to be (re)started with the new device address
+   * so its BroadcastReceiver can match ACL events for the correct car.
+   */
+  async restartBluetoothMonitoring(): Promise<void> {
+    if (Platform.OS !== 'android' || !BluetoothMonitorModule) return;
+
+    const savedDevice = await BluetoothService.getSavedCarDevice();
+    if (!savedDevice) {
+      log.warn('restartBluetoothMonitoring: no saved car device');
+      return;
+    }
+
+    log.info(`Restarting BT monitoring for: ${savedDevice.name} (${savedDevice.address || savedDevice.id})`);
+
+    // Ensure BluetoothService has the saved device ID loaded
+    await BluetoothService.ensureSavedDeviceLoaded();
+
+    // Clean up old native event subscriptions
+    if (this.nativeBtDisconnectSub) {
+      this.nativeBtDisconnectSub.remove();
+      this.nativeBtDisconnectSub = null;
+    }
+    if (this.nativeBtConnectSub) {
+      this.nativeBtConnectSub.remove();
+      this.nativeBtConnectSub = null;
+    }
+
+    try {
+      await BluetoothMonitorModule.startMonitoring(
+        savedDevice.address || savedDevice.id,
+        savedDevice.name
+      );
+      log.info('Native BT foreground service (re)started for: ' + savedDevice.name);
+
+      // Subscribe to native events
+      const eventEmitter = new NativeEventEmitter(BluetoothMonitorModule);
+
+      this.nativeBtDisconnectSub = eventEmitter.addListener(
+        'BtMonitorCarDisconnected',
+        async (event: any) => {
+          log.info('NATIVE BT DISCONNECT EVENT received', event);
+          BluetoothService.setCarConnected(false);
+          this.stopCameraAlerts();
+
+          await new Promise<void>(r => setTimeout(r, 10000));
+
+          const reconnected = BluetoothService.isConnectedToCar();
+          let osReconnected = false;
+          if (!reconnected) {
+            try {
+              osReconnected = await BluetoothService.isConnectedToSavedCar();
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          if (reconnected || osReconnected) {
+            log.info('BT reconnected within 10s — ignoring transient disconnect');
+            BluetoothService.setCarConnected(true);
+            this.startCameraAlerts();
+            return;
+          }
+
+          log.info('BT still disconnected after 10s — triggering parking check');
+          await this.handleCarDisconnection();
+        }
+      );
+
+      this.nativeBtConnectSub = eventEmitter.addListener(
+        'BtMonitorCarConnected',
+        async (event: any) => {
+          log.info('NATIVE BT CONNECT EVENT - car reconnected', event);
+          BluetoothService.setCarConnected(true);
+          this.startCameraAlerts();
+          await this.handleCarReconnection();
+        }
+      );
+
+      // Sync initial connection state
+      try {
+        const initiallyConnected = await BluetoothMonitorModule.isCarConnected();
+        BluetoothService.setCarConnected(initiallyConnected);
+        log.info(`Initial BT state after restart: ${initiallyConnected ? 'CONNECTED' : 'NOT connected'}`);
+      } catch (e) {
+        log.debug('Could not get initial BT state:', e);
+      }
+
+      // Ensure monitoring state is set
+      this.state.isMonitoring = true;
+      await this.saveState();
+    } catch (error) {
+      log.error('Failed to restart BT monitoring:', error);
+    }
+  }
+
+  /**
    * Handle car reconnection event (Bluetooth reconnects)
    * This triggers departure tracking
    */
