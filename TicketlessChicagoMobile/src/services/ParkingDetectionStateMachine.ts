@@ -36,7 +36,7 @@ export type DetectionEventType =
   | 'BT_DISCONNECTED'        // Car Bluetooth disconnected (ACL event)
   | 'BT_INIT_CONNECTED'      // Initial BT check: car is connected
   | 'BT_INIT_DISCONNECTED'   // Initial BT check: car is NOT connected
-  | 'DEBOUNCE_EXPIRED'       // 10s debounce timer completed, still disconnected
+  | 'DEBOUNCE_EXPIRED'       // Debounce timer completed, still disconnected
   | 'DEBOUNCE_CANCELLED'     // BT reconnected during debounce window
   | 'PARKING_CONFIRMED'      // Parking check completed successfully
   | 'DEPARTURE_DETECTED'     // User started driving again (BT reconnect)
@@ -255,7 +255,7 @@ class ParkingDetectionStateMachineClass {
 
   /**
    * Bluetooth disconnected event — car BT ACL disconnected.
-   * Starts the debounce timer. If BT doesn't reconnect within 10s,
+   * Starts the debounce timer. If BT doesn't reconnect within the debounce window,
    * transitions to PARKING_PENDING → triggers parking check.
    */
   btDisconnected(source: DetectionSource = 'bt_acl', metadata?: Record<string, any>): void {
@@ -399,14 +399,14 @@ class ParkingDetectionStateMachineClass {
    * Two roles:
    * 1. For BT users: logged for diagnostics only. BT disconnect is the parking trigger.
    * 2. For non-BT users (drivingSource === 'activity_recognition'): triggers parking
-   *    with a longer debounce (30s instead of 10s, since AR is less precise than BT).
+   *    with a longer debounce (15s instead of 3s, since AR is less precise than BT).
    */
   activityStill(metadata?: Record<string, any>): void {
     if (this._state === 'DRIVING' && this._drivingSource === 'activity_recognition') {
       // AR was the primary signal that detected driving, so AR STILL should
       // trigger parking. Use longer debounce since AR has ~1 min latency and
       // can produce brief false transitions at intersections.
-      log.info('Activity Recognition STILL while AR-driven DRIVING → starting AR parking debounce (30s)');
+      log.info('Activity Recognition STILL while AR-driven DRIVING → starting AR parking debounce (15s)');
       this.transition('PARKING_PENDING', 'ACTIVITY_STILL', 'activity_recognition', metadata);
       this.startDebounce('activity_recognition', ParkingDetectionStateMachineClass.AR_DEBOUNCE_DURATION_MS);
     } else {
