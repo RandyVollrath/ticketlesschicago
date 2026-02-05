@@ -235,12 +235,24 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
 
-    // Subscribe to the state machine — fires immediately with current state
+    // Subscribe to the state machine — fires immediately with current state.
+    // Track previous state so we only clear parking on actual transitions,
+    // not on the initial fire (which would race with loadLastCheck).
+    let prevState: ParkingState | null = null;
     const unsubscribe = ParkingDetectionStateMachine.addStateListener((snap: ParkingDetectionSnapshot) => {
+      const wasTransition = prevState !== null && prevState !== snap.state;
+      prevState = snap.state;
+
       setParkingState(snap.state);
       setIsCarConnected(snap.isConnectedToCar);
       if (snap.carName) {
         setSavedCarName(snap.carName);
+      }
+      // When transitioning TO DRIVING, clear any stale parking result from a previous trip.
+      // This ensures the hero card shows "Driving" prominently instead of the
+      // old "All clear" from wherever they parked last time.
+      if (wasTransition && snap.state === 'DRIVING') {
+        setLastParkingCheck(null);
       }
     });
 
@@ -636,14 +648,19 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     if (loading) return 'checking';
     if (!isMonitoring) return 'paused';
 
-    // Always show last parking result if we have one — this is what the user
-    // cares about most. Driving status is shown separately in the status row.
+    // On Android, the state machine is the source of truth.
+    // When driving, show DRIVING hero — the user cares about their current
+    // activity, not a stale parking result from their previous spot.
+    if (Platform.OS === 'android' && (parkingState === 'DRIVING' || parkingState === 'PARKING_PENDING')) {
+      return 'driving';
+    }
+    if (isDriving) return 'driving';
+
+    // Show last parking result if available and we're not currently driving
     if (lastParkingCheck) {
       return lastParkingCheck.rules.length > 0 ? 'violation' : 'clear';
     }
 
-    // No parking result yet — show driving or ready
-    if (isDriving) return 'driving';
     return 'ready';
   };
 
@@ -656,6 +673,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     lastParkingCheck?.rules.length || 0,
     heroAddress,
   );
+
+  // Override hero for PARKING_PENDING: show the debounce in progress
+  if (Platform.OS === 'android' && parkingState === 'PARKING_PENDING' && heroState === 'driving') {
+    heroConfig.icon = 'car-brake-parking';
+    heroConfig.title = 'Detecting parking...';
+    heroConfig.subtitle = `${savedCarName || 'Car'} disconnected — confirming`;
+    heroConfig.bgColor = colors.warning;
+  }
 
   // Override hero color for high-risk "all clear" — amber instead of green
   const riskUrgency = lastParkingCheck?.rawApiData?.enforcementRisk?.urgency;
