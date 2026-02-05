@@ -184,7 +184,7 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor â
 ### Rules
 1. **CoreMotion must stay active at all times while monitoring is on.** Only continuous GPS can be stopped to save battery.
 2. **Departure depends on `onDrivingStarted`** firing when the user starts their next drive. If CoreMotion is stopped, this event never fires and departure is never recorded.
-3. **The `minDrivingDurationSec` (30s) filter** prevents false parking events from red lights. Don't lower it below 15s. Walking override bypasses this entirely (walking = user exited car, not a red light). GPS speed-zero path uses a separate 15s minimum.
+3. **The `minDrivingDurationSec` (10s) filter** prevents false parking events from red lights. Walking override bypasses this (walking = user exited car, not a red light). GPS speed-zero path uses the same 10s minimum plus requires 10s of sustained zero speed before confirming.
 4. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
 5. **After parking confirmation, `isDriving` resets to false.** The ONLY way it gets set back to true is via CoreMotion reporting automotive or GPS speed > 2.5 m/s. If neither is running, the app is permanently stuck in "parked" state.
 
