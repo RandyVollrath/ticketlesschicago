@@ -17,6 +17,8 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * BluetoothMonitorService
@@ -260,6 +262,10 @@ class BluetoothMonitorService : Service() {
      * or Headset Bluetooth profiles. ACL BroadcastReceiver events only fire
      * on transitions, so if the car was connected BEFORE monitoring started
      * we'd never get an event and the app would be stuck on "Waiting for..."
+     *
+     * IMPORTANT: If NEITHER profile finds the target device, we must clear
+     * the stale is_connected=true in SharedPreferences. Otherwise the app
+     * reads stale "connected" on restart and shows "Driving" permanently.
      */
     private fun checkInitialConnectionState() {
         try {
@@ -273,6 +279,9 @@ class BluetoothMonitorService : Service() {
             // Check A2DP (media audio) and Headset (phone calls) profiles.
             // Cars typically use one or both of these.
             val profilesToCheck = listOf(BluetoothProfile.A2DP, BluetoothProfile.HEADSET)
+            val totalProfiles = profilesToCheck.size
+            val completedProfiles = AtomicInteger(0)
+            val foundOnAnyProfile = AtomicBoolean(false)
 
             for (profileType in profilesToCheck) {
                 adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
@@ -293,6 +302,7 @@ class BluetoothMonitorService : Service() {
                             }
 
                             if (targetDevice != null) {
+                                foundOnAnyProfile.set(true)
                                 val name = try { targetDevice.name } catch (e: SecurityException) { null }
                                 val addr = try { targetDevice.address } catch (e: SecurityException) { null }
                                 Log.i(TAG, "Target device ALREADY CONNECTED on profile $profile: $name ($addr)")
@@ -302,11 +312,32 @@ class BluetoothMonitorService : Service() {
                             Log.w(TAG, "SecurityException checking profile $profile: ${e.message}")
                         } finally {
                             adapter.closeProfileProxy(profile, proxy)
+
+                            // After ALL profiles have been checked, if none found
+                            // the target device, clear stale connected state.
+                            if (completedProfiles.incrementAndGet() == totalProfiles && !foundOnAnyProfile.get()) {
+                                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                val wasConnected = prefs.getBoolean(KEY_IS_CONNECTED, false)
+                                if (wasConnected) {
+                                    Log.i(TAG, "Profile proxy check complete: target NOT found on any profile. Clearing stale is_connected=true")
+                                    handleDisconnect(targetName ?: "Car", targetAddress ?: "")
+                                } else {
+                                    Log.d(TAG, "Profile proxy check complete: target not found (already marked disconnected)")
+                                }
+                            }
                         }
                     }
 
                     override fun onServiceDisconnected(profile: Int) {
-                        // No action needed
+                        // Count this as completed too (no devices if proxy disconnected)
+                        if (completedProfiles.incrementAndGet() == totalProfiles && !foundOnAnyProfile.get()) {
+                            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                            val wasConnected = prefs.getBoolean(KEY_IS_CONNECTED, false)
+                            if (wasConnected) {
+                                Log.i(TAG, "Profile proxy disconnected: target NOT found. Clearing stale is_connected=true")
+                                handleDisconnect(targetName ?: "Car", targetAddress ?: "")
+                            }
+                        }
                     }
                 }, profileType)
             }

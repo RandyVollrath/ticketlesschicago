@@ -536,6 +536,11 @@ class BackgroundTaskServiceClass {
                 if (delayedCheck && !currentJsState) {
                   log.info(`Delayed BT check (${delaySec}s): native says CONNECTED — syncing JS state`);
                   BluetoothService.setCarConnected(true);
+                } else if (!delayedCheck && currentJsState) {
+                  // Native profile proxy determined car is NOT actually connected.
+                  // This corrects stale SharedPrefs that said "connected" on startup.
+                  log.info(`Delayed BT check (${delaySec}s): native says NOT connected but JS says connected — correcting stale state`);
+                  BluetoothService.setCarConnected(false);
                 }
               } catch (e) {
                 // ignore
@@ -678,6 +683,9 @@ class BackgroundTaskServiceClass {
           if (delayedCheck && !currentJsState) {
             log.info(`Delayed BT check (${delaySec}s): native says CONNECTED but JS said not — syncing to CONNECTED`);
             BluetoothService.setCarConnected(true);
+          } else if (!delayedCheck && currentJsState) {
+            log.info(`Delayed BT check (${delaySec}s): native says NOT connected but JS says connected — correcting stale state`);
+            BluetoothService.setCarConnected(false);
           }
         } catch (e) {
           // ignore
