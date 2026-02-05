@@ -1,0 +1,147 @@
+Feb  5 04:13:25.941069 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot TCP4 flow id 611028 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 518 tx 561, bytes 10607 130963 cell 0 0 wifi 31327 153403 wired 0 0 comp_bt 0 0 deltas 112 1396 0 0 312 1636 0 0 0 0 acct_deltas 0 0 312 1636 0 0 0 0
+src 611028 snapshot: Autopilot TCP4 flow id 611028 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 518 tx 561, bytes 10607 130963 cell 0 0 wifi 31327 153403 wired 0 0 comp_bt 0 0 deltas 112 1396 0 0 312 1636 0 0 0 0 acct_deltas 0 0 312 1636 0 0 0 0
+flow: TrackedFlow 611028 WiFi tcp4 flow owner (null) start 04:05:38.179 -0600 duration 467.762 trackers: self 0x0 - other 0x73d1fb180 fyi.ticketless.app rx pkts 513 tx pkts 555
+Feb  5 04:13:25.941311 symptomsd(SymptomEvaluator)[153] <Debug>: [Bitmap] flow id 611028, fyi.ticketless.app: current bitmaps stored before adding new bitmap: [Activity startTime: 23:46:07.000 -0600 (115696), endTime: 119792] [wordOffset: 6, numOfWords:8] <0000000000000000 0000000000000000 FFFFC00000000000 FFFFFFFFFFFFFFFF FFFFFFFFFFFFFFFF FF80000003FFFFFF 0001FFFFFFFFFFFF 0000000000000000 >
+Feb  5 04:13:25.941480 symptomsd(SymptomEvaluator)[153] <Debug>: [Bitmap] flow id 611028, fyi.ticketless.app: current bitmaps stored after adding new bitmap: [Activity startTime: 23:46:07.000 -0600 (115696), endTime: 119792] [wordOffset: 6, numOfWords:8] <0000000000000000 0000000000000000 FFFFC00000000000 FFFFFFFFFFFFFFFF FFFFFFFFFFFFFFFF FF80000003FFFFFF 0003FFFFFFFFFFFF 0000000000000000 >
+Feb  5 04:13:25.941530 symptomsd(SymptomEvaluator)[153] <Debug>: found LU hint (mode: 1) for fyi.ticketless.app: 0x73d2b73e0, subscriber tag: 0
+Feb  5 04:13:25.941608 symptomsd(SymptomEvaluator)[153] <Notice>: Data Usage for fyi.ticketless.app on flow 611028 - WiFi in/out: 127965383/3095227, WiFi delta_in/delta_out: 312/1636, Cell in/out: 1123556/690727, Cell delta_in/delta_out: 0/0, RNF: 0, subscriber tag: 0, total duration: 467.751
+Feb  5 04:13:25.941692 symptomsd(SymptomEvaluator)[153] <Debug>: Data Usage for fyi.ticketless.app on flow 611028 - Wired in/out: 0/0, Wired delta_in/delta_out: 0/0, subscriber tag: 0, total duration: 467.751
+Feb  5 04:13:25.941794 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot TCP4 flow id 611027 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 1 tx 1, bytes 129 208 cell 0 0 wifi 169 248 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+src 611027 snapshot: Autopilot TCP4 flow id 611027 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 1 tx 1, bytes 129 208 cell 0 0 wifi 169 248 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+flow: TrackedFlow 611027 WiFi tcp4 flow owner (null) start 04:05:38.179 -0600 duration 467.763 trackers: self 0x0 - other 0x73d1fb180 fyi.ticketless.app rx pkts 1 tx pkts 1
+Feb  5 04:13:25.943755 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot QUIC6 flow id 608129 (refresh) ch i/f 3 props 0x8001004 first 0 pkts rx 45 tx 52, bytes 13393 9821 cell 18337 14813 wifi 0 0 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+src 608129 snapshot: Autopilot QUIC6 flow id 608129 (refresh) ch i/f 3 props 0x8001004 first 0 pkts rx 45 tx 52, bytes 13393 9821 cell 18337 14813 wifi 0 0 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+flow: TrackedFlow 608129 Cellular udp6 flow owner (null) start 04:00:10.601 -0600 duration 795.343 trackers: self 0x0 - other 0x73d1a5260 fyi.ticketless.app rx pkts 45 tx pkts 52
+Feb  5 04:13:26.384621 nearbyd(CoreMotion)[215] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:26.559658 biometrickitd(CoreMotion)[123] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:26.659516 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:27.122553 locationd[77] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb  5 04:13:27.122644 locationd[77] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xb8288c000"}
+Feb  5 04:13:27.123433 locationd[77] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb  5 04:13:27.178424 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:27.179352 audiomxd(CoreMotion)[111] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:28.150732 milod(CoreMotion)[18059] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:28.257088 routined(CoreMotion)[12864] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:28.774411 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:29.119871 corespeechd(CoreMotion)[23811] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:29.665825 locationd[77] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb  5 04:13:29.666006 locationd[77] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xb8288c000"}
+Feb  5 04:13:29.666808 locationd[77] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb  5 04:13:30.045242 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:30.952270 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot TCP4 flow id 611028 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 523 tx 567, bytes 10719 132359 cell 0 0 wifi 31639 155039 wired 0 0 comp_bt 0 0 deltas 112 1396 0 0 312 1636 0 0 0 0 acct_deltas 0 0 312 1636 0 0 0 0
+src 611028 snapshot: Autopilot TCP4 flow id 611028 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 523 tx 567, bytes 10719 132359 cell 0 0 wifi 31639 155039 wired 0 0 comp_bt 0 0 deltas 112 1396 0 0 312 1636 0 0 0 0 acct_deltas 0 0 312 1636 0 0 0 0
+flow: TrackedFlow 611028 WiFi tcp4 flow owner (null) start 04:05:38.179 -0600 duration 472.773 trackers: self 0x0 - other 0x73d1fb180 fyi.ticketless.app rx pkts 518 tx pkts 561
+Feb  5 04:13:30.952636 symptomsd(SymptomEvaluator)[153] <Debug>: [Bitmap] flow id 611028, fyi.ticketless.app: current bitmaps stored before adding new bitmap: [Activity startTime: 23:46:07.000 -0600 (115696), endTime: 119792] [wordOffset: 6, numOfWords:8] <0000000000000000 0000000000000000 FFFFC00000000000 FFFFFFFFFFFFFFFF FFFFFFFFFFFFFFFF FF80000003FFFFFF 0003FFFFFFFFFFFF 0000000000000000 >
+Feb  5 04:13:30.952669 symptomsd(SymptomEvaluator)[153] <Debug>: [Bitmap] flow id 611028, fyi.ticketless.app: current bitmaps stored after adding new bitmap: [Activity startTime: 23:46:07.000 -0600 (115696), endTime: 119792] [wordOffset: 6, numOfWords:8] <0000000000000000 0000000000000000 FFFFC00000000000 FFFFFFFFFFFFFFFF FFFFFFFFFFFFFFFF FF80000003FFFFFF 0007FFFFFFFFFFFF 0000000000000000 >
+Feb  5 04:13:30.952706 symptomsd(SymptomEvaluator)[153] <Debug>: found LU hint (mode: 1) for fyi.ticketless.app: 0x73d2b73e0, subscriber tag: 0
+Feb  5 04:13:30.952808 symptomsd(SymptomEvaluator)[153] <Notice>: Data Usage for fyi.ticketless.app on flow 611028 - WiFi in/out: 127965695/3096863, WiFi delta_in/delta_out: 312/1636, Cell in/out: 1123556/690727, Cell delta_in/delta_out: 0/0, RNF: 0, subscriber tag: 0, total duration: 472.761
+Feb  5 04:13:30.952864 symptomsd(SymptomEvaluator)[153] <Debug>: Data Usage for fyi.ticketless.app on flow 611028 - Wired in/out: 0/0, Wired delta_in/delta_out: 0/0, subscriber tag: 0, total duration: 472.761
+Feb  5 04:13:30.953018 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot TCP4 flow id 611027 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 1 tx 1, bytes 129 208 cell 0 0 wifi 169 248 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+src 611027 snapshot: Autopilot TCP4 flow id 611027 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 1 tx 1, bytes 129 208 cell 0 0 wifi 169 248 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+flow: TrackedFlow 611027 WiFi tcp4 flow owner (null) start 04:05:38.179 -0600 duration 472.774 trackers: self 0x0 - other 0x73d1fb180 fyi.ticketless.app rx pkts 1 tx pkts 1
+Feb  5 04:13:30.954646 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot QUIC6 flow id 608129 (refresh) ch i/f 3 props 0x8001004 first 0 pkts rx 45 tx 52, bytes 13393 9821 cell 18337 14813 wifi 0 0 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+src 608129 snapshot: Autopilot QUIC6 flow id 608129 (refresh) ch i/f 3 props 0x8001004 first 0 pkts rx 45 tx 52, bytes 13393 9821 cell 18337 14813 wifi 0 0 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+flow: TrackedFlow 608129 Cellular udp6 flow owner (null) start 04:00:10.601 -0600 duration 800.354 trackers: self 0x0 - other 0x73d1a5260 fyi.ticketless.app rx pkts 45 tx pkts 52
+Feb  5 04:13:31.384037 nearbyd(CoreMotion)[215] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:31.558700 biometrickitd(CoreMotion)[123] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:31.659493 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:32.178978 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:32.180318 audiomxd(CoreMotion)[111] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:32.211499 locationd[77] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb  5 04:13:32.211572 locationd[77] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xb8288c000"}
+Feb  5 04:13:32.211863 locationd[77] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb  5 04:13:32.775854 locationd(CoreAnalytics)[77] <Info>: Dropping "com.apple.CoreMotion.MotionCoprocessorReply" as it isn't used in any transform (not in the config or budgeted?)
+Feb  5 04:13:33.155998 milod(CoreMotion)[18059] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:33.253635 routined(CoreMotion)[12864] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:33.773113 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:34.117064 corespeechd(CoreMotion)[23811] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:34.759039 locationd[77] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb  5 04:13:34.759116 locationd[77] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xb8288c000"}
+Feb  5 04:13:34.759710 locationd[77] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb  5 04:13:35.045123 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:35.967623 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot TCP4 flow id 611028 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 528 tx 573, bytes 10831 133755 cell 0 0 wifi 31951 156675 wired 0 0 comp_bt 0 0 deltas 112 1396 0 0 312 1636 0 0 0 0 acct_deltas 0 0 312 1636 0 0 0 0
+src 611028 snapshot: Autopilot TCP4 flow id 611028 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 528 tx 573, bytes 10831 133755 cell 0 0 wifi 31951 156675 wired 0 0 comp_bt 0 0 deltas 112 1396 0 0 312 1636 0 0 0 0 acct_deltas 0 0 312 1636 0 0 0 0
+flow: TrackedFlow 611028 WiFi tcp4 flow owner (null) start 04:05:38.179 -0600 duration 477.788 trackers: self 0x0 - other 0x73d1fb180 fyi.ticketless.app rx pkts 523 tx pkts 567
+Feb  5 04:13:35.968517 symptomsd(SymptomEvaluator)[153] <Debug>: [Bitmap] flow id 611028, fyi.ticketless.app: current bitmaps stored before adding new bitmap: [Activity startTime: 23:46:07.000 -0600 (115696), endTime: 119792] [wordOffset: 6, numOfWords:8] <0000000000000000 0000000000000000 FFFFC00000000000 FFFFFFFFFFFFFFFF FFFFFFFFFFFFFFFF FF80000003FFFFFF 0007FFFFFFFFFFFF 0000000000000000 >
+Feb  5 04:13:35.968711 symptomsd(SymptomEvaluator)[153] <Debug>: [Bitmap] flow id 611028, fyi.ticketless.app: current bitmaps stored after adding new bitmap: [Activity startTime: 23:46:07.000 -0600 (115696), endTime: 119792] [wordOffset: 6, numOfWords:8] <0000000000000000 0000000000000000 FFFFC00000000000 FFFFFFFFFFFFFFFF FFFFFFFFFFFFFFFF FF80000003FFFFFF 0007FFFFFFFFFFFF 0000000000000000 >
+Feb  5 04:13:35.968870 symptomsd(SymptomEvaluator)[153] <Debug>: found LU hint (mode: 1) for fyi.ticketless.app: 0x73d2b73e0, subscriber tag: 0
+Feb  5 04:13:35.969016 symptomsd(SymptomEvaluator)[153] <Notice>: Data Usage for fyi.ticketless.app on flow 611028 - WiFi in/out: 127966007/3098499, WiFi delta_in/delta_out: 312/1636, Cell in/out: 1123556/690727, Cell delta_in/delta_out: 0/0, RNF: 0, subscriber tag: 0, total duration: 477.774
+Feb  5 04:13:35.969064 symptomsd(SymptomEvaluator)[153] <Debug>: Data Usage for fyi.ticketless.app on flow 611028 - Wired in/out: 0/0, Wired delta_in/delta_out: 0/0, subscriber tag: 0, total duration: 477.774
+Feb  5 04:13:35.969247 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot TCP4 flow id 611027 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 1 tx 1, bytes 129 208 cell 0 0 wifi 169 248 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+src 611027 snapshot: Autopilot TCP4 flow id 611027 (refresh) so i/f 11 props 0x8010808 first 0 pkts rx 1 tx 1, bytes 129 208 cell 0 0 wifi 169 248 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+flow: TrackedFlow 611027 WiFi tcp4 flow owner (null) start 04:05:38.179 -0600 duration 477.791 trackers: self 0x0 - other 0x73d1fb180 fyi.ticketless.app rx pkts 1 tx pkts 1
+Feb  5 04:13:35.972004 symptomsd(SymptomEvaluator)[153] <Debug>: Flow data on entry is Autopilot QUIC6 flow id 608129 (refresh) ch i/f 3 props 0x8001004 first 0 pkts rx 45 tx 52, bytes 13393 9821 cell 18337 14813 wifi 0 0 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+src 608129 snapshot: Autopilot QUIC6 flow id 608129 (refresh) ch i/f 3 props 0x8001004 first 0 pkts rx 45 tx 52, bytes 13393 9821 cell 18337 14813 wifi 0 0 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+flow: TrackedFlow 608129 Cellular udp6 flow owner (null) start 04:00:10.601 -0600 duration 805.371 trackers: self 0x0 - other 0x73d1a5260 fyi.ticketless.app rx pkts 45 tx pkts 52
+Feb  5 04:13:36.383928 nearbyd(CoreMotion)[215] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:36.558775 biometrickitd(CoreMotion)[123] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:36.659529 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:37.179233 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:37.179416 audiomxd(CoreMotion)[111] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:37.307743 locationd[77] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb  5 04:13:37.307915 locationd[77] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xb8288c000"}
+Feb  5 04:13:37.308501 locationd[77] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb  5 04:13:37.791953 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.792201 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.792348 Autopilot(Network)[29344] <Debug>: nw_channel_purge_idle_block_invoke Purging channel packet pool after going idle
+Feb  5 04:13:37.792560 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.792747 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.792888 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793007 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.793125 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793232 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793698 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.792049 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.792291 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.792430 Autopilot(Network)[29344] <Debug>: nw_channel_purge_idle_block_invoke Purging channel packet pool after going idle
+Feb  5 04:13:37.792593 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.792787 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.792918 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793037 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.793159 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793301 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793740 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.793832 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793889 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.793986 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794062 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794151 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794215 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794274 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794363 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794433 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794550 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794660 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794748 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794824 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794929 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794985 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.795040 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.795108 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.793803 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.793863 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.793953 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794016 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794119 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794187 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794248 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794303 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794407 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794462 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794582 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794696 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794792 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.794901 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:37.794959 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.795015 Autopilot(Network)[29344] <Debug>: endpoint <private> has nothing to cleanup, no protocol instance registrars
+Feb  5 04:13:37.795077 Autopilot(Network)[29344] <Debug>: endpoint <private> has associations
+Feb  5 04:13:38.159522 milod(CoreMotion)[18059] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:38.253546 routined(CoreMotion)[12864] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:38.773296 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:39.117032 corespeechd(CoreMotion)[23811] <Debug>: Ping timer fired, resetting watchdog
+Feb  5 04:13:39.203524 locationd[77] <Notice>: os_transaction created: (0x16bc2a400) CLLocationDatabase::getLocation
+Feb  5 04:13:39.203667 locationd[77] <Notice>: os_transaction releasing: (0x16bc2a400) CLLocationDatabase::getLocation
+Feb  5 04:13:39.851779 locationd[77] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb  5 04:13:39.851981 locationd[77] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xb8288c000"}
+Feb  5 04:13:39.852301 locationd[77] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb  5 04:13:40.045087 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
