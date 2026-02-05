@@ -5,7 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -142,6 +145,11 @@ class BluetoothMonitorService : Service() {
                     // Register our own ACL BroadcastReceiver
                     registerAclReceiver()
 
+                    // Check if the target device is ALREADY connected right now.
+                    // ACL events only fire on transitions — if the phone was already
+                    // connected before monitoring started, no event will ever come.
+                    checkInitialConnectionState()
+
                     Log.i(TAG, "BT monitor started for: $targetName ($targetAddress)")
                 } else {
                     Log.w(TAG, "No target device address provided, stopping service")
@@ -235,6 +243,66 @@ class BluetoothMonitorService : Service() {
                 Log.w(TAG, "Error unregistering ACL receiver: ${e.message}")
             }
             aclReceiver = null
+        }
+    }
+
+    /**
+     * Proactively check if the target device is already connected via A2DP
+     * or Headset Bluetooth profiles. ACL BroadcastReceiver events only fire
+     * on transitions, so if the car was connected BEFORE monitoring started
+     * we'd never get an event and the app would be stuck on "Waiting for..."
+     */
+    private fun checkInitialConnectionState() {
+        try {
+            val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            val adapter = bluetoothManager?.adapter
+            if (adapter == null) {
+                Log.w(TAG, "No BluetoothAdapter for initial connection check")
+                return
+            }
+
+            // Check A2DP (media audio) and Headset (phone calls) profiles.
+            // Cars typically use one or both of these.
+            val profilesToCheck = listOf(BluetoothProfile.A2DP, BluetoothProfile.HEADSET)
+
+            for (profileType in profilesToCheck) {
+                adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
+                    override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                        try {
+                            val connectedDevices = proxy.connectedDevices
+                            Log.d(TAG, "Profile $profile has ${connectedDevices.size} connected device(s)")
+
+                            val targetDevice = connectedDevices.find { device ->
+                                try {
+                                    val addr = device.address
+                                    val name = device.name
+                                    (addr != null && addr == targetAddress) ||
+                                        (targetName != null && name != null && name == targetName)
+                                } catch (e: SecurityException) {
+                                    false
+                                }
+                            }
+
+                            if (targetDevice != null) {
+                                val name = try { targetDevice.name } catch (e: SecurityException) { null }
+                                val addr = try { targetDevice.address } catch (e: SecurityException) { null }
+                                Log.i(TAG, "Target device ALREADY CONNECTED on profile $profile: $name ($addr)")
+                                handleConnect(name ?: targetName ?: "Car", addr ?: targetAddress ?: "")
+                            }
+                        } catch (e: SecurityException) {
+                            Log.w(TAG, "SecurityException checking profile $profile: ${e.message}")
+                        } finally {
+                            adapter.closeProfileProxy(profile, proxy)
+                        }
+                    }
+
+                    override fun onServiceDisconnected(profile: Int) {
+                        // No action needed
+                    }
+                }, profileType)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to check initial connection state: ${e.message}")
         }
     }
 
