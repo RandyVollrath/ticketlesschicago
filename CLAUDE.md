@@ -133,6 +133,14 @@ Android parking detection depends on Bluetooth Classic (ACL events). The system 
 3. **JS `NativeEventEmitter` not subscribed when native emits.**
    `startMonitoring()` starts the service and resolves the promise BEFORE JS subscribes to events. The initial connect event from `checkInitialConnectionState()` can be lost. Fix: rely on SharedPreferences fallback checks, not just events.
 
+### Android Foreground Service Rules (CRITICAL)
+The `BluetoothMonitorService` is a foreground service. Android has strict rules about these that cause **instant app crashes** if violated:
+
+1. **NEVER call `startForeground()` in a STOP code path.** If the service calls `startForeground()` and then immediately `stopSelf()`, and another `startForegroundService()` START intent is queued, the STOP tears down the service before the START can fulfill its `startForeground()` contract → `ForegroundServiceDidNotStartInTimeException` → app crash → service dead forever until next app restart.
+2. **Use `stopService()` to stop the service, NOT `startService(ACTION_STOP)`.** Sending STOP via `startService` creates the same race: the service receives STOP, dies, but a pending START from `startForegroundService` has no service to attach to.
+3. **STOP must exit early in `onStartCommand`** — before the `startForeground()` call. Only START/null actions call `startForeground()`.
+4. **If the foreground service crashes, it stays dead.** Android does NOT auto-restart it (despite `START_STICKY`) after a `ForegroundServiceDidNotStartInTimeException`. The BT monitoring is silently gone until the user force-closes and reopens the app.
+
 ### Rules for Any BT Code Change
 1. **Always call `ensureSavedDeviceLoaded()` before any code that calls `setCarConnected()`.**
 2. **Never remove the delayed re-check timers** (2s + 5s) in `startForegroundMonitoring` and `restartBluetoothMonitoring`. They catch async profile proxy results.
@@ -149,6 +157,30 @@ After any change to BT-related code, verify these scenarios on a physical Androi
 - [ ] Car BT reconnects → departure tracking starts
 - [ ] Kill app while connected → reopen → still shows "Connected to [car]"
 - [ ] App in background → car disconnects → parking notification fires
+
+## iOS Parking/Driving Detection — Critical Rules
+
+iOS parking detection uses CoreMotion (M-series coprocessor) + CLLocationManager. The detection flow is: CoreMotion detects automotive → `isDriving = true` → GPS tracks position → CoreMotion detects stationary/walking → 5-second debounce → parking confirmed → `onParkingDetected` event fires.
+
+### Lesson #9: NEVER stop CoreMotion after parking confirmation
+CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor — it is near-zero battery cost. Stopping it after parking and relying on `significantLocationChange` (cell tower changes, ~100-500m) to restart it causes **TWO silent failures**:
+
+1. **Departure never captured**: `onDrivingStarted` never fires for the next drive because CoreMotion isn't running. The server never records that the user left their parking spot. This has been a recurring bug — the user reported it multiple times.
+2. **Second parking never detected**: If the user parks, drives somewhere else (e.g. home), and parks again — the second parking is never detected because `isDriving` is never set back to true (no CoreMotion to detect it).
+
+**Rule**: Only stop continuous GPS after parking. Keep CoreMotion running always. `significantLocationChange` is too unreliable for detecting the START of a new drive — it depends on cell tower geometry, can take minutes, and doesn't fire at all for short same-area trips.
+
+### Architecture
+- **Native module**: `BackgroundLocationModule.swift` — CLLocationManager + CMMotionActivityManager
+- **JS orchestrator**: `BackgroundTaskService.ts` — receives `onParkingDetected` and `onDrivingStarted` events, runs parking rule checks, handles departure tracking
+- **Departure flow**: `onDrivingStarted` → `handleCarReconnection()` → `markCarReconnected()` → `scheduleDepartureConfirmation()` (2-min delay to capture new GPS) → `confirmDeparture()`
+
+### Rules
+1. **CoreMotion must stay active at all times while monitoring is on.** Only continuous GPS can be stopped to save battery.
+2. **Departure depends on `onDrivingStarted`** firing when the user starts their next drive. If CoreMotion is stopped, this event never fires and departure is never recorded.
+3. **The `minDrivingDurationSec` (60s) filter** prevents false parking events from red lights. Don't lower it below 30s.
+4. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
+5. **After parking confirmation, `isDriving` resets to false.** The ONLY way it gets set back to true is via CoreMotion reporting automotive or GPS speed > 2.5 m/s. If neither is running, the app is permanently stuck in "parked" state.
 
 ## React State Initialization — NEVER Default to Empty
 
