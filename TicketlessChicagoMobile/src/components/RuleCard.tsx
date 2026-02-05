@@ -30,7 +30,7 @@ const getRuleLabel = (type: ParkingRule['type']): string => {
     case 'street_cleaning':
       return 'Street Cleaning';
     case 'snow_route':
-      return 'Snow Route';
+      return '2″ Snow Route';
     case 'permit_zone':
       return 'Permit Zone';
     case 'winter_ban':
