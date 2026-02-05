@@ -22,7 +22,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var coreMotionActive = false                  // Whether CoreMotion activity updates are running
 
   // Configuration
-  private let minDrivingDurationSec: TimeInterval = 30   // 30 sec of driving before we care about stops (was 120→60→30, lowered to catch half-block trips)
+  private let minDrivingDurationSec: TimeInterval = 10   // 10 sec of driving before we care about stops (was 120→60→30→10; covers moving car one block for street cleaning)
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
   private let minDrivingSpeedMps: Double = 2.5           // ~5.6 mph - threshold to START driving state via speed
   private let speedCheckIntervalSec: TimeInterval = 3    // Re-check parking every 3s while speed≈0
@@ -212,9 +212,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   /// Start continuous GPS (called when CoreMotion detects driving)
   private func startContinuousGps() {
     guard !continuousGpsActive else { return }
+    // Remove distance filter during driving so we get GPS updates even when
+    // stationary. Without this, distanceFilter=10 means no updates arrive
+    // when the car stops, so the speed-zero parking detection never triggers.
+    locationManager.distanceFilter = kCLDistanceFilterNone
     locationManager.startUpdatingLocation()
     continuousGpsActive = true
-    NSLog("[BackgroundLocation] Continuous GPS ON (driving detected)")
+    NSLog("[BackgroundLocation] Continuous GPS ON (driving detected, distanceFilter=none)")
   }
 
   /// Stop continuous GPS (called after parking confirmed)
@@ -222,8 +226,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private func stopContinuousGps() {
     guard continuousGpsActive else { return }
     locationManager.stopUpdatingLocation()
+    // Restore distance filter to save power when not actively driving
+    locationManager.distanceFilter = 10
     continuousGpsActive = false
-    NSLog("[BackgroundLocation] Continuous GPS OFF (saving battery)")
+    NSLog("[BackgroundLocation] Continuous GPS OFF (saving battery, distanceFilter=10m)")
   }
 
   // MARK: - CoreMotion: Primary Driving Detection
@@ -384,13 +390,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // 10+ consecutive seconds of true zero GPS speed.
       if isDriving,
          let drivingStart = drivingStartTime,
-         Date().timeIntervalSince(drivingStart) >= 15,
+         Date().timeIntervalSince(drivingStart) >= minDrivingDurationSec,
          speedZeroTimer == nil {
         // Record when speed first hit zero (if not already set from location capture above)
         if speedZeroStartTime == nil {
           speedZeroStartTime = Date()
         }
-        NSLog("[BackgroundLocation] GPS speed≈0 after 15+s driving. Starting repeating speed check (every \(speedCheckIntervalSec)s, override at \(speedZeroOverrideSec)s).")
+        NSLog("[BackgroundLocation] GPS speed≈0 after \(String(format: "%.0f", Date().timeIntervalSince(drivingStart)))s driving. Starting repeating speed check (every \(speedCheckIntervalSec)s, override at \(speedZeroOverrideSec)s).")
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: speedCheckIntervalSec, repeats: true) { [weak self] timer in
           guard let self = self else { timer.invalidate(); return }
 
