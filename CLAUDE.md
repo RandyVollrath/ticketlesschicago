@@ -11,13 +11,67 @@ After completing any feature or fix, always deploy everything:
 
 1. **Web app**: Run `npx vercel --prod --yes` from the repo root to deploy to Vercel.
 2. **Android APK**: Run `./gradlew assembleRelease` in `TicketlessChicagoMobile/android/`.
-3. **Install on Moto G**: Check if the Moto G (serial `ZT4224LFTZ`) is connected via `adb devices`. If it shows up, install the APK automatically:
+3. **Install on connected devices**: Check via `adb devices`. Install on any connected device:
    ```
    adb -s ZT4224LFTZ install -r TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk
+   adb -s ZY326L2GKG install -r TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk
    ```
-   Also install on any other connected device (e.g. Moto E5 Play `ZY326L2GKG`).
-4. **iOS**: user builds locally on Mac by pulling from git and building in Xcode.
-5. **Always push to GitHub after making changes** — the user expects all work deployed to production.
+4. **Firebase App Distribution (OTA updates)**: ALWAYS upload after building the APK so the user can install remotely without being near the computer. Use the Python script:
+   ```python
+   python3 << 'PYEOF'
+   import json, ssl, certifi
+   from google.oauth2 import service_account
+   from google.auth.transport.requests import Request
+   import urllib.request
+
+   ssl_context = ssl.create_default_context(cafile=certifi.where())
+   opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
+   urllib.request.install_opener(opener)
+
+   creds = service_account.Credentials.from_service_account_file(
+       '/home/randy-vollrath/ticketless-chicago/firebase-admin-key.json',
+       scopes=['https://www.googleapis.com/auth/cloud-platform']
+   )
+   creds.refresh(Request())
+
+   APP_ID = '1:450290119882:android:16850ef983b271ea3ff033'
+   PROJECT = '450290119882'
+   APK_PATH = '/home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk'
+
+   # Upload
+   with open(APK_PATH, 'rb') as f:
+       apk_data = f.read()
+   url = f'https://firebaseappdistribution.googleapis.com/upload/v1/projects/{PROJECT}/apps/{APP_ID}/releases:upload'
+   req = urllib.request.Request(url, data=apk_data, method='POST')
+   req.add_header('Authorization', f'Bearer {creds.token}')
+   req.add_header('Content-Type', 'application/vnd.android.package-archive')
+   req.add_header('X-Goog-Upload-Protocol', 'raw')
+   req.add_header('X-Goog-Upload-File-Name', 'app-release.apk')
+   resp = urllib.request.urlopen(req, timeout=300)
+   op = json.loads(resp.read())
+   print("Uploaded!", op.get('name',''))
+
+   # Get latest release name
+   url2 = f'https://firebaseappdistribution.googleapis.com/v1/projects/{PROJECT}/apps/{APP_ID}/releases'
+   req2 = urllib.request.Request(url2)
+   req2.add_header('Authorization', f'Bearer {creds.token}')
+   releases = json.loads(urllib.request.urlopen(req2, timeout=30).read())
+   release_name = releases['releases'][0]['name']
+
+   # Distribute to testers
+   url3 = f'https://firebaseappdistribution.googleapis.com/v1/{release_name}:distribute'
+   body = json.dumps({"testerEmails": ["hiautopilotamerica@gmail.com"]}).encode()
+   req3 = urllib.request.Request(url3, data=body, method='POST')
+   req3.add_header('Authorization', f'Bearer {creds.token}')
+   req3.add_header('Content-Type', 'application/json')
+   urllib.request.urlopen(req3, timeout=30)
+   print("Distributed to testers!")
+   PYEOF
+   ```
+   - Service account: `firebase-admin-key.json` (has Firebase App Distribution Admin role)
+   - Tester: `hiautopilotamerica@gmail.com` (uses Firebase App Tester on phone)
+5. **iOS**: user builds locally on Mac by pulling from git and building in Xcode.
+6. **Always push to GitHub after making changes** — the user expects all work deployed to production.
 
 ## Version Bumping
 When releasing, bump ALL THREE locations and keep them in sync:
