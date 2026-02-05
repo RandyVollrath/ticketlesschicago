@@ -660,8 +660,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // On Android, the state machine is the source of truth.
     // When driving, show DRIVING hero — the user cares about their current
     // activity, not a stale parking result from their previous spot.
+    // Also treat PARKED-without-result as still detecting — the parking check
+    // is running but hasn't returned yet. Without this, the hero briefly
+    // flashes "Waiting for {car}" between state machine PARKED and the
+    // async result loading into lastParkingCheck.
     if (Platform.OS === 'android' && (parkingState === 'DRIVING' || parkingState === 'PARKING_PENDING')) {
       return 'driving';
+    }
+    if (Platform.OS === 'android' && parkingState === 'PARKED' && !lastParkingCheck) {
+      return 'checking';
     }
     if (isDriving) return 'driving';
 
@@ -1177,9 +1184,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   ? `Connected to ${savedCarName}`
                   : parkingState === 'PARKING_PENDING'
                     ? 'Detecting parking'
-                    : parkingState === 'PARKED'
-                      ? `Parked, ${savedCarName} disconnected`
-                      : `Waiting for ${savedCarName}`
+                    : parkingState === 'PARKED' && !lastParkingCheck
+                      ? 'Checking restrictions'
+                      : parkingState === 'PARKED'
+                        ? `Parked, ${savedCarName} disconnected`
+                        : `Waiting for ${savedCarName}`
                 : 'Pair your car for auto-detection'
             }
             accessibilityRole={!savedCarName ? 'button' : 'text'}
@@ -1206,9 +1215,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   ? `Connected to ${savedCarName}`
                   : parkingState === 'PARKING_PENDING'
                     ? `Detecting parking...`
-                    : parkingState === 'PARKED'
-                      ? `Parked (${savedCarName} disconnected)`
-                      : `Waiting for ${savedCarName}`
+                    : parkingState === 'PARKED' && !lastParkingCheck
+                      ? `Checking restrictions...`
+                      : parkingState === 'PARKED'
+                        ? `Parked (${savedCarName} disconnected)`
+                        : `Waiting for ${savedCarName}`
                 : 'Pair your car for auto-detection'}
             </Text>
             {!savedCarName && (

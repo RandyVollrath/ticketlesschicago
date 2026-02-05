@@ -38,7 +38,7 @@ const log = Logger.createLogger('BackgroundTaskService');
 const BACKGROUND_TASK_ID = 'ticketless-parking-check';
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const MIN_DISCONNECT_DURATION_MS = 30 * 1000; // 30 seconds (to avoid false positives)
-const DEPARTURE_CONFIRMATION_DELAY_MS = 120 * 1000; // 2 minutes after car starts
+const DEPARTURE_CONFIRMATION_DELAY_MS = 30 * 1000; // 30s after car starts (just enough to confirm movement)
 const MIN_PARKING_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes - prevent duplicate checks
 
 // Periodic rescan: re-check parking at last location every 4 hours while parked
@@ -64,6 +64,7 @@ interface BackgroundTaskState {
     scheduledAt: number; // timestamp when confirmation was scheduled
     departedAt: number; // timestamp when driving actually started (not when confirmed)
     localHistoryItemId?: string; // local history item to update (local-only mode)
+    departureCoords?: { latitude: number; longitude: number; accuracy: number }; // GPS grabbed at departure moment
   } | null;
 }
 
@@ -2201,6 +2202,40 @@ class BackgroundTaskServiceClass {
       this.reconnectCallback();
     }
 
+    // ── Grab GPS immediately ──
+    // On BT reconnect the engine just started, so current position ≈ departure
+    // location. Capture it NOW instead of waiting 30s when the car has already
+    // moved. This is the key fix for short drives (end of block) where
+    // the delayed GPS capture would already be at the destination.
+    let immediateGps: { latitude: number; longitude: number; accuracy: number } | null = null;
+    try {
+      immediateGps = await new Promise<{ latitude: number; longitude: number; accuracy: number } | null>((resolve) => {
+        const timeout = setTimeout(() => resolve(null), 6000);
+        Geolocation.getCurrentPosition(
+          (pos) => {
+            clearTimeout(timeout);
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+            });
+          },
+          () => {
+            clearTimeout(timeout);
+            resolve(null);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 },
+        );
+      });
+      if (immediateGps) {
+        log.info(`Departure GPS captured immediately: ${immediateGps.latitude.toFixed(6)}, ${immediateGps.longitude.toFixed(6)} (±${immediateGps.accuracy.toFixed(0)}m)`);
+      } else {
+        log.warn('Could not capture immediate departure GPS (will use delayed capture)');
+      }
+    } catch (gpsErr) {
+      log.warn('Immediate departure GPS capture failed:', gpsErr);
+    }
+
     // Try server-side clear first, fall back to local-only departure tracking
     let serverSucceeded = false;
 
@@ -2221,6 +2256,7 @@ class BackgroundTaskServiceClass {
           retryCount: 0,
           scheduledAt: Date.now(),
           departedAt: departureTime, // When driving actually started (native timestamp)
+          ...(immediateGps && { departureCoords: immediateGps }),
         };
         await this.saveState();
         this.scheduleDepartureConfirmation();
@@ -2252,6 +2288,7 @@ class BackgroundTaskServiceClass {
             scheduledAt: Date.now(),
             departedAt: departureTime, // When driving actually started (native timestamp)
             localHistoryItemId: recentItem.id,
+            ...(immediateGps && { departureCoords: immediateGps }),
           };
           await this.saveState();
           this.scheduleDepartureConfirmation();
@@ -2298,6 +2335,7 @@ class BackgroundTaskServiceClass {
                 retryCount: 0,
                 scheduledAt: Date.now(),
                 departedAt: departureTime,
+                departureCoords: currentPos, // Already have GPS from the fallback capture
               };
               await this.saveState();
               this.scheduleDepartureConfirmation();
@@ -2315,8 +2353,9 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Schedule departure confirmation after a delay
-   * This captures the user's location ~2 minutes after leaving to prove they left
+   * Schedule departure confirmation after a delay.
+   * The departure GPS was already captured at reconnection time —
+   * this delay just confirms distance from the parked spot.
    */
   private scheduleDepartureConfirmation(): void {
     // Clear any existing timeout
@@ -2406,18 +2445,26 @@ class BackgroundTaskServiceClass {
         mode: isLocalOnly ? 'local-only' : 'server',
       });
 
-      // Get current location with high accuracy
+      // Use the departure GPS that was captured immediately at reconnection time.
+      // Only fall back to current GPS if we didn't get an immediate fix.
       let coords;
-      try {
-        coords = await LocationService.getHighAccuracyLocation(30, 20000);
-        log.info(`Got departure location: ${coords.accuracy?.toFixed(1)}m accuracy`);
-      } catch (error) {
-        log.warn('High accuracy location failed for departure, trying fallback', error);
-        coords = await LocationService.getLocationWithRetry(3);
+      if (pending.departureCoords) {
+        coords = pending.departureCoords;
+        log.info(`Using departure GPS captured at reconnection: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} (±${coords.accuracy.toFixed(0)}m)`);
+      } else {
+        // No immediate GPS was captured — fall back to current location
+        try {
+          coords = await LocationService.getHighAccuracyLocation(30, 20000);
+          log.info(`Got departure location (delayed): ${coords.accuracy?.toFixed(1)}m accuracy`);
+        } catch (error) {
+          log.warn('High accuracy location failed for departure, trying fallback', error);
+          coords = await LocationService.getLocationWithRetry(3);
+        }
       }
 
       let distanceMeters: number;
       let isConclusive: boolean;
+      const CONCLUSIVE_DISTANCE_M = 30; // 30m — end of a city block should count
 
       if (isLocalOnly) {
         // Local-only mode: calculate distance from parking spot ourselves
@@ -2427,12 +2474,12 @@ class BackgroundTaskServiceClass {
           coords.latitude,
           coords.longitude
         );
-        // Consider conclusive if moved more than 100m from parking spot
-        isConclusive = distanceMeters > 100;
+        isConclusive = distanceMeters > CONCLUSIVE_DISTANCE_M;
 
         log.info('Local departure calculation:', {
           distanceMeters: Math.round(distanceMeters),
           isConclusive,
+          threshold: CONCLUSIVE_DISTANCE_M,
         });
 
         // Also try to send to server as a best-effort (non-blocking)
@@ -2448,11 +2495,13 @@ class BackgroundTaskServiceClass {
         );
 
         distanceMeters = result.distance_from_parked_meters;
-        isConclusive = result.is_conclusive;
+        // Override server conclusiveness with our lower threshold
+        isConclusive = distanceMeters > CONCLUSIVE_DISTANCE_M;
 
         log.info('Server departure confirmed:', {
           distance: distanceMeters,
           isConclusive,
+          threshold: CONCLUSIVE_DISTANCE_M,
         });
       }
 
@@ -2502,8 +2551,8 @@ class BackgroundTaskServiceClass {
       await this.saveState();
 
       // Only notify user for conclusive departures (car actually drove away)
-      // Inconclusive departures (< 100m) are saved silently — they likely mean
-      // the user walked away from their car, not that the car left
+      // Inconclusive departures (< 30m) are saved silently — they likely mean
+      // GPS jitter, not actual movement
       if (isConclusive) {
         await this.sendDepartureConfirmedNotification(distanceMeters);
       } else {
