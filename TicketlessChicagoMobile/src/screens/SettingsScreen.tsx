@@ -300,6 +300,17 @@ const SettingsScreen: React.FC = () => {
              '4. We check parking rules and notify you'}
           </Text>
         </View>
+
+        {/* Speed tip */}
+        <View style={styles.section}>
+          <View style={styles.speedTip}>
+            <Text style={styles.speedTipTitle}>Why pair via Bluetooth?</Text>
+            <Text style={styles.speedTipText}>
+              {'Bluetooth pairing gives you the fastest parking notifications — typically within a few seconds of turning off your engine.\n\n' +
+               'Without Bluetooth, the app falls back to motion sensors to detect when you stop driving. This still works, but notifications may take 1–2 minutes longer.'}
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -449,6 +460,24 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     lineHeight: 22,
+  },
+  speedTip: {
+    backgroundColor: colors.secondaryLight,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.warning,
+  },
+  speedTipTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  speedTipText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
   },
 });
 

@@ -1177,55 +1177,36 @@ class BackgroundTaskServiceClass {
         log.info(`Using pre-captured parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
       } else {
         // Android (Bluetooth disconnect) or fallback: get fresh GPS
-        // NOTE: On Android, BT disconnect may fire while app is in background.
-        // GPS access in background requires ACCESS_BACKGROUND_LOCATION permission.
-        //
-        // IMPORTANT: Always try fresh GPS first. The in-app cache may contain a
-        // stale position from while the user was DRIVING (GPS pre-caching runs
-        // every 60s while BT is connected). Using a driving position as the
-        // parking location causes the check to report restrictions for the wrong
-        // address (e.g., 1128 W Fullerton when parked at Belden & Sheffield).
-        // handleCarDisconnection clears the cache, but we also guard here.
+        // TWO-PHASE approach: get a fast single fix immediately, then refine
+        // with burst-sampling in the background. This gives the user a
+        // notification in ~3-5s instead of ~15s while still achieving high
+        // accuracy for history and server records.
         log.info(`Getting GPS location... (Platform: ${Platform.OS}, appState: ${AppState.currentState})`);
 
-        // Strategy 1: Burst-sample GPS for parking location
-        // Collects 3-8 GPS fixes over ~10s, discards outliers, returns weighted average.
-        // Massively improves accuracy vs single getCurrentPosition, especially in urban canyons.
+        // Phase 1: Fast single GPS fix (1-3 seconds)
         try {
-          const burstResult = await LocationService.getParkingLocation();
-          coords = burstResult;
-          gpsSource = `burst-${burstResult.sampleCount}x (${burstResult.accuracy?.toFixed(1)}m, spread=${burstResult.spreadMeters.toFixed(1)}m, confidence=${burstResult.confidence})`;
-          log.info(`Burst-sampled parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1)}m [${burstResult.sampleCount} samples, ${burstResult.spreadMeters.toFixed(1)}m spread, confidence=${burstResult.confidence}]`);
-        } catch (gpsError) {
-          log.warn('Burst sampling failed:', gpsError);
-
-          // Strategy 2: Retry with balanced accuracy
+          coords = await LocationService.getCurrentLocation('high', true);
+          gpsSource = `fast-single (${coords.accuracy?.toFixed(1)}m)`;
+          log.info(`Fast GPS fix: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
+        } catch (fastError) {
+          log.warn('Fast GPS failed, trying balanced:', fastError);
           try {
-            log.info('Trying balanced accuracy GPS with retry...');
             coords = await LocationService.getLocationWithRetry(3, undefined, true);
             gpsSource = `retry-balanced (${coords.accuracy?.toFixed(1)}m)`;
-            log.info(`Got retry location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
           } catch (retryError) {
-            // Strategy 3: Use cached location as last resort (better than nothing)
-            // NOTE: handleCarDisconnection clears the driving cache, so this will
-            // only have data if getCurrentLocation succeeded and cached during retries.
+            // Use any available fallback
             const cachedCoords = LocationService.getCachedLocation();
             if (cachedCoords) {
-              log.info(`Using cached location as last resort: ${cachedCoords.accuracy?.toFixed(1) || '?'}m accuracy`);
               coords = cachedCoords;
               gpsSource = `cache-fallback (${cachedCoords.accuracy?.toFixed(1) || '?'}m)`;
             } else {
-              // Strategy 4: Stale cache (any age)
               const staleCoords = LocationService.getLastKnownLocation();
               if (staleCoords) {
-                log.info('Using stale cached location as absolute last resort');
                 coords = staleCoords;
                 gpsSource = `stale-cache (${staleCoords.accuracy?.toFixed(1) || '?'}m)`;
               } else if (Platform.OS === 'ios') {
-                // Strategy 5 (iOS only): use the last driving location from BackgroundLocationService
                 const lastDriving = await BackgroundLocationService.getLastDrivingLocation();
                 if (lastDriving) {
-                  log.info('Using last driving location as parking location fallback');
                   coords = {
                     latitude: lastDriving.latitude,
                     longitude: lastDriving.longitude,
@@ -1233,10 +1214,10 @@ class BackgroundTaskServiceClass {
                   };
                   gpsSource = 'last-driving-fallback';
                 } else {
-                  log.error('ALL GPS methods failed - no location available');
+                  log.error('ALL GPS methods failed');
                   await this.sendDiagnosticNotification(
                     'GPS Failed',
-                    'Could not get your location. Make sure Location Services are enabled and set to "Always". Error: ' + String(retryError)
+                    'Could not get your location. Make sure Location Services are enabled and set to "Always".'
                   );
                   throw retryError;
                 }
@@ -1244,13 +1225,19 @@ class BackgroundTaskServiceClass {
                 log.error('ALL GPS methods failed on Android');
                 await this.sendDiagnosticNotification(
                   'GPS Failed',
-                  'Could not get your location. Make sure Location is set to "Allow all the time" in Android settings. Try opening the app and checking manually. Error: ' + String(retryError)
+                  'Could not get your location. Make sure Location is set to "Allow all the time".'
                 );
                 throw retryError;
               }
             }
           }
         }
+
+        // Phase 2: Kick off burst-sampling in the background.
+        // If the refined location differs significantly (>50m), re-run the
+        // parking check and update the notification + history silently.
+        const initialCoords = { ...coords };
+        this.backgroundBurstRefine(initialCoords, nativeTimestamp);
       }
 
       log.info(`GPS acquired via ${gpsSource}. Now calling parking API...`);
@@ -1363,6 +1350,115 @@ class BackgroundTaskServiceClass {
         }
       }
     }
+  }
+
+  /**
+   * Phase 2 of two-phase GPS: burst-sample in the background and, if the
+   * refined position is significantly different from the initial fast fix,
+   * silently re-run the parking check and update notification + history.
+   *
+   * This is fire-and-forget — errors are logged but never bubble up.
+   * The user already received a notification from Phase 1; this only
+   * corrects it if the initial GPS was materially wrong (>50m off).
+   */
+  private async backgroundBurstRefine(
+    initialCoords: { latitude: number; longitude: number; accuracy?: number },
+    nativeTimestamp?: number
+  ): Promise<void> {
+    const REFINEMENT_THRESHOLD_M = 50; // Only re-check if burst is >50m from initial
+
+    try {
+      log.info('[GPS Phase 2] Starting background burst refinement...');
+      const burstCoords = await LocationService.getParkingLocation();
+      log.info(`[GPS Phase 2] Burst result: ${burstCoords.latitude.toFixed(6)}, ${burstCoords.longitude.toFixed(6)} ±${burstCoords.accuracy?.toFixed(1) || '?'}m (confidence: ${burstCoords.confidence})`);
+
+      // Calculate distance between fast fix and burst-averaged position
+      const distM = this.haversineDistance(
+        initialCoords.latitude, initialCoords.longitude,
+        burstCoords.latitude, burstCoords.longitude
+      );
+      log.info(`[GPS Phase 2] Distance from initial fix: ${distM.toFixed(1)}m (threshold: ${REFINEMENT_THRESHOLD_M}m)`);
+
+      if (distM < REFINEMENT_THRESHOLD_M) {
+        log.info('[GPS Phase 2] Burst position within threshold — no correction needed');
+        return;
+      }
+
+      // --- Position differs significantly: re-run parking check ---
+      log.info(`[GPS Phase 2] Position shifted ${distM.toFixed(0)}m — re-checking parking rules...`);
+
+      const result = await LocationService.checkParkingLocation(burstCoords);
+      const filteredResult = await this.filterOwnPermitZone(result);
+
+      // Update saved result (HomeScreen hero card reads this)
+      await LocationService.saveParkingCheckResult(result);
+
+      // Update parking history — find the most recent entry and update its coords/rules
+      try {
+        const recentItem = await ParkingHistoryService.getMostRecent();
+        if (recentItem) {
+          await ParkingHistoryService.updateItem(recentItem.id, {
+            coords: burstCoords,
+            address: result.address,
+            rules: result.rules,
+          });
+          log.info(`[GPS Phase 2] Updated history entry ${recentItem.id} with refined location`);
+        }
+      } catch (histErr) {
+        log.warn('[GPS Phase 2] Failed to update history (non-fatal):', histErr);
+      }
+
+      // Re-send notification with corrected data
+      const rawData = result.rawApiData || await this.getRawParkingData(result);
+      if (filteredResult.rules.length > 0) {
+        await this.sendParkingNotification(filteredResult, burstCoords.accuracy, rawData);
+      } else {
+        await this.sendSafeNotification(filteredResult.address, burstCoords.accuracy, rawData);
+      }
+
+      // Update server record
+      try {
+        const fcmToken = await PushNotificationService.getToken();
+        if (fcmToken && AuthService.isAuthenticated()) {
+          await LocationService.saveParkedLocationToServer(burstCoords, rawData, result.address, fcmToken);
+        }
+      } catch (serverErr) {
+        log.warn('[GPS Phase 2] Failed to update server (non-fatal):', serverErr);
+      }
+
+      // Update saved parked coords (for rescan + snow monitoring)
+      await this.saveParkedCoords(burstCoords, result.address, result.rawApiData);
+
+      // Re-schedule restriction reminders with corrected location
+      try {
+        await this.scheduleRestrictionReminders(rawData, burstCoords);
+      } catch (reminderErr) {
+        log.warn('[GPS Phase 2] Failed to reschedule reminders (non-fatal):', reminderErr);
+      }
+
+      log.info(`[GPS Phase 2] Correction complete: ${result.address} (${filteredResult.rules.length} rules)`);
+    } catch (error) {
+      // Entirely non-fatal — Phase 1 result stands
+      log.warn('[GPS Phase 2] Burst refinement failed (Phase 1 result stands):', error);
+    }
+  }
+
+  /**
+   * Haversine distance between two lat/lng points in meters.
+   */
+  private haversineDistance(
+    lat1: number, lng1: number,
+    lat2: number, lng2: number
+  ): number {
+    const R = 6371000; // Earth radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   /**
