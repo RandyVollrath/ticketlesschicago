@@ -134,6 +134,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [homePermitZone, setHomePermitZone] = useState<string>('');
   const [permitZoneEditing, setPermitZoneEditing] = useState(false);
   const [permitZoneInput, setPermitZoneInput] = useState('');
@@ -145,6 +146,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const isMountedRef = useRef(true);
   const signingOutRef = useRef(false);
   const clearingRef = useRef(false);
+  const deletingAccountRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -384,6 +386,57 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     ]);
   }, []);
 
+  const handleDeleteAccount = useCallback(() => {
+    if (deletingAccountRef.current) return;
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all associated data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Your account, parking history, and all personal data will be permanently deleted.',
+              [
+                { text: 'No, keep my account', style: 'cancel' },
+                {
+                  text: 'Yes, delete my account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    deletingAccountRef.current = true;
+                    if (isMountedRef.current) setIsDeletingAccount(true);
+                    try {
+                      await AsyncStorage.clear();
+                      const result = await AuthService.deleteAccount();
+                      if (result.success) {
+                        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                      } else {
+                        if (isMountedRef.current) {
+                          Alert.alert('Error', result.error || 'Failed to delete account. Please try again.');
+                        }
+                      }
+                    } catch (error) {
+                      log.error('Error deleting account', error);
+                      if (isMountedRef.current) {
+                        Alert.alert('Error', 'Failed to delete account. Please try again.');
+                      }
+                    } finally {
+                      deletingAccountRef.current = false;
+                      if (isMountedRef.current) setIsDeletingAccount(false);
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  }, [navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Inline feedback banner */}
@@ -541,6 +594,13 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             icon="trash-can-outline"
             title="Clear All Data"
             onPress={clearAllData}
+            danger
+          />
+          <Divider />
+          <LinkRow
+            icon="account-remove"
+            title={isDeletingAccount ? 'Deleting Account...' : 'Delete Account'}
+            onPress={handleDeleteAccount}
             danger
           />
         </Section>
