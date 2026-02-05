@@ -2160,7 +2160,57 @@ class BackgroundTaskServiceClass {
           await this.saveState();
           this.scheduleDepartureConfirmation();
         } else {
-          log.warn('No recent parking history item found for local departure tracking');
+          // Last resort: capture current GPS as approximate parking spot.
+          // This covers the case where the app was loaded while already parked
+          // (no parking event was recorded by this app instance), then the user
+          // drove away. Since onDrivingStarted fires as they BEGIN moving,
+          // their current location is approximately where the car was parked.
+          log.info('No parking history — attempting GPS capture as departure fallback');
+          try {
+            const currentPos = await new Promise<{ latitude: number; longitude: number; accuracy: number } | null>((resolve) => {
+              const timeout = setTimeout(() => resolve(null), 5000);
+              Geolocation.getCurrentPosition(
+                (pos) => {
+                  clearTimeout(timeout);
+                  resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                  });
+                },
+                () => {
+                  clearTimeout(timeout);
+                  resolve(null);
+                },
+                { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 },
+              );
+            });
+
+            if (currentPos) {
+              log.info('Using current GPS as approximate departure location', {
+                lat: currentPos.latitude.toFixed(6),
+                lng: currentPos.longitude.toFixed(6),
+                accuracy: currentPos.accuracy,
+              });
+              this.state.pendingDepartureConfirmation = {
+                parkingHistoryId: null,
+                parkedLocation: {
+                  latitude: currentPos.latitude,
+                  longitude: currentPos.longitude,
+                },
+                clearedAt: new Date().toISOString(),
+                retryCount: 0,
+                scheduledAt: Date.now(),
+                departedAt: departureTime,
+              };
+              await this.saveState();
+              this.scheduleDepartureConfirmation();
+            } else {
+              log.warn('No parking history and GPS unavailable — departure tracking skipped');
+            }
+          } catch (gpsError) {
+            log.error('GPS departure fallback failed', gpsError);
+          }
         }
       } catch (localError) {
         log.error('Local departure tracking fallback also failed', localError);
