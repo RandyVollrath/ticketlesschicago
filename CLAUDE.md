@@ -20,7 +20,22 @@ After completing any feature or fix, always deploy everything:
 5. **Always push to GitHub after making changes** — the user expects all work deployed to production.
 
 ## Version Bumping
-- When releasing, bump BOTH `TicketlessChicagoMobile/android/app/build.gradle` (versionCode + versionName) AND `TicketlessChicagoMobile/src/config/config.ts` (APP_VERSION + BUILD_NUMBER). Keep them in sync.
+When releasing, bump ALL THREE locations and keep them in sync:
+
+1. **Android**: `TicketlessChicagoMobile/android/app/build.gradle`
+   - `versionCode` (integer, e.g., 10)
+   - `versionName` (string, e.g., "1.0.9")
+
+2. **Config**: `TicketlessChicagoMobile/src/config/config.ts`
+   - `APP_VERSION` (e.g., '1.0.9')
+   - `BUILD_NUMBER` (e.g., '10')
+
+3. **iOS**: `TicketlessChicagoMobile/ios/TicketlessChicagoMobile.xcodeproj/project.pbxproj`
+   - `MARKETING_VERSION` (e.g., 1.0.9) — appears twice in the file
+   - `CURRENT_PROJECT_VERSION` (e.g., 10) — appears twice in the file
+   - Use `replace_all: true` when editing to update both occurrences
+
+**CRITICAL**: iOS versions are stored in `project.pbxproj`, NOT in `Info.plist` (which just references build variables). If you only update Android and config.ts, iOS will have stale version numbers and the user will have to manually fix it in Xcode.
 
 ## Cross-Platform Development Rules
 
