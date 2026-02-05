@@ -15,6 +15,7 @@ import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BluetoothService from './BluetoothService';
+import ParkingDetectionStateMachine from './ParkingDetectionStateMachine';
 import MotionActivityService from './MotionActivityService';
 import BackgroundLocationService, { ParkingDetectedEvent } from './BackgroundLocationService';
 import LocationService from './LocationService';
@@ -93,6 +94,12 @@ class BackgroundTaskServiceClass {
   // Snow forecast monitoring timers
   private snowForecastInterval: ReturnType<typeof setInterval> | null = null;
   private snowForecastInitialTimeout: ReturnType<typeof setTimeout> | null = null;
+  // Debounce: timestamp of last handleCarDisconnection call (prevents duplicate triggers
+  // from native service + JS-side listeners + pending events all firing for the same disconnect)
+  private lastDisconnectHandlerTime: number = 0;
+  // Timestamp of last real BT event from the native service (ACL connect/disconnect).
+  // Delayed re-checks skip if a real event fired recently, since ACL events are authoritative.
+  private lastNativeBtEventTime: number = 0;
 
   /**
    * Initialize the background task service
@@ -122,6 +129,19 @@ class BackgroundTaskServiceClass {
       // Initialize camera alert service (TTS for speed/red light cameras)
       await CameraAlertService.initialize();
 
+      // Initialize parking detection state machine (Android).
+      // This is the single source of truth for driving/parking state.
+      // It replaces the scattered state across SharedPreferences, BluetoothService,
+      // and HomeScreen's multi-source checks.
+      if (Platform.OS === 'android') {
+        const savedDevice = await BluetoothService.getSavedCarDevice();
+        await ParkingDetectionStateMachine.initialize(
+          savedDevice?.name ?? null,
+          savedDevice?.address ?? null
+        );
+        this.registerStateMachineCallbacks();
+      }
+
       // iOS: Self-test native modules to catch build issues early
       if (Platform.OS === 'ios') {
         await this.iosSelfTest();
@@ -139,6 +159,63 @@ class BackgroundTaskServiceClass {
    * This catches the exact problem we had where .swift files existed on disk
    * but weren't compiled into the app.
    */
+  /**
+   * Register transition callbacks on the ParkingDetectionStateMachine.
+   * This is the bridge between the state machine and the existing business
+   * logic (parking check, departure tracking, camera alerts, notifications).
+   */
+  private registerStateMachineCallbacks(): void {
+    // When parking is confirmed (debounce expired after BT disconnect):
+    // -> trigger the parking rules check
+    ParkingDetectionStateMachine.onTransition('PARKING_PENDING->PARKED', async () => {
+      log.info('StateMachine: PARKING_PENDING -> PARKED -> triggering parking check');
+      this.stopCameraAlerts();
+      await this.sendDiagnosticNotification(
+        'Car Disconnected',
+        `${ParkingDetectionStateMachine.carName || 'Car'} disconnected. Checking parking rules...`
+      );
+      await this.handleCarDisconnection();
+    });
+
+    // When user starts driving again (BT reconnect while parked):
+    // -> handle departure tracking
+    ParkingDetectionStateMachine.onTransition('PARKED->DRIVING', async () => {
+      log.info('StateMachine: PARKED -> DRIVING -> handling departure');
+      this.startCameraAlerts();
+      await this.handleCarReconnection();
+    });
+
+    // When BT reconnects during debounce (transient disconnect):
+    // -> resume camera alerts, no parking check
+    ParkingDetectionStateMachine.onTransition('PARKING_PENDING->DRIVING', async () => {
+      log.info('StateMachine: PARKING_PENDING -> DRIVING -> transient disconnect, resuming');
+      this.startCameraAlerts();
+    });
+
+    // When first connected at startup or after idle:
+    // -> start camera alerts and GPS caching
+    ParkingDetectionStateMachine.onTransition('IDLE->DRIVING', async () => {
+      log.info('StateMachine: IDLE -> DRIVING -> car connected');
+      this.startCameraAlerts();
+      this.startGpsCaching();
+    });
+
+    ParkingDetectionStateMachine.onTransition('INITIALIZING->DRIVING', async () => {
+      log.info('StateMachine: INITIALIZING -> DRIVING -> car was already connected');
+      this.startCameraAlerts();
+      this.startGpsCaching();
+    });
+
+    // Sync state machine to BluetoothService for backward compatibility.
+    // Components that still use BluetoothService.isConnectedToCar() will
+    // continue to work during the migration.
+    ParkingDetectionStateMachine.addStateListener((snapshot) => {
+      BluetoothService.setCarConnected(snapshot.isConnectedToCar);
+    });
+
+    log.info('State machine transition callbacks registered');
+  }
+
   private async iosSelfTest(): Promise<void> {
     const bgModule = NativeModules.BackgroundLocationModule;
     const motionModule = NativeModules.MotionActivityModule;
@@ -423,54 +500,34 @@ class BackgroundTaskServiceClass {
 
               this.nativeBtDisconnectSub = eventEmitter.addListener(
                 'BtMonitorCarDisconnected',
-                async (event: any) => {
+                (event: any) => {
                   log.info('NATIVE BT DISCONNECT EVENT received', event);
-                  // Sync JS-side BluetoothService state so isConnectedToCar()
-                  // returns false and HomeScreen's connectionListeners are notified
-                  BluetoothService.setCarConnected(false);
-                  this.stopCameraAlerts();
-
-                  // Brief delay to filter out transient BT glitches (e.g., signal
-                  // drops at red lights, momentary disconnects in parking garages).
-                  // If the car reconnects within 10 seconds, skip the parking check.
-                  await new Promise<void>(r => setTimeout(r, 10000));
-
-                  // Verify still disconnected after the delay
-                  const reconnected = BluetoothService.isConnectedToCar();
-                  let osReconnected = false;
-                  if (!reconnected) {
-                    try {
-                      osReconnected = await BluetoothService.isConnectedToSavedCar();
-                    } catch (e) {
-                      // ignore
-                    }
-                  }
-
-                  if (reconnected || osReconnected) {
-                    log.info('BT reconnected within 10s — ignoring transient disconnect (not parked)');
-                    BluetoothService.setCarConnected(true);
-                    this.startCameraAlerts();
-                    return;
-                  }
-
-                  log.info('BT still disconnected after 10s — triggering parking check');
-                  await this.sendDiagnosticNotification(
-                    'Car Disconnected (Native)',
-                    `${event?.deviceName || savedDevice.name} disconnected. Checking parking rules...`
-                  );
-                  await this.handleCarDisconnection();
+                  this.lastNativeBtEventTime = Date.now();
+                  // Feed the state machine. It handles:
+                  // 1. Transition to PARKING_PENDING
+                  // 2. 10s debounce timer
+                  // 3. If BT reconnects within 10s, cancels debounce (no parking check)
+                  // 4. If debounce expires, transitions to PARKED -> triggers parking check
+                  // The state machine also syncs BluetoothService via the state listener.
+                  ParkingDetectionStateMachine.btDisconnected('bt_acl', {
+                    deviceName: event?.deviceName,
+                    deviceAddress: event?.deviceAddress,
+                  });
                 }
               );
 
               this.nativeBtConnectSub = eventEmitter.addListener(
                 'BtMonitorCarConnected',
-                async (event: any) => {
+                (event: any) => {
                   log.info('NATIVE BT CONNECT EVENT - car reconnected', event);
-                  // Sync JS-side BluetoothService state so isConnectedToCar()
-                  // returns true and HomeScreen's connectionListeners are notified
-                  BluetoothService.setCarConnected(true);
-                  this.startCameraAlerts();
-                  await this.handleCarReconnection();
+                  this.lastNativeBtEventTime = Date.now();
+                  // Feed the state machine. If in PARKING_PENDING, this cancels
+                  // the debounce (transient disconnect). If in PARKED, this
+                  // triggers departure handling.
+                  ParkingDetectionStateMachine.btConnected('bt_acl', {
+                    deviceName: event?.deviceName,
+                    deviceAddress: event?.deviceAddress,
+                  });
                 }
               );
 
@@ -488,69 +545,62 @@ class BackgroundTaskServiceClass {
             try {
               const pending = await BluetoothMonitorModule.checkPendingEvents();
               if (pending?.pendingDisconnect) {
-                // Verify the car is ACTUALLY disconnected right now before triggering
-                // a parking check. Stale pending events from crashes or restarts can
-                // cause false parking detections while the user is still driving.
                 const stillConnected = await BluetoothService.isConnectedToSavedCar();
                 if (stillConnected) {
                   log.info('Found pending disconnect but car is currently CONNECTED — ignoring stale event');
                 } else {
-                  log.info('Found PENDING disconnect from native service — car confirmed disconnected, triggering parking check');
-                  BluetoothService.setCarConnected(false);
-                  await this.sendDiagnosticNotification(
-                    'Pending BT Disconnect',
-                    'Bluetooth disconnect was detected while app was sleeping. Checking parking now...'
-                  );
-                  await this.handleCarDisconnection();
+                  log.info('Found PENDING disconnect — feeding state machine');
+                  ParkingDetectionStateMachine.btDisconnected('bt_acl', { source: 'pending_event' });
                 }
               } else if (pending?.pendingConnect) {
-                log.info('Found PENDING connect from native service');
-                BluetoothService.setCarConnected(true);
-                this.startCameraAlerts();
-                await this.handleCarReconnection();
+                log.info('Found PENDING connect — feeding state machine');
+                ParkingDetectionStateMachine.btConnected('bt_acl', { source: 'pending_event' });
               }
             } catch (pendingError) {
               log.warn('Error checking pending BT events:', pendingError);
             }
 
-            // Sync initial connection state from native service to JS-side
-            // BluetoothService. This ensures isConnectedToCar() returns the
-            // correct value and HomeScreen's BT indicator shows the right icon
-            // immediately after startup (before any ACL events fire).
+            // Sync initial connection state via the state machine.
+            // The native service's checkInitialConnectionState() queries the BT
+            // profile proxy (async, 100-2000ms). We do an immediate read of
+            // SharedPrefs, then a delayed re-check to catch the async result.
+            // The state machine handles all state corrections — no more manual
+            // BluetoothService.setCarConnected() calls needed.
             try {
               const initiallyConnected = await BluetoothMonitorModule.isCarConnected();
-              BluetoothService.setCarConnected(initiallyConnected);
+              if (initiallyConnected) {
+                ParkingDetectionStateMachine.btInitConnected('bt_profile_proxy');
+              } else {
+                ParkingDetectionStateMachine.btInitDisconnected('bt_profile_proxy');
+              }
               log.info(`Initial BT state from native service: ${initiallyConnected ? 'CONNECTED' : 'NOT connected'}`);
             } catch (e) {
               log.debug('Could not get initial BT state from native service:', e);
             }
 
-            // Delayed re-checks: the native service's checkInitialConnectionState()
-            // uses getProfileProxy which is async (100-2000ms). Check at 2s and 5s
-            // to catch it even on slow devices.
-            const doDelayedBtCheck = async (delaySec: number) => {
+            // Delayed re-check: catches async profile proxy result.
+            // Only one check at 2s needed — the state machine handles stale
+            // state correction structurally via btInitConnected/btInitDisconnected.
+            // Skip if a real ACL event fired since startup (ACL is authoritative).
+            const startupTime = Date.now();
+            setTimeout(async () => {
               try {
                 if (!BluetoothMonitorModule) return;
-                const delayedCheck = await BluetoothMonitorModule.isCarConnected();
-                const currentJsState = BluetoothService.isConnectedToCar();
-                if (delayedCheck && !currentJsState) {
-                  log.info(`Delayed BT check (${delaySec}s): native says CONNECTED — syncing JS state`);
-                  BluetoothService.setCarConnected(true);
-                } else if (!delayedCheck && currentJsState) {
-                  // Native profile proxy determined car is NOT actually connected.
-                  // This corrects stale SharedPrefs that said "connected" on startup.
-                  log.info(`Delayed BT check (${delaySec}s): native says NOT connected but JS says connected — correcting stale state`);
-                  BluetoothService.setCarConnected(false);
+                if (this.lastNativeBtEventTime > startupTime) {
+                  log.debug('Delayed BT check (2s): skipping — real ACL event already fired');
+                  return;
                 }
-              } catch (e) {
-                // ignore
-              }
-            };
-            setTimeout(() => doDelayedBtCheck(2), 2000);
-            setTimeout(() => doDelayedBtCheck(5), 5000);
-
-            // Pre-cache GPS location periodically while car is connected.
-            this.startGpsCaching();
+                const check = await BluetoothMonitorModule.isCarConnected();
+                const smState = ParkingDetectionStateMachine.state;
+                if (check && smState !== 'DRIVING') {
+                  log.info('Delayed BT check (2s): native says CONNECTED — feeding state machine');
+                  ParkingDetectionStateMachine.btInitConnected('bt_profile_proxy');
+                } else if (!check && smState === 'DRIVING') {
+                  log.info('Delayed BT check (2s): native says NOT connected — correcting state machine');
+                  ParkingDetectionStateMachine.btInitDisconnected('bt_profile_proxy');
+                }
+              } catch (e) { /* ignore */ }
+            }, 2000);
 
             await this.sendDiagnosticNotification(
               'BT Monitor Active',
@@ -621,78 +671,59 @@ class BackgroundTaskServiceClass {
 
       this.nativeBtDisconnectSub = eventEmitter.addListener(
         'BtMonitorCarDisconnected',
-        async (event: any) => {
-          log.info('NATIVE BT DISCONNECT EVENT received', event);
-          BluetoothService.setCarConnected(false);
-          this.stopCameraAlerts();
-
-          await new Promise<void>(r => setTimeout(r, 10000));
-
-          const reconnected = BluetoothService.isConnectedToCar();
-          let osReconnected = false;
-          if (!reconnected) {
-            try {
-              osReconnected = await BluetoothService.isConnectedToSavedCar();
-            } catch (e) {
-              // ignore
-            }
-          }
-
-          if (reconnected || osReconnected) {
-            log.info('BT reconnected within 10s — ignoring transient disconnect');
-            BluetoothService.setCarConnected(true);
-            this.startCameraAlerts();
-            return;
-          }
-
-          log.info('BT still disconnected after 10s — triggering parking check');
-          await this.handleCarDisconnection();
+        (event: any) => {
+          log.info('NATIVE BT DISCONNECT EVENT received (restart)', event);
+          this.lastNativeBtEventTime = Date.now();
+          ParkingDetectionStateMachine.btDisconnected('bt_acl', {
+            deviceName: event?.deviceName,
+            source: 'restart',
+          });
         }
       );
 
       this.nativeBtConnectSub = eventEmitter.addListener(
         'BtMonitorCarConnected',
-        async (event: any) => {
-          log.info('NATIVE BT CONNECT EVENT - car reconnected', event);
-          BluetoothService.setCarConnected(true);
-          this.startCameraAlerts();
-          await this.handleCarReconnection();
+        (event: any) => {
+          log.info('NATIVE BT CONNECT EVENT - car reconnected (restart)', event);
+          this.lastNativeBtEventTime = Date.now();
+          ParkingDetectionStateMachine.btConnected('bt_acl', {
+            deviceName: event?.deviceName,
+            source: 'restart',
+          });
         }
       );
 
-      // Sync initial connection state.
-      // The native service's checkInitialConnectionState() uses getProfileProxy
-      // which is async — it may not have updated SharedPreferences yet. Do an
-      // immediate check AND a delayed re-check to catch the async result.
+      // Update state machine with car info for the restarted device
+      ParkingDetectionStateMachine.monitoringStarted(savedDevice.name, savedDevice.address);
+
+      // Sync initial connection state via state machine.
       try {
         const initiallyConnected = await BluetoothMonitorModule.isCarConnected();
-        BluetoothService.setCarConnected(initiallyConnected);
+        if (initiallyConnected) {
+          ParkingDetectionStateMachine.btInitConnected('bt_profile_proxy');
+        } else {
+          ParkingDetectionStateMachine.btInitDisconnected('bt_profile_proxy');
+        }
         log.info(`Initial BT state after restart: ${initiallyConnected ? 'CONNECTED' : 'NOT connected'}`);
       } catch (e) {
         log.debug('Could not get initial BT state:', e);
       }
 
-      // Delayed re-checks: the native service's checkInitialConnectionState()
-      // uses getProfileProxy which is async (100-2000ms). Check at 2s and 5s
-      // to catch it even on slow devices.
-      const doDelayedCheck = async (delaySec: number) => {
+      // Single delayed re-check at 2s for async profile proxy result.
+      const restartTime = Date.now();
+      setTimeout(async () => {
         try {
           if (!BluetoothMonitorModule) return;
-          const delayedCheck = await BluetoothMonitorModule.isCarConnected();
-          const currentJsState = BluetoothService.isConnectedToCar();
-          if (delayedCheck && !currentJsState) {
-            log.info(`Delayed BT check (${delaySec}s): native says CONNECTED but JS said not — syncing to CONNECTED`);
-            BluetoothService.setCarConnected(true);
-          } else if (!delayedCheck && currentJsState) {
-            log.info(`Delayed BT check (${delaySec}s): native says NOT connected but JS says connected — correcting stale state`);
-            BluetoothService.setCarConnected(false);
+          if (this.lastNativeBtEventTime > restartTime) return;
+          const check = await BluetoothMonitorModule.isCarConnected();
+          const smState = ParkingDetectionStateMachine.state;
+          if (check && smState !== 'DRIVING') {
+            ParkingDetectionStateMachine.btInitConnected('bt_profile_proxy');
+          } else if (!check && smState === 'DRIVING') {
+            ParkingDetectionStateMachine.btInitDisconnected('bt_profile_proxy');
           }
-        } catch (e) {
-          // ignore
-        }
-      };
-      setTimeout(() => doDelayedCheck(2), 2000);
-      setTimeout(() => doDelayedCheck(5), 5000);
+        } catch (e) { /* ignore */ }
+      }, 2000);
 
       // Ensure monitoring state is set
       this.state.isMonitoring = true;
@@ -720,33 +751,29 @@ class BackgroundTaskServiceClass {
     try {
       await BluetoothService.monitorCarConnection(
         async () => {
-          log.info('JS-SIDE BT DISCONNECT EVENT received');
-          this.stopCameraAlerts();
-
-          // Same 10-second debounce as native handler to filter glitches
-          await new Promise<void>(r => setTimeout(r, 10000));
-
-          const reconnected = BluetoothService.isConnectedToCar();
-          if (reconnected) {
-            log.info('BT reconnected within 10s (JS fallback) — ignoring transient disconnect');
-            this.startCameraAlerts();
-            return;
-          }
-
-          log.info('JS-SIDE BT DISCONNECT confirmed after 10s — triggering parking check');
-          await this.sendDiagnosticNotification(
-            'BT Disconnect (JS fallback)',
-            `${savedDevice.name} disconnected. Note: JS-side monitoring may miss events in background.`
-          );
-          await this.handleCarDisconnection();
+          // Feed disconnect event into state machine — it handles the 10s debounce internally
+          log.info('JS-SIDE BT DISCONNECT EVENT → feeding to state machine');
+          ParkingDetectionStateMachine.btDisconnected('bt_acl', {
+            deviceName: savedDevice.name,
+            deviceAddress: savedDevice.address ?? '',
+            source: 'js_fallback',
+          });
         },
         async () => {
-          log.info('JS-SIDE BT CONNECT EVENT - car reconnected');
-          this.startCameraAlerts();
-          await this.handleCarReconnection();
+          // Feed connect event into state machine
+          log.info('JS-SIDE BT CONNECT EVENT → feeding to state machine');
+          ParkingDetectionStateMachine.btConnected('bt_acl', {
+            deviceName: savedDevice.name,
+            deviceAddress: savedDevice.address ?? '',
+            source: 'js_fallback',
+          });
         }
       );
       log.info('JS-side Bluetooth monitoring active for: ' + savedDevice.name);
+
+      // Notify the state machine that monitoring is active
+      ParkingDetectionStateMachine.monitoringStarted(savedDevice.name, savedDevice.address);
+
       this.startGpsCaching();
       await this.sendDiagnosticNotification(
         'BT Monitor (Fallback)',
@@ -952,6 +979,17 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
   }, nativeTimestamp?: number): Promise<void> {
+    // Debounce: if handleCarDisconnection was called in the last 30 seconds, skip.
+    // Multiple sources can trigger this for the same physical disconnect:
+    // native service event, JS-side BluetoothClassic listener, pending event check.
+    const now = Date.now();
+    const timeSinceLastHandler = now - this.lastDisconnectHandlerTime;
+    if (timeSinceLastHandler < 30000) {
+      log.info(`handleCarDisconnection debounced: last call was ${Math.round(timeSinceLastHandler / 1000)}s ago (< 30s)`);
+      return;
+    }
+    this.lastDisconnectHandlerTime = now;
+
     log.info('=== CAR DISCONNECTION HANDLER TRIGGERED ===');
     log.info(`Parking coords provided: ${parkingCoords ? `${parkingCoords.latitude.toFixed(6)}, ${parkingCoords.longitude.toFixed(6)}` : 'NO (will get GPS)'}`);
     if (nativeTimestamp) {

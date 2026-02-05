@@ -259,6 +259,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         if !self.isDriving {
           self.isDriving = true
           self.drivingStartTime = Date()
+          // Clear previous parking spot — this is a NEW drive.
+          // Without this, if GPS is poor at the next parking spot,
+          // we'd fall back to the PREVIOUS drive's lastDrivingLocation.
+          self.lastDrivingLocation = nil
+          self.locationAtStopStart = nil
           // Spin up precise GPS now that we know user is driving
           self.startContinuousGps()
           NSLog("[BackgroundLocation] Driving started (CoreMotion automotive, confidence: \(self.confidenceString(activity.confidence)))")
@@ -345,6 +350,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // CoreMotion hasn't kicked in yet but GPS speed says driving
         isDriving = true
         drivingStartTime = Date()
+        lastDrivingLocation = nil  // Clear previous parking spot — new drive
         lastStationaryTime = nil
         locationAtStopStart = nil
         parkingConfirmationTimer?.invalidate()
@@ -537,7 +543,22 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   /// source: "coremotion" (5s after CoreMotion exit), "gps_speed" (speed≈0 + CoreMotion agrees),
   ///         or "gps_speed_override" (15s sustained zero speed, overrides slow CoreMotion)
   private func confirmParking(source: String = "coremotion") {
-    guard isDriving || drivingStartTime != nil else { return }
+    guard isDriving, drivingStartTime != nil else {
+      NSLog("[BackgroundLocation] confirmParking(\(source)) skipped: isDriving=\(isDriving), drivingStartTime=\(drivingStartTime != nil)")
+      return
+    }
+    guard isMonitoring else {
+      NSLog("[BackgroundLocation] confirmParking(\(source)) skipped: monitoring stopped")
+      return
+    }
+
+    // ALWAYS cancel BOTH timers first to prevent double-triggering.
+    // Previously only the "other" timer was cancelled, leaving the second
+    // timer to fire confirmParking() again after the first already ran.
+    parkingConfirmationTimer?.invalidate()
+    parkingConfirmationTimer = nil
+    speedZeroTimer?.invalidate()
+    speedZeroTimer = nil
 
     // If CoreMotion still reports automotive (engine running / vehicle vibrations),
     // abort parking confirmation — UNLESS this is a speed override (15s of zero speed
@@ -547,15 +568,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       lastStationaryTime = nil
       locationAtStopStart = nil
       return
-    }
-
-    // Cancel the other timer to prevent double-triggering
-    if source.hasPrefix("gps_speed") {
-      parkingConfirmationTimer?.invalidate()
-      parkingConfirmationTimer = nil
-    } else {
-      speedZeroTimer?.invalidate()
-      speedZeroTimer = nil
     }
 
     NSLog("[BackgroundLocation] PARKING CONFIRMED (source: \(source))")
@@ -616,7 +628,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastStationaryTime = nil
     locationAtStopStart = nil
     speedZeroStartTime = nil
-    // lastDrivingLocation intentionally kept - it's the parking spot reference
+    // lastDrivingLocation intentionally kept after parking - it's the parking spot reference.
+    // It gets cleared when the NEXT drive starts (see isDriving=true transitions).
 
     // Stop continuous GPS to save battery - back to significantChanges only
     stopContinuousGps()
