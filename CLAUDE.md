@@ -16,60 +16,17 @@ After completing any feature or fix, always deploy everything:
    adb -s ZT4224LFTZ install -r TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk
    adb -s ZY326L2GKG install -r TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk
    ```
-4. **Firebase App Distribution (OTA updates)**: ALWAYS upload after building the APK so the user can install remotely without being near the computer. Use the Python script:
-   ```python
-   python3 << 'PYEOF'
-   import json, ssl, certifi
-   from google.oauth2 import service_account
-   from google.auth.transport.requests import Request
-   import urllib.request
-
-   ssl_context = ssl.create_default_context(cafile=certifi.where())
-   opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
-   urllib.request.install_opener(opener)
-
-   creds = service_account.Credentials.from_service_account_file(
-       '/home/randy-vollrath/ticketless-chicago/firebase-admin-key.json',
-       scopes=['https://www.googleapis.com/auth/cloud-platform']
-   )
-   creds.refresh(Request())
-
-   APP_ID = '1:450290119882:android:16850ef983b271ea3ff033'
-   PROJECT = '450290119882'
-   APK_PATH = '/home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk'
-
-   # Upload
-   with open(APK_PATH, 'rb') as f:
-       apk_data = f.read()
-   url = f'https://firebaseappdistribution.googleapis.com/upload/v1/projects/{PROJECT}/apps/{APP_ID}/releases:upload'
-   req = urllib.request.Request(url, data=apk_data, method='POST')
-   req.add_header('Authorization', f'Bearer {creds.token}')
-   req.add_header('Content-Type', 'application/vnd.android.package-archive')
-   req.add_header('X-Goog-Upload-Protocol', 'raw')
-   req.add_header('X-Goog-Upload-File-Name', 'app-release.apk')
-   resp = urllib.request.urlopen(req, timeout=300)
-   op = json.loads(resp.read())
-   print("Uploaded!", op.get('name',''))
-
-   # Get latest release name
-   url2 = f'https://firebaseappdistribution.googleapis.com/v1/projects/{PROJECT}/apps/{APP_ID}/releases'
-   req2 = urllib.request.Request(url2)
-   req2.add_header('Authorization', f'Bearer {creds.token}')
-   releases = json.loads(urllib.request.urlopen(req2, timeout=30).read())
-   release_name = releases['releases'][0]['name']
-
-   # Distribute to testers
-   url3 = f'https://firebaseappdistribution.googleapis.com/v1/{release_name}:distribute'
-   body = json.dumps({"testerEmails": ["hiautopilotamerica@gmail.com"]}).encode()
-   req3 = urllib.request.Request(url3, data=body, method='POST')
-   req3.add_header('Authorization', f'Bearer {creds.token}')
-   req3.add_header('Content-Type', 'application/json')
-   urllib.request.urlopen(req3, timeout=30)
-   print("Distributed to testers!")
-   PYEOF
+4. **Firebase App Distribution (OTA updates)**: ALWAYS upload after building the APK so the user can install remotely without being near the computer. Use the Firebase CLI:
+   ```
+   GOOGLE_APPLICATION_CREDENTIALS=/home/randy-vollrath/ticketless-chicago/firebase-admin-key.json \
+     firebase appdistribution:distribute \
+     /home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk \
+     --app 1:450290119882:android:16850ef983b271ea3ff033 \
+     --testers "hiautopilotamerica@gmail.com"
    ```
    - Service account: `firebase-admin-key.json` (has Firebase App Distribution Admin role)
    - Tester: `hiautopilotamerica@gmail.com` (uses Firebase App Tester on phone)
+   - **IMPORTANT**: The version must be bumped (new versionCode) or Firebase will reject/deduplicate the upload
 5. **iOS**: user builds locally on Mac by pulling from git and building in Xcode.
 6. **Always push to GitHub after making changes** — the user expects all work deployed to production.
 
@@ -190,6 +147,39 @@ After any change to BT-related code, verify these scenarios on a physical Androi
 - [ ] Car BT reconnects → departure tracking starts
 - [ ] Kill app while connected → reopen → still shows "Connected to [car]"
 - [ ] App in background → car disconnects → parking notification fires
+
+## React State Initialization — NEVER Default to Empty
+
+Async-loaded state (auth, user profile, feature flags, etc.) causes **intermittent bugs** when components initialize with empty defaults like `null`, `false`, or `[]` and rely on a subscription/callback to fill in the real value later. Whether the real value arrives before or after the first render is a race condition — it works sometimes and breaks sometimes, making these bugs extremely hard to reproduce.
+
+### The Rule
+**If a synchronous read exists, use it as the initial state.** Never default to "empty" when the service already has the value.
+
+```typescript
+// BAD — defaults to null, relies on subscribe callback to fix it later
+const [user, setUser] = useState<User | null>(null);
+
+// GOOD — reads current value immediately, subscribe handles future changes
+const [user, setUser] = useState<User | null>(AuthService.getUser());
+```
+
+```typescript
+// BAD — defaults to false, may flash "Sign In" screen before subscribe fires
+const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+// GOOD — reads current auth state synchronously
+const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
+```
+
+### Where This Applies
+- **Auth state**: Always init from `AuthService.getUser()` / `AuthService.isAuthenticated()` / `AuthService.getAuthState()`
+- **Any singleton service** with a `getXxx()` method: read it at `useState` time, don't wait for a callback
+- **AsyncStorage values that were already loaded by App.tsx**: If the app startup loaded them, downstream screens can read the cached value
+
+### Additional Guards
+1. **Never gate critical UI (Sign Out, navigation) on auth state being non-null.** If the user got past the login screen, they're authenticated — show the button unconditionally.
+2. **Use refs (not closure captures) to track "previous" values in subscribe callbacks.** Closures over state in `useEffect` dependencies cause stale reads and infinite re-subscription loops.
+3. **Subscribe effects should have `[]` dependency arrays** (run once), not `[stateVariable]` — the subscribe callback already handles updates.
 
 ## Data Persistence Strategy
 - **Local-first**: AsyncStorage for immediate reads
