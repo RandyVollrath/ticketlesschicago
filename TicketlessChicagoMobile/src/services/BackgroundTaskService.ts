@@ -2445,34 +2445,41 @@ class BackgroundTaskServiceClass {
         mode: isLocalOnly ? 'local-only' : 'server',
       });
 
-      // Use the departure GPS that was captured immediately at reconnection time.
-      // Only fall back to current GPS if we didn't get an immediate fix.
-      let coords;
+      // ALWAYS get fresh GPS — this is where the car is NOW (after 30s of driving).
+      // We compare this against parkedLocation to prove the car left the block.
+      // The departureCoords (captured at BT reconnect) are the departure ORIGIN
+      // and are used only for the history record.
+      let currentCoords;
+      try {
+        currentCoords = await LocationService.getHighAccuracyLocation(30, 20000);
+        log.info(`Got current location after driving: ${currentCoords.latitude.toFixed(6)}, ${currentCoords.longitude.toFixed(6)} (±${currentCoords.accuracy?.toFixed(1)}m)`);
+      } catch (error) {
+        log.warn('High accuracy location failed for departure, trying fallback', error);
+        currentCoords = await LocationService.getLocationWithRetry(3);
+      }
+
+      // Use departure coords (captured at BT reconnect) for the history record.
+      // Fall back to parked location if we didn't get an immediate fix.
+      const departureOrigin = pending.departureCoords || {
+        latitude: pending.parkedLocation.latitude,
+        longitude: pending.parkedLocation.longitude,
+        accuracy: 0,
+      };
       if (pending.departureCoords) {
-        coords = pending.departureCoords;
-        log.info(`Using departure GPS captured at reconnection: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} (±${coords.accuracy.toFixed(0)}m)`);
-      } else {
-        // No immediate GPS was captured — fall back to current location
-        try {
-          coords = await LocationService.getHighAccuracyLocation(30, 20000);
-          log.info(`Got departure location (delayed): ${coords.accuracy?.toFixed(1)}m accuracy`);
-        } catch (error) {
-          log.warn('High accuracy location failed for departure, trying fallback', error);
-          coords = await LocationService.getLocationWithRetry(3);
-        }
+        log.info(`Departure origin (captured at reconnect): ${departureOrigin.latitude.toFixed(6)}, ${departureOrigin.longitude.toFixed(6)}`);
       }
 
       let distanceMeters: number;
       let isConclusive: boolean;
-      const CONCLUSIVE_DISTANCE_M = 30; // 30m — end of a city block should count
+      const CONCLUSIVE_DISTANCE_M = 30; // 30m — half a city block should count
 
       if (isLocalOnly) {
         // Local-only mode: calculate distance from parking spot ourselves
         distanceMeters = this.haversineDistance(
           pending.parkedLocation.latitude,
           pending.parkedLocation.longitude,
-          coords.latitude,
-          coords.longitude
+          currentCoords.latitude,
+          currentCoords.longitude
         );
         isConclusive = distanceMeters > CONCLUSIVE_DISTANCE_M;
 
@@ -2483,15 +2490,14 @@ class BackgroundTaskServiceClass {
         });
 
         // Also try to send to server as a best-effort (non-blocking)
-        // This way if auth/network recovered, server gets the data too
-        this.tryServerDepartureConfirmation(coords, pending).catch(() => {});
+        this.tryServerDepartureConfirmation(currentCoords, pending).catch(() => {});
       } else {
         // Server mode: call the confirm-departure API
         const result = await LocationService.confirmDeparture(
           pending.parkingHistoryId!,
-          coords.latitude,
-          coords.longitude,
-          coords.accuracy
+          currentCoords.latitude,
+          currentCoords.longitude,
+          currentCoords.accuracy
         );
 
         distanceMeters = result.distance_from_parked_meters;
@@ -2506,8 +2512,9 @@ class BackgroundTaskServiceClass {
       }
 
       // Save departure data to the correct parking history entry.
-      // Use departedAt (when driving actually started) instead of Date.now()
-      // (which is 2+ minutes later after the confirmation delay).
+      // Use departedAt (when driving actually started) instead of Date.now().
+      // Record departureOrigin coords (where they left from), not currentCoords
+      // (where they are now after driving).
       const departureTime = pending.departedAt || Date.now();
       const confirmationDelay = Math.round((Date.now() - departureTime) / 1000);
       log.info(`Departure time: ${new Date(departureTime).toISOString()} (${confirmationDelay}s before confirmation)`);
@@ -2515,19 +2522,17 @@ class BackgroundTaskServiceClass {
       try {
         const targetItemId = pending.localHistoryItemId;
         if (targetItemId) {
-          // Local-only mode: update the specific history item we tracked
           await ParkingHistoryService.updateItem(targetItemId, {
             departure: {
               confirmedAt: departureTime,
               distanceMeters,
               isConclusive,
-              latitude: coords.latitude,
-              longitude: coords.longitude,
+              latitude: departureOrigin.latitude,
+              longitude: departureOrigin.longitude,
             },
           });
           log.info('Departure data saved to history item (local mode)', targetItemId);
         } else {
-          // Server mode: update the most recent history item
           const recentItem = await ParkingHistoryService.getMostRecent();
           if (recentItem) {
             await ParkingHistoryService.updateItem(recentItem.id, {
@@ -2535,8 +2540,8 @@ class BackgroundTaskServiceClass {
                 confirmedAt: departureTime,
                 distanceMeters,
                 isConclusive,
-                latitude: coords.latitude,
-                longitude: coords.longitude,
+                latitude: departureOrigin.latitude,
+                longitude: departureOrigin.longitude,
               },
             });
             log.info('Departure data saved to history item (server mode)', recentItem.id);
