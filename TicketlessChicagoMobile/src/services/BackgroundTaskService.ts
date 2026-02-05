@@ -38,7 +38,7 @@ const log = Logger.createLogger('BackgroundTaskService');
 const BACKGROUND_TASK_ID = 'ticketless-parking-check';
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const MIN_DISCONNECT_DURATION_MS = 30 * 1000; // 30 seconds (to avoid false positives)
-const DEPARTURE_CONFIRMATION_DELAY_MS = 30 * 1000; // 30s after car starts (just enough to confirm movement)
+const DEPARTURE_CONFIRMATION_DELAY_MS = 60 * 1000; // 60s after car starts — enough time to clear the block
 const MIN_PARKING_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes - prevent duplicate checks
 
 // Periodic rescan: re-check parking at last location every 4 hours while parked
@@ -64,7 +64,6 @@ interface BackgroundTaskState {
     scheduledAt: number; // timestamp when confirmation was scheduled
     departedAt: number; // timestamp when driving actually started (not when confirmed)
     localHistoryItemId?: string; // local history item to update (local-only mode)
-    departureCoords?: { latitude: number; longitude: number; accuracy: number }; // GPS grabbed at departure moment
   } | null;
 }
 
@@ -2202,40 +2201,6 @@ class BackgroundTaskServiceClass {
       this.reconnectCallback();
     }
 
-    // ── Grab GPS immediately ──
-    // On BT reconnect the engine just started, so current position ≈ departure
-    // location. Capture it NOW instead of waiting 30s when the car has already
-    // moved. This is the key fix for short drives (end of block) where
-    // the delayed GPS capture would already be at the destination.
-    let immediateGps: { latitude: number; longitude: number; accuracy: number } | null = null;
-    try {
-      immediateGps = await new Promise<{ latitude: number; longitude: number; accuracy: number } | null>((resolve) => {
-        const timeout = setTimeout(() => resolve(null), 6000);
-        Geolocation.getCurrentPosition(
-          (pos) => {
-            clearTimeout(timeout);
-            resolve({
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            });
-          },
-          () => {
-            clearTimeout(timeout);
-            resolve(null);
-          },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 },
-        );
-      });
-      if (immediateGps) {
-        log.info(`Departure GPS captured immediately: ${immediateGps.latitude.toFixed(6)}, ${immediateGps.longitude.toFixed(6)} (±${immediateGps.accuracy.toFixed(0)}m)`);
-      } else {
-        log.warn('Could not capture immediate departure GPS (will use delayed capture)');
-      }
-    } catch (gpsErr) {
-      log.warn('Immediate departure GPS capture failed:', gpsErr);
-    }
-
     // Try server-side clear first, fall back to local-only departure tracking
     let serverSucceeded = false;
 
@@ -2256,7 +2221,6 @@ class BackgroundTaskServiceClass {
           retryCount: 0,
           scheduledAt: Date.now(),
           departedAt: departureTime, // When driving actually started (native timestamp)
-          ...(immediateGps && { departureCoords: immediateGps }),
         };
         await this.saveState();
         this.scheduleDepartureConfirmation();
@@ -2288,7 +2252,6 @@ class BackgroundTaskServiceClass {
             scheduledAt: Date.now(),
             departedAt: departureTime, // When driving actually started (native timestamp)
             localHistoryItemId: recentItem.id,
-            ...(immediateGps && { departureCoords: immediateGps }),
           };
           await this.saveState();
           this.scheduleDepartureConfirmation();
@@ -2335,7 +2298,6 @@ class BackgroundTaskServiceClass {
                 retryCount: 0,
                 scheduledAt: Date.now(),
                 departedAt: departureTime,
-                departureCoords: currentPos, // Already have GPS from the fallback capture
               };
               await this.saveState();
               this.scheduleDepartureConfirmation();
@@ -2445,28 +2407,16 @@ class BackgroundTaskServiceClass {
         mode: isLocalOnly ? 'local-only' : 'server',
       });
 
-      // ALWAYS get fresh GPS — this is where the car is NOW (after 30s of driving).
-      // We compare this against parkedLocation to prove the car left the block.
-      // The departureCoords (captured at BT reconnect) are the departure ORIGIN
-      // and are used only for the history record.
+      // Get fresh GPS — where the car is NOW after ~60s of driving.
+      // Compare against parkedLocation to prove the car left the block.
+      // This is a "clearance record": proof for ticket contesting.
       let currentCoords;
       try {
         currentCoords = await LocationService.getHighAccuracyLocation(30, 20000);
-        log.info(`Got current location after driving: ${currentCoords.latitude.toFixed(6)}, ${currentCoords.longitude.toFixed(6)} (±${currentCoords.accuracy?.toFixed(1)}m)`);
+        log.info(`Clearance GPS (current position): ${currentCoords.latitude.toFixed(6)}, ${currentCoords.longitude.toFixed(6)} (±${currentCoords.accuracy?.toFixed(1)}m)`);
       } catch (error) {
-        log.warn('High accuracy location failed for departure, trying fallback', error);
+        log.warn('High accuracy location failed, trying fallback', error);
         currentCoords = await LocationService.getLocationWithRetry(3);
-      }
-
-      // Use departure coords (captured at BT reconnect) for the history record.
-      // Fall back to parked location if we didn't get an immediate fix.
-      const departureOrigin = pending.departureCoords || {
-        latitude: pending.parkedLocation.latitude,
-        longitude: pending.parkedLocation.longitude,
-        accuracy: 0,
-      };
-      if (pending.departureCoords) {
-        log.info(`Departure origin (captured at reconnect): ${departureOrigin.latitude.toFixed(6)}, ${departureOrigin.longitude.toFixed(6)}`);
       }
 
       let distanceMeters: number;
@@ -2474,7 +2424,6 @@ class BackgroundTaskServiceClass {
       const CONCLUSIVE_DISTANCE_M = 30; // 30m — half a city block should count
 
       if (isLocalOnly) {
-        // Local-only mode: calculate distance from parking spot ourselves
         distanceMeters = this.haversineDistance(
           pending.parkedLocation.latitude,
           pending.parkedLocation.longitude,
@@ -2483,16 +2432,15 @@ class BackgroundTaskServiceClass {
         );
         isConclusive = distanceMeters > CONCLUSIVE_DISTANCE_M;
 
-        log.info('Local departure calculation:', {
+        log.info('Clearance calculation:', {
           distanceMeters: Math.round(distanceMeters),
           isConclusive,
           threshold: CONCLUSIVE_DISTANCE_M,
         });
 
-        // Also try to send to server as a best-effort (non-blocking)
+        // Best-effort server sync
         this.tryServerDepartureConfirmation(currentCoords, pending).catch(() => {});
       } else {
-        // Server mode: call the confirm-departure API
         const result = await LocationService.confirmDeparture(
           pending.parkingHistoryId!,
           currentCoords.latitude,
@@ -2501,54 +2449,46 @@ class BackgroundTaskServiceClass {
         );
 
         distanceMeters = result.distance_from_parked_meters;
-        // Override server conclusiveness with our lower threshold
         isConclusive = distanceMeters > CONCLUSIVE_DISTANCE_M;
 
-        log.info('Server departure confirmed:', {
+        log.info('Server clearance confirmed:', {
           distance: distanceMeters,
           isConclusive,
           threshold: CONCLUSIVE_DISTANCE_M,
         });
       }
 
-      // Save departure data to the correct parking history entry.
-      // Use departedAt (when driving actually started) instead of Date.now().
-      // Record departureOrigin coords (where they left from), not currentCoords
-      // (where they are now after driving).
+      // Save clearance record to parking history.
+      // Coords = where the car is NOW (proof it's not at the parking spot).
+      // Timestamp = when driving started (departedAt), not when we confirmed.
       const departureTime = pending.departedAt || Date.now();
       const confirmationDelay = Math.round((Date.now() - departureTime) / 1000);
-      log.info(`Departure time: ${new Date(departureTime).toISOString()} (${confirmationDelay}s before confirmation)`);
+      log.info(`Clearance time: ${new Date(departureTime).toISOString()} (confirmed ${confirmationDelay}s later)`);
 
       try {
+        const clearanceData = {
+          departure: {
+            confirmedAt: departureTime,
+            distanceMeters,
+            isConclusive,
+            latitude: currentCoords.latitude,
+            longitude: currentCoords.longitude,
+          },
+        };
+
         const targetItemId = pending.localHistoryItemId;
         if (targetItemId) {
-          await ParkingHistoryService.updateItem(targetItemId, {
-            departure: {
-              confirmedAt: departureTime,
-              distanceMeters,
-              isConclusive,
-              latitude: departureOrigin.latitude,
-              longitude: departureOrigin.longitude,
-            },
-          });
-          log.info('Departure data saved to history item (local mode)', targetItemId);
+          await ParkingHistoryService.updateItem(targetItemId, clearanceData);
+          log.info('Clearance record saved (local mode)', targetItemId);
         } else {
           const recentItem = await ParkingHistoryService.getMostRecent();
           if (recentItem) {
-            await ParkingHistoryService.updateItem(recentItem.id, {
-              departure: {
-                confirmedAt: departureTime,
-                distanceMeters,
-                isConclusive,
-                latitude: departureOrigin.latitude,
-                longitude: departureOrigin.longitude,
-              },
-            });
-            log.info('Departure data saved to history item (server mode)', recentItem.id);
+            await ParkingHistoryService.updateItem(recentItem.id, clearanceData);
+            log.info('Clearance record saved (server mode)', recentItem.id);
           }
         }
       } catch (historyError) {
-        log.warn('Failed to save departure to history (non-critical)', historyError);
+        log.warn('Failed to save clearance record (non-critical)', historyError);
       }
 
       // Clear pending confirmation on success
