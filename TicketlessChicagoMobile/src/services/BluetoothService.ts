@@ -129,7 +129,10 @@ class BluetoothServiceClass {
   async saveCarDevice(device: SavedCarDevice): Promise<void> {
     try {
       await AsyncStorage.setItem(StorageKeys.SAVED_CAR_DEVICE, JSON.stringify(device));
-      log.debug('Car device saved:', device.name);
+      // Eagerly set savedDeviceId so isConnectedToCar() works immediately
+      // after device selection, without waiting for ensureSavedDeviceLoaded().
+      this.savedDeviceId = device.id;
+      log.debug('Car device saved:', device.name, 'id:', device.id);
     } catch (error) {
       log.error('Error saving car device', error);
       throw error;
@@ -301,7 +304,13 @@ class BluetoothServiceClass {
   }
 
   isConnectedToCar(): boolean {
-    return this.connectedDeviceId !== null && this.connectedDeviceId === this.savedDeviceId;
+    if (this.connectedDeviceId === null) return false;
+    // Match either the real savedDeviceId or the placeholder set when
+    // savedDeviceId wasn't loaded yet. Without this, isConnectedToCar()
+    // returns false during the window between setCarConnected(true) and
+    // ensureSavedDeviceLoaded() completing — causing the disconnect handler
+    // to think the car isn't connected and the HomeScreen to show "Not connected."
+    return this.connectedDeviceId === this.savedDeviceId || this.connectedDeviceId === '__native_connected__';
   }
 
   /**
@@ -316,8 +325,12 @@ class BluetoothServiceClass {
       if (this.savedDeviceId) {
         this.connectedDeviceId = this.savedDeviceId;
       } else {
-        // If savedDeviceId is not loaded yet, use a placeholder
+        // savedDeviceId not loaded yet — use placeholder and kick off async load.
+        // The placeholder makes isConnectedToCar() return true (see below),
+        // and ensureSavedDeviceLoaded() will retroactively fix it.
         this.connectedDeviceId = '__native_connected__';
+        log.warn('setCarConnected(true) called before savedDeviceId loaded — using placeholder, loading now');
+        this.ensureSavedDeviceLoaded().catch(() => {});
       }
       this.notifyConnected();
       log.debug('Car connection state set to CONNECTED (external)');
@@ -332,12 +345,26 @@ class BluetoothServiceClass {
    * Ensure savedDeviceId is populated (needed for isConnectedToCar).
    * Call this during initialization so native service events can correctly
    * update the JS-side connection state.
+   *
+   * Also retroactively fixes the connectedDeviceId if it was set to the
+   * '__native_connected__' placeholder before savedDeviceId was available.
    */
   async ensureSavedDeviceLoaded(): Promise<void> {
     if (this.savedDeviceId) return;
     const saved = await this.getSavedCarDevice();
     if (saved) {
       this.savedDeviceId = saved.id;
+      log.debug(`savedDeviceId loaded: ${saved.id} (${saved.name})`);
+
+      // If setCarConnected(true) was called before we loaded, it used a
+      // placeholder. Now that we have the real ID, upgrade it so
+      // isConnectedToCar() works with exact match too.
+      if (this.connectedDeviceId === '__native_connected__') {
+        this.connectedDeviceId = saved.id;
+        log.info('Retroactively fixed placeholder connectedDeviceId → real savedDeviceId');
+      }
+    } else {
+      log.warn('ensureSavedDeviceLoaded: no saved car device found in AsyncStorage');
     }
   }
 

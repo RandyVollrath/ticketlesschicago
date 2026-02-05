@@ -101,6 +101,42 @@ These are hard-won lessons. Always account for these when writing WebView code:
 - iOS uses both custom URL schemes (`CFBundleURLSchemes` in Info.plist) and Universal Links (Associated Domains entitlement)
 - Android uses intent filters in AndroidManifest.xml
 
+## Android Bluetooth Detection — Critical Rules
+
+Android parking detection depends on Bluetooth Classic (ACL events). The system has multiple layers and race conditions that can silently break it. Follow these rules whenever touching BT code:
+
+### Architecture (3 layers)
+1. **Native foreground service** (`BluetoothMonitorService.kt`): Registers a `BroadcastReceiver` for `ACTION_ACL_CONNECTED/DISCONNECTED`. Survives app backgrounding. Writes `is_connected` to SharedPreferences. Notifies JS via `eventListener` callback or stores as pending event.
+2. **Native module bridge** (`BluetoothMonitorModule.kt`): Bridges service → JS. Sets `eventListener` on the service, emits `BtMonitorCarConnected/BtMonitorCarDisconnected` events to JS via `NativeEventEmitter`.
+3. **JS-side BluetoothService** (`BluetoothService.ts`): Maintains `connectedDeviceId` + `savedDeviceId` in-memory. `isConnectedToCar()` compares these. UI components subscribe via `addConnectionListener()`.
+
+### Race Conditions to Guard Against
+1. **`savedDeviceId` not loaded when `setCarConnected(true)` fires.**
+   `savedDeviceId` comes from AsyncStorage (async). If a native event fires before it's loaded, `setCarConnected()` can't match IDs. Fix: `setCarConnected()` uses `'__native_connected__'` placeholder and kicks off async load. `isConnectedToCar()` accepts the placeholder. `ensureSavedDeviceLoaded()` retroactively fixes it.
+
+2. **`checkInitialConnectionState()` profile proxy callback timing.**
+   `getProfileProxy()` in the native service is async (100-2000ms). The callback updates SharedPreferences and notifies the listener, but JS event listeners may not be subscribed yet. Fix: JS does immediate check + delayed re-checks at 2s and 5s.
+
+3. **JS `NativeEventEmitter` not subscribed when native emits.**
+   `startMonitoring()` starts the service and resolves the promise BEFORE JS subscribes to events. The initial connect event from `checkInitialConnectionState()` can be lost. Fix: rely on SharedPreferences fallback checks, not just events.
+
+### Rules for Any BT Code Change
+1. **Always call `ensureSavedDeviceLoaded()` before any code that calls `setCarConnected()`.**
+2. **Never remove the delayed re-check timers** (2s + 5s) in `startForegroundMonitoring` and `restartBluetoothMonitoring`. They catch async profile proxy results.
+3. **`saveCarDevice()` must eagerly set `savedDeviceId`** — don't rely on a separate async load.
+4. **`isConnectedToCar()` must accept the `'__native_connected__'` placeholder** as "connected" — this is the defense against the race window.
+5. **HomeScreen uses 3 fallback checks** (JS state → OS query → native SharedPrefs). Never reduce to fewer.
+6. **The 10-second debounce in disconnect handler** filters transient BT glitches. Don't remove it.
+7. **After any BT change, test on a real Android device** with: pair car → kill app → reopen → verify "Connected to [car]" shows within 5 seconds.
+
+### Testing Bluetooth Detection
+After any change to BT-related code, verify these scenarios on a physical Android device:
+- [ ] Select car in Settings → HomeScreen shows "Connected to [car]" within 5s (if car BT is on)
+- [ ] Car BT disconnects → after 10s debounce, parking check triggers
+- [ ] Car BT reconnects → departure tracking starts
+- [ ] Kill app while connected → reopen → still shows "Connected to [car]"
+- [ ] App in background → car disconnects → parking notification fires
+
 ## Data Persistence Strategy
 - **Local-first**: AsyncStorage for immediate reads
 - **Server backup**: Supabase for durability across reinstalls/devices
