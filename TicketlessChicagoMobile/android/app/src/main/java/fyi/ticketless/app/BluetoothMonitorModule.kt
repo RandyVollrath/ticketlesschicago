@@ -201,26 +201,21 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Emit an event to JS.
+     * Emit an event to JS. Throws on failure so the caller (the service's
+     * handleConnect/handleDisconnect) can catch and store the event as pending.
      */
     private fun emitEvent(eventName: String, deviceName: String, deviceAddress: String) {
-        try {
-            val params = Arguments.createMap().apply {
-                putString("deviceName", deviceName)
-                putString("deviceAddress", deviceAddress)
-                putDouble("timestamp", System.currentTimeMillis().toDouble())
-            }
-
-            reactApplicationContext
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                .emit(eventName, params)
-
-            Log.d(TAG, "Event emitted: $eventName")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to emit event $eventName: ${e.message}")
-            // If JS bridge is dead, the event was already stored as pending
-            // by the service's handleDisconnect/handleConnect methods
+        val params = Arguments.createMap().apply {
+            putString("deviceName", deviceName)
+            putString("deviceAddress", deviceAddress)
+            putDouble("timestamp", System.currentTimeMillis().toDouble())
         }
+
+        reactApplicationContext
+            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+            .emit(eventName, params)
+
+        Log.d(TAG, "Event emitted: $eventName")
     }
 
     // -------------------------------------------------------------------------
@@ -243,17 +238,29 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
             }
         }
 
-        // Check for any pending events that fired while we were paused
+        // Check for any pending events that fired while we were paused.
+        // Wrap in try/catch since emitEvent() now throws on failure (the pending
+        // events are already consumed, so a failed emit means they're lost — but
+        // the SharedPreferences is_connected state is still accurate and JS will
+        // pick it up via the periodic check or delayed re-check).
         val disconnect = BluetoothMonitorService.consumePendingDisconnect(reactApplicationContext)
         val connect = BluetoothMonitorService.consumePendingConnect(reactApplicationContext)
 
         if (disconnect) {
-            Log.i(TAG, "Found pending disconnect on resume - emitting")
-            emitEvent(EVENT_CAR_DISCONNECTED, "Car", "")
+            try {
+                Log.i(TAG, "Found pending disconnect on resume - emitting")
+                emitEvent(EVENT_CAR_DISCONNECTED, "Car", "")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to emit pending disconnect on resume: ${e.message}")
+            }
         }
         if (connect) {
-            Log.i(TAG, "Found pending connect on resume - emitting")
-            emitEvent(EVENT_CAR_CONNECTED, "Car", "")
+            try {
+                Log.i(TAG, "Found pending connect on resume - emitting")
+                emitEvent(EVENT_CAR_CONNECTED, "Car", "")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to emit pending connect on resume: ${e.message}")
+            }
         }
     }
 

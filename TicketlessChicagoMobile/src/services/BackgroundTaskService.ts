@@ -415,61 +415,74 @@ class BackgroundTaskServiceClass {
               log.warn('Failed to check/request battery optimization exemption:', batteryError);
             }
 
-            // Subscribe to native events from the foreground service
-            const eventEmitter = new NativeEventEmitter(BluetoothMonitorModule);
+            // Subscribe to native events from the foreground service.
+            // Wrap in try/catch — if NativeEventEmitter fails to subscribe,
+            // we still have the periodic check + pending events as fallbacks.
+            try {
+              const eventEmitter = new NativeEventEmitter(BluetoothMonitorModule);
 
-            this.nativeBtDisconnectSub = eventEmitter.addListener(
-              'BtMonitorCarDisconnected',
-              async (event: any) => {
-                log.info('NATIVE BT DISCONNECT EVENT received', event);
-                // Sync JS-side BluetoothService state so isConnectedToCar()
-                // returns false and HomeScreen's connectionListeners are notified
-                BluetoothService.setCarConnected(false);
-                this.stopCameraAlerts();
+              this.nativeBtDisconnectSub = eventEmitter.addListener(
+                'BtMonitorCarDisconnected',
+                async (event: any) => {
+                  log.info('NATIVE BT DISCONNECT EVENT received', event);
+                  // Sync JS-side BluetoothService state so isConnectedToCar()
+                  // returns false and HomeScreen's connectionListeners are notified
+                  BluetoothService.setCarConnected(false);
+                  this.stopCameraAlerts();
 
-                // Brief delay to filter out transient BT glitches (e.g., signal
-                // drops at red lights, momentary disconnects in parking garages).
-                // If the car reconnects within 10 seconds, skip the parking check.
-                await new Promise<void>(r => setTimeout(r, 10000));
+                  // Brief delay to filter out transient BT glitches (e.g., signal
+                  // drops at red lights, momentary disconnects in parking garages).
+                  // If the car reconnects within 10 seconds, skip the parking check.
+                  await new Promise<void>(r => setTimeout(r, 10000));
 
-                // Verify still disconnected after the delay
-                const reconnected = BluetoothService.isConnectedToCar();
-                let osReconnected = false;
-                if (!reconnected) {
-                  try {
-                    osReconnected = await BluetoothService.isConnectedToSavedCar();
-                  } catch (e) {
-                    // ignore
+                  // Verify still disconnected after the delay
+                  const reconnected = BluetoothService.isConnectedToCar();
+                  let osReconnected = false;
+                  if (!reconnected) {
+                    try {
+                      osReconnected = await BluetoothService.isConnectedToSavedCar();
+                    } catch (e) {
+                      // ignore
+                    }
                   }
-                }
 
-                if (reconnected || osReconnected) {
-                  log.info('BT reconnected within 10s — ignoring transient disconnect (not parked)');
+                  if (reconnected || osReconnected) {
+                    log.info('BT reconnected within 10s — ignoring transient disconnect (not parked)');
+                    BluetoothService.setCarConnected(true);
+                    this.startCameraAlerts();
+                    return;
+                  }
+
+                  log.info('BT still disconnected after 10s — triggering parking check');
+                  await this.sendDiagnosticNotification(
+                    'Car Disconnected (Native)',
+                    `${event?.deviceName || savedDevice.name} disconnected. Checking parking rules...`
+                  );
+                  await this.handleCarDisconnection();
+                }
+              );
+
+              this.nativeBtConnectSub = eventEmitter.addListener(
+                'BtMonitorCarConnected',
+                async (event: any) => {
+                  log.info('NATIVE BT CONNECT EVENT - car reconnected', event);
+                  // Sync JS-side BluetoothService state so isConnectedToCar()
+                  // returns true and HomeScreen's connectionListeners are notified
                   BluetoothService.setCarConnected(true);
                   this.startCameraAlerts();
-                  return;
+                  await this.handleCarReconnection();
                 }
+              );
 
-                log.info('BT still disconnected after 10s — triggering parking check');
-                await this.sendDiagnosticNotification(
-                  'Car Disconnected (Native)',
-                  `${event?.deviceName || savedDevice.name} disconnected. Checking parking rules...`
-                );
-                await this.handleCarDisconnection();
-              }
-            );
-
-            this.nativeBtConnectSub = eventEmitter.addListener(
-              'BtMonitorCarConnected',
-              async (event: any) => {
-                log.info('NATIVE BT CONNECT EVENT - car reconnected', event);
-                // Sync JS-side BluetoothService state so isConnectedToCar()
-                // returns true and HomeScreen's connectionListeners are notified
-                BluetoothService.setCarConnected(true);
-                this.startCameraAlerts();
-                await this.handleCarReconnection();
-              }
-            );
+              log.info('NativeEventEmitter subscriptions registered for BT events');
+            } catch (emitterError) {
+              log.error('CRITICAL: Failed to subscribe to NativeEventEmitter BT events. ' +
+                'Parking detection will rely on periodic checks + pending events only:', emitterError);
+              await this.sendDiagnosticNotification(
+                'BT Event Subscription Failed',
+                'Native event listeners failed. Parking detection will use periodic checks as fallback.'
+              );
+            }
 
             // Check for pending events (service may have fired while JS was dead)
             try {
@@ -585,15 +598,11 @@ class BackgroundTaskServiceClass {
     // Ensure BluetoothService has the saved device ID loaded
     await BluetoothService.ensureSavedDeviceLoaded();
 
-    // Clean up old native event subscriptions
-    if (this.nativeBtDisconnectSub) {
-      this.nativeBtDisconnectSub.remove();
-      this.nativeBtDisconnectSub = null;
-    }
-    if (this.nativeBtConnectSub) {
-      this.nativeBtConnectSub.remove();
-      this.nativeBtConnectSub = null;
-    }
+    // Clean up old native event subscriptions (safe — catch errors from stale listeners)
+    try { this.nativeBtDisconnectSub?.remove(); } catch (e) { /* ignore */ }
+    this.nativeBtDisconnectSub = null;
+    try { this.nativeBtConnectSub?.remove(); } catch (e) { /* ignore */ }
+    this.nativeBtConnectSub = null;
 
     try {
       await BluetoothMonitorModule.startMonitoring(

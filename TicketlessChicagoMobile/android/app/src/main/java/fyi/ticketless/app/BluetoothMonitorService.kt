@@ -318,11 +318,19 @@ class BluetoothMonitorService : Service() {
             .putLong(KEY_LAST_EVENT_TIME, System.currentTimeMillis())
             .apply()
 
-        // Try to notify JS directly
+        // Try to notify JS directly. If the listener throws (JS bridge died,
+        // race condition, etc.), fall through to store as pending so the event
+        // is never lost. Without this try/catch, the service would crash and
+        // the pending flag would never be set.
         val listener = eventListener
         if (listener != null) {
-            Log.d(TAG, "Delivering disconnect to JS listener directly")
-            listener.onCarDisconnected(name, address)
+            try {
+                Log.d(TAG, "Delivering disconnect to JS listener directly")
+                listener.onCarDisconnected(name, address)
+            } catch (e: Exception) {
+                Log.e(TAG, "Listener threw on disconnect, storing as pending: ${e.message}")
+                prefs.edit().putBoolean(KEY_PENDING_DISCONNECT, true).apply()
+            }
         } else {
             // JS bridge not active — store as pending event
             Log.d(TAG, "JS bridge not active, storing pending disconnect")
@@ -341,11 +349,17 @@ class BluetoothMonitorService : Service() {
             .putLong(KEY_LAST_EVENT_TIME, System.currentTimeMillis())
             .apply()
 
-        // Try to notify JS directly
+        // Try to notify JS directly. If the listener throws, fall through to
+        // store as pending so the event is recovered on next app resume.
         val listener = eventListener
         if (listener != null) {
-            Log.d(TAG, "Delivering connect to JS listener directly")
-            listener.onCarConnected(name, address)
+            try {
+                Log.d(TAG, "Delivering connect to JS listener directly")
+                listener.onCarConnected(name, address)
+            } catch (e: Exception) {
+                Log.e(TAG, "Listener threw on connect, storing as pending: ${e.message}")
+                prefs.edit().putBoolean(KEY_PENDING_CONNECT, true).apply()
+            }
         } else {
             Log.d(TAG, "JS bridge not active, storing pending connect")
             prefs.edit().putBoolean(KEY_PENDING_CONNECT, true).apply()
