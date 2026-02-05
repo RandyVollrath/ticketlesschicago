@@ -2,14 +2,32 @@
 
 # ci_post_clone.sh — Xcode Cloud post-clone hook
 # Runs after Xcode Cloud clones the repo, before building.
-# Installs CocoaPods dependencies since Pods/ is gitignored.
+# Installs Node.js, npm dependencies, and CocoaPods since
+# node_modules/ and Pods/ are gitignored.
 
 set -e
 
 echo "=== Xcode Cloud: ci_post_clone.sh ==="
 echo "Current directory: $(pwd)"
 
-# Navigate to the ios directory where the Podfile lives
+# ── 1. Install Node.js via Homebrew ──
+# Xcode Cloud does NOT have Node.js pre-installed.
+# The Podfile requires `node` to resolve react_native_pods.rb.
+if ! command -v node &> /dev/null; then
+    echo "Node.js not found — installing via Homebrew..."
+    brew install node
+fi
+echo "Node version: $(node --version)"
+echo "npm version: $(npm --version)"
+
+# ── 2. Install npm dependencies ──
+# The Podfile resolves paths through node_modules/react-native.
+cd "$CI_PRIMARY_REPOSITORY_PATH/TicketlessChicagoMobile"
+echo "Installing npm dependencies in $(pwd)..."
+npm ci --prefer-offline 2>/dev/null || npm install
+echo "=== npm install complete ==="
+
+# ── 3. Install CocoaPods dependencies ──
 cd "$CI_PRIMARY_REPOSITORY_PATH/TicketlessChicagoMobile/ios"
 echo "Working directory: $(pwd)"
 
