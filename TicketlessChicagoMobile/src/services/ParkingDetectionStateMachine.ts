@@ -120,6 +120,14 @@ class ParkingDetectionStateMachineClass {
   // Track initialization
   private _initialized = false;
 
+  // What put us into DRIVING state? If Activity Recognition (no BT), then
+  // Activity Recognition STILL/WALKING should also trigger parking.
+  // If BT put us into DRIVING, only BT disconnect triggers parking.
+  private _drivingSource: DetectionSource | null = null;
+
+  // Longer debounce for Activity Recognition (less precise than BT disconnect)
+  private static readonly AR_DEBOUNCE_DURATION_MS = 30_000; // 30 seconds
+
   // ---------------------------------------------------------------------------
   // Public API — Reading State
   // ---------------------------------------------------------------------------
@@ -361,25 +369,53 @@ class ParkingDetectionStateMachineClass {
   }
 
   /**
-   * Activity Recognition: driving detected.
-   * Can be used as secondary signal alongside BT.
+   * Activity Recognition: driving detected (IN_VEHICLE ENTER).
+   *
+   * Two roles:
+   * 1. For BT users: secondary confirmation signal (logged for diagnostics).
+   *    BT is the primary trigger — AR just adds confidence.
+   * 2. For non-BT users: primary driving signal. Transitions IDLE/PARKED → DRIVING.
    */
   activityDriving(metadata?: Record<string, any>): void {
-    if (this._state === 'PARKED' || this._state === 'IDLE') {
+    if (this._state === 'PARKED' || this._state === 'IDLE' || this._state === 'INITIALIZING') {
       this.transition('DRIVING', 'ACTIVITY_DRIVING', 'activity_recognition', metadata);
+    } else if (this._state === 'PARKING_PENDING') {
+      // AR says driving while we're in debounce — cancel the parking, go back to DRIVING
+      if (this._debounceTimer) {
+        clearTimeout(this._debounceTimer);
+        this._debounceTimer = null;
+        this.logEvent('DEBOUNCE_CANCELLED', 'activity_recognition', metadata);
+      }
+      this.transition('DRIVING', 'ACTIVITY_DRIVING', 'activity_recognition', metadata);
+    } else {
+      // Already DRIVING — just log for diagnostics
+      this.logEvent('ACTIVITY_DRIVING', 'activity_recognition', metadata);
     }
-    // If already DRIVING or PARKING_PENDING, just log it
-    this.logEvent('ACTIVITY_DRIVING', 'activity_recognition', metadata);
   }
 
   /**
-   * Activity Recognition: still/walking detected.
-   * Can supplement BT disconnect signal.
+   * Activity Recognition: still/walking detected (IN_VEHICLE EXIT or STILL/WALKING ENTER).
+   *
+   * Two roles:
+   * 1. For BT users: logged for diagnostics only. BT disconnect is the parking trigger.
+   * 2. For non-BT users (drivingSource === 'activity_recognition'): triggers parking
+   *    with a longer debounce (30s instead of 10s, since AR is less precise than BT).
    */
   activityStill(metadata?: Record<string, any>): void {
-    // Activity Recognition alone doesn't trigger parking — BT disconnect does.
-    // But we log it for diagnostics and can use it for confidence scoring later.
-    this.logEvent('ACTIVITY_STILL', 'activity_recognition', metadata);
+    if (this._state === 'DRIVING' && this._drivingSource === 'activity_recognition') {
+      // AR was the primary signal that detected driving, so AR STILL should
+      // trigger parking. Use longer debounce since AR has ~1 min latency and
+      // can produce brief false transitions at intersections.
+      log.info('Activity Recognition STILL while AR-driven DRIVING → starting AR parking debounce (30s)');
+      this.transition('PARKING_PENDING', 'ACTIVITY_STILL', 'activity_recognition', metadata);
+      this.startDebounce('activity_recognition', ParkingDetectionStateMachineClass.AR_DEBOUNCE_DURATION_MS);
+    } else {
+      // BT-driven DRIVING or non-DRIVING state: just log for diagnostics
+      this.logEvent('ACTIVITY_STILL', 'activity_recognition', {
+        ...metadata,
+        note: this._state === 'DRIVING' ? 'BT-driven, AR STILL logged only' : 'not driving',
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -463,6 +499,13 @@ class ParkingDetectionStateMachineClass {
     this._lastEventType = eventType;
     this._lastEventTime = Date.now();
 
+    // Track what put us into DRIVING (BT vs Activity Recognition)
+    if (newState === 'DRIVING') {
+      this._drivingSource = source;
+    } else if (newState === 'IDLE' || newState === 'INITIALIZING') {
+      this._drivingSource = null;
+    }
+
     const event = this.logEvent(eventType, source, metadata);
 
     log.info(`STATE: ${prev} -> ${newState} [${eventType}] (source: ${source})`);
@@ -537,7 +580,7 @@ class ParkingDetectionStateMachineClass {
     return event;
   }
 
-  private startDebounce(source: DetectionSource): void {
+  private startDebounce(source: DetectionSource, durationMs: number = DEBOUNCE_DURATION_MS): void {
     if (this._debounceTimer) {
       clearTimeout(this._debounceTimer);
     }
@@ -550,15 +593,16 @@ class ParkingDetectionStateMachineClass {
         return;
       }
 
-      log.info('Debounce expired — BT still disconnected, confirming parking');
-      this.logEvent('DEBOUNCE_EXPIRED', source);
+      log.info(`Debounce expired (${durationMs}ms, source: ${source}) — confirming parking`);
+      this.logEvent('DEBOUNCE_EXPIRED', source, { durationMs });
 
       // Transition to PARKED. The transition callback registered by
       // BackgroundTaskService will handle the actual parking check.
       this.transition('PARKED', 'PARKING_CONFIRMED', 'system', {
-        debounceMs: DEBOUNCE_DURATION_MS,
+        debounceMs: durationMs,
+        triggerSource: source,
       });
-    }, DEBOUNCE_DURATION_MS);
+    }, durationMs);
   }
 
   private async persistState(): Promise<void> {
