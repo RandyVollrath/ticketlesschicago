@@ -86,7 +86,7 @@ const FILTER_ITEMS: FilterItem[] = [
   },
   {
     key: 'showSnowRoutes',
-    label: 'Snow Routes',
+    label: '2″ Snow Routes',
     color: LAYER_COLORS.conditional,
     icon: '❄',
   },
