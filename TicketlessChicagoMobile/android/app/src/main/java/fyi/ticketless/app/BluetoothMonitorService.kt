@@ -177,7 +177,8 @@ class BluetoothMonitorService : Service() {
     // -------------------------------------------------------------------------
 
     private fun registerAclReceiver() {
-        if (aclReceiver != null) return // Already registered
+        // Always unregister first so we get a clean receiver if target device changed
+        unregisterAclReceiver()
 
         aclReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {

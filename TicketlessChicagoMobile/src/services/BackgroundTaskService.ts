@@ -507,6 +507,23 @@ class BackgroundTaskServiceClass {
               log.debug('Could not get initial BT state from native service:', e);
             }
 
+            // Delayed re-check: the native service's checkInitialConnectionState()
+            // uses getProfileProxy which is async. Give it 2 seconds to update
+            // SharedPreferences, then re-read.
+            setTimeout(async () => {
+              try {
+                if (!BluetoothMonitorModule) return;
+                const delayedCheck = await BluetoothMonitorModule.isCarConnected();
+                const currentJsState = BluetoothService.isConnectedToCar();
+                if (delayedCheck && !currentJsState) {
+                  log.info('Delayed BT check: native says CONNECTED — syncing JS state');
+                  BluetoothService.setCarConnected(true);
+                }
+              } catch (e) {
+                // ignore
+              }
+            }, 2000);
+
             // Pre-cache GPS location periodically while car is connected.
             this.startGpsCaching();
 
@@ -622,7 +639,10 @@ class BackgroundTaskServiceClass {
         }
       );
 
-      // Sync initial connection state
+      // Sync initial connection state.
+      // The native service's checkInitialConnectionState() uses getProfileProxy
+      // which is async — it may not have updated SharedPreferences yet. Do an
+      // immediate check AND a delayed re-check to catch the async result.
       try {
         const initiallyConnected = await BluetoothMonitorModule.isCarConnected();
         BluetoothService.setCarConnected(initiallyConnected);
@@ -630,6 +650,21 @@ class BackgroundTaskServiceClass {
       } catch (e) {
         log.debug('Could not get initial BT state:', e);
       }
+
+      // Delayed re-check: the native service's profile proxy callback fires
+      // asynchronously. Give it 2 seconds then re-read the connection state.
+      setTimeout(async () => {
+        try {
+          const delayedCheck = await BluetoothMonitorModule.isCarConnected();
+          const currentJsState = BluetoothService.isConnectedToCar();
+          if (delayedCheck && !currentJsState) {
+            log.info('Delayed BT check: native says CONNECTED but JS said not — syncing to CONNECTED');
+            BluetoothService.setCarConnected(true);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }, 2000);
 
       // Ensure monitoring state is set
       this.state.isMonitoring = true;
