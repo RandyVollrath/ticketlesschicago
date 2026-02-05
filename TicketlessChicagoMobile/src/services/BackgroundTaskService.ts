@@ -303,9 +303,10 @@ class BackgroundTaskServiceClass {
                 driftMeters: event.driftFromParkingMeters,
               });
               this.stopCameraAlerts();
-              await this.sendDiagnosticNotification(
+              // Fire-and-forget: don't block the parking check waiting for a diagnostic notification
+              this.sendDiagnosticNotification(
                 'Parking Detected (iOS)',
-                `CoreMotion detected you parked. Duration: ${Math.round(event.drivingDurationSec || 0)}s driving. Checking parking rules...`
+                `Detected you parked. Duration: ${Math.round(event.drivingDurationSec || 0)}s driving. Checking parking rules...`
               );
               // Pass the stop-start coordinates so we check parking rules
               // at where the CAR is, not where the user walked to
@@ -2047,22 +2048,12 @@ class BackgroundTaskServiceClass {
 
   /**
    * Notify user: departure recorded but still near parking spot
+   * Silent — data is saved to history but no push notification.
+   * Non-conclusive departures (< 100m) happen frequently from BT glitches
+   * near the car and are too noisy as visible notifications.
    */
   private async sendDepartureRecordedNotification(distanceMeters: number): Promise<void> {
-    log.info(`Departure recorded: ${distanceMeters}m from parking spot`);
-    try {
-      await notifee.displayNotification({
-        title: 'Departure Recorded',
-        body: `You're ${Math.round(distanceMeters)}m from your parking spot. This record can help contest tickets.`,
-        android: {
-          channelId: 'parking-monitoring',
-          pressAction: { id: 'default' },
-          smallIcon: 'ic_notification',
-        },
-      });
-    } catch (e) {
-      log.debug('Failed to show departure recorded notification', e);
-    }
+    log.info(`Departure recorded (silent): ${distanceMeters}m from parking spot — saved to history`);
   }
 
   /**
