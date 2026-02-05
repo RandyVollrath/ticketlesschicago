@@ -1709,25 +1709,6 @@ export default function SettingsPage() {
               />
             </div>
           </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              cursor: 'pointer',
-              fontSize: 14,
-              color: COLORS.textDark,
-            }}>
-              <input
-                type="checkbox"
-                checked={isLeased}
-                onChange={(e) => setIsLeased(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: COLORS.primary }}
-              />
-              Leased or company vehicle
-            </label>
-          </div>
         </Card>
 
         {/* Home Address */}
