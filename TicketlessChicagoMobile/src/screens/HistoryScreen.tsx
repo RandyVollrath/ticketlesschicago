@@ -186,18 +186,28 @@ export const ParkingHistoryService = {
     }
   },
 
-  async addToHistory(coords: Coordinates, rules: ParkingRule[], address?: string): Promise<void> {
+  async addToHistory(coords: Coordinates, rules: ParkingRule[], address?: string, nativeTimestamp?: number): Promise<void> {
     try {
       // Read existing history directly (avoid `this` binding issues when called cross-module)
       const stored = await AsyncStorage.getItem(HISTORY_KEY);
       const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
+
+      // Use the native event timestamp (when the car actually stopped) if available,
+      // otherwise fall back to Date.now() (when the check completed).
+      // On iOS, the native timestamp comes from CoreMotion/GPS detection and is
+      // typically 30-120s earlier than Date.now() due to detection + API delays.
+      const parkTime = nativeTimestamp || Date.now();
+      if (nativeTimestamp) {
+        const delayMs = Date.now() - nativeTimestamp;
+        log.info(`Using native timestamp for parking time (${Math.round(delayMs / 1000)}s more accurate than Date.now())`);
+      }
 
       const newItem: ParkingHistoryItem = {
         id: Date.now().toString(),
         coords,
         address: address || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
         rules,
-        timestamp: Date.now(),
+        timestamp: parkTime,
       };
 
       const updated = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
