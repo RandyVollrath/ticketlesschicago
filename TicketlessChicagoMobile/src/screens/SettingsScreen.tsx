@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('SettingsScreen');
@@ -180,32 +180,40 @@ const SettingsScreen: React.FC = () => {
     </TouchableOpacity>
   ), [isSelecting, selectDevice]);
 
-  // iOS: Background location + motion sensors for parking detection
+  // ─── Step indicator component ───
+  const Step = ({ num, text }: { num: string; text: string }) => (
+    <View style={styles.stepRow}>
+      <View style={styles.stepBadge}>
+        <Text style={styles.stepNum}>{num}</Text>
+      </View>
+      <Text style={styles.stepText}>{text}</Text>
+    </View>
+  );
+
+  // ─── iOS ───
   if (Platform.OS === 'ios') {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Automatic Parking Detection</Text>
-            <Text style={styles.instructions}>
-              Autopilot automatically detects when you park and checks for restrictions. No setup needed.
+          <View style={styles.heroCard}>
+            <Text style={styles.heroEmoji}>{'📍'}</Text>
+            <Text style={styles.heroTitle}>Automatic Parking Detection</Text>
+            <Text style={styles.heroSubtitle}>
+              No setup needed — your iPhone handles everything.
             </Text>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.infoTitle}>How it works</Text>
-            <Text style={styles.infoText}>
-              {'1. Drive and park as usual\n' +
-               '2. Your iPhone detects when you stop driving\n' +
-               '3. We check parking rules at your location\n' +
-               '4. You get a notification with the result'}
-            </Text>
+          <View style={styles.stepsCard}>
+            <Step num="1" text="Drive and park as usual" />
+            <Step num="2" text="iPhone detects when you stop" />
+            <Step num="3" text="We check parking rules" />
+            <Step num="4" text="Notification with the result" />
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.infoTitle}>Location Permission</Text>
-            <Text style={styles.infoText}>
-              For best results, allow "Always" location access in Settings {'>'} Privacy {'>'} Location Services {'>'} Autopilot America. This lets the app detect parking even when it's in the background.
+          <View style={styles.tipCard}>
+            <Text style={styles.tipLabel}>Tip</Text>
+            <Text style={styles.tipText}>
+              For best results, set location access to "Always" in Settings {'>'} Privacy {'>'} Location Services {'>'} Autopilot America.
             </Text>
           </View>
         </ScrollView>
@@ -213,76 +221,79 @@ const SettingsScreen: React.FC = () => {
     );
   }
 
-  // Android: Bluetooth pairing screen
+  // ─── Android ───
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Saved Car Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Car</Text>
-          {savedCar ? (
-            <View style={styles.savedCarCard}>
-              <View style={styles.savedCarInfo}>
-                <Text style={styles.savedCarName}>{savedCar.name}</Text>
-                <Text style={styles.savedCarId}>
-                  {savedCar.address || savedCar.id}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={removeCar}
-                style={[styles.removeButton, isRemoving && styles.buttonDisabled]}
-                disabled={isRemoving}
-                accessibilityRole="button"
-                accessibilityLabel="Remove paired car"
-              >
-                {isRemoving ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.removeButtonText}>Remove</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <Text style={styles.noCarText}>No car paired yet</Text>
-          )}
+        {/* Hero */}
+        <View style={styles.heroCard}>
+          <Text style={styles.heroEmoji}>{savedCar ? '🚗' : '📡'}</Text>
+          <Text style={styles.heroTitle}>
+            {savedCar ? 'Connected' : 'Pair Your Car'}
+          </Text>
+          <Text style={styles.heroSubtitle}>
+            {savedCar
+              ? `${savedCar.name} is set up for instant parking alerts.`
+              : 'Link your car\'s Bluetooth for the fastest alerts.'}
+          </Text>
         </View>
 
-        {/* Pair Car Section - only shown when no car is saved */}
-        {!savedCar && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Your Car</Text>
+        {/* Saved car card */}
+        {savedCar && (
+          <View style={styles.connectedCard}>
+            <View style={styles.connectedInfo}>
+              <Text style={styles.connectedName}>{savedCar.name}</Text>
+              <Text style={styles.connectedAddr}>
+                {savedCar.address || savedCar.id}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={removeCar}
+              style={[styles.removeButton, isRemoving && styles.buttonDisabled]}
+              disabled={isRemoving}
+              accessibilityRole="button"
+              accessibilityLabel="Remove paired car"
+            >
+              {isRemoving ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Text style={styles.removeButtonText}>Remove</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
-            <Text style={styles.instructions}>
-              Your phone's Bluetooth must already be paired with your car (in Settings {'>'} Bluetooth). Tap below to see your paired devices and pick your car.
+        {/* Pair section — only when no car saved */}
+        {!savedCar && (
+          <View style={styles.pairSection}>
+            <Text style={styles.pairInstructions}>
+              Make sure your car is already paired in your phone's Bluetooth settings, then tap below.
             </Text>
 
-            {/* Show Paired Devices Button */}
             <TouchableOpacity
-              style={[styles.actionButton, loading && styles.actionButtonDisabled]}
+              style={[styles.pairButton, loading && styles.pairButtonDisabled]}
               onPress={loadPairedDevices}
               disabled={loading}
             >
               {loading ? (
                 <View style={styles.scanningRow}>
                   <ActivityIndicator color={colors.white} />
-                  <Text style={styles.actionButtonText}>  Loading paired devices...</Text>
+                  <Text style={styles.pairButtonText}>  Loading...</Text>
                 </View>
               ) : (
-                <Text style={styles.actionButtonText}>Show My Bluetooth Devices</Text>
+                <Text style={styles.pairButtonText}>Show My Bluetooth Devices</Text>
               )}
             </TouchableOpacity>
 
-            {/* Device List */}
             {pairedDevices.length > 0 && (
               <View style={styles.devicesList}>
                 <Text style={styles.devicesTitle}>
-                  Tap your car ({pairedDevices.length} paired device{pairedDevices.length !== 1 ? 's' : ''}):
+                  Tap your car ({pairedDevices.length} device{pairedDevices.length !== 1 ? 's' : ''}):
                 </Text>
                 <FlatList
                   data={pairedDevices}
                   renderItem={renderDevice}
                   keyExtractor={(item) => item.id}
-                  style={styles.flatList}
                   scrollEnabled={false}
                 />
               </View>
@@ -290,27 +301,23 @@ const SettingsScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Info Section */}
-        <View style={styles.section}>
-          <Text style={styles.infoTitle}>How it works</Text>
-          <Text style={styles.infoText}>
-            {'1. Select your car\'s Bluetooth above (one-time setup)\n' +
-             '2. Drive and park as usual\n' +
-             '3. When you turn off your car, we detect it\n' +
-             '4. We check parking rules and notify you'}
-          </Text>
+        {/* How it works — compact steps */}
+        <View style={styles.stepsCard}>
+          {!savedCar && <Step num="1" text="Select your car above (one time)" />}
+          <Step num={savedCar ? '1' : '2'} text="Drive and park as usual" />
+          <Step num={savedCar ? '2' : '3'} text="Engine off = instant detection" />
+          <Step num={savedCar ? '3' : '4'} text="Get notified of any restrictions" />
         </View>
 
-        {/* Speed tip */}
-        <View style={styles.section}>
-          <View style={styles.speedTip}>
-            <Text style={styles.speedTipTitle}>Why pair via Bluetooth?</Text>
-            <Text style={styles.speedTipText}>
-              {'Bluetooth pairing gives you the fastest parking notifications — typically within a few seconds of turning off your engine.\n\n' +
-               'Without Bluetooth, the app falls back to motion sensors to detect when you stop driving. This still works, but notifications may take 1–2 minutes longer.'}
+        {/* Speed context — compact, not a wall of text */}
+        {!savedCar && (
+          <View style={styles.tipCard}>
+            <Text style={styles.tipLabel}>Why Bluetooth?</Text>
+            <Text style={styles.tipText}>
+              Bluetooth detects parking in seconds. Without it, the app uses motion sensors which can take 1–2 minutes.
             </Text>
           </View>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -322,84 +329,108 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
+    padding: spacing.base,
     paddingBottom: spacing.xxl,
   },
-  section: {
+
+  // ─── Hero card ───
+  heroCard: {
     backgroundColor: colors.cardBg,
-    padding: spacing.base,
-    marginTop: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  savedCarCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
     alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.infoBg,
-    borderRadius: borderRadius.md,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
+    marginBottom: spacing.base,
+    ...shadows.md,
   },
-  savedCarInfo: {
-    flex: 1,
+  heroEmoji: {
+    fontSize: 40,
+    marginBottom: spacing.sm,
   },
-  savedCarName: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+  heroTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
-  savedCarId: {
-    fontSize: typography.sizes.sm,
+  heroSubtitle: {
+    fontSize: typography.sizes.base,
     color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // ─── Connected car ───
+  connectedCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.base,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+    ...shadows.sm,
+  },
+  connectedInfo: {
+    flex: 1,
+  },
+  connectedName: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  connectedAddr: {
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
   },
   removeButton: {
-    padding: spacing.sm,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.base,
-    backgroundColor: colors.error,
     borderRadius: borderRadius.sm,
-    minWidth: 80,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.error,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   removeButtonText: {
-    color: colors.white,
+    color: colors.error,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
   },
-  noCarText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textTertiary,
-    fontStyle: 'italic',
+
+  // ─── Pair section ───
+  pairSection: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    marginBottom: spacing.base,
+    ...shadows.md,
   },
-  instructions: {
+  pairInstructions: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: spacing.base,
+    textAlign: 'center',
   },
-  actionButton: {
+  pairButton: {
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
     alignItems: 'center',
+    ...shadows.primaryGlow,
   },
-  actionButtonDisabled: {
+  pairButtonDisabled: {
     backgroundColor: colors.textTertiary,
+    ...shadows.sm,
   },
-  actionButtonText: {
+  pairButtonText: {
     color: colors.white,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontWeight: typography.weights.bold,
   },
   scanningRow: {
     flexDirection: 'row',
@@ -407,15 +438,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   devicesList: {
-    marginTop: spacing.base,
+    marginTop: spacing.lg,
   },
   devicesTitle: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
+    color: colors.textSecondary,
     marginBottom: spacing.sm,
-  },
-  flatList: {
   },
   deviceCard: {
     flexDirection: 'row',
@@ -438,7 +467,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   deviceId: {
     fontSize: typography.sizes.sm,
@@ -450,31 +479,57 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginLeft: spacing.sm,
   },
-  infoTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+
+  // ─── Steps card ───
+  stepsCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    marginBottom: spacing.base,
+    ...shadows.sm,
   },
-  infoText: {
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primaryTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  stepNum: {
     fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    lineHeight: 22,
+    fontWeight: typography.weights.bold,
+    color: colors.primary,
   },
-  speedTip: {
+  stepText: {
+    flex: 1,
+    fontSize: typography.sizes.base,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+
+  // ─── Tip card ───
+  tipCard: {
     backgroundColor: colors.secondaryLight,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.warning,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.base,
   },
-  speedTipTitle: {
+  tipLabel: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
+    fontWeight: typography.weights.bold,
+    color: colors.secondaryDark,
     marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  speedTipText: {
+  tipText: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     lineHeight: 20,
