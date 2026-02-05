@@ -46,33 +46,16 @@ const SpeechModule = Platform.OS === 'ios' ? NativeModules.SpeechModule : null;
  * react-native-tts creates NativeEventEmitter(null) if the native module isn't linked.
  */
 let AndroidTts: any = null;
-let androidTtsInitialized = false;
 
-async function getAndroidTts(): Promise<any> {
+function getAndroidTtsSync(): any {
   if (Platform.OS !== 'android') return null;
   if (!AndroidTts) {
     try {
       AndroidTts = require('react-native-tts').default;
+      log.info('react-native-tts module loaded');
     } catch (e) {
-      log.warn('react-native-tts not available on Android');
+      log.warn('react-native-tts not available on Android:', e);
       return null;
-    }
-  }
-  // Initialize TTS engine on first use — required for Android
-  if (!androidTtsInitialized && AndroidTts) {
-    try {
-      await AndroidTts.getInitStatus();
-      androidTtsInitialized = true;
-      log.info('Android TTS engine initialized');
-    } catch (initErr: any) {
-      // If no TTS engine is installed, try to request installation
-      if (initErr?.code === 'no_engine') {
-        log.warn('No TTS engine installed, requesting install');
-        AndroidTts.requestInstallEngine();
-        return null;
-      }
-      log.warn('Android TTS init status error (may still work):', initErr);
-      androidTtsInitialized = true; // Proceed anyway — some devices report errors but still work
     }
   }
   return AndroidTts;
@@ -100,19 +83,34 @@ async function speak(message: string): Promise<boolean> {
       return false;
     }
   } else {
-    const tts = await getAndroidTts();
-    if (tts) {
-      try {
-        log.info('Android TTS: calling tts.speak()...');
-        await tts.speak(message);
-        log.info('Android TTS speak succeeded');
-        return true;
-      } catch (e) {
-        log.error('Android TTS speak failed', e);
-        return false;
+    const tts = getAndroidTtsSync();
+    if (!tts) {
+      log.warn('Android TTS module not loaded');
+      return false;
+    }
+
+    try {
+      // Just try to speak — the TTS engine will auto-initialize on most devices.
+      // Wrapping in Promise to handle both callback and promise-based returns.
+      log.info('Android TTS: calling tts.speak()...');
+      const result = tts.speak(message);
+
+      // tts.speak() returns a Promise<string> (utterance ID) on success
+      if (result && typeof result.then === 'function') {
+        await result;
       }
-    } else {
-      log.warn('Android TTS not available (getAndroidTts returned null)');
+
+      log.info('Android TTS speak call completed');
+      return true;
+    } catch (e: any) {
+      log.error('Android TTS speak failed:', e?.message || e);
+
+      // If no TTS engine, prompt user to install one
+      if (e?.code === 'no_engine') {
+        try {
+          tts.requestInstallEngine();
+        } catch (_) {}
+      }
       return false;
     }
   }
@@ -127,7 +125,7 @@ async function stopSpeech(): Promise<void> {
       try { await SpeechModule.stop(); } catch (_) {}
     }
   } else {
-    const tts = await getAndroidTts();
+    const tts = getAndroidTtsSync();
     if (tts) {
       try { tts.stop(); } catch (_) {}
     }
