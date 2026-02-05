@@ -574,10 +574,19 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           : '';
         Alert.alert('All Clear!', `No parking restrictions at ${result.address}${accuracyInfo}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       if (timedOut) return;
-      log.error('Error checking location', error);
-      Alert.alert('Error', 'Failed to check parking location. Please try again.');
+      const msg = error?.message || '';
+      if (msg.includes('outside the Chicago area')) {
+        log.info('User is outside Chicago area');
+        Alert.alert(
+          'Outside Chicago',
+          'Autopilot monitors Chicago parking restrictions. This feature is available when you are parked in Chicago.',
+        );
+      } else {
+        log.error('Error checking location', error);
+        Alert.alert('Error', 'Failed to check parking location. Please try again.');
+      }
     } finally {
       clearTimeout(timeoutId);
       if (!timedOut) {

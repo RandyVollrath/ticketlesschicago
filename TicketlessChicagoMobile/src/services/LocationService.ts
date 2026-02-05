@@ -853,12 +853,16 @@ class LocationServiceClass {
 
     if (!response.success) {
       // Provide more specific error messages
-      const errorMessage =
-        response.error?.type === ApiErrorType.NETWORK_ERROR
-          ? 'No internet connection. Please check your network and try again.'
-          : response.error?.type === ApiErrorType.TIMEOUT_ERROR
-          ? 'Request timed out. The server may be busy. Please try again.'
-          : 'Failed to check parking rules. Please try again.';
+      let errorMessage: string;
+      if (response.error?.message === 'outside_chicago') {
+        errorMessage = 'This app monitors Chicago parking restrictions. Your current location appears to be outside the Chicago area. Please use the app when parked in Chicago.';
+      } else if (response.error?.type === ApiErrorType.NETWORK_ERROR) {
+        errorMessage = 'No internet connection. Please check your network and try again.';
+      } else if (response.error?.type === ApiErrorType.TIMEOUT_ERROR) {
+        errorMessage = 'Request timed out. The server may be busy. Please try again.';
+      } else {
+        errorMessage = 'Failed to check parking rules. Please try again.';
+      }
 
       throw new Error(errorMessage);
     }

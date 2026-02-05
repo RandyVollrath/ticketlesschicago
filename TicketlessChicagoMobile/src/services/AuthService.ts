@@ -323,6 +323,46 @@ class AuthServiceClass {
   }
 
   /**
+   * Delete the user's account (soft delete on server, then sign out).
+   * Calls DELETE /api/users?userId={id} which anonymizes profile data,
+   * then signs the user out locally.
+   */
+  async deleteAccount(): Promise<{ success: boolean; error?: string }> {
+    const user = this.getUser();
+    const token = this.getToken();
+
+    if (!user || !token) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+      const response = await fetch(
+        `${Config.API_BASE_URL}/api/users?userId=${user.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        return { success: false, error: body.error || `Server error (${response.status})` };
+      }
+
+      // Sign out locally after successful server-side deletion
+      await this.signOut();
+      log.info('Account deleted and signed out');
+      return { success: true };
+    } catch (error: any) {
+      log.error('Account deletion error', error);
+      return { success: false, error: 'Network error. Please check your connection and try again.' };
+    }
+  }
+
+  /**
    * Attempt to refresh the authentication token
    * Returns true if refresh was successful, false otherwise
    */

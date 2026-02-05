@@ -123,7 +123,10 @@ export default async function handler(
 
   // Validate coordinates are within Chicago area (roughly)
   if (latitude < 41.6 || latitude > 42.1 || longitude < -88.0 || longitude > -87.5) {
-    return res.status(400).json({ error: 'Coordinates must be within Chicago area' });
+    return res.status(400).json({
+      error: 'outside_chicago',
+      message: 'This app monitors Chicago parking restrictions. Your current location appears to be outside the Chicago area. Please use the app when parked in Chicago.',
+    });
   }
 
   // Accept optional accuracy and confidence from mobile client
