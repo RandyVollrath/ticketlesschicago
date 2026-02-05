@@ -22,7 +22,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var coreMotionActive = false                  // Whether CoreMotion activity updates are running
 
   // Configuration
-  private let minDrivingDurationSec: TimeInterval = 60   // 1 min of driving before we care about stops (was 120, lowered to catch short trips)
+  private let minDrivingDurationSec: TimeInterval = 30   // 30 sec of driving before we care about stops (was 120→60→30, lowered to catch half-block trips)
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
   private let minDrivingSpeedMps: Double = 2.5           // ~5.6 mph - threshold to START driving state via speed
   private let speedCheckIntervalSec: TimeInterval = 3    // Re-check parking every 3s while speed≈0
@@ -291,8 +291,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             NSLog("[BackgroundLocation] Car stop location captured: \(self.locationAtStopStart?.coordinate.latitude ?? 0), \(self.locationAtStopStart?.coordinate.longitude ?? 0)")
           }
 
+          let isWalking = activity.walking
           NSLog("[BackgroundLocation] Exited vehicle (CoreMotion: \(activity.stationary ? "stationary" : "walking"), confidence: \(self.confidenceString(activity.confidence)))")
-          self.handlePotentialParking()
+          self.handlePotentialParking(userIsWalking: isWalking)
         }
       }
       // Note: cycling, running, unknown → ignore, don't change state
@@ -373,20 +374,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         NSLog("[BackgroundLocation] GPS speed≈0 while driving. Captured stop location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
       }
 
-      // Start GPS speed-based parking timer: repeating check every 5 seconds.
+      // Start GPS speed-based parking timer: repeating check every 3 seconds.
       // Fast path: if CoreMotion agrees (not automotive), confirm immediately.
-      // Fallback: after 15s of sustained zero speed, override CoreMotion and
+      // Fallback: after 10s of sustained zero speed, override CoreMotion and
       // confirm parking anyway. CoreMotion can take 30-60s to transition from
       // automotive after the engine stops — the user shouldn't wait that long.
+      // Only requires 15s of driving (not the full minDrivingDurationSec) because
+      // sustained zero GPS speed is a strong signal — red lights rarely show
+      // 10+ consecutive seconds of true zero GPS speed.
       if isDriving,
          let drivingStart = drivingStartTime,
-         Date().timeIntervalSince(drivingStart) >= minDrivingDurationSec,
+         Date().timeIntervalSince(drivingStart) >= 15,
          speedZeroTimer == nil {
         // Record when speed first hit zero (if not already set from location capture above)
         if speedZeroStartTime == nil {
           speedZeroStartTime = Date()
         }
-        NSLog("[BackgroundLocation] GPS speed≈0 after 1+min driving. Starting repeating speed check (every \(speedCheckIntervalSec)s, override at \(speedZeroOverrideSec)s).")
+        NSLog("[BackgroundLocation] GPS speed≈0 after 15+s driving. Starting repeating speed check (every \(speedCheckIntervalSec)s, override at \(speedZeroOverrideSec)s).")
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: speedCheckIntervalSec, repeats: true) { [weak self] timer in
           guard let self = self else { timer.invalidate(); return }
 
@@ -513,15 +517,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   // MARK: - Parking Detection Logic
 
   /// Called ONLY when CoreMotion confirms user exited vehicle (not on speed=0 alone)
-  private func handlePotentialParking() {
+  /// userIsWalking: if true, CoreMotion detected walking (not just stationary).
+  /// Walking means the user got out of the car — bypass the minimum driving duration
+  /// filter. Red lights produce "stationary", not "walking", so this is safe.
+  private func handlePotentialParking(userIsWalking: Bool = false) {
     guard let drivingStart = drivingStartTime else {
       NSLog("[BackgroundLocation] No driving start time - ignoring")
       return
     }
 
     let drivingDuration = Date().timeIntervalSince(drivingStart)
-    guard drivingDuration >= minDrivingDurationSec else {
-      NSLog("[BackgroundLocation] Drove only \(String(format: "%.0f", drivingDuration))s (need \(minDrivingDurationSec)s) - ignoring")
+
+    // Walking override: if CoreMotion says "walking", the user exited the car.
+    // No need to enforce a minimum driving duration — you don't walk at a red light.
+    // Still require at least 10 seconds to filter out sensor noise.
+    if userIsWalking && drivingDuration >= 10 {
+      NSLog("[BackgroundLocation] Walking detected after \(String(format: "%.0f", drivingDuration))s driving — bypassing duration filter")
+    } else if drivingDuration < minDrivingDurationSec {
+      NSLog("[BackgroundLocation] Drove only \(String(format: "%.0f", drivingDuration))s (need \(minDrivingDurationSec)s) and not walking - ignoring")
       return
     }
 

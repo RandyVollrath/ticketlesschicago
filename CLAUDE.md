@@ -184,7 +184,7 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor �
 ### Rules
 1. **CoreMotion must stay active at all times while monitoring is on.** Only continuous GPS can be stopped to save battery.
 2. **Departure depends on `onDrivingStarted`** firing when the user starts their next drive. If CoreMotion is stopped, this event never fires and departure is never recorded.
-3. **The `minDrivingDurationSec` (60s) filter** prevents false parking events from red lights. Don't lower it below 30s.
+3. **The `minDrivingDurationSec` (30s) filter** prevents false parking events from red lights. Don't lower it below 15s. Walking override bypasses this entirely (walking = user exited car, not a red light). GPS speed-zero path uses a separate 15s minimum.
 4. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
 5. **After parking confirmation, `isDriving` resets to false.** The ONLY way it gets set back to true is via CoreMotion reporting automotive or GPS speed > 2.5 m/s. If neither is running, the app is permanently stuck in "parked" state.
 
@@ -230,6 +230,30 @@ const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticat
 ## Connected Devices
 - Moto G 2025: `ZT4224LFTZ` (primary test device)
 - Moto E5 Play: `ZY326L2GKG`
+
+## CHI PAY Portal Scraper — How It Works
+
+The portal scraper (`lib/chicago-portal-scraper.ts`) looks up parking tickets on the City of Chicago payment portal. It uses Playwright to automate a headless browser but **does NOT need any captcha solving service** (no API keys, $0 cost per lookup).
+
+### Key Technical Details
+- Portal URL: `https://webapps1.chicago.gov/payments-web/#/validatedFlow?cityServiceId=1`
+- Backend API endpoint: `POST /payments-web/api/searches`
+- The Angular SPA has an hCaptcha widget that disables the Search button, but the backend API does not validate captcha tokens
+- The scraper bypasses hCaptcha by: (1) filling form fields via native value setters + input/change events to trigger Angular change detection, (2) removing the `disabled` attribute from the Search button, (3) calling `.click()` via JavaScript
+- The scraper intercepts the API JSON response (not HTML) for structured ticket data
+- Lookup time: ~14 seconds per plate
+- No CAPTCHA_API_KEY or CAPSOLVER_API_KEY needed
+
+### API Response Format
+- **200**: Tickets found — response contains `searchResult.receivables` array
+- **422**: No open tickets — response has `searchResult.errorMessage: "No open receivables found"`
+- **500**: Server error (usually empty/invalid fields)
+- **401**: Session expired (shouldn't happen with fresh browser context)
+
+### Autopilot Schedule
+- Runs Mon/Thu via systemd user timers
+- Script: `scripts/autopilot-check-portal.ts`
+- Fetches monitored plates from Supabase, looks them up, creates contest letters, emails evidence requests
 
 ## Supabase Details
 - Project ref: `dzhqolbhuqdcpngdayuq`
