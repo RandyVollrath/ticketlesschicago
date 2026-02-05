@@ -1365,7 +1365,7 @@ class BackgroundTaskServiceClass {
     initialCoords: { latitude: number; longitude: number; accuracy?: number },
     nativeTimestamp?: number
   ): Promise<void> {
-    const REFINEMENT_THRESHOLD_M = 50; // Only re-check if burst is >50m from initial
+    const REFINEMENT_THRESHOLD_M = 25; // Only re-check if burst is >25m from initial
 
     try {
       log.info('[GPS Phase 2] Starting background burst refinement...');
