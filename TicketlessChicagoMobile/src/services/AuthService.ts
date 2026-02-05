@@ -102,6 +102,7 @@ class AuthServiceClass {
   async initialize(): Promise<AuthState> {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
+      log.info(`Auth initialize: session=${!!session}, user=${session?.user?.email || 'none'}`);
       this.updateAuthState(session);
     } catch (error) {
       log.error('Error initializing auth', error);
@@ -113,6 +114,7 @@ class AuthServiceClass {
   subscribe(listener: (state: AuthState) => void): () => void {
     this.listeners.push(listener);
     // Immediately call with current state
+    log.debug(`subscribe: delivering current state (authenticated=${this.authState.isAuthenticated}, user=${this.authState.user?.email || 'none'}, listeners=${this.listeners.length})`);
     listener(this.authState);
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);

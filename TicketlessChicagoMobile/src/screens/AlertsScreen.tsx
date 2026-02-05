@@ -22,22 +22,24 @@ const SETTINGS_URL = `${Config.API_BASE_URL}/settings`;
 const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
   // Session key: changes when auth state changes, forcing WebView to remount
   // with fresh injected scripts. Without this, the WebView keeps the stale
   // injection from its initial mount (injectedJavaScriptBeforeContentLoaded
   // only runs once per WebView instance).
   const [webViewKey, setWebViewKey] = useState(0);
   const webViewRef = useRef<WebView>(null);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  // Track previous auth state via ref to avoid closure issues with subscribe
+  const wasAuthRef = useRef(isAuthenticated);
 
   // Re-check auth when screen is focused (user may have just logged in)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      checkAuth();
+      const authenticated = AuthService.isAuthenticated();
+      setIsAuthenticated(authenticated);
+      if (!authenticated) {
+        setIsLoading(false);
+      }
     });
     return unsubscribe;
   }, [navigation]);
@@ -45,26 +47,18 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // Subscribe to auth state changes so we catch login/logout from any screen
   useEffect(() => {
     const unsubscribe = AuthService.subscribe((state) => {
-      const wasAuth = isAuthenticated;
       const nowAuth = state.isAuthenticated;
       setIsAuthenticated(nowAuth);
 
       // When user transitions from logged-out to logged-in (or vice versa),
       // bump the key to force a full WebView remount with the new session.
-      if (wasAuth !== nowAuth) {
+      if (wasAuthRef.current !== nowAuth) {
+        wasAuthRef.current = nowAuth;
         setWebViewKey(prev => prev + 1);
         if (!nowAuth) setIsLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [isAuthenticated]);
-
-  const checkAuth = useCallback(() => {
-    const authenticated = AuthService.isAuthenticated();
-    setIsAuthenticated(authenticated);
-    if (!authenticated) {
-      setIsLoading(false);
-    }
   }, []);
 
   // Read session fresh each render — combined with webViewKey, this ensures
