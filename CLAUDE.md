@@ -133,6 +133,9 @@ Android parking detection depends on Bluetooth Classic (ACL events). The system 
 3. **JS `NativeEventEmitter` not subscribed when native emits.**
    `startMonitoring()` starts the service and resolves the promise BEFORE JS subscribes to events. The initial connect event from `checkInitialConnectionState()` can be lost. Fix: rely on SharedPreferences fallback checks, not just events.
 
+4. **Stale `is_connected=true` in SharedPreferences after app restart (away from car).**
+   SharedPreferences persists across app restarts/installs. If the last session ended while connected to the car, `is_connected=true` stays forever. On next startup the app reads it and shows "Driving" even though the car BT is off. The profile proxy check finds 0 devices but that alone doesn't fix anything — you MUST explicitly call `handleDisconnect()` when all profiles report 0 devices. Fix: `checkInitialConnectionState()` uses `AtomicInteger` to track completed profile callbacks. When all complete and none found the target, it calls `handleDisconnect()` to clear the stale state. JS delayed re-checks (2s/5s) must also correct connected→disconnected, not just disconnected→connected.
+
 ### Android Foreground Service Rules (CRITICAL)
 The `BluetoothMonitorService` is a foreground service. Android has strict rules about these that cause **instant app crashes** if violated:
 
@@ -149,6 +152,8 @@ The `BluetoothMonitorService` is a foreground service. Android has strict rules 
 5. **HomeScreen uses 3 fallback checks** (JS state → OS query → native SharedPrefs). Never reduce to fewer.
 6. **The 10-second debounce in disconnect handler** filters transient BT glitches. Don't remove it.
 7. **After any BT change, test on a real Android device** with: pair car → kill app → reopen → verify "Connected to [car]" shows within 5 seconds.
+8. **`checkInitialConnectionState()` must handle BOTH outcomes** — device found (handleConnect) AND device not found after all profiles checked (handleDisconnect). SharedPreferences persists across restarts, so "not found" is NOT the same as "no action needed."
+9. **JS delayed re-checks must be bidirectional.** They must correct state in BOTH directions: disconnected→connected AND connected→disconnected. A one-directional check leaves stale "Driving" state uncorrectable.
 
 ### Testing Bluetooth Detection
 After any change to BT-related code, verify these scenarios on a physical Android device:
@@ -157,6 +162,7 @@ After any change to BT-related code, verify these scenarios on a physical Androi
 - [ ] Car BT reconnects → departure tracking starts
 - [ ] Kill app while connected → reopen → still shows "Connected to [car]"
 - [ ] App in background → car disconnects → parking notification fires
+- [ ] Kill app while connected → walk away from car → reopen → should show "Waiting for..." (NOT "Driving") within 5s
 
 ## iOS Parking/Driving Detection — Critical Rules
 
