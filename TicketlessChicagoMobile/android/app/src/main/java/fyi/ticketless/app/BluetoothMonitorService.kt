@@ -105,6 +105,11 @@ class BluetoothMonitorService : Service() {
     private var aclReceiver: BroadcastReceiver? = null
     private var targetAddress: String? = null
     private var targetName: String? = null
+    // Timestamp of last ACL event from the BroadcastReceiver.
+    // The profile proxy callback checks this — if an ACL event fired recently,
+    // the profile proxy result is stale and should be ignored.
+    @Volatile
+    private var lastAclEventTime: Long = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -214,6 +219,10 @@ class BluetoothMonitorService : Service() {
                     return
                 }
 
+                // Stamp ACL event time — profile proxy callbacks check this to avoid
+                // overwriting more-recent ACL-based state with stale proxy results.
+                lastAclEventTime = System.currentTimeMillis()
+
                 when (action) {
                     BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                         Log.i(TAG, "TARGET CAR DISCONNECTED: $deviceName ($deviceAddress)")
@@ -282,6 +291,11 @@ class BluetoothMonitorService : Service() {
             val totalProfiles = profilesToCheck.size
             val completedProfiles = AtomicInteger(0)
             val foundOnAnyProfile = AtomicBoolean(false)
+            // Record when the profile check started — if an ACL event fires during
+            // the async proxy check, the ACL event is more authoritative (real-time
+            // transition vs. point-in-time snapshot). We skip the proxy result if
+            // an ACL event fired after checkStartTime.
+            val checkStartTime = System.currentTimeMillis()
 
             for (profileType in profilesToCheck) {
                 adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
@@ -303,10 +317,15 @@ class BluetoothMonitorService : Service() {
 
                             if (targetDevice != null) {
                                 foundOnAnyProfile.set(true)
-                                val name = try { targetDevice.name } catch (e: SecurityException) { null }
-                                val addr = try { targetDevice.address } catch (e: SecurityException) { null }
-                                Log.i(TAG, "Target device ALREADY CONNECTED on profile $profile: $name ($addr)")
-                                handleConnect(name ?: targetName ?: "Car", addr ?: targetAddress ?: "")
+                                // Skip if an ACL event fired since check started (ACL is authoritative)
+                                if (lastAclEventTime > checkStartTime) {
+                                    Log.i(TAG, "Profile $profile found target but ACL event fired since check started — skipping (ACL is authoritative)")
+                                } else {
+                                    val name = try { targetDevice.name } catch (e: SecurityException) { null }
+                                    val addr = try { targetDevice.address } catch (e: SecurityException) { null }
+                                    Log.i(TAG, "Target device ALREADY CONNECTED on profile $profile: $name ($addr)")
+                                    handleConnect(name ?: targetName ?: "Car", addr ?: targetAddress ?: "")
+                                }
                             }
                         } catch (e: SecurityException) {
                             Log.w(TAG, "SecurityException checking profile $profile: ${e.message}")
@@ -316,13 +335,18 @@ class BluetoothMonitorService : Service() {
                             // After ALL profiles have been checked, if none found
                             // the target device, clear stale connected state.
                             if (completedProfiles.incrementAndGet() == totalProfiles && !foundOnAnyProfile.get()) {
-                                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                                val wasConnected = prefs.getBoolean(KEY_IS_CONNECTED, false)
-                                if (wasConnected) {
-                                    Log.i(TAG, "Profile proxy check complete: target NOT found on any profile. Clearing stale is_connected=true")
-                                    handleDisconnect(targetName ?: "Car", targetAddress ?: "")
+                                // Skip if an ACL event fired since check started (ACL is authoritative)
+                                if (lastAclEventTime > checkStartTime) {
+                                    Log.i(TAG, "Profile proxy complete: target not found, but ACL event fired since check — skipping stale correction")
                                 } else {
-                                    Log.d(TAG, "Profile proxy check complete: target not found (already marked disconnected)")
+                                    val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                    val wasConnected = prefs.getBoolean(KEY_IS_CONNECTED, false)
+                                    if (wasConnected) {
+                                        Log.i(TAG, "Profile proxy check complete: target NOT found on any profile. Clearing stale is_connected=true")
+                                        handleDisconnect(targetName ?: "Car", targetAddress ?: "")
+                                    } else {
+                                        Log.d(TAG, "Profile proxy check complete: target not found (already marked disconnected)")
+                                    }
                                 }
                             }
                         }
@@ -331,11 +355,15 @@ class BluetoothMonitorService : Service() {
                     override fun onServiceDisconnected(profile: Int) {
                         // Count this as completed too (no devices if proxy disconnected)
                         if (completedProfiles.incrementAndGet() == totalProfiles && !foundOnAnyProfile.get()) {
-                            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                            val wasConnected = prefs.getBoolean(KEY_IS_CONNECTED, false)
-                            if (wasConnected) {
-                                Log.i(TAG, "Profile proxy disconnected: target NOT found. Clearing stale is_connected=true")
-                                handleDisconnect(targetName ?: "Car", targetAddress ?: "")
+                            if (lastAclEventTime > checkStartTime) {
+                                Log.i(TAG, "Profile proxy disconnected: ACL event fired since check — skipping")
+                            } else {
+                                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                val wasConnected = prefs.getBoolean(KEY_IS_CONNECTED, false)
+                                if (wasConnected) {
+                                    Log.i(TAG, "Profile proxy disconnected: target NOT found. Clearing stale is_connected=true")
+                                    handleDisconnect(targetName ?: "Car", targetAddress ?: "")
+                                }
                             }
                         }
                     }
