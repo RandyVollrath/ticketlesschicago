@@ -111,10 +111,14 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
 
             BluetoothMonitorService.eventListener = null
 
-            val intent = Intent(reactApplicationContext, BluetoothMonitorService::class.java).apply {
-                action = BluetoothMonitorService.ACTION_STOP
-            }
-            reactApplicationContext.startService(intent)
+            // Use stopService() instead of startService(ACTION_STOP).
+            // startService() with a STOP action creates a race condition:
+            // if startForegroundService(ACTION_START) is called shortly after,
+            // the STOP's stopSelf() tears down the service before the START
+            // can call startForeground(), causing ForegroundServiceDidNotStartInTimeException.
+            // stopService() cleanly destroys the service without these issues.
+            val intent = Intent(reactApplicationContext, BluetoothMonitorService::class.java)
+            reactApplicationContext.stopService(intent)
 
             promise.resolve(true)
         } catch (e: Exception) {
