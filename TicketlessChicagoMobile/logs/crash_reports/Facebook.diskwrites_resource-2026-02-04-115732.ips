@@ -1,0 +1,151 @@
+{"roots_installed":0,"app_name":"Facebook","timestamp":"2026-02-04 11:57:32.00 -0600","app_version":"546.0.0","slice_uuid":"4C4C4409-5555-3144-A16E-73DAE8346AF9","adam_id":"284882215","build_version":"870642032","bundleID":"com.facebook.Facebook","duration_ms":"67409022","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.2.1 (23C71)","distributor_id":"com.apple.AppStore","name":"Facebook","incident_id":"409E447D-D29F-4DED-97F4-7E7C33ABA3C5"}
+Date/Time:        2026-02-03 17:13:58.082 -0600
+End time:         2026-02-04 11:57:27.103 -0600
+OS Version:       iPhone OS 26.2.1 (Build 23C71)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: 409E447D-D29F-4DED-97F4-7E7C33ABA3C5
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     7D35B09A-9AE1-3B69-A2D6-BFC8EDA015E4 slid base address 0x1998b0000, slide 0x198b0000
+
+Command:          Facebook
+Path:             /private/var/containers/Bundle/Application/BD3A07FD-0F05-4E59-94EB-4A020C00F040/Facebook.app/Facebook
+Identifier:       com.facebook.Facebook
+Version:          546.0.0 (870642032)
+Adam ID:          284882215
+Is First Party:   No
+Beta Identifier:  3ED47259-3EA0-48EB-9E36-64A925407F4A
+Resource Coalition: "com.facebook.Facebook"(614)
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+PID:              15473
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.75 MB of file backed memory dirtied over 67409 seconds (15.93 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.75 MB
+Writes duration:  67409s
+Duration:         67409.02s
+Duration Sampled: 0.00s (event starts 67408.61s before samples, event ends 0.41s after samples)
+Steps:            1 (10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 7.26% (410.11 MB / 5650.83 MB)
+
+Time Since Boot:  73183s
+Time Awake Since Boot: 67556s
+Time Since Wake:  29566s
+
+Advisory levels:  Battery -> 2, User -> 3, ThermalPressure -> 0, Combined -> 2
+Free disk space:  16.08 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 62.52% (12505/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY
+OS Cryptex File Extents: 15076
+
+Heaviest stack for the target process:
+  1  ??? (libsystem_pthread.dylib + 2240) [0x1f92838c0]
+  1  ??? (libsystem_pthread.dylib + 5048) [0x1f92843b8]
+  1  ??? (libdispatch.dylib + 85220) [0x1d54d6ce4]
+  1  ??? (libdispatch.dylib + 87020) [0x1d54d73ec]
+  1  ??? (libdispatch.dylib + 44868) [0x1d54ccf44]
+  1  ??? (libdispatch.dylib + 42088) [0x1d54cc468]
+  1  ??? (libdispatch.dylib + 112636) [0x1d54dd7fc]
+  1  ??? (libdispatch.dylib + 6876) [0x1d54c3adc]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 3916156) [0x105fc017c]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 3913456) [0x105fbf6f0]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 9827376) [0x106563430]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10104188) [0x1065a6d7c]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 9135832) [0x1064ba6d8]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10531772) [0x10660f3bc]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10094388) [0x1065a4734]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8741416) [0x10645a228]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8795876) [0x1064676e4]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10455468) [0x1065fc9ac]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8830084) [0x10646fc84]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8827308) [0x10646f1ac]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 14328944) [0x1069ae470]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 9552636) [0x1065202fc]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 6502992) [0x106237a50]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 7719012) [0x106360864]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8919296) [0x106485900]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8919524) [0x1064859e4]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10156180) [0x1065b3894]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 4600108) [0x10606712c]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 7716768) [0x10635ffa0]
+  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 3696844) [0x105f8a8cc]
+  1  ??? (libsystem_c.dylib + 31924) [0x1a81ebcb4]
+  1  ??? (libsystem_kernel.dylib + 26384) [0x24738b710]
+
+
+Powerstats for:   Facebook [15473]
+UUID:             4C4C4409-5555-3144-A16E-73DAE8346AF9
+Path:             /private/var/containers/Bundle/Application/BD3A07FD-0F05-4E59-94EB-4A020C00F040/Facebook.app/Facebook
+Identifier:       com.facebook.Facebook
+Version:          546.0.0 (870642032)
+Adam ID:          284882215
+Is First Party:   No
+Beta Identifier:  3ED47259-3EA0-48EB-9E36-64A925407F4A
+Resource Coalition: 1 sample "com.facebook.Facebook"(614)
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+UID:              501
+Footprint:        241.50 MB
+Start time:       2026-02-04 11:57:26.693 -0600
+End time:         2026-02-04 11:57:26.693 -0600
+Num samples:      1 (100%)
+Num threads:      1
+Primary state:    1 samples Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Default, Requested Thread QoS Default, Override Thread QoS Unspecified, p-core
+User Activity:    0 samples Idle, 1 samples Active
+Power Source:     1 samples on Battery, 0 samples on AC
+  1  ??? (libsystem_pthread.dylib + 2240) [0x1f92838c0]
+    1  ??? (libsystem_pthread.dylib + 5048) [0x1f92843b8]
+      1  ??? (libdispatch.dylib + 85220) [0x1d54d6ce4]
+        1  ??? (libdispatch.dylib + 87020) [0x1d54d73ec]
+          1  ??? (libdispatch.dylib + 44868) [0x1d54ccf44]
+            1  ??? (libdispatch.dylib + 42088) [0x1d54cc468]
+              1  ??? (libdispatch.dylib + 112636) [0x1d54dd7fc]
+                1  ??? (libdispatch.dylib + 6876) [0x1d54c3adc]
+                  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 3916156) [0x105fc017c]
+                    1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 3913456) [0x105fbf6f0]
+                      1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 9827376) [0x106563430]
+                        1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10104188) [0x1065a6d7c]
+                          1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 9135832) [0x1064ba6d8]
+                            1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10531772) [0x10660f3bc]
+                              1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10094388) [0x1065a4734]
+                                1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8741416) [0x10645a228]
+                                  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8795876) [0x1064676e4]
+                                    1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10455468) [0x1065fc9ac]
+                                      1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8830084) [0x10646fc84]
+                                        1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8827308) [0x10646f1ac]
+                                          1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 14328944) [0x1069ae470]
+                                            1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 9552636) [0x1065202fc]
+                                              1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 6502992) [0x106237a50]
+                                                1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 7719012) [0x106360864]
+                                                  1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8919296) [0x106485900]
+                                                    1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 8919524) [0x1064859e4]
+                                                      1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 10156180) [0x1065b3894]
+                                                        1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 4600108) [0x10606712c]
+                                                          1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 7716768) [0x10635ffa0]
+                                                            1  ??? (<4C4C4430-5555-3144-A195-FD0849111588> + 3696844) [0x105f8a8cc]
+                                                              1  ??? (libsystem_c.dylib + 31924) [0x1a81ebcb4]
+                                                                1  ??? (libsystem_kernel.dylib + 26384) [0x24738b710]
+
+  Binary Images:
+           0x104888000 -                ???  com.facebook.Facebook 546.0.0 (870642032) <4C4C4409-5555-3144-A16E-73DAE8346AF9>  /private/var/containers/Bundle/Application/BD3A07FD-0F05-4E59-94EB-4A020C00F040/Facebook.app/Facebook
+           0x105c04000 -                ???  ???                                       <4C4C4430-5555-3144-A195-FD0849111588>
+           0x1a81e4000 -        0x1a82645af  libsystem_c.dylib                         <E2FB0B5B-ED93-35A7-A626-4894601E382B>  /usr/lib/system/libsystem_c.dylib
+           0x1d54c2000 -        0x1d550821f  libdispatch.dylib                         <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1f9283000 -        0x1f928f44f  libsystem_pthread.dylib                   <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x247385000 -        0x2473bfd2b  libsystem_kernel.dylib                    <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib

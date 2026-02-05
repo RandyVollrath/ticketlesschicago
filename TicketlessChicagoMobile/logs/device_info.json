@@ -168,7 +168,7 @@
     "connectionProperties" : {
       "authenticationType" : "manualPairing",
       "isMobileDeviceOnly" : false,
-      "lastConnectionDate" : "2026-02-04T06:21:00.000Z",
+      "lastConnectionDate" : "2026-02-05T03:05:00.000Z",
       "localHostnames" : [
         "Randys-iPhone.coredevice.local",
         "F1CE7526-A9E9-5EBA-B8FA-6EBEDE0BC756.coredevice.local",
@@ -181,7 +181,7 @@
         "00008110-001239311461801E.coredevice.local"
       ],
       "transportType" : "wired",
-      "tunnelIPAddress" : "fd25:9e61:e95b::1",
+      "tunnelIPAddress" : "fdae:fdfb:6835::1",
       "tunnelState" : "connected",
       "tunnelTransportProtocol" : "tcp"
     },
