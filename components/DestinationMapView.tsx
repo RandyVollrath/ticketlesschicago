@@ -53,6 +53,9 @@ export default function DestinationMapView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const touchStartY = useRef(0);
+  const touchMoved = useRef(false);
 
   useEffect(() => {
     if (!containerRef.current || !router.isReady) return;
@@ -279,60 +282,117 @@ export default function DestinationMapView() {
         </div>
       )}
 
-      {/* Legend */}
-      <div style={{
-        position: 'absolute',
-        bottom: '12px',
-        left: '12px',
-        right: '12px',
-        zIndex: 1000,
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        borderRadius: '12px',
-        padding: '12px 16px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-        fontFamily: 'system-ui',
-      }}>
-        <div style={{ fontSize: '11px', fontWeight: '700', color: '#1A1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Parking Restrictions
+      {/* Legend — swipeable: drag down to collapse, tap or swipe up to expand */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '12px',
+          left: '12px',
+          right: '12px',
+          zIndex: 1000,
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          borderRadius: '12px',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          fontFamily: 'system-ui',
+          overflow: 'hidden',
+          transition: 'all 0.25s ease',
+          touchAction: 'none',
+        }}
+        onTouchStart={(e) => {
+          touchStartY.current = e.touches[0].clientY;
+          touchMoved.current = false;
+        }}
+        onTouchMove={(e) => {
+          const dy = e.touches[0].clientY - touchStartY.current;
+          if (Math.abs(dy) > 10) touchMoved.current = true;
+        }}
+        onTouchEnd={(e) => {
+          const dy = e.changedTouches[0].clientY - touchStartY.current;
+          if (touchMoved.current) {
+            // Swipe gesture
+            if (dy > 30) setLegendCollapsed(true);
+            else if (dy < -30) setLegendCollapsed(false);
+          } else {
+            // Tap — toggle
+            setLegendCollapsed((c) => !c);
+          }
+        }}
+      >
+        {/* Drag handle */}
+        <div style={{
+          display: 'flex', justifyContent: 'center', paddingTop: '8px',
+          paddingBottom: legendCollapsed ? '8px' : '0px',
+          cursor: 'pointer',
+        }}>
+          <div style={{
+            width: '32px', height: '4px', borderRadius: '2px',
+            backgroundColor: '#D1D5DB',
+          }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
-          {/* Street cleaning */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningToday, borderRadius: '2px', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>Cleaning today</span>
+
+        {legendCollapsed ? (
+          /* Collapsed: compact row of color dots */
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '6px', paddingBottom: '10px',
+          }}>
+            {[
+              LAYER_COLORS.cleaningToday,
+              LAYER_COLORS.cleaningSoon,
+              LAYER_COLORS.cleaningLater,
+              LAYER_COLORS.snowRoute,
+              LAYER_COLORS.winterBan,
+              LAYER_COLORS.permitZone,
+            ].map((c, i) => (
+              <div key={i} style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                backgroundColor: c, flexShrink: 0,
+              }} />
+            ))}
+            <span style={{ fontSize: '11px', color: '#9CA3AF', marginLeft: '2px' }}>Map Key</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningSoon, borderRadius: '2px', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>Cleaning 1-3 days</span>
+        ) : (
+          /* Expanded: full legend */
+          <div style={{ padding: '4px 16px 12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#1A1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Parking Restrictions
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningToday, borderRadius: '2px', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Cleaning today</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningSoon, borderRadius: '2px', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Cleaning 1-3 days</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningLater, borderRadius: '2px', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Cleaning later</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningNone, borderRadius: '2px', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>No schedule</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.snowRoute, borderRadius: '2px', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Snow ban route</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.winterBan, borderRadius: '2px', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Winter ban route</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '50%', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Permit zone</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.searchPin, borderRadius: '50%', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Your destination</span>
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningLater, borderRadius: '2px', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>Cleaning later</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningNone, borderRadius: '2px', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>No schedule</span>
-          </div>
-          {/* Snow & winter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.snowRoute, borderRadius: '2px', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>2″ Snow ban route</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.winterBan, borderRadius: '2px', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>Winter ban route</span>
-          </div>
-          {/* Permit zone */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '50%', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>Permit zone</span>
-          </div>
-          {/* Search pin */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.searchPin, borderRadius: '50%', flexShrink: 0 }} />
-            <span style={{ color: '#374151' }}>Your destination</span>
-          </div>
-        </div>
+        )}
       </div>
 
       <style>{`
