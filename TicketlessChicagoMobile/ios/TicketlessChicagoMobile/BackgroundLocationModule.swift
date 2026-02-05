@@ -621,9 +621,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Stop continuous GPS to save battery - back to significantChanges only
     stopContinuousGps()
 
-    // Stop CoreMotion to save power while parked.
-    // significantLocationChange will restart it when user moves ~100-500m.
-    stopMotionActivityMonitoring()
+    // KEEP CoreMotion running even while parked!
+    // CoreMotion uses the M-series coprocessor (hardware, ~zero CPU) and is
+    // extremely low power. Stopping it and relying on significantLocationChange
+    // to restart it was causing missed departures: significantLocationChange
+    // only fires on cell tower changes (~100-500m), so short drives or drives
+    // starting near the same cell tower never triggered it, meaning CoreMotion
+    // was never restarted and onDrivingStarted never fired.
+    // By keeping CoreMotion active, we immediately detect the next automotive
+    // activity and can fire the departure event.
+    NSLog("[BackgroundLocation] Keeping CoreMotion active for departure detection (low power)")
   }
 
   // MARK: - Helpers

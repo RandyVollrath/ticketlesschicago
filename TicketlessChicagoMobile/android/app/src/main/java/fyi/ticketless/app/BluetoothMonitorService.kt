@@ -111,53 +111,61 @@ class BluetoothMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // CRITICAL: Android requires startForeground() within ~5 seconds of
-        // startForegroundService(). Call it IMMEDIATELY before any conditional
-        // logic to prevent ForegroundServiceDidNotStartInTimeException crashes.
+        val action = intent?.action
+
+        // For STOP actions sent via regular startService(), we do NOT need to
+        // call startForeground(). Calling it and then immediately stopSelf()
+        // creates a race condition when a START (via startForegroundService)
+        // arrives in the same message loop — the STOP tears down the service
+        // before the START can fulfill its startForeground() contract, causing
+        // ForegroundServiceDidNotStartInTimeException crashes.
+        if (action == ACTION_STOP) {
+            Log.i(TAG, "Stopping BT monitor service")
+            unregisterAclReceiver()
+            // Clear connection state so stale "connected" doesn't persist
+            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                .putBoolean(KEY_IS_CONNECTED, false)
+                .apply()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // For START actions (or null/restart): call startForeground() IMMEDIATELY.
+        // Android requires this within ~5 seconds of startForegroundService().
         try {
             startForeground(NOTIFICATION_ID, buildNotification())
         } catch (e: Exception) {
             Log.e(TAG, "Failed to call startForeground: ${e.message}", e)
         }
 
-        when (intent?.action) {
-            ACTION_STOP -> {
-                Log.i(TAG, "Stopping BT monitor service")
-                unregisterAclReceiver()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-                return START_NOT_STICKY
-            }
-            ACTION_START, null -> {
-                // Extract target device info from intent or SharedPreferences
-                targetAddress = intent?.getStringExtra(EXTRA_DEVICE_ADDRESS)
-                    ?: getStoredTargetAddress()
-                targetName = intent?.getStringExtra(EXTRA_DEVICE_NAME)
-                    ?: getStoredTargetName()
+        // Extract target device info from intent or SharedPreferences
+        targetAddress = intent?.getStringExtra(EXTRA_DEVICE_ADDRESS)
+            ?: getStoredTargetAddress()
+        targetName = intent?.getStringExtra(EXTRA_DEVICE_NAME)
+            ?: getStoredTargetName()
 
-                if (targetAddress != null) {
-                    // Store for persistence across process restarts
-                    storeTargetDevice(targetAddress!!, targetName ?: "Car")
+        if (targetAddress != null) {
+            // Store for persistence across process restarts
+            storeTargetDevice(targetAddress!!, targetName ?: "Car")
 
-                    // Update notification with car name now that we know it
-                    updateNotification("Monitoring ${targetName ?: "your car"}")
+            // Update notification with car name now that we know it
+            updateNotification("Monitoring ${targetName ?: "your car"}")
 
-                    // Register our own ACL BroadcastReceiver
-                    registerAclReceiver()
+            // Register our own ACL BroadcastReceiver
+            registerAclReceiver()
 
-                    // Check if the target device is ALREADY connected right now.
-                    // ACL events only fire on transitions — if the phone was already
-                    // connected before monitoring started, no event will ever come.
-                    checkInitialConnectionState()
+            // Check if the target device is ALREADY connected right now.
+            // ACL events only fire on transitions — if the phone was already
+            // connected before monitoring started, no event will ever come.
+            checkInitialConnectionState()
 
-                    Log.i(TAG, "BT monitor started for: $targetName ($targetAddress)")
-                } else {
-                    Log.w(TAG, "No target device address provided, stopping service")
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
-                    return START_NOT_STICKY
-                }
-            }
+            Log.i(TAG, "BT monitor started for: $targetName ($targetAddress)")
+        } else {
+            Log.w(TAG, "No target device address provided, stopping service")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         // START_STICKY: if the system kills us, restart the service
