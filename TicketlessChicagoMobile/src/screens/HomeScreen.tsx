@@ -22,6 +22,7 @@ import { Button, Card, RuleCard, StatusBadge } from '../components';
 import LocationService, { ParkingCheckResult, ParkingRule, Coordinates } from '../services/LocationService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import BluetoothService from '../services/BluetoothService';
+import ParkingDetectionStateMachine, { ParkingState, ParkingDetectionSnapshot } from '../services/ParkingDetectionStateMachine';
 import MotionActivityService from '../services/MotionActivityService';
 import BackgroundLocationService, { LocationUpdateEvent } from '../services/BackgroundLocationService';
 import { ParkingHistoryService } from './HistoryScreen';
@@ -158,8 +159,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<string>('unknown');
   const [currentConfidence, setCurrentConfidence] = useState<string>('');
-  const [isCarConnected, setIsCarConnected] = useState(false);
-  const [savedCarName, setSavedCarName] = useState<string | null>(null);
+  // On Android, read initial BT state from the state machine (single source of truth).
+  // Falls back to BluetoothService for backward compat until full cutover.
+  const smSnapshot = Platform.OS === 'android' ? ParkingDetectionStateMachine.snapshot : null;
+  const [isCarConnected, setIsCarConnected] = useState(smSnapshot?.isConnectedToCar ?? false);
+  const [savedCarName, setSavedCarName] = useState<string | null>(smSnapshot?.carName ?? null);
+  const [parkingState, setParkingState] = useState<ParkingState>(smSnapshot?.state ?? 'INITIALIZING');
   const [showDetails, setShowDetails] = useState(false);
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [checkingAddress, setCheckingAddress] = useState<string | null>(null);
@@ -209,60 +214,46 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.autoCheck]);
 
-  // Check BT connection status from all available sources
+  // Refresh BT status from state machine (Android) or BluetoothService (legacy/iOS fallback)
   const refreshBtStatus = useCallback(async () => {
     if (Platform.OS !== 'android') return;
-    try {
+
+    // Primary: read from state machine (single source of truth)
+    const snap = ParkingDetectionStateMachine.snapshot;
+    setParkingState(snap.state);
+    setIsCarConnected(snap.isConnectedToCar);
+    if (snap.carName) {
+      setSavedCarName(snap.carName);
+    } else {
+      // State machine may not have carName if not initialized yet — fall back
       const savedDevice = await BluetoothService.getSavedCarDevice();
-      if (!savedDevice) {
-        setSavedCarName(null);
-        setIsCarConnected(false);
-        return;
-      }
-      setSavedCarName(savedDevice.name);
-
-      // Check multiple sources — any one being true means connected:
-      // 1. BluetoothService JS-side state (set by event listeners)
-      let connected = BluetoothService.isConnectedToCar();
-
-      // 2. Query OS-level connected devices directly
-      if (!connected) {
-        connected = await BluetoothService.isConnectedToSavedCar();
-      }
-
-      // 3. Query the native foreground service state (most reliable)
-      if (!connected && BluetoothMonitorModule) {
-        try {
-          connected = await BluetoothMonitorModule.isCarConnected();
-        } catch (e) {
-          // Module may not be ready yet
-        }
-      }
-
-      setIsCarConnected(connected);
-    } catch (error) {
-      log.debug('Error checking Bluetooth status', error);
+      setSavedCarName(savedDevice?.name ?? null);
     }
   }, []);
 
-  // Load saved car name; subscribe to BT events on Android
+  // Subscribe to state machine for real-time updates (Android)
   useEffect(() => {
-    refreshBtStatus();
+    if (Platform.OS !== 'android') return;
 
-    if (Platform.OS === 'android') {
-      const onConnect = () => setIsCarConnected(true);
-      const onDisconnect = () => setIsCarConnected(false);
-      BluetoothService.addConnectionListener(onConnect, onDisconnect);
+    // Subscribe to the state machine — fires immediately with current state
+    const unsubscribe = ParkingDetectionStateMachine.addStateListener((snap: ParkingDetectionSnapshot) => {
+      setParkingState(snap.state);
+      setIsCarConnected(snap.isConnectedToCar);
+      if (snap.carName) {
+        setSavedCarName(snap.carName);
+      }
+    });
 
-      // Re-check after a delay to catch late-initializing native service
-      const recheckTimer = setTimeout(refreshBtStatus, 3000);
+    // Also load saved car name from BluetoothService as fallback
+    // (state machine may not have it if monitoring hasn't started)
+    BluetoothService.getSavedCarDevice().then(device => {
+      if (device?.name && !ParkingDetectionStateMachine.carName) {
+        setSavedCarName(device.name);
+      }
+    });
 
-      return () => {
-        BluetoothService.removeConnectionListener(onConnect, onDisconnect);
-        clearTimeout(recheckTimer);
-      };
-    }
-  }, [isMonitoring, refreshBtStatus]);
+    return unsubscribe;
+  }, [isMonitoring]);
 
   // Reload data when returning from other screens (or from Settings app)
   useEffect(() => {
@@ -1148,24 +1139,42 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             activeOpacity={!savedCarName ? 0.7 : 1}
             accessibilityLabel={
               savedCarName
-                ? isCarConnected
+                ? parkingState === 'DRIVING'
                   ? `Connected to ${savedCarName}`
-                  : `Waiting for ${savedCarName}`
+                  : parkingState === 'PARKING_PENDING'
+                    ? 'Detecting parking'
+                    : parkingState === 'PARKED'
+                      ? `Parked, ${savedCarName} disconnected`
+                      : `Waiting for ${savedCarName}`
                 : 'Pair your car for auto-detection'
             }
             accessibilityRole={!savedCarName ? 'button' : 'text'}
             accessibilityHint={!savedCarName ? 'Opens Bluetooth pairing screen' : undefined}
           >
             <MaterialCommunityIcons
-              name={isCarConnected ? 'bluetooth-connect' : savedCarName ? 'bluetooth-off' : 'bluetooth'}
+              name={
+                parkingState === 'DRIVING' ? 'bluetooth-connect' :
+                parkingState === 'PARKING_PENDING' ? 'car-brake-parking' :
+                parkingState === 'PARKED' ? 'car-brake-parking' :
+                savedCarName ? 'bluetooth-off' : 'bluetooth'
+              }
               size={22}
-              color={isCarConnected ? colors.success : savedCarName ? colors.textTertiary : colors.primary}
+              color={
+                parkingState === 'DRIVING' ? colors.success :
+                parkingState === 'PARKING_PENDING' ? colors.warning :
+                parkingState === 'PARKED' ? colors.primary :
+                savedCarName ? colors.textTertiary : colors.primary
+              }
             />
             <Text style={styles.statusRowText}>
               {savedCarName
-                ? isCarConnected
+                ? parkingState === 'DRIVING'
                   ? `Connected to ${savedCarName}`
-                  : `Waiting for ${savedCarName}`
+                  : parkingState === 'PARKING_PENDING'
+                    ? `Detecting parking...`
+                    : parkingState === 'PARKED'
+                      ? `Parked (${savedCarName} disconnected)`
+                      : `Waiting for ${savedCarName}`
                 : 'Pair your car for auto-detection'}
             </Text>
             {!savedCarName && (
