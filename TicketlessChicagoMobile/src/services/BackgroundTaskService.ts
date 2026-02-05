@@ -2555,14 +2555,9 @@ class BackgroundTaskServiceClass {
       this.state.pendingDepartureConfirmation = null;
       await this.saveState();
 
-      // Only notify user for conclusive departures (car actually drove away)
-      // Inconclusive departures (< 30m) are saved silently — they likely mean
-      // GPS jitter, not actual movement
-      if (isConclusive) {
-        await this.sendDepartureConfirmedNotification(distanceMeters);
-      } else {
-        log.info(`Inconclusive departure (${Math.round(distanceMeters)}m) — saved silently, no notification`);
-      }
+      // Clearance record — always silent. This is proof the car left the spot,
+      // saved to history for ticket contesting. No user notification needed.
+      log.info(`Clearance record saved: ${Math.round(distanceMeters)}m from parking spot, conclusive=${isConclusive}`);
     } catch (error) {
       log.error('Failed to confirm departure', error);
 
@@ -2577,11 +2572,11 @@ class BackgroundTaskServiceClass {
           await this.confirmDeparture();
         }, DEPARTURE_RETRY_DELAY_MS);
       } else {
-        // Max retries exceeded - clear pending and notify user
-        log.warn('Max departure confirmation retries exceeded, giving up');
+        // Max retries exceeded — silently give up. Clearance record is nice-to-have,
+        // not critical enough to bother the user about.
+        log.warn('Max clearance record retries exceeded, giving up');
         this.state.pendingDepartureConfirmation = null;
         await this.saveState();
-        await this.sendDepartureFailedNotification();
       }
     }
   }
@@ -2635,43 +2630,8 @@ class BackgroundTaskServiceClass {
     return (deg * Math.PI) / 180;
   }
 
-  /**
-   * Notify user: departure recorded but still near parking spot
-   * Silent — data is saved to history but no push notification.
-   * Non-conclusive departures (< 100m) happen frequently from BT glitches
-   * near the car and are too noisy as visible notifications.
-   */
-  private async sendDepartureRecordedNotification(distanceMeters: number): Promise<void> {
-    log.info(`Departure recorded (silent): ${distanceMeters}m from parking spot — saved to history`);
-  }
-
-  /**
-   * Notify user: departure tracking failed (all retries exhausted)
-   */
-  private async sendDepartureFailedNotification(): Promise<void> {
-    log.warn('Departure tracking failed — could not record departure location');
-    // Silent — don't bother user with failures
-  }
-
-  /**
-   * Notify user: departure confirmed, car moved significantly from parking spot
-   */
-  private async sendDepartureConfirmedNotification(distanceMeters: number): Promise<void> {
-    log.info(`Departure confirmed: moved ${distanceMeters}m from parking spot`);
-    try {
-      await notifee.displayNotification({
-        title: 'Departure Confirmed',
-        body: `Your car's departure has been recorded. Saved to your history for ticket contesting.`,
-        android: {
-          channelId: 'parking-monitoring',
-          pressAction: { id: 'default' },
-          smallIcon: 'ic_notification',
-        },
-      });
-    } catch (e) {
-      log.debug('Failed to show departure confirmed notification', e);
-    }
-  }
+  // Clearance record notifications removed — this data is saved silently
+  // to history for ticket contesting. No user-facing notifications needed.
 
   /**
    * Manually trigger departure confirmation (if auto failed)
