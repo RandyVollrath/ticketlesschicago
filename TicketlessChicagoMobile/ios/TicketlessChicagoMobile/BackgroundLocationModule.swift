@@ -66,12 +66,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
   private let minDrivingSpeedMps: Double = 2.5           // ~5.6 mph - threshold to START driving state via speed
   private let speedCheckIntervalSec: TimeInterval = 3    // Re-check parking every 3s while speed≈0
-  private let speedZeroOverrideSec: TimeInterval = 10    // Override CoreMotion after 10s of sustained zero speed
+  private let stationaryRadiusMeters: Double = 50        // Consider "same location" if within 50m
+  private let stationaryDurationSec: TimeInterval = 120  // 2 minutes in same spot = definitely parked
 
   // Debounce timer for parking confirmation
   private var parkingConfirmationTimer: Timer?
-  private var speedZeroTimer: Timer?  // GPS speed-based parking trigger (repeating, checks every 5s)
+  private var speedZeroTimer: Timer?  // GPS speed-based parking trigger (repeating, checks every 3s)
   private var speedZeroStartTime: Date?  // When GPS speed first dropped to ≈0 during this driving session
+  private var stationaryLocation: CLLocation?  // Location when we first stopped moving
+  private var stationaryStartTime: Date?  // When we first stopped at stationaryLocation
 
   // After parking, require GPS confirmation before restarting driving (prevents CoreMotion flicker)
   private var hasConfirmedParkingThisSession = false
@@ -209,6 +212,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationAtStopStart = nil
     lastStationaryTime = nil
     speedZeroStartTime = nil
+    stationaryLocation = nil
+    stationaryStartTime = nil
     hasConfirmedParkingThisSession = false
 
     self.log("Monitoring stopped")
@@ -501,39 +506,61 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
          let drivingStart = drivingStartTime,
          Date().timeIntervalSince(drivingStart) >= minDrivingDurationSec,
          speedZeroTimer == nil {
-        // Record when speed first hit zero (if not already set from location capture above)
+        // Record when speed first hit zero
         if speedZeroStartTime == nil {
           speedZeroStartTime = Date()
         }
-        self.log("GPS speed≈0 after \(String(format: "%.0f", Date().timeIntervalSince(drivingStart)))s driving. Starting repeating speed check (every \(speedCheckIntervalSec)s, override at \(speedZeroOverrideSec)s).")
+        // Record location when we first stopped
+        if stationaryLocation == nil {
+          stationaryLocation = location
+          stationaryStartTime = Date()
+          self.log("Stationary location captured: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        }
+
+        self.log("GPS speed≈0 after \(String(format: "%.0f", Date().timeIntervalSince(drivingStart)))s driving. Starting parking check (every \(speedCheckIntervalSec)s).")
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: speedCheckIntervalSec, repeats: true) { [weak self] timer in
           guard let self = self else { timer.invalidate(); return }
 
+          // Check if we've moved significantly — if so, reset stationary tracking
+          if let stationaryLoc = self.stationaryLocation,
+             let currentLoc = self.locationManager.location {
+            let distanceFromStationary = currentLoc.distance(from: stationaryLoc)
+            if distanceFromStationary > self.stationaryRadiusMeters {
+              // Moved more than 50m — reset stationary tracking (still at a red light, creeping forward)
+              self.stationaryLocation = currentLoc
+              self.stationaryStartTime = Date()
+              self.log("Moved \(String(format: "%.0f", distanceFromStationary))m — resetting stationary location")
+            }
+          }
+
           if self.speedSaysMoving {
-            self.log("Speed check: speed resumed. Cancelling (was a red light).")
+            self.log("Speed check: speed resumed. Cancelling parking check (was a red light).")
             timer.invalidate()
             self.speedZeroTimer = nil
             self.speedZeroStartTime = nil
+            self.stationaryLocation = nil
+            self.stationaryStartTime = nil
             return
           }
 
           let zeroDuration = self.speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
+          let stationaryDuration = self.stationaryStartTime.map { Date().timeIntervalSince($0) } ?? 0
 
           if !self.coreMotionSaysAutomotive {
-            // CoreMotion agrees user is not in a vehicle — confirm immediately
-            self.log("Speed-based parking confirmed after \(String(format: "%.0f", zeroDuration))s (CoreMotion agrees).")
+            // CoreMotion agrees user is not in a vehicle — confirm parking
+            self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion agrees (not automotive)")
             timer.invalidate()
             self.speedZeroTimer = nil
-            self.confirmParking(source: "gps_speed")
-          } else if zeroDuration >= self.speedZeroOverrideSec {
-            // CoreMotion still says automotive but speed has been 0 for 15+ seconds.
-            // This is not a red light — engine is off, CoreMotion is just slow to update.
-            self.log("Speed-based parking confirmed after \(String(format: "%.0f", zeroDuration))s (CoreMotion override — sustained zero speed).")
+            self.confirmParking(source: "gps_coremotion_agree")
+          } else if stationaryDuration >= self.stationaryDurationSec {
+            // Been in same 50m radius for 2+ minutes — this is definitively parking.
+            // You don't sit in the same spot for 2 minutes at a red light.
+            self.log("Parking confirmed: stationary within \(self.stationaryRadiusMeters)m for \(String(format: "%.0f", stationaryDuration))s (location-based override)")
             timer.invalidate()
             self.speedZeroTimer = nil
-            self.confirmParking(source: "gps_speed_override")
+            self.confirmParking(source: "location_stationary")
           } else {
-            self.log("Speed≈0 for \(String(format: "%.0f", zeroDuration))s but CoreMotion still automotive. Waiting... (override at \(self.speedZeroOverrideSec)s)")
+            self.log("Speed≈0 for \(String(format: "%.0f", zeroDuration))s, stationary for \(String(format: "%.0f", stationaryDuration))s, but CoreMotion still automotive. Waiting...")
           }
         }
       }
@@ -691,7 +718,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // If CoreMotion still reports automotive (engine running / vehicle vibrations),
     // abort parking confirmation — UNLESS this is a speed override (15s of zero speed
     // means the engine is off, CoreMotion is just slow to update).
-    if coreMotionSaysAutomotive && source != "gps_speed_override" {
+    // Also allow "location_stationary" — if in same spot for 2+ min, that's definitely parking.
+    if coreMotionSaysAutomotive && source != "location_stationary" {
       self.log("CoreMotion still says automotive — aborting parking confirmation (source: \(source))")
       lastStationaryTime = nil
       locationAtStopStart = nil
@@ -759,6 +787,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastStationaryTime = nil
     locationAtStopStart = nil
     speedZeroStartTime = nil
+    stationaryLocation = nil
+    stationaryStartTime = nil
     // lastDrivingLocation intentionally kept after parking - it's the parking spot reference.
     // It gets cleared when the NEXT drive starts (see isDriving=true transitions).
 
