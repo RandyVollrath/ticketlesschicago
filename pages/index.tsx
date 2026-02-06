@@ -142,7 +142,7 @@ export default function LandingPage() {
   const faqs = [
     {
       q: "How does it work?",
-      a: "Add your license plate, and we check Chicago's database weekly. When we find a ticket, we automatically generate and mail a contest letter on your behalf."
+      a: "Add your license plate, and we check Chicago's database twice a week. When we find a ticket, we automatically generate and mail a contest letter on your behalf."
     },
     {
       q: "Is this legal?",
@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "Based on 1.2M contested tickets: expired plates have 75% dismissal, no city sticker 70%, expired meters 67%. Camera tickets are lower at 16-20%."
+      a: "Based on 1.2M contested tickets: expired plates have 75% dismissal, no city sticker 70%, expired meters 67%. Camera tickets are lower at 18-20%."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -158,7 +158,7 @@ export default function LandingPage() {
     },
     {
       q: "What if the ticket isn't dismissed?",
-      a: "While we have a high success rate, we can't guarantee every dismissal. If lost, you simply pay the original fine. We ensure you never miss a deadline."
+      a: "We can't guarantee every dismissal. If lost, you simply pay the original fine. We ensure you never miss a deadline."
     },
   ];
 
@@ -332,7 +332,7 @@ export default function LandingPage() {
           margin: '0 auto 40px',
           lineHeight: 1.6
         }}>
-          Autopilot monitors your Chicago license plate weekly — parking tickets, red light cameras, and speed cameras. When a ticket hits, we automatically mail the contest letter. <strong style={{ color: '#fff' }}>54% average dismissal rate.</strong>
+          Autopilot monitors your Chicago license plate twice a week for city tickets. When one hits, we automatically mail the contest letter.
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -452,87 +452,6 @@ export default function LandingPage() {
             </div>
           </div>
         </Link>
-      </section>
-
-      {/* Camera Enforcement Section */}
-      <section style={{
-        padding: '0 5%',
-        maxWidth: '1200px',
-        margin: '0 auto 20px',
-      }}>
-        <div style={{
-          backgroundColor: COLORS.primary,
-          borderRadius: '16px',
-          padding: '40px 32px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '32px',
-          alignItems: 'center',
-        }}>
-          <div style={{ flex: '1 1 300px' }}>
-            <div style={{
-              display: 'inline-block',
-              padding: '6px 12px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              fontSize: '12px',
-              fontWeight: 700,
-              color: COLORS.danger,
-              letterSpacing: '0.5px',
-            }}>
-              CAMERA ENFORCEMENT
-            </div>
-            <h3 style={{
-              fontFamily: FONTS.heading,
-              fontSize: '24px',
-              fontWeight: 700,
-              color: '#fff',
-              margin: '0 0 12px 0',
-              lineHeight: 1.3,
-            }}>
-              Red light &amp; speed cameras cost Chicago drivers $100M+ per year
-            </h3>
-            <p style={{ color: '#94A3B8', margin: 0, lineHeight: 1.6, fontSize: '15px' }}>
-              We monitor for red light camera tickets ($100 each) and speed camera tickets ($35-$100 each) alongside parking violations. When we find one, we contest it automatically.
-            </p>
-          </div>
-          <div style={{
-            flex: '1 1 250px',
-            display: 'flex',
-            gap: '16px',
-          }}>
-            <div style={{
-              flex: 1,
-              backgroundColor: 'rgba(255,255,255,0.08)',
-              borderRadius: '12px',
-              padding: '20px',
-              textAlign: 'center',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.danger} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}>
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#fff', fontFamily: FONTS.heading }}>20%</div>
-              <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px' }}>Red light dismissal</div>
-            </div>
-            <div style={{
-              flex: 1,
-              backgroundColor: 'rgba(255,255,255,0.08)',
-              borderRadius: '12px',
-              padding: '20px',
-              textAlign: 'center',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.highlight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}>
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-              </svg>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#fff', fontFamily: FONTS.heading }}>18%</div>
-              <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px' }}>Speed camera dismissal</div>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* Data Section */}
