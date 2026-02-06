@@ -683,7 +683,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     // Show last parking result if available and we're not currently driving
     if (lastParkingCheck) {
-      return lastParkingCheck.rules.length > 0 ? 'violation' : 'clear';
+      // Only show 'violation' (red) if there are critical/warning rules.
+      // Info-only rules (e.g., permit zone outside enforcement hours) show green.
+      const hasUrgentRules = lastParkingCheck.rules.some(
+        r => r.severity === 'critical' || r.severity === 'warning'
+      );
+      return hasUrgentRules ? 'violation' : 'clear';
     }
 
     return 'ready';
