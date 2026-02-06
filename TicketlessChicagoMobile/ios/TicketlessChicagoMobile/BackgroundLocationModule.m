@@ -21,4 +21,11 @@ RCT_EXTERN_METHOD(getStatus:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(getLastDrivingLocation:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getDebugLogs:(int)lineCount
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(clearDebugLogs:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end
