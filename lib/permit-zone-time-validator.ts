@@ -238,23 +238,39 @@ export function validatePermitZone(
     hoursUntilNext = 0;
   }
 
-  // Determine severity
+  // Determine severity based on user's color scheme:
+  // - Critical (red): At risk NOW or within 10 minutes
+  // - Warning (orange): Restriction starts later TODAY (10 min to midnight)
+  // - Info (green): Restriction is tomorrow or later
   let severity: 'critical' | 'warning' | 'info' | 'none' = 'none';
-  if (isRestricted) {
-    severity = 'critical'; // Parking now requires permit
-  } else if (hoursUntilNext <= 2) {
-    severity = 'warning'; // Restriction starting soon
-  } else if (hoursUntilNext <= 24) {
-    severity = 'info'; // Restriction upcoming
+  const TEN_MINUTES_IN_HOURS = 10 / 60; // ~0.167 hours
+
+  // Check if next restriction is TODAY (same calendar day in Chicago)
+  const chicagoNow = getChicagoTime();
+  const isRestrictionToday = nextStart &&
+    nextStart.getFullYear() === chicagoNow.getFullYear() &&
+    nextStart.getMonth() === chicagoNow.getMonth() &&
+    nextStart.getDate() === chicagoNow.getDate();
+
+  if (isRestricted || hoursUntilNext <= TEN_MINUTES_IN_HOURS) {
+    severity = 'critical'; // At risk NOW or within 10 minutes
+  } else if (isRestrictionToday) {
+    severity = 'warning'; // Restriction later TODAY
+  } else if (hoursUntilNext < 999) {
+    severity = 'info'; // Restriction is tomorrow or later
   }
 
   // Build message
   let message = '';
+  const minutesUntilNext = Math.round(hoursUntilNext * 60);
   if (isRestricted) {
-    message = `🅿️ PERMIT REQUIRED NOW in ${zoneName} - ${activeRestriction.description}`;
-  } else if (hoursUntilNext <= 2) {
-    message = `⚠️ Permit required in ${hoursUntilNext} hours - ${zoneName}`;
-  } else if (hoursUntilNext <= 24) {
+    message = `🅿️ PERMIT REQUIRED NOW in ${zoneName} - ${activeRestriction!.description}`;
+  } else if (hoursUntilNext <= TEN_MINUTES_IN_HOURS) {
+    message = `🚨 Permit required in ${minutesUntilNext} minutes! - ${zoneName}`;
+  } else if (isRestrictionToday) {
+    const hoursRounded = Math.round(hoursUntilNext * 10) / 10;
+    message = `⚠️ Permit required in ${hoursRounded}h today - ${zoneName}`;
+  } else if (hoursUntilNext < 999) {
     message = `ℹ️ Permit zone ${zoneName} - ${restrictionSchedule}`;
   } else {
     message = `Permit zone ${zoneName} - No current restrictions`;

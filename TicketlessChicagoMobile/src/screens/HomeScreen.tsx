@@ -45,7 +45,7 @@ type HomeScreenRouteParams = {
 // ──────────────────────────────────────────────────────
 // Hero Card States
 // ──────────────────────────────────────────────────────
-type HeroState = 'ready' | 'driving' | 'checking' | 'clear' | 'violation' | 'paused';
+type HeroState = 'ready' | 'driving' | 'checking' | 'clear' | 'upcoming' | 'violation' | 'paused';
 
 interface HeroConfig {
   icon: string;
@@ -86,6 +86,15 @@ const getHeroConfig = (
         title: 'All clear',
         subtitle: address || 'No restrictions here',
         bgColor: colors.success,
+        iconColor: colors.white,
+        textColor: colors.white,
+      };
+    case 'upcoming':
+      return {
+        icon: 'clock-alert-outline',
+        title: `${ruleCount} upcoming restriction${ruleCount > 1 ? 's' : ''}`,
+        subtitle: address || 'Check back later today',
+        bgColor: colors.warning, // Orange
         iconColor: colors.white,
         textColor: colors.white,
       };
@@ -683,12 +692,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     // Show last parking result if available and we're not currently driving
     if (lastParkingCheck) {
-      // Only show 'violation' (red) if there are critical/warning rules.
-      // Info-only rules (e.g., permit zone outside enforcement hours) show green.
-      const hasUrgentRules = lastParkingCheck.rules.some(
-        r => r.severity === 'critical' || r.severity === 'warning'
-      );
-      return hasUrgentRules ? 'violation' : 'clear';
+      // Determine hero state based on highest severity rule:
+      // - 'violation' (red): critical rules (at risk NOW or within 10 min)
+      // - 'upcoming' (orange): warning rules (restriction later TODAY)
+      // - 'clear' (green): info rules only (restriction tomorrow+) or no rules
+      const hasCriticalRules = lastParkingCheck.rules.some(r => r.severity === 'critical');
+      const hasWarningRules = lastParkingCheck.rules.some(r => r.severity === 'warning');
+
+      if (hasCriticalRules) {
+        return 'violation'; // Red - at risk now or within 10 min
+      } else if (hasWarningRules) {
+        return 'upcoming'; // Orange - restriction later today
+      } else {
+        return 'clear'; // Green - safe for today (may have info rules for tomorrow)
+      }
     }
 
     return 'ready';
@@ -921,14 +938,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             (heroState === 'ready' || heroState === 'paused') && styles.heroCardBorder,
           ]}
           onPress={() => {
-            if (heroState === 'clear' || heroState === 'violation') {
+            if (heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation') {
               setShowDetails(!showDetails);
             }
           }}
-          activeOpacity={heroState === 'clear' || heroState === 'violation' ? 0.8 : 1}
+          activeOpacity={heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation' ? 0.8 : 1}
           accessibilityLabel={`${heroConfig.title}. ${heroConfig.subtitle}`}
-          accessibilityRole={heroState === 'clear' || heroState === 'violation' ? 'button' : 'summary'}
-          accessibilityHint={heroState === 'clear' || heroState === 'violation' ? 'Double tap to toggle details' : undefined}
+          accessibilityRole={heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation' ? 'button' : 'summary'}
+          accessibilityHint={heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation' ? 'Double tap to toggle details' : undefined}
         >
           <View style={styles.heroContent}>
             <View style={[
@@ -954,7 +971,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 {heroConfig.subtitle}
               </Text>
             </View>
-            {(heroState === 'clear' || heroState === 'violation') && (
+            {(heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation') && (
               <MaterialCommunityIcons
                 name={showDetails ? 'chevron-up' : 'chevron-down'}
                 size={20}
@@ -965,7 +982,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
 
           {/* Parking timer — show elapsed time since parking check */}
-          {lastParkingCheck && (heroState === 'clear' || heroState === 'violation') && (
+          {lastParkingCheck && (heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation') && (
             <View style={styles.heroTimerRow}>
               <View style={styles.heroTimerBadge}>
                 <MaterialCommunityIcons name="timer-outline" size={12} color={heroConfig.textColor} />
@@ -983,7 +1000,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
 
           {/* Stale result info — show how long ago the check was */}
-          {lastParkingCheck && (heroState === 'clear' || heroState === 'violation') &&
+          {lastParkingCheck && (heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation') &&
            (currentTime.getTime() - lastParkingCheck.timestamp > 2 * 60 * 60 * 1000) && (
             <View
               style={styles.staleInfo}
@@ -997,7 +1014,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
 
           {/* Driving overlay badge — show only when no parking result */}
-          {isDriving && heroState !== 'clear' && heroState !== 'violation' && (
+          {isDriving && heroState !== 'clear' && heroState !== 'upcoming' && heroState !== 'violation' && (
             <View style={[styles.drivingBadge, { marginTop: spacing.sm }]}>
               <MaterialCommunityIcons name="car" size={12} color={colors.white} />
               <Text style={styles.drivingBadgeText}>Driving</Text>
