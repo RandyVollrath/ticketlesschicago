@@ -2051,10 +2051,21 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Manually trigger a parking check
+   * Manually trigger a parking check.
+   * After a successful check, transitions state machine to PARKED so that
+   * departure tracking works when the user drives away.
    */
   async manualParkingCheck(): Promise<void> {
     await this.triggerParkingCheck();
+
+    // Set state to PARKED so that when the user drives away, the PARKED→DRIVING
+    // transition fires and departure is recorded. Without this, manual checks
+    // leave the state machine in IDLE, and departure is never captured.
+    if (Platform.OS === 'android') {
+      ParkingDetectionStateMachine.manualParkingConfirmed();
+    }
+    // Note: iOS uses CoreMotion which tracks driving state independently,
+    // so this is primarily needed for Android's BT-based detection.
   }
 
   /**
