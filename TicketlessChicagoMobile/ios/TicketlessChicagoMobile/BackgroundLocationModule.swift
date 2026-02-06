@@ -368,7 +368,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           // After parking: require GPS confirmation to prevent CoreMotion flicker from
           // falsely restarting "Driving" state while user is stationary.
           if self.hasConfirmedParkingThisSession && !self.speedSaysMoving {
-            self.log("CoreMotion says automotive but GPS speed ≈ 0 — NOT restarting drive (post-parking safety)")
+            // BUT: We must start GPS to GET speed updates! Otherwise we're stuck:
+            // - No GPS running (stopped after parking to save power)
+            // - speedSaysMoving stays false forever (no GPS = no speed updates)
+            // - Driving never detected, departure never recorded
+            // Start GPS now; once it reports speed > threshold, speedSaysMoving
+            // will become true and the NEXT CoreMotion automotive event will
+            // pass this check and set isDriving = true.
+            if !self.continuousGpsActive {
+              self.log("CoreMotion says automotive but GPS speed unknown — starting GPS to verify")
+              self.startContinuousGps()
+            }
+            self.log("CoreMotion says automotive but GPS speed ≈ 0 — waiting for GPS speed confirmation")
             return
           }
 
