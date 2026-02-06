@@ -10,6 +10,46 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let activityManager = CMMotionActivityManager()
   private var isMonitoring = false
 
+  // File-based logging for debugging (NSLog doesn't appear in syslog reliably)
+  private var logFileHandle: FileHandle?
+  private let logFileName = "parking_detection.log"
+  private let dateFormatter: DateFormatter = {
+    let df = DateFormatter()
+    df.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+    return df
+  }()
+
+  private func log(_ message: String) {
+    let timestamp = dateFormatter.string(from: Date())
+    let logLine = "[\(timestamp)] \(message)\n"
+
+    // Also NSLog for Xcode console
+    NSLog("[BackgroundLocation] %@", message)
+
+    // Write to file
+    if let data = logLine.data(using: .utf8) {
+      logFileHandle?.write(data)
+      logFileHandle?.synchronizeFile()  // Flush immediately
+    }
+  }
+
+  private func setupLogFile() {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    guard let documentsDirectory = paths.first else { return }
+    let logFileURL = documentsDirectory.appendingPathComponent(logFileName)
+
+    // Create or append to log file
+    if !FileManager.default.fileExists(atPath: logFileURL.path) {
+      FileManager.default.createFile(atPath: logFileURL.path, contents: nil, attributes: nil)
+    }
+
+    logFileHandle = try? FileHandle(forWritingTo: logFileURL)
+    logFileHandle?.seekToEndOfFile()
+
+    log("=== Log file opened ===")
+    log("Log path: \(logFileURL.path)")
+  }
+
   // Driving state tracking
   private var isDriving = false
   private var coreMotionSaysAutomotive = false  // True when CoreMotion chip reports automotive
@@ -33,15 +73,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var speedZeroTimer: Timer?  // GPS speed-based parking trigger (repeating, checks every 5s)
   private var speedZeroStartTime: Date?  // When GPS speed first dropped to ≈0 during this driving session
 
+  // After parking, require GPS confirmation before restarting driving (prevents CoreMotion flicker)
+  private var hasConfirmedParkingThisSession = false
+
 
   override init() {
     super.init()
+    setupLogFile()
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
     locationManager.allowsBackgroundLocationUpdates = true
     locationManager.pausesLocationUpdatesAutomatically = false
     locationManager.showsBackgroundLocationIndicator = true
     locationManager.distanceFilter = 10 // meters
+    log("BackgroundLocationModule initialized")
   }
 
   @objc override static func requiresMainQueueSetup() -> Bool {
@@ -101,7 +146,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     // Warn if only "When In Use" - background detection needs "Always"
     if status == .authorizedWhenInUse {
-      NSLog("[BackgroundLocation] WARNING: Only 'When In Use' permission. Background parking detection REQUIRES 'Always'. Requesting upgrade...")
+      self.log("WARNING: Only 'When In Use' permission. Background parking detection REQUIRES 'Always'. Requesting upgrade...")
       locationManager.requestAlwaysAuthorization()
       // Continue starting anyway - it will work in foreground at least
     }
@@ -119,12 +164,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Start CoreMotion - this is the primary driving detection.
     // Runs on the M-series coprocessor, nearly zero battery.
     let coreMotionAvailable = CMMotionActivityManager.isActivityAvailable()
-    NSLog("[BackgroundLocation] CoreMotion available: \(coreMotionAvailable)")
+    self.log("CoreMotion available: \(coreMotionAvailable)")
     if coreMotionAvailable {
       startMotionActivityMonitoring()
-      NSLog("[BackgroundLocation] CoreMotion activity monitoring started")
+      self.log("CoreMotion activity monitoring started")
     } else {
-      NSLog("[BackgroundLocation] WARNING: CoreMotion NOT available on this device")
+      self.log("WARNING: CoreMotion NOT available on this device")
     }
 
     // Do NOT start continuous GPS yet - wait until CoreMotion detects driving.
@@ -141,7 +186,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     case .restricted: authString = "RESTRICTED"
     @unknown default: authString = "UNKNOWN"
     }
-    NSLog("[BackgroundLocation] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=\(authString), coreMotion=\(coreMotionAvailable))")
+    self.log("Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=\(authString), coreMotion=\(coreMotionAvailable))")
     resolve(true)
   }
 
@@ -164,8 +209,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationAtStopStart = nil
     lastStationaryTime = nil
     speedZeroStartTime = nil
+    hasConfirmedParkingThisSession = false
 
-    NSLog("[BackgroundLocation] Monitoring stopped")
+    self.log("Monitoring stopped")
     resolve(true)
   }
 
@@ -191,6 +237,43 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
 
     resolve(result)
+  }
+
+  /// Get the debug log file contents (last N lines)
+  @objc func getDebugLogs(_ lineCount: Int, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    guard let documentsDirectory = paths.first else {
+      resolve("")
+      return
+    }
+    let logFileURL = documentsDirectory.appendingPathComponent(logFileName)
+
+    guard let content = try? String(contentsOf: logFileURL, encoding: .utf8) else {
+      resolve("")
+      return
+    }
+
+    // Return last N lines
+    let lines = content.components(separatedBy: "\n")
+    let lastLines = lines.suffix(lineCount > 0 ? lineCount : 100)
+    resolve(lastLines.joined(separator: "\n"))
+  }
+
+  /// Clear the debug log file
+  @objc func clearDebugLogs(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    guard let documentsDirectory = paths.first else {
+      resolve(false)
+      return
+    }
+    let logFileURL = documentsDirectory.appendingPathComponent(logFileName)
+
+    // Close and reopen to truncate
+    logFileHandle?.closeFile()
+    try? "".write(to: logFileURL, atomically: true, encoding: .utf8)
+    logFileHandle = try? FileHandle(forWritingTo: logFileURL)
+    log("=== Log file cleared ===")
+    resolve(true)
   }
 
   /// Get the last known driving location (probable parking spot)
@@ -219,7 +302,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationManager.distanceFilter = kCLDistanceFilterNone
     locationManager.startUpdatingLocation()
     continuousGpsActive = true
-    NSLog("[BackgroundLocation] Continuous GPS ON (driving detected, distanceFilter=none)")
+    self.log("Continuous GPS ON (driving detected, distanceFilter=none)")
   }
 
   /// Stop continuous GPS (called after parking confirmed)
@@ -230,14 +313,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Restore distance filter to save power when not actively driving
     locationManager.distanceFilter = 10
     continuousGpsActive = false
-    NSLog("[BackgroundLocation] Continuous GPS OFF (saving battery, distanceFilter=10m)")
+    self.log("Continuous GPS OFF (saving battery, distanceFilter=10m)")
   }
 
   // MARK: - CoreMotion: Primary Driving Detection
 
   private func startMotionActivityMonitoring() {
     guard !coreMotionActive else {
-      NSLog("[BackgroundLocation] CoreMotion already active, skipping restart")
+      self.log("CoreMotion already active, skipping restart")
       return
     }
     coreMotionActive = true
@@ -245,7 +328,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       guard let self = self, let activity = activity else { return }
 
       // Log every CoreMotion update for diagnostics
-      NSLog("[BackgroundLocation] CoreMotion update: automotive=\(activity.automotive) stationary=\(activity.stationary) walking=\(activity.walking) confidence=\(self.confidenceString(activity.confidence))")
+      self.log("CoreMotion update: automotive=\(activity.automotive) stationary=\(activity.stationary) walking=\(activity.walking) confidence=\(self.confidenceString(activity.confidence))")
 
       if activity.automotive {
         // ---- DRIVING ----
@@ -267,23 +350,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           self.speedZeroStartTime = nil
           self.lastStationaryTime = nil
           self.locationAtStopStart = nil
-          NSLog("[BackgroundLocation] CoreMotion automotive + GPS moving — cancelled parking timers")
+          self.log("CoreMotion automotive + GPS moving — cancelled parking timers")
         } else if self.parkingConfirmationTimer != nil || self.speedZeroTimer != nil {
           // GPS says speed ≈ 0 but CoreMotion says automotive — CoreMotion is probably wrong.
           // Keep parking timers running. The user is likely stationary.
-          NSLog("[BackgroundLocation] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)")
+          self.log("CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)")
         }
 
         if !self.isDriving {
-          // GPS SPEED VETO for starting new drive: If GPS says speed ≈ 0, don't
-          // start a new driving session just because CoreMotion flickered to automotive.
-          // This prevents false departure detection while walking away from the car.
-          if !self.speedSaysMoving {
-            NSLog("[BackgroundLocation] CoreMotion says automotive but GPS speed ≈ 0 — NOT starting new drive (waiting for GPS confirmation)")
+          // GPS SPEED VETO: Only applies AFTER parking has been confirmed this session.
+          // First drive: trust CoreMotion alone (it's the authority on vehicle detection).
+          // After parking: require GPS confirmation to prevent CoreMotion flicker from
+          // falsely restarting "Driving" state while user is stationary.
+          if self.hasConfirmedParkingThisSession && !self.speedSaysMoving {
+            self.log("CoreMotion says automotive but GPS speed ≈ 0 — NOT restarting drive (post-parking safety)")
             return
           }
 
-          // Both CoreMotion AND GPS agree — start driving (no delay needed)
           self.isDriving = true
           self.drivingStartTime = Date()
           // Clear previous parking spot — this is a NEW drive.
@@ -305,10 +388,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
              Date().timeIntervalSince(lastLoc.timestamp) < 60 {  // Within last minute
             departureTimestamp = lastLoc.timestamp.timeIntervalSince1970 * 1000
             departureSource = "coremotion_gps_adjusted"
-            NSLog("[BackgroundLocation] Using GPS timestamp for departure: \(lastLoc.timestamp) (speed: \(String(format: "%.1f", lastLoc.speed)) m/s)")
+            self.log("Using GPS timestamp for departure: \(lastLoc.timestamp) (speed: \(String(format: "%.1f", lastLoc.speed)) m/s)")
           }
 
-          NSLog("[BackgroundLocation] Driving started (CoreMotion automotive + GPS moving, confidence: \(self.confidenceString(activity.confidence)), source: \(departureSource))")
+          self.log("Driving started (CoreMotion automotive + GPS moving, confidence: \(self.confidenceString(activity.confidence)), source: \(departureSource))")
           self.sendEvent(withName: "onDrivingStarted", body: [
             "timestamp": departureTimestamp,
             "source": departureSource,
@@ -330,11 +413,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           // Snapshot the location RIGHT NOW - this is the parking spot.
           if self.locationAtStopStart == nil {
             self.locationAtStopStart = self.lastDrivingLocation ?? self.locationManager.location
-            NSLog("[BackgroundLocation] Car stop location captured: \(self.locationAtStopStart?.coordinate.latitude ?? 0), \(self.locationAtStopStart?.coordinate.longitude ?? 0)")
+            self.log("Car stop location captured: \(self.locationAtStopStart?.coordinate.latitude ?? 0), \(self.locationAtStopStart?.coordinate.longitude ?? 0)")
           }
 
           let isWalking = activity.walking
-          NSLog("[BackgroundLocation] Exited vehicle (CoreMotion: \(activity.stationary ? "stationary" : "walking"), confidence: \(self.confidenceString(activity.confidence)))")
+          self.log("Exited vehicle (CoreMotion: \(activity.stationary ? "stationary" : "walking"), confidence: \(self.confidenceString(activity.confidence)))")
           self.handlePotentialParking(userIsWalking: isWalking)
         }
       }
@@ -349,7 +432,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     guard coreMotionActive else { return }
     activityManager.stopActivityUpdates()
     coreMotionActive = false
-    NSLog("[BackgroundLocation] CoreMotion activity updates STOPPED (parked, saving power)")
+    self.log("CoreMotion activity updates STOPPED (parked, saving power)")
   }
 
   // MARK: - CLLocationManagerDelegate
@@ -367,7 +450,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // significantLocationChange fired, meaning user moved ~100-500m,
       // so they may be starting a new drive.
       if !coreMotionActive && CMMotionActivityManager.isActivityAvailable() {
-        NSLog("[BackgroundLocation] significantLocationChange woke us — restarting CoreMotion")
+        self.log("significantLocationChange woke us — restarting CoreMotion")
         startMotionActivityMonitoring()
       }
       checkForMissedParking(currentLocation: location)
@@ -393,7 +476,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // "in a vehicle" vs "walking". GPS speed is used as a sanity check
       // to prevent CoreMotion flicker from falsely triggering driving.
       if !isDriving && !coreMotionSaysAutomotive {
-        NSLog("[BackgroundLocation] GPS speed > threshold (\(String(format: "%.1f", speed)) m/s) but CoreMotion not automotive — waiting for CoreMotion")
+        self.log("GPS speed > threshold (\(String(format: "%.1f", speed)) m/s) but CoreMotion not automotive — waiting for CoreMotion")
       }
     } else if speed >= 0 && speed <= 0.5 {
       speedSaysMoving = false
@@ -403,7 +486,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // user walks away. Don't wait for CoreMotion confirmation.
       if isDriving && locationAtStopStart == nil {
         locationAtStopStart = lastDrivingLocation ?? location
-        NSLog("[BackgroundLocation] GPS speed≈0 while driving. Captured stop location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        self.log("GPS speed≈0 while driving. Captured stop location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
       }
 
       // Start GPS speed-based parking timer: repeating check every 3 seconds.
@@ -422,12 +505,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         if speedZeroStartTime == nil {
           speedZeroStartTime = Date()
         }
-        NSLog("[BackgroundLocation] GPS speed≈0 after \(String(format: "%.0f", Date().timeIntervalSince(drivingStart)))s driving. Starting repeating speed check (every \(speedCheckIntervalSec)s, override at \(speedZeroOverrideSec)s).")
+        self.log("GPS speed≈0 after \(String(format: "%.0f", Date().timeIntervalSince(drivingStart)))s driving. Starting repeating speed check (every \(speedCheckIntervalSec)s, override at \(speedZeroOverrideSec)s).")
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: speedCheckIntervalSec, repeats: true) { [weak self] timer in
           guard let self = self else { timer.invalidate(); return }
 
           if self.speedSaysMoving {
-            NSLog("[BackgroundLocation] Speed check: speed resumed. Cancelling (was a red light).")
+            self.log("Speed check: speed resumed. Cancelling (was a red light).")
             timer.invalidate()
             self.speedZeroTimer = nil
             self.speedZeroStartTime = nil
@@ -438,19 +521,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
           if !self.coreMotionSaysAutomotive {
             // CoreMotion agrees user is not in a vehicle — confirm immediately
-            NSLog("[BackgroundLocation] Speed-based parking confirmed after \(String(format: "%.0f", zeroDuration))s (CoreMotion agrees).")
+            self.log("Speed-based parking confirmed after \(String(format: "%.0f", zeroDuration))s (CoreMotion agrees).")
             timer.invalidate()
             self.speedZeroTimer = nil
             self.confirmParking(source: "gps_speed")
           } else if zeroDuration >= self.speedZeroOverrideSec {
             // CoreMotion still says automotive but speed has been 0 for 15+ seconds.
             // This is not a red light — engine is off, CoreMotion is just slow to update.
-            NSLog("[BackgroundLocation] Speed-based parking confirmed after \(String(format: "%.0f", zeroDuration))s (CoreMotion override — sustained zero speed).")
+            self.log("Speed-based parking confirmed after \(String(format: "%.0f", zeroDuration))s (CoreMotion override — sustained zero speed).")
             timer.invalidate()
             self.speedZeroTimer = nil
             self.confirmParking(source: "gps_speed_override")
           } else {
-            NSLog("[BackgroundLocation] Speed≈0 for \(String(format: "%.0f", zeroDuration))s but CoreMotion still automotive. Waiting... (override at \(self.speedZeroOverrideSec)s)")
+            self.log("Speed≈0 for \(String(format: "%.0f", zeroDuration))s but CoreMotion still automotive. Waiting... (override at \(self.speedZeroOverrideSec)s)")
           }
         }
       }
@@ -511,7 +594,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
       // If user drove for 2+ min and is now stationary, trigger retroactive parking check
       if wasRecentlyDriving && currentlyStationary && automotiveDuration >= self.minDrivingDurationSec {
-        NSLog("[BackgroundLocation] RECOVERY: Detected missed parking event. Drove \(String(format: "%.0f", automotiveDuration))s, now stationary. Triggering retroactive check.")
+        self.log("RECOVERY: Detected missed parking event. Drove \(String(format: "%.0f", automotiveDuration))s, now stationary. Triggering retroactive check.")
 
         var body: [String: Any] = [
           "timestamp": now.timeIntervalSince1970 * 1000,
@@ -529,18 +612,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           self.startMotionActivityMonitoring()
         }
       } else {
-        NSLog("[BackgroundLocation] Recovery check: no missed parking (drove: \(wasRecentlyDriving), stationary: \(currentlyStationary), duration: \(String(format: "%.0f", automotiveDuration))s)")
+        self.log("Recovery check: no missed parking (drove: \(wasRecentlyDriving), stationary: \(currentlyStationary), duration: \(String(format: "%.0f", automotiveDuration))s)")
       }
     }
   }
 
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-    NSLog("[BackgroundLocation] Location error: \(error.localizedDescription)")
+    self.log("Location error: \(error.localizedDescription)")
   }
 
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
     let status = manager.authorizationStatus
-    NSLog("[BackgroundLocation] Auth changed: \(status.rawValue)")
+    self.log("Auth changed: \(status.rawValue)")
     if status == .authorizedWhenInUse {
       manager.requestAlwaysAuthorization()
     }
@@ -554,7 +637,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   /// filter. Red lights produce "stationary", not "walking", so this is safe.
   private func handlePotentialParking(userIsWalking: Bool = false) {
     guard let drivingStart = drivingStartTime else {
-      NSLog("[BackgroundLocation] No driving start time - ignoring")
+      self.log("No driving start time - ignoring")
       return
     }
 
@@ -564,15 +647,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // No need to enforce a minimum driving duration — you don't walk at a red light.
     // Still require at least 10 seconds to filter out sensor noise.
     if userIsWalking && drivingDuration >= 10 {
-      NSLog("[BackgroundLocation] Walking detected after \(String(format: "%.0f", drivingDuration))s driving — bypassing duration filter")
+      self.log("Walking detected after \(String(format: "%.0f", drivingDuration))s driving — bypassing duration filter")
     } else if drivingDuration < minDrivingDurationSec {
-      NSLog("[BackgroundLocation] Drove only \(String(format: "%.0f", drivingDuration))s (need \(minDrivingDurationSec)s) and not walking - ignoring")
+      self.log("Drove only \(String(format: "%.0f", drivingDuration))s (need \(minDrivingDurationSec)s) and not walking - ignoring")
       return
     }
 
     if lastStationaryTime == nil {
       lastStationaryTime = Date()
-      NSLog("[BackgroundLocation] Exit debounce started (\(exitDebounceSec)s). Drove \(String(format: "%.0f", drivingDuration))s.")
+      self.log("Exit debounce started (\(exitDebounceSec)s). Drove \(String(format: "%.0f", drivingDuration))s.")
     }
 
     // Cancel any existing timer and start fresh.
@@ -589,11 +672,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   ///         or "gps_speed_override" (15s sustained zero speed, overrides slow CoreMotion)
   private func confirmParking(source: String = "coremotion") {
     guard isDriving, drivingStartTime != nil else {
-      NSLog("[BackgroundLocation] confirmParking(\(source)) skipped: isDriving=\(isDriving), drivingStartTime=\(drivingStartTime != nil)")
+      self.log("confirmParking(\(source)) skipped: isDriving=\(isDriving), drivingStartTime=\(drivingStartTime != nil)")
       return
     }
     guard isMonitoring else {
-      NSLog("[BackgroundLocation] confirmParking(\(source)) skipped: monitoring stopped")
+      self.log("confirmParking(\(source)) skipped: monitoring stopped")
       return
     }
 
@@ -609,13 +692,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // abort parking confirmation — UNLESS this is a speed override (15s of zero speed
     // means the engine is off, CoreMotion is just slow to update).
     if coreMotionSaysAutomotive && source != "gps_speed_override" {
-      NSLog("[BackgroundLocation] CoreMotion still says automotive — aborting parking confirmation (source: \(source))")
+      self.log("CoreMotion still says automotive — aborting parking confirmation (source: \(source))")
       lastStationaryTime = nil
       locationAtStopStart = nil
       return
     }
 
-    NSLog("[BackgroundLocation] PARKING CONFIRMED (source: \(source))")
+    self.log("PARKING CONFIRMED (source: \(source))")
+
+    // After first parking, require GPS confirmation to restart driving (prevents CoreMotion flicker)
+    hasConfirmedParkingThisSession = true
 
     // Location priority:
     // 1. locationAtStopStart - captured when CoreMotion first said non-automotive (best)
@@ -630,7 +716,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     let parkingTimestamp: Double
     if let loc = parkingLocation {
       parkingTimestamp = loc.timestamp.timeIntervalSince1970 * 1000
-      NSLog("[BackgroundLocation] Using parking location GPS timestamp: \(loc.timestamp) (\(String(format: "%.0f", Date().timeIntervalSince(loc.timestamp)))s ago)")
+      self.log("Using parking location GPS timestamp: \(loc.timestamp) (\(String(format: "%.0f", Date().timeIntervalSince(loc.timestamp)))s ago)")
     } else {
       parkingTimestamp = Date().timeIntervalSince1970 * 1000
     }
@@ -644,19 +730,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       body["longitude"] = loc.coordinate.longitude
       body["accuracy"] = loc.horizontalAccuracy
       body["locationSource"] = locationAtStopStart != nil ? "stop_start" : "last_driving"
-      NSLog("[BackgroundLocation] Parking at (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m")
+      self.log("Parking at (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m")
     } else if let loc = currentLocation {
       body["latitude"] = loc.coordinate.latitude
       body["longitude"] = loc.coordinate.longitude
       body["accuracy"] = loc.horizontalAccuracy
       body["locationSource"] = "current_fallback"
-      NSLog("[BackgroundLocation] WARNING: Using current location as fallback")
+      self.log("WARNING: Using current location as fallback")
     }
 
     if let cur = currentLocation, let park = parkingLocation {
       let driftMeters = cur.distance(from: park)
       body["driftFromParkingMeters"] = driftMeters
-      NSLog("[BackgroundLocation] User walked \(String(format: "%.0f", driftMeters))m from car")
+      self.log("User walked \(String(format: "%.0f", driftMeters))m from car")
     }
 
     if let drivingStart = drivingStartTime {
@@ -688,7 +774,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // was never restarted and onDrivingStarted never fired.
     // By keeping CoreMotion active, we immediately detect the next automotive
     // activity and can fire the departure event.
-    NSLog("[BackgroundLocation] Keeping CoreMotion active for departure detection (low power)")
+    self.log("Keeping CoreMotion active for departure detection (low power)")
   }
 
   // MARK: - Helpers
