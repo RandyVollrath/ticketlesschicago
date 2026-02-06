@@ -2393,7 +2393,7 @@ class BackgroundTaskServiceClass {
 
       let distanceMeters: number;
       let isConclusive: boolean;
-      const CONCLUSIVE_DISTANCE_M = 100; // 100m — must be off the block entirely to be useful for contesting
+      const CONCLUSIVE_DISTANCE_M = 50; // 50m — far enough to prove they left the spot, close enough to catch end-of-block moves
 
       if (isLocalOnly) {
         distanceMeters = this.haversineDistance(
