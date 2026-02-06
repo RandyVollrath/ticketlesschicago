@@ -33,8 +33,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var speedZeroTimer: Timer?  // GPS speed-based parking trigger (repeating, checks every 5s)
   private var speedZeroStartTime: Date?  // When GPS speed first dropped to ≈0 during this driving session
 
-  // After parking, require both CoreMotion + GPS to agree before starting new drive
-  private var hasConfirmedParkingOnce = false  // True after first parking confirmation
 
   override init() {
     super.init()
@@ -166,7 +164,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationAtStopStart = nil
     lastStationaryTime = nil
     speedZeroStartTime = nil
-    hasConfirmedParkingOnce = false  // Reset for next monitoring session
 
     NSLog("[BackgroundLocation] Monitoring stopped")
     resolve(true)
@@ -392,30 +389,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       speedZeroStartTime = nil
       locationAtStopStart = nil  // Reset stop location - wasn't a real stop
 
+      // GPS speed alone does NOT start driving — only CoreMotion can detect
+      // "in a vehicle" vs "walking". GPS speed is used as a sanity check
+      // to prevent CoreMotion flicker from falsely triggering driving.
       if !isDriving && !coreMotionSaysAutomotive {
-        // GPS says driving but CoreMotion hasn't reported automotive yet.
-        // AFTER parking has been confirmed once, require CoreMotion agreement.
-        // This prevents GPS noise from falsely restarting "Driving" state.
-        // BEFORE any parking, allow GPS-only to handle CoreMotion being slow.
-        if hasConfirmedParkingOnce {
-          NSLog("[BackgroundLocation] GPS speed > threshold but CoreMotion not automotive — waiting for both to agree (post-parking safety)")
-          return
-        }
-
-        // First drive of the session — CoreMotion might be slow, trust GPS
-        isDriving = true
-        drivingStartTime = Date()
-        lastDrivingLocation = nil  // Clear previous parking spot — new drive
-        lastStationaryTime = nil
-        locationAtStopStart = nil
-        parkingConfirmationTimer?.invalidate()
-        startContinuousGps()
-        NSLog("[BackgroundLocation] Driving started (GPS speed: \(String(format: "%.1f", speed)) m/s, CoreMotion pending)")
-        sendEvent(withName: "onDrivingStarted", body: [
-          "timestamp": Date().timeIntervalSince1970 * 1000,
-          "speed": speed,
-          "source": "gps_speed",
-        ])
+        NSLog("[BackgroundLocation] GPS speed > threshold (\(String(format: "%.1f", speed)) m/s) but CoreMotion not automotive — waiting for CoreMotion")
       }
     } else if speed >= 0 && speed <= 0.5 {
       speedSaysMoving = false
@@ -638,10 +616,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
 
     NSLog("[BackgroundLocation] PARKING CONFIRMED (source: \(source))")
-
-    // After first parking, require both CoreMotion + GPS to agree before restarting driving.
-    // This prevents GPS noise alone from falsely triggering "Driving" state.
-    hasConfirmedParkingOnce = true
 
     // Location priority:
     // 1. locationAtStopStart - captured when CoreMotion first said non-automotive (best)
