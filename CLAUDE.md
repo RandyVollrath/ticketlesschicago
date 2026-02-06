@@ -188,6 +188,44 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor �
 4. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
 5. **After parking confirmation, `isDriving` resets to false.** The ONLY way it gets set back to true is via CoreMotion reporting automotive or GPS speed > 2.5 m/s. If neither is running, the app is permanently stuck in "parked" state.
 
+## Parking State Machine — Single Source of Truth
+
+The Android parking detection state machine (`ParkingDetectionStateMachine.ts`) is the **single source of truth** for whether the user is driving or parked. Departure tracking DEPENDS on this state machine being in the correct state.
+
+### The Invariant
+**Departure tracking ONLY works if the state machine transitions from PARKED → DRIVING.**
+
+If the state machine is in IDLE when the user drives away, departure is silently never recorded. The parking history record exists but has no departure timestamp.
+
+### What Triggers State Machine Transitions
+| Trigger | State Transition | Effect |
+|---------|-----------------|--------|
+| BT disconnect + 10s debounce | DRIVING → PARKING_PENDING → PARKED | `handleCarDisconnection()` |
+| BT connect while PARKED | PARKED → DRIVING | `handleCarReconnection()` → departure recorded |
+| BT connect while IDLE | IDLE → DRIVING | Camera alerts start, GPS caching starts, **NO departure** |
+| Manual parking check | No change (was broken) | Parking recorded to history but state machine untouched |
+
+### The Bug Pattern (Don't Repeat This)
+When adding ANY new way to record parking (manual check, server restore, periodic backup, etc.), you MUST also transition the state machine to PARKED. Otherwise:
+1. Parking shows in history ✓
+2. User drives away
+3. State machine is IDLE → DRIVING (not PARKED → DRIVING)
+4. `handleCarReconnection()` never called
+5. Departure never recorded
+6. User sees "Departure not recorded" in history
+
+### Rules for Any Parking-Related Code
+1. **ALL parking operations must go through the state machine.** Never write to parking history without also ensuring the state machine is in PARKED state.
+2. **Check the state machine before assuming departure will be tracked.** If `ParkingDetectionStateMachine.state !== 'PARKED'`, departure will NOT be captured.
+3. **New entry points for parking MUST call `manualParkingConfirmed()` or equivalent.** This includes: manual checks, server restore, periodic backups, any future "assume parked" logic.
+4. **The state machine persists to AsyncStorage.** On app restart, it restores to the last stable state (PARKED or DRIVING). If the parking record was from a code path that didn't update the state machine, the restored state will be wrong.
+
+### How to Test Departure Tracking
+After any parking-related code change, test ALL entry points:
+- [ ] **Auto-detected parking**: BT disconnect → parking check → drive away → departure recorded
+- [ ] **Manual parking check**: Tap "Check My Parking" → drive away → departure recorded
+- [ ] **App restart while parked**: Kill app → reopen → drive away → departure recorded
+
 ## React State Initialization — NEVER Default to Empty
 
 Async-loaded state (auth, user profile, feature flags, etc.) causes **intermittent bugs** when components initialize with empty defaults like `null`, `false`, or `[]` and rely on a subscription/callback to fill in the real value later. Whether the real value arrives before or after the first render is a race condition — it works sometimes and breaks sometimes, making these bugs extremely hard to reproduce.
