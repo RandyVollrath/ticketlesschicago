@@ -521,15 +521,21 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: speedCheckIntervalSec, repeats: true) { [weak self] timer in
           guard let self = self else { timer.invalidate(); return }
 
-          // Check if we've moved significantly — if so, reset stationary tracking
+          // Check current GPS speed — the 2-min location check only applies if phone is truly stationary
+          // (not walking away from car). Walking is ~1.4 m/s.
+          let currentSpeed = self.locationManager.location?.speed ?? -1
+          let phoneIsStationary = currentSpeed >= 0 && currentSpeed < 0.5  // truly not moving
+
+          // Check if we've moved significantly from parking spot
+          var withinStationaryRadius = false
           if let stationaryLoc = self.stationaryLocation,
              let currentLoc = self.locationManager.location {
             let distanceFromStationary = currentLoc.distance(from: stationaryLoc)
-            if distanceFromStationary > self.stationaryRadiusMeters {
-              // Moved more than 50m — reset stationary tracking (still at a red light, creeping forward)
-              self.stationaryLocation = currentLoc
-              self.stationaryStartTime = Date()
-              self.log("Moved \(String(format: "%.0f", distanceFromStationary))m — resetting stationary location")
+            withinStationaryRadius = distanceFromStationary <= self.stationaryRadiusMeters
+            if !withinStationaryRadius {
+              // User walked >50m from parking spot — don't use location check
+              // but DON'T reset stationaryLocation (that's still where the car is)
+              self.log("User is \(String(format: "%.0f", distanceFromStationary))m from parking spot — location check won't apply")
             }
           }
 
@@ -552,15 +558,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             timer.invalidate()
             self.speedZeroTimer = nil
             self.confirmParking(source: "gps_coremotion_agree")
-          } else if stationaryDuration >= self.stationaryDurationSec {
-            // Been in same 50m radius for 2+ minutes — this is definitively parking.
-            // You don't sit in the same spot for 2 minutes at a red light.
-            self.log("Parking confirmed: stationary within \(self.stationaryRadiusMeters)m for \(String(format: "%.0f", stationaryDuration))s (location-based override)")
+          } else if phoneIsStationary && withinStationaryRadius && stationaryDuration >= self.stationaryDurationSec {
+            // Phone hasn't moved (speed < 0.5 m/s) AND still within 50m of parking spot for 2+ min.
+            // This means the user is sitting in their parked car (not walking away).
+            // You don't sit in one spot for 2 minutes at a red light — definitely parked.
+            self.log("Parking confirmed: phone stationary within \(self.stationaryRadiusMeters)m for \(String(format: "%.0f", stationaryDuration))s (location-based override)")
             timer.invalidate()
             self.speedZeroTimer = nil
             self.confirmParking(source: "location_stationary")
           } else {
-            self.log("Speed≈0 for \(String(format: "%.0f", zeroDuration))s, stationary for \(String(format: "%.0f", stationaryDuration))s, but CoreMotion still automotive. Waiting...")
+            var reason = "CoreMotion still automotive"
+            if !phoneIsStationary { reason += ", phone moving (speed: \(String(format: "%.1f", currentSpeed)) m/s)" }
+            if !withinStationaryRadius { reason += ", user walked away from parking spot" }
+            self.log("Speed≈0 for \(String(format: "%.0f", zeroDuration))s, stationary for \(String(format: "%.0f", stationaryDuration))s. Waiting... (\(reason))")
           }
         }
       }
