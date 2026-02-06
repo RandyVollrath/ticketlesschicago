@@ -38,7 +38,8 @@ export type DetectionEventType =
   | 'BT_INIT_DISCONNECTED'   // Initial BT check: car is NOT connected
   | 'DEBOUNCE_EXPIRED'       // Debounce timer completed, still disconnected
   | 'DEBOUNCE_CANCELLED'     // BT reconnected during debounce window
-  | 'PARKING_CONFIRMED'      // Parking check completed successfully
+  | 'PARKING_CONFIRMED'      // Parking check completed successfully (auto-detected)
+  | 'MANUAL_PARKING_SET'     // User manually checked parking (sets state to PARKED)
   | 'DEPARTURE_DETECTED'     // User started driving again (BT reconnect)
   | 'MONITORING_STARTED'     // User started monitoring (car paired)
   | 'MONITORING_STOPPED'     // User stopped monitoring
@@ -87,7 +88,7 @@ const DEBOUNCE_DURATION_MS = 3_000; // 3 seconds — just enough to filter BT si
 
 const VALID_TRANSITIONS: Record<ParkingState, ParkingState[]> = {
   INITIALIZING: ['IDLE', 'DRIVING', 'PARKED'],
-  IDLE:         ['DRIVING', 'INITIALIZING'],
+  IDLE:         ['DRIVING', 'INITIALIZING', 'PARKED'], // PARKED added for manual parking checks
   DRIVING:      ['PARKING_PENDING', 'IDLE'],
   PARKING_PENDING: ['DRIVING', 'PARKED', 'IDLE'],
   PARKED:       ['DRIVING', 'IDLE'],
@@ -310,6 +311,35 @@ class ParkingDetectionStateMachineClass {
       return;
     }
     this.transition('PARKED', 'PARKING_CONFIRMED', 'system', metadata);
+  }
+
+  /**
+   * Manual parking confirmed — user tapped "Check My Parking" and completed a check.
+   * This sets state to PARKED so that departure tracking works when they drive away.
+   * Does NOT fire if currently DRIVING (user is in car) or already PARKED.
+   */
+  manualParkingConfirmed(metadata?: Record<string, any>): void {
+    // Already parked — no-op
+    if (this._state === 'PARKED') {
+      log.debug('manualParkingConfirmed: already PARKED, no-op');
+      return;
+    }
+
+    // Currently driving — don't set to parked (user is in car checking rules at location)
+    if (this._state === 'DRIVING') {
+      log.debug('manualParkingConfirmed: currently DRIVING, cannot set to PARKED');
+      return;
+    }
+
+    // During debounce — let the normal flow handle it
+    if (this._state === 'PARKING_PENDING') {
+      log.debug('manualParkingConfirmed: in PARKING_PENDING, letting debounce complete');
+      return;
+    }
+
+    // IDLE or INITIALIZING — transition to PARKED so departure will be tracked
+    log.info(`manualParkingConfirmed: transitioning from ${this._state} to PARKED`);
+    this.transition('PARKED', 'MANUAL_PARKING_SET', 'user_manual', metadata);
   }
 
   /**
