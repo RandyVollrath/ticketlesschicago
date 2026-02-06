@@ -33,11 +33,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var speedZeroTimer: Timer?  // GPS speed-based parking trigger (repeating, checks every 5s)
   private var speedZeroStartTime: Date?  // When GPS speed first dropped to ≈0 during this driving session
 
-  // Post-parking cooldown: ignore CoreMotion automotive signals for this long after parking
-  // to prevent false "driving started" events from phone movement/vibration.
-  private var parkingConfirmedTime: Date? = nil
-  private let postParkingCooldownSec: TimeInterval = 30  // Ignore automotive for 30s after parking
-
   override init() {
     super.init()
     locationManager.delegate = self
@@ -168,7 +163,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationAtStopStart = nil
     lastStationaryTime = nil
     speedZeroStartTime = nil
-    parkingConfirmedTime = nil
 
     NSLog("[BackgroundLocation] Monitoring stopped")
     resolve(true)
@@ -257,38 +251,37 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // CoreMotion's M-series coprocessor detected vehicle vibration pattern.
         // Accept ALL confidence levels - some devices consistently report .low
         // for automotive even when genuinely driving.
-
-        // POST-PARKING COOLDOWN: After parking is confirmed, ignore CoreMotion
-        // automotive signals for 30 seconds. This prevents false "driving started"
-        // events caused by phone movement/vibration while walking away from the car.
-        // Only require GPS speed confirmation OR high-confidence CoreMotion to
-        // override this cooldown.
-        if let parkedAt = self.parkingConfirmedTime {
-          let cooldownRemaining = self.postParkingCooldownSec - Date().timeIntervalSince(parkedAt)
-          if cooldownRemaining > 0 {
-            // Still in cooldown — only trust high-confidence automotive OR GPS speed
-            if activity.confidence != .high && !self.speedSaysMoving {
-              NSLog("[BackgroundLocation] POST-PARKING COOLDOWN: Ignoring CoreMotion automotive (confidence: \(self.confidenceString(activity.confidence)), cooldown: \(String(format: "%.0f", cooldownRemaining))s remaining). Require high confidence or GPS speed > \(self.minDrivingSpeedMps) m/s.")
-              return  // Don't process this automotive event
-            }
-            NSLog("[BackgroundLocation] Post-parking cooldown override: confidence=\(self.confidenceString(activity.confidence)), speedSaysMoving=\(self.speedSaysMoving)")
-          }
-          // Cooldown expired, clear it
-          self.parkingConfirmedTime = nil
-        }
-
         self.coreMotionSaysAutomotive = true
 
-        // Cancel any pending parking timers - we're still in the car
-        self.parkingConfirmationTimer?.invalidate()
-        self.parkingConfirmationTimer = nil
-        self.speedZeroTimer?.invalidate()
-        self.speedZeroTimer = nil
-        self.speedZeroStartTime = nil
-        self.lastStationaryTime = nil
-        self.locationAtStopStart = nil
+        // GPS SPEED VETO: If GPS says speed ≈ 0, do NOT cancel parking timers.
+        // CoreMotion can flicker back to "automotive" from phone vibration/movement
+        // while the user is walking away from a parked car. GPS speed is ground truth.
+        // Only cancel parking timers if GPS confirms we're actually moving.
+        if self.speedSaysMoving {
+          // GPS confirms movement — cancel parking timers, we're still driving
+          self.parkingConfirmationTimer?.invalidate()
+          self.parkingConfirmationTimer = nil
+          self.speedZeroTimer?.invalidate()
+          self.speedZeroTimer = nil
+          self.speedZeroStartTime = nil
+          self.lastStationaryTime = nil
+          self.locationAtStopStart = nil
+          NSLog("[BackgroundLocation] CoreMotion automotive + GPS moving — cancelled parking timers")
+        } else if self.parkingConfirmationTimer != nil || self.speedZeroTimer != nil {
+          // GPS says speed ≈ 0 but CoreMotion says automotive — CoreMotion is probably wrong.
+          // Keep parking timers running. The user is likely stationary.
+          NSLog("[BackgroundLocation] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)")
+        }
 
         if !self.isDriving {
+          // GPS SPEED VETO for starting new drive: If GPS says speed ≈ 0, don't
+          // start a new driving session just because CoreMotion flickered to automotive.
+          // This prevents false departure detection while walking away from the car.
+          if !self.speedSaysMoving {
+            NSLog("[BackgroundLocation] CoreMotion says automotive but GPS speed ≈ 0 — NOT starting new drive (waiting for GPS confirmation)")
+            return
+          }
+
           self.isDriving = true
           self.drivingStartTime = Date()
           // Clear previous parking spot — this is a NEW drive.
@@ -299,15 +292,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           // Spin up precise GPS now that we know user is driving
           self.startContinuousGps()
 
-          // DEPARTURE TIMING: CoreMotion can be 30-60s slow to detect automotive.
-          // If we were just parked (parkingConfirmedTime is set), try to get a
-          // better departure time from GPS. Otherwise use now.
+          // DEPARTURE TIMING: Use GPS timestamp if available for more accurate timing.
           var departureTimestamp = Date().timeIntervalSince1970 * 1000
           var departureSource = "coremotion"
 
-          // If GPS already has a recent location with speed (significantLocationChange
-          // may have provided one), use that timestamp as it's closer to when driving
-          // actually started.
+          // If GPS already has a recent location with speed, use that timestamp
+          // as it's closer to when driving actually started.
           if let lastLoc = self.locationManager.location,
              lastLoc.speed > self.minDrivingSpeedMps,
              Date().timeIntervalSince(lastLoc.timestamp) < 60 {  // Within last minute
@@ -316,7 +306,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             NSLog("[BackgroundLocation] Using GPS timestamp for departure: \(lastLoc.timestamp) (speed: \(String(format: "%.1f", lastLoc.speed)) m/s)")
           }
 
-          NSLog("[BackgroundLocation] Driving started (CoreMotion automotive, confidence: \(self.confidenceString(activity.confidence)), source: \(departureSource))")
+          NSLog("[BackgroundLocation] Driving started (CoreMotion automotive + GPS moving, confidence: \(self.confidenceString(activity.confidence)), source: \(departureSource))")
           self.sendEvent(withName: "onDrivingStarted", body: [
             "timestamp": departureTimestamp,
             "source": departureSource,
@@ -634,10 +624,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
 
     NSLog("[BackgroundLocation] PARKING CONFIRMED (source: \(source))")
-
-    // Start post-parking cooldown to prevent false driving detection from
-    // CoreMotion flickering while walking away from the car.
-    self.parkingConfirmedTime = Date()
 
     // Location priority:
     // 1. locationAtStopStart - captured when CoreMotion first said non-automotive (best)
