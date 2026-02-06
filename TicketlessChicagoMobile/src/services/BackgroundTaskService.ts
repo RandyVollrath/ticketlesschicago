@@ -211,10 +211,23 @@ class BackgroundTaskServiceClass {
     // -> reset the parking check time guard so the NEXT parking event isn't
     //    blocked by a stale 5-minute cooldown from the previous parking check.
     // -> also reset the disconnect handler debounce for the same reason.
-    ParkingDetectionStateMachine.onTransition('*->DRIVING', () => {
+    // -> attempt departure tracking (will check if there's a recent parking record)
+    ParkingDetectionStateMachine.onTransition('*->DRIVING', async (event) => {
       log.info('StateMachine: *->DRIVING -> resetting parking check guards');
       this.state.lastParkingCheckTime = null;
       this.lastDisconnectHandlerTime = 0;
+
+      // Attempt departure tracking for ANY transition to DRIVING, not just PARKED->DRIVING.
+      // This catches cases where the state machine state was lost (app reinstall, AsyncStorage
+      // cleared, etc.) but there's still a parking record in history that needs departure.
+      // The markCarReconnected() function is idempotent — if there's no recent parking
+      // record without a departure, it will do nothing.
+      // Skip if coming from PARKED (that's handled by the specific PARKED->DRIVING callback).
+      const fromState = event.metadata?.fromState;
+      if (fromState !== 'PARKED') {
+        log.info(`*->DRIVING from ${fromState}: checking for orphaned parking records`);
+        await this.tryRecordDepartureForOrphanedParking();
+      }
     });
 
     // Sync state machine to BluetoothService for backward compatibility.
@@ -751,6 +764,54 @@ class BackgroundTaskServiceClass {
   private async handleCarReconnection(nativeDrivingTimestamp?: number): Promise<void> {
     log.info('Car reconnection detected via Bluetooth');
     await this.markCarReconnected(nativeDrivingTimestamp);
+  }
+
+  /**
+   * Attempt departure tracking for orphaned parking records.
+   *
+   * "Orphaned" means: there's a parking history record without a departure,
+   * but the state machine wasn't in PARKED state when driving started.
+   * This happens when:
+   * - App was reinstalled (AsyncStorage cleared, state machine reset to IDLE)
+   * - State machine state was lost due to a bug
+   * - User did a manual parking check, which didn't previously update state machine
+   *
+   * This function is idempotent: if there's no orphaned record, it does nothing.
+   */
+  private async tryRecordDepartureForOrphanedParking(): Promise<void> {
+    try {
+      const recentItem = await ParkingHistoryService.getMostRecent();
+
+      if (!recentItem) {
+        log.debug('tryRecordDepartureForOrphanedParking: no parking history');
+        return;
+      }
+
+      if (recentItem.departure) {
+        log.debug('tryRecordDepartureForOrphanedParking: most recent record already has departure');
+        return;
+      }
+
+      // Check if the parking record is reasonably recent (within last 24 hours)
+      // Old records shouldn't trigger departure tracking - the user may have had many drives since
+      const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+      const age = Date.now() - recentItem.timestamp;
+      if (age > MAX_AGE_MS) {
+        log.info(`tryRecordDepartureForOrphanedParking: parking record too old (${Math.round(age / 3600000)}h), skipping`);
+        return;
+      }
+
+      log.info('tryRecordDepartureForOrphanedParking: found orphaned parking record, triggering departure tracking', {
+        historyItemId: recentItem.id,
+        parkedAt: recentItem.timestamp,
+        ageHours: Math.round(age / 3600000 * 10) / 10,
+      });
+
+      // Use the existing departure tracking flow
+      await this.markCarReconnected();
+    } catch (error) {
+      log.error('tryRecordDepartureForOrphanedParking failed', error);
+    }
   }
 
   /**
