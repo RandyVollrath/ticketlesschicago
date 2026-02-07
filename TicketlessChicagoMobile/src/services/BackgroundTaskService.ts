@@ -951,7 +951,8 @@ class BackgroundTaskServiceClass {
             event.latitude,
             event.longitude,
             event.speed,
-            event.heading ?? -1
+            event.heading ?? -1,
+            event.accuracy ?? null
           );
         }
       );
@@ -993,7 +994,8 @@ class BackgroundTaskServiceClass {
             position.coords.latitude,
             position.coords.longitude,
             position.coords.speed ?? -1,
-            position.coords.heading ?? -1
+            position.coords.heading ?? -1,
+            position.coords.accuracy ?? null
           );
         },
         (error) => {
@@ -1114,7 +1116,7 @@ class BackgroundTaskServiceClass {
     latitude: number;
     longitude: number;
     accuracy?: number;
-  }, isRealParkingEvent: boolean = true, nativeTimestamp?: number): Promise<void> {
+  }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true): Promise<void> {
     // Guard against duplicate parking checks (e.g., from app state changes re-triggering)
     if (this.state.lastParkingCheckTime) {
       const timeSinceLastCheck = Date.now() - this.state.lastParkingCheckTime;
@@ -1198,7 +1200,7 @@ class BackgroundTaskServiceClass {
         // If the refined location differs significantly (>25m), re-run the
         // parking check and update the notification + history silently.
         const initialCoords = { ...coords };
-        this.backgroundBurstRefine(initialCoords, nativeTimestamp);
+        this.backgroundBurstRefine(initialCoords, nativeTimestamp, persistParkingEvent);
       }
 
       log.info(`GPS acquired via ${gpsSource}. Now calling parking API...`);
@@ -1222,12 +1224,16 @@ class BackgroundTaskServiceClass {
       // Save to parking history so it shows up in the History tab.
       // This includes all-clear results — the user should see a record of
       // every auto-detected parking event, not just ones with restrictions.
-      try {
-        log.info(`Saving to parking history: addr="${result.address}", rules=${result.rules.length}, coords=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}${nativeTimestamp ? `, nativeTime=${new Date(nativeTimestamp).toISOString()}` : ''}`);
-        await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp);
-        log.info('Auto-detection result saved to parking history ✓');
-      } catch (historyError) {
-        log.error('Failed to save auto-detection to history (non-fatal):', historyError);
+      if (persistParkingEvent) {
+        try {
+          log.info(`Saving to parking history: addr="${result.address}", rules=${result.rules.length}, coords=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}${nativeTimestamp ? `, nativeTime=${new Date(nativeTimestamp).toISOString()}` : ''}`);
+          await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp);
+          log.info('Auto-detection result saved to parking history ✓');
+        } catch (historyError) {
+          log.error('Failed to save auto-detection to history (non-fatal):', historyError);
+        }
+      } else {
+        log.info('Manual check: skipped parking history save');
       }
 
       // Save parked location to server for cron-based push notification reminders.
@@ -1236,18 +1242,22 @@ class BackgroundTaskServiceClass {
       // - 8pm night-before + 7am morning-of street cleaning reminders
       // - 7am permit zone reminder (before 8am enforcement)
       // - Snow ban push notifications to parked users on snow routes
-      try {
-        const fcmToken = await PushNotificationService.getToken();
-        if (fcmToken && AuthService.isAuthenticated()) {
-          // Use raw API response data for mapping to server fields
-          const rawData = result.rawApiData || await this.getRawParkingData(result);
-          await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
-        } else {
-          log.debug('Skipping server save: no FCM token or not authenticated');
+      if (persistParkingEvent) {
+        try {
+          const fcmToken = await PushNotificationService.getToken();
+          if (fcmToken && AuthService.isAuthenticated()) {
+            // Use raw API response data for mapping to server fields
+            const rawData = result.rawApiData || await this.getRawParkingData(result);
+            await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
+          } else {
+            log.debug('Skipping server save: no FCM token or not authenticated');
+          }
+        } catch (serverSaveError) {
+          // Non-fatal — local notifications still work without server save
+          log.warn('Failed to save parked location to server (non-fatal):', serverSaveError);
         }
-      } catch (serverSaveError) {
-        // Non-fatal — local notifications still work without server save
-        log.warn('Failed to save parked location to server (non-fatal):', serverSaveError);
+      } else {
+        log.info('Manual check: skipped server parked-location save');
       }
 
       // Update last check time
@@ -1255,14 +1265,16 @@ class BackgroundTaskServiceClass {
       await this.saveState();
 
       // Save parked coordinates for periodic rescan and snow monitoring
-      await this.saveParkedCoords(coords, result.address, result.rawApiData);
+      if (persistParkingEvent) {
+        await this.saveParkedCoords(coords, result.address, result.rawApiData);
 
-      // Start periodic rescan timer (re-checks restrictions every 4 hours)
-      this.startRescanTimer();
+        // Start periodic rescan timer (re-checks restrictions every 4 hours)
+        this.startRescanTimer();
 
-      // If parked on a snow route, start monitoring local weather
-      if (result.rawApiData?.twoInchSnowBan || result.rules?.some((r: any) => r.type === 'snow_route')) {
-        this.startSnowForecastMonitoring();
+        // If parked on a snow route, start monitoring local weather
+        if (result.rawApiData?.twoInchSnowBan || result.rules?.some((r: any) => r.type === 'snow_route')) {
+          this.startSnowForecastMonitoring();
+        }
       }
 
       // Check if user is parked in their own permit zone — if so, filter it out
@@ -1281,10 +1293,12 @@ class BackgroundTaskServiceClass {
       // the spot may be clear NOW but have upcoming restrictions (e.g., street
       // cleaning tomorrow). Use rawApiData which has the full response including
       // UPCOMING timing, not the filtered rules array.
-      try {
-        await this.scheduleRestrictionReminders(rawData, coords);
-      } catch (reminderError) {
-        log.warn('Failed to schedule restriction reminders (non-fatal):', reminderError);
+      if (persistParkingEvent) {
+        try {
+          await this.scheduleRestrictionReminders(rawData, coords);
+        } catch (reminderError) {
+          log.warn('Failed to schedule restriction reminders (non-fatal):', reminderError);
+        }
       }
 
       log.info('=== PARKING CHECK COMPLETE ===', {
@@ -1324,7 +1338,8 @@ class BackgroundTaskServiceClass {
    */
   private async backgroundBurstRefine(
     initialCoords: { latitude: number; longitude: number; accuracy?: number },
-    nativeTimestamp?: number
+    nativeTimestamp?: number,
+    persistParkingEvent: boolean = true
   ): Promise<void> {
     const REFINEMENT_THRESHOLD_M = 25; // Only re-check if burst is >25m from initial
 
@@ -1357,7 +1372,8 @@ class BackgroundTaskServiceClass {
       // Update parking history — find the most recent entry and update its coords/rules
       try {
         const recentItem = await ParkingHistoryService.getMostRecent();
-        if (recentItem) {
+        const isRecentEnough = !!recentItem && (Date.now() - recentItem.timestamp) <= (20 * 60 * 1000);
+        if (persistParkingEvent && recentItem && isRecentEnough) {
           await ParkingHistoryService.updateItem(recentItem.id, {
             coords: burstCoords,
             address: result.address,
@@ -1378,23 +1394,25 @@ class BackgroundTaskServiceClass {
       }
 
       // Update server record
-      try {
-        const fcmToken = await PushNotificationService.getToken();
-        if (fcmToken && AuthService.isAuthenticated()) {
-          await LocationService.saveParkedLocationToServer(burstCoords, rawData, result.address, fcmToken);
+      if (persistParkingEvent) {
+        try {
+          const fcmToken = await PushNotificationService.getToken();
+          if (fcmToken && AuthService.isAuthenticated()) {
+            await LocationService.saveParkedLocationToServer(burstCoords, rawData, result.address, fcmToken);
+          }
+        } catch (serverErr) {
+          log.warn('[GPS Phase 2] Failed to update server (non-fatal):', serverErr);
         }
-      } catch (serverErr) {
-        log.warn('[GPS Phase 2] Failed to update server (non-fatal):', serverErr);
-      }
 
-      // Update saved parked coords (for rescan + snow monitoring)
-      await this.saveParkedCoords(burstCoords, result.address, result.rawApiData);
+        // Update saved parked coords (for rescan + snow monitoring)
+        await this.saveParkedCoords(burstCoords, result.address, result.rawApiData);
 
-      // Re-schedule restriction reminders with corrected location
-      try {
-        await this.scheduleRestrictionReminders(rawData, burstCoords);
-      } catch (reminderErr) {
-        log.warn('[GPS Phase 2] Failed to reschedule reminders (non-fatal):', reminderErr);
+        // Re-schedule restriction reminders with corrected location
+        try {
+          await this.scheduleRestrictionReminders(rawData, burstCoords);
+        } catch (reminderErr) {
+          log.warn('[GPS Phase 2] Failed to reschedule reminders (non-fatal):', reminderErr);
+        }
       }
 
       log.info(`[GPS Phase 2] Correction complete: ${result.address} (${filteredResult.rules.length} rules)`);
@@ -2117,16 +2135,9 @@ class BackgroundTaskServiceClass {
    * departure tracking works when the user drives away.
    */
   async manualParkingCheck(): Promise<void> {
-    await this.triggerParkingCheck();
-
-    // Set state to PARKED so that when the user drives away, the PARKED→DRIVING
-    // transition fires and departure is recorded. Without this, manual checks
-    // leave the state machine in IDLE, and departure is never captured.
-    if (Platform.OS === 'android') {
-      ParkingDetectionStateMachine.manualParkingConfirmed();
-    }
-    // Note: iOS uses CoreMotion which tracks driving state independently,
-    // so this is primarily needed for Android's BT-based detection.
+    await this.triggerParkingCheck(undefined, true, undefined, false);
+    // Manual checks intentionally do not create/alter parked timeline state.
+    // They are quick spot checks for the current location.
   }
 
   /**
@@ -2517,29 +2528,6 @@ class BackgroundTaskServiceClass {
       // Expected to fail sometimes — that's fine, local data is already saved
       log.debug('Best-effort server departure confirmation failed (expected)', e);
     }
-  }
-
-  /**
-   * Calculate distance between two lat/lng points using the Haversine formula.
-   * Returns distance in meters.
-   */
-  private haversineDistance(
-    lat1: number, lng1: number,
-    lat2: number, lng2: number
-  ): number {
-    const R = 6371000; // Earth radius in meters
-    const dLat = this.toRad(lat2 - lat1);
-    const dLng = this.toRad(lng2 - lng1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  private toRad(deg: number): number {
-    return (deg * Math.PI) / 180;
   }
 
   // Clearance record notifications removed — this data is saved silently

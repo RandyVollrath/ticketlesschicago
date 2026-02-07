@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,17 @@ import {
   Keyboard,
   Platform,
   Linking,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import Config from '../config/config';
 import ApiClient from '../utils/ApiClient';
 import Logger from '../utils/Logger';
+import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('CheckDestination');
 
@@ -57,6 +60,12 @@ interface GeocodedResult {
   permitZone?: string;
 }
 
+interface SavedDestination {
+  id: string;
+  label: string;
+  address: string;
+}
+
 const SEVERITY_CONFIG: Record<string, { bg: string; border: string; icon: string; iconColor: string }> = {
   critical: { bg: colors.criticalBg, border: colors.critical, icon: 'alert-circle', iconColor: colors.critical },
   warning: { bg: colors.warningBg, border: colors.warning, icon: 'alert', iconColor: colors.warning },
@@ -77,10 +86,29 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     hasSignificantSnow: boolean;
     significantSnowWhen: string | null;
   } | null>(null);
+  const [savedDestinations, setSavedDestinations] = useState<SavedDestination[]>([]);
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [pendingSaveAddress, setPendingSaveAddress] = useState<string | null>(null);
+  const [pendingSaveLabel, setPendingSaveLabel] = useState('');
   const inputRef = useRef<TextInput>(null);
 
-  const handleCheck = useCallback(async () => {
-    const trimmed = address.trim();
+  useEffect(() => {
+    const loadSaved = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(StorageKeys.SAVED_DESTINATIONS);
+        if (raw) setSavedDestinations(JSON.parse(raw));
+      } catch {}
+    };
+    loadSaved();
+  }, []);
+
+  const persistSavedDestinations = async (next: SavedDestination[]) => {
+    setSavedDestinations(next);
+    await AsyncStorage.setItem(StorageKeys.SAVED_DESTINATIONS, JSON.stringify(next.slice(0, 20)));
+  };
+
+  const handleCheck = useCallback(async (addressOverride?: string) => {
+    const trimmed = (addressOverride ?? address).trim();
     if (!trimmed) return;
 
     Keyboard.dismiss();
@@ -261,8 +289,61 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     ? `${Config.API_BASE_URL}/destination-map?lat=${geocoded.lat}&lng=${geocoded.lng}&address=${encodeURIComponent(geocoded.address)}${geocoded.permitZone ? `&permitZone=${encodeURIComponent(geocoded.permitZone)}` : ''}`
     : '';
 
+  const saveCurrentDestination = useCallback(async () => {
+    if (!geocoded) return;
+    const defaultLabel = geocoded.address.split(',')[0] || geocoded.address;
+    setPendingSaveAddress(geocoded.address);
+    setPendingSaveLabel(defaultLabel);
+    setSaveModalVisible(true);
+  }, [geocoded, savedDestinations]);
+
+  const confirmSaveDestination = useCallback(async () => {
+    if (!pendingSaveAddress) return;
+    const label = pendingSaveLabel.trim() || pendingSaveAddress.split(',')[0] || pendingSaveAddress;
+    const item: SavedDestination = {
+      id: `${Date.now()}`,
+      label,
+      address: pendingSaveAddress,
+    };
+    const deduped = savedDestinations.filter((d) => d.address.toLowerCase() !== pendingSaveAddress.toLowerCase());
+    await persistSavedDestinations([item, ...deduped]);
+    setSaveModalVisible(false);
+    setPendingSaveAddress(null);
+    setPendingSaveLabel('');
+  }, [pendingSaveAddress, pendingSaveLabel, savedDestinations]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <Modal
+        transparent
+        visible={saveModalVisible}
+        animationType="fade"
+        onRequestClose={() => setSaveModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Save Location</Text>
+            <Text style={styles.modalSubtitle}>Add a label (e.g., Travis&apos;s House)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={pendingSaveLabel}
+              onChangeText={setPendingSaveLabel}
+              placeholder="Label"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="words"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalActionBtn} onPress={() => setSaveModalVisible(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalActionBtnPrimary} onPress={confirmSaveDestination}>
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
         {isTab ? (
@@ -303,7 +384,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               placeholderTextColor={colors.textTertiary}
               value={address}
               onChangeText={setAddress}
-              onSubmitEditing={handleCheck}
+              onSubmitEditing={() => handleCheck()}
               returnKeyType="search"
               autoCapitalize="words"
               autoCorrect={false}
@@ -322,7 +403,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
 
           <TouchableOpacity
             style={[styles.checkButton, (!address.trim() || isChecking) && styles.checkButtonDisabled]}
-            onPress={handleCheck}
+            onPress={() => handleCheck()}
             disabled={!address.trim() || isChecking}
             accessibilityLabel="Check parking restrictions"
             accessibilityRole="button"
@@ -336,6 +417,27 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               </>
             )}
           </TouchableOpacity>
+
+          {savedDestinations.length > 0 && (
+            <View style={styles.savedLocationsWrap}>
+              <Text style={styles.savedLocationsTitle}>Saved locations</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {savedDestinations.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.savedLocationChip}
+                    onPress={() => {
+                      setAddress(item.address);
+                      handleCheck(item.address);
+                    }}
+                  >
+                    <Icon name="bookmark-outline" size={14} color={colors.primary} />
+                    <Text style={styles.savedLocationChipText}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
 
         {/* Error */}
@@ -452,9 +554,6 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                     javaScriptEnabled
                     domStorageEnabled
                     startInLoadingState
-                    nestedScrollEnabled
-                    scalesPageToFit={false}
-                    overScrollMode="never"
                     renderLoading={() => (
                       <View style={styles.mapLoading}>
                         <ActivityIndicator size="small" color={colors.primary} />
@@ -463,16 +562,6 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                         </Text>
                       </View>
                     )}
-                    // Prevent navigation away from the map page
-                    onShouldStartLoadWithRequest={(req) => {
-                      if (req.url.includes('/destination-map')) return true;
-                      // Open external links in the browser
-                      if (req.url.startsWith('http')) {
-                        Linking.openURL(req.url);
-                        return false;
-                      }
-                      return true;
-                    }}
                   />
                 </View>
                 <Text style={styles.mapHint}>
@@ -482,21 +571,32 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
             )}
 
             {/* Directions button */}
-            <TouchableOpacity
-              style={styles.directionsButton}
-              onPress={() => {
-                const scheme = Platform.OS === 'ios' ? 'maps:' : 'geo:';
-                const url = Platform.OS === 'ios'
-                  ? `maps:?daddr=${geocoded.lat},${geocoded.lng}`
-                  : `geo:${geocoded.lat},${geocoded.lng}?q=${geocoded.lat},${geocoded.lng}(${encodeURIComponent(geocoded.address)})`;
-                Linking.openURL(url);
-              }}
-              accessibilityLabel="Get directions"
-              accessibilityRole="button"
-            >
-              <Icon name="directions" size={20} color={colors.primary} />
-              <Text style={styles.directionsText}>Get Directions</Text>
-            </TouchableOpacity>
+            <View style={styles.resultActionsRow}>
+              <TouchableOpacity
+                style={styles.directionsButton}
+                onPress={() => {
+                  const url = Platform.OS === 'ios'
+                    ? `maps:?q=${geocoded.lat},${geocoded.lng}`
+                    : `geo:${geocoded.lat},${geocoded.lng}?q=${geocoded.lat},${geocoded.lng}(${encodeURIComponent(geocoded.address)})`;
+                  Linking.openURL(url);
+                }}
+                accessibilityLabel="Open location"
+                accessibilityRole="button"
+              >
+                <Icon name="map-marker-radius" size={20} color={colors.primary} />
+                <Text style={styles.directionsText}>Open Location</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.directionsButton}
+                onPress={saveCurrentDestination}
+                accessibilityLabel="Save this location"
+                accessibilityRole="button"
+              >
+                <Icon name="bookmark-plus-outline" size={20} color={colors.primary} />
+                <Text style={styles.directionsText}>Save</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -619,6 +719,33 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: typography.sizes.base,
     fontWeight: typography.weights.bold,
+  },
+  savedLocationsWrap: {
+    marginTop: spacing.base,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+  },
+  savedLocationsTitle: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    fontWeight: typography.weights.medium,
+  },
+  savedLocationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryTint,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    marginRight: spacing.xs,
+  },
+  savedLocationChipText: {
+    marginLeft: 6,
+    fontSize: typography.sizes.xs,
+    color: colors.primary,
+    fontWeight: typography.weights.medium,
   },
 
   // Error
@@ -780,6 +907,7 @@ const styles = StyleSheet.create({
 
   // Directions
   directionsButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -791,6 +919,68 @@ const styles = StyleSheet.create({
   directionsText: {
     color: colors.primary,
     fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+  },
+  resultActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    ...shadows.md,
+  },
+  modalTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+  },
+  modalSubtitle: {
+    marginTop: 4,
+    marginBottom: spacing.sm,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? spacing.sm : spacing.xs,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.base,
+  },
+  modalActions: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  modalActionBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.background,
+  },
+  modalActionBtnPrimary: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+  },
+  modalCancelText: {
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+  },
+  modalSaveText: {
+    color: colors.white,
     fontWeight: typography.weights.semibold,
   },
 });

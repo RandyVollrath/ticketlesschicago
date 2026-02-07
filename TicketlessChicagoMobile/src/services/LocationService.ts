@@ -49,8 +49,8 @@ export type LocationAccuracy = 'high' | 'balanced' | 'low';
 
 // Constants for burst sampling
 const BURST_MIN_SAMPLES = 3;
-const BURST_TARGET_SAMPLES = 8;
-const BURST_MAX_WAIT_MS = 10000; // 10 seconds of sampling
+const BURST_TARGET_SAMPLES = 5;
+const BURST_MAX_WAIT_MS = 6000; // shorter window to avoid walk-away drift
 const BURST_OUTLIER_THRESHOLD_METERS = 50; // discard samples >50m from median
 
 // Watch subscription ID for continuous tracking

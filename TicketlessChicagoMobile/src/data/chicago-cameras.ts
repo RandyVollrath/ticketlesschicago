@@ -9,9 +9,11 @@ export interface CameraLocation {
   longitude: number;
   /** Approach directions this camera monitors (e.g., ["NB", "SB"]) */
   approaches: string[];
+  /** Optional expected posted speed near this camera (mph) */
+  speedLimitMph?: number;
 }
 
-export const CHICAGO_CAMERAS: CameraLocation[] = [
+const RAW_CHICAGO_CAMERAS: CameraLocation[] = [
   { type: "speed", address: "3450 W 71st St", latitude: 41.7644, longitude: -87.7097, approaches: ["WB", "EB"] },
   { type: "speed", address: "6247 W Fullerton Ave", latitude: 41.9236, longitude: -87.7825, approaches: ["EB"] },
   { type: "speed", address: "6250 W Fullerton Ave", latitude: 41.9238, longitude: -87.7826, approaches: ["WB"] },
@@ -523,3 +525,10 @@ export const CHICAGO_CAMERAS: CameraLocation[] = [
   { type: "redlight", address: "400 South Western Avenue", latitude: 41.87651, longitude: -87.68647, approaches: ["SB"] },
   { type: "redlight", address: "4200 South Cicero Avenue", latitude: 41.81737, longitude: -87.7436, approaches: ["SB"] },
 ];
+
+export const CHICAGO_CAMERAS: CameraLocation[] = RAW_CHICAGO_CAMERAS.map((camera) => {
+  if (camera.type === 'speed' && camera.speedLimitMph == null) {
+    return { ...camera, speedLimitMph: 30 };
+  }
+  return camera;
+});

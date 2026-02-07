@@ -23,6 +23,9 @@ export const StorageKeys = {
   // Parking Data
   LAST_PARKING_LOCATION: 'lastParkingLocation',
   PARKING_HISTORY: 'parkingHistory',
+  CAMERA_PASS_HISTORY: 'cameraPassHistory',
+  RED_LIGHT_RECEIPTS: 'redLightReceipts',
+  SAVED_DESTINATIONS: 'savedDestinations',
 
   // Bluetooth / Car
   SAVED_CAR_DEVICE: 'savedCarDevice',
@@ -72,6 +75,9 @@ export const PERSISTENT_KEYS: StorageKey[] = [
   StorageKeys.SAVED_CAR_DEVICE,
   StorageKeys.NOTIFICATION_SETTINGS,
   StorageKeys.PARKING_HISTORY,
+  StorageKeys.CAMERA_PASS_HISTORY,
+  StorageKeys.RED_LIGHT_RECEIPTS,
+  StorageKeys.SAVED_DESTINATIONS,
   StorageKeys.LAST_PARKING_LOCATION,
   StorageKeys.LAST_PARKED_COORDS,
 ];

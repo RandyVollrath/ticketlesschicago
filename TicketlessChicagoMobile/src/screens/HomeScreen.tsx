@@ -25,7 +25,6 @@ import BluetoothService from '../services/BluetoothService';
 import ParkingDetectionStateMachine, { ParkingState, ParkingDetectionSnapshot } from '../services/ParkingDetectionStateMachine';
 import MotionActivityService from '../services/MotionActivityService';
 import BackgroundLocationService, { LocationUpdateEvent } from '../services/BackgroundLocationService';
-import { ParkingHistoryService } from './HistoryScreen';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
@@ -179,6 +178,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [checkingAddress, setCheckingAddress] = useState<string | null>(null);
   const [showBatteryWarning, setShowBatteryWarning] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
+  const [homePermitZone, setHomePermitZone] = useState<string | null>(null);
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -280,6 +280,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       loadLastCheck();
+      try {
+        const zone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
+        setHomePermitZone(zone || null);
+      } catch {}
       refreshBtStatus();
       // Re-check location permission (user may have just enabled it in Settings)
       if (locationDenied) {
@@ -363,6 +367,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const loadInitialData = async () => {
     await loadLastCheck();
+    try {
+      const zone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
+      setHomePermitZone(zone || null);
+    } catch {}
 
     // Show Quick Start card if not previously dismissed
     try {
@@ -405,7 +413,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const autoStartMonitoring = async () => {
     // Small delay to let the UI render first, but properly await everything
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 500));
     try {
       const hasLocationPermission = await LocationService.requestLocationPermission(true);
       if (!hasLocationPermission) {
@@ -450,7 +458,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const handleCarDisconnect = async () => {
     log.info('Parking detected - refreshing UI');
     // Small delay to ensure AsyncStorage write from BackgroundTaskService completes
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 300));
     await loadLastCheck();
 
     // On iOS, force currentActivity to 'stationary' immediately.
@@ -571,17 +579,18 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       setCheckingAddress(result.address);
       await LocationService.saveParkingCheckResult(result);
-      await ParkingHistoryService.addToHistory(result.coords, result.rules, result.address);
 
       setLastParkingCheck(result);
 
       if (result.rules.length > 0) {
         await LocationService.sendParkingAlert(result.rules);
       } else if (showAllClearAlert) {
+        const permitZone = result.rawApiData?.permitZone?.zoneName;
+        const zoneLine = permitZone ? `\nPermit zone: ${permitZone}` : '';
         const accuracyInfo = coords.accuracy
           ? ` (accuracy: ${coords.accuracy.toFixed(0)}m)`
           : '';
-        Alert.alert('All Clear!', `No parking restrictions at ${result.address}${accuracyInfo}`);
+        Alert.alert('All Clear!', `No parking restrictions at ${result.address}${accuracyInfo}${zoneLine}`);
       }
     } catch (error: any) {
       if (timedOut) return;
@@ -712,6 +721,29 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const heroState = getHeroState();
+  const permitZoneSummary = (() => {
+    if (heroState !== 'clear' || !lastParkingCheck) return null;
+    const parkedZoneRaw = String(
+      lastParkingCheck.rawApiData?.permitZone?.zoneName ||
+      lastParkingCheck.rawApiData?.permitZone?.zone ||
+      ''
+    ).trim();
+    if (!parkedZoneRaw) {
+      return homePermitZone ? 'Not in a designated permit zone.' : null;
+    }
+
+    const normalize = (value: string) => value.toLowerCase().replace(/^zone\s*/i, '').trim();
+    const parkedNorm = normalize(parkedZoneRaw);
+    const homeNorm = homePermitZone ? normalize(homePermitZone) : '';
+
+    if (!homePermitZone) {
+      return `In permit zone ${parkedZoneRaw}. Set your home zone in Settings.`;
+    }
+
+    return parkedNorm === homeNorm
+      ? `In your designated permit zone (Zone ${homePermitZone}).`
+      : `Not in your designated zone. You are in Zone ${parkedZoneRaw}.`;
+  })();
   const heroAddress = lastParkingCheck
     ? `${lastParkingCheck.address} · ${formatTimeSince(lastParkingCheck.timestamp)}`
     : undefined;
@@ -1035,6 +1067,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               ) : (
                 <Text style={styles.heroExpandedText}>No restrictions. Park with peace of mind.</Text>
               )}
+              {!!permitZoneSummary && (
+                <View style={styles.heroPermitSummaryRow}>
+                  <MaterialCommunityIcons name="card-account-details-outline" size={14} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.heroPermitSummaryText}>{permitZoneSummary}</Text>
+                </View>
+              )}
 
               {/* Enforcement risk intelligence */}
               {lastParkingCheck.rawApiData?.enforcementRisk && (() => {
@@ -1068,11 +1106,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.heroActionButton}
                   onPress={() => getDirections(lastParkingCheck.coords)}
-                  accessibilityLabel="Get directions to parked car"
+                  accessibilityLabel="Open parked car location"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="navigation-variant" size={14} color={colors.white} />
-                  <Text style={styles.heroActionText}>Directions</Text>
+                  <MaterialCommunityIcons name="map-marker-radius" size={14} color={colors.white} />
+                  <Text style={styles.heroActionText}>Location</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.heroActionButton}
@@ -1297,7 +1335,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* ──── Protection Coverage ──── */}
         <View style={styles.protectionCard}>
-          <Text style={styles.protectionTitle}>We check for</Text>
+          <Text style={styles.protectionTitle}>Checking for</Text>
           <View style={styles.protectionStrip}>
             {PROTECTION_ITEMS.map((item, index) => (
               <View key={index} style={styles.protectionChip} accessibilityLabel={`${item.label} checked`}>
@@ -1592,6 +1630,18 @@ const styles = StyleSheet.create({
     color: colors.white,
     opacity: 0.9,
     marginBottom: spacing.sm,
+  },
+  heroPermitSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  heroPermitSummaryText: {
+    marginLeft: spacing.sm,
+    fontSize: typography.sizes.sm,
+    color: colors.white,
+    opacity: 0.9,
+    flex: 1,
   },
   heroRiskSection: {
     marginTop: spacing.sm,

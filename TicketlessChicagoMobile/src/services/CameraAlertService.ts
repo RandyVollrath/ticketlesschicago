@@ -27,6 +27,8 @@
 import { Platform, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
+import CameraPassHistoryService from './CameraPassHistoryService';
+import RedLightReceiptService, { RedLightTracePoint } from './RedLightReceiptService';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('CameraAlertService');
@@ -109,7 +111,7 @@ async function speak(message: string): Promise<boolean> {
       if (e?.code === 'no_engine') {
         try {
           tts.requestInstallEngine();
-        } catch (_) {}
+        } catch {}
       }
       return false;
     }
@@ -122,12 +124,12 @@ async function speak(message: string): Promise<boolean> {
 async function stopSpeech(): Promise<void> {
   if (Platform.OS === 'ios') {
     if (SpeechModule) {
-      try { await SpeechModule.stop(); } catch (_) {}
+      try { await SpeechModule.stop(); } catch {}
     }
   } else {
     const tts = getAndroidTtsSync();
     if (tts) {
-      try { tts.stop(); } catch (_) {}
+      try { tts.stop(); } catch {}
     }
   }
 }
@@ -167,6 +169,11 @@ const MIN_SPEED_MPS = 4.5;
 
 /** Minimum time between any two TTS announcements (ms) */
 const MIN_ANNOUNCE_INTERVAL_MS = 5000;
+const PASS_CAPTURE_DISTANCE_METERS = 35;
+const PASS_MOVED_AWAY_DELTA_METERS = 20;
+const PASS_CONFIRM_WINDOW_MS = 3 * 60 * 1000;
+const PASS_DEDUPE_WINDOW_MS = 5 * 60 * 1000;
+const RED_LIGHT_TRACE_WINDOW_MS = 30 * 1000;
 
 /**
  * Bounding box size in degrees for fast pre-filter.
@@ -265,6 +272,19 @@ interface AlertedCamera {
   alertedAt: number;
 }
 
+interface CameraPassTracking {
+  minDistanceMeters: number;
+  minDistanceTimestamp: number;
+  minLatitude: number;
+  minLongitude: number;
+  minSpeedMps: number;
+  minHeading: number;
+  alertSpeedMps: number;
+  alertTimestamp: number;
+  lastDistanceMeters: number;
+  hasBeenWithinPassDistance: boolean;
+}
+
 export interface CameraAlertStatus {
   isEnabled: boolean;
   isActive: boolean;
@@ -283,6 +303,12 @@ class CameraAlertServiceClass {
 
   /** Set of camera indices we've already alerted about */
   private alertedCameras: Map<number, AlertedCamera> = new Map();
+  /** Tracking state to infer when user has passed an alerted camera */
+  private passTrackingByCamera: Map<number, CameraPassTracking> = new Map();
+  /** Dedupe recently-recorded pass events by camera */
+  private recentPasses: Map<number, number> = new Map();
+  /** Rolling trace for red-light receipt generation */
+  private recentTrace: RedLightTracePoint[] = [];
 
   /** Timestamp of last TTS announcement */
   private lastAnnounceTime = 0;
@@ -334,7 +360,7 @@ class CameraAlertServiceClass {
         }
       } else {
         // Android: Configure react-native-tts
-        const tts = getAndroidTts();
+        const tts = getAndroidTtsSync();
         if (!tts) {
           log.warn('Android TTS not available');
           return;
@@ -396,6 +422,8 @@ class CameraAlertServiceClass {
 
     this.isActive = true;
     this.alertedCameras.clear();
+    this.passTrackingByCamera.clear();
+    this.recentTrace = [];
     this.lastAnnounceTime = 0;
     log.info('Camera alert monitoring started');
   }
@@ -406,6 +434,8 @@ class CameraAlertServiceClass {
   stop(): void {
     this.isActive = false;
     this.alertedCameras.clear();
+    this.passTrackingByCamera.clear();
+    this.recentTrace = [];
     stopSpeech();
     log.info('Camera alert monitoring stopped');
   }
@@ -423,17 +453,25 @@ class CameraAlertServiceClass {
    * @param speed Current speed in m/s (-1 if unavailable)
    * @param heading Current heading in degrees (0-360, -1 if unavailable)
    */
-  onLocationUpdate(latitude: number, longitude: number, speed: number, heading: number = -1): void {
+  onLocationUpdate(
+    latitude: number,
+    longitude: number,
+    speed: number,
+    heading: number = -1,
+    horizontalAccuracyMeters: number | null = null
+  ): void {
     if (!this.isActive || !this.isEnabled) return;
-
-    // Don't alert if not moving fast enough (filters out walking, sitting)
-    if (speed >= 0 && speed < MIN_SPEED_MPS) return;
 
     this.lastLat = latitude;
     this.lastLng = longitude;
+    this.appendTracePoint(latitude, longitude, speed, heading, horizontalAccuracyMeters);
 
     // Clear cooldowns for cameras we've moved far from
     this.clearDistantCooldowns(latitude, longitude);
+    this.updatePassTracking(latitude, longitude, speed, heading);
+
+    // Don't alert if not moving fast enough (filters out walking, sitting)
+    if (speed >= 0 && speed < MIN_SPEED_MPS) return;
 
     // Compute speed-adaptive alert radius: faster = earlier warning
     const alertRadius = this.getAlertRadius(speed);
@@ -453,9 +491,141 @@ class CameraAlertServiceClass {
       // New camera in range - speak alert
       this.announceCamera(camera, distance, speed);
       this.alertedCameras.set(index, { index, alertedAt: now });
+      this.passTrackingByCamera.set(index, {
+        minDistanceMeters: distance,
+        minDistanceTimestamp: now,
+        minLatitude: latitude,
+        minLongitude: longitude,
+        minSpeedMps: speed,
+        minHeading: heading,
+        alertSpeedMps: speed,
+        alertTimestamp: now,
+        lastDistanceMeters: distance,
+        hasBeenWithinPassDistance: distance <= PASS_CAPTURE_DISTANCE_METERS,
+      });
       this.lastAnnounceTime = now;
       break; // Only announce one per GPS update
     }
+  }
+
+  private updatePassTracking(latitude: number, longitude: number, speed: number, heading: number): void {
+    const now = Date.now();
+
+    for (const [index, alerted] of this.alertedCameras) {
+      if (now - alerted.alertedAt > PASS_CONFIRM_WINDOW_MS) {
+        this.passTrackingByCamera.delete(index);
+        continue;
+      }
+
+      const camera = CHICAGO_CAMERAS[index];
+      const distance = this.haversineMeters(
+        latitude,
+        longitude,
+        camera.latitude,
+        camera.longitude
+      );
+
+      const existing = this.passTrackingByCamera.get(index);
+      const tracking: CameraPassTracking = existing || {
+        minDistanceMeters: distance,
+        minDistanceTimestamp: now,
+        minLatitude: latitude,
+        minLongitude: longitude,
+        minSpeedMps: speed,
+        minHeading: heading,
+        alertSpeedMps: speed,
+        alertTimestamp: alerted.alertedAt,
+        lastDistanceMeters: distance,
+        hasBeenWithinPassDistance: distance <= PASS_CAPTURE_DISTANCE_METERS,
+      };
+
+      if (distance < tracking.minDistanceMeters) {
+        tracking.minDistanceMeters = distance;
+        tracking.minDistanceTimestamp = now;
+        tracking.minLatitude = latitude;
+        tracking.minLongitude = longitude;
+        tracking.minSpeedMps = speed;
+        tracking.minHeading = heading;
+      }
+
+      if (distance <= PASS_CAPTURE_DISTANCE_METERS) {
+        tracking.hasBeenWithinPassDistance = true;
+      }
+
+      const movedAwayEnough =
+        distance >= tracking.minDistanceMeters + PASS_MOVED_AWAY_DELTA_METERS;
+      const isPassCandidate =
+        tracking.hasBeenWithinPassDistance && movedAwayEnough;
+
+      if (isPassCandidate) {
+        const recentPassAt = this.recentPasses.get(index) || 0;
+        if (now - recentPassAt >= PASS_DEDUPE_WINDOW_MS) {
+          this.recentPasses.set(index, now);
+          CameraPassHistoryService.addPassEvent({
+            camera,
+            userLatitude: tracking.minLatitude,
+            userLongitude: tracking.minLongitude,
+            timestamp: tracking.minDistanceTimestamp,
+            speedMps: tracking.minSpeedMps,
+            alertSpeedMps: tracking.alertSpeedMps,
+            alertTimestamp: tracking.alertTimestamp,
+          });
+
+          if (camera.type === 'redlight') {
+            RedLightReceiptService.addReceipt({
+              cameraAddress: camera.address,
+              cameraLatitude: camera.latitude,
+              cameraLongitude: camera.longitude,
+              heading: tracking.minHeading >= 0 ? tracking.minHeading : 0,
+              trace: this.getRecentTrace(now),
+              deviceTimestamp: tracking.minDistanceTimestamp,
+            });
+          }
+
+          const speedMph =
+            tracking.minSpeedMps >= 0
+              ? Math.round(tracking.minSpeedMps * 2.237)
+              : null;
+          log.info(
+            `CAMERA PASS RECORDED: ${camera.type} @ ${camera.address} (distance=${Math.round(
+              tracking.minDistanceMeters
+            )}m, speed=${speedMph ?? '?'} mph)`
+          );
+        }
+
+        this.passTrackingByCamera.delete(index);
+      } else {
+        tracking.lastDistanceMeters = distance;
+        this.passTrackingByCamera.set(index, tracking);
+      }
+    }
+  }
+
+  private appendTracePoint(
+    latitude: number,
+    longitude: number,
+    speedMps: number,
+    heading: number,
+    horizontalAccuracyMeters: number | null
+  ): void {
+    const now = Date.now();
+    const point: RedLightTracePoint = {
+      timestamp: now,
+      latitude,
+      longitude,
+      speedMps,
+      speedMph: speedMps >= 0 ? speedMps * 2.2369362920544 : -1,
+      heading,
+      horizontalAccuracyMeters,
+    };
+    this.recentTrace.push(point);
+    const cutoff = now - RED_LIGHT_TRACE_WINDOW_MS;
+    this.recentTrace = this.recentTrace.filter((p) => p.timestamp >= cutoff);
+  }
+
+  private getRecentTrace(now: number): RedLightTracePoint[] {
+    const cutoff = now - RED_LIGHT_TRACE_WINDOW_MS;
+    return this.recentTrace.filter((p) => p.timestamp >= cutoff);
   }
 
   /**
@@ -529,11 +699,12 @@ class CameraAlertServiceClass {
    * This allows re-alerting if the user drives past the same camera again.
    */
   private clearDistantCooldowns(lat: number, lng: number): void {
-    for (const [index, alerted] of this.alertedCameras) {
+    for (const [index, _alerted] of this.alertedCameras) {
       const cam = CHICAGO_CAMERAS[index];
       const dist = this.haversineMeters(lat, lng, cam.latitude, cam.longitude);
       if (dist > COOLDOWN_RADIUS_METERS) {
         this.alertedCameras.delete(index);
+        this.passTrackingByCamera.delete(index);
       }
     }
   }
@@ -543,11 +714,12 @@ class CameraAlertServiceClass {
   // --------------------------------------------------------------------------
 
   private announceCamera(camera: CameraLocation, distanceMeters: number, speed: number = -1): void {
-    const type = camera.type === 'speed' ? 'Speed camera' : 'Red light camera';
     const dist = Math.round(distanceMeters);
-
-    // Keep it short and clear for driving
-    const message = `${type} ahead, ${dist} meters`;
+    const message = camera.type === 'redlight'
+      ? 'Red-light camera ahead.'
+      : camera.speedLimitMph != null
+        ? `Speed camera ahead. Settle below ${Math.round(camera.speedLimitMph)} miles per hour.`
+        : `Speed camera ahead, ${dist} meters`;
 
     // Log with speed context for debugging alert timing
     const speedMph = speed >= 0 ? Math.round(speed * 2.237) : -1;

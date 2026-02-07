@@ -218,8 +218,10 @@ export const pushNotifications = {
   stickerReminder: (plate: string, daysUntil: number) => ({
     title: daysUntil <= 1 ? '⚠️ City Sticker Due!' : `📋 City Sticker Reminder`,
     body: daysUntil <= 1
-      ? `Your city sticker for ${plate} expires ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}!`
-      : `Your city sticker for ${plate} expires in ${daysUntil} days.`,
+      ? `Your city sticker for ${plate} expires ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}! Avoid a $200 ticket: ezbuy.chicityclerk.com/vehicle-stickers`
+      : daysUntil <= 30
+      ? `Your city sticker for ${plate} expires in ${daysUntil} days. You're in the $200 ticket risk window. Renew: ezbuy.chicityclerk.com/vehicle-stickers`
+      : `Your city sticker for ${plate} expires in ${daysUntil} days. Renew: ezbuy.chicityclerk.com/vehicle-stickers`,
     data: {
       type: 'sticker_renewal',
       plate: plate

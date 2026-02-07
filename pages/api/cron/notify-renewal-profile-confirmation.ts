@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { FEATURES } from '../../../lib/config';
 
 /**
  * Cron Job: Remind PAID Protection users to confirm their profile before renewal
@@ -30,6 +31,15 @@ export default async function handler(
   const authHeader = req.headers.authorization;
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!FEATURES.REGISTRATION_AUTOMATION) {
+    return res.status(200).json({
+      success: true,
+      message: 'Skipped: registration automation is disabled',
+      breakdown: {},
+      totalChecked: 0,
+    });
   }
 
   try {

@@ -12,6 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { email as emailTemplates, sms as smsTemplates } from '../../../lib/message-templates';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { FEATURES } from '../../../lib/config';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,6 +100,17 @@ export default async function handler(
   const authHeader = req.headers.authorization;
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && req.method !== 'GET') {
     // Allow GET for testing, but POST requires auth
+  }
+
+  if (!FEATURES.REGISTRATION_AUTOMATION) {
+    return res.status(200).json({
+      success: true,
+      processed: 0,
+      purchaseNotificationsSent: 0,
+      deliveryRemindersSent: 0,
+      applyRemindersSent: 0,
+      errors: [],
+    });
   }
 
   console.log('📬 Starting post-purchase notification processing...');

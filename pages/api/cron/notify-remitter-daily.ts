@@ -13,6 +13,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { FEATURES } from '../../../lib/config';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,6 +67,15 @@ export default async function handler(
 
   if (!isVercelCron && !isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Remitter digests are part of the registration automation feature
+  if (!FEATURES.REGISTRATION_AUTOMATION) {
+    return res.status(200).json({
+      success: true,
+      remittersNotified: 0,
+      errors: ['Skipped: registration automation is disabled'],
+    });
   }
 
   console.log('📬 Starting daily remitter digest...');

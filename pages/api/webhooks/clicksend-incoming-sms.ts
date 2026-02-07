@@ -180,7 +180,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Send confirmation SMS back
           try {
             const { sendClickSendSMS } = await import('../../../lib/sms-service');
-            await sendClickSendSMS(fromNumber, "Thanks! Your profile has been confirmed. We'll process your renewal automatically when it's time.");
+            await sendClickSendSMS(fromNumber, "Thanks! Your profile has been confirmed. We'll keep sending reminders based on your notification settings.");
             console.log('✅ Confirmation SMS sent');
           } catch (smsError) {
             console.error('Error sending confirmation SMS:', smsError);
@@ -256,7 +256,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const { sendClickSendSMS } = await import('../../../lib/sms-service');
             await sendClickSendSMS(
               fromNumber,
-              `Autopilot: Great news${emissionsUser.first_name ? `, ${emissionsUser.first_name}` : ''}! We've marked your emissions test as complete. Your license plate renewal can now proceed without any blocks. Thanks for letting us know!`
+              `Autopilot: Great news${emissionsUser.first_name ? `, ${emissionsUser.first_name}` : ''}! We've marked your emissions test as complete. You can now renew your license plate without emissions-related blocks. Thanks for letting us know!`
             );
           } catch (smsError) {
             console.error('Error sending confirmation SMS:', smsError);

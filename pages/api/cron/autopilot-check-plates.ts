@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../../../lib/contest-kits/evidence-guidance';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,6 +38,16 @@ interface MonitoredPlate {
   last_checked_at: string | null;
 }
 
+interface UserProfile {
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  mailing_address: string | null;
+  mailing_city: string | null;
+  mailing_state: string | null;
+  mailing_zip: string | null;
+}
+
 const VIOLATION_TYPE_MAP: Record<string, string> = {
   '0964125': 'expired_plates', // Expired Plates
   '0964150': 'no_city_sticker', // No City Sticker
@@ -50,6 +61,167 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
 
 function mapViolationType(code: string): string {
   return VIOLATION_TYPE_MAP[code] || 'other_unknown';
+}
+
+const DEFAULT_SENDER_ADDRESS = {
+  address: '2434 N Southport Ave, Unit 1R',
+  city: 'Chicago',
+  state: 'IL',
+  zip: '60614',
+};
+
+const DEFENSE_TEMPLATES: Record<string, { type: string; template: string }> = {
+  expired_plates: {
+    type: 'registration_challenge',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly expired registration.
+
+I respectfully request that this citation be dismissed. I request documentation supporting the alleged violation, including records showing verification of registration status at the time of citation.`,
+  },
+  no_city_sticker: {
+    type: 'sticker_challenge',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly lacking a Chicago city sticker.
+
+I respectfully request that this citation be dismissed. I request documentation supporting the alleged violation and the verification process used by the issuing officer.`,
+  },
+  expired_meter: {
+    type: 'meter_challenge',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for an allegedly expired meter.
+
+I respectfully request that this citation be dismissed. I request meter maintenance records, payment verification records, and all supporting evidence.`,
+  },
+  street_cleaning: {
+    type: 'signage_challenge',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
+
+I respectfully request that this citation be dismissed. I request documentation confirming posted signage compliance and that cleaning occurred as scheduled.`,
+  },
+  other_unknown: {
+    type: 'general_challenge',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date}.
+
+I respectfully request that this citation be dismissed and that all supporting evidence be provided for review.`,
+  },
+};
+
+function generateLetterContent(
+  ticket: {
+    ticket_number: string;
+    violation_date: string | null;
+    violation_description: string | null;
+    violation_type: string;
+    amount: number | null;
+    plate: string;
+    state: string;
+  },
+  profile: UserProfile
+): { letterContent: string; defenseType: string } {
+  const template = DEFENSE_TEMPLATES[ticket.violation_type] || DEFENSE_TEMPLATES.other_unknown;
+  const today = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const violationDate = ticket.violation_date
+    ? new Date(ticket.violation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : 'the date indicated';
+
+  const fullName = profile.full_name ||
+    `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
+    'Vehicle Owner';
+
+  const content = template.template
+    .replace(/{ticket_number}/g, ticket.ticket_number)
+    .replace(/{violation_date}/g, violationDate)
+    .replace(/{violation_description}/g, ticket.violation_description || 'parking violation');
+
+  return {
+    defenseType: template.type,
+    letterContent: `${today}
+
+City of Chicago
+Department of Finance
+Parking Ticket Contests
+P.O. Box 88292
+Chicago, IL 60680-1292
+
+RE: Contest of Parking Ticket ${ticket.ticket_number}
+License Plate: ${ticket.plate} (${ticket.state})
+Violation Date: ${violationDate}
+Amount: ${ticket.amount ? `$${ticket.amount.toFixed(2)}` : 'As indicated'}
+
+To Whom It May Concern:
+
+${content}
+
+Thank you for your consideration.
+
+Sincerely,
+
+${fullName}`,
+  };
+}
+
+async function sendEvidenceRequestEmail(
+  userEmail: string,
+  userName: string,
+  ticketId: string,
+  ticketNumber: string,
+  violationType: string,
+  violationDate: string | null,
+  amount: number | null,
+  plate: string,
+  evidenceDeadline: Date
+): Promise<boolean> {
+  if (!resend) return false;
+
+  const guidance = getEvidenceGuidance(violationType);
+  const questionsHtml = generateEvidenceQuestionsHtml(guidance);
+  const quickTipsHtml = generateQuickTipsHtml(guidance);
+  const formattedDeadline = evidenceDeadline.toLocaleString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+  const violationDateFormatted = violationDate
+    ? new Date(violationDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Unknown date';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2>${guidance.title}</h2>
+      <p>Hi ${userName},</p>
+      <p>${guidance.intro}</p>
+      <p><strong>Ticket #:</strong> ${ticketNumber}<br/>
+      <strong>Violation Date:</strong> ${violationDateFormatted}<br/>
+      <strong>License Plate:</strong> ${plate}${amount ? `<br/><strong>Amount:</strong> $${amount.toFixed(2)}` : ''}</p>
+      <div style="background:#fffbeb;border:1px solid #f59e0b;padding:16px;border-radius:8px;margin:16px 0;">
+        <p><strong>Please reply to this email</strong> with evidence/details for your case:</p>
+        ${questionsHtml}
+      </div>
+      ${quickTipsHtml}
+      <div style="background:#dbeafe;border:1px solid #3b82f6;padding:12px;border-radius:8px;margin-top:16px;">
+        <strong>Evidence deadline:</strong> ${formattedDeadline}
+      </div>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: [userEmail],
+      subject: guidance.emailSubject,
+      html,
+      replyTo: `evidence+${ticketId}@autopilotamerica.com`,
+    });
+    return true;
+  } catch (error) {
+    console.error(`  Failed evidence request email to ${userEmail}:`, error);
+    return false;
+  }
 }
 
 /**
@@ -103,20 +275,13 @@ async function fetchChicagoTickets(plate: string, state: string): Promise<Chicag
   }
 }
 
-interface FoundTicket {
-  ticket_number: string;
-  violation_description: string;
-  amount: number;
-  plate: string;
-}
-
 /**
  * Process a single plate - check for new tickets
  */
-async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number; errors: string[]; ticketDetails: FoundTicket[] }> {
+async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number; emailsSent: number; errors: string[] }> {
   const errors: string[] = [];
   let newTickets = 0;
-  const ticketDetails: FoundTicket[] = [];
+  let emailsSent = 0;
 
   console.log(`  Checking plate ${plate.plate} (${plate.state})...`);
 
@@ -125,10 +290,37 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
   if (chicagoTickets.length === 0) {
     console.log(`    No tickets found`);
-    return { newTickets: 0, errors, ticketDetails };
+    return { newTickets: 0, emailsSent: 0, errors };
   }
 
   console.log(`    Found ${chicagoTickets.length} tickets in Chicago database`);
+
+  const { data: settings } = await supabaseAdmin
+    .from('autopilot_settings')
+    .select('email_on_ticket_found')
+    .eq('user_id', plate.user_id)
+    .single();
+
+  const emailEnabled = settings?.email_on_ticket_found !== false;
+
+  const { data: userData } = await supabaseAdmin.auth.admin.getUserById(plate.user_id);
+  const userEmail = userData?.user?.email || null;
+
+  const { data: profileData } = await supabaseAdmin
+    .from('user_profiles')
+    .select('first_name, last_name, full_name, mailing_address, mailing_city, mailing_state, mailing_zip')
+    .eq('user_id', plate.user_id)
+    .single();
+
+  const userProfile: UserProfile = {
+    full_name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() || 'Vehicle Owner',
+    first_name: profileData?.first_name || null,
+    last_name: profileData?.last_name || null,
+    mailing_address: profileData?.mailing_address || DEFAULT_SENDER_ADDRESS.address,
+    mailing_city: profileData?.mailing_city || DEFAULT_SENDER_ADDRESS.city,
+    mailing_state: profileData?.mailing_state || DEFAULT_SENDER_ADDRESS.state,
+    mailing_zip: profileData?.mailing_zip || DEFAULT_SENDER_ADDRESS.zip,
+  };
 
   // Get existing tickets for this plate
   const { data: existingTickets } = await supabaseAdmin
@@ -165,8 +357,11 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
                    parseFloat(ticket.fine_level2_amount) ||
                    parseFloat(ticket.fine_level1_amount) || 0;
 
-    // Insert new ticket
-    const { error: insertError } = await supabaseAdmin
+    const violationType = mapViolationType(ticket.violation_code);
+    const evidenceDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    // Insert new ticket directly into evidence collection flow
+    const { data: newTicket, error: insertError } = await supabaseAdmin
       .from('detected_tickets')
       .insert({
         user_id: plate.user_id,
@@ -175,41 +370,90 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         state: plate.state,
         ticket_number: ticket.ticket_number,
         violation_code: ticket.violation_code,
-        violation_type: mapViolationType(ticket.violation_code),
+        violation_type: violationType,
         violation_description: ticket.violation_description,
         violation_date: ticket.issue_date,
         amount: amount,
         fine_amount: parseFloat(ticket.fine_level1_amount) || amount,
         location: ticket.violation_location || null,
         officer_badge: ticket.officer || null,
-        status: 'found',
+        status: 'pending_evidence',
         found_at: new Date().toISOString(),
+        source: 'chicago_api',
+        evidence_requested_at: new Date().toISOString(),
+        evidence_deadline: evidenceDeadline.toISOString(),
         raw_data: ticket,
-      });
+      })
+      .select('id')
+      .single();
 
-    if (insertError) {
+    if (insertError || !newTicket?.id) {
       errors.push(`Failed to insert ticket ${ticket.ticket_number}: ${insertError.message}`);
     } else {
       newTickets++;
-      ticketDetails.push({
-        ticket_number: ticket.ticket_number,
-        violation_description: ticket.violation_description,
-        amount,
-        plate: plate.plate,
-      });
       console.log(`    NEW: ${ticket.ticket_number} - ${ticket.violation_description} - $${amount}`);
+
+      // Generate initial contest letter now so mailing cron can send after evidence deadline
+      const { letterContent, defenseType } = generateLetterContent(
+        {
+          ticket_number: ticket.ticket_number,
+          violation_date: ticket.issue_date,
+          violation_description: ticket.violation_description,
+          violation_type: violationType,
+          amount,
+          plate: plate.plate,
+          state: plate.state,
+        },
+        userProfile
+      );
+
+      const { error: letterError } = await supabaseAdmin
+        .from('contest_letters')
+        .insert({
+          ticket_id: newTicket.id,
+          user_id: plate.user_id,
+          letter_content: letterContent,
+          letter_text: letterContent,
+          defense_type: defenseType,
+          status: 'pending_evidence',
+          using_default_address: !profileData?.mailing_address,
+        });
+
+      if (letterError) {
+        errors.push(`Failed to create letter for ${ticket.ticket_number}: ${letterError.message}`);
+      }
+
+      if (emailEnabled && userEmail) {
+        const sent = await sendEvidenceRequestEmail(
+          userEmail,
+          userProfile.first_name || 'there',
+          newTicket.id,
+          ticket.ticket_number,
+          violationType,
+          ticket.issue_date || null,
+          amount,
+          plate.plate,
+          evidenceDeadline
+        );
+        if (sent) {
+          emailsSent++;
+        }
+      }
 
       // Log to audit
       await supabaseAdmin
         .from('ticket_audit_log')
         .insert({
-          ticket_id: null, // Will be set after we get the ID
+          ticket_id: newTicket.id,
           user_id: plate.user_id,
-          action: 'ticket_found',
+          action: 'ticket_detected',
           details: {
             ticket_number: ticket.ticket_number,
             violation: ticket.violation_description,
             amount,
+            source: 'chicago_api',
+            evidence_deadline: evidenceDeadline.toISOString(),
+            evidence_email_sent: emailEnabled && !!userEmail,
           },
           performed_by: 'autopilot_cron',
         });
@@ -222,141 +466,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     .update({ last_checked_at: new Date().toISOString() })
     .eq('id', plate.id);
 
-  return { newTickets, errors, ticketDetails };
-}
-
-/**
- * Send notification email for new tickets
- */
-async function sendTicketNotifications(
-  userId: string,
-  ticketCount: number,
-  tickets: Array<{ ticket_number: string; violation_description: string; amount: number; plate: string }>
-): Promise<void> {
-  // Get user settings
-  const { data: settings } = await supabaseAdmin
-    .from('autopilot_settings')
-    .select('email_on_ticket_found')
-    .eq('user_id', userId)
-    .single();
-
-  if (!settings?.email_on_ticket_found) {
-    console.log(`  User ${userId} has email_on_ticket_found disabled, skipping notification`);
-    return;
-  }
-
-  // Get user email and profile
-  const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
-  if (!userData?.user?.email) {
-    console.log(`  User ${userId} has no email, skipping notification`);
-    return;
-  }
-
-  const { data: profile } = await supabaseAdmin
-    .from('user_profiles')
-    .select('first_name')
-    .eq('user_id', userId)
-    .single();
-
-  const firstName = profile?.first_name || 'there';
-  const email = userData.user.email;
-
-  if (!resend) {
-    console.log(`  RESEND not configured, would send to ${email}: ${ticketCount} new tickets found`);
-    return;
-  }
-
-  try {
-    // Build ticket list HTML
-    const ticketListHtml = tickets.map(t => `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0;">${t.ticket_number}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0;">${t.plate}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0;">${t.violation_description}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #E2E8F0; text-align: right;">$${t.amount.toFixed(2)}</td>
-      </tr>
-    `).join('');
-
-    const totalAmount = tickets.reduce((sum, t) => sum + t.amount, 0);
-
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
-          <h1 style="margin: 0; font-size: 24px;">🎫 New Tickets Detected!</h1>
-          <p style="margin: 8px 0 0; opacity: 0.9;">Autopilot found ${ticketCount} new ticket${ticketCount > 1 ? 's' : ''} on your account</p>
-        </div>
-
-        <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="margin: 0 0 20px; font-size: 16px; color: #374151;">
-            Hi ${firstName},
-          </p>
-
-          <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
-            We found ${ticketCount} new parking ticket${ticketCount > 1 ? 's' : ''} associated with your license plate${tickets.length > 1 && new Set(tickets.map(t => t.plate)).size > 1 ? 's' : ''}.
-            ${ticketCount === 1 ? "Don't worry - we're on it!" : "Don't worry - we're working on all of them!"}
-          </p>
-
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
-            <thead>
-              <tr style="background: #F8FAFC;">
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #E2E8F0;">Ticket #</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #E2E8F0;">Plate</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #E2E8F0;">Violation</th>
-                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #E2E8F0;">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${ticketListHtml}
-            </tbody>
-            <tfoot>
-              <tr style="background: #F8FAFC; font-weight: bold;">
-                <td colspan="3" style="padding: 12px;">Total</td>
-                <td style="padding: 12px; text-align: right;">$${totalAmount.toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <div style="background: #EFF6FF; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-            <h3 style="margin: 0 0 8px; font-size: 16px; color: #1E40AF;">What happens next?</h3>
-            <ol style="margin: 0; padding-left: 20px; color: #1E40AF; font-size: 14px; line-height: 1.6;">
-              <li>We generate a personalized contest letter for each ticket</li>
-              <li>The letter is automatically mailed to Chicago's Department of Finance</li>
-              <li>You'll receive an email confirmation when each letter is mailed</li>
-              <li>Wait 2-4 weeks for the city's decision</li>
-            </ol>
-          </div>
-
-          <div style="text-align: center; margin-bottom: 20px;">
-            <a href="https://autopilotamerica.com/settings"
-               style="display: inline-block; background: #0F172A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">
-              View Your Dashboard
-            </a>
-          </div>
-
-          <p style="margin: 0; font-size: 13px; color: #9CA3AF; text-align: center;">
-            Questions? Reply to this email or contact support@autopilotamerica.com
-          </p>
-        </div>
-
-        <p style="margin: 20px 0 0; font-size: 12px; color: #9CA3AF; text-align: center;">
-          You're receiving this because you have Autopilot ticket monitoring enabled.<br>
-          <a href="https://autopilotamerica.com/settings" style="color: #6B7280;">Manage notification preferences</a>
-        </p>
-      </div>
-    `;
-
-    await resend.emails.send({
-      from: 'Autopilot America <alerts@autopilotamerica.com>',
-      to: [email],
-      subject: `🎫 ${ticketCount} New Ticket${ticketCount > 1 ? 's' : ''} Found - We're On It!`,
-      html,
-    });
-
-    console.log(`  ✅ Sent ticket notification email to ${email}`);
-
-  } catch (error) {
-    console.error(`  ❌ Failed to send ticket notification to ${email}:`, error);
-  }
+  return { newTickets, emailsSent, errors };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -417,39 +527,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`📋 Checking ${plates.length} plates for ${subscriptions.length} users`);
 
     let totalNewTickets = 0;
+    let totalEvidenceEmailsSent = 0;
     const allErrors: string[] = [];
-    const userTicketCounts: Record<string, number> = {};
-    const userTicketDetails: Record<string, FoundTicket[]> = {};
 
     // Process each plate
     for (const plate of plates) {
-      const { newTickets, errors, ticketDetails } = await processPlate(plate as MonitoredPlate);
+      const { newTickets, emailsSent, errors } = await processPlate(plate as MonitoredPlate);
       totalNewTickets += newTickets;
+      totalEvidenceEmailsSent += emailsSent;
       allErrors.push(...errors);
-
-      if (newTickets > 0) {
-        userTicketCounts[plate.user_id] = (userTicketCounts[plate.user_id] || 0) + newTickets;
-        userTicketDetails[plate.user_id] = [
-          ...(userTicketDetails[plate.user_id] || []),
-          ...ticketDetails,
-        ];
-      }
 
       // Rate limit: 500ms between plates
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Send notifications
-    for (const [userId, count] of Object.entries(userTicketCounts)) {
-      await sendTicketNotifications(userId, count, userTicketDetails[userId] || []);
-    }
-
-    console.log(`✅ Complete: ${plates.length} plates checked, ${totalNewTickets} new tickets found`);
+    console.log(`✅ Complete: ${plates.length} plates checked, ${totalNewTickets} new tickets found, ${totalEvidenceEmailsSent} evidence request emails sent`);
 
     return res.status(200).json({
       success: true,
       platesChecked: plates.length,
       newTicketsFound: totalNewTickets,
+      evidenceEmailsSent: totalEvidenceEmailsSent,
       errors: allErrors.length > 0 ? allErrors : undefined,
       timestamp: new Date().toISOString(),
     });
