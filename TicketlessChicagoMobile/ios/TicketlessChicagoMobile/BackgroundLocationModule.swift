@@ -491,7 +491,27 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // GPS speed alone does NOT start driving — only CoreMotion can detect
       // "in a vehicle" vs "walking". GPS speed is used as a sanity check
       // to prevent CoreMotion flicker from falsely triggering driving.
-      if !isDriving && !coreMotionSaysAutomotive {
+      if !isDriving && coreMotionSaysAutomotive {
+        // CoreMotion already said automotive but we were waiting for GPS speed
+        // confirmation (hasConfirmedParkingThisSession guard). Now GPS confirms
+        // driving speed — promote to driving immediately instead of waiting for
+        // the next CoreMotion callback (which could be 10-60s away).
+        isDriving = true
+        drivingStartTime = Date()
+        lastDrivingLocation = nil
+        locationAtStopStart = nil
+        self.log("Driving started (GPS speed \(String(format: "%.1f", speed)) m/s confirmed CoreMotion automotive)")
+
+        var departureTimestamp = Date().timeIntervalSince1970 * 1000
+        if location.speed > minDrivingSpeedMps && Date().timeIntervalSince(location.timestamp) < 60 {
+          departureTimestamp = location.timestamp.timeIntervalSince1970 * 1000
+        }
+
+        sendEvent(withName: "onDrivingStarted", body: [
+          "timestamp": departureTimestamp,
+          "source": "gps_speed_confirmed",
+        ])
+      } else if !isDriving && !coreMotionSaysAutomotive {
         self.log("GPS speed > threshold (\(String(format: "%.1f", speed)) m/s) but CoreMotion not automotive — waiting for CoreMotion")
       }
     } else if speed >= 0 && speed <= 0.5 {

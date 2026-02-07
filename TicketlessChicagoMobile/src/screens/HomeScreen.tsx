@@ -306,6 +306,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         setCurrentActivity(activity.activity);
         setCurrentConfidence(activity.confidence);
 
+        // If CoreMotion says automotive, clear any stale parking result.
+        // This is a safety net: onDrivingStarted from the native module
+        // SHOULD clear it via handleCarReconnect, but if that event was
+        // missed or delayed, the 15s poll catches it here.
+        if (activity.activity === 'automotive') {
+          setLastParkingCheck(prev => {
+            if (prev) {
+              log.info('Activity poll detected automotive — clearing stale parking result');
+              AsyncStorage.removeItem(StorageKeys.LAST_PARKING_LOCATION);
+            }
+            return null;
+          });
+        }
+
         // Log transitions for debug overlay
         if (activity.activity !== prevActivity && showDebug) {
           const now = new Date();
@@ -470,6 +484,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // cleared AsyncStorage; we also clear React state so the UI updates.
     setLastParkingCheck(null);
     setIsCarConnected(true);
+    // On iOS, immediately set activity to automotive so the hero card
+    // switches to "Driving" right away. The 15s CoreMotion poll can lag
+    // behind the native onDrivingStarted event that triggers this callback.
+    if (Platform.OS === 'ios') {
+      setCurrentActivity('automotive');
+      setCurrentConfidence('high');
+    }
   };
 
   const stopMonitoring = async () => {
