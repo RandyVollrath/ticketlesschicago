@@ -435,6 +435,52 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           let isWalking = activity.walking
           self.log("Exited vehicle (CoreMotion: \(activity.stationary ? "stationary" : "walking"), confidence: \(self.confidenceString(activity.confidence)))")
           self.handlePotentialParking(userIsWalking: isWalking)
+
+        } else if !self.isDriving && wasAutomotive && self.hasConfirmedParkingThisSession {
+          // SHORT DRIVE RECOVERY: CoreMotion went automotive → stationary/walking
+          // but isDriving was never set to true. This happens on short drives
+          // (e.g. 6 blocks) where GPS couldn't confirm speed before the user parked:
+          //   1. CoreMotion detects automotive → starts GPS for speed verification
+          //   2. GPS needs 3-10s to get a fix with speed > threshold
+          //   3. By then the user is already slowing/parked → GPS shows speed ≈ 0
+          //   4. isDriving never becomes true → normal parking detection is blocked
+          //
+          // Fix: fire onDrivingStarted (for departure tracking on previous spot)
+          // then onParkingDetected (for the new spot).
+          let parkingLoc = self.lastDrivingLocation ?? self.locationManager.location
+          if let loc = parkingLoc {
+            self.log("SHORT DRIVE RECOVERY: CoreMotion automotive→\(activity.stationary ? "stationary" : "walking") but isDriving was false. Firing departure + parking events.")
+
+            // Fire departure event first so previous parking gets a departure time.
+            let departureTimestamp = Date().timeIntervalSince1970 * 1000
+            self.sendEvent(withName: "onDrivingStarted", body: [
+              "timestamp": departureTimestamp,
+              "source": "short_drive_recovery",
+            ])
+
+            // Delay parking event to give JS time to process departure first.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+              let body: [String: Any] = [
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+                "latitude": loc.coordinate.latitude,
+                "longitude": loc.coordinate.longitude,
+                "accuracy": loc.horizontalAccuracy,
+                "locationSource": "short_drive_recovery",
+                "drivingDurationSec": 0,
+              ]
+              self.sendEvent(withName: "onParkingDetected", body: body)
+              self.log("SHORT DRIVE RECOVERY: onParkingDetected fired at \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
+            }
+
+            // Clean up driving state
+            self.stopContinuousGps()
+            self.lastDrivingLocation = nil
+            self.locationAtStopStart = nil
+            self.speedSaysMoving = false
+            self.speedZeroStartTime = nil
+          } else {
+            self.log("SHORT DRIVE RECOVERY: No location available — cannot fire parking event")
+          }
         }
       }
       // Note: cycling, running, unknown → ignore, don't change state
