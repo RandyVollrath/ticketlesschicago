@@ -17,6 +17,24 @@ import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('SettingsScreen');
+const CAR_NAME_HINTS = [
+  'car', 'auto', 'vehicle', 'my', 'toyota', 'honda', 'ford', 'chevy',
+  'nissan', 'hyundai', 'kia', 'mazda', 'subaru', 'volkswagen', 'vw',
+  'bmw', 'mercedes', 'audi', 'lexus', 'acura', 'jeep', 'ram', 'gmc', 'tesla',
+];
+
+function scoreDeviceName(name?: string): number {
+  if (!name) return -1;
+  const normalized = name.toLowerCase();
+  let score = 0;
+  for (const hint of CAR_NAME_HINTS) {
+    if (normalized.includes(hint)) score += 2;
+  }
+  if (normalized.includes('sync') || normalized.includes('uconnect') || normalized.includes('carplay')) {
+    score += 3;
+  }
+  return score;
+}
 
 const SettingsScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -60,9 +78,14 @@ const SettingsScreen: React.FC = () => {
 
     try {
       const devices = await BluetoothService.getPairedDevices();
+      const sortedDevices = [...devices].sort((a, b) => {
+        const scoreDiff = scoreDeviceName(b.name) - scoreDeviceName(a.name);
+        if (scoreDiff !== 0) return scoreDiff;
+        return (a.name || '').localeCompare(b.name || '');
+      });
       if (isMountedRef.current) {
-        setPairedDevices(devices);
-        if (devices.length === 0) {
+        setPairedDevices(sortedDevices);
+        if (sortedDevices.length === 0) {
           Alert.alert(
             'No Paired Devices',
             'No Bluetooth devices found. Make sure your car\'s Bluetooth is paired in your phone\'s Settings > Bluetooth first, then come back here.',

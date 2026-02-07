@@ -51,8 +51,8 @@ export const URLS = {
 
   // External links
   EMISSIONS_LOCATOR: 'https://airteam.app/forms/locator.cfm',
-  CITY_STICKER_RENEWAL: 'https://chicityclerk.com',
-  LICENSE_PLATE_RENEWAL: 'https://cyberdriveillinois.com',
+  CITY_STICKER_RENEWAL: 'https://ezbuy.chicityclerk.com/vehicle-stickers',
+  LICENSE_PLATE_RENEWAL: 'https://www.ilsos.gov/departments/vehicles/onlinerenewals.html',
 } as const;
 
 // SMS/Voice message prefix
@@ -64,6 +64,13 @@ export const BRAND = {
   SHORT_NAME: 'Autopilot',
   TAGLINE: 'Your Vehicle Compliance Partner',
   TRUSTED_TAGLINE: 'Your trusted vehicle compliance partner',
+} as const;
+
+// Feature flags
+// IMPORTANT: Registration automation is intentionally OFF by default.
+// Set ENABLE_REGISTRATION_AUTOMATION=true to re-enable auto-processing behavior.
+export const FEATURES = {
+  REGISTRATION_AUTOMATION: process.env.ENABLE_REGISTRATION_AUTOMATION === 'true',
 } as const;
 
 // ICS calendar UID domain

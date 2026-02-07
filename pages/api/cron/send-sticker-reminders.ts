@@ -16,6 +16,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { FEATURES } from '../../../lib/config';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,6 +30,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const authHeader = req.headers.authorization;
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!FEATURES.REGISTRATION_AUTOMATION) {
+    return res.status(200).json({
+      success: true,
+      message: 'Skipped: registration automation is disabled',
+      results: {
+        processed: 0,
+        sent: 0,
+        failed: 0,
+        flaggedForFollowup: 0,
+        errors: []
+      }
+    });
   }
 
   console.log('📬 Starting sticker reminder cron...');

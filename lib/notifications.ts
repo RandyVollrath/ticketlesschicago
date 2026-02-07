@@ -9,7 +9,7 @@ import {
   type MessageContext
 } from './message-audit-logger';
 import { pushService, PushNotification, pushNotifications } from './push-service';
-import { EMAIL, URLS, BRAND } from './config';
+import { EMAIL, URLS, BRAND, FEATURES } from './config';
 import { sms, email, voice, RenewalContext, UserContext } from './message-templates';
 
 // Re-export push service for convenience
@@ -351,7 +351,9 @@ export class NotificationScheduler {
             // Send notifications based on preferences
             try {
               const prefs = user.notification_preferences || {};
-              const hasProtection = user.has_contesting || false;
+              // Registration automation is disabled by default.
+              // When disabled, paid users get reminder-style messaging only.
+              const hasProtection = FEATURES.REGISTRATION_AUTOMATION && (user.has_contesting || false);
               const hasPermitZone = user.has_permit_zone || false;
 
               // Check if user needs to submit permit zone documents

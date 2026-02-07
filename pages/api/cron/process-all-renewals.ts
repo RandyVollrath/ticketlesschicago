@@ -20,6 +20,7 @@ import stripeConfig from '../../../lib/stripe-config';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { PLATFORM_FEES, STRIPE_FEES } from '../../../lib/pricing-config';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { FEATURES } from '../../../lib/config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -361,6 +362,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!dryRun && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!FEATURES.REGISTRATION_AUTOMATION) {
+    return res.status(200).json({
+      success: true,
+      skipped: true,
+      reason: 'Registration automation is disabled (ENABLE_REGISTRATION_AUTOMATION != true)',
+    });
   }
 
   // Generate correlation ID for tracking this run through logs

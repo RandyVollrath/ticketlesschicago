@@ -16,6 +16,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 const supabase = createClient(
@@ -23,7 +24,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const BUCKET_NAME = 'residency-proofs-temps';
+const UTILITY_BUCKET_NAME = 'residency-proofs-temps';
+const REGISTRATION_BUCKET_NAME = 'registration-evidence';
+const CITY_STICKER_SENDER = 'chicagovehiclestickers@sebis.com';
+const LICENSE_PLATE_SENDER = 'ecommerce@ilsos.gov';
+
+type EvidenceSourceType = 'city_sticker' | 'license_plate';
+type InboundInboxType = 'utility' | 'registration' | 'legacy';
 
 interface ResendInboundPayload {
   type: 'email.received';
@@ -44,6 +51,109 @@ interface ResendInboundPayload {
       content_id?: string;
     }>;
   };
+}
+
+function detectEvidenceSource(senderEmail: string): EvidenceSourceType | null {
+  if (senderEmail.includes(CITY_STICKER_SENDER)) return 'city_sticker';
+  if (senderEmail.includes(LICENSE_PLATE_SENDER)) return 'license_plate';
+  return null;
+}
+
+function parseReceiptMetadata(subject: string, text?: string | null) {
+  const haystack = `${subject || ''}\n${text || ''}`;
+  const orderMatch = haystack.match(/\b(?:order|confirmation|transaction)\s*(?:#|number|no\.?)?\s*[:\-]?\s*([A-Z0-9\-]{5,})\b/i);
+  const amountMatch = haystack.match(/\$\s*([0-9]+(?:\.[0-9]{2})?)/);
+  const dateMatch = haystack.match(/\b(20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\/[0-9]{1,2}\/20[0-9]{2})\b/);
+
+  let parsedPurchaseDate: string | null = null;
+  if (dateMatch?.[1]) {
+    const parsed = new Date(dateMatch[1]);
+    if (!Number.isNaN(parsed.getTime())) {
+      parsedPurchaseDate = parsed.toISOString().slice(0, 10);
+    }
+  }
+
+  return {
+    parsedOrderId: orderMatch?.[1] ?? null,
+    parsedAmountCents: amountMatch?.[1] ? Math.round(parseFloat(amountMatch[1]) * 100) : null,
+    parsedPurchaseDate,
+  };
+}
+
+function parseRecipient(toAddress: string): { userId: string; inboxType: InboundInboxType } | null {
+  const match = toAddress.match(
+    /([a-f0-9\-]+)@(?:(bills)\.autopilotamerica\.com|(receipts)\.autopilotamerica\.com|linguistic-louse\.resend\.app)/i
+  );
+  if (!match) return null;
+
+  const userId = match[1];
+  const inboxType: InboundInboxType = match[2]
+    ? 'utility'
+    : match[3]
+      ? 'registration'
+      : 'legacy';
+  return { userId, inboxType };
+}
+
+function escapeXml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function wrapLines(text: string, width = 86, maxLines = 14): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if ((current + ' ' + word).trim().length <= width) {
+      current = (current + ' ' + word).trim();
+    } else {
+      lines.push(current);
+      current = word;
+      if (lines.length >= maxLines) break;
+    }
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines;
+}
+
+async function generateEmailEvidenceScreenshot(params: {
+  sourceType: EvidenceSourceType;
+  sender: string;
+  subject: string;
+  body: string;
+  forwardedAtIso: string;
+  orderId: string | null;
+  amountCents: number | null;
+}): Promise<Buffer> {
+  const excerptLines = wrapLines(params.body || '(no email body provided)');
+  const amount = params.amountCents != null ? `$${(params.amountCents / 100).toFixed(2)}` : 'Unknown';
+  const sourceLabel = params.sourceType === 'city_sticker' ? 'City Sticker Receipt' : 'License Plate Receipt';
+  const orderLabel = params.orderId || 'Unknown';
+  const forwardedAt = new Date(params.forwardedAtIso).toLocaleString('en-US');
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="900" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f8fafc"/>
+  <rect x="40" y="40" width="1320" height="820" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="80" y="120" font-size="40" font-family="Arial, sans-serif" font-weight="700" fill="#0f172a">${escapeXml(sourceLabel)} Evidence Snapshot</text>
+  <text x="80" y="172" font-size="24" font-family="Arial, sans-serif" fill="#334155">Sender: ${escapeXml(params.sender || 'Unknown')}</text>
+  <text x="80" y="212" font-size="24" font-family="Arial, sans-serif" fill="#334155">Forwarded: ${escapeXml(forwardedAt)}</text>
+  <text x="80" y="252" font-size="24" font-family="Arial, sans-serif" fill="#334155">Order ID: ${escapeXml(orderLabel)}</text>
+  <text x="80" y="292" font-size="24" font-family="Arial, sans-serif" fill="#334155">Amount: ${escapeXml(amount)}</text>
+  <text x="80" y="352" font-size="26" font-family="Arial, sans-serif" font-weight="700" fill="#0f172a">Subject</text>
+  <text x="80" y="392" font-size="24" font-family="Arial, sans-serif" fill="#111827">${escapeXml((params.subject || 'No subject').slice(0, 120))}</text>
+  <text x="80" y="460" font-size="26" font-family="Arial, sans-serif" font-weight="700" fill="#0f172a">Email Excerpt</text>
+  ${excerptLines
+    .map((line, idx) => `<text x="80" y="${510 + idx * 32}" font-size="22" font-family="Arial, sans-serif" fill="#1f2937">${escapeXml(line)}</text>`)
+    .join('\n')}
+  <text x="80" y="838" font-size="18" font-family="Arial, sans-serif" fill="#64748b">Generated automatically by Ticketless Chicago evidence pipeline.</text>
+</svg>`;
+
+  return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
 }
 
 // Disable body parsing to handle raw webhook payload
@@ -102,15 +212,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const toAddress = email.to[0]; // Primary recipient
     console.log(`🔍 Parsing email address: ${toAddress}`);
 
-    const match = toAddress.match(/([a-f0-9\-]+)@(?:bills\.autopilotamerica\.com|linguistic-louse\.resend\.app)/i);
-
-    if (!match) {
+    const recipient = parseRecipient(toAddress);
+    if (!recipient) {
       console.error('❌ Invalid email format:', toAddress);
-      console.error('Expected format: {uuid}@bills.autopilotamerica.com or {uuid}@linguistic-louse.resend.app');
+      console.error('Expected format: {uuid}@bills.autopilotamerica.com, {uuid}@receipts.autopilotamerica.com, or {uuid}@linguistic-louse.resend.app');
       return res.status(400).json({ error: 'Invalid email format', toAddress });
     }
 
-    const userId = match[1];
+    const userId = recipient.userId;
 
     console.log(`📨 Received utility bill email for user ${userId}`);
     console.log(`  - From: ${email.from}`);
@@ -130,117 +239,204 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'User not found', userId });
     }
 
+    const senderEmail = (email.from || '').toLowerCase();
+    const evidenceSource = detectEvidenceSource(senderEmail);
+    const isRegistrationEvidenceReceipt = evidenceSource != null;
+    const targetBucket = isRegistrationEvidenceReceipt ? REGISTRATION_BUCKET_NAME : UTILITY_BUCKET_NAME;
+
+    if (recipient.inboxType === 'registration' && !isRegistrationEvidenceReceipt) {
+      return res.status(400).json({
+        error: 'Registration inbox only accepts registration receipts from supported senders',
+        sender: senderEmail,
+      });
+    }
+
     console.log(`✅ Found user profile:`, {
       has_contesting: profile.has_contesting,
       has_permit_zone: profile.has_permit_zone,
-      email_forwarding_address: profile.email_forwarding_address
+      email_forwarding_address: profile.email_forwarding_address,
+      evidence_source: evidenceSource,
     });
 
-    // Verify user has protection and permit zone
+    // All forwarding workflows require Protection.
     if (!profile.has_contesting) {
       console.error('❌ User does not have protection:', userId);
       return res.status(400).json({ error: 'User does not have protection service', userId });
     }
 
-    if (!profile.has_permit_zone) {
+    // Utility-bill residency proof path requires permit-zone users.
+    // City-sticker receipt evidence path does not require permit zone.
+    if (!isRegistrationEvidenceReceipt && !profile.has_permit_zone) {
       console.error('❌ User does not have permit zone:', userId);
       return res.status(400).json({ error: 'User does not require proof of residency', userId });
     }
 
-    // Find PDF attachment
+    // Find PDF attachment if present (required for utility-bill residency flow,
+    // optional for registration evidence where body text can still prove purchase).
     console.log(`🔍 Searching for PDF attachment...`);
     const pdfAttachment = email.attachments?.find(att =>
       att.content_type === 'application/pdf' || att.filename.toLowerCase().endsWith('.pdf')
     );
 
-    if (!pdfAttachment) {
+    let pdfBuffer: Buffer | null = null;
+    if (pdfAttachment) {
+      console.log(`✅ Found PDF attachment: ${pdfAttachment.filename} (${pdfAttachment.content_type})`);
+      const attachmentUrl = `https://api.resend.com/emails/receiving/${payload.data.email_id}/attachments/${pdfAttachment.id}`;
+      console.log(`📥 Fetching attachment from: ${attachmentUrl}`);
+
+      const attachmentResponse = await fetch(attachmentUrl, {
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        },
+      });
+
+      if (!attachmentResponse.ok) {
+        console.error('Failed to fetch attachment metadata:', await attachmentResponse.text());
+        throw new Error('Failed to fetch attachment from Resend');
+      }
+
+      const attachmentData = await attachmentResponse.json();
+      console.log(`📎 Got attachment metadata, downloading from: ${attachmentData.download_url}`);
+
+      const downloadResponse = await fetch(attachmentData.download_url);
+      if (!downloadResponse.ok) {
+        console.error('Failed to download attachment file:', await downloadResponse.text());
+        throw new Error('Failed to download attachment file');
+      }
+
+      pdfBuffer = Buffer.from(await downloadResponse.arrayBuffer());
+      console.log(`✅ Downloaded PDF: ${pdfBuffer.length} bytes`);
+    } else if (!isRegistrationEvidenceReceipt) {
       console.error('❌ No PDF attachment found');
       console.error('Available attachments:', email.attachments);
       return res.status(400).json({
         error: 'No PDF attachment found in email',
         attachments: email.attachments?.map(a => ({ filename: a.filename, content_type: a.content_type }))
       });
+    } else {
+      console.log('ℹ️ Registration evidence email has no PDF; storing parsed email content only');
     }
 
-    console.log(`✅ Found PDF attachment: ${pdfAttachment.filename} (${pdfAttachment.content_type})`);
-
-    // Download attachment from Resend API
-    // https://resend.com/docs/api-reference/emails/retrieve-received-email-attachment
-    const attachmentUrl = `https://api.resend.com/emails/receiving/${payload.data.email_id}/attachments/${pdfAttachment.id}`;
-
-    console.log(`📥 Fetching attachment from: ${attachmentUrl}`);
-
-    const attachmentResponse = await fetch(attachmentUrl, {
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      },
-    });
-
-    if (!attachmentResponse.ok) {
-      console.error('Failed to fetch attachment metadata:', await attachmentResponse.text());
-      throw new Error('Failed to fetch attachment from Resend');
-    }
-
-    const attachmentData = await attachmentResponse.json();
-    console.log(`📎 Got attachment metadata, downloading from: ${attachmentData.download_url}`);
-
-    // Download the actual file from the presigned URL
-    const downloadResponse = await fetch(attachmentData.download_url);
-    if (!downloadResponse.ok) {
-      console.error('Failed to download attachment file:', await downloadResponse.text());
-      throw new Error('Failed to download attachment file');
-    }
-
-    const pdfBuffer = Buffer.from(await downloadResponse.arrayBuffer());
-    console.log(`✅ Downloaded PDF: ${pdfBuffer.length} bytes`);
-
-    // Delete ALL previous bills for this user (only keep most recent)
-    const userFolder = `proof/${userId}`;
-
-    // List all date folders for this user
-    const { data: existingFolders } = await supabase.storage
-      .from(BUCKET_NAME)
-      .list(userFolder);
-
-    // Delete all existing date folders and their contents
-    const filesToDelete = existingFolders
-      ?.filter(item => item.name.match(/^\d{4}-\d{2}-\d{2}$/)) // Match yyyy-mm-dd folders
-      .map(folder => `${userFolder}/${folder.name}/bill.pdf`) || [];
-
-    if (filesToDelete.length > 0) {
-      console.log(`🗑️  Deleting ${filesToDelete.length} old bills...`);
-      await supabase.storage.from(BUCKET_NAME).remove(filesToDelete);
-    }
-
-    // Upload new bill with today's date
     const today = new Date();
-    const dateFolder = today.toISOString().split('T')[0]; // yyyy-mm-dd
-    const filePath = `${userFolder}/${dateFolder}/bill.pdf`;
+    const dateFolder = today.toISOString().split('T')[0];
 
-    console.log(`📤 Uploading to: ${BUCKET_NAME}/${filePath}`);
+    let filePath: string;
+    let deletedCount = 0;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(filePath, pdfBuffer, {
-        contentType: 'application/pdf',
-        upsert: true,
-      });
+    if (isRegistrationEvidenceReceipt) {
+      // Keep all city sticker purchase receipts for contest evidence history.
+      const ts = today.getTime();
+      const sanitizedName = (pdfAttachment?.filename || 'receipt.pdf').replace(/[^a-zA-Z0-9._-]/g, '_');
+      filePath = `evidence/${evidenceSource}-receipts/${userId}/${dateFolder}/${ts}-${sanitizedName}`;
+    } else {
+      // Utility-bill proof flow: keep only latest proof.
+      const userFolder = `proof/${userId}`;
+      const { data: existingFolders } = await supabase.storage
+        .from(UTILITY_BUCKET_NAME)
+        .list(userFolder);
 
-    if (uploadError) {
-      console.error('❌ Upload error:', uploadError);
-      throw uploadError;
+      const filesToDelete = existingFolders
+        ?.filter(item => item.name.match(/^\d{4}-\d{2}-\d{2}$/))
+        .map(folder => `${userFolder}/${folder.name}/bill.pdf`) || [];
+
+      if (filesToDelete.length > 0) {
+        console.log(`🗑️  Deleting ${filesToDelete.length} old bills...`);
+        await supabase.storage.from(UTILITY_BUCKET_NAME).remove(filesToDelete);
+      }
+      deletedCount = filesToDelete.length;
+      filePath = `${userFolder}/${dateFolder}/bill.pdf`;
     }
 
-    console.log(`✅ Uploaded new bill to: ${filePath}`, uploadData);
+    if (pdfBuffer) {
+      console.log(`📤 Uploading to: ${targetBucket}/${filePath}`);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(targetBucket)
+        .upload(filePath, pdfBuffer, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
 
-    // Update user profile with new bill info
+      if (uploadError) {
+        console.error('❌ Upload error:', uploadError);
+        throw uploadError;
+      }
+      console.log(`✅ Uploaded new file to: ${filePath}`, uploadData);
+    }
+
+    if (isRegistrationEvidenceReceipt) {
+      const parsed = parseReceiptMetadata(email.subject || '', email.text || null);
+      let screenshotPath: string | null = null;
+      try {
+        const ts = today.getTime();
+        screenshotPath = `snapshots/${evidenceSource}/${userId}/${dateFolder}/${ts}-email-evidence.png`;
+        const screenshotBuffer = await generateEmailEvidenceScreenshot({
+          sourceType: evidenceSource,
+          sender: email.from || '',
+          subject: email.subject || '',
+          body: email.text || '',
+          forwardedAtIso: payload.created_at || new Date().toISOString(),
+          orderId: parsed.parsedOrderId,
+          amountCents: parsed.parsedAmountCents,
+        });
+        const { error: screenshotUploadError } = await supabase.storage
+          .from(REGISTRATION_BUCKET_NAME)
+          .upload(screenshotPath, screenshotBuffer, {
+            contentType: 'image/png',
+            upsert: true,
+          });
+        if (screenshotUploadError) {
+          console.error('⚠️ Failed to upload evidence screenshot (non-fatal):', screenshotUploadError);
+          screenshotPath = null;
+        }
+      } catch (screenshotError) {
+        console.error('⚠️ Failed to generate evidence screenshot (non-fatal):', screenshotError);
+        screenshotPath = null;
+      }
+
+      const { error: insertError } = await supabase
+        .from('registration_evidence_receipts' as any)
+        .insert({
+          user_id: userId,
+          source_type: evidenceSource,
+          sender_email: email.from,
+          email_subject: email.subject || null,
+          email_text: email.text || null,
+          email_html: email.html || null,
+          storage_bucket: REGISTRATION_BUCKET_NAME,
+          storage_path: pdfBuffer ? filePath : null,
+          screenshot_path: screenshotPath,
+          file_name: pdfAttachment?.filename || null,
+          forwarded_at: payload.created_at || new Date().toISOString(),
+          parsed_order_id: parsed.parsedOrderId,
+          parsed_amount_cents: parsed.parsedAmountCents,
+          parsed_purchase_date: parsed.parsedPurchaseDate,
+        });
+
+      if (insertError) {
+        console.error('❌ Failed to insert registration evidence metadata:', insertError);
+        throw insertError;
+      }
+
+      console.log(`🎉 Registration evidence saved for user ${userId}`);
+      return res.status(200).json({
+        success: true,
+        message: `${evidenceSource} receipt saved successfully`,
+        userId,
+        source: evidenceSource,
+        bucket: REGISTRATION_BUCKET_NAME,
+        filePath: pdfBuffer ? filePath : null,
+        screenshotPath,
+      });
+    }
+
+    // Utility-bill proof path: update profile pointers
     console.log(`💾 Updating database for user ${userId}...`);
     const { data: updateData, error: updateError } = await supabase
       .from('user_profiles')
       .update({
         residency_proof_path: filePath,
         residency_proof_uploaded_at: new Date().toISOString(),
-        residency_proof_verified: false, // Will be verified later by cron/manual process
+        residency_proof_verified: false,
         residency_proof_verified_at: null,
       })
       .eq('user_id', userId)
@@ -252,7 +448,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log(`✅ Database updated:`, updateData);
-    console.log(`📊 Stats: Deleted ${filesToDelete.length} old bills, stored 1 new bill`);
+    console.log(`📊 Stats: Deleted ${deletedCount} old bills, stored 1 new bill`);
     console.log(`🎉 Utility bill processed successfully for user ${userId}`);
 
     return res.status(200).json({
@@ -260,7 +456,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: 'Utility bill processed successfully',
       userId,
       filePath,
-      deletedCount: filesToDelete.length,
+      deletedCount,
     });
 
   } catch (error: any) {

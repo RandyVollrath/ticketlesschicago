@@ -87,7 +87,7 @@ export default async function handler(
         try {
           await sendClickSendSMS(
             user.phone_number,
-            `Autopilot: Your emissions test has been marked as complete. Your license plate renewal can now proceed without any blocks.`
+            `Autopilot: Your emissions test has been marked as complete. You can now renew your license plate without emissions-related blocks.`
           );
           console.log(`📱 Confirmation SMS sent to ${user.phone_number}`);
         } catch (smsError) {

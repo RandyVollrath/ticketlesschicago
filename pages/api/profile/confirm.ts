@@ -4,6 +4,7 @@ import { notifyRemittersProfileConfirmed } from '../../../lib/remitter-notificat
 import { z } from 'zod';
 import * as crypto from 'crypto';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { FEATURES } from '../../../lib/config';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -142,18 +143,20 @@ export default async function handler(
 
     console.log(`✅ Profile confirmed for user ${targetUserId}${renewalYear ? ` for year ${renewalYear}` : ''}`);
 
-    // Notify remitters about this new ready-for-renewal user
-    try {
-      await notifyRemittersProfileConfirmed({
-        email: data.email,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        licensePlate: data.license_plate,
-        phone: data.phone,
-      });
-    } catch (notifyError) {
-      console.error('Error notifying remitters:', notifyError);
-      // Don't fail the request if notification fails
+    // Notify remitters about this new ready-for-renewal user (only when registration automation is active)
+    if (FEATURES.REGISTRATION_AUTOMATION) {
+      try {
+        await notifyRemittersProfileConfirmed({
+          email: data.email,
+          firstName: data.first_name,
+          lastName: data.last_name,
+          licensePlate: data.license_plate,
+          phone: data.phone,
+        });
+      } catch (notifyError) {
+        console.error('Error notifying remitters:', notifyError);
+        // Don't fail the request if notification fails
+      }
     }
 
     return res.status(200).json({

@@ -5,7 +5,7 @@
  * to ensure consistency and make updates easy.
  */
 
-import { EMAIL, URLS, BRAND } from './config';
+import { EMAIL, URLS, BRAND, FEATURES } from './config';
 
 // =============================================================================
 // TYPES
@@ -78,6 +78,19 @@ export function getPurchaseDate(dueDate: Date): Date {
   return new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 }
 
+function getRenewalLink(renewalType: RenewalType): string | null {
+  if (renewalType === 'City Sticker') return URLS.CITY_STICKER_RENEWAL;
+  if (renewalType === 'License Plate') return URLS.LICENSE_PLATE_RENEWAL;
+  return null;
+}
+
+function getTicketWarning(renewalType: RenewalType, daysUntil: number): string {
+  if (daysUntil > 30) return '';
+  if (renewalType === 'City Sticker') return ` You're ${daysUntil} days from a possible $200 ticket.`;
+  if (renewalType === 'License Plate') return ` You're ${daysUntil} days from a possible $90 ticket.`;
+  return '';
+}
+
 // =============================================================================
 // SMS TEMPLATES
 // =============================================================================
@@ -90,46 +103,56 @@ export const sms = {
     const { renewalType, daysUntil, blocksLicensePlate } = ctx;
     const urgentPrefix = blocksLicensePlate ? 'URGENT: ' : '';
     const plateWarning = blocksLicensePlate ? ' Required for license plate renewal!' : '';
+    const renewalLink = getRenewalLink(renewalType);
+    const ticketWarning = getTicketWarning(renewalType, daysUntil);
 
     const isEmissions = renewalType === 'Emissions Test';
     const actionText = isEmissions
       ? 'Find test locations at airteam.app'
+      : renewalLink
+      ? `Renew now: ${renewalLink}`
       : "Don't forget to renew!";
 
     if (daysUntil === 0) {
-      return `Autopilot: ${urgentPrefix}Your ${renewalType} is due TODAY.${plateWarning} ${isEmissions ? 'Complete your test now at airteam.app' : 'Renew now to avoid fines'}. Reply STOP to opt out.`;
+      return `Autopilot: ${urgentPrefix}Your ${renewalType} is due TODAY.${plateWarning}${ticketWarning} ${isEmissions ? 'Complete your test now at airteam.app' : actionText}. Reply STOP to opt out.`;
     }
     if (daysUntil === 1) {
-      return `Autopilot: ${urgentPrefix}Your ${renewalType} is due TOMORROW.${plateWarning} ${isEmissions ? 'Complete your test today' : 'Renew today to stay compliant'}. Reply STOP to opt out.`;
+      return `Autopilot: ${urgentPrefix}Your ${renewalType} is due TOMORROW.${plateWarning}${ticketWarning} ${isEmissions ? 'Complete your test today' : actionText}. Reply STOP to opt out.`;
     }
     if (daysUntil <= 7) {
-      return `Autopilot: ${urgentPrefix}Your ${renewalType} is due in ${daysUntil} days.${plateWarning} ${actionText}. Reply STOP to opt out.`;
+      return `Autopilot: ${urgentPrefix}Your ${renewalType} is due in ${daysUntil} days.${plateWarning}${ticketWarning} ${actionText}. Reply STOP to opt out.`;
     }
-    return `Autopilot: ${urgentPrefix}Your ${renewalType} is due in ${daysUntil} days (${formatDate(ctx.dueDate)}).${plateWarning}${isEmissions ? ' You must complete this test to renew your license plate.' : ''} Reply STOP to opt out.`;
+    return `Autopilot: ${urgentPrefix}Your ${renewalType} is due in ${daysUntil} days (${formatDate(ctx.dueDate)}).${plateWarning}${ticketWarning}${isEmissions ? ' You must complete this test to renew your license plate.' : renewalLink ? ` Renew here: ${renewalLink}.` : ''} Reply STOP to opt out.`;
   },
 
   /**
    * Renewal reminder for Protection users (auto-purchase enabled)
    */
   renewalProtection(ctx: RenewalContext): string {
+    if (!FEATURES.REGISTRATION_AUTOMATION) {
+      return sms.renewalFree({ ...ctx, hasProtection: false });
+    }
+
     const { renewalType, daysUntil, dueDate, profileConfirmed, actuallyPurchased, needsPermitDocs } = ctx;
     const purchaseDate = getPurchaseDate(dueDate);
     const purchaseDateStr = formatDate(purchaseDate);
+    const renewalLink = getRenewalLink(renewalType);
+    const ticketWarning = getTicketWarning(renewalType, daysUntil);
 
     let message = '';
 
     if (daysUntil === 30) {
       // Charge day
-      message = `Autopilot: We're charging your card TODAY for your ${renewalType} renewal (expires in 30 days). Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder before we process payment.`;
+      message = `Autopilot: We're charging your card TODAY for your ${renewalType} renewal (expires in 30 days).${ticketWarning} Reply NOW if you have: New VIN (new car), new plate number, or new address. This is your final reminder before we process payment.`;
     } else if (daysUntil === 37) {
       // 1 week before charge
       message = `Autopilot: Your ${renewalType} expires in ${daysUntil} days. We'll charge your card in 7 days (on ${purchaseDateStr}). Please update your profile NOW if you have: New VIN (new car), new plate number, or new address. This is your last reminder before charge day.`;
     } else if (daysUntil > 37) {
       // Before purchase window
       if (!profileConfirmed) {
-        message = `Autopilot: Your ${renewalType} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr}. Reply CONFIRM if your profile info is current (VIN, plate, address). Or visit ${URLS.SETTINGS} to update.`;
+        message = `Autopilot: Your ${renewalType} expires in ${daysUntil} days.${ticketWarning} We'll charge your card on ${purchaseDateStr}. Reply CONFIRM if your profile info is current (VIN, plate, address). Or visit ${URLS.SETTINGS} to update.`;
       } else {
-        message = `Autopilot: Your ${renewalType} expires in ${daysUntil} days. We'll charge your card on ${purchaseDateStr} (30 days before expiration). Your profile is confirmed. Reply if you need to update anything!`;
+        message = `Autopilot: Your ${renewalType} expires in ${daysUntil} days.${ticketWarning} We'll charge your card on ${purchaseDateStr} (30 days before expiration). Your profile is confirmed. Reply if you need to update anything!`;
       }
     } else if (daysUntil >= 14) {
       // Post-purchase, waiting for delivery
@@ -143,8 +166,12 @@ export const sms = {
       if (actuallyPurchased) {
         message = `Autopilot: Your ${renewalType} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDateStr} and it typically takes 10-14 days to arrive. Contact us if you haven't received it.`;
       } else {
-        message = `Autopilot: Your ${renewalType} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`;
+        message = `Autopilot: Your ${renewalType} expires in ${daysUntil} days.${ticketWarning} We're working on your renewal. Please contact support if you have questions.`;
       }
+    }
+
+    if (renewalLink && daysUntil <= 30) {
+      message += ` If needed, renew directly here: ${renewalLink}.`;
     }
 
     // Add permit zone docs request if needed
@@ -159,21 +186,14 @@ export const sms = {
   /**
    * Emissions test reminder (specialized for emissions)
    */
-  emissionsReminder(daysUntil: number, hasProtection: boolean, blocksPlate: boolean): string {
+  emissionsReminder(daysUntil: number, _hasProtection: boolean, blocksPlate: boolean): string {
     const urgencyPrefix = blocksPlate ? '🚨 URGENT: ' : '';
     const plateWarning = blocksPlate ? " We can't renew your license plate without it!" : '';
 
-    if (hasProtection) {
-      if (daysUntil <= 1) {
-        return `${urgencyPrefix}Emissions test due ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}!${plateWarning} Find locations: airteam.app Reply STOP to opt out.`;
-      }
-      return `Autopilot: Your emissions test is due in ${daysUntil} days.${plateWarning} Complete it soon so we can process your license plate renewal. Find locations: airteam.app Reply STOP to opt out.`;
-    } else {
-      if (daysUntil <= 1) {
-        return `${urgencyPrefix}Emissions test due ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}! Without it, you can't renew your license plate. Find locations: airteam.app Reply STOP to opt out.`;
-      }
-      return `Autopilot: Your emissions test is due in ${daysUntil} days. You need to complete this to renew your license plate. Find locations: airteam.app Reply STOP to opt out.`;
+    if (daysUntil <= 1) {
+      return `${urgencyPrefix}Emissions test due ${daysUntil === 0 ? 'TODAY' : 'TOMORROW'}! Without it, you can't renew your license plate.${plateWarning} Find locations: airteam.app Reply STOP to opt out.`;
     }
+    return `Autopilot: Your emissions test is due in ${daysUntil} days. You need to complete this to renew your license plate.${plateWarning} Find locations: airteam.app Reply STOP to opt out.`;
   },
 
   /**
@@ -338,6 +358,8 @@ export const email = {
     const dueDateFormatted = formatDate(dueDate, 'long');
     const timeText = formatDaysText(daysUntil);
     const isEmissions = renewalType === 'Emissions Test';
+    const renewalLink = getRenewalLink(renewalType);
+    const ticketWarning = getTicketWarning(renewalType, daysUntil);
 
     const subject = daysUntil <= 1
       ? `${renewalType} Renewal Reminder - Due ${timeText === 'TODAY' ? 'Today' : 'Tomorrow'}`
@@ -361,8 +383,12 @@ export const email = {
          <strong>Step 3:</strong> Complete the test (takes about 10-15 minutes)<br>
          <strong>Step 4:</strong> Results are sent electronically to the state`
       : renewalType === 'City Sticker'
-      ? `Renew online at chicityclerk.com or visit any Currency Exchange location. Bring your registration and proof of insurance.`
-      : `Renew at cyberdriveillinois.com or visit your local Secretary of State facility.`;
+      ? `Renew online at <a href="${URLS.CITY_STICKER_RENEWAL}" style="color: ${COLORS.primary};">City Clerk EZBuy</a> or visit any Currency Exchange location. Bring your registration and proof of insurance.`
+      : `Renew online at <a href="${URLS.LICENSE_PLATE_RENEWAL}" style="color: ${COLORS.primary};">Illinois Secretary of State Online Renewals</a> or visit your local Secretary of State facility.`;
+
+    const ticketRiskBox = ticketWarning
+      ? emailComponents.alertBox('danger', '⚠️ Ticket Risk Window', ticketWarning.trim())
+      : '';
 
     const html = emailComponents.wrapper(`
       ${emailComponents.header()}
@@ -372,24 +398,17 @@ export const email = {
           <strong>Days Remaining:</strong> ${daysUntil === 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `${daysUntil} days`}
         `)}
         ${urgencyBox}
+        ${ticketRiskBox}
         ${blocksPlateWarning}
         ${emailComponents.section(`
           <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">How to ${isEmissions ? 'Complete Your Test' : 'Renew'}:</h3>
           <div style="color: #0369a1; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">${howToContent}</div>
           <div style="text-align: center; margin: 20px 0;">
             ${isEmissions ? emailComponents.button('Find Testing Locations', URLS.EMISSIONS_LOCATOR) : ''}
+            ${!isEmissions && renewalLink ? emailComponents.button('Renew Now', renewalLink, 'warning') : ''}
             ${emailComponents.button('View Dashboard', URLS.DASHBOARD, isEmissions ? 'secondary' : 'primary')}
           </div>
         `)}
-        ${emailComponents.section(`
-          <h3 style="color: #065f46; margin: 0 0 12px; font-size: 18px;">💡 Want us to handle this for you?</h3>
-          <p style="color: #065f46; margin: 0 0 16px; line-height: 1.6;">
-            Upgrade to Autopilot Protection and we'll purchase your renewals automatically. Never worry about forgetting again!
-          </p>
-          <div style="text-align: center;">
-            ${emailComponents.button('Learn About Protection', URLS.PROTECTION, 'success')}
-          </div>
-        `, '#d1fae5', '#10b981')}
       `)}
       ${emailComponents.footer()}
     `);
@@ -401,10 +420,9 @@ Due Date: ${dueDateFormatted}
 Days Remaining: ${daysUntil === 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `${daysUntil} days`}
 
 ${daysUntil <= 1 ? `We recommend ${isEmissions ? 'completing your test' : 'renewing'} today to stay compliant.\n` : ''}
+${ticketWarning ? `${ticketWarning.trim()}\n` : ''}
+${renewalLink ? `Renew online: ${renewalLink}\n` : ''}
 View your dashboard: ${URLS.DASHBOARD}
-
-Want us to handle this for you?
-Upgrade to Autopilot Protection: ${URLS.PROTECTION}
 
 Questions? Reply to ${EMAIL.SUPPORT}
     `.trim();
@@ -416,10 +434,16 @@ Questions? Reply to ${EMAIL.SUPPORT}
    * Renewal reminder email for Protection users
    */
   renewalProtection(ctx: RenewalContext, user: UserContext): { subject: string; html: string; text: string } {
+    if (!FEATURES.REGISTRATION_AUTOMATION) {
+      return email.renewalFree({ ...ctx, hasProtection: false });
+    }
+
     const { renewalType, daysUntil, dueDate, actuallyPurchased, needsPermitDocs } = ctx;
     const dueDateFormatted = formatDate(dueDate, 'long');
     const purchaseDate = getPurchaseDate(dueDate);
     const purchaseDateStr = formatDate(purchaseDate);
+    const renewalLink = getRenewalLink(renewalType);
+    const ticketWarning = getTicketWarning(renewalType, daysUntil);
 
     // Subject varies by stage
     let subject: string;
@@ -436,11 +460,11 @@ Questions? Reply to ${EMAIL.SUPPORT}
     // Status message varies by stage
     let statusMessage: string;
     if (daysUntil === 30) {
-      statusMessage = `We're <strong>charging your card today</strong> for your ${renewalType} renewal (expires in 30 days). The sticker will be mailed to you and should arrive within 10-14 days!`;
+      statusMessage = `We're <strong>charging your card today</strong> for your ${renewalType} renewal (expires in 30 days). ${ticketWarning ? `<strong>${ticketWarning.trim()}</strong> ` : ''}The sticker will be mailed to you and should arrive within 10-14 days!`;
     } else if (daysUntil === 37) {
       statusMessage = `Your ${renewalType} expires in ${daysUntil} days. We'll <strong>charge your card in 7 days</strong> (on ${purchaseDateStr}). Please update your profile now if you have any changes. This is your last reminder before charge day!`;
     } else if (daysUntil > 37) {
-      statusMessage = `We'll automatically charge your card on <strong>${purchaseDateStr}</strong> (30 days before expiration) for your ${renewalType} renewal. You have time to update your info if needed!`;
+      statusMessage = `We'll automatically charge your card on <strong>${purchaseDateStr}</strong> (30 days before expiration) for your ${renewalType} renewal.${ticketWarning ? ` <strong>${ticketWarning.trim()}</strong>` : ''} You have time to update your info if needed!`;
     } else if (daysUntil >= 14 && actuallyPurchased) {
       statusMessage = `Good news! We already purchased your ${renewalType} renewal. Your sticker is in the mail and should arrive within 10-14 days. No action needed from you!`;
     } else if (daysUntil >= 14) {
@@ -448,7 +472,7 @@ Questions? Reply to ${EMAIL.SUPPORT}
     } else if (actuallyPurchased) {
       statusMessage = `Your ${renewalType} sticker should arrive soon (if it hasn't already). We purchased it on ${purchaseDateStr} and it typically takes 10-14 days to arrive.`;
     } else {
-      statusMessage = `Your ${renewalType} expires in ${daysUntil} days. We're working on your renewal. Please contact support if you have questions.`;
+      statusMessage = `Your ${renewalType} expires in ${daysUntil} days.${ticketWarning} We're working on your renewal. Please contact support if you have questions.`;
     }
 
     const confirmInfoSection = daysUntil > 30 ? emailComponents.section(`
@@ -485,6 +509,7 @@ Questions? Reply to ${EMAIL.SUPPORT}
           <strong>Due Date:</strong> ${dueDateFormatted}<br>
           <strong>Days Remaining:</strong> ${daysUntil} days
         `)}
+        ${renewalLink ? emailComponents.alertBox('info', '🔗 Direct Renewal Link', `Renew directly here if needed: <a href="${renewalLink}" style="color: ${COLORS.primary};">${renewalLink}</a>`) : ''}
         ${emailComponents.alertBox('success', '✅ We\'re Handling This For You', statusMessage)}
         ${confirmInfoSection}
         ${permitDocsSection}
@@ -500,6 +525,7 @@ Days Remaining: ${daysUntil} days
 
 WE'RE HANDLING THIS FOR YOU
 ${statusMessage.replace(/<[^>]*>/g, '')}
+${renewalLink ? `\nDirect renewal link (if needed): ${renewalLink}` : ''}
 
 ${daysUntil > 30 ? `Please confirm your profile is current: ${URLS.SETTINGS}` : ''}
 
@@ -562,10 +588,10 @@ Questions? Reply to ${EMAIL.SUPPORT}
     const vehicleInfo = [user.vehicleYear, user.vehicleMake, user.vehicleModel].filter(Boolean).join(' ');
 
     const protectionSection = hasProtection ? emailComponents.section(`
-      <h3 style="color: #1e40af; margin: 0 0 8px; font-size: 16px;">Why This Matters for Your Protection Plan:</h3>
+      <h3 style="color: #1e40af; margin: 0 0 8px; font-size: 16px;">Why This Matters:</h3>
       <p style="color: #1e40af; margin: 0; line-height: 1.6;">
-        We handle your license plate renewal automatically, but Illinois requires a valid emissions test first.
-        Once you complete your test, we'll process your renewal!
+        Illinois requires a valid emissions test before license plate renewal can be completed.
+        Finishing your test early helps you avoid delays.
       </p>
     `, '#eff6ff', '#3b82f6') : '';
 
@@ -612,7 +638,7 @@ How to Get Your Emissions Test:
 2. Bring your vehicle registration
 3. The test takes about 10-15 minutes
 
-${hasProtection ? 'Your Protection Plan: We handle your license plate renewal automatically, but Illinois requires a valid emissions test first.' : ''}
+${hasProtection ? 'Reminder: Illinois requires a valid emissions test before license plate renewal can be completed.' : ''}
 
 Questions? ${EMAIL.SUPPORT}
     `.trim();
@@ -744,7 +770,14 @@ export const voice = {
   renewalReminder(renewalType: RenewalType, daysUntil: number, dueDate: Date): string {
     const dueDateStr = dueDate.toLocaleDateString();
     const dayText = daysUntil === 1 ? 'day' : 'days';
+    const ticketWarning = getTicketWarning(renewalType, daysUntil);
 
+    if (renewalType === 'City Sticker' && daysUntil <= 30) {
+      return `Hello from ${BRAND.NAME}. Your ${renewalType} expires in ${daysUntil} ${dayText} on ${dueDateStr}.${ticketWarning} Renew now at EZ buy dot chi city clerk dot com slash vehicle stickers.`;
+    }
+    if (renewalType === 'License Plate' && daysUntil <= 30) {
+      return `Hello from ${BRAND.NAME}. Your ${renewalType} expires in ${daysUntil} ${dayText} on ${dueDateStr}.${ticketWarning} Renew now at I L S O S dot gov slash online renewals.`;
+    }
     return `Hello from ${BRAND.NAME}. This is a reminder that your ${renewalType} expires in ${daysUntil} ${dayText} on ${dueDateStr}. Please renew promptly to avoid penalties.`;
   },
 

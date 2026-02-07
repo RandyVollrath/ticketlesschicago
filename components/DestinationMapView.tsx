@@ -125,7 +125,7 @@ export default function DestinationMapView() {
         popupAnchor: [0, -44],
       });
 
-      const marker = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+      const marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
       if (address) {
         marker.bindPopup(`
           <div style="font-family:system-ui;min-width:180px">
@@ -134,6 +134,16 @@ export default function DestinationMapView() {
           </div>
         `, { maxWidth: 280 }).openPopup();
       }
+      marker.on('dragend', () => {
+        const updated = marker.getLatLng();
+        marker.bindPopup(`
+          <div style="font-family:system-ui;min-width:180px">
+            <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">Adjusted pin location</div>
+            <div style="color:#6C727A;font-size:12px">${updated.lat.toFixed(6)}, ${updated.lng.toFixed(6)}</div>
+            <div style="color:#94A3B8;font-size:12px;margin-top:4px">Inspect colored blocks around this point.</div>
+          </div>
+        `, { maxWidth: 280 }).openPopup();
+      });
 
       // Load all restriction data in parallel
       try {
@@ -356,6 +366,9 @@ export default function DestinationMapView() {
           <div style={{ padding: '4px 16px 12px' }}>
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#1A1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Parking Restrictions
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>
+              Drag the blue pin to fine-tune location.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

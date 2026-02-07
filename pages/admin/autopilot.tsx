@@ -22,7 +22,7 @@ export default function AutopilotAdmin() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState('export');
+  const [activeTab, setActiveTab] = useState('portal');
   const [loading, setLoading] = useState(true);
 
   // Export state
@@ -47,6 +47,11 @@ export default function AutopilotAdmin() {
   // Pending evidence tickets
   const [pendingEvidenceTickets, setPendingEvidenceTickets] = useState<any[]>([]);
   const [selectedLetter, setSelectedLetter] = useState<any>(null);
+
+  // Portal check state
+  const [portalCheckData, setPortalCheckData] = useState<any>(null);
+  const [portalCheckLoading, setPortalCheckLoading] = useState(false);
+  const [portalTriggerLoading, setPortalTriggerLoading] = useState(false);
 
   // Kill switches
   const [killSwitches, setKillSwitches] = useState({
@@ -309,6 +314,42 @@ export default function AutopilotAdmin() {
     }
   };
 
+  const loadPortalCheckData = async () => {
+    setPortalCheckLoading(true);
+    try {
+      const response = await fetch('/api/admin/autopilot/trigger-portal-check');
+      const data = await response.json();
+      if (data.success) {
+        setPortalCheckData(data);
+      }
+    } catch (err) {
+      console.error('Failed to load portal check data:', err);
+    }
+    setPortalCheckLoading(false);
+  };
+
+  const triggerPortalCheck = async () => {
+    if (!confirm('This will request a portal check. The script must be running locally to pick it up. Continue?')) return;
+    setPortalTriggerLoading(true);
+    try {
+      const response = await fetch('/api/admin/autopilot/trigger-portal-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestedBy: user?.email || 'admin' }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Portal check requested! Make sure the script is running locally.');
+        loadPortalCheckData();
+      } else {
+        alert(data.error || 'Failed to trigger portal check');
+      }
+    } catch (err) {
+      alert('Failed to trigger portal check');
+    }
+    setPortalTriggerLoading(false);
+  };
+
   if (loading) {
     return <div style={{ padding: 48, textAlign: 'center' }}>Loading...</div>;
   }
@@ -363,7 +404,7 @@ export default function AutopilotAdmin() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-          {['export', 'upload', 'va-stats', 'letters', 'settings'].map(tab => (
+          {['portal', 'export', 'upload', 'va-stats', 'letters', 'settings'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -383,6 +424,293 @@ export default function AutopilotAdmin() {
             </button>
           ))}
         </div>
+
+        {/* Portal Check Tab */}
+        {activeTab === 'portal' && (
+          <div>
+            {/* Load data on first render of this tab */}
+            {!portalCheckData && !portalCheckLoading && (
+              <div style={{ textAlign: 'center', padding: 32 }}>
+                <button
+                  onClick={loadPortalCheckData}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: 8,
+                    border: 'none',
+                    backgroundColor: COLORS.regulatory,
+                    color: COLORS.white,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Load Portal Check Data
+                </button>
+              </div>
+            )}
+
+            {portalCheckLoading && (
+              <div style={{ textAlign: 'center', padding: 32, color: COLORS.slate }}>Loading...</div>
+            )}
+
+            {portalCheckData && (
+              <>
+                {/* Header + trigger button */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 24,
+                }}>
+                  <div>
+                    <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 4px 0' }}>
+                      Portal Scraper
+                    </h2>
+                    <p style={{ fontSize: 14, color: COLORS.slate, margin: 0 }}>
+                      Automated ticket lookup on Chicago Finance payment portal (Mon &amp; Thu)
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    {portalCheckData.pendingTrigger && (
+                      <span style={{
+                        padding: '6px 12px',
+                        borderRadius: 20,
+                        fontSize: 12,
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        color: COLORS.warning,
+                        fontWeight: 500,
+                      }}>
+                        Check pending...
+                      </span>
+                    )}
+                    <button
+                      onClick={triggerPortalCheck}
+                      disabled={portalTriggerLoading || portalCheckData.pendingTrigger}
+                      style={{
+                        padding: '12px 24px',
+                        borderRadius: 8,
+                        border: 'none',
+                        backgroundColor: COLORS.regulatory,
+                        color: COLORS.white,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: (portalTriggerLoading || portalCheckData.pendingTrigger) ? 'not-allowed' : 'pointer',
+                        opacity: (portalTriggerLoading || portalCheckData.pendingTrigger) ? 0.7 : 1,
+                      }}
+                    >
+                      {portalTriggerLoading ? 'Requesting...' : 'Trigger check now'}
+                    </button>
+                    <button
+                      onClick={loadPortalCheckData}
+                      style={{
+                        padding: '12px 16px',
+                        borderRadius: 8,
+                        border: `1px solid ${COLORS.border}`,
+                        backgroundColor: COLORS.white,
+                        color: COLORS.graphite,
+                        fontSize: 14,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stats cards */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: 16,
+                  marginBottom: 24,
+                }}>
+                  {[
+                    { label: 'Total Runs', value: portalCheckData.stats.totalRuns },
+                    { label: 'Plates Checked', value: portalCheckData.stats.totalPlatesChecked },
+                    { label: 'Tickets Found', value: portalCheckData.stats.totalPortalTickets, highlight: true },
+                    { label: 'Tickets Created', value: portalCheckData.stats.totalTicketsCreated },
+                    { label: 'Captcha Spend', value: `$${portalCheckData.stats.totalCaptchaCost.toFixed(2)}` },
+                  ].map((stat: any) => (
+                    <div key={stat.label} style={{
+                      backgroundColor: stat.highlight ? '#FEF3C7' : COLORS.white,
+                      padding: 16,
+                      borderRadius: 12,
+                      border: `1px solid ${stat.highlight ? COLORS.warning : COLORS.border}`,
+                    }}>
+                      <p style={{ fontSize: 12, color: COLORS.slate, margin: '0 0 4px 0' }}>{stat.label}</p>
+                      <p style={{ fontSize: 24, fontWeight: 700, color: stat.highlight ? COLORS.warning : COLORS.deepHarbor, margin: 0 }}>
+                        {stat.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Last run info */}
+                {portalCheckData.stats.lastRunAt && (
+                  <div style={{
+                    backgroundColor: '#F0FDF4',
+                    border: '1px solid #BBF7D0',
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 24,
+                  }}>
+                    <p style={{ margin: 0, fontSize: 14, color: '#166534' }}>
+                      <strong>Last run:</strong>{' '}
+                      {new Date(portalCheckData.stats.lastRunAt).toLocaleString('en-US', {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                      {portalCheckData.stats.lastRunDetails && (
+                        <span>
+                          {' '}- {portalCheckData.stats.lastRunDetails.plates_checked} plates,{' '}
+                          {portalCheckData.stats.lastRunDetails.tickets_created} new tickets,{' '}
+                          ${portalCheckData.stats.lastRunDetails.captcha_cost?.toFixed(3) || '0'} captcha cost
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  {/* Run history */}
+                  <div style={{ flex: '1 1 400px', backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 16px 0' }}>
+                      Run History
+                    </h3>
+                    {portalCheckData.runs.length === 0 ? (
+                      <p style={{ color: COLORS.slate, textAlign: 'center', padding: 32 }}>No portal checks recorded yet</p>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+                            <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 12, color: COLORS.slate }}>Date</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 12, color: COLORS.slate }}>Plates</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 12, color: COLORS.slate }}>Found</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 12, color: COLORS.slate }}>New</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 12, color: COLORS.slate }}>Errors</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 12, color: COLORS.slate }}>Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {portalCheckData.runs.map((run: any) => (
+                            <tr key={run.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+                              <td style={{ padding: '10px 12px', fontSize: 13 }}>
+                                {new Date(run.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                <span style={{ color: COLORS.slate, marginLeft: 4 }}>
+                                  {new Date(run.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'right' }}>{run.plates_checked}</td>
+                              <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'right', fontWeight: 600, color: run.tickets_found > 0 ? COLORS.warning : COLORS.graphite }}>
+                                {run.tickets_found}
+                              </td>
+                              <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'right', fontWeight: 600, color: run.tickets_created > 0 ? COLORS.danger : COLORS.graphite }}>
+                                {run.tickets_created}
+                              </td>
+                              <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'right', color: run.errors > 0 ? COLORS.danger : COLORS.slate }}>
+                                {run.errors}
+                              </td>
+                              <td style={{ padding: '10px 12px', fontSize: 13, textAlign: 'right', color: COLORS.slate }}>
+                                ${run.captcha_cost.toFixed(3)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  {/* Recent tickets found by scraper */}
+                  <div style={{ flex: '1 1 400px', backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 24 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 16px 0' }}>
+                      Recent Tickets from Portal
+                    </h3>
+                    {(!portalCheckData.recentTickets || portalCheckData.recentTickets.length === 0) ? (
+                      <p style={{ color: COLORS.slate, textAlign: 'center', padding: 32 }}>No tickets found by portal scraper yet</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 400, overflowY: 'auto' }}>
+                        {portalCheckData.recentTickets.map((ticket: any) => (
+                          <div key={ticket.id} style={{
+                            padding: 12,
+                            borderRadius: 8,
+                            backgroundColor: COLORS.concrete,
+                            border: `1px solid ${COLORS.border}`,
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <span style={{ fontWeight: 600, fontSize: 14, color: COLORS.deepHarbor }}>
+                                {ticket.ticket_number}
+                              </span>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: 12,
+                                fontSize: 11,
+                                fontWeight: 500,
+                                backgroundColor: ticket.status === 'pending_evidence' ? 'rgba(245, 158, 11, 0.1)' :
+                                  ticket.status === 'evidence_received' ? 'rgba(37, 99, 235, 0.1)' :
+                                  'rgba(16, 185, 129, 0.1)',
+                                color: ticket.status === 'pending_evidence' ? COLORS.warning :
+                                  ticket.status === 'evidence_received' ? COLORS.regulatory :
+                                  COLORS.signal,
+                              }}>
+                                {ticket.status?.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 2px 0' }}>
+                              {ticket.plate} ({ticket.state}) - {ticket.user_profiles?.first_name} {ticket.user_profiles?.last_name}
+                            </p>
+                            <p style={{ fontSize: 12, color: COLORS.slate, margin: 0 }}>
+                              {ticket.violation_type?.replace(/_/g, ' ')}
+                              {ticket.amount ? ` - $${ticket.amount}` : ''}
+                              {' | '}
+                              {new Date(ticket.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* How to run section */}
+                <div style={{
+                  marginTop: 24,
+                  backgroundColor: COLORS.white,
+                  borderRadius: 12,
+                  border: `1px solid ${COLORS.border}`,
+                  padding: 24,
+                }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 12px 0' }}>
+                    How to Run
+                  </h3>
+                  <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 12px 0' }}>
+                    The portal scraper uses Playwright (headless Chrome) and cannot run on Vercel.
+                    Run it locally or on a VPS:
+                  </p>
+                  <div style={{
+                    backgroundColor: COLORS.concrete,
+                    padding: 16,
+                    borderRadius: 8,
+                    fontFamily: '"Courier New", monospace',
+                    fontSize: 13,
+                    lineHeight: 1.8,
+                    color: COLORS.graphite,
+                  }}>
+                    <div># Install Playwright browser (first time only)</div>
+                    <div style={{ color: COLORS.regulatory }}>npx playwright install chromium</div>
+                    <div style={{ marginTop: 8 }}># Run the portal check</div>
+                    <div style={{ color: COLORS.regulatory }}>npx tsx scripts/autopilot-check-portal.ts</div>
+                    <div style={{ marginTop: 8 }}># Or set up a cron job (Mon &amp; Thu at 2pm CT)</div>
+                    <div style={{ color: COLORS.regulatory }}>0 14 * * 1,4 cd /path/to/ticketless-chicago &amp;&amp; npx tsx scripts/autopilot-check-portal.ts</div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Export Tab */}
         {activeTab === 'export' && (

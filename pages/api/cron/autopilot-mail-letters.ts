@@ -546,6 +546,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           result.pdfUrl || null
         );
 
+        // Send admin notification with full letter content
+        if (process.env.RESEND_API_KEY) {
+          const letterText = (letter as any).letter_content || (letter as any).letter_text || 'No letter content available';
+          const userName = profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown';
+          const ticket = (letter as any).detected_tickets;
+          const violationType = ticket?.violation_type?.replace(/_/g, ' ')?.replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown';
+          const amount = ticket?.amount ? `$${parseFloat(ticket.amount).toFixed(2)}` : 'N/A';
+
+          try {
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'Autopilot America <alerts@autopilotamerica.com>',
+                to: ['randyvollrath@gmail.com'],
+                subject: `Contest Letter Mailed: ${ticketNumber} — ${violationType} (${userName})`,
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #059669; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+                      <h2 style="margin: 0;">Contest Letter Mailed</h2>
+                    </div>
+                    <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none;">
+                      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <tr><td style="padding: 6px 0; color: #6b7280; width: 150px;">User:</td><td style="padding: 6px 0; font-weight: 600;">${userName}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Ticket Number:</td><td style="padding: 6px 0; font-weight: 600;">${ticketNumber}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Violation:</td><td style="padding: 6px 0;">${violationType} (${amount})</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Lob Letter ID:</td><td style="padding: 6px 0;">${result.lobId || 'N/A'}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Expected Delivery:</td><td style="padding: 6px 0;">${result.expectedDelivery || 'TBD'}</td></tr>
+                        ${result.pdfUrl ? `<tr><td style="padding: 6px 0; color: #6b7280;">PDF Preview:</td><td style="padding: 6px 0;"><a href="${result.pdfUrl}" style="color: #2563eb;">View Letter PDF</a></td></tr>` : ''}
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Evidence Images:</td><td style="padding: 6px 0;">${evidenceImages.length > 0 ? `${evidenceImages.length} attached` : 'None'}</td></tr>
+                      </table>
+                      <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 20px 0;">
+                      <h3 style="color: #374151; margin: 0 0 12px;">Full Letter Content</h3>
+                      <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 20px; border-radius: 6px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; color: #1f2937;">${letterText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                    </div>
+                    <div style="padding: 12px 24px; background: #f3f4f6; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                      <p style="color: #6b7280; font-size: 12px; margin: 0;">This letter has been sent to the City of Chicago via Lob.com. The user has also been notified.</p>
+                    </div>
+                  </div>
+                `,
+              }),
+            });
+          } catch (adminErr: any) {
+            console.error(`    Admin letter notification failed: ${adminErr.message}`);
+          }
+        }
+
         // Increment letter count
         const { exceeded, count } = await incrementLetterCount(letter.user_id);
         if (exceeded) {

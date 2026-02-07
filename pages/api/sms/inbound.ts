@@ -108,7 +108,7 @@ export default async function handler(
       // Send confirmation SMS
       await sendClickSendSMS(
         phoneE164,
-        `Autopilot: Great news, ${user.first_name || 'there'}! We've marked your emissions test as complete. Your license plate renewal can now proceed without any blocks. Thanks for letting us know!`
+        `Autopilot: Great news, ${user.first_name || 'there'}! We've marked your emissions test as complete. You can now renew your license plate without emissions-related blocks. Thanks for letting us know!`
       );
 
       return res.status(200).json({
@@ -161,7 +161,7 @@ export default async function handler(
       // Send confirmation SMS back to user
       await sendClickSendSMS(
         phoneE164,
-        `Autopilot: Thanks ${user.first_name || 'for confirming'}! Your profile is confirmed. We'll use your current info when we process your renewal.`
+        `Autopilot: Thanks ${user.first_name || 'for confirming'}! Your profile is confirmed and your reminder settings are active.`
       );
 
       return res.status(200).json({

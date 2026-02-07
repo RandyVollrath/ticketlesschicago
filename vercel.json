@@ -75,6 +75,9 @@
     "pages/api/cron/autopilot-export-plates.ts": {
       "maxDuration": 60
     },
+    "pages/api/cron/autopilot-check-plates.ts": {
+      "maxDuration": 300
+    },
     "pages/api/cron/autopilot-generate-letters.ts": {
       "maxDuration": 120
     },
@@ -151,6 +154,10 @@
     },
     {
       "path": "/api/cron/autopilot-export-plates",
+      "schedule": "0 14 * * 1,4"
+    },
+    {
+      "path": "/api/cron/autopilot-check-plates",
       "schedule": "0 14 * * 1,4"
     },
     {
