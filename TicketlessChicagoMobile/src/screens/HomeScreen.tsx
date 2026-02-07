@@ -12,7 +12,9 @@ import {
   Linking,
   NativeModules,
   Share,
+  ActivityIndicator,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -165,6 +167,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [checkingAddress, setCheckingAddress] = useState<string | null>(null);
   const [showBatteryWarning, setShowBatteryWarning] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
+  const [showParkingMap, setShowParkingMap] = useState(false);
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -468,6 +471,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setIsGettingLocation(true);
     setLocationAccuracy(undefined);
     setCheckingAddress(null);
+    setShowParkingMap(false);
 
     // Overall timeout — show a helpful message if the whole check takes too long
     const OVERALL_TIMEOUT_MS = 30000;
@@ -1007,12 +1011,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.heroActions}>
                 <TouchableOpacity
                   style={styles.heroActionButton}
-                  onPress={() => getDirections(lastParkingCheck.coords)}
-                  accessibilityLabel="Get directions to parked car"
+                  onPress={() => setShowParkingMap(!showParkingMap)}
+                  accessibilityLabel={showParkingMap ? 'Hide map' : 'Show map with restrictions'}
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="navigation-variant" size={14} color={colors.white} />
-                  <Text style={styles.heroActionText}>Directions</Text>
+                  <MaterialCommunityIcons name={showParkingMap ? 'map-minus' : 'map-marker-radius'} size={14} color={colors.white} />
+                  <Text style={styles.heroActionText}>{showParkingMap ? 'Hide Map' : 'Open in Map'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.heroActionButton}
@@ -1030,6 +1034,62 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </View>
           )}
         </TouchableOpacity>
+
+        {/* ──── Embedded Restrictions Map ──── */}
+        {showParkingMap && lastParkingCheck && (
+          <View style={styles.parkingMapCard}>
+            <View style={styles.parkingMapHeader}>
+              <MaterialCommunityIcons name="map" size={18} color={colors.primary} />
+              <Text style={styles.parkingMapHeaderText}>Restrictions Map</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  const { coords } = lastParkingCheck;
+                  const scheme = Platform.OS === 'ios' ? 'maps:' : 'geo:';
+                  const url = Platform.OS === 'ios'
+                    ? `maps:?daddr=${coords.latitude},${coords.longitude}`
+                    : `geo:${coords.latitude},${coords.longitude}?q=${coords.latitude},${coords.longitude}(${encodeURIComponent(lastParkingCheck.address)})`;
+                  Linking.openURL(url);
+                }}
+                style={styles.parkingMapDirectionsBtn}
+                accessibilityLabel="Get directions in Maps app"
+              >
+                <MaterialCommunityIcons name="directions" size={16} color={colors.primary} />
+                <Text style={styles.parkingMapDirectionsText}>Directions</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.parkingMapContainer}>
+              <WebView
+                source={{
+                  uri: `${Config.API_BASE_URL}/destination-map?lat=${lastParkingCheck.coords.latitude}&lng=${lastParkingCheck.coords.longitude}&address=${encodeURIComponent(lastParkingCheck.address)}`,
+                }}
+                style={styles.parkingMapWebView}
+                javaScriptEnabled
+                domStorageEnabled
+                startInLoadingState
+                nestedScrollEnabled
+                scalesPageToFit={false}
+                overScrollMode="never"
+                renderLoading={() => (
+                  <View style={styles.parkingMapLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.parkingMapLoadingText}>Loading map...</Text>
+                  </View>
+                )}
+                onShouldStartLoadWithRequest={(req) => {
+                  if (req.url.includes('/destination-map')) return true;
+                  if (req.url.startsWith('http')) {
+                    Linking.openURL(req.url);
+                    return false;
+                  }
+                  return true;
+                }}
+              />
+            </View>
+            <Text style={styles.parkingMapHint}>
+              Pinch to zoom · Tap zones for cleaning schedules
+            </Text>
+          </View>
+        )}
 
         {/* ──── Quick Start Tips ──── */}
         {showQuickStart && (
@@ -1810,6 +1870,72 @@ const styles = StyleSheet.create({
   pauseLinkText: {
     fontSize: typography.sizes.sm,
     color: colors.textTertiary,
+  },
+
+  // ──── Embedded Parking Map ────
+  parkingMapCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    marginBottom: spacing.base,
+    ...shadows.md,
+  },
+  parkingMapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: 8,
+  },
+  parkingMapHeaderText: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  parkingMapDirectionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryTint,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: borderRadius.md,
+    gap: 4,
+  },
+  parkingMapDirectionsText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+  },
+  parkingMapContainer: {
+    height: 350,
+    backgroundColor: '#F3F4F6',
+  },
+  parkingMapWebView: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  parkingMapLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  parkingMapLoadingText: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
+    marginTop: spacing.sm,
+  },
+  parkingMapHint: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
 });
 
