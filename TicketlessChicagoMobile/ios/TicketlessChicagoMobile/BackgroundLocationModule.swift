@@ -60,6 +60,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var lastStationaryTime: Date? = nil
   private var continuousGpsActive = false              // Whether high-frequency GPS is running
   private var coreMotionActive = false                  // Whether CoreMotion activity updates are running
+  private var automotiveSessionStart: Date? = nil       // When current automotive session began (for flicker filtering)
+  private var lastConfirmedParkingLocation: CLLocation? = nil  // Where we last confirmed parking (for distance-based flicker check)
 
   // Configuration
   private let minDrivingDurationSec: TimeInterval = 10   // 10 sec of driving before we care about stops (was 120→60→30→10; covers moving car one block for street cleaning)
@@ -214,6 +216,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     speedZeroStartTime = nil
     stationaryLocation = nil
     stationaryStartTime = nil
+    automotiveSessionStart = nil
+    lastConfirmedParkingLocation = nil
     hasConfirmedParkingThisSession = false
 
     self.log("Monitoring stopped")
@@ -340,6 +344,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // CoreMotion's M-series coprocessor detected vehicle vibration pattern.
         // Accept ALL confidence levels - some devices consistently report .low
         // for automotive even when genuinely driving.
+        if !self.coreMotionSaysAutomotive {
+          self.automotiveSessionStart = Date()
+        }
         self.coreMotionSaysAutomotive = true
 
         // GPS SPEED VETO: If GPS says speed ≈ 0, do NOT cancel parking timers.
@@ -435,6 +442,69 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           let isWalking = activity.walking
           self.log("Exited vehicle (CoreMotion: \(activity.stationary ? "stationary" : "walking"), confidence: \(self.confidenceString(activity.confidence)))")
           self.handlePotentialParking(userIsWalking: isWalking)
+
+        } else if !self.isDriving && wasAutomotive && self.hasConfirmedParkingThisSession {
+          // SHORT DRIVE RECOVERY: CoreMotion went automotive → stationary/walking
+          // but isDriving was never set to true. This happens on short drives
+          // (e.g. 6 blocks) where GPS couldn't confirm speed before the user parked:
+          //   1. CoreMotion detects automotive → starts GPS for speed verification
+          //   2. GPS needs 3-10s to get a fix with speed > threshold
+          //   3. By then the user is already slowing/parked → GPS shows speed ≈ 0
+          //   4. isDriving never becomes true → normal parking detection is blocked
+          //
+          // Fix: fire onDrivingStarted (for departure tracking on previous spot)
+          // then onParkingDetected (for the new spot).
+
+          // FLICKER GUARD: CoreMotion can briefly flicker to automotive from phone
+          // vibration while the user is still parked. Filter using two signals:
+          //   1. Automotive duration (flicker < 5s, real drive > 15s typically)
+          //   2. Distance from last parking (flicker = 0m, real drive > 200m)
+          // A real drive passes EITHER check. Both must fail for flicker rejection.
+          let automotiveDuration = Date().timeIntervalSince(self.automotiveSessionStart ?? Date())
+          let currentLoc = self.locationManager.location
+          let distFromLastParking: Double = {
+            guard let lastParking = self.lastConfirmedParkingLocation, let cur = currentLoc else { return 0 }
+            return cur.distance(from: lastParking)
+          }()
+          let isLikelyFlicker = automotiveDuration < 15 && distFromLastParking < 100
+          self.log("SHORT DRIVE RECOVERY check: automotiveDuration=\(String(format: "%.0f", automotiveDuration))s, distFromLastParking=\(String(format: "%.0f", distFromLastParking))m, isFlicker=\(isLikelyFlicker)")
+
+          if isLikelyFlicker {
+            self.log("SHORT DRIVE RECOVERY: automotive \(String(format: "%.0f", automotiveDuration))s (< 15s) + dist \(String(format: "%.0f", distFromLastParking))m (< 100m) — likely flicker, skipping")
+          } else if let loc = self.lastDrivingLocation ?? self.locationManager.location {
+            self.log("SHORT DRIVE RECOVERY: CoreMotion automotive→\(activity.stationary ? "stationary" : "walking") but isDriving was false. Firing departure + parking events.")
+
+            // Fire departure event first so previous parking gets a departure time.
+            let departureTimestamp = Date().timeIntervalSince1970 * 1000
+            self.sendEvent(withName: "onDrivingStarted", body: [
+              "timestamp": departureTimestamp,
+              "source": "short_drive_recovery",
+            ])
+
+            // Delay parking event to give JS time to process departure first.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+              let body: [String: Any] = [
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+                "latitude": loc.coordinate.latitude,
+                "longitude": loc.coordinate.longitude,
+                "accuracy": loc.horizontalAccuracy,
+                "locationSource": "short_drive_recovery",
+                "drivingDurationSec": 0,
+              ]
+              self.sendEvent(withName: "onParkingDetected", body: body)
+              self.log("SHORT DRIVE RECOVERY: onParkingDetected fired at \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
+            }
+
+            // Clean up driving state and record this as the new parking location
+            self.lastConfirmedParkingLocation = loc
+            self.stopContinuousGps()
+            self.lastDrivingLocation = nil
+            self.locationAtStopStart = nil
+            self.speedSaysMoving = false
+            self.speedZeroStartTime = nil
+          } else {
+            self.log("SHORT DRIVE RECOVERY: No location available — cannot fire parking event")
+          }
         }
       }
       // Note: cycling, running, unknown → ignore, don't change state
@@ -491,7 +561,27 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // GPS speed alone does NOT start driving — only CoreMotion can detect
       // "in a vehicle" vs "walking". GPS speed is used as a sanity check
       // to prevent CoreMotion flicker from falsely triggering driving.
-      if !isDriving && !coreMotionSaysAutomotive {
+      if !isDriving && coreMotionSaysAutomotive {
+        // CoreMotion already said automotive but we were waiting for GPS speed
+        // confirmation (hasConfirmedParkingThisSession guard). Now GPS confirms
+        // driving speed — promote to driving immediately instead of waiting for
+        // the next CoreMotion callback (which could be 10-60s away).
+        isDriving = true
+        drivingStartTime = Date()
+        lastDrivingLocation = nil
+        locationAtStopStart = nil
+        self.log("Driving started (GPS speed \(String(format: "%.1f", speed)) m/s confirmed CoreMotion automotive)")
+
+        var departureTimestamp = Date().timeIntervalSince1970 * 1000
+        if location.speed > minDrivingSpeedMps && Date().timeIntervalSince(location.timestamp) < 60 {
+          departureTimestamp = location.timestamp.timeIntervalSince1970 * 1000
+        }
+
+        sendEvent(withName: "onDrivingStarted", body: [
+          "timestamp": departureTimestamp,
+          "source": "gps_speed_confirmed",
+        ])
+      } else if !isDriving && !coreMotionSaysAutomotive {
         self.log("GPS speed > threshold (\(String(format: "%.1f", speed)) m/s) but CoreMotion not automotive — waiting for CoreMotion")
       }
     } else if speed >= 0 && speed <= 0.5 {
@@ -757,6 +847,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // 2. lastDrivingLocation - last GPS while in driving state (very good - includes slow creep)
     // 3. locationManager.location - current GPS (last resort - user may have walked)
     let parkingLocation = locationAtStopStart ?? lastDrivingLocation
+    lastConfirmedParkingLocation = parkingLocation ?? locationManager.location
     let currentLocation = locationManager.location
 
     // Use the parking location's GPS timestamp if available — this is when the car
