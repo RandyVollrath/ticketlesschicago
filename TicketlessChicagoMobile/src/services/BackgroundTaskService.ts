@@ -1117,11 +1117,14 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
   }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true): Promise<void> {
-    // Guard against duplicate parking checks (e.g., from app state changes re-triggering)
-    if (this.state.lastParkingCheckTime) {
+    // Guard against duplicate parking checks (e.g., from app state changes re-triggering).
+    // ONLY throttle non-real events (periodic checks, retries). Real parking events
+    // (BT disconnect, iOS CoreMotion detection) MUST always be processed — the user
+    // can legitimately park twice within 5 minutes (e.g., quick stop then drive 6 blocks).
+    if (!isRealParkingEvent && this.state.lastParkingCheckTime) {
       const timeSinceLastCheck = Date.now() - this.state.lastParkingCheckTime;
       if (timeSinceLastCheck < MIN_PARKING_CHECK_INTERVAL_MS) {
-        log.info(`Skipping parking check - last check was ${Math.round(timeSinceLastCheck / 1000)}s ago (min interval: ${MIN_PARKING_CHECK_INTERVAL_MS / 1000}s)`);
+        log.info(`Skipping non-real parking check - last check was ${Math.round(timeSinceLastCheck / 1000)}s ago (min interval: ${MIN_PARKING_CHECK_INTERVAL_MS / 1000}s)`);
         return;
       }
     }
