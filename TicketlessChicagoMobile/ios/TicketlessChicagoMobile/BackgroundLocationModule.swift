@@ -730,8 +730,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       guard let lastActivity = activities.last else { return }
       let currentlyStationary = lastActivity.stationary || lastActivity.walking
 
-      // If user drove for 2+ min and is now stationary, trigger retroactive parking check
-      if wasRecentlyDriving && currentlyStationary && automotiveDuration >= self.minDrivingDurationSec {
+      // If user drove at all and is now stationary, trigger retroactive parking check
+      // No duration filter - capture every parking event
+      if wasRecentlyDriving && currentlyStationary && automotiveDuration > 0 {
         self.log("RECOVERY: Detected missed parking event. Drove \(String(format: "%.0f", automotiveDuration))s, now stationary. Triggering retroactive check.")
 
         var body: [String: Any] = [
@@ -769,38 +770,26 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   // MARK: - Parking Detection Logic
 
-  /// Called ONLY when CoreMotion confirms user exited vehicle (not on speed=0 alone)
-  /// userIsWalking: if true, CoreMotion detected walking (not just stationary).
-  /// Walking means the user got out of the car — bypass the minimum driving duration
-  /// filter. Red lights produce "stationary", not "walking", so this is safe.
+  /// Called when CoreMotion transitions from automotive to stationary/walking.
+  /// SIMPLE RULE: automotive → not automotive + GPS speed ≈ 0 = parked.
+  /// No duration filters. Every parking event is recorded.
   private func handlePotentialParking(userIsWalking: Bool = false) {
-    guard let drivingStart = drivingStartTime else {
+    guard drivingStartTime != nil else {
       self.log("No driving start time - ignoring")
       return
     }
 
-    let drivingDuration = Date().timeIntervalSince(drivingStart)
-
-    // Walking override: if CoreMotion says "walking", the user exited the car.
-    // No need to enforce a minimum driving duration — you don't walk at a red light.
-    // Still require at least 10 seconds to filter out sensor noise.
-    if userIsWalking && drivingDuration >= 10 {
-      self.log("Walking detected after \(String(format: "%.0f", drivingDuration))s driving — bypassing duration filter")
-    } else if drivingDuration < minDrivingDurationSec {
-      self.log("Drove only \(String(format: "%.0f", drivingDuration))s (need \(minDrivingDurationSec)s) and not walking - ignoring")
-      return
-    }
+    let drivingDuration = Date().timeIntervalSince(drivingStartTime!)
+    self.log("Parking detected after \(String(format: "%.0f", drivingDuration))s driving (walking=\(userIsWalking))")
 
     if lastStationaryTime == nil {
       lastStationaryTime = Date()
-      self.log("Exit debounce started (\(exitDebounceSec)s). Drove \(String(format: "%.0f", drivingDuration))s.")
     }
 
-    // Cancel any existing timer and start fresh.
-    // 5 second debounce: just enough to ignore a momentary CoreMotion flicker
-    // (e.g. user leans out car door then gets back in).
+    // 3 second debounce: just enough to ignore momentary CoreMotion flicker
+    // but fast enough to catch every real parking event.
     parkingConfirmationTimer?.invalidate()
-    parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: exitDebounceSec, repeats: false) { [weak self] _ in
+    parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
       self?.confirmParking()
     }
   }
