@@ -281,10 +281,13 @@ class ParkingDetectionStateMachineClass {
    */
   btInitDisconnected(source: DetectionSource = 'bt_profile_proxy', metadata?: Record<string, any>): void {
     // If we restored to DRIVING from persistence but BT says not connected,
-    // that's the stale SharedPrefs bug. Correct it.
+    // that's the stale state bug. Trigger the normal disconnect flow
+    // so parking check runs properly.
     if (this._state === 'DRIVING') {
-      log.info('BT init says disconnected but state was DRIVING (stale) — correcting to PARKED');
-      this.transition('PARKED', 'BT_INIT_DISCONNECTED', source, {
+      log.info('BT init says disconnected but state was DRIVING (stale) — triggering disconnect flow');
+      // Go through PARKING_PENDING so the parking check logic fires.
+      // The btDisconnected() handler normally does this.
+      this.transition('PARKING_PENDING', 'BT_INIT_DISCONNECTED', source, {
         ...metadata,
         reason: 'stale_state_correction',
       });
