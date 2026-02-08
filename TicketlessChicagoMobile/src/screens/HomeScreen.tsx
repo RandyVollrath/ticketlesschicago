@@ -1875,17 +1875,19 @@ const styles = StyleSheet.create({
   protectionStrip: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    rowGap: spacing.sm,
   },
   protectionChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.successBg,
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
     gap: 6,
+    // Force exactly 3 per row: ~31% width + space-between distributes gaps evenly
+    flexBasis: '31%',
   },
   protectionChipText: {
     fontSize: typography.sizes.sm,
