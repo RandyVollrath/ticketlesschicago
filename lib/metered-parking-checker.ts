@@ -2,7 +2,7 @@
  * Metered Parking Zone Checker
  *
  * Determines if a parked car is in a metered parking zone by finding
- * the nearest parking meter within 100m of the parking location.
+ * the nearest parking meter within 50m of the parking location.
  *
  * Data source: 4,638 active Chicago Parking Meters LLC payboxes.
  * Most meters have a 2-hour time limit; ~28% near entertainment venues
@@ -97,13 +97,13 @@ function estimateRate(lat: number, lng: number): string {
  * Check if a location is in a metered parking zone.
  *
  * Uses a bounding box pre-filter (fast) then Haversine distance (accurate)
- * to find the nearest meter within 100m.
+ * to find the nearest meter within 50m.
  */
 export async function checkMeteredParking(
   latitude: number,
   longitude: number
 ): Promise<MeteredParkingStatus> {
-  const SEARCH_RADIUS_M = 100; // meters
+  const SEARCH_RADIUS_M = 50; // meters — tight enough to avoid bleeding to adjacent parallel streets
   const DEFAULT_TIME_LIMIT_MIN = 120; // 2 hours (most common)
 
   if (!supabaseAdmin) {
