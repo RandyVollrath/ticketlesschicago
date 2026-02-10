@@ -10,6 +10,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkAllParkingRestrictions, UnifiedParkingResult } from '../../../lib/unified-parking-checker';
+import { checkMeteredParking, MeteredParkingStatus } from '../../../lib/metered-parking-checker';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { supabaseAdmin } from '../../../lib/supabase';
 
@@ -85,6 +86,16 @@ interface MobileCheckParkingResponse {
     permitRequired?: boolean;
     severity?: 'critical' | 'warning' | 'info' | 'none';
     restrictionSchedule?: string;
+  };
+  meteredParking: {
+    inMeteredZone: boolean;
+    message: string;
+    severity?: 'warning' | 'info' | 'none';
+    nearestMeterDistanceM?: number;
+    nearestMeterAddress?: string;
+    timeLimitMinutes?: number;
+    isEnforcedNow?: boolean;
+    estimatedRate?: string;
   };
   /** Enforcement risk scoring based on 1.18M FOIA ticket records */
   enforcementRisk?: EnforcementRisk;
@@ -192,7 +203,11 @@ export default async function handler(
     }
 
     // Step 2: Check all parking restrictions using (possibly snapped) coordinates
-    const result = await checkAllParkingRestrictions(checkLat, checkLng);
+    // Run metered parking check in parallel with restriction checks
+    const [result, meteredParkingResult] = await Promise.all([
+      checkAllParkingRestrictions(checkLat, checkLng),
+      checkMeteredParking(checkLat, checkLng),
+    ]);
 
     // Step 3: Compute enforcement risk score from FOIA ticket data.
     // Uses the parsed address (street number + direction + name) to look up
@@ -267,6 +282,17 @@ export default async function handler(
         restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
       },
 
+      meteredParking: {
+        inMeteredZone: meteredParkingResult.inMeteredZone,
+        message: meteredParkingResult.message,
+        severity: meteredParkingResult.severity,
+        nearestMeterDistanceM: meteredParkingResult.nearestMeterDistanceM || undefined,
+        nearestMeterAddress: meteredParkingResult.nearestMeterAddress || undefined,
+        timeLimitMinutes: meteredParkingResult.timeLimitMinutes,
+        isEnforcedNow: meteredParkingResult.isEnforcedNow,
+        estimatedRate: meteredParkingResult.estimatedRate || undefined,
+      },
+
       // Enforcement risk scoring from 1.18M FOIA ticket records
       enforcementRisk,
 
@@ -291,6 +317,7 @@ export default async function handler(
       winterOvernightBan: { active: false, message: 'Error checking restrictions' },
       twoInchSnowBan: { active: false, message: 'Error checking restrictions' },
       permitZone: { inPermitZone: false, message: 'Error checking restrictions' },
+      meteredParking: { inMeteredZone: false, message: 'Error checking restrictions' },
       timestamp: new Date().toISOString(),
       error: sanitizeErrorMessage(error),
     });

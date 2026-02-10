@@ -448,6 +448,14 @@ const MapScreenContent: React.FC = () => {
                   </View>
                   <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
                 </View>
+                <View style={styles.protectionItem} accessibilityLabel="Metered parking, checked">
+                  <Text style={styles.protectionIcon}>⏰</Text>
+                  <View style={styles.protectionInfo}>
+                    <Text style={styles.protectionLabel}>Metered Parking</Text>
+                    <Text style={styles.protectionStatus}>Checked</Text>
+                  </View>
+                  <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
+                </View>
               </View>
               {lastLocation.rules.length === 0 && (
                 <View style={styles.allClear} accessibilityRole="text" accessibilityLabel="All clear, no active restrictions">

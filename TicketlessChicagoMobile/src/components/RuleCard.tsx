@@ -20,6 +20,8 @@ const getRuleIcon = (type: ParkingRule['type']): string => {
       return 'weather-night';
     case 'tow_zone':
       return 'tow-truck';
+    case 'metered_parking':
+      return 'timer-sand';
     default:
       return 'alert-circle-outline';
   }
@@ -37,6 +39,8 @@ const getRuleLabel = (type: ParkingRule['type']): string => {
       return 'Winter Overnight Ban';
     case 'tow_zone':
       return 'Tow Zone';
+    case 'metered_parking':
+      return 'Metered Parking';
     default:
       return 'Parking Rule';
   }
