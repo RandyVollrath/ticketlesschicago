@@ -80,7 +80,7 @@ type TransitionCallback = (event: DetectionEvent) => void | Promise<void>;
 const STORAGE_KEY = 'parkingStateMachine';
 const EVENT_LOG_STORAGE_KEY = 'parkingDetectionEventLog';
 const MAX_EVENT_LOG_SIZE = 100;
-const DEBOUNCE_DURATION_MS = 20_000; // 20 seconds — filters red light stops + BT signal glitches
+const DEBOUNCE_DURATION_MS = 10_000; // 10 seconds — filters BT signal glitches without delaying parking detection
 
 // ---------------------------------------------------------------------------
 // Valid state transitions
