@@ -919,19 +919,19 @@ class LocationServiceClass {
       });
     }
 
-    // Metered parking zone
-    if (data?.meteredParking?.inMeteredZone) {
+    // Metered parking zone — only show when meters are currently enforced.
+    // If parked outside enforcement hours, BackgroundTaskService schedules
+    // a notification for when meters become active (8am next weekday).
+    if (data?.meteredParking?.inMeteredZone && data.meteredParking.isEnforcedNow) {
       rules.push({
         type: 'metered_parking',
         message: data.meteredParking.message,
-        severity: (data.meteredParking.severity || 'info') as 'critical' | 'warning' | 'info',
-        isActiveNow: data.meteredParking.isEnforcedNow,
+        severity: 'warning',
+        isActiveNow: true,
         timeLimitMinutes: data.meteredParking.timeLimitMinutes || 120,
         estimatedRate: data.meteredParking.estimatedRate,
-        isEnforcedNow: data.meteredParking.isEnforcedNow,
-        schedule: data.meteredParking.isEnforcedNow
-          ? `Mon–Sat 8am–10pm, ${data.meteredParking.estimatedRate || '$2.50/hr'}`
-          : 'Not currently enforced',
+        isEnforcedNow: true,
+        schedule: `Mon–Sat 8am–10pm, ${data.meteredParking.estimatedRate || '$2.50/hr'}`,
       });
     }
 
