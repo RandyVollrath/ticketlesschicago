@@ -536,8 +536,8 @@ class BackgroundTaskServiceClass {
                   this.lastNativeBtEventTime = Date.now();
                   // Feed the state machine. It handles:
                   // 1. Transition to PARKING_PENDING
-                  // 2. 20s debounce timer (filters red light stops + BT glitches)
-                  // 3. If BT reconnects within 20s, cancels debounce (no parking check)
+                  // 2. 10s debounce timer (filters BT signal glitches)
+                  // 3. If BT reconnects within 10s, cancels debounce (no parking check)
                   // 4. If debounce expires, transitions to PARKED -> triggers parking check
                   // The state machine also syncs BluetoothService via the state listener.
                   ParkingDetectionStateMachine.btDisconnected('bt_acl', {
