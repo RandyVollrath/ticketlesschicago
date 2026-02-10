@@ -375,19 +375,32 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           // After parking: require GPS confirmation to prevent CoreMotion flicker from
           // falsely restarting "Driving" state while user is stationary.
           if self.hasConfirmedParkingThisSession && !self.speedSaysMoving {
-            // BUT: We must start GPS to GET speed updates! Otherwise we're stuck:
-            // - No GPS running (stopped after parking to save power)
-            // - speedSaysMoving stays false forever (no GPS = no speed updates)
-            // - Driving never detected, departure never recorded
-            // Start GPS now; once it reports speed > threshold, speedSaysMoving
-            // will become true and the NEXT CoreMotion automotive event will
-            // pass this check and set isDriving = true.
-            if !self.continuousGpsActive {
-              self.log("CoreMotion says automotive but GPS speed unknown — starting GPS to verify")
-              self.startContinuousGps()
+            // DISTANCE BYPASS: If user has moved >50m from the last confirmed parking
+            // location, they are clearly in a moving vehicle — trust CoreMotion immediately.
+            // This prevents the stuck state where GPS speed never confirms on short drives
+            // (e.g. 7 min grocery run), which blocks isDriving forever:
+            //   1. CoreMotion detects automotive → GPS starts for speed verification
+            //   2. GPS needs time to get a fix, or phone is in pocket with poor GPS
+            //   3. By the time GPS works, user is already slowing/parked → speed ≈ 0
+            //   4. isDriving never set → departure + next parking both missed
+            if let lastParking = self.lastConfirmedParkingLocation,
+               let currentLoc = self.locationManager.location,
+               currentLoc.distance(from: lastParking) > 50 {
+              self.log("CoreMotion automotive + moved \(String(format: "%.0f", currentLoc.distance(from: lastParking)))m from parking — bypassing GPS speed veto, trusting CoreMotion")
+              // Fall through to set isDriving = true below
+            } else {
+              // Still near parking spot — wait for GPS speed confirmation.
+              // Start GPS to GET speed updates. Otherwise we're stuck:
+              // - No GPS running (stopped after parking to save power)
+              // - speedSaysMoving stays false forever (no GPS = no speed updates)
+              // - Driving never detected, departure never recorded
+              if !self.continuousGpsActive {
+                self.log("CoreMotion says automotive but GPS speed unknown — starting GPS to verify")
+                self.startContinuousGps()
+              }
+              self.log("CoreMotion says automotive but GPS speed ≈ 0 — waiting for GPS speed confirmation")
+              return
             }
-            self.log("CoreMotion says automotive but GPS speed ≈ 0 — waiting for GPS speed confirmation")
-            return
           }
 
           self.isDriving = true
@@ -497,6 +510,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
             // Clean up driving state and record this as the new parking location
             self.lastConfirmedParkingLocation = loc
+            self.hasConfirmedParkingThisSession = true  // Mark parking confirmed so GPS speed veto + distance bypass works for next drive
             self.stopContinuousGps()
             self.lastDrivingLocation = nil
             self.locationAtStopStart = nil
