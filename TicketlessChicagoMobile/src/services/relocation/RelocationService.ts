@@ -7,6 +7,7 @@
 
 import { StreetSegment, Restriction, UserContext } from '../parking-map/types';
 import { computeParkingStatus, isRestrictionActive } from '../parking-map/compute';
+import { distanceMeters } from '../../utils/geo';
 
 // =============================================================================
 // Types
@@ -100,7 +101,10 @@ class RelocationService {
 
       if (status.canParkNow && status.safeForHours >= opts.minSafeHours) {
         const midpoint = this.getSegmentMidpoint(segment);
-        const distance = this.calculateDistance(currentLocation, midpoint);
+        const distance = distanceMeters(
+          currentLocation.latitude, currentLocation.longitude,
+          midpoint.latitude, midpoint.longitude
+        );
 
         suggestions.push({
           id: segment.properties.segmentId,
@@ -364,23 +368,7 @@ class RelocationService {
     return `${blockStart}-${blockEnd} ${streetName}`;
   }
 
-  /**
-   * Calculate distance between two locations in meters
-   */
-  private calculateDistance(from: Location, to: Location): number {
-    const R = 6371e3; // Earth's radius in meters
-    const lat1 = (from.latitude * Math.PI) / 180;
-    const lat2 = (to.latitude * Math.PI) / 180;
-    const deltaLat = ((to.latitude - from.latitude) * Math.PI) / 180;
-    const deltaLon = ((to.longitude - from.longitude) * Math.PI) / 180;
-
-    const a =
-      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-      Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  }
+  // Distance calculation moved to shared geo utility (src/utils/geo.ts)
 
   /**
    * Estimate walking time in minutes

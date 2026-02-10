@@ -24,6 +24,9 @@ import PushNotificationService from './PushNotificationService';
 import AuthService from './AuthService';
 import { ParkingHistoryService } from '../screens/HistoryScreen';
 import CameraAlertService from './CameraAlertService';
+import { fetchCameraLocations } from '../data/chicago-cameras';
+import AppEvents from './AppEvents';
+import { distanceMeters as haversineDistance } from '../utils/geo';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
 
@@ -125,6 +128,9 @@ class BackgroundTaskServiceClass {
 
       // Initialize local notification scheduling service
       await LocalNotificationService.initialize();
+
+      // Fetch latest camera locations from API (falls back to hardcoded if offline)
+      fetchCameraLocations().catch((e) => log.debug('Camera locations fetch failed (non-blocking)', e));
 
       // Initialize camera alert service (TTS for speed/red light cameras)
       await CameraAlertService.initialize();
@@ -529,8 +535,8 @@ class BackgroundTaskServiceClass {
                   this.lastNativeBtEventTime = Date.now();
                   // Feed the state machine. It handles:
                   // 1. Transition to PARKING_PENDING
-                  // 2. 10s debounce timer
-                  // 3. If BT reconnects within 10s, cancels debounce (no parking check)
+                  // 2. 20s debounce timer (filters red light stops + BT glitches)
+                  // 3. If BT reconnects within 20s, cancels debounce (no parking check)
                   // 4. If debounce expires, transitions to PARKED -> triggers parking check
                   // The state machine also syncs BluetoothService via the state listener.
                   ParkingDetectionStateMachine.btDisconnected('bt_acl', {
@@ -1151,8 +1157,15 @@ class BackgroundTaskServiceClass {
 
         // Phase 1: Fast single GPS fix (1-3 seconds)
         try {
-          coords = await LocationService.getCurrentLocation('high', true);
-          gpsSource = `fast-single (${coords.accuracy?.toFixed(1)}m)`;
+          if (Platform.OS === 'android') {
+            // Prioritize speed on Android for immediate user feedback.
+            // Phase 2 burst refinement will correct any drift.
+            coords = await LocationService.getCurrentLocation('balanced', false);
+            gpsSource = `fast-single-android (${coords.accuracy?.toFixed(1)}m)`;
+          } else {
+            coords = await LocationService.getCurrentLocation('high', true);
+            gpsSource = `fast-single (${coords.accuracy?.toFixed(1)}m)`;
+          }
           log.info(`Fast GPS fix: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
         } catch (fastError) {
           log.warn('Fast GPS failed, trying balanced:', fastError);
@@ -1223,6 +1236,7 @@ class BackgroundTaskServiceClass {
 
       // Save the result (overwrites LAST_PARKING_LOCATION for HomeScreen hero card)
       await LocationService.saveParkingCheckResult(result);
+      AppEvents.emit('parking-check-updated');
 
       // Save to parking history so it shows up in the History tab.
       // This includes all-clear results — the user should see a record of
@@ -1231,6 +1245,7 @@ class BackgroundTaskServiceClass {
         try {
           log.info(`Saving to parking history: addr="${result.address}", rules=${result.rules.length}, coords=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}${nativeTimestamp ? `, nativeTime=${new Date(nativeTimestamp).toISOString()}` : ''}`);
           await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp);
+          AppEvents.emit('parking-history-updated');
           log.info('Auto-detection result saved to parking history ✓');
         } catch (historyError) {
           log.error('Failed to save auto-detection to history (non-fatal):', historyError);
@@ -1352,7 +1367,7 @@ class BackgroundTaskServiceClass {
       log.info(`[GPS Phase 2] Burst result: ${burstCoords.latitude.toFixed(6)}, ${burstCoords.longitude.toFixed(6)} ±${burstCoords.accuracy?.toFixed(1) || '?'}m (confidence: ${burstCoords.confidence})`);
 
       // Calculate distance between fast fix and burst-averaged position
-      const distM = this.haversineDistance(
+      const distM = haversineDistance(
         initialCoords.latitude, initialCoords.longitude,
         burstCoords.latitude, burstCoords.longitude
       );
@@ -1371,6 +1386,7 @@ class BackgroundTaskServiceClass {
 
       // Update saved result (HomeScreen hero card reads this)
       await LocationService.saveParkingCheckResult(result);
+      AppEvents.emit('parking-check-updated');
 
       // Update parking history — find the most recent entry and update its coords/rules
       try {
@@ -1382,6 +1398,7 @@ class BackgroundTaskServiceClass {
             address: result.address,
             rules: result.rules,
           });
+          AppEvents.emit('parking-history-updated');
           log.info(`[GPS Phase 2] Updated history entry ${recentItem.id} with refined location`);
         }
       } catch (histErr) {
@@ -1428,20 +1445,7 @@ class BackgroundTaskServiceClass {
   /**
    * Haversine distance between two lat/lng points in meters.
    */
-  private haversineDistance(
-    lat1: number, lng1: number,
-    lat2: number, lng2: number
-  ): number {
-    const R = 6371000; // Earth radius in meters
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
+  // haversineDistance removed — now imported from utils/geo.ts
 
   /**
    * Extract raw parking data from the check result for server save.
@@ -2139,8 +2143,12 @@ class BackgroundTaskServiceClass {
    */
   async manualParkingCheck(): Promise<void> {
     await this.triggerParkingCheck(undefined, true, undefined, false);
-    // Manual checks intentionally do not create/alter parked timeline state.
-    // They are quick spot checks for the current location.
+    // After a successful manual check, transition the state machine to PARKED
+    // so departure tracking works when the user drives away. Without this,
+    // the state machine stays in IDLE and departure is never recorded.
+    ParkingDetectionStateMachine.manualParkingConfirmed({
+      source: 'manual_parking_check',
+    });
   }
 
   /**
@@ -2410,7 +2418,7 @@ class BackgroundTaskServiceClass {
       const CONCLUSIVE_DISTANCE_M = 50; // 50m — far enough to prove they left the spot, close enough to catch end-of-block moves
 
       if (isLocalOnly) {
-        distanceMeters = this.haversineDistance(
+        distanceMeters = haversineDistance(
           pending.parkedLocation.latitude,
           pending.parkedLocation.longitude,
           currentCoords.latitude,
@@ -2425,7 +2433,7 @@ class BackgroundTaskServiceClass {
         });
 
         // Best-effort server sync
-        this.tryServerDepartureConfirmation(currentCoords, pending).catch(() => {});
+        this.tryServerDepartureConfirmation(currentCoords, pending).catch((e) => log.warn('Server departure confirmation failed (local-only fallback used)', e));
       } else {
         const result = await LocationService.confirmDeparture(
           pending.parkingHistoryId!,
@@ -2634,6 +2642,7 @@ class BackgroundTaskServiceClass {
 
       // Save updated result
       await LocationService.saveParkingCheckResult(result);
+      AppEvents.emit('parking-check-updated');
 
       // Update last rescan time
       await AsyncStorage.setItem(StorageKeys.RESCAN_LAST_RUN, new Date().toISOString());

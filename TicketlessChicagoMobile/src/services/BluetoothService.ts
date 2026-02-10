@@ -330,7 +330,7 @@ class BluetoothServiceClass {
         // and ensureSavedDeviceLoaded() will retroactively fix it.
         this.connectedDeviceId = '__native_connected__';
         log.warn('setCarConnected(true) called before savedDeviceId loaded — using placeholder, loading now');
-        this.ensureSavedDeviceLoaded().catch(() => {});
+        this.ensureSavedDeviceLoaded().catch((e) => log.warn('Failed to load saved BT device after placeholder set', e));
       }
       this.notifyConnected();
       log.debug('Car connection state set to CONNECTED (external)');

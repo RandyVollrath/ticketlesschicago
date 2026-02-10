@@ -3,6 +3,7 @@ import Geolocation, { GeoPosition, GeoError, GeoOptions } from 'react-native-geo
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance, AuthorizationStatus } from '@notifee/react-native';
 import ApiClient, { ApiErrorType } from '../utils/ApiClient';
+import { distanceMeters } from '../utils/geo';
 import Logger from '../utils/Logger';
 import { validateChicagoCoordinates, validateParkingApiResponse } from '../utils/validation';
 import { RateLimiter } from '../utils/RateLimiter';
@@ -525,7 +526,7 @@ class LocationServiceClass {
 
     // Step 2: Discard outliers
     const filtered = samples.filter((s) => {
-      const dist = this.haversineDistance(s.latitude, s.longitude, medianLat, medianLng);
+      const dist = distanceMeters(s.latitude, s.longitude, medianLat, medianLng);
       return dist <= BURST_OUTLIER_THRESHOLD_METERS;
     });
 
@@ -561,7 +562,7 @@ class LocationServiceClass {
     // Step 4: Compute spread (RMS distance from average)
     let sumSquaredDist = 0;
     for (const s of usable) {
-      const dist = this.haversineDistance(s.latitude, s.longitude, avgLat, avgLng);
+      const dist = distanceMeters(s.latitude, s.longitude, avgLat, avgLng);
       sumSquaredDist += dist * dist;
     }
     const spreadMeters = Math.sqrt(sumSquaredDist / usable.length);
@@ -616,20 +617,7 @@ class LocationServiceClass {
    * Haversine distance between two lat/lng points in meters.
    * Used for outlier detection and spread calculation.
    */
-  private haversineDistance(
-    lat1: number, lng1: number,
-    lat2: number, lng2: number
-  ): number {
-    const R = 6371000; // Earth radius in meters
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
+  // haversineDistance removed — now imported from utils/geo.ts
 
   /**
    * Start continuous location watching for better accuracy over time
