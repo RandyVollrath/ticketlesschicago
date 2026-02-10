@@ -15,22 +15,36 @@ export default async function handler(
       throw new Error('Supabase admin client not available');
     }
 
-    const { data: meters, error } = await (supabaseAdmin as any)
-      .from('metered_parking_locations')
-      .select('meter_id, address, latitude, longitude, spaces, status, meter_type')
-      .eq('status', 'Active')
-      .order('meter_id');
+    // Supabase defaults to 1000 row limit — fetch all ~4,638 active meters
+    // by paginating in chunks of 1000
+    let allMeters: any[] = [];
+    let offset = 0;
+    const pageSize = 1000;
 
-    if (error) {
-      throw new Error(error.message);
+    while (true) {
+      const { data: page, error: pageError } = await (supabaseAdmin as any)
+        .from('metered_parking_locations')
+        .select('meter_id, address, latitude, longitude, spaces, status, meter_type')
+        .eq('status', 'Active')
+        .order('meter_id')
+        .range(offset, offset + pageSize - 1);
+
+      if (pageError) {
+        throw new Error(pageError.message);
+      }
+
+      if (!page || page.length === 0) break;
+      allMeters = allMeters.concat(page);
+      if (page.length < pageSize) break; // Last page
+      offset += pageSize;
     }
 
     // Cache for 6 hours - data rarely changes (awaiting FOIA for updates)
     res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
 
     return res.status(200).json({
-      meters: meters || [],
-      count: meters?.length || 0,
+      meters: allMeters,
+      count: allMeters.length,
     });
 
   } catch (error) {
