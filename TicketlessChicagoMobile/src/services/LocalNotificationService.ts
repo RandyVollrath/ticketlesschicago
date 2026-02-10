@@ -215,10 +215,15 @@ class LocalNotificationServiceClass {
         break;
 
       case 'metered_parking':
-        hoursBefore = 0; // Time is pre-computed (1h45m from parking time)
+        hoursBefore = 0; // Time is pre-computed by BackgroundTaskService
         notificationId = `${NOTIFICATION_PREFIX.METERED_PARKING}${Date.now()}`;
-        channelId = 'parking-alerts'; // High priority — meter about to expire
-        title = '⏰ Meter Expiring in 15 Minutes!';
+        channelId = 'parking-alerts';
+        // Detect subtype: expiry warning vs enforcement activation
+        if (details?.includes('expires in 15 minutes')) {
+          title = '⏰ Meter Expiring in 15 Minutes!';
+        } else {
+          title = '⏰ Meter Enforcement Starting!';
+        }
         body = `${address}\n${details || 'Your 2-hour meter is about to expire. Move your car or add time to avoid a $65 ticket.'}`;
         break;
 

@@ -1663,26 +1663,59 @@ class BackgroundTaskServiceClass {
       }
     }
 
-    // Metered parking reminder — 1h45m after parking (15 min before 2-hour limit)
-    if (result.meteredParking?.inMeteredZone && result.meteredParking?.isEnforcedNow) {
-      const timeLimitMin = result.meteredParking.timeLimitMinutes || 120; // Default 2 hours
-      const warningMinutesBefore = 15; // Warn 15 min before meter expires
-      const delayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000; // 105 min = 1h45m
-
-      const meterExpiryWarningTime = new Date(Date.now() + delayMs);
+    // Metered parking notifications
+    if (result.meteredParking?.inMeteredZone) {
       const rate = result.meteredParking.estimatedRate || '$2.50/hr';
-      const limitHours = timeLimitMin / 60;
 
-      restrictions.push({
-        type: 'metered_parking',
-        restrictionStartTime: meterExpiryWarningTime,
-        address: result.address || '',
-        details: `Your ${limitHours}-hour meter expires in 15 minutes (${rate}). Move your car or add time — $65 ticket if expired.`,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      });
+      if (result.meteredParking.isEnforcedNow) {
+        // Currently enforced — schedule 1h45m timer (15 min before 2-hour limit)
+        const timeLimitMin = result.meteredParking.timeLimitMinutes || 120;
+        const warningMinutesBefore = 15;
+        const delayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000;
 
-      log.info(`Scheduled metered parking reminder in ${timeLimitMin - warningMinutesBefore} minutes (${meterExpiryWarningTime.toLocaleTimeString()})`);
+        const meterExpiryWarningTime = new Date(Date.now() + delayMs);
+        const limitHours = timeLimitMin / 60;
+
+        restrictions.push({
+          type: 'metered_parking',
+          restrictionStartTime: meterExpiryWarningTime,
+          address: result.address || '',
+          details: `Your ${limitHours}-hour meter expires in 15 minutes (${rate}). Move your car or add time — $65 ticket if expired.`,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+
+        log.info(`Scheduled metered parking expiry reminder in ${timeLimitMin - warningMinutesBefore} minutes (${meterExpiryWarningTime.toLocaleTimeString()})`);
+      } else {
+        // Not currently enforced — schedule notification for when meters activate.
+        // Mon–Sat 8am. If parked on Sat evening, next enforcement is Mon 8am.
+        const now = new Date();
+        const next8am = new Date(now);
+        next8am.setHours(8, 0, 0, 0);
+
+        // If already past 8am today, go to tomorrow
+        if (now.getHours() >= 8) {
+          next8am.setDate(next8am.getDate() + 1);
+        }
+
+        // Skip Sunday (meters free)
+        if (next8am.getDay() === 0) {
+          next8am.setDate(next8am.getDate() + 1); // Monday
+        }
+
+        if (next8am.getTime() > Date.now()) {
+          restrictions.push({
+            type: 'metered_parking',
+            restrictionStartTime: next8am,
+            address: result.address || '',
+            details: `Metered parking enforcement starts at 8am (${rate}, 2-hour max). Feed the meter or move your car — $65 ticket.`,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          });
+
+          log.info(`Scheduled metered parking activation reminder for ${next8am.toLocaleString()}`);
+        }
+      }
     }
 
     // Snow ban - weather dependent, handled by push notifications from backend
@@ -1791,14 +1824,10 @@ class BackgroundTaskServiceClass {
       }
     }
 
-    // Metered parking zone
-    if (rawData?.meteredParking?.inMeteredZone) {
+    // Metered parking zone — only mention when enforced
+    if (rawData?.meteredParking?.inMeteredZone && rawData.meteredParking.isEnforcedNow) {
       const rate = rawData.meteredParking.estimatedRate || '$2.50/hr';
-      if (rawData.meteredParking.isEnforcedNow) {
-        parts.push(`⏰ Metered zone — ${rate}, 2-hour max. $65 expired meter ticket`);
-      } else {
-        parts.push(`⏰ Metered zone — not currently enforced (Mon–Sat 8am–10pm)`);
-      }
+      parts.push(`⏰ Metered zone — ${rate}, 2-hour max. $65 expired meter ticket`);
     }
 
     return parts.join('\n');
