@@ -27,6 +27,7 @@ import BluetoothService from '../services/BluetoothService';
 import ParkingDetectionStateMachine, { ParkingState, ParkingDetectionSnapshot } from '../services/ParkingDetectionStateMachine';
 import MotionActivityService from '../services/MotionActivityService';
 import BackgroundLocationService, { LocationUpdateEvent } from '../services/BackgroundLocationService';
+import AppEvents from '../services/AppEvents';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
@@ -286,7 +287,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       try {
         const zone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
         setHomePermitZone(zone || null);
-      } catch {}
+      } catch (e) { log.debug('Failed to load home permit zone', e); }
       refreshBtStatus();
       // Re-check location permission (user may have just enabled it in Settings)
       if (locationDenied) {
@@ -387,7 +388,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       const zone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
       setHomePermitZone(zone || null);
-    } catch {}
+    } catch (e) { log.debug('Failed to load home permit zone on init', e); }
 
     // Show Quick Start card if not previously dismissed
     try {
@@ -464,6 +465,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       log.error('Error loading last check', error);
     }
   };
+
+  useEffect(() => {
+    const offParkingUpdate = AppEvents.on('parking-check-updated', () => {
+      loadLastCheck();
+    });
+    return () => offParkingUpdate();
+    // loadLastCheck is stable enough for this event handler usage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -604,6 +614,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       setCheckingAddress(result.address);
       await LocationService.saveParkingCheckResult(result);
+
+      // Tell the state machine the user confirmed parking here.
+      // This enables departure tracking when they drive away.
+      ParkingDetectionStateMachine.manualParkingConfirmed({
+        source: 'home_screen_check',
+        address: result.address,
+      });
 
       setLastParkingCheck(result);
 
@@ -843,7 +860,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                           setShowBatteryWarning(false);
                           await AsyncStorage.setItem(BATTERY_WARNING_DISMISSED_KEY, 'true');
                         }
-                      } catch (_) {}
+                      } catch (e) { log.debug('Battery optimization poll check failed', e); }
                       if (checks >= 15) clearInterval(pollInterval); // Stop after 15s
                     }, 1000);
                   }

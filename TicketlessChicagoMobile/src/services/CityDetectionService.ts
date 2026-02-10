@@ -12,6 +12,7 @@
 
 import { allCityConfigs, CityConfig, getEnabledCities } from '../cities';
 import { getFeatureFlags } from '../config/feature-flags';
+import { distanceKm } from '../utils/geo';
 
 interface Coordinate {
   latitude: number;
@@ -68,9 +69,9 @@ class CityDetectionService {
       for (const city of allCityConfigs) {
         if (!city.mapBounds?.center) continue;
 
-        const distance = this.calculateDistance(
-          coords,
-          city.mapBounds.center
+        const distance = distanceKm(
+          coords.latitude, coords.longitude,
+          city.mapBounds.center.latitude, city.mapBounds.center.longitude
         );
 
         // Check if within city bounds
@@ -147,30 +148,7 @@ class CityDetectionService {
     );
   }
 
-  /**
-   * Calculate distance between two points (Haversine formula)
-   */
-  private calculateDistance(
-    point1: Coordinate,
-    point2: Coordinate
-  ): number {
-    const R = 6371; // Earth's radius in km
-    const dLat = this.toRad(point2.latitude - point1.latitude);
-    const dLon = this.toRad(point2.longitude - point1.longitude);
-    const lat1 = this.toRad(point1.latitude);
-    const lat2 = this.toRad(point2.latitude);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  }
-
-  private toRad(deg: number): number {
-    return deg * (Math.PI / 180);
-  }
+  // Distance calculation moved to shared geo utility (src/utils/geo.ts)
 
   /**
    * Get confidence level based on distance to city center

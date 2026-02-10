@@ -22,6 +22,7 @@ import { ParkingRule, Coordinates } from '../services/LocationService';
 import AuthService from '../services/AuthService';
 import CameraPassHistoryService, { CameraPassHistoryItem } from '../services/CameraPassHistoryService';
 import RedLightReceiptService, { RedLightReceipt } from '../services/RedLightReceiptService';
+import AppEvents from '../services/AppEvents';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
@@ -214,6 +215,7 @@ export const ParkingHistoryService = {
 
       const updated = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      AppEvents.emit('parking-history-updated');
       log.info(`Saved to parking history: "${newItem.address}" (${rules.length} rules, ${updated.length} total items)`);
 
       // Fire-and-forget sync to server
@@ -226,6 +228,7 @@ export const ParkingHistoryService = {
   async clearHistory(): Promise<void> {
     try {
       await AsyncStorage.removeItem(HISTORY_KEY);
+      AppEvents.emit('parking-history-updated');
     } catch (error) {
       log.error('Error clearing parking history', error);
     }
@@ -237,6 +240,7 @@ export const ParkingHistoryService = {
       const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
       const updated = history.filter(item => item.id !== id);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      AppEvents.emit('parking-history-updated');
     } catch (error) {
       log.error('Error deleting history item', error);
     }
@@ -250,6 +254,7 @@ export const ParkingHistoryService = {
         item.id === id ? { ...item, ...updates } : item
       );
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      AppEvents.emit('parking-history-updated');
 
       // If departure data was added, sync it to server
       if (updates.departure) {
@@ -527,7 +532,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
                   ios: `http://maps.apple.com/?ll=${latitude},${longitude}&q=${encodeURIComponent(item.address || 'Parking spot')}`,
                   android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(item.address || 'Parking spot')})`,
                 });
-                if (url) Linking.openURL(url).catch(() => {});
+                if (url) Linking.openURL(url).catch((e) => log.debug('Failed to open maps URL', e));
               }}
             >
               <MaterialCommunityIcons name="map-outline" size={14} color={colors.primary} />
@@ -730,6 +735,17 @@ const HistoryScreen: React.FC = () => {
     });
     return unsubscribe;
   }, [navigation, loadHistory]);
+
+  useEffect(() => {
+    const offParking = AppEvents.on('parking-history-updated', loadHistory);
+    const offCamera = AppEvents.on('camera-pass-history-updated', loadHistory);
+    const offRedLight = AppEvents.on('red-light-receipts-updated', loadHistory);
+    return () => {
+      offParking();
+      offCamera();
+      offRedLight();
+    };
+  }, [loadHistory]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

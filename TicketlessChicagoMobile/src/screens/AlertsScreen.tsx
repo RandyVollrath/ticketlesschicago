@@ -113,7 +113,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           'main input, main select { font-size: 14px !important; padding: 8px 10px !important; }',
         ].join(' ');
         document.head.appendChild(style);
-      } catch(e) {}
+      } catch(e) { console.warn('WebView injection error', e); }
     })();
     true;
   `;
@@ -158,7 +158,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         // Signal injection complete
         window.ReactNativeWebView && window.ReactNativeWebView.postMessage('injection_done');
-      } catch(e) {}
+      } catch(e) { console.warn('WebView injection error', e); }
     })();
     true;
   `;

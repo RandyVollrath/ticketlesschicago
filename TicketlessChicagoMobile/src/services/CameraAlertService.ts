@@ -29,6 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
 import CameraPassHistoryService from './CameraPassHistoryService';
 import RedLightReceiptService, { RedLightTracePoint } from './RedLightReceiptService';
+import { distanceMeters } from '../utils/geo';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('CameraAlertService');
@@ -111,7 +112,7 @@ async function speak(message: string): Promise<boolean> {
       if (e?.code === 'no_engine') {
         try {
           tts.requestInstallEngine();
-        } catch {}
+        } catch (e) { log.debug('Failed to request TTS engine install', e); }
       }
       return false;
     }
@@ -124,12 +125,12 @@ async function speak(message: string): Promise<boolean> {
 async function stopSpeech(): Promise<void> {
   if (Platform.OS === 'ios') {
     if (SpeechModule) {
-      try { await SpeechModule.stop(); } catch {}
+      try { await SpeechModule.stop(); } catch (e) { log.debug('SpeechModule.stop() failed', e); }
     }
   } else {
     const tts = getAndroidTtsSync();
     if (tts) {
-      try { tts.stop(); } catch {}
+      try { tts.stop(); } catch (e) { log.debug('Android TTS stop() failed', e); }
     }
   }
 }
@@ -184,6 +185,8 @@ const BBOX_DEGREES = 0.0025;
 
 /** AsyncStorage key for camera alerts enabled setting */
 const STORAGE_KEY_ENABLED = 'cameraAlertsEnabled';
+const STORAGE_KEY_SPEED_ENABLED = 'cameraAlertsSpeedEnabled';
+const STORAGE_KEY_REDLIGHT_ENABLED = 'cameraAlertsRedLightEnabled';
 
 // ============================================================================
 // Direction Matching
@@ -298,6 +301,8 @@ export interface CameraAlertStatus {
 
 class CameraAlertServiceClass {
   private isEnabled = false;
+  private speedAlertsEnabled = true;
+  private redLightAlertsEnabled = true;
   private isActive = false;
   private ttsInitialized = false;
 
@@ -329,6 +334,23 @@ class CameraAlertServiceClass {
       // Load saved preference
       const stored = await AsyncStorage.getItem(STORAGE_KEY_ENABLED);
       this.isEnabled = stored === 'true';
+      const storedSpeed = await AsyncStorage.getItem(STORAGE_KEY_SPEED_ENABLED);
+      const storedRedLight = await AsyncStorage.getItem(STORAGE_KEY_REDLIGHT_ENABLED);
+
+      // Backward compatibility:
+      // - If per-type toggles don't exist yet, inherit from global setting.
+      // - If they exist, compute global from either being enabled.
+      if (storedSpeed == null) {
+        this.speedAlertsEnabled = this.isEnabled;
+      } else {
+        this.speedAlertsEnabled = storedSpeed === 'true';
+      }
+      if (storedRedLight == null) {
+        this.redLightAlertsEnabled = this.isEnabled;
+      } else {
+        this.redLightAlertsEnabled = storedRedLight === 'true';
+      }
+      this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
 
       if (this.isEnabled) {
         await this.initTts();
@@ -369,6 +391,11 @@ class CameraAlertServiceClass {
         await tts.setDefaultLanguage('en-US');
         await tts.setDefaultRate(0.5);
         await tts.setDefaultPitch(1.0);
+        // Best-effort: lower other audio while speaking alerts.
+        // (Some players may pause instead of duck depending on device/engine.)
+        if (typeof tts.setDucking === 'function') {
+          await tts.setDucking(true);
+        }
 
         this.ttsInitialized = true;
         log.info('Android TTS engine initialized (react-native-tts)');
@@ -384,7 +411,11 @@ class CameraAlertServiceClass {
 
   async setEnabled(enabled: boolean): Promise<void> {
     this.isEnabled = enabled;
+    this.speedAlertsEnabled = enabled;
+    this.redLightAlertsEnabled = enabled;
     await AsyncStorage.setItem(STORAGE_KEY_ENABLED, enabled ? 'true' : 'false');
+    await AsyncStorage.setItem(STORAGE_KEY_SPEED_ENABLED, enabled ? 'true' : 'false');
+    await AsyncStorage.setItem(STORAGE_KEY_REDLIGHT_ENABLED, enabled ? 'true' : 'false');
 
     if (enabled) {
       await this.initTts();
@@ -397,6 +428,45 @@ class CameraAlertServiceClass {
 
   isAlertEnabled(): boolean {
     return this.isEnabled;
+  }
+
+  async setSpeedAlertsEnabled(enabled: boolean): Promise<void> {
+    this.speedAlertsEnabled = enabled;
+    this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
+    await AsyncStorage.setItem(STORAGE_KEY_SPEED_ENABLED, enabled ? 'true' : 'false');
+    await AsyncStorage.setItem(STORAGE_KEY_ENABLED, this.isEnabled ? 'true' : 'false');
+    if (this.isEnabled) {
+      await this.initTts();
+    } else {
+      this.stop();
+    }
+    log.info(`Speed camera alerts ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  async setRedLightAlertsEnabled(enabled: boolean): Promise<void> {
+    this.redLightAlertsEnabled = enabled;
+    this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
+    await AsyncStorage.setItem(STORAGE_KEY_REDLIGHT_ENABLED, enabled ? 'true' : 'false');
+    await AsyncStorage.setItem(STORAGE_KEY_ENABLED, this.isEnabled ? 'true' : 'false');
+    if (this.isEnabled) {
+      await this.initTts();
+    } else {
+      this.stop();
+    }
+    log.info(`Red-light camera alerts ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  isSpeedAlertsEnabled(): boolean {
+    return this.speedAlertsEnabled;
+  }
+
+  isRedLightAlertsEnabled(): boolean {
+    return this.redLightAlertsEnabled;
+  }
+
+  private isCameraTypeEnabled(cameraType: CameraLocation['type']): boolean {
+    if (cameraType === 'speed') return this.speedAlertsEnabled;
+    return this.redLightAlertsEnabled;
   }
 
   /**
@@ -518,7 +588,11 @@ class CameraAlertServiceClass {
       }
 
       const camera = CHICAGO_CAMERAS[index];
-      const distance = this.haversineMeters(
+      if (!this.isCameraTypeEnabled(camera.type)) {
+        this.passTrackingByCamera.delete(index);
+        continue;
+      }
+      const distance = distanceMeters(
         latitude,
         longitude,
         camera.latitude,
@@ -669,13 +743,14 @@ class CameraAlertServiceClass {
 
     for (let i = 0; i < CHICAGO_CAMERAS.length; i++) {
       const cam = CHICAGO_CAMERAS[i];
+      if (!this.isCameraTypeEnabled(cam.type)) continue;
 
       // Fast bounding box filter
       if (cam.latitude < latMin || cam.latitude > latMax) continue;
       if (cam.longitude < lngMin || cam.longitude > lngMax) continue;
 
       // Exact distance
-      const distance = this.haversineMeters(lat, lng, cam.latitude, cam.longitude);
+      const distance = distanceMeters(lat, lng, cam.latitude, cam.longitude);
       if (distance <= alertRadius) {
         // Direction filter: only alert if user is traveling in a direction
         // this camera monitors. Fail-open if heading unavailable.
@@ -701,7 +776,7 @@ class CameraAlertServiceClass {
   private clearDistantCooldowns(lat: number, lng: number): void {
     for (const [index, _alerted] of this.alertedCameras) {
       const cam = CHICAGO_CAMERAS[index];
-      const dist = this.haversineMeters(lat, lng, cam.latitude, cam.longitude);
+      const dist = distanceMeters(lat, lng, cam.latitude, cam.longitude);
       if (dist > COOLDOWN_RADIUS_METERS) {
         this.alertedCameras.delete(index);
         this.passTrackingByCamera.delete(index);
@@ -737,28 +812,7 @@ class CameraAlertServiceClass {
    * Calculate distance between two lat/lng points in meters.
    * Uses the Haversine formula.
    */
-  private haversineMeters(
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number
-  ): number {
-    const R = 6371000; // Earth radius in meters
-    const dLat = this.toRad(lat2 - lat1);
-    const dLng = this.toRad(lng2 - lng1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) *
-        Math.cos(this.toRad(lat2)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  private toRad(deg: number): number {
-    return (deg * Math.PI) / 180;
-  }
+  // haversineMeters + toRad removed — now imported from utils/geo.ts
 
   /**
    * Calculate the initial bearing (forward azimuth) from point 1 to point 2.

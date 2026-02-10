@@ -97,7 +97,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       try {
         const raw = await AsyncStorage.getItem(StorageKeys.SAVED_DESTINATIONS);
         if (raw) setSavedDestinations(JSON.parse(raw));
-      } catch {}
+      } catch (e) { log.debug('Failed to load saved destinations', e); }
     };
     loadSaved();
   }, []);
