@@ -1,192 +1,292 @@
 /**
- * Metered Parking Zone Checker
+ * Metered Parking Zone Checker — Street-Based Detection
  *
- * Determines if a parked car is in a metered parking zone by finding
- * the nearest parking meter within 50m of the parking location.
+ * Uses reverse geocoding (Nominatim/OSM) to identify the user's street,
+ * then matches against the metered_parking_locations DB by
+ * street_name + direction + block range.
  *
- * Data source: 4,638 active Chicago Parking Meters LLC payboxes.
- * Most meters have a 2-hour time limit; ~28% near entertainment venues
- * have 3-hour limits. Since we don't have per-meter time limit data,
- * we default to 2 hours (conservative — early warning for 3-hour meters
- * is still helpful, not harmful).
+ * This approach is immune to GPS drift across streets — a user on Belden Ave
+ * will never match meters on nearby Sheffield or Fullerton.
  *
- * Meter hours: Mon–Sat 8am–10pm (most), Sun varies.
- * Rates: $2.50/hr (neighborhoods), $4.75/hr (CBD), $7.00/hr (Loop).
+ * Data source: 4,312 active payboxes scraped from map.chicagometers.com (Feb 2026)
+ * with block ranges from City of Chicago Schedule 10.
+ * Includes per-meter time limits, rates, and enforcement schedules.
  */
 
 import { supabaseAdmin } from './supabase';
+import { parseChicagoAddress } from './address-parser';
 
 export interface MeteredParkingStatus {
-  /** Whether a meter was found within proximity */
+  /** Whether the user's street+block has metered parking */
   inMeteredZone: boolean;
-  /** Distance to nearest meter in meters */
+  /** Distance to nearest meter (null for street-based matching) */
   nearestMeterDistanceM: number | null;
-  /** Address of nearest meter */
+  /** Address of matched meter */
   nearestMeterAddress: string | null;
-  /** Number of spaces at nearest meter */
+  /** Total metered spaces on this block */
   nearestMeterSpaces: number | null;
-  /** Meter type (CWT, CLZ Virtual Terminal) */
+  /** Meter type (CWT = standard, CLZ = commercial loading zone) */
   meterType: string | null;
   /** Human-readable message */
   message: string;
   /** Severity level */
   severity: 'warning' | 'info' | 'none';
-  /** Default time limit in minutes (120 = 2 hours) */
+  /** Actual time limit in minutes from meter data */
   timeLimitMinutes: number;
-  /** Whether meters are currently enforced (Mon-Sat 8am-10pm) */
+  /** Whether meters are currently enforced based on actual schedule */
   isEnforcedNow: boolean;
-  /** Estimated hourly rate based on location */
+  /** Actual hourly rate from meter data */
   estimatedRate: string | null;
 }
 
-/**
- * Haversine distance between two lat/lng points in meters.
- */
-function haversineDistanceM(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number
-): number {
-  const R = 6371000; // Earth radius in meters
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+// ---------------------------------------------------------------------------
+// Nominatim reverse-geocode cache (in-memory, per serverless instance)
+// ---------------------------------------------------------------------------
+
+const nominatimCache = new Map<string, { address: string; road: string; timestamp: number }>();
+const NOMINATIM_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+interface NominatimResult {
+  /** Full address string like "1022 West Belden Avenue" */
+  fullAddress: string;
+  /** Raw road name from Nominatim like "West Belden Avenue" */
+  road: string;
 }
 
 /**
- * Determine if meters are currently enforced.
- * Chicago meters: Mon–Sat 8am–10pm (most locations).
- * Some downtown meters are 24/7 but the majority follow this schedule.
+ * Reverse-geocode GPS coordinates to a street address using Nominatim (OSM).
+ * Free, no API key needed.  Rate limit: 1 req/sec — fine for parking checks.
  */
-function areMetersEnforced(): boolean {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+async function reverseGeocodeNominatim(
+  lat: number,
+  lng: number,
+): Promise<NominatimResult | null> {
+  const cacheKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  const cached = nominatimCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < NOMINATIM_CACHE_TTL) {
+    return { fullAddress: cached.address, road: cached.road };
+  }
+
+  try {
+    const resp = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`,
+      {
+        headers: { 'User-Agent': 'TicketlessChicago/1.0 (parking-checker)' },
+        signal: AbortSignal.timeout(3000),
+      },
+    );
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+
+    const houseNumber: string | undefined = data.address?.house_number;
+    const road: string | undefined = data.address?.road;
+
+    if (!road) return null;
+
+    const fullAddress = houseNumber ? `${houseNumber} ${road}` : road;
+
+    // Evict oldest entries if cache is too big
+    if (nominatimCache.size > 500) {
+      const oldest = [...nominatimCache.entries()]
+        .sort((a, b) => a[1].timestamp - b[1].timestamp)
+        .slice(0, 100);
+      oldest.forEach(([k]) => nominatimCache.delete(k));
+    }
+    nominatimCache.set(cacheKey, {
+      address: fullAddress,
+      road,
+      timestamp: Date.now(),
+    });
+
+    return { fullAddress, road };
+  } catch (err) {
+    console.warn('[metered-parking] Nominatim reverse geocode failed:', err);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Enforcement schedule parser
+// ---------------------------------------------------------------------------
+
+interface EnforcementInfo {
+  isEnforced: boolean;
+  scheduleText: string;
+}
+
+/**
+ * Parse the enforcement schedule from the meter's rate_description.
+ *
+ * Examples:
+ *   "$2.50, Mon-Sat 8 AM-10 PM, 2 hr POS"  → Mon-Sat 8am–10pm
+ *   "$7.00, 24/7, 2 hr POS"                 → always enforced
+ *   "$2.50, Mon-Sat 9 AM-6 PM, 2 hr POS"   → Mon-Sat 9am–6pm
+ *   "$2.50, Mon-Fri 8 AM-6 PM, 2 hr POS"   → Mon-Fri 8am–6pm
+ */
+function parseEnforcementSchedule(rateDescription: string): EnforcementInfo {
+  const now = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }),
+  );
   const hour = now.getHours();
-  const day = now.getDay(); // 0=Sun, 6=Sat
+  const day = now.getDay(); // 0 = Sun … 6 = Sat
 
-  // Sunday: meters are generally free (some exceptions downtown)
-  if (day === 0) return false;
+  // 24/7 meters (some downtown)
+  if (rateDescription.includes('24/7')) {
+    return { isEnforced: true, scheduleText: '24/7' };
+  }
 
-  // Mon-Sat: 8am to 10pm
-  return hour >= 8 && hour < 22;
+  // Parse "Mon-Sat X AM-Y PM" / "Mon-Fri …" / "Mon-Sun …"
+  const m = rateDescription.match(
+    /(Mon-Sat|Mon-Fri|Mon-Sun)\s+(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)/i,
+  );
+  if (!m) {
+    // Default: Mon-Sat 8am-10pm (most common Chicago schedule)
+    if (day === 0) return { isEnforced: false, scheduleText: 'Mon–Sat 8am–10pm' };
+    return { isEnforced: hour >= 8 && hour < 22, scheduleText: 'Mon–Sat 8am–10pm' };
+  }
+
+  const [, dayRange, startStr, startAP, endStr, endAP] = m;
+
+  let startHour = parseInt(startStr, 10);
+  if (startAP.toUpperCase() === 'PM' && startHour !== 12) startHour += 12;
+  if (startAP.toUpperCase() === 'AM' && startHour === 12) startHour = 0;
+
+  let endHour = parseInt(endStr, 10);
+  if (endAP.toUpperCase() === 'PM' && endHour !== 12) endHour += 12;
+  if (endAP.toUpperCase() === 'AM' && endHour === 12) endHour = 0;
+
+  let dayInRange = false;
+  switch (dayRange.toLowerCase()) {
+    case 'mon-sat':
+      dayInRange = day >= 1 && day <= 6;
+      break;
+    case 'mon-fri':
+      dayInRange = day >= 1 && day <= 5;
+      break;
+    case 'mon-sun':
+      dayInRange = true;
+      break;
+  }
+
+  const isEnforced = dayInRange && hour >= startHour && hour < endHour;
+  const scheduleText = `${dayRange} ${startStr}${startAP.toLowerCase()}–${endStr}${endAP.toLowerCase()}`;
+
+  return { isEnforced, scheduleText };
 }
 
-/**
- * Estimate the hourly rate based on rough location zones.
- * Loop (downtown core): $7.00/hr
- * Central Business District: $4.75/hr
- * Neighborhoods: $2.50/hr
- */
-function estimateRate(lat: number, lng: number): string {
-  // Rough Loop boundaries: bounded by the Chicago River and Congress Pkwy
-  const isLoop = lat >= 41.875 && lat <= 41.886 && lng >= -87.639 && lng <= -87.621;
-  if (isLoop) return '$7.00/hr';
-
-  // Rough CBD: wider downtown area
-  const isCBD = lat >= 41.867 && lat <= 41.895 && lng >= -87.650 && lng <= -87.615;
-  if (isCBD) return '$4.75/hr';
-
-  // Everything else is neighborhood rate
-  return '$2.50/hr';
-}
+// ---------------------------------------------------------------------------
+// Main checker
+// ---------------------------------------------------------------------------
 
 /**
  * Check if a location is in a metered parking zone.
  *
- * Uses a bounding box pre-filter (fast) then Haversine distance (accurate)
- * to find the nearest meter within 50m.
+ * Algorithm:
+ *  1. Reverse-geocode GPS → street address  (Nominatim, free)
+ *  2. Parse address → (number, direction, street_name)
+ *  3. Query DB: street_name + direction + block_start ≤ number ≤ block_end
+ *  4. Return actual time limit, rate, and enforcement status
+ *
+ * This replaces the old radius-based approach that could bleed across streets.
  */
 export async function checkMeteredParking(
   latitude: number,
-  longitude: number
+  longitude: number,
 ): Promise<MeteredParkingStatus> {
-  const SEARCH_RADIUS_M = 50; // meters — tight enough to avoid bleeding to adjacent parallel streets
-  const DEFAULT_TIME_LIMIT_MIN = 120; // 2 hours (most common)
-
-  if (!supabaseAdmin) {
-    return {
-      inMeteredZone: false,
-      nearestMeterDistanceM: null,
-      nearestMeterAddress: null,
-      nearestMeterSpaces: null,
-      meterType: null,
-      message: 'Metered parking check unavailable',
-      severity: 'none',
-      timeLimitMinutes: DEFAULT_TIME_LIMIT_MIN,
-      isEnforcedNow: false,
-      estimatedRate: null,
-    };
-  }
+  if (!supabaseAdmin) return makeNoMeterResult();
 
   try {
-    // Bounding box pre-filter: ~100m ≈ 0.001° latitude, 0.0013° longitude at Chicago's latitude
-    const latDelta = SEARCH_RADIUS_M / 111000; // 1° lat ≈ 111km
-    const lngDelta = SEARCH_RADIUS_M / (111000 * Math.cos(latitude * Math.PI / 180));
+    // Step 1: Reverse-geocode GPS → street address
+    const geocoded = await reverseGeocodeNominatim(latitude, longitude);
+    if (!geocoded) {
+      console.log('[metered-parking] No address from reverse geocoding');
+      return makeNoMeterResult();
+    }
 
-    const { data: meters, error } = await supabaseAdmin
+    // Step 2: Parse into components
+    const parsed = parseChicagoAddress(geocoded.fullAddress);
+    if (!parsed || !parsed.name) {
+      console.log('[metered-parking] Could not parse address:', geocoded.fullAddress);
+      return makeNoMeterResult();
+    }
+
+    console.log(
+      `[metered-parking] Street match: "${geocoded.fullAddress}" → ` +
+        `num=${parsed.number} dir=${parsed.direction} street=${parsed.name}`,
+    );
+
+    // Step 3: Query DB by street name + direction + block range
+    let query = supabaseAdmin
       .from('metered_parking_locations')
-      .select('meter_id, address, latitude, longitude, spaces, meter_type')
+      .select(
+        'address, spaces, time_limit_hours, rate, rate_description, is_clz, ' +
+          'block_start, block_end, latitude, longitude',
+      )
       .eq('status', 'Active')
-      .gte('latitude', latitude - latDelta)
-      .lte('latitude', latitude + latDelta)
-      .gte('longitude', longitude - lngDelta)
-      .lte('longitude', longitude + lngDelta)
-      .limit(20); // Only need nearest, but fetch a few for accuracy
+      .eq('street_name', parsed.name);
+
+    if (parsed.direction) {
+      query = query.eq('direction', parsed.direction);
+    }
+
+    // Block range: the user's address number must fall within the meter's block
+    if (parsed.number) {
+      query = query.lte('block_start', parsed.number).gte('block_end', parsed.number);
+    }
+
+    const { data: meters, error } = await query.limit(10);
 
     if (error) {
-      console.warn('[metered-parking] Query error:', error.message);
+      console.warn('[metered-parking] DB query error:', error.message);
       return makeNoMeterResult();
     }
 
     if (!meters || meters.length === 0) {
+      console.log(
+        `[metered-parking] No meters on ${parsed.direction || ''} ${parsed.name} ` +
+          `block ${parsed.number}`,
+      );
       return makeNoMeterResult();
     }
 
-    // Calculate actual distances and find the nearest
-    let nearest: { meter: typeof meters[0]; distance: number } | null = null;
+    // Step 4: Build result with actual data from the matched meter(s)
+    // Pick the meter with the most spaces as the representative paybox
+    const meter = meters.reduce(
+      (best, m) => ((m.spaces || 0) > (best.spaces || 0) ? m : best),
+      meters[0],
+    );
 
-    for (const meter of meters) {
-      if (!meter.latitude || !meter.longitude) continue;
-      const dist = haversineDistanceM(latitude, longitude, meter.latitude, meter.longitude);
-      if (dist <= SEARCH_RADIUS_M && (!nearest || dist < nearest.distance)) {
-        nearest = { meter, distance: dist };
-      }
-    }
-
-    if (!nearest) {
-      return makeNoMeterResult();
-    }
-
-    const isEnforced = areMetersEnforced();
-    const rate = estimateRate(latitude, longitude);
-    const distStr = nearest.distance < 10
-      ? 'right next to a meter'
-      : `${Math.round(nearest.distance)}m from nearest meter`;
+    const enforcement = parseEnforcementSchedule(meter.rate_description || '');
+    const timeLimitHours = meter.time_limit_hours || 2;
+    const rate = meter.rate ? `$${Number(meter.rate).toFixed(2)}/hr` : null;
+    const totalSpaces = meters.reduce((sum, m) => sum + (m.spaces || 0), 0);
 
     let message: string;
     let severity: 'warning' | 'info';
 
-    if (isEnforced) {
-      message = `Metered parking zone (${distStr}). ${rate}, 2-hour max. Feed the meter or risk a $65 ticket.`;
+    if (enforcement.isEnforced) {
+      message =
+        `Metered parking zone. ${rate}, ${timeLimitHours}-hour max. ` +
+        `Feed the meter or risk a $65 ticket.`;
       severity = 'warning';
     } else {
-      message = `Metered parking zone (${distStr}). Meters not enforced right now. Enforcement: Mon–Sat 8am–10pm, ${rate}.`;
+      message =
+        `Metered parking zone. Meters not enforced right now. ` +
+        `Enforcement: ${enforcement.scheduleText}, ${rate}.`;
       severity = 'info';
     }
 
     return {
       inMeteredZone: true,
-      nearestMeterDistanceM: Math.round(nearest.distance),
-      nearestMeterAddress: nearest.meter.address,
-      nearestMeterSpaces: nearest.meter.spaces,
-      meterType: nearest.meter.meter_type,
+      nearestMeterDistanceM: null, // Street-based matching — distance not applicable
+      nearestMeterAddress: meter.address,
+      nearestMeterSpaces: totalSpaces,
+      meterType: meter.is_clz ? 'CLZ' : 'CWT',
       message,
       severity,
-      timeLimitMinutes: DEFAULT_TIME_LIMIT_MIN,
-      isEnforcedNow: isEnforced,
+      timeLimitMinutes: timeLimitHours * 60,
+      isEnforcedNow: enforcement.isEnforced,
       estimatedRate: rate,
     };
   } catch (err) {
@@ -194,6 +294,10 @@ export async function checkMeteredParking(
     return makeNoMeterResult();
   }
 }
+
+// ---------------------------------------------------------------------------
+// Default "no meter" result
+// ---------------------------------------------------------------------------
 
 function makeNoMeterResult(): MeteredParkingStatus {
   return {

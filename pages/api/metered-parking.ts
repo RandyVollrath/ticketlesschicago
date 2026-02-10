@@ -15,7 +15,7 @@ export default async function handler(
       throw new Error('Supabase admin client not available');
     }
 
-    // Supabase defaults to 1000 row limit — fetch all ~4,638 active meters
+    // Supabase defaults to 1000 row limit — fetch all ~4,312 active meters
     // by paginating in chunks of 1000
     let allMeters: any[] = [];
     let offset = 0;
@@ -24,7 +24,8 @@ export default async function handler(
     while (true) {
       const { data: page, error: pageError } = await (supabaseAdmin as any)
         .from('metered_parking_locations')
-        .select('meter_id, address, latitude, longitude, spaces, status, meter_type')
+        .select('meter_id, address, latitude, longitude, spaces, status, meter_type, ' +
+          'street_name, direction, block_start, block_end, time_limit_hours, rate, rate_description, is_clz')
         .eq('status', 'Active')
         .order('meter_id')
         .range(offset, offset + pageSize - 1);

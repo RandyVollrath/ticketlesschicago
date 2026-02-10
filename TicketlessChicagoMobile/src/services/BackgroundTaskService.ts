@@ -1708,7 +1708,7 @@ class BackgroundTaskServiceClass {
             type: 'metered_parking',
             restrictionStartTime: next8am,
             address: result.address || '',
-            details: `Metered parking enforcement starts at 8am (${rate}, 2-hour max). Feed the meter or move your car — $65 ticket.`,
+            details: `Metered parking enforcement starts at 8am (${rate}, ${(result.meteredParking.timeLimitMinutes || 120) / 60}-hour max). Feed the meter or move your car — $65 ticket.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -1827,7 +1827,8 @@ class BackgroundTaskServiceClass {
     // Metered parking zone — only mention when enforced
     if (rawData?.meteredParking?.inMeteredZone && rawData.meteredParking.isEnforcedNow) {
       const rate = rawData.meteredParking.estimatedRate || '$2.50/hr';
-      parts.push(`⏰ Metered zone — ${rate}, 2-hour max. $65 expired meter ticket`);
+      const meterLimitHours = (rawData.meteredParking.timeLimitMinutes || 120) / 60;
+      parts.push(`⏰ Metered zone — ${rate}, ${meterLimitHours}-hour max. $65 expired meter ticket`);
     }
 
     return parts.join('\n');
