@@ -129,8 +129,9 @@ class BackgroundTaskServiceClass {
       // Initialize local notification scheduling service
       await LocalNotificationService.initialize();
 
-      // Fetch latest camera locations from API (falls back to hardcoded if offline)
+      // Fetch latest camera + metered parking locations from API (fire-and-forget)
       fetchCameraLocations().catch((e) => log.debug('Camera locations fetch failed (non-blocking)', e));
+      fetchMeteredParkingLocations().catch((e) => log.debug('Metered parking fetch failed (non-blocking)', e));
 
       // Initialize camera alert service (TTS for speed/red light cameras)
       await CameraAlertService.initialize();
