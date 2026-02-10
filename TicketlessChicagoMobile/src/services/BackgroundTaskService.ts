@@ -1460,6 +1460,7 @@ class BackgroundTaskServiceClass {
     const snowRule = result.rules?.find((r: any) => r.type === 'snow_route');
     const cleaningRule = result.rules?.find((r: any) => r.type === 'street_cleaning');
     const permitRule = result.rules?.find((r: any) => r.type === 'permit_zone');
+    const meteredRule = result.rules?.find((r: any) => r.type === 'metered_parking');
 
     return {
       winterOvernightBan: winterRule ? { active: true, streetName: null } : null,
@@ -1473,6 +1474,12 @@ class BackgroundTaskServiceClass {
         inPermitZone: true,
         zoneName: permitRule.zoneName || null,
         restrictionSchedule: permitRule.schedule || null,
+      } : null,
+      meteredParking: meteredRule ? {
+        inMeteredZone: true,
+        isEnforcedNow: meteredRule.isEnforcedNow || false,
+        timeLimitMinutes: meteredRule.timeLimitMinutes || 120,
+        estimatedRate: meteredRule.estimatedRate || null,
       } : null,
     };
   }
@@ -1656,6 +1663,28 @@ class BackgroundTaskServiceClass {
       }
     }
 
+    // Metered parking reminder — 1h45m after parking (15 min before 2-hour limit)
+    if (result.meteredParking?.inMeteredZone && result.meteredParking?.isEnforcedNow) {
+      const timeLimitMin = result.meteredParking.timeLimitMinutes || 120; // Default 2 hours
+      const warningMinutesBefore = 15; // Warn 15 min before meter expires
+      const delayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000; // 105 min = 1h45m
+
+      const meterExpiryWarningTime = new Date(Date.now() + delayMs);
+      const rate = result.meteredParking.estimatedRate || '$2.50/hr';
+      const limitHours = timeLimitMin / 60;
+
+      restrictions.push({
+        type: 'metered_parking',
+        restrictionStartTime: meterExpiryWarningTime,
+        address: result.address || '',
+        details: `Your ${limitHours}-hour meter expires in 15 minutes (${rate}). Move your car or add time — $65 ticket if expired.`,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+
+      log.info(`Scheduled metered parking reminder in ${timeLimitMin - warningMinutesBefore} minutes (${meterExpiryWarningTime.toLocaleTimeString()})`);
+    }
+
     // Snow ban - weather dependent, handled by push notifications from backend
     // Server cron sends push to users with on_snow_route=true in user_parked_vehicles
 
@@ -1759,6 +1788,16 @@ class BackgroundTaskServiceClass {
         parts.push(`🅿️ Permit zone ${zone} enforced now — ${schedule}`);
       } else {
         parts.push(`🅿️ Permit zone ${zone} — enforcement: ${schedule}`);
+      }
+    }
+
+    // Metered parking zone
+    if (rawData?.meteredParking?.inMeteredZone) {
+      const rate = rawData.meteredParking.estimatedRate || '$2.50/hr';
+      if (rawData.meteredParking.isEnforcedNow) {
+        parts.push(`⏰ Metered zone — ${rate}, 2-hour max. $65 expired meter ticket`);
+      } else {
+        parts.push(`⏰ Metered zone — not currently enforced (Mon–Sat 8am–10pm)`);
       }
     }
 
@@ -1882,6 +1921,7 @@ class BackgroundTaskServiceClass {
         if (line.includes('Winter ban') && activeTypes.includes('winter_ban')) return false;
         if (line.includes('snow ban') && activeTypes.includes('snow_route')) return false;
         if (line.includes('Permit zone') && activeTypes.includes('permit_zone')) return false;
+        if (line.includes('Metered zone') && activeTypes.includes('metered_parking')) return false;
         return true;
       });
       if (extraLines.length > 0) {

@@ -30,6 +30,7 @@ const NOTIFICATION_PREFIX = {
   WINTER_BAN: 'winter-ban-',
   SNOW_BAN: 'snow-ban-',
   PERMIT_ZONE: 'permit-zone-',
+  METERED_PARKING: 'metered-parking-',
 };
 
 // Default reminder times (hours before restriction starts)
@@ -50,7 +51,7 @@ export interface ReminderPreferences {
 }
 
 export interface ParkingRestriction {
-  type: 'street_cleaning' | 'winter_ban' | 'snow_ban' | 'permit_zone';
+  type: 'street_cleaning' | 'winter_ban' | 'snow_ban' | 'permit_zone' | 'metered_parking';
   restrictionStartTime: Date;
   address: string;
   details?: string;
@@ -213,6 +214,14 @@ class LocalNotificationServiceClass {
         body = `${address}\n${details || 'Enforcement starts at 8am — move your car or risk a $60 ticket.'}`;
         break;
 
+      case 'metered_parking':
+        hoursBefore = 0; // Time is pre-computed (1h45m from parking time)
+        notificationId = `${NOTIFICATION_PREFIX.METERED_PARKING}${Date.now()}`;
+        channelId = 'parking-alerts'; // High priority — meter about to expire
+        title = '⏰ Meter Expiring in 15 Minutes!';
+        body = `${address}\n${details || 'Your 2-hour meter is about to expire. Move your car or add time to avoid a $65 ticket.'}`;
+        break;
+
       default:
         return null;
     }
@@ -348,6 +357,7 @@ class LocalNotificationServiceClass {
           id.startsWith(NOTIFICATION_PREFIX.WINTER_BAN) ||
           id.startsWith(NOTIFICATION_PREFIX.SNOW_BAN) ||
           id.startsWith(NOTIFICATION_PREFIX.PERMIT_ZONE) ||
+          id.startsWith(NOTIFICATION_PREFIX.METERED_PARKING) ||
           id.startsWith('custom-reminder-')
       );
 

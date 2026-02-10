@@ -12,7 +12,7 @@ import { StorageKeys } from '../constants';
 const log = Logger.createLogger('LocationService');
 
 export interface ParkingRule {
-  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban' | 'tow_zone';
+  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban' | 'tow_zone' | 'metered_parking';
   message: string;
   severity: 'critical' | 'warning' | 'info';
   // Additional metadata for enhanced display
@@ -20,6 +20,10 @@ export interface ParkingRule {
   zoneName?: string;
   nextDate?: string;
   isActiveNow?: boolean;
+  // Metered parking metadata
+  timeLimitMinutes?: number;
+  estimatedRate?: string;
+  isEnforcedNow?: boolean;
 }
 
 export interface Coordinates {
@@ -912,6 +916,22 @@ class LocationServiceClass {
         zoneName: data.permitZone.zoneName,
         schedule: data.permitZone.restrictionSchedule,
         isActiveNow: data.permitZone.permitRequired,
+      });
+    }
+
+    // Metered parking zone
+    if (data?.meteredParking?.inMeteredZone) {
+      rules.push({
+        type: 'metered_parking',
+        message: data.meteredParking.message,
+        severity: (data.meteredParking.severity || 'info') as 'critical' | 'warning' | 'info',
+        isActiveNow: data.meteredParking.isEnforcedNow,
+        timeLimitMinutes: data.meteredParking.timeLimitMinutes || 120,
+        estimatedRate: data.meteredParking.estimatedRate,
+        isEnforcedNow: data.meteredParking.isEnforcedNow,
+        schedule: data.meteredParking.isEnforcedNow
+          ? `Mon–Sat 8am–10pm, ${data.meteredParking.estimatedRate || '$2.50/hr'}`
+          : 'Not currently enforced',
       });
     }
 
