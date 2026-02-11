@@ -713,6 +713,37 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Only check once per app wake to avoid repeated queries
     guard !hasCheckedForMissedParking else { return }
     guard CMMotionActivityManager.isActivityAvailable() else { return }
+
+    // GUARD 1: If we already confirmed parking this session, this is NOT a missed
+    // parking event — it's a stale CoreMotion history pattern from the earlier drive.
+    // Without this guard, significantLocationChange wakes fire false duplicates
+    // 10-30 minutes after the user is already home (the Clybourn bug).
+    if hasConfirmedParkingThisSession {
+      self.log("checkForMissedParking skipped: already confirmed parking this session")
+      hasCheckedForMissedParking = true
+      return
+    }
+
+    // GUARD 2: Reject cell-tower-only GPS fixes. significantLocationChange often
+    // provides ~300-500m accuracy from cell tower triangulation. Using that as
+    // the parking location is worse than not recording parking at all.
+    if currentLocation.horizontalAccuracy > 100 {
+      self.log("checkForMissedParking skipped: GPS accuracy \(String(format: "%.0f", currentLocation.horizontalAccuracy))m too poor (>100m) — likely cell tower fix")
+      hasCheckedForMissedParking = true
+      return
+    }
+
+    // GUARD 3: If we have a confirmed parking location and the current location
+    // is within 500m of it, this is the SAME parking event, not a new one.
+    if let lastParking = lastConfirmedParkingLocation {
+      let distFromLastParking = currentLocation.distance(from: lastParking)
+      if distFromLastParking < 500 {
+        self.log("checkForMissedParking skipped: \(String(format: "%.0f", distFromLastParking))m from last parking (< 500m) — same spot")
+        hasCheckedForMissedParking = true
+        return
+      }
+    }
+
     hasCheckedForMissedParking = true
 
     let now = Date()

@@ -411,6 +411,40 @@ class BackgroundTaskServiceClass {
                 locationSource: event.locationSource,
                 driftMeters: event.driftFromParkingMeters,
               });
+
+              // GUARD: Reject events with cell-tower-level GPS accuracy (>150m).
+              // significantLocationChange recovery uses cell tower fixes that can be
+              // 300-500m off, creating false parking at wrong addresses.
+              if (event.accuracy && event.accuracy > 150) {
+                log.warn(`Rejecting parking event: GPS accuracy ${event.accuracy.toFixed(0)}m too poor (>150m) — likely cell tower fix. Source: ${event.locationSource}`);
+                return;
+              }
+
+              // GUARD: If state machine is already PARKED and new location is near
+              // existing parking, this is a duplicate event (e.g. recovery path
+              // re-detecting the same drive from CoreMotion history).
+              const smState = ParkingDetectionStateMachine.state;
+              if (smState === 'PARKED' && event.latitude && event.longitude) {
+                try {
+                  const parkedJson = await AsyncStorage.getItem(StorageKeys.LAST_PARKED_COORDS);
+                  if (parkedJson) {
+                    const parked = JSON.parse(parkedJson);
+                    const dist = haversineDistance(
+                      event.latitude, event.longitude,
+                      parked.latitude, parked.longitude
+                    );
+                    if (dist < 500) {
+                      log.warn(`Rejecting duplicate parking event: already PARKED, new location is ${dist.toFixed(0)}m from current parking (< 500m). Source: ${event.locationSource}`);
+                      return;
+                    }
+                    log.info(`State is PARKED but new location is ${dist.toFixed(0)}m away — processing as new parking spot`);
+                  }
+                } catch (e) {
+                  log.warn('Failed to check duplicate parking:', e);
+                  // Continue processing — better to record a possible duplicate than miss a real event
+                }
+              }
+
               this.stopCameraAlerts();
               // Fire-and-forget: don't block the parking check waiting for a diagnostic notification
               this.sendDiagnosticNotification(
