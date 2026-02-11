@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Footer from '../components/Footer';
 import { RED_LIGHT_CAMERAS, RedLightCamera } from '../lib/red-light-cameras';
-import type { SpeedCamera, UserLocation } from '../components/CameraMap';
+import type { SpeedCamera, UserLocation, MeterLocation } from '../components/CameraMap';
 import {
   calculateOverallScore,
   getGradeColor,
@@ -83,7 +83,7 @@ const CameraMap = dynamic(() => import('../components/CameraMap'), {
 
 type CameraFilter = 'all' | 'speed' | 'redlight';
 type StatusFilter = 'all' | 'active' | 'upcoming';
-type DataLayer = 'cameras' | 'violations' | 'crimes' | 'crashes' | '311' | 'permits' | 'licenses' | 'potholes';
+type DataLayer = 'cameras' | 'violations' | 'crimes' | 'crashes' | '311' | 'permits' | 'licenses' | 'potholes' | 'meters';
 
 // Detail interfaces for real-time API data
 interface CrimeDetail {
@@ -454,6 +454,10 @@ export default function Neighborhoods() {
   const [potholeBlocks, setPotholeBlocks] = useState<PotholeBlock[]>([]);
   const [potholesLoaded, setPotholesLoaded] = useState(false);
 
+  // Metered Parking
+  const [meterLocations, setMeterLocations] = useState<MeterLocation[]>([]);
+  const [metersLoaded, setMetersLoaded] = useState(false);
+
   // Radius slider state - now in tenths of a mile for clarity
   // 1 = 0.1 miles (~500 ft), 2 = 0.2 miles (~1000 ft), etc.
   const [radiusTenths, setRadiusTenths] = useState(1);
@@ -562,7 +566,16 @@ export default function Neighborhoods() {
         })
         .catch(err => console.error('Failed to load potholes data:', err));
     }
-  }, [activeLayer, violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded, permitsLoaded, licensesLoaded, potholesLoaded]);
+    if (activeLayer === 'meters' && !metersLoaded) {
+      fetch('/api/metered-parking')
+        .then(res => res.json())
+        .then((data: { meters: MeterLocation[]; count: number }) => {
+          setMeterLocations(data.meters || []);
+          setMetersLoaded(true);
+        })
+        .catch(err => console.error('Failed to load metered parking data:', err));
+    }
+  }, [activeLayer, violationsLoaded, crimesLoaded, crashesLoaded, servicesLoaded, permitsLoaded, licensesLoaded, potholesLoaded, metersLoaded]);
 
   // Load ALL data when user searches an address (for neighborhood report)
   useEffect(() => {
@@ -2406,6 +2419,7 @@ export default function Neighborhoods() {
               { key: 'permits', label: 'Permits', color: '#10b981' },
               { key: 'licenses', label: 'Businesses', color: '#f97316' },
               { key: 'potholes', label: 'Potholes', color: '#6b7280' },
+              { key: 'meters', label: 'Parking Meters', color: '#2563eb' },
             ].map(layer => (
               <button
                 key={layer.key}
@@ -2668,6 +2682,50 @@ export default function Neighborhoods() {
             </div>
           )}
 
+          {activeLayer === 'meters' && (
+            <div style={{
+              backgroundColor: '#eff6ff',
+              border: '1px solid #2563eb',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#1d4ed8' }}>Parking Meters</span>
+                {metersLoaded && (
+                  <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>
+                    {meterLocations.length.toLocaleString()} meters loaded
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                Every metered parking spot in Chicago. Color = rate per hour. Zoom in to see individual meters.
+              </div>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '12px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#16a34a' }} />
+                  $0.50
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#2563eb' }} />
+                  $2.50
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f97316' }} />
+                  $4.75
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#dc2626' }} />
+                  $7.00
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#7f1d1d' }} />
+                  $14.00 (CLZ)
+                </span>
+              </div>
+            </div>
+          )}
+
 
           {/* Info Banners */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -2750,6 +2808,8 @@ export default function Neighborhoods() {
                 selectedLicenseCategory={licenseCategory}
                 potholeBlocks={potholeBlocks}
                 showPotholes={activeLayer === 'potholes'}
+                meterLocations={meterLocations}
+                showMeters={activeLayer === 'meters'}
                 searchRadiusMiles={radiusTenths * 0.1}
               />
             </div>

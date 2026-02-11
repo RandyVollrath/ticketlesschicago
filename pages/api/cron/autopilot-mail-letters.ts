@@ -359,6 +359,50 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
   };
 }
 
+async function enqueueFoiaRequestForTicket(params: {
+  ticketId: string;
+  letterId: string;
+  userId: string;
+  ticketNumber: string;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  const payload = {
+    ticket_id: params.ticketId,
+    contest_letter_id: params.letterId,
+    user_id: params.userId,
+    request_type: 'ticket_evidence_packet',
+    status: 'queued',
+    source: 'autopilot_mailing',
+    request_payload: {
+      ticket_number: params.ticketNumber,
+      queued_by: 'autopilot_mail_letters_cron',
+    },
+    requested_at: now,
+    updated_at: now,
+  };
+
+  const { error } = await supabaseAdmin
+    .from('ticket_foia_requests' as any)
+    .upsert(payload as any, { onConflict: 'ticket_id,request_type' });
+
+  if (error) {
+    console.error(`    Failed to queue FOIA request for ticket ${params.ticketNumber}: ${error.message}`);
+    return;
+  }
+
+  await supabaseAdmin
+    .from('ticket_audit_log')
+    .insert({
+      ticket_id: params.ticketId,
+      action: 'foia_request_queued',
+      details: {
+        request_type: 'ticket_evidence_packet',
+        source: 'autopilot_mailing',
+      },
+      performed_by: null,
+    });
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify cron secret
   const authHeader = req.headers.authorization;
@@ -537,6 +581,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (result.success) {
         lettersMailed++;
+
+        await enqueueFoiaRequestForTicket({
+          ticketId: letter.ticket_id,
+          letterId: letter.id,
+          userId: letter.user_id,
+          ticketNumber,
+        });
 
         // Send email notification to user
         await sendLetterMailedNotification(

@@ -305,6 +305,7 @@ class CameraAlertServiceClass {
   private redLightAlertsEnabled = true;
   private isActive = false;
   private ttsInitialized = false;
+  private hasLoadedSettings = false;
 
   /** Set of camera indices we've already alerted about */
   private alertedCameras: Map<number, AlertedCamera> = new Map();
@@ -330,36 +331,61 @@ class CameraAlertServiceClass {
    * Initialize TTS engine. Call once during app startup.
    */
   async initialize(): Promise<void> {
-    try {
-      // Load saved preference
-      const stored = await AsyncStorage.getItem(STORAGE_KEY_ENABLED);
-      this.isEnabled = stored === 'true';
-      const storedSpeed = await AsyncStorage.getItem(STORAGE_KEY_SPEED_ENABLED);
-      const storedRedLight = await AsyncStorage.getItem(STORAGE_KEY_REDLIGHT_ENABLED);
+    if (this.hasLoadedSettings) return;
 
-      // Backward compatibility:
-      // - If per-type toggles don't exist yet, inherit from global setting.
-      // - If they exist, compute global from either being enabled.
-      if (storedSpeed == null) {
-        this.speedAlertsEnabled = this.isEnabled;
-      } else {
-        this.speedAlertsEnabled = storedSpeed === 'true';
-      }
-      if (storedRedLight == null) {
-        this.redLightAlertsEnabled = this.isEnabled;
-      } else {
-        this.redLightAlertsEnabled = storedRedLight === 'true';
-      }
-      this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
+    try {
+      await this.loadPersistedSettings();
 
       if (this.isEnabled) {
         await this.initTts();
       }
 
+      this.hasLoadedSettings = true;
       log.info(`CameraAlertService initialized. Enabled: ${this.isEnabled}, Cameras: ${CHICAGO_CAMERAS.length}, Platform: ${Platform.OS}`);
     } catch (error) {
       log.error('Failed to initialize CameraAlertService', error);
     }
+  }
+
+  private async loadPersistedSettings(): Promise<void> {
+    const [storedGlobal, storedSpeed, storedRedLight] = await AsyncStorage.multiGet([
+      STORAGE_KEY_ENABLED,
+      STORAGE_KEY_SPEED_ENABLED,
+      STORAGE_KEY_REDLIGHT_ENABLED,
+    ]);
+
+    const globalValue = storedGlobal[1];
+    const speedValue = storedSpeed[1];
+    const redLightValue = storedRedLight[1];
+
+    this.isEnabled = globalValue === 'true';
+    // Backward compatibility:
+    // - If per-type toggles don't exist yet, inherit from global setting.
+    // - If they exist, compute global from either being enabled.
+    this.speedAlertsEnabled = speedValue == null ? this.isEnabled : speedValue === 'true';
+    this.redLightAlertsEnabled = redLightValue == null ? this.isEnabled : redLightValue === 'true';
+    this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
+  }
+
+  private async persistSettings(): Promise<void> {
+    await AsyncStorage.multiSet([
+      [STORAGE_KEY_ENABLED, this.isEnabled ? 'true' : 'false'],
+      [STORAGE_KEY_SPEED_ENABLED, this.speedAlertsEnabled ? 'true' : 'false'],
+      [STORAGE_KEY_REDLIGHT_ENABLED, this.redLightAlertsEnabled ? 'true' : 'false'],
+    ]);
+  }
+
+  async getSettings(): Promise<{
+    enabled: boolean;
+    speedEnabled: boolean;
+    redLightEnabled: boolean;
+  }> {
+    await this.initialize();
+    return {
+      enabled: this.isEnabled,
+      speedEnabled: this.speedAlertsEnabled,
+      redLightEnabled: this.redLightAlertsEnabled,
+    };
   }
 
   private async initTts(): Promise<void> {
@@ -413,9 +439,8 @@ class CameraAlertServiceClass {
     this.isEnabled = enabled;
     this.speedAlertsEnabled = enabled;
     this.redLightAlertsEnabled = enabled;
-    await AsyncStorage.setItem(STORAGE_KEY_ENABLED, enabled ? 'true' : 'false');
-    await AsyncStorage.setItem(STORAGE_KEY_SPEED_ENABLED, enabled ? 'true' : 'false');
-    await AsyncStorage.setItem(STORAGE_KEY_REDLIGHT_ENABLED, enabled ? 'true' : 'false');
+    this.hasLoadedSettings = true;
+    await this.persistSettings();
 
     if (enabled) {
       await this.initTts();
@@ -433,8 +458,8 @@ class CameraAlertServiceClass {
   async setSpeedAlertsEnabled(enabled: boolean): Promise<void> {
     this.speedAlertsEnabled = enabled;
     this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
-    await AsyncStorage.setItem(STORAGE_KEY_SPEED_ENABLED, enabled ? 'true' : 'false');
-    await AsyncStorage.setItem(STORAGE_KEY_ENABLED, this.isEnabled ? 'true' : 'false');
+    this.hasLoadedSettings = true;
+    await this.persistSettings();
     if (this.isEnabled) {
       await this.initTts();
     } else {
@@ -446,8 +471,8 @@ class CameraAlertServiceClass {
   async setRedLightAlertsEnabled(enabled: boolean): Promise<void> {
     this.redLightAlertsEnabled = enabled;
     this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
-    await AsyncStorage.setItem(STORAGE_KEY_REDLIGHT_ENABLED, enabled ? 'true' : 'false');
-    await AsyncStorage.setItem(STORAGE_KEY_ENABLED, this.isEnabled ? 'true' : 'false');
+    this.hasLoadedSettings = true;
+    await this.persistSettings();
     if (this.isEnabled) {
       await this.initTts();
     } else {

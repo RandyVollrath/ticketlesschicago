@@ -1653,6 +1653,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             </ul>
                           </div>
 
+                          <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                            <h3 style="color: #9a3412; margin: 0 0 8px; font-size: 15px;">Important: portal coverage note</h3>
+                            <p style="color: #9a3412; font-size: 14px; margin: 0; line-height: 1.6;">
+                              City systems can lag, and some tickets may not appear immediately in portal checks. If you receive a notice that is not in your dashboard,
+                              reply to this email with the ticket number or a photo/PDF of the notice and we'll start contest prep manually.
+                            </p>
+                          </div>
+
                           <!-- Getting Started Steps -->
                           <h3 style="color: #1a1a1a; margin: 24px 0 16px; font-size: 18px;">Getting Started:</h3>
                           <div style="margin-bottom: 16px;">
