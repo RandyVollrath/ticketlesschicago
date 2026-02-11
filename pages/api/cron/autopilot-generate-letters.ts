@@ -174,12 +174,12 @@ Under Chicago Municipal Code, a vehicle owner has a reasonable period to update 
 I respectfully request that this ticket be dismissed.`,
   },
   no_city_sticker: {
-    type: 'sticker_purchased',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
+    type: 'sticker_compliance',
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker (violation code 9-64-125(b)).
 
-I have since purchased a valid City of Chicago vehicle sticker and have attached the purchase receipt as proof of compliance. I am now in full compliance with Chicago Municipal Code Section 9-100-010.
+I have a valid City of Chicago vehicle sticker and have attached the purchase receipt as proof of compliance. I am in full compliance with the city vehicle sticker requirement under Chicago Municipal Code.
 
-I respectfully request that this citation be dismissed in light of my demonstrated compliance. The purpose of the city sticker ordinance is to ensure vehicle owners contribute to city road infrastructure, and that purpose has been fulfilled by my purchase. The City of Chicago has historically exercised discretion in dismissing city sticker violations when the vehicle owner can demonstrate compliance through a subsequent purchase.
+The purpose of the city sticker ordinance is to ensure vehicle owners contribute to city road and infrastructure maintenance. That purpose has been fulfilled by my purchase. I respectfully request that this citation be dismissed in light of my demonstrated compliance.
 
 I respectfully request that this ticket be dismissed.`,
   },

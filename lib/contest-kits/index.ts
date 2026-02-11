@@ -70,7 +70,8 @@ import { ContestKit } from './types';
 export const CONTEST_KITS: Record<string, ContestKit> = {
   // Original 5 kits
   '9-64-010': streetCleaningKit,
-  '9-100-010': cityStickerKit,
+  '9-64-125': cityStickerKit,   // Correct violation code for no city sticker
+  '9-100-010': cityStickerKit,  // Legacy alias (9-100-010 is the chapter, not the violation)
   '9-64-070': residentialPermitKit,
   '9-64-100': snowRouteKit,
   '9-64-170': expiredMeterKit,
@@ -94,7 +95,7 @@ export const CONTEST_KITS: Record<string, ContestKit> = {
  */
 export const VIOLATION_NAME_TO_CODE: Record<string, string> = {
   'street_cleaning': '9-64-010',
-  'no_city_sticker': '9-100-010',
+  'no_city_sticker': '9-64-125',
   'residential_permit': '9-64-070',
   'snow_route': '9-64-100',
   'expired_meter': '9-64-170',

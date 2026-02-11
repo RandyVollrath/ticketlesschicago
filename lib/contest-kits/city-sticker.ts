@@ -1,16 +1,19 @@
 /**
- * City Sticker Contest Kit (9-100-010)
+ * City Sticker Contest Kit (9-64-125(b))
  *
- * Win Rate: ~50% (highest win rate among common violations!)
- * Primary defenses: Sticker was displayed, recently purchased, non-resident, stolen
+ * Win Rate: ~70% (one of the highest win rates!)
+ * Fine: $200 for vehicles ≤16,000 lbs
+ * City sticker (Chicago wheel tax) is separate from IL license plate registration renewal
+ * Primary defenses: Sticker was displayed, purchased after ticket, recently purchased vehicle, non-resident, stolen
+ * Purchase link: ezbuy.chicityclerk.com/vehicle-stickers ($100-$160 for passenger vehicles)
  */
 
 import { ContestKit } from './types';
 
 export const cityStickerKit: ContestKit = {
-  violationCode: '9-100-010',
+  violationCode: '9-64-125(b)',
   name: 'City Sticker Violation',
-  description: 'Vehicle without required Chicago city sticker',
+  description: 'Vehicle without required Chicago city vehicle sticker (wheel tax)',
   category: 'sticker',
   fineAmount: 200,
   baseWinRate: 0.70, // From FOIA data - 70% win rate!
@@ -41,17 +44,18 @@ export const cityStickerKit: ContestKit = {
     recommended: [
       {
         id: 'purchase_receipt',
-        name: 'Sticker Purchase Receipt (Even After Ticket!)',
-        description: 'Receipt showing city sticker purchase — even if purchased AFTER the ticket date. This is the #1 winning evidence.',
+        name: 'City Sticker Purchase Receipt',
+        description: 'Receipt showing city sticker purchase. This is the #1 winning evidence — works whether you bought it before or after the ticket.',
         impactScore: 0.50,
-        example: 'City of Chicago purchase confirmation email, online receipt, or credit card statement',
+        example: 'City Clerk purchase confirmation email, online receipt, or credit card statement',
         tips: [
-          'Buy your sticker NOW at chicago.gov/sticker if you haven\'t already — you can still use the receipt!',
-          'The sticker costs ~$90 but saves you the $200 ticket',
-          'Online purchase confirmations work great',
+          'Already have a sticker? Send the purchase receipt showing the date',
+          'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — you can still use the receipt to contest',
+          'City stickers cost $100-$160 for passenger vehicles (depends on weight/fuel type)',
+          'Online purchase confirmations from the City Clerk work great',
           'Currency exchange receipts work too',
-          'Even buying AFTER the ticket date has a high success rate for dismissal',
-          'Forward the purchase confirmation email to us and we\'ll attach it to your contest',
+          'The city routinely dismisses sticker tickets when you show proof of purchase',
+          'Note: this is the Chicago city sticker (wheel tax), NOT your IL license plate renewal',
         ],
       },
       {
@@ -189,15 +193,13 @@ Thank you for your consideration.`,
       {
         id: 'purchased_after_ticket',
         name: 'Purchased Sticker After Ticket',
-        template: `I respectfully contest this citation on the grounds that I have since purchased a valid City of Chicago vehicle sticker and am now in full compliance with Chicago Municipal Code Section 9-100-010.
+        template: `I respectfully contest this citation on the grounds that I have since purchased a valid City of Chicago vehicle sticker and am now in full compliance with the city vehicle sticker requirement.
 
 I received citation #{ticket_number} on {ticket_date} for not having a city sticker displayed. I have since purchased a valid city sticker, and I have attached the purchase receipt as proof of compliance.
 
 [PURCHASE_RECEIPT]
 
-The purpose of the city sticker ordinance is to ensure that vehicle owners contribute to city road and infrastructure maintenance. That purpose has been fulfilled by my purchase. The City of Chicago has historically exercised discretion in dismissing city sticker violations when the vehicle owner demonstrates compliance through a subsequent purchase.
-
-I respectfully request that this citation be dismissed in light of my demonstrated compliance.`,
+The purpose of the city sticker ordinance is to ensure that vehicle owners contribute to city road and infrastructure maintenance. That purpose has been fulfilled by my purchase. I respectfully request that this citation be dismissed in light of my demonstrated compliance.`,
         requiredFacts: ['ticketNumber', 'ticketDate'],
         winRate: 0.70, // Post-ticket purchase is very effective
         conditions: [
@@ -304,20 +306,23 @@ The city sticker requirement applies to Chicago residents, not visitors. I respe
   },
 
   tips: [
-    'Even if you didn\'t have a sticker, BUY ONE NOW — the receipt can get your $200 ticket dismissed!',
     'City sticker violations have a 70% win rate — one of the highest of all ticket types',
-    'The sticker costs ~$90 but the ticket is $200 — buying it saves you $110+ AND beats the ticket',
-    'Purchase online at chicago.gov/sticker and forward the confirmation email as evidence',
-    'Non-residents are EXEMPT - keep proof of your out-of-city registration handy',
-    'New vehicle owners have 30 days to get a sticker - save your bill of sale',
+    'The #1 evidence is your purchase receipt — send it to us whether you bought before or after the ticket',
+    'Already have a sticker? Just send the receipt and you\'re likely to win',
+    'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — the receipt can still get the $200 ticket dismissed',
+    'City stickers cost $100-$160 for passenger vehicles (depends on vehicle weight/fuel type)',
+    'Non-Chicago residents are EXEMPT — just prove you live outside the city',
+    'New vehicle owners have 30 days to get a sticker — save your bill of sale',
+    'The city sticker (Chicago wheel tax) is separate from your IL license plate renewal sticker',
     'If you set up email forwarding with Autopilot, we\'ll automatically capture the purchase receipt',
   ],
 
   pitfalls: [
-    'Don\'t pay the $200 ticket without contesting! The win rate is 70% — buy a sticker and contest instead',
+    'Don\'t pay the $200 ticket without contesting — the win rate is 70%',
+    'Don\'t confuse the city sticker with your Illinois license plate renewal — they\'re different',
     'Don\'t claim non-residency if your vehicle is registered to a Chicago address',
-    'Don\'t say the sticker "must have fallen off" without evidence - sounds like an excuse',
-    'Don\'t provide fake purchase receipts - this is fraud and will backfire badly',
+    'Don\'t say the sticker "must have fallen off" without evidence — sounds like an excuse',
+    'Don\'t provide fake purchase receipts — this is fraud and will backfire',
   ],
 };
 
