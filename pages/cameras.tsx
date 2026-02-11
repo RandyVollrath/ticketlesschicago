@@ -1311,8 +1311,8 @@ export default function Neighborhoods() {
   return (
     <>
       <Head>
-        <title>Chicago Neighborhood Data Map | Autopilot America</title>
-        <meta name="description" content="Interactive map of Chicago neighborhood data including cameras, building violations, crime, crashes, permits, business licenses, and more." />
+        <title>Chicago Speed & Red Light Cameras Map | Autopilot America</title>
+        <meta name="description" content="Interactive map of every speed camera and red light camera in Chicago. Search by address, see nearby cameras, violations, crime, and more." />
       </Head>
 
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '60px' }}>
@@ -1333,10 +1333,10 @@ export default function Neighborhoods() {
               &larr; Back to Home
             </button>
             <h1 style={{ margin: '0', fontSize: '32px', fontWeight: 'bold', color: '#111827' }}>
-              Chicago Neighborhood Data
+              Chicago Cameras
             </h1>
             <p style={{ margin: '10px 0 0 0', color: '#6b7280', fontSize: '16px' }}>
-              Explore cameras, violations, crime, crashes, permits, businesses, and more
+              Every speed camera and red light camera in Chicago
             </p>
           </div>
         </div>
@@ -1410,7 +1410,7 @@ export default function Neighborhoods() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#2563eb">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
               </svg>
-              <span style={{ fontWeight: '600', color: '#1e40af' }}>Explore Your Neighborhood</span>
+              <span style={{ fontWeight: '600', color: '#1e40af' }}>Search by Address</span>
             </div>
             <form onSubmit={handleAddressSearch} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <input

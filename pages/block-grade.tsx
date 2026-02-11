@@ -595,7 +595,7 @@ export default function BlockGrade() {
                 fontSize: '11px',
                 color: '#6b7280'
               }}>
-                Data from Chicago Open Data Portal • <Link href="/neighborhoods" style={{ color: '#2563eb' }}>View Full Report</Link>
+                Data from Chicago Open Data Portal • <Link href="/cameras" style={{ color: '#2563eb' }}>View Full Report</Link>
               </div>
             </div>
           )}
