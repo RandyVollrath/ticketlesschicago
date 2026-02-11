@@ -54,6 +54,9 @@ export const StorageKeys = {
   // Snow Forecast Monitoring
   SNOW_FORECAST_LAST_CHECK: 'snowForecastLastCheck', // ISO timestamp
   SNOW_FORECAST_NOTIFIED: 'snowForecastNotified', // 'true' if already warned about upcoming snow
+
+  // One-time nudges
+  PLATE_COMPLIANCE_NUDGE_DISMISSED: 'plateComplianceNudgeDismissed', // 'true' if user dismissed the front plate nudge
 } as const;
 
 // Type for storage keys

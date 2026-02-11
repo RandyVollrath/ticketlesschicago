@@ -183,6 +183,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [locationDenied, setLocationDenied] = useState(false);
   const [homePermitZone, setHomePermitZone] = useState<string | null>(null);
   const [showParkingMap, setShowParkingMap] = useState(false);
+  const [showPlateNudge, setShowPlateNudge] = useState(false);
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -395,6 +396,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       const dismissed = await AsyncStorage.getItem(QUICK_START_DISMISSED_KEY);
       if (!dismissed) {
         setShowQuickStart(true);
+      } else {
+        // Quick Start already dismissed — show plate compliance nudge if not yet dismissed
+        try {
+          const plateDismissed = await AsyncStorage.getItem(StorageKeys.PLATE_COMPLIANCE_NUDGE_DISMISSED);
+          if (!plateDismissed) {
+            setShowPlateNudge(true);
+          }
+        } catch (e) {
+          // Non-critical
+        }
       }
     } catch (e) {
       // Non-critical
@@ -418,6 +429,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setShowQuickStart(false);
     try {
       await AsyncStorage.setItem(QUICK_START_DISMISSED_KEY, 'true');
+      // After Quick Start is dismissed, check if plate nudge should appear
+      const plateDismissed = await AsyncStorage.getItem(StorageKeys.PLATE_COMPLIANCE_NUDGE_DISMISSED);
+      if (!plateDismissed) {
+        setShowPlateNudge(true);
+      }
+    } catch (e) {
+      // Non-critical
+    }
+  }, []);
+
+  const dismissPlateNudge = useCallback(async () => {
+    setShowPlateNudge(false);
+    try {
+      await AsyncStorage.setItem(StorageKeys.PLATE_COMPLIANCE_NUDGE_DISMISSED, 'true');
     } catch (e) {
       // Non-critical
     }
@@ -1284,6 +1309,34 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         )}
 
+        {/* ──── Plate Compliance Nudge ──── */}
+        {showPlateNudge && !showQuickStart && (
+          <View style={styles.plateNudgeCard}>
+            <View style={styles.plateNudgeHeader}>
+              <MaterialCommunityIcons name="car-info" size={20} color={colors.info} />
+              <Text style={styles.plateNudgeTitle}>Quick plate check</Text>
+              <TouchableOpacity
+                onPress={dismissPlateNudge}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityLabel="Dismiss plate tip"
+              >
+                <MaterialCommunityIcons name="close" size={18} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.plateNudgeBody}>
+              Missing a front plate or have a plate cover? Chicago tickets over $5M a year for noncompliant plates. Illinois requires both front and rear plates to be visible with nothing covering them.
+            </Text>
+            <TouchableOpacity
+              style={styles.plateNudgeDismiss}
+              onPress={dismissPlateNudge}
+              accessibilityLabel="Dismiss plate compliance tip"
+              accessibilityRole="button"
+            >
+              <Text style={styles.plateNudgeDismissText}>Got it, mine are good</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ──── Paused: Resume button ──── */}
         {!isMonitoring && (
           <Button
@@ -1887,6 +1940,45 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   quickStartDismissText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+  },
+
+  // ──── Plate Compliance Nudge ────
+  plateNudgeCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  plateNudgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  plateNudgeTitle: {
+    flex: 1,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  plateNudgeBody: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
+  plateNudgeDismiss: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  plateNudgeDismissText: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
     color: colors.primary,
