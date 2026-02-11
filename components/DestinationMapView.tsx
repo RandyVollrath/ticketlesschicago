@@ -22,6 +22,7 @@ const LAYER_COLORS = {
   winterBan: '#06B6D4',
   permitZone: '#8B5CF6',
   searchPin: '#0066FF',
+  meter: '#F59E0B',
 };
 
 function daysBetween(a: string, b: Date): number {
@@ -35,6 +36,14 @@ function cleaningColor(nextISO: string | null): string {
   if (days <= 0) return LAYER_COLORS.cleaningToday;
   if (days <= 3) return LAYER_COLORS.cleaningSoon;
   return LAYER_COLORS.cleaningLater;
+}
+
+function meterColor(rate: number): string {
+  if (rate <= 0.5) return '#16a34a';   // green — free/low
+  if (rate <= 2.5) return '#2563eb';   // blue
+  if (rate <= 4.75) return '#f97316';  // orange
+  if (rate <= 7) return '#ef4444';     // red
+  return '#dc2626';                    // dark red — CLZ
 }
 
 function cleaningLabel(nextISO: string | null): string {
@@ -168,10 +177,11 @@ export default function DestinationMapView() {
 
       // Load all restriction data in parallel
       try {
-        const [cleaningRes, snowRes, winterRes] = await Promise.all([
+        const [cleaningRes, snowRes, winterRes, meterRes] = await Promise.all([
           fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null).catch(() => null),
           fetch('/api/get-snow-routes').then(r => r.ok ? r.json() : null).catch(() => null),
           fetch('/api/get-winter-ban-routes').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/metered-parking').then(r => r.ok ? r.json() : null).catch(() => null),
         ]);
 
         if (cancelled) return;
@@ -256,6 +266,43 @@ export default function DestinationMapView() {
               `, { maxWidth: 250 });
             },
           }).addTo(map);
+        }
+
+        // --- Parking meters (visible at zoom 14+) ---
+        if (meterRes?.meters?.length) {
+          const meterLayerGroup = L.layerGroup();
+          meterRes.meters.forEach((m: any) => {
+            const rate = typeof m.rate === 'number' ? m.rate : parseFloat(m.rate);
+            const color = meterColor(rate);
+            L.circleMarker([m.latitude, m.longitude], {
+              radius: 5,
+              color,
+              fillColor: color,
+              fillOpacity: 0.7,
+              weight: 1,
+              opacity: 0.9,
+            }).bindPopup(`
+              <div style="font-family:system-ui;font-size:13px;min-width:160px">
+                <div style="font-weight:700;color:#1A1C1E;margin-bottom:2px">Parking Meter</div>
+                <div style="color:#6C727A">${m.address}</div>
+                <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+                  <span style="padding:2px 8px;background:${color}18;color:${color};border-radius:4px;font-weight:600;font-size:13px">$${(rate || 0).toFixed(2)}/hr</span>
+                  ${m.time_limit_hours ? `<span style="padding:2px 8px;background:#f1f5f9;color:#475569;border-radius:4px;font-size:12px">${m.time_limit_hours}hr limit</span>` : ''}
+                  ${m.is_clz ? `<span style="padding:2px 8px;background:#fef2f2;color:#dc2626;border-radius:4px;font-size:12px;font-weight:600">CLZ</span>` : ''}
+                </div>
+                <div style="color:#94A3B8;font-size:11px;margin-top:4px">${m.spaces || '?'} spaces</div>
+              </div>
+            `, { maxWidth: 260 }).addTo(meterLayerGroup);
+          });
+
+          // Show meters only when zoomed in enough
+          const updateMeterVisibility = () => {
+            const z = map.getZoom();
+            if (z >= 14) { if (!map.hasLayer(meterLayerGroup)) map.addLayer(meterLayerGroup); }
+            else { if (map.hasLayer(meterLayerGroup)) map.removeLayer(meterLayerGroup); }
+          };
+          map.on('zoomend', updateMeterVisibility);
+          updateMeterVisibility(); // initial check (starts at zoom 16, so meters will show)
         }
 
       } catch (err) {
@@ -374,6 +421,7 @@ export default function DestinationMapView() {
               LAYER_COLORS.snowRoute,
               LAYER_COLORS.winterBan,
               LAYER_COLORS.permitZone,
+              LAYER_COLORS.meter,
             ].map((c, i) => (
               <div key={i} style={{
                 width: '8px', height: '8px', borderRadius: '50%',
@@ -419,6 +467,10 @@ export default function DestinationMapView() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '50%', flexShrink: 0 }} />
                 <span style={{ color: '#374151' }}>Permit zone</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%', flexShrink: 0 }} />
+                <span style={{ color: '#374151' }}>Parking meter</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.searchPin, borderRadius: '50%', flexShrink: 0 }} />

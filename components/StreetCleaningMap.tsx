@@ -14,6 +14,18 @@ export interface ScheduleData {
   };
 }
 
+export interface MeterData {
+  meter_id: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  rate: string | number;
+  rate_description: string;
+  time_limit_hours: number | null;
+  spaces: number;
+  is_clz: boolean;
+}
+
 interface StreetCleaningMapProps {
   data: ScheduleData[];
   triggerPopup?: { ward: string; section: string } | null;
@@ -24,6 +36,8 @@ interface StreetCleaningMapProps {
   showWinterBanMode?: boolean;
   userLocation?: { lat: number; lng: number };
   alternativeZones?: any[];
+  meterLocations?: MeterData[];
+  showMeters?: boolean;
 }
 
 // Simple map component that uses Leaflet directly without react-leaflet
@@ -35,7 +49,9 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
   winterBanRoutes = [],
   showWinterBanMode = false,
   userLocation,
-  alternativeZones = []
+  alternativeZones = [],
+  meterLocations = [],
+  showMeters = false,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -344,6 +360,55 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         });
       }
 
+      // --- Parking meters layer (zoom-dependent) ---
+      if (showMeters && meterLocations.length > 0) {
+        const meterLayerGroup = L.layerGroup();
+
+        const getMeterColor = (rate: string | number): string => {
+          const r = typeof rate === 'number' ? rate : parseFloat(rate);
+          if (r <= 0.5) return '#16a34a';
+          if (r <= 2.5) return '#2563eb';
+          if (r <= 4.75) return '#f97316';
+          if (r <= 7) return '#ef4444';
+          return '#dc2626';
+        };
+
+        meterLocations.forEach((m) => {
+          const rate = typeof m.rate === 'number' ? m.rate : parseFloat(m.rate);
+          const color = getMeterColor(m.rate);
+          const marker = L.circleMarker([m.latitude, m.longitude], {
+            radius: 5,
+            color,
+            fillColor: color,
+            fillOpacity: 0.7,
+            weight: 1,
+            opacity: 0.9,
+          });
+          marker.bindPopup(`
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
+              <div style="font-weight: 700; color: #1A1C1E; margin-bottom: 4px;">Parking Meter</div>
+              <div style="color: #6C727A; font-size: 13px; margin-bottom: 6px;">${m.address}</div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span style="padding: 2px 8px; background: ${color}18; color: ${color}; border-radius: 4px; font-weight: 600; font-size: 13px;">$${(rate || 0).toFixed(2)}/hr</span>
+                ${m.time_limit_hours ? `<span style="padding: 2px 8px; background: #f1f5f9; color: #475569; border-radius: 4px; font-size: 12px;">${m.time_limit_hours}hr limit</span>` : ''}
+                ${m.is_clz ? `<span style="padding: 2px 8px; background: #fef2f2; color: #dc2626; border-radius: 4px; font-size: 12px; font-weight: 600;">CLZ</span>` : ''}
+              </div>
+              <div style="color: #94A3B8; font-size: 11px; margin-top: 4px;">${m.spaces || '?'} spaces</div>
+            </div>
+          `);
+          marker.addTo(meterLayerGroup);
+        });
+
+        // Show meters only at zoom 13+
+        const updateMeterVisibility = () => {
+          const z = mapInstanceRef.current?.getZoom() || 11;
+          if (z >= 13) { if (!mapInstanceRef.current.hasLayer(meterLayerGroup)) mapInstanceRef.current.addLayer(meterLayerGroup); }
+          else { if (mapInstanceRef.current.hasLayer(meterLayerGroup)) mapInstanceRef.current.removeLayer(meterLayerGroup); }
+        };
+        mapInstanceRef.current.on('zoomend', updateMeterVisibility);
+        updateMeterVisibility();
+      }
+
       // Handle trigger popup with delay to ensure map is ready
       if (triggerPopup && data.length > 0) {
         console.log('Trigger popup requested for ward:', triggerPopup.ward, 'section:', triggerPopup.section);
@@ -427,7 +492,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, winterBanRoutes, showWinterBanMode, userLocation, alternativeZones]);
+  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, winterBanRoutes, showWinterBanMode, meterLocations, showMeters, userLocation, alternativeZones]);
 
   return (
     <div 
