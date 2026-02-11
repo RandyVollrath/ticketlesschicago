@@ -72,6 +72,36 @@ async function regenerateLetterWithAI(
   const cleanedEvidence = cleanUserEvidence(userEvidence);
   console.log('Cleaned evidence:', cleanedEvidence.substring(0, 100) + '...');
 
+  // Build violation-specific guidance for the AI
+  const violationType = ticketDetails?.violation_type || '';
+  let violationGuidance = '';
+
+  if (violationType === 'no_city_sticker') {
+    violationGuidance = `
+IMPORTANT - City Sticker Violation Strategy:
+This is a city sticker (Chicago wheel tax) violation — $200 fine, 70% win rate when contested with receipt.
+You MUST tailor the letter based on what the user's evidence actually shows:
+
+Scenario A — User had a sticker BEFORE the ticket date:
+- Their receipt/confirmation shows a purchase date BEFORE the ticket date
+- Argue: "I had a valid city sticker at the time of this citation. As shown by the attached receipt dated [DATE], my sticker was purchased on [DATE], prior to this citation on [TICKET_DATE]. The sticker was properly displayed on my vehicle. I believe the citing officer failed to observe it."
+
+Scenario B — User bought a sticker AFTER the ticket date:
+- Their receipt/confirmation shows a purchase date AFTER the ticket date
+- Argue: "I have since purchased a valid city sticker, as shown by the attached receipt. I am now in full compliance with the city vehicle sticker requirement. The purpose of this ordinance is to ensure vehicle owners contribute to city road maintenance — that purpose has been fulfilled by my purchase. I respectfully request dismissal in light of my demonstrated compliance."
+
+Scenario C — User is not a Chicago resident:
+- They mention living outside Chicago, show suburban registration, etc.
+- Argue: "I am not a resident of the City of Chicago. My vehicle is registered at [ADDRESS], outside city limits. Non-residents are exempt from the city vehicle sticker requirement."
+
+Scenario D — User recently bought the vehicle:
+- They show a bill of sale within 30 days of ticket
+- Argue: "I purchased this vehicle on [DATE], only [X] days before this citation. New vehicle owners are allowed a 30-day grace period to obtain a city sticker."
+
+CRITICAL: Do NOT claim the user had a sticker if their evidence doesn't show it. Do NOT claim they bought one after if they actually had one before. Match the argument to the actual dates in their evidence. If the evidence is unclear about timing, ask-don't-assume — use the most honest framing possible.
+`;
+  }
+
   const prompt = `You are a legal writing expert specializing in parking ticket contest letters. Your job is to integrate user-provided evidence into an existing contest letter in a professional, persuasive manner that maximizes the chance of winning the contest.
 
 Rules:
@@ -86,7 +116,7 @@ Rules:
 9. Keep the letter concise but thorough - MUST fit on 1 page (max ~400 words in body)
 10. Do not invent facts - only use what the user provided
 11. Do NOT add any commentary, delimiters (like ---), or explanations - return ONLY the letter text
-
+${violationGuidance}
 Original contest letter:
 ---
 ${originalLetter}
@@ -100,7 +130,8 @@ ${cleanedEvidence}
 Ticket details:
 - Ticket Number: ${ticketDetails?.ticket_number || 'Unknown'}
 - Violation: ${ticketDetails?.violation_description || ticketDetails?.violation_code || 'Unknown'}
-- Issue Date: ${ticketDetails?.issue_date || 'Unknown'}
+- Violation Type: ${violationType || 'Unknown'}
+- Issue Date: ${ticketDetails?.issue_date || ticketDetails?.violation_date || 'Unknown'}
 
 ${hasAttachments ? 'The user has attached supporting documentation (screenshot/photo) that should be referenced.' : 'No attachments were provided.'}
 
