@@ -177,9 +177,9 @@ I respectfully request that this ticket be dismissed.`,
     type: 'sticker_compliance',
     template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
 
-I believe this citation was issued in error. I respectfully request the opportunity to present evidence demonstrating my compliance with the city vehicle sticker requirement, or to show that this citation should be dismissed on other grounds.
+I believe this citation was issued in error. I am in compliance with the city vehicle sticker requirement and respectfully request that this citation be dismissed based on the enclosed documentation.
 
-I request that the hearing officer review the circumstances of this citation, including the accuracy of the officer's observations and whether proper procedures were followed in issuing this ticket.
+I also request that the circumstances of this citation be reviewed, including the accuracy of the officer's observations and whether proper procedures were followed in issuing this ticket.
 
 I respectfully request that this ticket be dismissed.`,
   },
