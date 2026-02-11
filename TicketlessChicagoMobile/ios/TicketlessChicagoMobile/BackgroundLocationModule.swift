@@ -800,10 +800,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       lastStationaryTime = Date()
     }
 
-    // 3 second debounce: just enough to ignore momentary CoreMotion flicker
-    // but fast enough to catch every real parking event.
+    // 8 second debounce: long enough to survive red light CoreMotion flicker
+    // (CoreMotion can briefly report stationary at long red lights when the
+    // car is vibration-free), short enough to catch real parking quickly.
+    // Previously 3s which was causing false positives at major intersections
+    // like Ashland & Fullerton where red lights last 30-90s and CoreMotion
+    // briefly flickers to stationary from engine-idle vibration loss.
     parkingConfirmationTimer?.invalidate()
-    parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+    parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
       self?.confirmParking()
     }
   }
@@ -828,6 +832,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     parkingConfirmationTimer = nil
     speedZeroTimer?.invalidate()
     speedZeroTimer = nil
+
+    // GPS SPEED VETO: If GPS currently shows we're moving, abort — this is a
+    // red light or brief CoreMotion flicker, not real parking.
+    // The "location_stationary" source bypasses this since it already proved
+    // 2+ minutes of zero movement which is definitive.
+    if source == "coremotion" {
+      let currentSpeed = locationManager.location?.speed ?? -1
+      if currentSpeed > 1.0 {
+        self.log("confirmParking(\(source)) aborted: GPS speed \(String(format: "%.1f", currentSpeed)) m/s — still moving (red light false positive)")
+        lastStationaryTime = nil
+        locationAtStopStart = nil
+        return
+      }
+    }
 
     // If CoreMotion still reports automotive (engine running / vehicle vibrations),
     // abort parking confirmation — UNLESS this is a speed override (15s of zero speed
