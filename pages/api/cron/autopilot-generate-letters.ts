@@ -177,9 +177,9 @@ I respectfully request that this ticket be dismissed.`,
     type: 'sticker_purchased',
     template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
 
-At the time this ticket was issued, I had purchased my city sticker but had not yet received it in the mail / had not yet affixed it to my vehicle. I have attached proof of purchase showing the sticker was purchased prior to the citation.
+I have since purchased a valid City of Chicago vehicle sticker and have attached the purchase receipt as proof of compliance. I am now in full compliance with Chicago Municipal Code Section 9-100-010.
 
-Under Chicago Municipal Code Section 3-56-030, the city allows a grace period for displaying newly purchased stickers. I believe this citation was issued during that grace period.
+I respectfully request that this citation be dismissed in light of my demonstrated compliance. The purpose of the city sticker ordinance is to ensure vehicle owners contribute to city road infrastructure, and that purpose has been fulfilled by my purchase. The City of Chicago has historically exercised discretion in dismissing city sticker violations when the vehicle owner can demonstrate compliance through a subsequent purchase.
 
 I respectfully request that this ticket be dismissed.`,
   },

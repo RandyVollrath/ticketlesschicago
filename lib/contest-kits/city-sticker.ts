@@ -12,7 +12,7 @@ export const cityStickerKit: ContestKit = {
   name: 'City Sticker Violation',
   description: 'Vehicle without required Chicago city sticker',
   category: 'sticker',
-  fineAmount: 120,
+  fineAmount: 200,
   baseWinRate: 0.70, // From FOIA data - 70% win rate!
 
   eligibility: {
@@ -26,10 +26,10 @@ export const cityStickerKit: ContestKit = {
       },
       {
         id: 'had_valid_sticker',
-        description: 'Had valid sticker at time of ticket',
-        check: 'hadValidStickerAtTime OR hasValidDefense',
+        description: 'Had or purchased valid sticker',
+        check: 'hadValidStickerAtTime OR purchasedStickerAfterTicket OR hasValidDefense',
         failureAction: 'warn',
-        failureMessage: 'If you didn\'t have a valid sticker and weren\'t eligible for an exemption, contest success is unlikely. Consider purchasing a sticker and requesting fine reduction for first offense.',
+        failureMessage: 'You can still beat this ticket! Buy a city sticker NOW at chicago.gov/sticker and send us the receipt. The city routinely dismisses $200 sticker tickets when you show proof of purchase — even if you buy it after getting the ticket.',
       },
     ],
     weatherRelevance: false, // Weather not relevant to sticker violations
@@ -39,6 +39,21 @@ export const cityStickerKit: ContestKit = {
   evidence: {
     required: [],
     recommended: [
+      {
+        id: 'purchase_receipt',
+        name: 'Sticker Purchase Receipt (Even After Ticket!)',
+        description: 'Receipt showing city sticker purchase — even if purchased AFTER the ticket date. This is the #1 winning evidence.',
+        impactScore: 0.50,
+        example: 'City of Chicago purchase confirmation email, online receipt, or credit card statement',
+        tips: [
+          'Buy your sticker NOW at chicago.gov/sticker if you haven\'t already — you can still use the receipt!',
+          'The sticker costs ~$90 but saves you the $200 ticket',
+          'Online purchase confirmations work great',
+          'Currency exchange receipts work too',
+          'Even buying AFTER the ticket date has a high success rate for dismissal',
+          'Forward the purchase confirmation email to us and we\'ll attach it to your contest',
+        ],
+      },
       {
         id: 'sticker_photo',
         name: 'Photo of Displayed Sticker',
@@ -50,18 +65,6 @@ export const cityStickerKit: ContestKit = {
           'Make sure expiration date is visible',
           'Take photo from outside the vehicle',
           'Include a timestamp if possible',
-        ],
-      },
-      {
-        id: 'purchase_receipt',
-        name: 'Sticker Purchase Receipt',
-        description: 'Receipt showing city sticker was purchased before or shortly after ticket date',
-        impactScore: 0.30,
-        example: 'City Clerk receipt showing sticker purchase with date and vehicle info',
-        tips: [
-          'Online purchase confirmations work',
-          'Currency exchange receipts work',
-          'Show purchase was before ticket date or within grace period',
         ],
       },
       {
@@ -184,6 +187,26 @@ Thank you for your consideration.`,
 
     situational: [
       {
+        id: 'purchased_after_ticket',
+        name: 'Purchased Sticker After Ticket',
+        template: `I respectfully contest this citation on the grounds that I have since purchased a valid City of Chicago vehicle sticker and am now in full compliance with Chicago Municipal Code Section 9-100-010.
+
+I received citation #{ticket_number} on {ticket_date} for not having a city sticker displayed. I have since purchased a valid city sticker, and I have attached the purchase receipt as proof of compliance.
+
+[PURCHASE_RECEIPT]
+
+The purpose of the city sticker ordinance is to ensure that vehicle owners contribute to city road and infrastructure maintenance. That purpose has been fulfilled by my purchase. The City of Chicago has historically exercised discretion in dismissing city sticker violations when the vehicle owner demonstrates compliance through a subsequent purchase.
+
+I respectfully request that this citation be dismissed in light of my demonstrated compliance.`,
+        requiredFacts: ['ticketNumber', 'ticketDate'],
+        winRate: 0.70, // Post-ticket purchase is very effective
+        conditions: [
+          { field: 'purchasedStickerAfterTicket', operator: 'equals', value: true },
+        ],
+        supportingEvidence: ['purchase_receipt'],
+        category: 'compliance',
+      },
+      {
         id: 'recently_purchased',
         name: 'Recently Purchased Vehicle',
         template: `I respectfully contest this citation on the grounds that I had recently purchased this vehicle and was within the 30-day grace period allowed for new owners to obtain a city sticker.
@@ -281,19 +304,19 @@ The city sticker requirement applies to Chicago residents, not visitors. I respe
   },
 
   tips: [
-    'City sticker violations have the HIGHEST win rate (~50%) of common violations',
-    'If you had a valid sticker, photograph it immediately - this is your strongest evidence',
+    'Even if you didn\'t have a sticker, BUY ONE NOW — the receipt can get your $200 ticket dismissed!',
+    'City sticker violations have a 70% win rate — one of the highest of all ticket types',
+    'The sticker costs ~$90 but the ticket is $200 — buying it saves you $110+ AND beats the ticket',
+    'Purchase online at chicago.gov/sticker and forward the confirmation email as evidence',
     'Non-residents are EXEMPT - keep proof of your out-of-city registration handy',
     'New vehicle owners have 30 days to get a sticker - save your bill of sale',
-    'If your sticker was stolen, file a police report immediately for documentation',
-    'Even if you didn\'t have a sticker, first-time offenders can often get reduced fines',
+    'If you set up email forwarding with Autopilot, we\'ll automatically capture the purchase receipt',
   ],
 
   pitfalls: [
+    'Don\'t pay the $200 ticket without contesting! The win rate is 70% — buy a sticker and contest instead',
     'Don\'t claim non-residency if your vehicle is registered to a Chicago address',
     'Don\'t say the sticker "must have fallen off" without evidence - sounds like an excuse',
-    'Don\'t wait to file a police report for theft - earlier reports are more credible',
-    'Don\'t contest if you genuinely forgot to buy a sticker - consider paying and avoiding the hassle',
     'Don\'t provide fake purchase receipts - this is fraud and will backfire badly',
   ],
 };
