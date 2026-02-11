@@ -73,8 +73,10 @@ export default function CheckYourStreet() {
   const [dateRangeResult, setDateRangeResult] = useState<{cleaningDates: string[], hasCleaningDuringTrip: boolean} | null>(null)
   const [showSnowSafeMode, setShowSnowSafeMode] = useState(false)
   const [showWinterBanMode, setShowWinterBanMode] = useState(false)
+  const [showMeters, setShowMeters] = useState(false)
   const [snowRoutes, setSnowRoutes] = useState<any[]>([])
   const [winterBanRoutes, setWinterBanRoutes] = useState<any[]>([])
+  const [meterLocations, setMeterLocations] = useState<any[]>([])
   const [alternativeZones, setAlternativeZones] = useState<any[]>([])
   const [loadingAlternatives, setLoadingAlternatives] = useState(false)
   const [permitZoneResult, setPermitZoneResult] = useState<{ hasPermitZone: boolean; zones: any[] } | null>(null)
@@ -144,6 +146,25 @@ export default function CheckYourStreet() {
     }
     fetchWinterBanRoutes()
   }, [])
+
+  // Load parking meter locations when toggle is enabled
+  useEffect(() => {
+    if (!showMeters) return
+    if (meterLocations.length > 0) return // already loaded
+    const fetchMeters = async () => {
+      try {
+        const response = await fetch('/api/metered-parking')
+        if (response.ok) {
+          const result = await response.json()
+          setMeterLocations(result.meters || [])
+          console.log(`Loaded ${result.count} parking meters`)
+        }
+      } catch (error) {
+        console.error('Error fetching parking meters:', error)
+      }
+    }
+    fetchMeters()
+  }, [showMeters])
 
   // Check URL parameters
   useEffect(() => {
@@ -762,6 +783,34 @@ export default function CheckYourStreet() {
               </div>
             </label>
 
+            {/* Parking Meters Toggle */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '16px',
+              padding: '20px 24px',
+              background: showMeters ? '#F59E0B08' : 'white',
+              borderRadius: '16px',
+              marginBottom: '16px',
+              border: `2px solid ${showMeters ? '#F59E0B' : COLORS.border}`,
+              cursor: 'pointer'
+            }}>
+              <input
+                type="checkbox"
+                checked={showMeters}
+                onChange={(e) => setShowMeters(e.target.checked)}
+                style={{ marginTop: '2px', width: '20px', height: '20px', cursor: 'pointer', accentColor: '#F59E0B' }}
+              />
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Show Parking Meters
+                </div>
+                <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
+                  Show <strong style={{ color: '#F59E0B' }}>4,300+ metered parking spots</strong> across Chicago. Color-coded by rate: green ($0.50), blue ($2.50), orange ($4.75), red ($6.50+). Zoom in to see individual meters.
+                </div>
+              </div>
+            </label>
+
             {/* Main Result Card */}
             <div style={{
               backgroundColor: 'white',
@@ -1087,6 +1136,8 @@ export default function CheckYourStreet() {
               showSnowSafeMode={showSnowSafeMode}
               winterBanRoutes={winterBanRoutes}
               showWinterBanMode={showWinterBanMode}
+              meterLocations={meterLocations}
+              showMeters={showMeters}
               userLocation={searchResult?.coordinates}
               alternativeZones={alternativeZones}
             />
@@ -1122,6 +1173,10 @@ export default function CheckYourStreet() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '14px', height: '14px', backgroundColor: '#8B5CF6', borderRadius: '3px' }}></div>
                 <span style={{ color: COLORS.slate }}><strong style={{ color: '#8B5CF6' }}>Purple:</strong> Permit Zone</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '14px', height: '14px', backgroundColor: '#F59E0B', borderRadius: '50%' }}></div>
+                <span style={{ color: COLORS.slate }}><strong style={{ color: '#F59E0B' }}>Amber Dot:</strong> Parking Meter</span>
               </div>
             </div>
           </div>
