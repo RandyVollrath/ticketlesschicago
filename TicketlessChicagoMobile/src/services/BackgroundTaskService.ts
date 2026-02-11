@@ -2781,6 +2781,16 @@ class BackgroundTaskServiceClass {
    */
   private async performRescan(): Promise<void> {
     try {
+      // Safety check: only rescan if the state machine says we're actually parked.
+      // Without this, the rescan timer can keep firing at a stale location after
+      // departure (if departure tracking failed to stop the timer).
+      const currentState = ParkingDetectionStateMachine.state;
+      if (currentState !== 'PARKED') {
+        log.info(`Rescan skipped — state machine is ${currentState}, not PARKED. Stopping rescan timer.`);
+        this.stopRescanTimer();
+        return;
+      }
+
       const parkedJson = await AsyncStorage.getItem(StorageKeys.LAST_PARKED_COORDS);
       if (!parkedJson) {
         log.debug('Rescan skipped — no parked coords saved');
