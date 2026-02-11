@@ -134,15 +134,36 @@ export default function DestinationMapView() {
           </div>
         `, { maxWidth: 280 }).openPopup();
       }
-      marker.on('dragend', () => {
+      marker.on('dragend', async () => {
         const updated = marker.getLatLng();
+        // Show loading state immediately
         marker.bindPopup(`
           <div style="font-family:system-ui;min-width:180px">
-            <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">Adjusted pin location</div>
+            <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">Looking up address...</div>
             <div style="color:#6C727A;font-size:12px">${updated.lat.toFixed(6)}, ${updated.lng.toFixed(6)}</div>
-            <div style="color:#94A3B8;font-size:12px;margin-top:4px">Inspect colored blocks around this point.</div>
           </div>
         `, { maxWidth: 280 }).openPopup();
+
+        // Reverse geocode to get address
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${updated.lat}&lon=${updated.lng}&format=json&addressdetails=1`);
+          const data = await res.json();
+          const addr = data.display_name?.split(',').slice(0, 3).join(',') || `${updated.lat.toFixed(6)}, ${updated.lng.toFixed(6)}`;
+          marker.bindPopup(`
+            <div style="font-family:system-ui;min-width:180px">
+              <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">${addr}</div>
+              <div style="color:#94A3B8;font-size:12px;margin-top:4px">Inspect colored blocks around this point.</div>
+            </div>
+          `, { maxWidth: 280 }).openPopup();
+        } catch {
+          marker.bindPopup(`
+            <div style="font-family:system-ui;min-width:180px">
+              <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">Adjusted pin location</div>
+              <div style="color:#6C727A;font-size:12px">${updated.lat.toFixed(6)}, ${updated.lng.toFixed(6)}</div>
+              <div style="color:#94A3B8;font-size:12px;margin-top:4px">Inspect colored blocks around this point.</div>
+            </div>
+          `, { maxWidth: 280 }).openPopup();
+        }
       });
 
       // Load all restriction data in parallel

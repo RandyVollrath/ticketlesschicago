@@ -125,6 +125,24 @@ export default function TicketsPage() {
           <p style={{ fontSize: 15, color: COLORS.slate, margin: 0 }}>
             Tickets we detected and what we did about them.
           </p>
+          <div style={{ marginTop: 14 }}>
+            <Link
+              href="/submit-ticket"
+              style={{
+                display: 'inline-block',
+                padding: '8px 14px',
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+                backgroundColor: COLORS.white,
+                color: COLORS.graphite,
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Manually Upload a Ticket
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}

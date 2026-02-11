@@ -526,9 +526,161 @@ const RAW_CHICAGO_CAMERAS: CameraLocation[] = [
   { type: "redlight", address: "4200 South Cicero Avenue", latitude: 41.81737, longitude: -87.7436, approaches: ["SB"] },
 ];
 
-export const CHICAGO_CAMERAS: CameraLocation[] = RAW_CHICAGO_CAMERAS.map((camera) => {
+const HARDCODED_CAMERAS: CameraLocation[] = RAW_CHICAGO_CAMERAS.map((camera) => {
   if (camera.type === 'speed' && camera.speedLimitMph == null) {
     return { ...camera, speedLimitMph: 30 };
   }
   return camera;
+});
+
+/**
+ * Live camera list — starts with hardcoded data, replaced by cached or API data.
+ * Consumers import CHICAGO_CAMERAS which is always this array reference.
+ *
+ * Load order (all non-blocking):
+ * 1. Hardcoded data available instantly (baked into bundle)
+ * 2. AsyncStorage cache loaded (~5ms, replaces hardcoded if fresher)
+ * 3. API fetch only if cache is >7 days old (background, replaces cache)
+ */
+let liveCameras: CameraLocation[] = HARDCODED_CAMERAS;
+let fetchAttempted = false;
+
+const CACHE_KEY = '@camera_locations_cache';
+const CACHE_TS_KEY = '@camera_locations_cache_ts';
+const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Lazy import to avoid circular dependency at module load time
+let _AsyncStorage: any = null;
+function getAsyncStorage() {
+  if (!_AsyncStorage) {
+    _AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  }
+  return _AsyncStorage;
+}
+
+function normalizeApiCameras(raw: any[]): CameraLocation[] {
+  return raw
+    .filter((c: any) => c.latitude && c.longitude && c.camera_type)
+    .map((c: any) => {
+      const cam: CameraLocation = {
+        type: c.camera_type === 'redlight' ? 'redlight' : 'speed',
+        address: c.address || '',
+        latitude: typeof c.latitude === 'string' ? parseFloat(c.latitude) : c.latitude,
+        longitude: typeof c.longitude === 'string' ? parseFloat(c.longitude) : c.longitude,
+        approaches: Array.isArray(c.approaches) ? c.approaches : [],
+      };
+      if (cam.type === 'speed') {
+        cam.speedLimitMph = 30; // default, same as hardcoded
+      }
+      return cam;
+    });
+}
+
+/**
+ * Load cameras: first from AsyncStorage cache, then from API if stale.
+ * Call once at app startup. Non-blocking, fire-and-forget safe.
+ */
+export async function fetchCameraLocations(): Promise<void> {
+  if (fetchAttempted) return;
+  fetchAttempted = true;
+
+  try {
+    const AsyncStorage = getAsyncStorage();
+
+    // Step 1: Load from local cache (fast, ~5ms)
+    const [cachedJson, cachedTs] = await Promise.all([
+      AsyncStorage.getItem(CACHE_KEY),
+      AsyncStorage.getItem(CACHE_TS_KEY),
+    ]);
+
+    let cacheAge = Infinity;
+    if (cachedJson && cachedTs) {
+      const cached = JSON.parse(cachedJson) as CameraLocation[];
+      cacheAge = Date.now() - parseInt(cachedTs, 10);
+      if (cached.length >= 100) {
+        liveCameras = cached;
+        console.log(`[Cameras] Loaded ${cached.length} from cache (age: ${Math.round(cacheAge / 3600000)}h)`);
+      }
+    }
+
+    // Step 2: If cache is fresh enough, skip the network call entirely
+    if (cacheAge < CACHE_MAX_AGE_MS) {
+      return;
+    }
+
+    // Step 3: Cache is stale or missing — fetch from API in background
+    console.log('[Cameras] Cache stale, fetching from API...');
+    const API_URL = 'https://autopilotamerica.com/api/camera-locations';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(API_URL, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.log(`[Cameras] API returned ${response.status}, keeping current data`);
+      return;
+    }
+
+    const data = await response.json();
+    if (!data.cameras || !Array.isArray(data.cameras) || data.cameras.length === 0) {
+      console.log('[Cameras] API returned empty data, keeping current data');
+      return;
+    }
+
+    const normalized = normalizeApiCameras(data.cameras);
+    if (normalized.length < 100) {
+      console.log(`[Cameras] API returned only ${normalized.length} cameras, keeping current data`);
+      return;
+    }
+
+    // Swap live data + persist to cache
+    liveCameras = normalized;
+    await Promise.all([
+      AsyncStorage.setItem(CACHE_KEY, JSON.stringify(normalized)),
+      AsyncStorage.setItem(CACHE_TS_KEY, String(Date.now())),
+    ]);
+    console.log(`[Cameras] Updated to ${normalized.length} cameras from API, cached`);
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.log('[Cameras] API timed out, keeping current data');
+    } else {
+      console.log('[Cameras] Fetch failed, keeping current data:', error?.message);
+    }
+  }
+}
+
+/**
+ * Reset fetch state (for testing or retry).
+ */
+export function resetCameraFetch(): void {
+  fetchAttempted = false;
+  liveCameras = HARDCODED_CAMERAS;
+}
+
+// Export a proxy array that always delegates to liveCameras.
+// This lets CameraAlertService iterate, index, and read .length seamlessly
+// whether we're using hardcoded or API data.
+export const CHICAGO_CAMERAS: CameraLocation[] = new Proxy([] as CameraLocation[], {
+  get(_target, prop, receiver) {
+    if (prop === 'length') return liveCameras.length;
+    if (typeof prop === 'string' && /^\d+$/.test(prop)) return liveCameras[parseInt(prop, 10)];
+    // Delegate array methods (map, filter, forEach, etc.) to liveCameras
+    const value = (liveCameras as any)[prop];
+    if (typeof value === 'function') return value.bind(liveCameras);
+    return Reflect.get(liveCameras, prop, receiver);
+  },
+  set(_target, prop, value) {
+    (liveCameras as any)[prop] = value;
+    return true;
+  },
+  has(_target, prop) {
+    return prop in liveCameras;
+  },
+  ownKeys() {
+    return Reflect.ownKeys(liveCameras);
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Object.getOwnPropertyDescriptor(liveCameras, prop);
+  },
 });

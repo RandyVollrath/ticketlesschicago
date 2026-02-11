@@ -30,6 +30,7 @@
     "@vercel/blob": "^2.0.0",
     "@vercel/og": "^0.8.6",
     "2captcha": "^3.0.5-2",
+    "cheerio": "^1.2.0",
     "cookie": "^1.0.2",
     "csv-parse": "^6.1.0",
     "csv-parser": "^3.2.0",

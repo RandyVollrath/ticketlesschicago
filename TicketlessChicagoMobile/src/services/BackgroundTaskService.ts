@@ -1724,11 +1724,11 @@ class BackgroundTaskServiceClass {
       // If currently in ban hours (3am-7am), don't schedule - user should already know
     }
 
-    // Permit zone reminder — 15 minutes before actual enforcement start
+    // Permit zone reminder — 30 minutes before actual enforcement start
     if (result.permitZone?.inPermitZone && !result.permitZone?.permitRequired) {
       const zoneName = result.permitZone.zoneName || 'Permit zone';
       const schedule = result.permitZone.restrictionSchedule || 'Mon–Fri 8am–6pm (estimated)';
-      const ADVANCE_WARNING_MINUTES = 15;
+      const ADVANCE_WARNING_MINUTES = 30;
 
       // Parse the restriction schedule to find the next enforcement window
       const notifyTime = this.getNextPermitEnforcementNotifyTime(schedule, ADVANCE_WARNING_MINUTES);
@@ -1750,8 +1750,10 @@ class BackgroundTaskServiceClass {
       }
     }
 
-    // Metered parking notifications
-    if (result.meteredParking?.inMeteredZone) {
+    // Metered parking notifications (check user preference)
+    const meterAlertsPref = await AsyncStorage.getItem('meterExpiryAlertsEnabled');
+    const meterAlertsEnabled = meterAlertsPref === null ? true : meterAlertsPref === 'true';
+    if (meterAlertsEnabled && result.meteredParking?.inMeteredZone) {
       const rate = result.meteredParking.estimatedRate || '$2.50/hr';
 
       if (result.meteredParking.isEnforcedNow) {

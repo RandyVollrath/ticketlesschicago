@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -178,8 +178,23 @@ interface CameraMapProps {
   // Potholes layer
   potholeBlocks?: PotholeBlock[];
   showPotholes?: boolean;
+  // Metered parking layer
+  meterLocations?: MeterLocation[];
+  showMeters?: boolean;
   // Search radius in miles
   searchRadiusMiles?: number;
+}
+
+export interface MeterLocation {
+  meter_id: number;
+  address: string;
+  latitude: number;
+  longitude: number;
+  rate: string;
+  rate_description: string;
+  time_limit_hours: number;
+  spaces: number;
+  is_clz: boolean;
 }
 
 // Component to handle map view changes
@@ -220,6 +235,76 @@ const MapController = ({
   return null;
 };
 
+// Helper to get meter dot color by rate
+function getMeterColor(rate: string): string {
+  const r = parseFloat(rate);
+  if (r <= 0.5) return '#16a34a';   // green
+  if (r <= 2.5) return '#2563eb';   // blue
+  if (r <= 4.75) return '#f97316';  // orange
+  if (r <= 7.0) return '#dc2626';   // red
+  return '#7f1d1d';                 // dark red (CLZ $14)
+}
+
+// Separate component so it can use useMap() for zoom-level filtering
+const MeterLayer: React.FC<{ meters: MeterLocation[] }> = ({ meters }) => {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', onZoom);
+    return () => { map.off('zoomend', onZoom); };
+  }, [map]);
+
+  // Only render individual meters when zoomed in enough
+  if (zoom < 14) return null;
+
+  return (
+    <>
+      {meters.map((m) => {
+        const color = getMeterColor(m.rate);
+        const rate = parseFloat(m.rate);
+        return (
+          <CircleMarker
+            key={`meter-${m.meter_id}`}
+            center={[m.latitude, m.longitude]}
+            radius={zoom >= 17 ? 6 : zoom >= 15 ? 5 : 4}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.7, weight: 1, opacity: 0.9 }}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ backgroundColor: color, color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                    METER
+                  </span>
+                  {m.is_clz && (
+                    <span style={{ backgroundColor: '#7f1d1d', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                      CONGESTION ZONE
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>
+                  ${rate.toFixed(2)}/hr
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{m.address}</div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px', fontSize: '12px' }}>
+                  <div><strong>Max time:</strong> {m.time_limit_hours} hr{m.time_limit_hours !== 1 ? 's' : ''}</div>
+                  <div><strong>Spaces:</strong> {m.spaces}</div>
+                  {m.rate_description && (
+                    <div style={{ color: '#6b7280', marginTop: '4px', fontSize: '11px' }}>
+                      {m.rate_description}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+    </>
+  );
+};
+
 const CameraMap: React.FC<CameraMapProps> = ({
   speedCameras,
   redLightCameras,
@@ -250,6 +335,8 @@ const CameraMap: React.FC<CameraMapProps> = ({
   selectedLicenseCategory = 'all',
   potholeBlocks = [],
   showPotholes = false,
+  meterLocations = [],
+  showMeters = false,
   searchRadiusMiles = 0.1,
 }) => {
   const chicagoCenter: L.LatLngTuple = [41.8781, -87.6298];
@@ -863,6 +950,9 @@ const CameraMap: React.FC<CameraMapProps> = ({
         userLocation={userLocation}
       />
 
+      {/* Metered Parking layer */}
+      {showMeters && <MeterLayer meters={meterLocations} />}
+
       {/* Legend */}
       <div style={{
         position: 'absolute',
@@ -964,6 +1054,35 @@ const CameraMap: React.FC<CameraMapProps> = ({
             </div>
             <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '4px' }}>
               Circle size = violation count
+            </div>
+          </div>
+        )}
+
+        {showMeters && meterLocations.length > 0 && (
+          <div style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ fontSize: '10px', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>PARKING METERS</div>
+            {[
+              { color: '#16a34a', label: '$0.50/hr' },
+              { color: '#2563eb', label: '$2.50/hr' },
+              { color: '#f97316', label: '$4.75/hr' },
+              { color: '#dc2626', label: '$7.00/hr' },
+              { color: '#7f1d1d', label: '$14.00/hr' },
+            ].map(({ color, label }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', marginBottom: '3px' }}>
+                <div style={{
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: color,
+                  borderRadius: '50%',
+                  marginRight: '8px',
+                  flexShrink: 0,
+                  opacity: 0.8
+                }} />
+                <span>{label}</span>
+              </div>
+            ))}
+            <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '4px' }}>
+              Zoom in to see meters ({meterLocations.length.toLocaleString()} total)
             </div>
           </div>
         )}

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraLocation } from '../data/chicago-cameras';
 import AuthService from './AuthService';
+import AppEvents from './AppEvents';
 import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
 
@@ -172,6 +173,7 @@ class CameraPassHistoryServiceClass {
       const history: CameraPassHistoryItem[] = stored ? JSON.parse(stored) : [];
       const updated = [item, ...history].slice(0, MAX_CAMERA_PASS_ITEMS);
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      AppEvents.emit('camera-pass-history-updated');
       syncAddToServer(item);
     } catch (error) {
       log.error('Error adding camera pass history item', error);
@@ -181,6 +183,7 @@ class CameraPassHistoryServiceClass {
   async clearHistory(): Promise<void> {
     try {
       await AsyncStorage.removeItem(HISTORY_KEY);
+      AppEvents.emit('camera-pass-history-updated');
     } catch (error) {
       log.error('Error clearing camera pass history', error);
     }

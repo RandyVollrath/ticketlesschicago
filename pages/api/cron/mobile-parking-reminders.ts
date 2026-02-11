@@ -6,7 +6,7 @@
  *
  * Runs every 15 minutes to catch all enforcement start times.
  *
- * - Permit zones: 15 minutes before actual enforcement start (parsed from schedule)
+ * - Permit zones: 30 minutes before actual enforcement start (parsed from schedule)
  * - Street cleaning: 7am morning-of + 8pm night-before
  * - Winter ban: 9pm (ban starts at 3am)
  */
@@ -77,10 +77,10 @@ function parseDayRange(dayStr: string): number[] {
   return single !== undefined ? [single] : [1, 2, 3, 4, 5];
 }
 
-const ADVANCE_WARNING_MINUTES = 15;
+const ADVANCE_WARNING_MINUTES = 30;
 
 /**
- * Check if enforcement starts within the next 15 minutes for this vehicle.
+ * Check if enforcement starts within the next 30 minutes for this vehicle.
  * Returns the enforcement start time if a notification should be sent now, null otherwise.
  * Handles schedules like "Mon-Fri 6pm-9:30am", "Mon-Fri 8am-6pm", etc.
  */

@@ -49,11 +49,12 @@ interface SettingRowProps {
   title: string;
   subtitle?: string;
   value: boolean;
+  disabled?: boolean;
   onValueChange: (value: boolean) => void;
 }
 
 const SettingRow: React.FC<SettingRowProps> = ({
-  icon, iconColor = colors.textSecondary, title, subtitle, value, onValueChange,
+  icon, iconColor = colors.textSecondary, title, subtitle, value, disabled = false, onValueChange,
 }) => (
   <View style={styles.settingRow} accessibilityLabel={`${title}${subtitle ? `, ${subtitle}` : ''}, ${value ? 'on' : 'off'}`}>
     <MaterialCommunityIcons name={icon} size={20} color={iconColor} style={styles.rowIcon} />
@@ -64,6 +65,7 @@ const SettingRow: React.FC<SettingRowProps> = ({
     <Switch
       value={value}
       onValueChange={onValueChange}
+      disabled={disabled}
       trackColor={{ false: colors.border, true: colors.primaryLight }}
       thumbColor={value ? colors.primary : colors.textTertiary}
       accessibilityLabel={title}
@@ -134,6 +136,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
   const [speedCameraAlertsEnabled, setSpeedCameraAlertsEnabled] = useState(false);
   const [redLightCameraAlertsEnabled, setRedLightCameraAlertsEnabled] = useState(false);
+  const [cameraSettingsLoaded, setCameraSettingsLoaded] = useState(false);
+  const [meterExpiryAlertsEnabled, setMeterExpiryAlertsEnabled] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -178,9 +182,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     loadSettings();
     loadSavedCar();
     loadHomePermitZone();
-    setCameraAlertsEnabled(CameraAlertService.isAlertEnabled());
-    setSpeedCameraAlertsEnabled(CameraAlertService.isSpeedAlertsEnabled());
-    setRedLightCameraAlertsEnabled(CameraAlertService.isRedLightAlertsEnabled());
+    loadCameraAlertSettings();
+    loadMeterExpiryAlertSetting();
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
     });
@@ -188,7 +191,10 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => { loadSavedCar(); });
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadSavedCar();
+      loadCameraAlertSettings();
+    });
     return unsubscribe;
   }, [navigation]);
 
@@ -218,6 +224,37 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       log.error('Error loading saved car', error);
     }
   }, []);
+
+  const loadCameraAlertSettings = useCallback(async () => {
+    try {
+      const cameraSettings = await CameraAlertService.getSettings();
+      if (!isMountedRef.current) return;
+      setCameraAlertsEnabled(cameraSettings.enabled);
+      setSpeedCameraAlertsEnabled(cameraSettings.speedEnabled);
+      setRedLightCameraAlertsEnabled(cameraSettings.redLightEnabled);
+    } catch (error) {
+      log.error('Error loading camera alert settings', error);
+    } finally {
+      if (isMountedRef.current) setCameraSettingsLoaded(true);
+    }
+  }, []);
+
+  const loadMeterExpiryAlertSetting = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('meterExpiryAlertsEnabled');
+      if (!isMountedRef.current) return;
+      // Default to true if never set
+      setMeterExpiryAlertsEnabled(stored === null ? true : stored === 'true');
+    } catch (error) {
+      log.error('Error loading meter expiry alert setting', error);
+    }
+  }, []);
+
+  const toggleMeterExpiryAlerts = useCallback(async (value: boolean) => {
+    setMeterExpiryAlertsEnabled(value);
+    await AsyncStorage.setItem('meterExpiryAlertsEnabled', value.toString());
+    showFeedback(value ? 'Meter expiry alerts enabled' : 'Meter expiry alerts disabled');
+  }, [showFeedback]);
 
   /**
    * Load home permit zone from AsyncStorage (local cache).
@@ -311,28 +348,45 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, [showFeedback]);
 
   const toggleCameraAlerts = useCallback(async (value: boolean) => {
-    setCameraAlertsEnabled(value);
-    setSpeedCameraAlertsEnabled(value);
-    setRedLightCameraAlertsEnabled(value);
-    await CameraAlertService.setEnabled(value);
-    showFeedback(value ? 'Camera alerts enabled' : 'Camera alerts disabled');
-  }, [showFeedback]);
+    try {
+      setCameraAlertsEnabled(value);
+      setSpeedCameraAlertsEnabled(value);
+      setRedLightCameraAlertsEnabled(value);
+      await CameraAlertService.setEnabled(value);
+      await loadCameraAlertSettings();
+      showFeedback(value ? 'Camera alerts enabled' : 'Camera alerts disabled');
+    } catch (error) {
+      log.error('Error updating camera alerts', error);
+      await loadCameraAlertSettings();
+      Alert.alert('Save failed', 'Could not save camera alert settings. Please try again.');
+    }
+  }, [loadCameraAlertSettings, showFeedback]);
 
   const toggleSpeedCameraAlerts = useCallback(async (value: boolean) => {
-    setSpeedCameraAlertsEnabled(value);
-    await CameraAlertService.setSpeedAlertsEnabled(value);
-    const allEnabled = value || CameraAlertService.isRedLightAlertsEnabled();
-    setCameraAlertsEnabled(allEnabled);
-    showFeedback(value ? 'Speed camera alerts enabled' : 'Speed camera alerts disabled');
-  }, [showFeedback]);
+    try {
+      setSpeedCameraAlertsEnabled(value);
+      await CameraAlertService.setSpeedAlertsEnabled(value);
+      await loadCameraAlertSettings();
+      showFeedback(value ? 'Speed camera alerts enabled' : 'Speed camera alerts disabled');
+    } catch (error) {
+      log.error('Error updating speed camera alerts', error);
+      await loadCameraAlertSettings();
+      Alert.alert('Save failed', 'Could not save speed camera setting. Please try again.');
+    }
+  }, [loadCameraAlertSettings, showFeedback]);
 
   const toggleRedLightCameraAlerts = useCallback(async (value: boolean) => {
-    setRedLightCameraAlertsEnabled(value);
-    await CameraAlertService.setRedLightAlertsEnabled(value);
-    const allEnabled = value || CameraAlertService.isSpeedAlertsEnabled();
-    setCameraAlertsEnabled(allEnabled);
-    showFeedback(value ? 'Red-light alerts enabled' : 'Red-light alerts disabled');
-  }, [showFeedback]);
+    try {
+      setRedLightCameraAlertsEnabled(value);
+      await CameraAlertService.setRedLightAlertsEnabled(value);
+      await loadCameraAlertSettings();
+      showFeedback(value ? 'Red-light alerts enabled' : 'Red-light alerts disabled');
+    } catch (error) {
+      log.error('Error updating red-light camera alerts', error);
+      await loadCameraAlertSettings();
+      Alert.alert('Save failed', 'Could not save red-light camera setting. Please try again.');
+    }
+  }, [loadCameraAlertSettings, showFeedback]);
 
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
     saveSettings({ ...settings, [key]: value });
@@ -514,10 +568,11 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             iconColor={colors.info}
             title="Camera Alerts (BETA)"
             subtitle="Audio alerts when approaching speed & red light cameras while driving"
-            value={cameraAlertsEnabled}
+            value={cameraSettingsLoaded ? cameraAlertsEnabled : false}
+            disabled={!cameraSettingsLoaded}
             onValueChange={toggleCameraAlerts}
           />
-          {cameraAlertsEnabled && (
+          {cameraSettingsLoaded && cameraAlertsEnabled && (
             <>
               <Divider />
               <SettingRow
@@ -562,6 +617,15 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               />
             </>
           )}
+          <Divider />
+          <SettingRow
+            icon="timer-alert-outline"
+            iconColor={colors.warning}
+            title="Meter Expiry Alerts"
+            subtitle="Notify when max meter time is about to expire"
+            value={meterExpiryAlertsEnabled}
+            onValueChange={toggleMeterExpiryAlerts}
+          />
         </Section>
 
         {/* Permit Zone */}

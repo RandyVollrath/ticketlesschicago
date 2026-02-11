@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from './AuthService';
+import AppEvents from './AppEvents';
 import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
 
@@ -192,6 +193,7 @@ class RedLightReceiptServiceClass {
   async clearReceipts(): Promise<void> {
     try {
       await AsyncStorage.removeItem(RECEIPTS_KEY);
+      AppEvents.emit('red-light-receipts-updated');
     } catch (error) {
       log.error('failed to clear red-light receipts', error);
     }
@@ -211,6 +213,7 @@ class RedLightReceiptServiceClass {
       const existing: RedLightReceipt[] = stored ? JSON.parse(stored) : [];
       const updated = [receipt, ...existing].slice(0, MAX_RECEIPTS);
       await AsyncStorage.setItem(RECEIPTS_KEY, JSON.stringify(updated));
+      AppEvents.emit('red-light-receipts-updated');
       syncAddToServer(receipt);
     } catch (error) {
       log.error('failed to store red-light receipt', error);

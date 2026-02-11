@@ -213,40 +213,6 @@ export default function EmailForwardingSetup({ forwardingEmail }: EmailForwardin
               </div>
             </details>
 
-            {/* Registration Receipt Instructions */}
-            <details className="group border border-gray-200 rounded-lg">
-              <summary className="cursor-pointer px-4 py-3 font-medium text-gray-900 hover:bg-gray-50">
-                Registration Purchase Emails (SEBIS + Illinois SOS)
-              </summary>
-              <div className="px-4 pb-4 pt-2 text-sm text-gray-600 space-y-2">
-                <p className="font-medium text-gray-700">
-                  Forward purchase emails from:
-                </p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li><code className="bg-gray-100 px-2 py-0.5 rounded">chicagovehiclestickers@sebis.com</code> (city sticker)</li>
-                  <li><code className="bg-gray-100 px-2 py-0.5 rounded">ecommerce@ilsos.gov</code> (license plate sticker)</li>
-                </ul>
-
-                <p>
-                  We store these receipts as evidence that you purchased registration on time. If you get ticketed before the sticker is applied,
-                  this gives us proof for contesting.
-                </p>
-
-                <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>In Gmail, click <strong>Show search options</strong></li>
-                  <li>Set <strong>From</strong> to one sender at a time and create a filter for each sender above</li>
-                  <li>Click <strong>Create filter</strong></li>
-                  <li>Check <strong>Forward it to</strong> and choose: <code className="bg-gray-100 px-2 py-0.5 rounded text-xs break-all">{forwardingEmail}</code></li>
-                  <li>Click <strong>Create filter</strong></li>
-                </ol>
-
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                  <p className="text-xs text-blue-800">
-                    Forwarding receipts is optional but strongly recommended for contest evidence.
-                  </p>
-                </div>
-              </div>
-            </details>
           </div>
         </div>
 

@@ -92,6 +92,9 @@
     },
     "pages/api/cron/sync-cameras.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/sync-metered-parking.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -178,6 +181,10 @@
     {
       "path": "/api/cron/check-relocated-vehicles",
       "schedule": "7,22,37,52 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-metered-parking",
+      "schedule": "10 2 * * 0"
     }
   ],
   "headers": [

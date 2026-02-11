@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../dashboard';
+import { getEvidenceGuidance } from '../../lib/contest-kits/evidence-guidance';
 
 const COLORS = {
   deepHarbor: '#0F172A',
@@ -42,6 +43,15 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   failed: { label: 'Failed', color: COLORS.danger, bg: 'rgba(220, 38, 38, 0.1)' },
 };
 
+const FOIA_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  queued: { label: 'Queued', color: COLORS.warning, bg: 'rgba(245, 158, 11, 0.1)' },
+  drafting: { label: 'Drafting', color: COLORS.regulatory, bg: 'rgba(37, 99, 235, 0.1)' },
+  sent: { label: 'Sent', color: COLORS.regulatory, bg: 'rgba(37, 99, 235, 0.1)' },
+  fulfilled: { label: 'Fulfilled', color: COLORS.signal, bg: 'rgba(16, 185, 129, 0.1)' },
+  failed: { label: 'Failed', color: COLORS.danger, bg: 'rgba(220, 38, 38, 0.1)' },
+  not_needed: { label: 'Not Needed', color: COLORS.slate, bg: 'rgba(100, 116, 139, 0.1)' },
+};
+
 interface Ticket {
   id: string;
   plate: string;
@@ -74,6 +84,15 @@ interface Letter {
   last_tracking_update: string | null;
 }
 
+interface FoiaRequest {
+  id: string;
+  status: string;
+  request_type: string;
+  requested_at: string;
+  sent_at: string | null;
+  fulfilled_at: string | null;
+}
+
 const DELIVERY_STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   created: { label: 'Processing', color: COLORS.slate, icon: '📝' },
   processing: { label: 'Processing', color: COLORS.slate, icon: '⏳' },
@@ -92,7 +111,10 @@ export default function TicketDetailPage() {
   const [letter, setLetter] = useState<Letter | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [foiaLoading, setFoiaLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [foiaRequest, setFoiaRequest] = useState<FoiaRequest | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -106,6 +128,7 @@ export default function TicketDetailPage() {
       router.push('/get-started');
       return;
     }
+    setCurrentUserId(session.user.id);
 
     // Load ticket
     const { data: ticketData, error: ticketError } = await supabase
@@ -134,7 +157,47 @@ export default function TicketDetailPage() {
       setLetter(letterData);
     }
 
+    const { data: foiaData } = await supabase
+      .from('ticket_foia_requests' as any)
+      .select('id, status, request_type, requested_at, sent_at, fulfilled_at')
+      .eq('ticket_id', id)
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    if (foiaData) {
+      setFoiaRequest(foiaData as unknown as FoiaRequest);
+    }
+
     setLoading(false);
+  };
+
+  const handleQueueFoiaRequest = async () => {
+    if (!ticket || !currentUserId || foiaRequest) return;
+    setFoiaLoading(true);
+    try {
+      const payload = {
+        ticket_id: ticket.id,
+        user_id: currentUserId,
+        contest_letter_id: letter?.id || null,
+        request_type: 'ticket_evidence_packet',
+        status: 'queued',
+        source: 'user_ticket_page',
+      };
+
+      const { data, error: insertError } = await supabase
+        .from('ticket_foia_requests' as any)
+        .insert(payload as any)
+        .select('id, status, request_type, requested_at, sent_at, fulfilled_at')
+        .single();
+
+      if (insertError) {
+        alert(`Could not queue FOIA request: ${insertError.message}`);
+      } else {
+        setFoiaRequest(data as unknown as FoiaRequest);
+      }
+    } finally {
+      setFoiaLoading(false);
+    }
   };
 
   const handleApprove = async () => {
@@ -191,6 +254,23 @@ export default function TicketDetailPage() {
       </span>
     );
   };
+
+  const guidance = ticket ? getEvidenceGuidance(ticket.violation_type) : null;
+  const winRatePct = guidance ? Math.round(guidance.winRate * 100) : null;
+  const likelihoodLabel = winRatePct == null
+    ? 'Unknown'
+    : winRatePct >= 60
+      ? 'Strong contest odds'
+      : winRatePct >= 40
+        ? 'Moderate contest odds'
+        : 'Challenging contest odds';
+  const likelihoodColor = winRatePct == null
+    ? COLORS.slate
+    : winRatePct >= 60
+      ? COLORS.signal
+      : winRatePct >= 40
+        ? COLORS.warning
+        : COLORS.danger;
 
   if (loading) {
     return (
@@ -404,6 +484,99 @@ export default function TicketDetailPage() {
           )}
         </section>
 
+        {/* Contest Readiness */}
+        {guidance && (
+          <section style={{
+            backgroundColor: COLORS.white,
+            borderRadius: 12,
+            border: `1px solid ${COLORS.border}`,
+            padding: 24,
+            marginBottom: 24,
+          }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 12px 0' }}>
+              Contest Readiness
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: 16,
+                fontSize: 13,
+                fontWeight: 700,
+                color: likelihoodColor,
+                backgroundColor: `${likelihoodColor}1A`,
+              }}>
+                {likelihoodLabel}
+              </span>
+              {winRatePct != null && (
+                <span style={{ fontSize: 14, color: COLORS.graphite }}>
+                  FOIA-based baseline win rate: <strong>{winRatePct}%</strong>
+                </span>
+              )}
+            </div>
+
+            <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 10px 0' }}>
+              Best evidence to gather now:
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 18, color: COLORS.graphite, fontSize: 14, lineHeight: 1.7 }}>
+              {guidance.questions.slice(0, 3).map((q, idx) => (
+                <li key={idx}>{q.text}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* FOIA Tracking */}
+        <section style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 12,
+          border: `1px solid ${COLORS.border}`,
+          padding: 24,
+          marginBottom: 24,
+        }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 12px 0' }}>
+            FOIA Evidence Tracking
+          </h2>
+          <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 14px 0' }}>
+            We can queue a FOIA records request tied to this contested ticket so evidence and outcomes are tracked end-to-end.
+          </p>
+
+          {foiaRequest ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: 16,
+                fontSize: 13,
+                fontWeight: 700,
+                color: FOIA_STATUS_LABELS[foiaRequest.status]?.color || COLORS.slate,
+                backgroundColor: FOIA_STATUS_LABELS[foiaRequest.status]?.bg || 'rgba(100, 116, 139, 0.1)',
+              }}>
+                {FOIA_STATUS_LABELS[foiaRequest.status]?.label || foiaRequest.status}
+              </span>
+              <span style={{ fontSize: 13, color: COLORS.slate }}>
+                Requested {new Date(foiaRequest.requested_at).toLocaleDateString()}
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={handleQueueFoiaRequest}
+              disabled={foiaLoading}
+              style={{
+                padding: '10px 16px',
+                borderRadius: 8,
+                border: 'none',
+                backgroundColor: COLORS.deepHarbor,
+                color: COLORS.white,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: foiaLoading ? 'not-allowed' : 'pointer',
+                opacity: foiaLoading ? 0.7 : 1,
+              }}
+            >
+              {foiaLoading ? 'Queueing...' : 'Queue FOIA Request'}
+            </button>
+          )}
+        </section>
+
         {/* Contest Letter */}
         {letter && (
           <section style={{
@@ -572,6 +745,13 @@ export default function TicketDetailPage() {
                   <TimelineItem
                     label="Letter Mailed"
                     date={letter.mailed_at}
+                    active={true}
+                  />
+                )}
+                {foiaRequest && (
+                  <TimelineItem
+                    label={`FOIA ${FOIA_STATUS_LABELS[foiaRequest.status]?.label || foiaRequest.status}`}
+                    date={foiaRequest.requested_at}
                     active={true}
                   />
                 )}
