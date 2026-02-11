@@ -22,7 +22,7 @@ const LAYER_COLORS = {
   winterBan: '#06B6D4',
   permitZone: '#8B5CF6',
   searchPin: '#0066FF',
-  meter: '#F59E0B',
+  meter: '#0d9488',
 };
 
 function daysBetween(a: string, b: Date): number {
@@ -38,12 +38,8 @@ function cleaningColor(nextISO: string | null): string {
   return LAYER_COLORS.cleaningLater;
 }
 
-function meterColor(rate: number): string {
-  if (rate <= 0.5) return '#16a34a';   // green — free/low
-  if (rate <= 2.5) return '#2563eb';   // blue
-  if (rate <= 4.75) return '#f97316';  // orange
-  if (rate <= 7) return '#ef4444';     // red
-  return '#dc2626';                    // dark red — CLZ
+function meterColor(_rate: number): string {
+  return '#0d9488'; // uniform teal — rate details shown in popup on tap
 }
 
 function cleaningLabel(nextISO: string | null): string {
@@ -471,10 +467,6 @@ export default function DestinationMapView() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%', flexShrink: 0 }} />
                 <span style={{ color: '#374151' }}>Parking meter</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.searchPin, borderRadius: '50%', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Your destination</span>
               </div>
             </div>
           </div>
