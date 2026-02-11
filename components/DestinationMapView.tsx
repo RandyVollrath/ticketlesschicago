@@ -38,8 +38,12 @@ function cleaningColor(nextISO: string | null): string {
   return LAYER_COLORS.cleaningLater;
 }
 
-function meterColor(_rate: number): string {
-  return '#0d9488'; // uniform teal — rate details shown in popup on tap
+function meterColor(rate: number): string {
+  if (rate <= 0.5) return '#5eead4';   // teal-300 — free/low
+  if (rate <= 2.5) return '#2dd4bf';   // teal-400 — affordable
+  if (rate <= 4.75) return '#14b8a6';  // teal-500 — moderate
+  if (rate <= 7) return '#0d9488';     // teal-600 — expensive
+  return '#0f766e';                    // teal-700 — CLZ/premium
 }
 
 function cleaningLabel(nextISO: string | null): string {

@@ -235,9 +235,14 @@ const MapController = ({
   return null;
 };
 
-// Uniform teal for all meter dots — rate details shown in popup on tap
-function getMeterColor(_rate: string | number): string {
-  return '#0d9488';
+// Teal gradient: all meters read as "teal" but shade indicates rate
+function getMeterColor(rate: string | number): string {
+  const r = typeof rate === 'number' ? rate : parseFloat(rate);
+  if (r <= 0.5) return '#5eead4';   // teal-300 — free/low
+  if (r <= 2.5) return '#2dd4bf';   // teal-400 — affordable
+  if (r <= 4.75) return '#14b8a6';  // teal-500 — moderate
+  if (r <= 7.0) return '#0d9488';   // teal-600 — expensive
+  return '#0f766e';                 // teal-700 — CLZ/premium
 }
 
 // Separate component so it can use useMap() for zoom-level filtering
