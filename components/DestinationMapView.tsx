@@ -1,18 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 
 /**
  * Lightweight Leaflet map for the "Check Destination Parking" feature.
  * Loaded via next/dynamic with ssr:false from pages/destination-map.tsx.
  *
- * Displays color-coded overlays for all 4 restriction types:
- * - Street cleaning zones (red/yellow/green/gray polygons)
- * - 2-inch snow ban routes (magenta lines)
- * - Winter overnight ban routes (cyan lines)
- * - Permit zone marker (purple pin if applicable)
+ * Two view modes:
+ *  1. Restriction View (default): Color by restriction type/timing
+ *  2. Parkability View: Color by "can I park here NOW?"
+ *     - Green  = Free street parking, no active restrictions
+ *     - Teal   = Metered parking (currently enforced)
+ *     - Light  = Metered parking (not enforced right now — free)
+ *     - Red    = Restricted NOW (cleaning today, snow/winter ban)
+ *     - Amber  = Restriction within 24hrs
+ *     - Gray   = No data
  */
 
-// --- Restriction layer colors ---
+// --- Restriction layer colors (original view) ---
 const LAYER_COLORS = {
   cleaningToday: '#EF4444',
   cleaningSoon: '#F59E0B',
@@ -25,6 +29,86 @@ const LAYER_COLORS = {
   meter: '#0d9488',
 };
 
+// --- Parkability colors ---
+const PARK_COLORS = {
+  free: '#22c55e',        // green-500 — free, legal, no restrictions
+  metered: '#0d9488',     // teal-600 — metered, enforced now
+  meterFree: '#99f6e4',   // teal-200 — metered but not enforced (free right now)
+  restricted: '#ef4444',  // red-500 — cannot park now
+  caution: '#f59e0b',     // amber-500 — restriction within 24hrs
+  noData: '#d1d5db',      // gray-300 — no schedule / unknown
+};
+
+// ---------------------------------------------------------------------------
+// Client-side meter enforcement check (mirrors server-side logic)
+// ---------------------------------------------------------------------------
+
+function isMeterEnforcedNow(rateDescription: string | null | undefined): boolean {
+  if (!rateDescription) return false;
+
+  // Use Chicago time
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const hour = now.getHours();
+  const day = now.getDay(); // 0=Sun … 6=Sat
+
+  if (rateDescription.includes('24/7')) return true;
+
+  const m = rateDescription.match(
+    /(Mon-Sat|Mon-Fri|Mon-Sun)\s+(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)/i,
+  );
+  if (!m) {
+    // Default: Mon-Sat 8am-10pm
+    if (day === 0) return false;
+    return hour >= 8 && hour < 22;
+  }
+
+  const [, dayRange, startStr, startAP, endStr, endAP] = m;
+
+  let startHour = parseInt(startStr, 10);
+  if (startAP.toUpperCase() === 'PM' && startHour !== 12) startHour += 12;
+  if (startAP.toUpperCase() === 'AM' && startHour === 12) startHour = 0;
+
+  let endHour = parseInt(endStr, 10);
+  if (endAP.toUpperCase() === 'PM' && endHour !== 12) endHour += 12;
+  if (endAP.toUpperCase() === 'AM' && endHour === 12) endHour = 0;
+
+  let dayInRange = false;
+  switch (dayRange.toLowerCase()) {
+    case 'mon-sat': dayInRange = day >= 1 && day <= 6; break;
+    case 'mon-fri': dayInRange = day >= 1 && day <= 5; break;
+    case 'mon-sun': dayInRange = true; break;
+  }
+
+  return dayInRange && hour >= startHour && hour < endHour;
+}
+
+function getMeterScheduleText(rateDescription: string | null | undefined): string {
+  if (!rateDescription) return 'Mon–Sat 8am–10pm';
+  if (rateDescription.includes('24/7')) return '24/7';
+  const m = rateDescription.match(
+    /(Mon-Sat|Mon-Fri|Mon-Sun)\s+(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)/i,
+  );
+  if (!m) return 'Mon–Sat 8am–10pm';
+  return `${m[1]} ${m[2]}${m[3].toLowerCase()}–${m[4]}${m[5].toLowerCase()}`;
+}
+
+// ---------------------------------------------------------------------------
+// Winter ban time check (Dec 1 - Apr 1, 3am-7am)
+// ---------------------------------------------------------------------------
+
+function isWinterBanActiveNow(): boolean {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const month = now.getMonth(); // 0-indexed: 0=Jan, 11=Dec
+  const hour = now.getHours();
+  const inSeason = month === 11 || month <= 2; // Dec, Jan, Feb, Mar
+  const inHours = hour >= 3 && hour < 7;
+  return inSeason && inHours;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function daysBetween(a: string, b: Date): number {
   const d = new Date(a);
   return Math.floor((d.getTime() - b.getTime()) / 86400000);
@@ -36,6 +120,14 @@ function cleaningColor(nextISO: string | null): string {
   if (days <= 0) return LAYER_COLORS.cleaningToday;
   if (days <= 3) return LAYER_COLORS.cleaningSoon;
   return LAYER_COLORS.cleaningLater;
+}
+
+function parkabilityZoneColor(nextISO: string | null): string {
+  if (!nextISO) return PARK_COLORS.free; // no cleaning scheduled → free
+  const days = daysBetween(nextISO, new Date());
+  if (days <= 0) return PARK_COLORS.restricted; // cleaning today → can't park
+  if (days <= 1) return PARK_COLORS.caution;     // cleaning tomorrow → caution
+  return PARK_COLORS.free;                       // cleaning later → free
 }
 
 function meterColor(rate: number): string {
@@ -63,8 +155,92 @@ export default function DestinationMapView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [parkabilityMode, setParkabilityMode] = useState(false);
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
+
+  // Store layer references + raw data for restyling on toggle
+  const layersRef = useRef<{
+    cleaningLayer: any;
+    snowLayer: any;
+    winterLayer: any;
+    meterLayer: any;
+    meters: any[];
+  }>({ cleaningLayer: null, snowLayer: null, winterLayer: null, meterLayer: null, meters: [] });
+
+  // Restyle all layers when parkability mode changes
+  const applyViewMode = useCallback((isParkability: boolean) => {
+    const { cleaningLayer, snowLayer, winterLayer, meterLayer, meters } = layersRef.current;
+
+    // --- Restyle cleaning zones ---
+    if (cleaningLayer) {
+      cleaningLayer.eachLayer((layer: any) => {
+        const nextISO = layer.feature?.properties?.nextISO;
+        if (isParkability) {
+          const color = parkabilityZoneColor(nextISO);
+          layer.setStyle({ fillColor: color, color, fillOpacity: 0.3, weight: 1.5, opacity: 0.7 });
+        } else {
+          const color = cleaningColor(nextISO);
+          layer.setStyle({ fillColor: color, color, fillOpacity: 0.25, weight: 1.5, opacity: 0.7 });
+        }
+      });
+    }
+
+    // --- Restyle snow routes ---
+    if (snowLayer) {
+      snowLayer.eachLayer((layer: any) => {
+        if (isParkability) {
+          // Snow bans are event-activated; show as caution (user should check if ban is declared)
+          layer.setStyle({ color: PARK_COLORS.caution, weight: 3.5, opacity: 0.85, dashArray: '8,4' });
+        } else {
+          layer.setStyle({ color: LAYER_COLORS.snowRoute, weight: 3.5, opacity: 0.85, dashArray: '8,4' });
+        }
+      });
+    }
+
+    // --- Restyle winter ban routes ---
+    if (winterLayer) {
+      const winterActive = isWinterBanActiveNow();
+      winterLayer.eachLayer((layer: any) => {
+        if (isParkability) {
+          layer.setStyle({
+            color: winterActive ? PARK_COLORS.restricted : PARK_COLORS.free,
+            weight: 3.5,
+            opacity: 0.85,
+            dashArray: '12,6',
+          });
+        } else {
+          layer.setStyle({ color: LAYER_COLORS.winterBan, weight: 3.5, opacity: 0.85, dashArray: '12,6' });
+        }
+      });
+    }
+
+    // --- Restyle meter dots ---
+    if (meterLayer) {
+      meterLayer.eachLayer((layer: any) => {
+        const m = layer._meterData;
+        if (!m) return;
+        const rate = typeof m.rate === 'number' ? m.rate : parseFloat(m.rate);
+        const enforced = isMeterEnforcedNow(m.rate_description);
+        if (isParkability) {
+          const color = enforced ? PARK_COLORS.metered : PARK_COLORS.meterFree;
+          layer.setStyle({ color, fillColor: color, fillOpacity: 0.8, weight: 1, opacity: 0.9 });
+        } else {
+          const color = meterColor(rate);
+          layer.setStyle({ color, fillColor: color, fillOpacity: 0.7, weight: 1, opacity: 0.9 });
+        }
+      });
+    }
+  }, []);
+
+  // Toggle handler — update state and restyle
+  const toggleParkability = useCallback(() => {
+    setParkabilityMode(prev => {
+      const next = !prev;
+      applyViewMode(next);
+      return next;
+    });
+  }, [applyViewMode]);
 
   useEffect(() => {
     if (!containerRef.current || !router.isReady) return;
@@ -145,7 +321,6 @@ export default function DestinationMapView() {
       }
       marker.on('dragend', async () => {
         const updated = marker.getLatLng();
-        // Show loading state immediately
         marker.bindPopup(`
           <div style="font-family:system-ui;min-width:180px">
             <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">Looking up address...</div>
@@ -153,7 +328,6 @@ export default function DestinationMapView() {
           </div>
         `, { maxWidth: 280 }).openPopup();
 
-        // Reverse geocode to get address
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${updated.lat}&lon=${updated.lng}&format=json&addressdetails=1`);
           const data = await res.json();
@@ -200,7 +374,7 @@ export default function DestinationMapView() {
               },
             }));
 
-          L.geoJSON(zones, {
+          const cleaningLayer = L.geoJSON(zones, {
             style: (feature: any) => {
               const color = cleaningColor(feature?.properties?.nextISO);
               return {
@@ -222,11 +396,12 @@ export default function DestinationMapView() {
               `, { maxWidth: 250 });
             },
           }).addTo(map);
+          layersRef.current.cleaningLayer = cleaningLayer;
         }
 
         // --- Snow ban routes ---
         if (snowRes?.routes?.length) {
-          L.geoJSON(snowRes.routes, {
+          const snowLayer = L.geoJSON(snowRes.routes, {
             style: () => ({
               color: LAYER_COLORS.snowRoute,
               weight: 3.5,
@@ -244,11 +419,12 @@ export default function DestinationMapView() {
               `, { maxWidth: 250 });
             },
           }).addTo(map);
+          layersRef.current.snowLayer = snowLayer;
         }
 
         // --- Winter ban routes ---
         if (winterRes?.routes?.length) {
-          L.geoJSON(winterRes.routes, {
+          const winterLayer = L.geoJSON(winterRes.routes, {
             style: () => ({
               color: LAYER_COLORS.winterBan,
               weight: 3.5,
@@ -266,22 +442,32 @@ export default function DestinationMapView() {
               `, { maxWidth: 250 });
             },
           }).addTo(map);
+          layersRef.current.winterLayer = winterLayer;
         }
 
         // --- Parking meters (visible at zoom 14+) ---
         if (meterRes?.meters?.length) {
+          layersRef.current.meters = meterRes.meters;
           const meterLayerGroup = L.layerGroup();
+
           meterRes.meters.forEach((m: any) => {
             const rate = typeof m.rate === 'number' ? m.rate : parseFloat(m.rate);
             const color = meterColor(rate);
-            L.circleMarker([m.latitude, m.longitude], {
+            const enforced = isMeterEnforcedNow(m.rate_description);
+            const schedule = getMeterScheduleText(m.rate_description);
+            const cm = L.circleMarker([m.latitude, m.longitude], {
               radius: 5,
               color,
               fillColor: color,
               fillOpacity: 0.7,
               weight: 1,
               opacity: 0.9,
-            }).bindPopup(`
+            });
+
+            // Stash meter data on the layer for restyling
+            (cm as any)._meterData = m;
+
+            cm.bindPopup(`
               <div style="font-family:system-ui;font-size:13px;min-width:160px">
                 <div style="font-weight:700;color:#1A1C1E;margin-bottom:2px">Parking Meter</div>
                 <div style="color:#6C727A">${m.address}</div>
@@ -290,9 +476,17 @@ export default function DestinationMapView() {
                   ${m.time_limit_hours ? `<span style="padding:2px 8px;background:#f1f5f9;color:#475569;border-radius:4px;font-size:12px">${m.time_limit_hours}hr limit</span>` : ''}
                   ${m.is_clz ? `<span style="padding:2px 8px;background:#fef2f2;color:#dc2626;border-radius:4px;font-size:12px;font-weight:600">CLZ</span>` : ''}
                 </div>
-                <div style="color:#94A3B8;font-size:11px;margin-top:4px">${m.spaces || '?'} spaces</div>
+                <div style="color:#94A3B8;font-size:11px;margin-top:4px">
+                  ${enforced
+                    ? `<span style="color:#ef4444;font-weight:600">Enforced now</span> · ${schedule}`
+                    : `<span style="color:#22c55e;font-weight:600">Free right now</span> · Enforced ${schedule}`
+                  }
+                </div>
+                <div style="color:#94A3B8;font-size:11px;margin-top:2px">${m.spaces || '?'} spaces</div>
               </div>
-            `, { maxWidth: 260 }).addTo(meterLayerGroup);
+            `, { maxWidth: 260 });
+
+            cm.addTo(meterLayerGroup);
           });
 
           // Show meters only when zoomed in enough
@@ -302,7 +496,8 @@ export default function DestinationMapView() {
             else { if (map.hasLayer(meterLayerGroup)) map.removeLayer(meterLayerGroup); }
           };
           map.on('zoomend', updateMeterVisibility);
-          updateMeterVisibility(); // initial check (starts at zoom 16, so meters will show)
+          updateMeterVisibility();
+          layersRef.current.meterLayer = meterLayerGroup;
         }
 
       } catch (err) {
@@ -335,6 +530,8 @@ export default function DestinationMapView() {
     );
   }
 
+  const permitZone = (router.query.permitZone as string) || '';
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       {/* Map container */}
@@ -357,6 +554,70 @@ export default function DestinationMapView() {
             }} />
             <div style={{ fontFamily: 'system-ui', fontSize: '14px', color: '#6C727A' }}>Loading restrictions...</div>
           </div>
+        </div>
+      )}
+
+      {/* Parkability toggle — top right */}
+      {!loading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            zIndex: 1000,
+          }}
+        >
+          <button
+            onClick={toggleParkability}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 14px',
+              backgroundColor: parkabilityMode ? '#22c55e' : 'rgba(255,255,255,0.95)',
+              color: parkabilityMode ? '#fff' : '#374151',
+              border: parkabilityMode ? '2px solid #16a34a' : '2px solid #e5e7eb',
+              borderRadius: '24px',
+              fontFamily: 'system-ui',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+              transition: 'all 0.2s ease',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>{parkabilityMode ? 'P' : 'P'}</span>
+            {parkabilityMode ? 'Where to park' : 'Where to park'}
+          </button>
+        </div>
+      )}
+
+      {/* Permit zone banner — shows if destination is in a permit zone */}
+      {permitZone && !loading && (
+        <div style={{
+          position: 'absolute',
+          top: '56px',
+          left: '12px',
+          right: '12px',
+          zIndex: 1000,
+          backgroundColor: parkabilityMode ? '#fef3c7' : '#F3E8FF',
+          border: parkabilityMode ? '1px solid #f59e0b' : '1px solid #c4b5fd',
+          borderRadius: '10px',
+          padding: '8px 14px',
+          fontFamily: 'system-ui',
+          fontSize: '12px',
+          color: parkabilityMode ? '#92400e' : '#5b21b6',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <span style={{
+            width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+            backgroundColor: parkabilityMode ? '#f59e0b' : '#8b5cf6',
+          }} />
+          <span>
+            <strong>Permit Zone {permitZone}</strong> — permit required Mon–Fri 6am–6pm
+          </span>
         </div>
       )}
 
@@ -387,11 +648,9 @@ export default function DestinationMapView() {
         onTouchEnd={(e) => {
           const dy = e.changedTouches[0].clientY - touchStartY.current;
           if (touchMoved.current) {
-            // Swipe gesture
             if (dy > 30) setLegendCollapsed(true);
             else if (dy < -30) setLegendCollapsed(false);
           } else {
-            // Tap — toggle
             setLegendCollapsed((c) => !c);
           }
         }}
@@ -414,65 +673,114 @@ export default function DestinationMapView() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             gap: '6px', paddingBottom: '10px',
           }}>
-            {[
-              LAYER_COLORS.cleaningToday,
-              LAYER_COLORS.cleaningSoon,
-              LAYER_COLORS.cleaningLater,
-              LAYER_COLORS.snowRoute,
-              LAYER_COLORS.winterBan,
-              LAYER_COLORS.permitZone,
-              LAYER_COLORS.meter,
-            ].map((c, i) => (
-              <div key={i} style={{
-                width: '8px', height: '8px', borderRadius: '50%',
-                backgroundColor: c, flexShrink: 0,
-              }} />
-            ))}
+            {parkabilityMode ? (
+              /* Parkability collapsed dots */
+              <>
+                {[PARK_COLORS.free, PARK_COLORS.metered, PARK_COLORS.meterFree, PARK_COLORS.caution, PARK_COLORS.restricted].map((c, i) => (
+                  <div key={i} style={{
+                    width: '8px', height: '8px', borderRadius: '50%',
+                    backgroundColor: c, flexShrink: 0,
+                  }} />
+                ))}
+              </>
+            ) : (
+              /* Restriction collapsed dots */
+              <>
+                {[
+                  LAYER_COLORS.cleaningToday,
+                  LAYER_COLORS.cleaningSoon,
+                  LAYER_COLORS.cleaningLater,
+                  LAYER_COLORS.snowRoute,
+                  LAYER_COLORS.winterBan,
+                  LAYER_COLORS.permitZone,
+                  LAYER_COLORS.meter,
+                ].map((c, i) => (
+                  <div key={i} style={{
+                    width: '8px', height: '8px', borderRadius: '50%',
+                    backgroundColor: c, flexShrink: 0,
+                  }} />
+                ))}
+              </>
+            )}
             <span style={{ fontSize: '11px', color: '#9CA3AF', marginLeft: '2px' }}>Map Key</span>
           </div>
         ) : (
           /* Expanded: full legend */
           <div style={{ padding: '4px 16px 12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#1A1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Parking Restrictions
-            </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>
-              Drag the blue pin to fine-tune location.
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningToday, borderRadius: '2px', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Cleaning today</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningSoon, borderRadius: '2px', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Cleaning 1-3 days</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningLater, borderRadius: '2px', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Cleaning later</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningNone, borderRadius: '2px', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>No schedule</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.snowRoute, borderRadius: '2px', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Snow ban route</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.winterBan, borderRadius: '2px', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Winter ban route</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '50%', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Permit zone</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%', flexShrink: 0 }} />
-                <span style={{ color: '#374151' }}>Parking meter</span>
-              </div>
-            </div>
+            {parkabilityMode ? (
+              /* ====== PARKABILITY LEGEND ====== */
+              <>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#1A1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Where Can I Park?
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.free, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Free parking</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.metered, borderRadius: '50%', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Metered (pay now)</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.meterFree, borderRadius: '50%', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Meter (free now)</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.caution, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Restriction soon</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Can't park now</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* ====== RESTRICTION LEGEND ====== */
+              <>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#1A1C1E', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Parking Restrictions
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>
+                  Drag the blue pin to fine-tune location.
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningToday, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Cleaning today</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningSoon, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Cleaning 1-3 days</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningLater, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Cleaning later</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningNone, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>No schedule</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.snowRoute, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Snow ban route</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.winterBan, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Winter ban route</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '50%', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit zone</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Parking meter</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
