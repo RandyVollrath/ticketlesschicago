@@ -207,11 +207,11 @@ class LocalNotificationServiceClass {
         break;
 
       case 'permit_zone':
-        hoursBefore = 0; // Time is pre-computed (7am)
+        hoursBefore = 0; // Time is pre-computed (enforcement start minus 15 min)
         notificationId = `${NOTIFICATION_PREFIX.PERMIT_ZONE}${Date.now()}`;
-        channelId = 'reminders';
-        title = '🅿️ Permit Zone — Move by 8am';
-        body = `${address}\n${details || 'Enforcement starts at 8am — move your car or risk a $60 ticket.'}`;
+        channelId = 'parking-alerts';
+        title = '🅿️ Permit Zone — Move Your Car!';
+        body = `${address}\n${details || 'Permit zone enforcement starting soon — move your car or risk a $65 ticket.'}`;
         break;
 
       case 'metered_parking':

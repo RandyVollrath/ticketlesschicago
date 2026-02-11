@@ -89,6 +89,9 @@
     },
     "pages/api/cron/check-relocated-vehicles.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/sync-cameras.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -107,6 +110,10 @@
     {
       "path": "/api/cron/sync-permit-zones",
       "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/sync-cameras",
+      "schedule": "5 2 * * 0"
     },
     {
       "path": "/api/cron/cleanup-permit-documents",
@@ -150,7 +157,7 @@
     },
     {
       "path": "/api/cron/mobile-parking-reminders",
-      "schedule": "0 3,4,10,11,12,13 * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/autopilot-export-plates",
