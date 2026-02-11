@@ -19,6 +19,7 @@
  * - Parking in Alley: 25%
  * - Bus Stop: 20%
  * - Bike Lane: 18%
+ * - Bus Lane: 25% (estimated - new Smart Streets program)
  */
 
 // Type exports
@@ -45,6 +46,7 @@ export { noStandingKit } from './no-standing';
 export { doubleParkingKit } from './double-parking';
 export { commercialLoadingKit } from './commercial-loading';
 export { missingPlateKit } from './missing-plate';
+export { busLaneKit } from './bus-lane';
 
 // Import kits for the registry
 import { streetCleaningKit } from './street-cleaning';
@@ -62,6 +64,7 @@ import { noStandingKit } from './no-standing';
 import { doubleParkingKit } from './double-parking';
 import { commercialLoadingKit } from './commercial-loading';
 import { missingPlateKit } from './missing-plate';
+import { busLaneKit } from './bus-lane';
 import { ContestKit } from './types';
 
 /**
@@ -88,6 +91,10 @@ export const CONTEST_KITS: Record<string, ContestKit> = {
   '9-64-110': doubleParkingKit,
   '9-64-160': commercialLoadingKit,
   '9-80-040': missingPlateKit,
+
+  // Bus lane (Smart Streets automated enforcement)
+  '9-12-060': busLaneKit,
+  '9-12-060(b)': busLaneKit, // Subsection alias
 };
 
 /**
@@ -112,6 +119,7 @@ export const VIOLATION_NAME_TO_CODE: Record<string, string> = {
   'commercial_loading': '9-64-160',
   'missing_plate': '9-80-040',
   'parking_prohibited': '9-64-140', // Same as no standing
+  'bus_lane': '9-12-060',
 };
 
 /**

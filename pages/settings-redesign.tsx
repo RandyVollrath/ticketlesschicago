@@ -63,6 +63,7 @@ const TICKET_TYPES = [
   { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 59 },
   { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
   { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
+  { id: 'bus_lane', label: 'Bus Lane (Smart Streets)', winRate: 25 },
   { id: 'red_light', label: 'Red Light Camera', winRate: 20 },
   { id: 'speed_camera', label: 'Speed Camera', winRate: 18 },
 ];
