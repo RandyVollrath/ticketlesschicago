@@ -4,10 +4,11 @@
  * Sends follow-up push notifications to mobile app users who are parked
  * in restricted zones before restrictions take effect.
  *
- * Runs at:
- * - 7am CT: Permit zone reminders (enforcement starts at 8am) + Street cleaning morning-of
- * - 8pm CT: Street cleaning night-before reminders (cleaning tomorrow)
- * - 9pm CT: Winter ban reminders (ban starts at 3am)
+ * Runs every 15 minutes to catch all enforcement start times.
+ *
+ * - Permit zones: 15 minutes before actual enforcement start (parsed from schedule)
+ * - Street cleaning: 7am morning-of + 8pm night-before
+ * - Winter ban: 9pm (ban starts at 3am)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -35,26 +36,89 @@ interface ParkedVehicle {
 }
 
 /**
- * Parse permit restriction schedule to get start hour
- * Examples: "Mon-Fri 6am-6pm" -> 6, "Mon-Fri 8am-6pm" -> 8
+ * Parse a time string like "6pm", "9:30am", "8am" to { hours, minutes }
  */
-function getPermitRestrictionStartHour(schedule: string | null): number | null {
-  if (!schedule) return null;
-
-  // Match patterns like "6am", "8am", "6:00am"
-  const match = schedule.match(/(\d{1,2})(?::\d{2})?\s*am/i);
-  if (match) {
-    return parseInt(match[1], 10);
-  }
-  return null;
+function parseTimeStr(timeStr: string): { hours: number; minutes: number } | null {
+  const match = timeStr.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+  if (!match) return null;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] ? parseInt(match[2], 10) : 0;
+  const period = match[3].toLowerCase();
+  if (period === 'pm' && hours !== 12) hours += 12;
+  if (period === 'am' && hours === 12) hours = 0;
+  return { hours, minutes };
 }
 
+const DAY_MAP: { [key: string]: number } = {
+  sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tuesday: 2,
+  wed: 3, wednesday: 3, thu: 4, thursday: 4, fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
 /**
- * Check if today is a weekday (permit zones typically Mon-Fri)
+ * Parse day range string to array of day numbers (0=Sun, 6=Sat)
  */
-function isWeekday(date: Date): boolean {
-  const day = date.getDay();
-  return day >= 1 && day <= 5;
+function parseDayRange(dayStr: string): number[] {
+  const parts = dayStr.toLowerCase().trim().split('-');
+  if (parts.length === 2) {
+    const start = DAY_MAP[parts[0].trim()];
+    const end = DAY_MAP[parts[1].trim()];
+    if (start === undefined || end === undefined) return [1, 2, 3, 4, 5];
+    const days: number[] = [];
+    if (start <= end) {
+      for (let i = start; i <= end; i++) days.push(i);
+    } else {
+      for (let i = start; i <= 6; i++) days.push(i);
+      for (let i = 0; i <= end; i++) days.push(i);
+    }
+    return days;
+  }
+  const single = DAY_MAP[dayStr.toLowerCase().trim()];
+  return single !== undefined ? [single] : [1, 2, 3, 4, 5];
+}
+
+const ADVANCE_WARNING_MINUTES = 15;
+
+/**
+ * Check if enforcement starts within the next 15 minutes for this vehicle.
+ * Returns the enforcement start time if a notification should be sent now, null otherwise.
+ * Handles schedules like "Mon-Fri 6pm-9:30am", "Mon-Fri 8am-6pm", etc.
+ */
+function getEnforcementStartingSoon(schedule: string | null, chicagoTime: Date): { enforcementStart: Date; enforcementTimeStr: string } | null {
+  if (!schedule) {
+    // Default: Mon-Fri 8am
+    schedule = 'Mon-Fri 8am-6pm';
+  }
+
+  const chicagoDay = chicagoTime.getDay();
+  const chicagoMs = chicagoTime.getTime();
+
+  const parts = schedule.split(',').map(s => s.trim());
+
+  for (const part of parts) {
+    const match = part.match(/^([a-zA-Z]+(?:-[a-zA-Z]+)?)\s+(\d{1,2}(?::\d{2})?\s*[ap]m)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*[ap]m)$/i);
+    if (!match) continue;
+
+    const days = parseDayRange(match[1]);
+    if (!days.includes(chicagoDay)) continue;
+
+    const startTime = parseTimeStr(match[2]);
+    if (!startTime) continue;
+
+    // Build enforcement start as a Date in Chicago time
+    const enforcementStart = new Date(chicagoTime);
+    enforcementStart.setHours(startTime.hours, startTime.minutes, 0, 0);
+
+    const msBefore = enforcementStart.getTime() - chicagoMs;
+
+    // Notify if enforcement starts within 0 to ADVANCE_WARNING_MINUTES from now
+    if (msBefore > 0 && msBefore <= ADVANCE_WARNING_MINUTES * 60 * 1000) {
+      const enforcementTimeStr = enforcementStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' });
+      return { enforcementStart, enforcementTimeStr };
+    }
+  }
+
+  return null;
 }
 
 export default async function handler(
@@ -199,46 +263,40 @@ export default async function handler(
           }
         }
 
-        // Permit zone reminder (7am check, enforcement typically starts at 8am)
-        // Only on weekdays since most permit zones are Mon-Fri
+        // Permit zone reminder — 15 minutes before actual enforcement start
+        // Uses the real schedule (e.g., "Mon-Fri 6pm-9:30am") instead of hardcoded 7am/8am
         // Only send once per parking session
         // Skip if user is parked in their own permit zone
-        if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.permit_zone && isWeekday(chicagoTime) && !vehicle.permit_zone_notified_at) {
-          // Permit zones are restricted — you WILL be ticketed without a permit.
-          // Always notify UNLESS the user has a permit for this exact zone.
-          // No zone set = no permit = definitely notify.
-          let isOwnZone = false;
-          try {
-            const { data: userProfile } = await supabaseAdmin
-              .from('user_profiles')
-              .select('permit_zone_number, vehicle_zone')
-              .eq('user_id', vehicle.user_id)
-              .single();
+        if (vehicle.permit_zone && !vehicle.permit_zone_notified_at) {
+          const enforcement = getEnforcementStartingSoon(vehicle.permit_restriction_schedule, chicagoTime);
 
-            if (userProfile) {
-              const homeZone = (userProfile.permit_zone_number || userProfile.vehicle_zone || '').toString().trim().toLowerCase().replace(/^zone\s*/i, '');
-              const parkedZone = (vehicle.permit_zone || '').trim().toLowerCase().replace(/^zone\s*/i, '');
+          if (enforcement) {
+            // Check if user has a permit for this zone
+            let isOwnZone = false;
+            try {
+              const { data: userProfile } = await supabaseAdmin
+                .from('user_profiles')
+                .select('permit_zone_number, vehicle_zone')
+                .eq('user_id', vehicle.user_id)
+                .single();
 
-              if (homeZone && parkedZone && homeZone === parkedZone) {
-                isOwnZone = true;
-                console.log(`Skipping permit zone notification for ${vehicle.user_id} — parked in own zone (${vehicle.permit_zone})`);
+              if (userProfile) {
+                const homeZone = (userProfile.permit_zone_number || userProfile.vehicle_zone || '').toString().trim().toLowerCase().replace(/^zone\s*/i, '');
+                const parkedZone = (vehicle.permit_zone || '').trim().toLowerCase().replace(/^zone\s*/i, '');
+
+                if (homeZone && parkedZone && homeZone === parkedZone) {
+                  isOwnZone = true;
+                  console.log(`Skipping permit zone notification for ${vehicle.user_id} — parked in own zone (${vehicle.permit_zone})`);
+                }
               }
-              // No homeZone = no permit = notify them
+            } catch (profileErr) {
+              console.warn(`Could not check permit zone for ${vehicle.user_id} — notifying to be safe:`, profileErr);
             }
-            // No profile = no permit = notify them
-          } catch (profileErr) {
-            // Can't look up profile — notify to be safe (they might not have a permit)
-            console.warn(`Could not check permit zone for ${vehicle.user_id} — notifying to be safe:`, profileErr);
-          }
 
-          if (!isOwnZone) {
-            const restrictionStartHour = getPermitRestrictionStartHour(vehicle.permit_restriction_schedule) || 8;
-
-            // Send reminder at 7am for 8am enforcement
-            if (chicagoHour < restrictionStartHour) {
+            if (!isOwnZone) {
               const result = await sendPushNotification(vehicle.fcm_token, {
-                title: 'Permit Zone - Move by 8am',
-                body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Enforcement starts at ${restrictionStartHour}am. Move now or risk a $65 ticket.`,
+                title: `Permit Zone — Move by ${enforcement.enforcementTimeStr}`,
+                body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Enforcement starts at ${enforcement.enforcementTimeStr}. Move now or risk a $65 ticket.`,
                 data: {
                   type: 'permit_reminder',
                   lat: vehicle.latitude?.toString(),
@@ -250,7 +308,7 @@ export default async function handler(
                   .update({ permit_zone_notified_at: new Date().toISOString() })
                   .eq('id', vehicle.id);
                 results.permitZoneReminders++;
-                console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
+                console.log(`Sent permit zone reminder to ${vehicle.user_id} — enforcement at ${enforcement.enforcementTimeStr}`);
               } else if (result.invalidToken) {
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })

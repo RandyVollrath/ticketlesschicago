@@ -1534,6 +1534,107 @@ class BackgroundTaskServiceClass {
    * - Permit zone: 7am (before 8am enforcement start)
    * - Snow ban: handled by server push notifications (weather-dependent)
    */
+  /**
+   * Parse a permit restriction schedule (e.g., "Mon-Fri 6pm-9:30am") and compute
+   * the next notification time = next enforcement start minus advanceMinutes.
+   * Handles overnight ranges, weekend skipping, and multi-schedule strings.
+   */
+  private getNextPermitEnforcementNotifyTime(schedule: string, advanceMinutes: number): Date | null {
+    const DAY_MAP: { [key: string]: number } = {
+      sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tuesday: 2,
+      wed: 3, wednesday: 3, thu: 4, thursday: 4, fri: 5, friday: 5,
+      sat: 6, saturday: 6,
+    };
+
+    const parseTime = (timeStr: string): number => {
+      // Parse "6pm", "9:30am", "8am", "12pm" etc. to fractional hours
+      const match = timeStr.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+      if (!match) return -1;
+      let hours = parseInt(match[1], 10);
+      const minutes = match[2] ? parseInt(match[2], 10) : 0;
+      const period = match[3].toLowerCase();
+      if (period === 'pm' && hours !== 12) hours += 12;
+      if (period === 'am' && hours === 12) hours = 0;
+      return hours + minutes / 60;
+    };
+
+    const parseDayRange = (dayStr: string): number[] => {
+      const parts = dayStr.toLowerCase().trim().split('-');
+      if (parts.length === 2) {
+        const start = DAY_MAP[parts[0].trim()];
+        const end = DAY_MAP[parts[1].trim()];
+        if (start === undefined || end === undefined) return [1, 2, 3, 4, 5];
+        const days: number[] = [];
+        if (start <= end) {
+          for (let i = start; i <= end; i++) days.push(i);
+        } else {
+          for (let i = start; i <= 6; i++) days.push(i);
+          for (let i = 0; i <= end; i++) days.push(i);
+        }
+        return days;
+      }
+      const single = DAY_MAP[dayStr.toLowerCase().trim()];
+      return single !== undefined ? [single] : [1, 2, 3, 4, 5];
+    };
+
+    // Split on comma for multi-schedule (e.g., "Mon-Fri 9am-5pm, Sat 9am-12pm")
+    const parts = schedule.split(',').map(s => s.trim());
+    const now = new Date();
+    let bestNotifyTime: Date | null = null;
+
+    for (const part of parts) {
+      // Match pattern: "Mon-Fri 6pm-9:30am" or "Sat 8am-6pm"
+      const match = part.match(/^([a-zA-Z]+(?:-[a-zA-Z]+)?)\s+(\d{1,2}(?::\d{2})?\s*[ap]m)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*[ap]m)$/i);
+      if (!match) continue;
+
+      const days = parseDayRange(match[1]);
+      const startHour = parseTime(match[2]);
+      if (startHour < 0) continue;
+
+      const startHourInt = Math.floor(startHour);
+      const startMinInt = Math.round((startHour - startHourInt) * 60);
+
+      // Look up to 7 days ahead for the next enforcement start on an allowed day
+      for (let daysAhead = 0; daysAhead < 7; daysAhead++) {
+        const candidate = new Date(now);
+        candidate.setDate(candidate.getDate() + daysAhead);
+        candidate.setHours(startHourInt, startMinInt, 0, 0);
+
+        const candidateDay = candidate.getDay();
+        if (!days.includes(candidateDay)) continue;
+
+        // Notify time is enforcement start minus advance warning
+        const notifyTime = new Date(candidate.getTime() - advanceMinutes * 60 * 1000);
+
+        // Must be in the future
+        if (notifyTime.getTime() <= now.getTime()) continue;
+
+        if (!bestNotifyTime || notifyTime < bestNotifyTime) {
+          bestNotifyTime = notifyTime;
+        }
+        break; // Found earliest for this schedule part
+      }
+    }
+
+    // Fallback: if parsing failed, use default Mon-Fri 8am with advance warning
+    if (!bestNotifyTime) {
+      for (let daysAhead = 0; daysAhead < 7; daysAhead++) {
+        const candidate = new Date(now);
+        candidate.setDate(candidate.getDate() + daysAhead);
+        candidate.setHours(8, 0, 0, 0);
+        const day = candidate.getDay();
+        if (day === 0 || day === 6) continue; // Skip weekends
+        const notifyTime = new Date(candidate.getTime() - advanceMinutes * 60 * 1000);
+        if (notifyTime.getTime() > now.getTime()) {
+          bestNotifyTime = notifyTime;
+          break;
+        }
+      }
+    }
+
+    return bestNotifyTime;
+  }
+
   private async scheduleRestrictionReminders(
     result: any,
     coords: { latitude: number; longitude: number }
@@ -1623,43 +1724,29 @@ class BackgroundTaskServiceClass {
       // If currently in ban hours (3am-7am), don't schedule - user should already know
     }
 
-    // Permit zone reminder — 7am before 8am enforcement
+    // Permit zone reminder — 15 minutes before actual enforcement start
     if (result.permitZone?.inPermitZone && !result.permitZone?.permitRequired) {
-      const now = new Date();
-      const currentHour = now.getHours();
-      const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+      const zoneName = result.permitZone.zoneName || 'Permit zone';
+      const schedule = result.permitZone.restrictionSchedule || 'Mon–Fri 8am–6pm (estimated)';
+      const ADVANCE_WARNING_MINUTES = 15;
 
-      // Schedule for 7am (1 hour before typical 8am enforcement start)
-      const next7am = new Date(now);
-      next7am.setHours(7, 0, 0, 0);
-      next7am.setMinutes(0);
-      next7am.setSeconds(0);
-      next7am.setMilliseconds(0);
+      // Parse the restriction schedule to find the next enforcement window
+      const notifyTime = this.getNextPermitEnforcementNotifyTime(schedule, ADVANCE_WARNING_MINUTES);
 
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      const isPast7amToday = currentHour >= 7;
+      if (notifyTime && notifyTime.getTime() > Date.now()) {
+        // Format the enforcement start time for display
+        const enforcementStart = new Date(notifyTime.getTime() + ADVANCE_WARNING_MINUTES * 60 * 1000);
+        const enforcementTimeStr = enforcementStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-      if (isWeekend || isPast7amToday) {
-        next7am.setDate(next7am.getDate() + 1);
-        // Skip weekends
-        let nextDay = next7am.getDay();
-        while (nextDay === 0 || nextDay === 6) {
-          next7am.setDate(next7am.getDate() + 1);
-          nextDay = next7am.getDay();
-        }
-      }
-
-      if (next7am.getTime() > Date.now()) {
-        const zoneName = result.permitZone.zoneName || 'Permit zone';
-        const schedule = result.permitZone.restrictionSchedule || 'Mon–Fri 8am–6pm (estimated)';
         restrictions.push({
           type: 'permit_zone',
-          restrictionStartTime: next7am,
+          restrictionStartTime: notifyTime,
           address: result.address || '',
-          details: `${zoneName} — enforcement: ${schedule}. Move by 8am or risk a $60 ticket.`,
+          details: `${zoneName} — enforcement starts at ${enforcementTimeStr}. Move now or risk a $65 ticket.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
+        log.info(`Scheduled permit zone notification for ${notifyTime.toLocaleString()} (15 min before ${enforcementTimeStr} enforcement)`);
       }
     }
 
