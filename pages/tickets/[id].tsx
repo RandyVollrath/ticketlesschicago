@@ -28,6 +28,12 @@ const VIOLATION_LABELS: Record<string, string> = {
   fire_hydrant: 'Fire Hydrant',
   red_light: 'Red Light Camera',
   speed_camera: 'Speed Camera',
+  missing_plate: 'Missing/Noncompliant Plate',
+  bus_lane: 'Bus Lane',
+  no_standing_time_restricted: 'No Standing/Time Restricted',
+  parking_prohibited: 'Parking Prohibited',
+  residential_permit: 'Residential Permit',
+  commercial_loading: 'Commercial Loading Zone',
   other_unknown: 'Other',
 };
 

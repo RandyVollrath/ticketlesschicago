@@ -256,12 +256,32 @@ I was making a brief stop and was not standing for an extended period.
 I respectfully request that this ticket be dismissed.`,
   },
   missing_plate: {
-    type: 'plate_present',
+    type: 'plate_corrected',
     template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a missing or noncompliant license plate.
 
-At the time this ticket was issued, my license plate was properly displayed on my vehicle. The plate may have been temporarily obscured by weather conditions, or the enforcement officer may have viewed the vehicle from an angle where the plate was not visible.
+I respectfully request that this citation be dismissed or reduced for the following reasons:
 
-I have attached documentation showing my vehicle registration was valid at the time of citation.
+1. COMPLIANCE CORRECTED: Since receiving this citation, I have ensured that my license plate is properly mounted and clearly visible on my vehicle in full compliance with Illinois Vehicle Code 625 ILCS 5/3-413. If applicable, any plate frame or obstruction has been removed. Attached photos demonstrate current compliance.
+
+2. MITIGATING CIRCUMSTANCES: At the time of the citation, the plate may have been temporarily obscured by weather conditions (snow, mud, road salt), a dealer-installed plate frame, a bike rack, or other temporary obstruction that I was not aware of. This was not an intentional violation.
+
+3. REGISTRATION VALIDITY: My vehicle registration (plate {plate}, {state}) was valid at the time of this citation. The issue was one of visibility or mounting, not a lack of valid registration.
+
+I have promptly corrected the issue and ask that the hearing officer consider my good-faith compliance in reviewing this matter.
+
+I respectfully request that this ticket be dismissed.`,
+  },
+  bus_lane: {
+    type: 'bus_lane_defense',
+    template: `I am writing to contest citation #{ticket_number} issued on {violation_date} for allegedly standing, parking, or driving in a bus lane.
+
+I respectfully request that this citation be dismissed or reduced for the following reasons:
+
+1. LOADING/UNLOADING PASSENGERS: Per Chicago Municipal Code Section 9-103-020(a), a vehicle stopped to expeditiously load or unload passengers that did not interfere with any bus waiting to enter or about to enter the bus lane is a recognized defense. I was briefly stopped at this location for the purpose of loading or unloading passengers and did not impede bus traffic.
+
+2. SIGNAGE AND MARKINGS: The bus lane signage and/or red pavement markings at {location} may have been unclear, faded, obscured by weather or debris, or not visible from the direction I was traveling. Bus lane restrictions require adequate notice to motorists.
+
+3. CAMERA SYSTEM ACCURACY: If this citation was issued by an automated camera system, I request that the City provide the full video evidence and documentation that the camera was properly calibrated and that the violation occurred as alleged. Automated enforcement systems are known to produce erroneous citations.
 
 I respectfully request that this ticket be dismissed.`,
   },
@@ -453,7 +473,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   const userSettings: UserSettings = settings || {
     auto_mail_enabled: true,
     require_approval: false,
-    allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading'],
+    allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading', 'bus_lane'],
     never_auto_mail_unknown: true,
   };
 
