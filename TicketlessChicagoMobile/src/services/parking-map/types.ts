@@ -290,7 +290,7 @@ export const LAYER_COLORS = {
   towZone: '#dc2626', // red-600 (darker) - Tow risk
   warning: '#eab308', // yellow-500 - Restriction soon
   permitRequired: '#a855f7', // purple-500 - Permit zone
-  metered: '#3b82f6', // blue-500 - Metered parking
+  metered: '#0d9488', // teal-600 - Metered parking
   conditional: '#f97316', // orange-500 - Weather/event dependent
   unknown: '#9ca3af', // gray-400 - Check signs
 };

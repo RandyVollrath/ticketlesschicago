@@ -235,14 +235,9 @@ const MapController = ({
   return null;
 };
 
-// Helper to get meter dot color by rate (rate may be string or number from API)
-function getMeterColor(rate: string | number): string {
-  const r = typeof rate === 'number' ? rate : parseFloat(rate);
-  if (r <= 0.5) return '#16a34a';   // green
-  if (r <= 2.5) return '#2563eb';   // blue
-  if (r <= 4.75) return '#f97316';  // orange
-  if (r <= 7.0) return '#dc2626';   // red
-  return '#7f1d1d';                 // dark red (CLZ $14)
+// Uniform teal for all meter dots — rate details shown in popup on tap
+function getMeterColor(_rate: string | number): string {
+  return '#0d9488';
 }
 
 // Separate component so it can use useMap() for zoom-level filtering
