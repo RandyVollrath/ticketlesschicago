@@ -190,7 +190,7 @@ export interface MeterLocation {
   address: string;
   latitude: number;
   longitude: number;
-  rate: string;
+  rate: string | number;
   rate_description: string;
   time_limit_hours: number;
   spaces: number;
@@ -235,9 +235,9 @@ const MapController = ({
   return null;
 };
 
-// Helper to get meter dot color by rate
-function getMeterColor(rate: string): string {
-  const r = parseFloat(rate);
+// Helper to get meter dot color by rate (rate may be string or number from API)
+function getMeterColor(rate: string | number): string {
+  const r = typeof rate === 'number' ? rate : parseFloat(rate);
   if (r <= 0.5) return '#16a34a';   // green
   if (r <= 2.5) return '#2563eb';   // blue
   if (r <= 4.75) return '#f97316';  // orange
@@ -256,20 +256,20 @@ const MeterLayer: React.FC<{ meters: MeterLocation[] }> = ({ meters }) => {
     return () => { map.off('zoomend', onZoom); };
   }, [map]);
 
-  // Only render individual meters when zoomed in enough
-  if (zoom < 14) return null;
+  // Show meters at zoom 12+ (neighborhood level). Dots get larger as you zoom in.
+  if (zoom < 12) return null;
 
   return (
     <>
       {meters.map((m) => {
         const color = getMeterColor(m.rate);
-        const rate = parseFloat(m.rate);
+        const rate = typeof m.rate === 'number' ? m.rate : parseFloat(m.rate);
         return (
           <CircleMarker
             key={`meter-${m.meter_id}`}
             center={[m.latitude, m.longitude]}
-            radius={zoom >= 17 ? 6 : zoom >= 15 ? 5 : 4}
-            pathOptions={{ color, fillColor: color, fillOpacity: 0.7, weight: 1, opacity: 0.9 }}
+            radius={zoom >= 17 ? 7 : zoom >= 15 ? 5 : zoom >= 14 ? 4 : zoom >= 13 ? 3 : 2}
+            pathOptions={{ color, fillColor: color, fillOpacity: zoom >= 14 ? 0.7 : 0.5, weight: zoom >= 14 ? 1 : 0.5, opacity: 0.9 }}
           >
             <Popup>
               <div style={{ minWidth: '200px' }}>
@@ -1082,7 +1082,7 @@ const CameraMap: React.FC<CameraMapProps> = ({
               </div>
             ))}
             <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '4px' }}>
-              Zoom in to see meters ({meterLocations.length.toLocaleString()} total)
+              {meterLocations.length.toLocaleString()} meters total — zoom to neighborhood level to see
             </div>
           </div>
         )}
