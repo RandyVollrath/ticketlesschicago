@@ -9,7 +9,7 @@
 
 const EARTH_RADIUS_METERS = 6_371_000;
 
-function toRad(deg: number): number {
+export function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
 

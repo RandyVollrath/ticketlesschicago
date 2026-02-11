@@ -29,7 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
 import CameraPassHistoryService from './CameraPassHistoryService';
 import RedLightReceiptService, { RedLightTracePoint } from './RedLightReceiptService';
-import { distanceMeters } from '../utils/geo';
+import { distanceMeters, toRad } from '../utils/geo';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('CameraAlertService');
@@ -182,6 +182,17 @@ const RED_LIGHT_TRACE_WINDOW_MS = 30 * 1000;
  * to ensure no cameras at the edge are missed at any speed.
  */
 const BBOX_DEGREES = 0.0025;
+
+/**
+ * Speed camera enforcement hours in Chicago.
+ * School zones: Mon-Fri 7am-7pm. Park zones: Daily 6am-11pm.
+ * Since we can't distinguish zone type per camera, we use the widest
+ * enforcement window (6am-11pm daily) so we never miss a real one.
+ * Outside this window, speed cameras are NOT ticketing — skip alerts.
+ * Red-light cameras enforce 24/7 and are never filtered.
+ */
+const SPEED_CAMERA_ENFORCE_START_HOUR = 6;  // 6:00 AM
+const SPEED_CAMERA_ENFORCE_END_HOUR = 23;   // 11:00 PM
 
 /** AsyncStorage key for camera alerts enabled setting */
 const STORAGE_KEY_ENABLED = 'cameraAlertsEnabled';
@@ -490,7 +501,16 @@ class CameraAlertServiceClass {
   }
 
   private isCameraTypeEnabled(cameraType: CameraLocation['type']): boolean {
-    if (cameraType === 'speed') return this.speedAlertsEnabled;
+    if (cameraType === 'speed') {
+      if (!this.speedAlertsEnabled) return false;
+      // Speed cameras only enforce during certain hours — skip alerts outside window
+      const hour = new Date().getHours();
+      if (hour < SPEED_CAMERA_ENFORCE_START_HOUR || hour >= SPEED_CAMERA_ENFORCE_END_HOUR) {
+        return false;
+      }
+      return true;
+    }
+    // Red-light cameras enforce 24/7
     return this.redLightAlertsEnabled;
   }
 
@@ -557,49 +577,55 @@ class CameraAlertServiceClass {
   ): void {
     if (!this.isActive || !this.isEnabled) return;
 
-    this.lastLat = latitude;
-    this.lastLng = longitude;
-    this.appendTracePoint(latitude, longitude, speed, heading, horizontalAccuracyMeters);
+    try {
+      this.lastLat = latitude;
+      this.lastLng = longitude;
+      this.appendTracePoint(latitude, longitude, speed, heading, horizontalAccuracyMeters);
 
-    // Clear cooldowns for cameras we've moved far from
-    this.clearDistantCooldowns(latitude, longitude);
-    this.updatePassTracking(latitude, longitude, speed, heading);
+      // Clear cooldowns for cameras we've moved far from
+      this.clearDistantCooldowns(latitude, longitude);
+      this.updatePassTracking(latitude, longitude, speed, heading);
 
-    // Don't alert if not moving fast enough (filters out walking, sitting)
-    if (speed >= 0 && speed < MIN_SPEED_MPS) return;
+      // Don't alert if not moving fast enough (filters out walking, sitting)
+      if (speed >= 0 && speed < MIN_SPEED_MPS) return;
 
-    // Compute speed-adaptive alert radius: faster = earlier warning
-    const alertRadius = this.getAlertRadius(speed);
+      // Compute speed-adaptive alert radius: faster = earlier warning
+      const alertRadius = this.getAlertRadius(speed);
 
-    // Find cameras within alert radius that match our travel direction
-    const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius);
+      // Find cameras within alert radius that match our travel direction
+      const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius);
 
-    if (nearbyCameras.length === 0) return;
+      if (nearbyCameras.length === 0) return;
 
-    // Alert for the closest camera we haven't alerted yet
-    const now = Date.now();
-    if (now - this.lastAnnounceTime < MIN_ANNOUNCE_INTERVAL_MS) return;
+      // Alert for the closest camera we haven't alerted yet
+      const now = Date.now();
+      if (now - this.lastAnnounceTime < MIN_ANNOUNCE_INTERVAL_MS) return;
 
-    for (const { index, camera, distance } of nearbyCameras) {
-      if (this.alertedCameras.has(index)) continue;
+      for (const { index, camera, distance } of nearbyCameras) {
+        if (this.alertedCameras.has(index)) continue;
 
-      // New camera in range - speak alert
-      this.announceCamera(camera, distance, speed);
-      this.alertedCameras.set(index, { index, alertedAt: now });
-      this.passTrackingByCamera.set(index, {
-        minDistanceMeters: distance,
-        minDistanceTimestamp: now,
-        minLatitude: latitude,
-        minLongitude: longitude,
-        minSpeedMps: speed,
-        minHeading: heading,
-        alertSpeedMps: speed,
-        alertTimestamp: now,
-        lastDistanceMeters: distance,
-        hasBeenWithinPassDistance: distance <= PASS_CAPTURE_DISTANCE_METERS,
-      });
-      this.lastAnnounceTime = now;
-      break; // Only announce one per GPS update
+        // New camera in range - speak alert
+        this.announceCamera(camera, distance, speed);
+        this.alertedCameras.set(index, { index, alertedAt: now });
+        this.passTrackingByCamera.set(index, {
+          minDistanceMeters: distance,
+          minDistanceTimestamp: now,
+          minLatitude: latitude,
+          minLongitude: longitude,
+          minSpeedMps: speed,
+          minHeading: heading,
+          alertSpeedMps: speed,
+          alertTimestamp: now,
+          lastDistanceMeters: distance,
+          hasBeenWithinPassDistance: distance <= PASS_CAPTURE_DISTANCE_METERS,
+        });
+        this.lastAnnounceTime = now;
+        break; // Only announce one per GPS update
+      }
+    } catch (error) {
+      // Never let a camera alert bug crash the location listener.
+      // Log and continue — the next GPS update will try again.
+      log.error('Error in onLocationUpdate', error);
     }
   }
 
@@ -833,12 +859,6 @@ class CameraAlertServiceClass {
   // --------------------------------------------------------------------------
 
   /**
-   * Calculate distance between two lat/lng points in meters.
-   * Uses the Haversine formula.
-   */
-  // haversineMeters + toRad removed — now imported from utils/geo.ts
-
-  /**
    * Calculate the initial bearing (forward azimuth) from point 1 to point 2.
    * Returns degrees 0-360 (0°=North, 90°=East, 180°=South, 270°=West).
    */
@@ -848,9 +868,9 @@ class CameraAlertServiceClass {
     lat2: number,
     lng2: number
   ): number {
-    const dLng = this.toRad(lng2 - lng1);
-    const lat1Rad = this.toRad(lat1);
-    const lat2Rad = this.toRad(lat2);
+    const dLng = toRad(lng2 - lng1);
+    const lat1Rad = toRad(lat1);
+    const lat2Rad = toRad(lat2);
 
     const y = Math.sin(dLng) * Math.cos(lat2Rad);
     const x =
