@@ -87,7 +87,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     emailSubject: 'City Sticker Ticket ($200) - 70% Win Rate - We Need Your Sticker Receipt!',
     title: 'Your City Sticker Ticket Has Excellent Odds — 70% Win Rate!',
     winRate: 0.70,
-    intro: `City sticker tickets have a 70% success rate when contested with proof of purchase! The key evidence is your city sticker purchase receipt. If you already have a sticker, just send us the receipt and we'll handle the rest. If you don't have one yet, read on — there's a way to still beat this $200 ticket.`,
+    intro: `City sticker tickets have a 70% success rate when contested with proof of purchase! The key evidence is your city sticker purchase receipt. If you already have a sticker, just send us the receipt and we'll handle the rest. If you don't have one yet, read on — you may still be able to beat this $200 ticket.`,
     questions: [
       {
         text: 'Do you already have a current Chicago city vehicle sticker? If yes, please send us your purchase receipt — a confirmation email, online receipt, or credit card statement showing the purchase date.',
@@ -96,8 +96,8 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
         goodExample: 'Forward the email from the City Clerk showing "Vehicle Sticker Purchase Confirmation" with the date and amount',
       },
       {
-        text: 'If you DON\'T have a city sticker yet — you can purchase one now and still use the receipt to contest this $200 ticket. Buy online at https://ezbuy.chicityclerk.com/vehicle-stickers (costs $100-$160 depending on vehicle size). Then forward the confirmation email to us.',
-        whyItMatters: 'The city routinely dismisses sticker tickets when the owner shows proof of a subsequent purchase. Buying a sticker you need anyway and sending us the receipt can save you the $200 fine.',
+        text: 'If you DON\'T have a city sticker yet — you can purchase one now and use the receipt to contest this $200 ticket. Buy online at https://ezbuy.chicityclerk.com/vehicle-stickers (costs $100-$160 depending on vehicle size). Then forward the confirmation email to us.',
+        whyItMatters: 'The city has historically dismissed sticker tickets when the owner shows proof of a subsequent purchase. Buying a sticker you need anyway and sending us the receipt may save you the $200 fine.',
         impactScore: 0.45,
         goodExample: '"I just purchased my city sticker online — forwarding the confirmation email now"',
       },
@@ -116,7 +116,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     ],
     quickTips: [
       'Already have a sticker? Send us the purchase receipt — that\'s the strongest evidence',
-      'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — the receipt can get your $200 ticket dismissed',
+      'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — the receipt may get your $200 ticket dismissed',
       'City stickers cost $100-$160 for passenger vehicles — much less than the $200 fine',
       'Forward your purchase confirmation email to us and we\'ll include it with your contest',
       'If you set up email forwarding with us, we\'ll automatically capture the receipt',

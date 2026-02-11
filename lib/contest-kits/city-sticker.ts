@@ -309,7 +309,7 @@ The city sticker requirement applies to Chicago residents, not visitors. I respe
     'City sticker violations have a 70% win rate — one of the highest of all ticket types',
     'The #1 evidence is your purchase receipt — send it to us whether you bought before or after the ticket',
     'Already have a sticker? Just send the receipt and you\'re likely to win',
-    'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — the receipt can still get the $200 ticket dismissed',
+    'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — the receipt may still get the $200 ticket dismissed',
     'City stickers cost $100-$160 for passenger vehicles (depends on vehicle weight/fuel type)',
     'Non-Chicago residents are EXEMPT — just prove you live outside the city',
     'New vehicle owners have 30 days to get a sticker — save your bill of sale',
