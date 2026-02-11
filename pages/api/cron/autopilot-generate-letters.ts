@@ -175,11 +175,11 @@ I respectfully request that this ticket be dismissed.`,
   },
   no_city_sticker: {
     type: 'sticker_compliance',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker (violation code 9-64-125(b)).
+    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
 
-I have a valid City of Chicago vehicle sticker and have attached the purchase receipt as proof of compliance. I am in full compliance with the city vehicle sticker requirement under Chicago Municipal Code.
+I believe this citation was issued in error. I respectfully request the opportunity to present evidence demonstrating my compliance with the city vehicle sticker requirement, or to show that this citation should be dismissed on other grounds.
 
-The purpose of the city sticker ordinance is to ensure vehicle owners contribute to city road and infrastructure maintenance. That purpose has been fulfilled by my purchase. I respectfully request that this citation be dismissed in light of my demonstrated compliance.
+I request that the hearing officer review the circumstances of this citation, including the accuracy of the officer's observations and whether proper procedures were followed in issuing this ticket.
 
 I respectfully request that this ticket be dismissed.`,
   },
