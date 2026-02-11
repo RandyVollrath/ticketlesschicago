@@ -22,10 +22,10 @@ class SpeechModule: RCTEventEmitter, AVSpeechSynthesizerDelegate {
       try AVAudioSession.sharedInstance().setCategory(
         .playback,
         mode: .voicePrompt,
-        options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
+        options: []
       )
       audioSessionConfigured = true
-      NSLog("[SpeechModule] Audio session configured (lazy, on first speak)")
+      NSLog("[SpeechModule] Audio session configured (interrupt mode, on first speak)")
     } catch {
       NSLog("[SpeechModule] Failed to configure audio session: \(error)")
     }
