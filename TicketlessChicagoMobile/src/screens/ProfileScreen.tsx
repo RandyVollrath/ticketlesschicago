@@ -563,15 +563,25 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onValueChange={v => updateSetting('criticalAlertsEnabled', v)}
           />
           <Divider />
-          <SettingRow
-            icon="camera"
-            iconColor={colors.info}
-            title="Camera Alerts (BETA)"
-            subtitle="Audio alerts when approaching speed & red light cameras while driving"
-            value={cameraSettingsLoaded ? cameraAlertsEnabled : false}
-            disabled={!cameraSettingsLoaded}
-            onValueChange={toggleCameraAlerts}
-          />
+          {!cameraSettingsLoaded ? (
+            <View style={styles.settingRow}>
+              <MaterialCommunityIcons name="camera" size={20} color={colors.info} style={styles.rowIcon} />
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingTitle}>Camera Alerts (BETA)</Text>
+                <Text style={styles.settingSubtitle}>Loading saved camera alert setting...</Text>
+              </View>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : (
+            <SettingRow
+              icon="camera"
+              iconColor={colors.info}
+              title="Camera Alerts (BETA)"
+              subtitle="Audio alerts when approaching speed & red light cameras while driving"
+              value={cameraAlertsEnabled}
+              onValueChange={toggleCameraAlerts}
+            />
+          )}
           {cameraSettingsLoaded && cameraAlertsEnabled && (
             <>
               <Divider />
