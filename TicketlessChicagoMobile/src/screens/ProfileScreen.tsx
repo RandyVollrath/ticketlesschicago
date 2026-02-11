@@ -132,6 +132,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [user, setUser] = useState<User | null>(AuthService.getUser());
   const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
+  const [speedCameraAlertsEnabled, setSpeedCameraAlertsEnabled] = useState(false);
+  const [redLightCameraAlertsEnabled, setRedLightCameraAlertsEnabled] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -177,6 +179,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     loadSavedCar();
     loadHomePermitZone();
     setCameraAlertsEnabled(CameraAlertService.isAlertEnabled());
+    setSpeedCameraAlertsEnabled(CameraAlertService.isSpeedAlertsEnabled());
+    setRedLightCameraAlertsEnabled(CameraAlertService.isRedLightAlertsEnabled());
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
     });
@@ -308,8 +312,26 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const toggleCameraAlerts = useCallback(async (value: boolean) => {
     setCameraAlertsEnabled(value);
+    setSpeedCameraAlertsEnabled(value);
+    setRedLightCameraAlertsEnabled(value);
     await CameraAlertService.setEnabled(value);
     showFeedback(value ? 'Camera alerts enabled' : 'Camera alerts disabled');
+  }, [showFeedback]);
+
+  const toggleSpeedCameraAlerts = useCallback(async (value: boolean) => {
+    setSpeedCameraAlertsEnabled(value);
+    await CameraAlertService.setSpeedAlertsEnabled(value);
+    const allEnabled = value || CameraAlertService.isRedLightAlertsEnabled();
+    setCameraAlertsEnabled(allEnabled);
+    showFeedback(value ? 'Speed camera alerts enabled' : 'Speed camera alerts disabled');
+  }, [showFeedback]);
+
+  const toggleRedLightCameraAlerts = useCallback(async (value: boolean) => {
+    setRedLightCameraAlertsEnabled(value);
+    await CameraAlertService.setRedLightAlertsEnabled(value);
+    const allEnabled = value || CameraAlertService.isSpeedAlertsEnabled();
+    setCameraAlertsEnabled(allEnabled);
+    showFeedback(value ? 'Red-light alerts enabled' : 'Red-light alerts disabled');
   }, [showFeedback]);
 
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
@@ -497,6 +519,24 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
           {cameraAlertsEnabled && (
             <>
+              <Divider />
+              <SettingRow
+                icon="speedometer"
+                iconColor={colors.info}
+                title="Speed Cameras"
+                subtitle="Audio cue before known speed cameras"
+                value={speedCameraAlertsEnabled}
+                onValueChange={toggleSpeedCameraAlerts}
+              />
+              <Divider />
+              <SettingRow
+                icon="traffic-light"
+                iconColor={colors.info}
+                title="Red-Light Cameras"
+                subtitle="Audio cue before known red-light cameras"
+                value={redLightCameraAlertsEnabled}
+                onValueChange={toggleRedLightCameraAlerts}
+              />
               <Divider />
               <LinkRow
                 icon="volume-high"
