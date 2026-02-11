@@ -475,7 +475,7 @@ class CameraAlertServiceClass {
    * Returns true if speech started, false if TTS unavailable.
    */
   async previewAlert(): Promise<boolean> {
-    const success = await speak('Speed camera ahead. Slow down.');
+    const success = await speak('Speed camera ahead.');
     return success;
   }
 
@@ -789,11 +789,11 @@ class CameraAlertServiceClass {
   // --------------------------------------------------------------------------
 
   private announceCamera(camera: CameraLocation, distanceMeters: number, speed: number = -1): void {
-    // Don't quote a specific speed — we don't know if it's a school zone (20 mph)
-    // or park zone (30 mph), and giving wrong advice could cause a ticket.
+    // Just awareness — no speed advice (school vs park zone ambiguity)
+    // and no action advice (braking at the speed limit is dangerous).
     const message = camera.type === 'redlight'
       ? 'Red-light camera ahead.'
-      : 'Speed camera ahead. Slow down.';
+      : 'Speed camera ahead.';
 
     // Log with speed context for debugging alert timing
     const speedMph = speed >= 0 ? Math.round(speed * 2.237) : -1;
