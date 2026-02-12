@@ -58,7 +58,7 @@ const BASE_SLIDES: OnboardingSlide[] = [
     id: '4',
     icon: 'broom',
     title: 'Street Cleaning',
-    description: 'Never wake up to a $60 ticket again. We\'ll warn you before the sweepers come through.',
+    description: 'We\'ll warn you before the sweepers come through. Peace of Mind Parking, always.',
     backgroundColor: '#FF9500',
   },
   {

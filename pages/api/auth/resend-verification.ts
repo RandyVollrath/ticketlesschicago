@@ -125,7 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 </p>
 
                 <p style="color: #9ca3af; font-size: 12px;">
-                  Autopilot America • Peace of mind parking
+                  Autopilot America • Peace of Mind Parking
                 </p>
               </div>
             `

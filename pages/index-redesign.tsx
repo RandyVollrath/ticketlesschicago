@@ -323,7 +323,7 @@ export default function LandingPage() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            Peace of mind parking.
+            Peace of Mind Parking.
           </span>
         </h1>
 
