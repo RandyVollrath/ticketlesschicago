@@ -37,7 +37,6 @@ const PARK_COLORS = {
   restricted: '#ef4444',  // red-500 — cannot park now
   caution: '#f59e0b',     // amber-500 — restriction within 24hrs
   noData: '#d1d5db',      // gray-300 — no schedule / unknown
-  snowInactive: '#9ca3af', // gray-400 — snow route, ban not active
   permitZone: '#a855f7',  // purple-500 — permit zone in parkability mode
 };
 
@@ -192,18 +191,18 @@ export default function DestinationMapView() {
     }
 
     // --- Restyle snow routes ---
-    // In parkability mode: subtle gray when ban is NOT active (event-driven),
-    // red when ban IS active. In restriction mode: always fuchsia.
+    // In parkability mode: hidden when ban is NOT active, red when ACTIVE.
+    // In restriction mode: always fuchsia.
     if (snowLayer) {
       snowLayer.eachLayer((layer: any) => {
         if (isParkability) {
           const banActive = (layer as any)._snowBanActive;
-          layer.setStyle({
-            color: banActive ? PARK_COLORS.restricted : PARK_COLORS.snowInactive,
-            weight: 3,
-            opacity: banActive ? 0.85 : 0.45,
-            dashArray: '6,4',
-          });
+          if (banActive) {
+            layer.setStyle({ color: PARK_COLORS.restricted, weight: 3, opacity: 0.85, dashArray: '6,4' });
+          } else {
+            // Hide entirely — no gray lines for inactive ban
+            layer.setStyle({ opacity: 0, weight: 0 });
+          }
         } else {
           layer.setStyle({ color: LAYER_COLORS.snowRoute, weight: 3.5, opacity: 0.85, dashArray: '8,4' });
         }
@@ -211,16 +210,16 @@ export default function DestinationMapView() {
     }
 
     // --- Restyle winter ban routes ---
+    // Hidden in parkability mode when not in active hours (3-7am Dec-Mar).
     if (winterLayer) {
       const winterActive = isWinterBanActiveNow();
       winterLayer.eachLayer((layer: any) => {
         if (isParkability) {
-          layer.setStyle({
-            color: winterActive ? PARK_COLORS.restricted : PARK_COLORS.snowInactive,
-            weight: 3,
-            opacity: winterActive ? 0.85 : 0.45,
-            dashArray: '10,5',
-          });
+          if (winterActive) {
+            layer.setStyle({ color: PARK_COLORS.restricted, weight: 3, opacity: 0.85, dashArray: '10,5' });
+          } else {
+            layer.setStyle({ opacity: 0, weight: 0 });
+          }
         } else {
           layer.setStyle({ color: LAYER_COLORS.winterBan, weight: 3.5, opacity: 0.85, dashArray: '12,6' });
         }
@@ -803,24 +802,26 @@ export default function DestinationMapView() {
                 </div>
                 {/* Snow/winter ban status row */}
                 <div style={{ marginTop: '8px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '18px', height: '3px', backgroundColor: snowBanActive ? PARK_COLORS.restricted : PARK_COLORS.snowInactive, borderRadius: '2px', flexShrink: 0 }} />
-                    <span>
-                      2" Snow Ban: {snowBanActive
-                        ? <strong style={{ color: '#ef4444' }}>ACTIVE</strong>
-                        : <span style={{ color: '#6b7280' }}>Not active</span>
-                      }
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                    <div style={{ width: '18px', height: '3px', backgroundColor: isWinterBanActiveNow() ? PARK_COLORS.restricted : PARK_COLORS.snowInactive, borderRadius: '2px', flexShrink: 0 }} />
-                    <span>
-                      Winter Ban (3-7am): {isWinterBanActiveNow()
-                        ? <strong style={{ color: '#ef4444' }}>ACTIVE NOW</strong>
-                        : <span style={{ color: '#6b7280' }}>Dec-Mar only</span>
-                      }
-                    </span>
-                  </div>
+                  {snowBanActive ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
+                      <span>2" Snow Ban: <strong style={{ color: '#ef4444' }}>ACTIVE</strong> — no parking on marked routes</span>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#9ca3af' }}>
+                      2" Snow Ban: not active — red lines appear when 2"+ snowfall hits
+                    </div>
+                  )}
+                  {isWinterBanActiveNow() ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                      <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
+                      <span>Winter Overnight Ban: <strong style={{ color: '#ef4444' }}>ACTIVE NOW</strong></span>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#9ca3af', marginTop: '4px' }}>
+                      Winter overnight ban: off-hours — enforced 3-7am, Dec–Mar
+                    </div>
+                  )}
                 </div>
                 {/* Uncolored streets note */}
                 <div style={{ marginTop: '6px', fontSize: '11px', color: '#9ca3af', fontStyle: 'italic' }}>
