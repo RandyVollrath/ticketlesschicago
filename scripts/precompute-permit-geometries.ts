@@ -308,18 +308,31 @@ function extractSubPolyline(
   return result;
 }
 
+interface MergedChain {
+  points: Point[];
+  /** Indices into `points` that are real intersection junctions (where OSM way segments meet) */
+  junctions: Set<number>;
+}
+
 /**
  * Merge multiple OSM way segments into continuous polylines.
  * OSM splits long streets into many segments. We need to join segments
  * that share endpoints into longer chains.
  *
- * Returns an array of merged polylines (a street may have gaps, e.g.
- * across an expressway, resulting in multiple separate chains).
+ * Returns an array of merged chains, each with:
+ *  - points: the polyline
+ *  - junctions: indices of points that are real street intersections
+ *    (where original OSM way segments were split)
+ *
+ * Junction points are key for accuracy: OSM splits ways at intersections,
+ * so these points represent the real-world coordinates of cross-streets.
  */
-function mergeWaySegments(ways: OsmWay[]): Point[][] {
+function mergeWaySegments(ways: OsmWay[]): MergedChain[] {
   if (ways.length === 0) return [];
   if (ways.length === 1) {
-    return [ways[0].geometry.map(g => ({ lat: g.lat, lng: g.lon }))];
+    const pts = ways[0].geometry.map(g => ({ lat: g.lat, lng: g.lon }));
+    // First and last points of a single way are intersection endpoints
+    return [{ points: pts, junctions: new Set([0, pts.length - 1]) }];
   }
 
   // Convert each way to a polyline with a hash for start/end points
@@ -350,15 +363,17 @@ function mergeWaySegments(ways: OsmWay[]): Point[][] {
     endpointIndex.get(endKey)!.push({ segIdx: i, end: 'end' });
   }
 
-  // Build chains by following connected segments
+  // Build chains by following connected segments, tracking junction points
   const used = new Set<number>();
-  const chains: Point[][] = [];
+  const chains: MergedChain[] = [];
 
   for (let startSeg = 0; startSeg < segments.length; startSeg++) {
     if (used.has(startSeg)) continue;
 
     // Start a new chain
     let chain = [...segments[startSeg].points];
+    // Track junction indices: start and end of first segment are junctions
+    let junctions = new Set<number>([0, chain.length - 1]);
     used.add(startSeg);
 
     // Extend chain forward (from end)
@@ -373,10 +388,15 @@ function mergeWaySegments(ways: OsmWay[]): Point[][] {
         const seg = segments[n.segIdx].points;
         if (n.end === 'start') {
           // Segment starts where our chain ends — append (skip first point, it's a duplicate)
+          // The junction is at current chain end (already tracked) and at the new segment's end
+          const newEndIdx = chain.length - 1 + seg.length - 1;
           chain.push(...seg.slice(1));
+          junctions.add(newEndIdx);
         } else {
           // Segment ends where our chain ends — append reversed (skip first point)
+          const newEndIdx = chain.length - 1 + seg.length - 1;
           chain.push(...seg.slice(0, -1).reverse());
+          junctions.add(newEndIdx);
         }
         extended = true;
         break; // restart from the new end
@@ -393,6 +413,7 @@ function mergeWaySegments(ways: OsmWay[]): Point[][] {
         if (used.has(n.segIdx)) continue;
         used.add(n.segIdx);
         const seg = segments[n.segIdx].points;
+        const prependCount = seg.length - 1; // points added to front
         if (n.end === 'end') {
           // Segment ends where our chain starts — prepend
           chain = [...seg.slice(0, -1), ...chain];
@@ -400,58 +421,254 @@ function mergeWaySegments(ways: OsmWay[]): Point[][] {
           // Segment starts where our chain starts — prepend reversed
           chain = [...seg.slice(1).reverse(), ...chain];
         }
+        // Shift all existing junction indices by prependCount
+        const shifted = new Set<number>();
+        for (const j of junctions) shifted.add(j + prependCount);
+        shifted.add(0); // new start of chain is a junction
+        junctions = shifted;
         extended = true;
         break;
       }
     }
 
-    chains.push(chain);
+    chains.push({ points: chain, junctions });
   }
 
   return chains;
 }
 
 /**
+ * Reverse grid math: estimate what address number a lat or lng corresponds to.
+ */
+function coordToAddr(coord: number, axis: 'lat' | 'lng', dir: string): number {
+  if (axis === 'lat') {
+    const sign = dir === 'N' ? 1 : -1;
+    return sign * (coord - MADISON_LAT) / LAT_PER_ADDR;
+  } else {
+    const sign = dir === 'E' ? 1 : dir === 'W' ? -1 : 0;
+    return sign === 0 ? 0 : (coord - STATE_LNG) / (sign * LNG_PER_ADDR);
+  }
+}
+
+/**
+ * Round an address to the nearest block boundary (multiple of 100).
+ * In Chicago, cross-streets occur at multiples of 100.
+ *
+ * E.g., addr 2397 → 2400, addr 2315 → 2300, addr 2250 → 2200 or 2300.
+ */
+function nearestBlockBoundary(addr: number): number {
+  return Math.round(addr / 100) * 100;
+}
+
+/**
+ * Given a merged chain with junction points, build a calibration table that maps
+ * junction indices to their real-world address estimates, snapped to block boundaries.
+ *
+ * This lets us use real intersection coordinates instead of relying on grid math
+ * to determine where address ranges fall on the polyline.
+ *
+ * Returns sorted array of { index, addr, coord } calibration points.
+ */
+function buildCalibrationTable(
+  chain: MergedChain,
+  axis: 'lat' | 'lng',
+  dir: string,
+): { index: number; addr: number; coord: number }[] {
+  const calibPoints: { index: number; addr: number; coord: number }[] = [];
+
+  // Sort junction indices
+  const sortedJunctions = [...chain.junctions].sort((a, b) => a - b);
+
+  for (const idx of sortedJunctions) {
+    const pt = chain.points[idx];
+    const coord = pt[axis];
+    const rawAddr = coordToAddr(coord, axis, dir);
+
+    // Only include junctions with plausible addresses (positive, within Chicago range)
+    if (rawAddr > 0 && rawAddr < 15000) {
+      const snappedAddr = nearestBlockBoundary(rawAddr);
+      calibPoints.push({ index: idx, addr: snappedAddr, coord });
+    }
+  }
+
+  // Sort by index (polyline order)
+  calibPoints.sort((a, b) => a.index - b.index);
+
+  // Remove duplicates with same snapped address (keep the one closest to the expected coord)
+  const deduped: typeof calibPoints = [];
+  for (const cp of calibPoints) {
+    const existing = deduped.find(d => d.addr === cp.addr);
+    if (!existing) {
+      deduped.push(cp);
+    }
+  }
+
+  return deduped;
+}
+
+/**
+ * Given calibration points and a target address, find the point on the polyline
+ * by interpolating between the two nearest calibration anchors.
+ *
+ * This is MUCH more accurate than raw grid math because it uses real intersection
+ * coordinates as anchors (from OSM way segment boundaries).
+ */
+function calibratedAddrToIndex(
+  calibPoints: { index: number; addr: number; coord: number }[],
+  targetAddr: number,
+  chain: Point[],
+  axis: 'lat' | 'lng',
+  dir: string,
+): { point: Point; segIndex: number } | null {
+  if (calibPoints.length === 0) return null;
+
+  // Sort calibration points by address
+  const sorted = [...calibPoints].sort((a, b) => a.addr - b.addr);
+
+  // Find bracketing calibration points
+  let lower = sorted[0];
+  let upper = sorted[sorted.length - 1];
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (sorted[i].addr <= targetAddr && sorted[i + 1].addr >= targetAddr) {
+      lower = sorted[i];
+      upper = sorted[i + 1];
+      break;
+    }
+  }
+
+  // If target is outside calibration range, use grid math as fallback
+  if (targetAddr < lower.addr - 200 || targetAddr > upper.addr + 200) {
+    return null; // outside range, fall back to grid math
+  }
+
+  // Clamp to the calibrated range
+  if (targetAddr <= lower.addr) {
+    return { point: chain[lower.index], segIndex: Math.max(0, lower.index - 1) };
+  }
+  if (targetAddr >= upper.addr) {
+    return { point: chain[upper.index], segIndex: Math.min(chain.length - 2, upper.index) };
+  }
+
+  // Interpolate between lower and upper calibration points
+  const addrFraction = (targetAddr - lower.addr) / (upper.addr - lower.addr);
+
+  // Walk the polyline from lower.index to upper.index, measuring cumulative distance
+  const lowerIdx = Math.min(lower.index, upper.index);
+  const upperIdx = Math.max(lower.index, upper.index);
+
+  let totalDist = 0;
+  const segDists: number[] = [];
+  for (let i = lowerIdx; i < upperIdx; i++) {
+    const d = haversine(chain[i], chain[i + 1]);
+    segDists.push(d);
+    totalDist += d;
+  }
+
+  if (totalDist < 0.1) {
+    return { point: chain[lowerIdx], segIndex: lowerIdx };
+  }
+
+  // Walk to the target fraction of total distance
+  const targetDist = addrFraction * totalDist;
+  let cumDist = 0;
+
+  for (let i = 0; i < segDists.length; i++) {
+    if (cumDist + segDists[i] >= targetDist) {
+      const segFraction = (targetDist - cumDist) / segDists[i];
+      const pt = lerp(chain[lowerIdx + i], chain[lowerIdx + i + 1], segFraction);
+      return { point: pt, segIndex: lowerIdx + i };
+    }
+    cumDist += segDists[i];
+  }
+
+  return { point: chain[upperIdx], segIndex: upperIdx - 1 };
+}
+
+/**
  * Given merged polyline chains for a street and the permit zone's address range,
  * extract the best matching sub-polyline.
+ *
+ * Strategy: Use junction-calibrated extraction first (real intersection snapping),
+ * fall back to pure grid math if calibration data is insufficient.
  */
 function findPermitZoneGeometry(
-  chains: Point[][],
+  chains: MergedChain[],
   dir: string,
   addrLow: number,
   addrHigh: number,
 ): { geometry: Point[]; source: string } | null {
-  // Determine axis and target coordinates
   const isNS = (dir === 'N' || dir === 'S');
   const axis: 'lat' | 'lng' = isNS ? 'lat' : 'lng';
 
-  const coordLow = isNS
-    ? (MADISON_LAT + (dir === 'N' ? 1 : -1) * addrLow * LAT_PER_ADDR)
-    : (STATE_LNG + (dir === 'E' ? 1 : dir === 'W' ? -1 : 0) * addrLow * LNG_PER_ADDR);
-
-  const coordHigh = isNS
-    ? (MADISON_LAT + (dir === 'N' ? 1 : -1) * addrHigh * LAT_PER_ADDR)
-    : (STATE_LNG + (dir === 'E' ? 1 : dir === 'W' ? -1 : 0) * addrHigh * LNG_PER_ADDR);
-
-  const targetLow = Math.min(coordLow, coordHigh);
-  const targetHigh = Math.max(coordLow, coordHigh);
+  // Chicago address convention: X00-X98 means "from cross-street at X00 to cross-street at (X+1)00"
+  // Round endpoint addresses to block boundaries for matching
+  const addrLowBlock = Math.floor(addrLow / 100) * 100;
+  const addrHighBlock = Math.ceil(addrHigh / 100) * 100;
+  // If addrHigh ends at X98 or X99, it means "up to the next cross-street"
+  const effectiveHighAddr = (addrHigh % 100 >= 98) ? addrHighBlock : addrHigh;
+  const effectiveLowAddr = (addrLow % 100 <= 2) ? addrLowBlock : addrLow;
 
   // Try each chain — pick the one that gives the best result
   let bestResult: Point[] | null = null;
   let bestLength = 0;
 
   for (const chain of chains) {
-    // Check if this chain overlaps the target range on the relevant axis
-    const axisValues = chain.map(p => p[axis]);
+    // Check if this chain overlaps the target range on the relevant axis (rough check)
+    const axisValues = chain.points.map(p => p[axis]);
     const chainMin = Math.min(...axisValues);
     const chainMax = Math.max(...axisValues);
 
-    // Skip chains that don't overlap the target range at all
-    if (chainMax < targetLow - 0.001 || chainMin > targetHigh + 0.001) continue;
+    // Quick grid-math target for overlap check
+    const coordLow = isNS
+      ? (MADISON_LAT + (dir === 'N' ? 1 : -1) * addrLow * LAT_PER_ADDR)
+      : (STATE_LNG + (dir === 'E' ? 1 : dir === 'W' ? -1 : 0) * addrLow * LNG_PER_ADDR);
+    const coordHigh = isNS
+      ? (MADISON_LAT + (dir === 'N' ? 1 : -1) * addrHigh * LAT_PER_ADDR)
+      : (STATE_LNG + (dir === 'E' ? 1 : dir === 'W' ? -1 : 0) * addrHigh * LNG_PER_ADDR);
+    const targetLow = Math.min(coordLow, coordHigh);
+    const targetHigh = Math.max(coordLow, coordHigh);
 
-    const sub = extractSubPolyline(chain, axis, targetLow, targetHigh);
+    if (chainMax < targetLow - 0.002 || chainMin > targetHigh + 0.002) continue;
+
+    // ── Calibrated extraction (preferred) ──────────────────────────
+    let sub: Point[] | null = null;
+
+    if (chain.junctions.size >= 2) {
+      const calibTable = buildCalibrationTable(chain, axis, dir);
+
+      if (calibTable.length >= 2) {
+        const startResult = calibratedAddrToIndex(calibTable, effectiveLowAddr, chain.points, axis, dir);
+        const endResult = calibratedAddrToIndex(calibTable, effectiveHighAddr, chain.points, axis, dir);
+
+        if (startResult && endResult) {
+          const lowIdx = Math.min(startResult.segIndex, endResult.segIndex);
+          const highIdx = Math.max(startResult.segIndex, endResult.segIndex);
+
+          // Build sub-polyline from startResult.point through chain points to endResult.point
+          const result: Point[] = [];
+          const startPt = startResult.segIndex <= endResult.segIndex ? startResult : endResult;
+          const endPt = startResult.segIndex <= endResult.segIndex ? endResult : startResult;
+
+          result.push(startPt.point);
+          for (let i = startPt.segIndex + 1; i <= endPt.segIndex; i++) {
+            result.push(chain.points[i]);
+          }
+          result.push(endPt.point);
+
+          if (result.length >= 2) {
+            sub = result;
+          }
+        }
+      }
+    }
+
+    // ── Grid-math fallback ─────────────────────────────────────────
+    if (!sub) {
+      sub = extractSubPolyline(chain.points, axis, targetLow, targetHigh);
+    }
+
     if (sub && sub.length >= 2) {
-      // Calculate total length of this sub-polyline
       let len = 0;
       for (let i = 0; i < sub.length - 1; i++) {
         len += haversine(sub[i], sub[i + 1]);
@@ -576,9 +793,9 @@ async function main() {
   const unresolvedStreets = new Set<string>();
 
   // Pre-merge chains per OSM key to avoid re-merging for each zone
-  const chainCache = new Map<string, Point[][]>();
+  const chainCache = new Map<string, MergedChain[]>();
 
-  function getChains(key: string): Point[][] | null {
+  function getChains(key: string): MergedChain[] | null {
     if (chainCache.has(key)) return chainCache.get(key)!;
     const ways = osmIndex.get(key);
     if (!ways || ways.length === 0) return null;
