@@ -11,7 +11,7 @@ import { useRouter } from 'next/router';
  *     - Green  = Free street parking, no active restrictions
  *     - Teal   = Metered parking (currently enforced)
  *     - Light  = Metered parking (not enforced right now — free)
- *     - Red    = Restricted NOW (cleaning today, snow/winter ban)
+ *     - Red    = Restricted NOW (cleaning today, snow/winter ban, permit zone)
  *     - Amber  = Restriction within 24hrs
  *     - Gray   = No data
  */
@@ -37,7 +37,6 @@ const PARK_COLORS = {
   restricted: '#ef4444',  // red-500 — cannot park now
   caution: '#f59e0b',     // amber-500 — restriction within 24hrs
   noData: '#d1d5db',      // gray-300 — no schedule / unknown
-  permitZone: '#a855f7',  // purple-500 — permit zone in parkability mode
 };
 
 // ---------------------------------------------------------------------------
@@ -104,6 +103,20 @@ function isWinterBanActiveNow(): boolean {
   const inSeason = month === 11 || month <= 2; // Dec, Jan, Feb, Mar
   const inHours = hour >= 3 && hour < 7;
   return inSeason && inHours;
+}
+
+// ---------------------------------------------------------------------------
+// Permit zone time check (Mon-Fri 6am-6pm Chicago time)
+// Most Chicago residential permit zones enforce during these hours.
+// ---------------------------------------------------------------------------
+
+function isPermitZoneActiveNow(): boolean {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const day = now.getDay(); // 0=Sun … 6=Sat
+  const hour = now.getHours();
+  const isWeekday = day >= 1 && day <= 5;
+  const inHours = hour >= 6 && hour < 18; // 6am-6pm
+  return isWeekday && inHours;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,10 +257,16 @@ export default function DestinationMapView() {
     }
 
     // --- Restyle permit zone lines ---
+    // In parkability mode: RED when permit restriction active (Mon-Fri 6am-6pm), HIDDEN otherwise.
     if (permitLayer) {
+      const permitActive = isPermitZoneActiveNow();
       permitLayer.eachLayer((layer: any) => {
         if (isParkability) {
-          layer.setStyle({ color: PARK_COLORS.permitZone, weight: 4, opacity: 0.7, dashArray: '6,3' });
+          if (permitActive) {
+            layer.setStyle({ color: PARK_COLORS.restricted, weight: 4, opacity: 0.85, dashArray: '6,3' });
+          } else {
+            layer.setStyle({ opacity: 0, weight: 0 });
+          }
         } else {
           layer.setStyle({ color: LAYER_COLORS.permitZone, weight: 4, opacity: 0.8, dashArray: '' });
         }
@@ -660,13 +679,13 @@ export default function DestinationMapView() {
           left: '12px',
           right: '12px',
           zIndex: 1000,
-          backgroundColor: parkabilityMode ? '#fef3c7' : '#F3E8FF',
-          border: parkabilityMode ? '1px solid #f59e0b' : '1px solid #c4b5fd',
+          backgroundColor: parkabilityMode ? (isPermitZoneActiveNow() ? '#fef2f2' : '#f0fdf4') : '#F3E8FF',
+          border: parkabilityMode ? (isPermitZoneActiveNow() ? '1px solid #ef4444' : '1px solid #86efac') : '1px solid #c4b5fd',
           borderRadius: '10px',
           padding: '8px 14px',
           fontFamily: 'system-ui',
           fontSize: '12px',
-          color: parkabilityMode ? '#92400e' : '#5b21b6',
+          color: parkabilityMode ? (isPermitZoneActiveNow() ? '#991b1b' : '#166534') : '#5b21b6',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
           display: 'flex',
           alignItems: 'center',
@@ -674,10 +693,14 @@ export default function DestinationMapView() {
         }}>
           <span style={{
             width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-            backgroundColor: parkabilityMode ? '#f59e0b' : '#8b5cf6',
+            backgroundColor: parkabilityMode ? (isPermitZoneActiveNow() ? '#ef4444' : '#22c55e') : '#8b5cf6',
           }} />
           <span>
-            <strong>Permit Zone {permitZone}</strong> — permit required Mon–Fri 6am–6pm
+            <strong>Permit Zone {permitZone}</strong> — {parkabilityMode
+              ? (isPermitZoneActiveNow()
+                ? <span style={{ color: '#dc2626', fontWeight: 700 }}>ACTIVE NOW</span>
+                : <span>off-hours (Mon–Fri 6am–6pm)</span>)
+              : 'permit required Mon–Fri 6am–6pm'}
           </span>
         </div>
       )}
@@ -788,10 +811,6 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Meter (free now)</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.permitZone, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Permit zone</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.caution, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Restriction soon</span>
                   </div>
@@ -800,15 +819,25 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Can't park now</span>
                   </div>
                 </div>
-                {/* Snow/winter ban status row */}
+                {/* Restriction status rows */}
                 <div style={{ marginTop: '8px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b' }}>
-                  {snowBanActive ? (
+                  {isPermitZoneActiveNow() ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
+                      <span>Permit Zones: <strong style={{ color: '#ef4444' }}>ACTIVE</strong> — need permit Mon–Fri 6am–6pm</span>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#9ca3af' }}>
+                      Permit zones: off-hours — enforced Mon–Fri 6am–6pm
+                    </div>
+                  )}
+                  {snowBanActive ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                       <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
                       <span>2" Snow Ban: <strong style={{ color: '#ef4444' }}>ACTIVE</strong> — no parking on marked routes</span>
                     </div>
                   ) : (
-                    <div style={{ color: '#9ca3af' }}>
+                    <div style={{ color: '#9ca3af', marginTop: '4px' }}>
                       2" Snow Ban: not active — red lines appear when 2"+ snowfall hits
                     </div>
                   )}
