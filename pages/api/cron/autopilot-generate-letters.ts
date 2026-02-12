@@ -16,6 +16,7 @@ import {
   TicketFacts,
   UserEvidence,
 } from '../../../lib/contest-kits';
+import { getStreetViewEvidence, StreetViewResult } from '../../../lib/street-view-service';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -121,6 +122,7 @@ interface EvidenceBundle {
   kitEvaluation: ContestEvaluation | null;
   ordinanceInfo: any | null;
   streetCleaningSchedule: any | null;
+  streetViewEvidence: StreetViewResult | null;
 }
 
 // ─── Approval Email ──────────────────────────────────────────
@@ -293,6 +295,7 @@ async function gatherAllEvidence(
     kitEvaluation: null,
     ordinanceInfo: null,
     streetCleaningSchedule: null,
+    streetViewEvidence: null,
   };
 
   // Resolve violation code
@@ -527,6 +530,21 @@ async function gatherAllEvidence(
           console.log(`    Street cleaning schedule found: ${data.length} records for ticket date`);
         }
       } catch (e) { /* Schedule lookup is optional */ }
+    })());
+  }
+
+  // 11. Google Street View imagery (signage verification)
+  if (ticket.location) {
+    promises.push((async () => {
+      try {
+        bundle.streetViewEvidence = await getStreetViewEvidence(
+          ticket.location!,
+          ticket.violation_date
+        );
+        if (bundle.streetViewEvidence?.hasImagery) {
+          console.log(`    Street View imagery found: ${bundle.streetViewEvidence.imageDate || 'date unknown'}`);
+        }
+      } catch (e) { console.error('    Street View lookup failed:', e); }
     })());
   }
 
@@ -777,7 +795,26 @@ STRATEGY INSTRUCTIONS (DO NOT cite stats in the letter):
 7. Write the letter using the STRATEGY these outcomes suggest, not citing the data itself`);
   }
 
-  // ── Section 11: Street Cleaning Schedule ──
+  // ── Section 11: Google Street View Signage Evidence ──
+  if (evidence.streetViewEvidence?.hasImagery) {
+    const sv = evidence.streetViewEvidence;
+    sections.push(`=== GOOGLE STREET VIEW SIGNAGE EVIDENCE ===
+Location: ${sv.address || `${sv.latitude}, ${sv.longitude}`}
+Imagery Date: ${sv.imageDate || 'Unknown'}
+Panorama ID: ${sv.panoramaId || 'N/A'}
+
+${sv.signageObservation || ''}
+
+INSTRUCTIONS FOR USING STREET VIEW EVIDENCE:
+1. If the imagery date is close to the violation date (within 6 months), reference it as evidence of signage conditions at the time
+2. If signs were missing, obscured, or improperly posted in Street View imagery, argue this as a defense
+3. Present this as: "Google Street View imagery captured in ${sv.imageDate || 'the available timeframe'} for this location shows [signage conditions]"
+4. This is publicly available imagery that can be independently verified by the hearing officer
+5. DO NOT claim to have personally analyzed the imagery — instead argue that the hearing officer should review the Street View imagery at this location to verify signage compliance
+6. If signage is a relevant defense for this violation type, suggest the hearing officer verify signage presence/visibility using Google Street View`);
+  }
+
+  // ── Section 12: Street Cleaning Schedule ──
   if (evidence.streetCleaningSchedule && evidence.streetCleaningSchedule.length > 0) {
     const scs = evidence.streetCleaningSchedule;
     sections.push(`STREET CLEANING SCHEDULE DATA (city's posted schedule, NOT confirmation cleaning occurred):
@@ -802,6 +839,7 @@ Generate a professional, formal contest letter that:
    ${evidence.redLightReceipt ? '- Red light camera GPS data (STRONG - contradicts camera reading)' : ''}
    ${evidence.cameraPassHistory ? '- Speed camera GPS data (STRONG - shows actual speed)' : ''}
    ${evidence.weatherData?.hasAdverseWeather && evidence.weatherRelevanceType === 'primary' ? '- Weather conditions (PRIMARY defense for this violation)' : ''}
+   ${evidence.streetViewEvidence?.hasImagery ? '- Google Street View imagery (signage verification — reference but do not claim to have analyzed it)' : ''}
    ${evidence.foiaData.hasData ? '- FOIA hearing outcomes (INFORM strategy only, do not cite stats)' : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
@@ -954,6 +992,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   if (evidence.cameraPassHistory) evidenceSources.push('speed_camera_gps');
   if (evidence.foiaData.hasData) evidenceSources.push('foia_data');
   if (evidence.kitEvaluation) evidenceSources.push('contest_kit');
+  if (evidence.streetViewEvidence?.hasImagery) evidenceSources.push('street_view');
 
   if (anthropic) {
     try {
@@ -1006,12 +1045,18 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
 
   // ── Update ticket status ──
   const newStatus = needsApproval ? 'needs_approval' : 'letter_generated';
+  const ticketUpdate: Record<string, any> = {
+    status: newStatus,
+    skip_reason: needsApproval ? skipReason : null,
+  };
+  // Store Street View URL/date on the ticket for later reference
+  if (evidence.streetViewEvidence?.hasImagery) {
+    ticketUpdate.street_view_url = evidence.streetViewEvidence.imageUrl;
+    ticketUpdate.street_view_date = evidence.streetViewEvidence.imageDate;
+  }
   await supabaseAdmin
     .from('detected_tickets')
-    .update({
-      status: newStatus,
-      skip_reason: needsApproval ? skipReason : null,
-    })
+    .update(ticketUpdate)
     .eq('id', ticket.id);
 
   // ── Audit log with full evidence details ──
@@ -1036,6 +1081,8 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
         foia_total_contested: evidence.foiaData.totalContested,
         has_receipt_evidence: !!(evidence.cityStickerReceipt || evidence.registrationReceipt),
         has_camera_evidence: !!(evidence.redLightReceipt || evidence.cameraPassHistory),
+        street_view_available: evidence.streetViewEvidence?.hasImagery || false,
+        street_view_date: evidence.streetViewEvidence?.imageDate || null,
       },
       performed_by: 'autopilot_cron',
     });
