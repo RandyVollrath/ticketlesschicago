@@ -71,6 +71,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var automotiveSessionStart: Date? = nil       // When current automotive session began (for flicker filtering)
   private var lastConfirmedParkingLocation: CLLocation? = nil  // Where we last confirmed parking (for distance-based flicker check)
 
+  // UserDefaults keys for persisting critical state across app kills.
+  // Without persistence, iOS can kill the app, significantLocationChange wakes it
+  // with a fresh instance where all guards are nil/false, and cell-tower GPS
+  // creates false parking at wrong addresses (the Clybourn bug).
+  private let kLastParkingLatKey = "bg_lastConfirmedParkingLat"
+  private let kLastParkingLngKey = "bg_lastConfirmedParkingLng"
+  private let kLastParkingAccKey = "bg_lastConfirmedParkingAcc"
+  private let kLastParkingTimeKey = "bg_lastConfirmedParkingTime"
+  private let kHasConfirmedParkingKey = "bg_hasConfirmedParking"
+
   // Configuration
   private let minDrivingDurationSec: TimeInterval = 10   // 10 sec of driving before we care about stops (was 120→60→30→10; covers moving car one block for street cleaning)
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
@@ -107,7 +117,65 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationManager.pausesLocationUpdatesAutomatically = false
     locationManager.showsBackgroundLocationIndicator = true
     locationManager.distanceFilter = 10 // meters
+
+    // Restore persisted parking state from UserDefaults.
+    // This is CRITICAL: without it, iOS killing and re-launching the app
+    // resets all Clybourn guards to nil/false, allowing significantLocationChange
+    // to create false parking at wrong addresses with cell-tower GPS.
+    restorePersistedParkingState()
+
     log("BackgroundLocationModule initialized")
+  }
+
+  /// Persist lastConfirmedParkingLocation + hasConfirmedParkingThisSession to UserDefaults
+  private func persistParkingState() {
+    let defaults = UserDefaults.standard
+    if let loc = lastConfirmedParkingLocation {
+      defaults.set(loc.coordinate.latitude, forKey: kLastParkingLatKey)
+      defaults.set(loc.coordinate.longitude, forKey: kLastParkingLngKey)
+      defaults.set(loc.horizontalAccuracy, forKey: kLastParkingAccKey)
+      defaults.set(loc.timestamp.timeIntervalSince1970, forKey: kLastParkingTimeKey)
+      self.log("Persisted parking location: \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m")
+    }
+    defaults.set(hasConfirmedParkingThisSession, forKey: kHasConfirmedParkingKey)
+  }
+
+  /// Restore persisted parking state on cold launch
+  private func restorePersistedParkingState() {
+    let defaults = UserDefaults.standard
+    let lat = defaults.double(forKey: kLastParkingLatKey)
+    let lng = defaults.double(forKey: kLastParkingLngKey)
+
+    // UserDefaults.double returns 0 if key doesn't exist; (0,0) is not a valid Chicago location
+    if lat != 0 && lng != 0 {
+      let acc = defaults.double(forKey: kLastParkingAccKey)
+      let time = defaults.double(forKey: kLastParkingTimeKey)
+      let timestamp = time > 0 ? Date(timeIntervalSince1970: time) : Date()
+      lastConfirmedParkingLocation = CLLocation(
+        coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng),
+        altitude: 0,
+        horizontalAccuracy: acc > 0 ? acc : 10,
+        verticalAccuracy: -1,
+        timestamp: timestamp
+      )
+      self.log("Restored persisted parking location: \(lat), \(lng) ±\(acc)m (age: \(String(format: "%.0f", Date().timeIntervalSince(timestamp)))s)")
+    }
+
+    hasConfirmedParkingThisSession = defaults.bool(forKey: kHasConfirmedParkingKey)
+    if hasConfirmedParkingThisSession {
+      self.log("Restored hasConfirmedParkingThisSession = true from UserDefaults")
+    }
+  }
+
+  /// Clear persisted parking state (called on stopMonitoring)
+  private func clearPersistedParkingState() {
+    let defaults = UserDefaults.standard
+    defaults.removeObject(forKey: kLastParkingLatKey)
+    defaults.removeObject(forKey: kLastParkingLngKey)
+    defaults.removeObject(forKey: kLastParkingAccKey)
+    defaults.removeObject(forKey: kLastParkingTimeKey)
+    defaults.removeObject(forKey: kHasConfirmedParkingKey)
+    self.log("Cleared persisted parking state from UserDefaults")
   }
 
   @objc override static func requiresMainQueueSetup() -> Bool {
@@ -237,6 +305,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastConfirmedParkingLocation = nil
     hasConfirmedParkingThisSession = false
     coreMotionNotAutomotiveSince = nil
+    clearPersistedParkingState()
 
     self.log("Monitoring stopped")
     resolve(true)
@@ -645,6 +714,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             // Clean up driving state and record this as the new parking location
             self.lastConfirmedParkingLocation = loc
             self.hasConfirmedParkingThisSession = true  // Mark parking confirmed so GPS speed veto + distance bypass works for next drive
+            self.persistParkingState()  // Survive app kills (Clybourn bug fix)
             self.stopContinuousGps()
             self.lastDrivingLocation = nil
             self.locationAtStopStart = nil
@@ -1066,6 +1136,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // 3. locationManager.location - current GPS (last resort - user may have walked)
     let parkingLocation = locationAtStopStart ?? lastDrivingLocation
     lastConfirmedParkingLocation = parkingLocation ?? locationManager.location
+    persistParkingState()  // Survive app kills (Clybourn bug fix)
     let currentLocation = locationManager.location
 
     // Use the parking location's GPS timestamp if available — this is when the car
