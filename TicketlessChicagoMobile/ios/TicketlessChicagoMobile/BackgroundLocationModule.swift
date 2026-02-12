@@ -81,6 +81,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   // After parking, require GPS confirmation before restarting driving (prevents CoreMotion flicker)
   private var hasConfirmedParkingThisSession = false
 
+  // CoreMotion stability tracking: prevents false parking at red lights.
+  // Tracks when CoreMotion last transitioned FROM automotive to non-automotive.
+  // The gps_coremotion_agree path requires CoreMotion to have been non-automotive
+  // for at least coreMotionStabilitySec continuously, not just at one timer tick.
+  private var coreMotionNotAutomotiveSince: Date? = nil
+  private let coreMotionStabilitySec: TimeInterval = 8  // CoreMotion must be non-automotive for 8s
+  private let minZeroSpeedForAgreeSec: TimeInterval = 15  // GPS speed≈0 for 15s before gps_coremotion_agree can fire
+
 
   override init() {
     super.init()
@@ -219,6 +227,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     automotiveSessionStart = nil
     lastConfirmedParkingLocation = nil
     hasConfirmedParkingThisSession = false
+    coreMotionNotAutomotiveSince = nil
 
     self.log("Monitoring stopped")
     resolve(true)
@@ -348,6 +357,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           self.automotiveSessionStart = Date()
         }
         self.coreMotionSaysAutomotive = true
+        self.coreMotionNotAutomotiveSince = nil  // Reset stability tracker — back to automotive
 
         // GPS SPEED VETO: If GPS says speed ≈ 0, do NOT cancel parking timers.
         // CoreMotion can flicker back to "automotive" from phone vibration/movement
@@ -443,6 +453,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // while GPS immediately shows speed=0.
         let wasAutomotive = self.coreMotionSaysAutomotive
         self.coreMotionSaysAutomotive = false
+
+        // Track when CoreMotion first became non-automotive (for stability check).
+        // Only set the timestamp on the TRANSITION, not on every update.
+        if wasAutomotive && self.coreMotionNotAutomotiveSince == nil {
+          self.coreMotionNotAutomotiveSince = Date()
+          self.log("CoreMotion stability: transitioned to non-automotive, tracking stability timer")
+        }
 
         if self.isDriving && wasAutomotive {
           // User was driving and has now exited the vehicle.
@@ -668,11 +685,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           let stationaryDuration = self.stationaryStartTime.map { Date().timeIntervalSince($0) } ?? 0
 
           if !self.coreMotionSaysAutomotive {
-            // CoreMotion agrees user is not in a vehicle — confirm parking
-            self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion agrees (not automotive)")
-            timer.invalidate()
-            self.speedZeroTimer = nil
-            self.confirmParking(source: "gps_coremotion_agree")
+            // CoreMotion agrees user is not in a vehicle.
+            // THREE guards prevent false positives at red lights:
+            // 1. GPS speed must have been ≈ 0 for at least 15s (red lights rarely have 15s of true zero)
+            // 2. CoreMotion must have been non-automotive for at least 8s continuously
+            //    (not just a single flicker at the instant the timer fires)
+            // 3. GPS speed must currently be < 1.0 m/s (final sanity check)
+            let coreMotionStableDuration = self.coreMotionNotAutomotiveSince.map { Date().timeIntervalSince($0) } ?? 0
+            let currentSpeedCheck = self.locationManager.location?.speed ?? -1
+            let gpsSpeedOk = currentSpeedCheck >= 0 && currentSpeedCheck < 1.0
+
+            if zeroDuration >= self.minZeroSpeedForAgreeSec && coreMotionStableDuration >= self.coreMotionStabilitySec && gpsSpeedOk {
+              self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
+              timer.invalidate()
+              self.speedZeroTimer = nil
+              self.confirmParking(source: "gps_coremotion_agree")
+            } else {
+              var waitReasons: [String] = []
+              if zeroDuration < self.minZeroSpeedForAgreeSec {
+                waitReasons.append("speed≈0 only \(String(format: "%.0f", zeroDuration))s (need \(String(format: "%.0f", self.minZeroSpeedForAgreeSec))s)")
+              }
+              if coreMotionStableDuration < self.coreMotionStabilitySec {
+                waitReasons.append("CoreMotion non-automotive only \(String(format: "%.0f", coreMotionStableDuration))s (need \(String(format: "%.0f", self.coreMotionStabilitySec))s)")
+              }
+              if !gpsSpeedOk {
+                waitReasons.append("GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s (need < 1.0)")
+              }
+              self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
+            }
           } else if phoneIsStationary && withinStationaryRadius && stationaryDuration >= self.stationaryDurationSec {
             // Phone hasn't moved (speed < 0.5 m/s) AND still within 50m of parking spot for 2+ min.
             // This means the user is sitting in their parked car (not walking away).
@@ -868,7 +908,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // red light or brief CoreMotion flicker, not real parking.
     // The "location_stationary" source bypasses this since it already proved
     // 2+ minutes of zero movement which is definitive.
-    if source == "coremotion" {
+    if source == "coremotion" || source == "gps_coremotion_agree" {
       let currentSpeed = locationManager.location?.speed ?? -1
       if currentSpeed > 1.0 {
         self.log("confirmParking(\(source)) aborted: GPS speed \(String(format: "%.1f", currentSpeed)) m/s — still moving (red light false positive)")
@@ -953,6 +993,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     speedZeroStartTime = nil
     stationaryLocation = nil
     stationaryStartTime = nil
+    coreMotionNotAutomotiveSince = nil
     // lastDrivingLocation intentionally kept after parking - it's the parking spot reference.
     // It gets cleared when the NEXT drive starts (see isDriving=true transitions).
 
