@@ -290,6 +290,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     parkingConfirmationTimer = nil
     speedZeroTimer?.invalidate()
     speedZeroTimer = nil
+    recoveryGpsTimer?.invalidate()
+    recoveryGpsTimer = nil
+    waitingForAccurateGpsForRecovery = false
     isMonitoring = false
     isDriving = false
     coreMotionSaysAutomotive = false
@@ -745,6 +748,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     guard let location = locations.last else { return }
     let speed = location.speed  // m/s, -1 if unknown
 
+    // --- Recovery GPS: waiting for accurate fix after significantLocationChange wake ---
+    // checkForMissedParking starts GPS and sets this flag. We wait here for a
+    // satellite fix (≤50m) instead of using the cell-tower location that woke us.
+    if waitingForAccurateGpsForRecovery {
+      handleRecoveryGpsFix(location)
+      return  // Don't process this location through the normal driving pipeline
+    }
+
     // --- Recovery: app was killed and woken by significantLocationChange ---
     // If we're not tracking driving but we just got a location update,
     // check if CoreMotion says we recently drove and are now stopped.
@@ -935,41 +946,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   /// Recovery check: query CoreMotion history to see if we missed a parking event
   /// while the app was killed. Called when significantLocationChange wakes us.
   private var hasCheckedForMissedParking = false
+  private var waitingForAccurateGpsForRecovery = false  // true while we spin up GPS for an accurate fix
+  private var recoveryDrivingDuration: TimeInterval = 0 // stash the driving duration from CoreMotion query
+  private var recoveryGpsTimer: Timer? = nil             // timeout for GPS acquisition
 
   private func checkForMissedParking(currentLocation: CLLocation) {
     // Only check once per app wake to avoid repeated queries
     guard !hasCheckedForMissedParking else { return }
     guard CMMotionActivityManager.isActivityAvailable() else { return }
-
-    // GUARD 1: If we already confirmed parking this session, this is NOT a missed
-    // parking event — it's a stale CoreMotion history pattern from the earlier drive.
-    // Without this guard, significantLocationChange wakes fire false duplicates
-    // 10-30 minutes after the user is already home (the Clybourn bug).
-    if hasConfirmedParkingThisSession {
-      self.log("checkForMissedParking skipped: already confirmed parking this session")
-      hasCheckedForMissedParking = true
-      return
-    }
-
-    // GUARD 2: Reject cell-tower-only GPS fixes. significantLocationChange often
-    // provides ~300-500m accuracy from cell tower triangulation. Using that as
-    // the parking location is worse than not recording parking at all.
-    if currentLocation.horizontalAccuracy > 100 {
-      self.log("checkForMissedParking skipped: GPS accuracy \(String(format: "%.0f", currentLocation.horizontalAccuracy))m too poor (>100m) — likely cell tower fix")
-      hasCheckedForMissedParking = true
-      return
-    }
-
-    // GUARD 3: If we have a confirmed parking location and the current location
-    // is within 500m of it, this is the SAME parking event, not a new one.
-    if let lastParking = lastConfirmedParkingLocation {
-      let distFromLastParking = currentLocation.distance(from: lastParking)
-      if distFromLastParking < 500 {
-        self.log("checkForMissedParking skipped: \(String(format: "%.0f", distFromLastParking))m from last parking (< 500m) — same spot")
-        hasCheckedForMissedParking = true
-        return
-      }
-    }
 
     hasCheckedForMissedParking = true
 
@@ -980,7 +964,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       guard let self = self, let activities = activities, activities.count > 1 else { return }
 
       // Look for pattern: automotive activity followed by stationary/walking
-      var lastAutomotiveEnd: Date? = nil
       var wasRecentlyDriving = false
       var automotiveDuration: TimeInterval = 0
 
@@ -988,11 +971,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         let activity = activities[i]
         if activity.automotive {
           wasRecentlyDriving = true
-          if lastAutomotiveEnd == nil {
-            // Track when automotive segment started
-          }
           if i + 1 < activities.count {
-            lastAutomotiveEnd = activities[i + 1].startDate
             automotiveDuration += activities[i + 1].startDate.timeIntervalSince(activity.startDate)
           }
         }
@@ -1002,30 +981,68 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       guard let lastActivity = activities.last else { return }
       let currentlyStationary = lastActivity.stationary || lastActivity.walking
 
-      // If user drove at all and is now stationary, trigger retroactive parking check
-      // No duration filter - capture every parking event
       if wasRecentlyDriving && currentlyStationary && automotiveDuration > 0 {
-        self.log("RECOVERY: Detected missed parking event. Drove \(String(format: "%.0f", automotiveDuration))s, now stationary. Triggering retroactive check.")
+        self.log("RECOVERY: CoreMotion says user drove \(String(format: "%.0f", automotiveDuration))s and is now stationary. Requesting accurate GPS before emitting parking event.")
 
-        var body: [String: Any] = [
-          "timestamp": now.timeIntervalSince1970 * 1000,
-          "latitude": currentLocation.coordinate.latitude,
-          "longitude": currentLocation.coordinate.longitude,
-          "accuracy": currentLocation.horizontalAccuracy,
-          "locationSource": "recovery_significant_change",
-          "drivingDurationSec": automotiveDuration,
-        ]
+        // DON'T use the significantLocationChange cell-tower fix as the parking
+        // location. That's how the Clybourn bug happens — 300-500m off.
+        // Instead, start high-accuracy GPS and wait for a real satellite fix.
+        self.recoveryDrivingDuration = automotiveDuration
+        self.waitingForAccurateGpsForRecovery = true
+        self.startContinuousGps()
 
-        self.sendEvent(withName: "onParkingDetected", body: body)
-
-        // Re-start CoreMotion monitoring since we just woke up
-        if !self.coreMotionSaysAutomotive {
-          self.startMotionActivityMonitoring()
+        // Safety timeout: if GPS doesn't deliver an accurate fix within 15s,
+        // give up rather than emit bad coordinates. The user is already parked;
+        // the NEXT normal parking detection will catch them on the next drive.
+        self.recoveryGpsTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { [weak self] _ in
+          guard let self = self, self.waitingForAccurateGpsForRecovery else { return }
+          self.waitingForAccurateGpsForRecovery = false
+          self.stopContinuousGps()
+          self.log("RECOVERY: GPS timeout — no accurate fix in 15s. Skipping recovery parking to avoid wrong address.")
         }
       } else {
         self.log("Recovery check: no missed parking (drove: \(wasRecentlyDriving), stationary: \(currentlyStationary), duration: \(String(format: "%.0f", automotiveDuration))s)")
       }
+
+      // Re-start CoreMotion monitoring since we just woke up
+      if !self.coreMotionSaysAutomotive {
+        self.startMotionActivityMonitoring()
+      }
     }
+  }
+
+  /// Called from didUpdateLocations when waitingForAccurateGpsForRecovery is true.
+  /// Waits for a GPS fix with ≤50m accuracy, then emits onParkingDetected with that location.
+  private func handleRecoveryGpsFix(_ location: CLLocation) {
+    guard waitingForAccurateGpsForRecovery else { return }
+
+    if location.horizontalAccuracy > 50 {
+      self.log("RECOVERY: GPS fix \(location.horizontalAccuracy)m accuracy — waiting for ≤50m")
+      return
+    }
+
+    // Got an accurate fix. Cancel timeout and emit the parking event.
+    waitingForAccurateGpsForRecovery = false
+    recoveryGpsTimer?.invalidate()
+    recoveryGpsTimer = nil
+    stopContinuousGps()
+
+    self.log("RECOVERY: Accurate GPS fix: \(location.coordinate.latitude), \(location.coordinate.longitude) ±\(location.horizontalAccuracy)m — emitting parking event")
+
+    let body: [String: Any] = [
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "latitude": location.coordinate.latitude,
+      "longitude": location.coordinate.longitude,
+      "accuracy": location.horizontalAccuracy,
+      "locationSource": "recovery_accurate_gps",
+      "drivingDurationSec": recoveryDrivingDuration,
+    ]
+
+    lastConfirmedParkingLocation = location
+    hasConfirmedParkingThisSession = true
+    persistParkingState()
+
+    sendEvent(withName: "onParkingDetected", body: body)
   }
 
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
