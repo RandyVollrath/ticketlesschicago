@@ -100,6 +100,15 @@ interface UserSettings {
   never_auto_mail_unknown: boolean;
 }
 
+interface FoiaData {
+  hasData: boolean;
+  totalContested: number;
+  totalDismissed: number;
+  winRate: number;
+  topDismissalReasons: { reason: string; count: number }[];
+  mailContestWinRate: number | null;
+}
+
 interface EvidenceBundle {
   parkingEvidence: ParkingEvidenceResult | null;
   weatherData: HistoricalWeatherData | null;
@@ -108,19 +117,9 @@ interface EvidenceBundle {
   registrationReceipt: any | null;
   redLightReceipt: any | null;
   cameraPassHistory: any[] | null;
-  signageReports: any[] | null;
-  courtData: {
-    hasData: boolean;
-    stats: any;
-    successfulGrounds: any[];
-    similarCases: any[];
-    evidenceGuidance: any[];
-    totalCasesAnalyzed: number;
-    matchingCasesCount: number;
-  };
+  foiaData: FoiaData;
   kitEvaluation: ContestEvaluation | null;
   ordinanceInfo: any | null;
-  wardIntelligence: any | null;
   streetCleaningSchedule: any | null;
 }
 
@@ -283,19 +282,16 @@ async function gatherAllEvidence(
     registrationReceipt: null,
     redLightReceipt: null,
     cameraPassHistory: null,
-    signageReports: null,
-    courtData: {
+    foiaData: {
       hasData: false,
-      stats: {},
-      successfulGrounds: [],
-      similarCases: [],
-      evidenceGuidance: [],
-      totalCasesAnalyzed: 0,
-      matchingCasesCount: 0,
+      totalContested: 0,
+      totalDismissed: 0,
+      winRate: 0,
+      topDismissalReasons: [],
+      mailContestWinRate: null,
     },
     kitEvaluation: null,
     ordinanceInfo: null,
-    wardIntelligence: null,
     streetCleaningSchedule: null,
   };
 
@@ -429,100 +425,53 @@ async function gatherAllEvidence(
     })());
   }
 
-  // 7. Signage Reports near ticket location (for ANY violation type)
-  if (ticket.location) {
-    promises.push((async () => {
-      try {
-        // Search for signage reports matching the ticket location by address
-        const locationParts = ticket.location!.toLowerCase()
-          .replace(/[^a-z0-9\s]/g, '')
-          .split(/\s+/)
-          .filter(p => p.length > 2 && !['and', 'the', 'ave', 'st', 'blvd', 'dr', 'rd', 'ct', 'pl', 'chicago', 'il'].includes(p));
-
-        if (locationParts.length > 0) {
-          const { data } = await supabaseAdmin
-            .from('signage_reports')
-            .select('*')
-            .or(locationParts.slice(0, 3).map(p => `address.ilike.%${p}%`).join(','))
-            .in('condition', ['faded', 'damaged', 'obscured', 'missing'])
-            .limit(5);
-          if (data && data.length > 0) {
-            bundle.signageReports = data;
-            console.log(`    Signage reports found: ${data.length} problematic signs near ticket location`);
-          }
-        }
-      } catch (e) { console.error('    Signage reports lookup failed:', e); }
-    })());
-  }
-
-  // 8. Court Case Outcomes (historical FOIA data)
+  // 7. FOIA Contest Outcomes (1.18M real Chicago hearing records)
+  // Violation code format: our 9-64-190 -> FOIA 0964190% (with letter suffixes)
   if (vCode) {
     promises.push((async () => {
       try {
-        // Get win rate statistics
-        const { data: stats } = await supabaseAdmin
-          .from('win_rate_statistics')
-          .select('*')
-          .eq('stat_type', 'violation_code')
-          .eq('stat_key', vCode)
-          .single();
+        const foiaPrefix = '0' + vCode.replace(/-/g, '');
+        // Get sample of contested tickets to compute stats
+        const { data: foiaSample, count: foiaTotal } = await supabaseAdmin
+          .from('contested_tickets_foia')
+          .select('disposition, reason, contest_type', { count: 'exact' })
+          .like('violation_code', `${foiaPrefix}%`)
+          .limit(2000);
 
-        // Get successful cases
-        const { data: cases } = await supabaseAdmin
-          .from('court_case_outcomes')
-          .select('*')
-          .eq('violation_code', vCode)
-          .in('outcome', ['dismissed', 'reduced'])
-          .not('contest_grounds', 'is', null)
-          .limit(20);
+        if (foiaSample && foiaSample.length > 0 && foiaTotal) {
+          const dismissed = foiaSample.filter((r: any) => r.disposition === 'Not Liable');
+          const sampleWinRate = dismissed.length / foiaSample.length;
 
-        if (stats || (cases && cases.length > 0)) {
-          // Analyze grounds
-          const groundsMap: Record<string, { success: number; total: number }> = {};
-          (cases || []).forEach((c: any) => {
-            if (c.contest_grounds && Array.isArray(c.contest_grounds)) {
-              c.contest_grounds.forEach((g: string) => {
-                if (!groundsMap[g]) groundsMap[g] = { success: 0, total: 0 };
-                groundsMap[g].total++;
-                if (c.outcome === 'dismissed' || c.outcome === 'reduced') {
-                  groundsMap[g].success++;
-                }
-              });
+          // Top reasons for dismissal
+          const reasonCounts: Record<string, number> = {};
+          dismissed.forEach((r: any) => {
+            if (r.reason) {
+              reasonCounts[r.reason] = (reasonCounts[r.reason] || 0) + 1;
             }
           });
-
-          const successfulGrounds = Object.entries(groundsMap)
-            .map(([ground, data]) => ({
-              ground,
-              success_rate: Math.round((data.success / data.total) * 100),
-              cases: data.total,
-            }))
-            .filter(g => g.cases >= 2)
-            .sort((a, b) => b.success_rate - a.success_rate)
+          const topReasons = Object.entries(reasonCounts)
+            .map(([reason, count]) => ({ reason, count }))
+            .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
-          bundle.courtData = {
+          // Mail contest win rate specifically (since we send mail)
+          const mailContests = foiaSample.filter((r: any) => r.contest_type === 'Mail');
+          const mailWins = mailContests.filter((r: any) => r.disposition === 'Not Liable');
+          const mailWinRate = mailContests.length > 10
+            ? Math.round((mailWins.length / mailContests.length) * 100)
+            : null;
+
+          bundle.foiaData = {
             hasData: true,
-            stats: stats || {},
-            successfulGrounds,
-            similarCases: (cases || []).slice(0, 5).map((c: any) => ({
-              ticket_number: c.ticket_number,
-              case_number: c.case_number,
-              location: c.ticket_location,
-              ward: c.ward,
-              contest_grounds: c.contest_grounds,
-              evidence_submitted: c.evidence_submitted,
-              outcome: c.outcome,
-              violation_description: c.violation_description,
-              ticket_date: c.ticket_date,
-            })),
-            evidenceGuidance: [],
-            totalCasesAnalyzed: (cases || []).length,
-            matchingCasesCount: (cases || []).length,
+            totalContested: foiaTotal,
+            totalDismissed: Math.round(foiaTotal * sampleWinRate),
+            winRate: Math.round(sampleWinRate * 100),
+            topDismissalReasons: topReasons,
+            mailContestWinRate: mailWinRate,
           };
-          console.log(`    Court data found: ${(cases || []).length} historical cases`);
+          console.log(`    FOIA data: ${foiaTotal} contested, ${bundle.foiaData.winRate}% win rate, mail win rate: ${mailWinRate ?? 'N/A'}%`);
         }
-      } catch (e) { console.error('    Court data lookup failed:', e); }
+      } catch (e) { console.error('    FOIA data lookup failed:', e); }
     })());
   }
 
@@ -564,25 +513,7 @@ async function gatherAllEvidence(
     })());
   }
 
-  // 10. Ward Contest Intelligence
-  if (ticket.location) {
-    promises.push((async () => {
-      try {
-        // Try to extract ward from location data or nearby data
-        const { data } = await supabaseAdmin
-          .from('ward_contest_intelligence')
-          .select('*')
-          .eq('violation_code', vCode || ticket.violation_type)
-          .limit(1);
-        if (data && data.length > 0) {
-          bundle.wardIntelligence = data[0];
-          console.log(`    Ward intelligence found: ${data[0].win_rate}% win rate`);
-        }
-      } catch (e) { /* Ward intelligence is optional */ }
-    })());
-  }
-
-  // 11. Street Cleaning Schedule (for street_cleaning violations)
+  // 10. Street Cleaning Schedule (for street_cleaning violations)
   if (ticket.violation_type === 'street_cleaning' && ticket.violation_date) {
     promises.push((async () => {
       try {
@@ -717,12 +648,14 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
 6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided`);
   }
 
-  // ── Section 5: Weather Data ──
+  // ── Section 5: Weather Data (only when relevant to violation or we have no other evidence) ──
+  const hasStrongEvidence = !!(evidence.parkingEvidence?.hasEvidence || evidence.cityStickerReceipt || evidence.registrationReceipt || evidence.redLightReceipt || evidence.cameraPassHistory);
   if (evidence.weatherData) {
     const wd = evidence.weatherData;
     const relevance = evidence.weatherRelevanceType;
 
     if (relevance === 'primary' && wd.defenseRelevant) {
+      // Street cleaning / snow route — weather is THE defense
       sections.push(`WEATHER DEFENSE DATA - PRIMARY ARGUMENT (USE THIS PROMINENTLY IN THE LETTER):
 Date: ${wd.date}
 Conditions: ${wd.weatherDescription}
@@ -736,37 +669,19 @@ Defense Reason: ${wd.defenseReason}
 CRITICAL: Weather is a PRIMARY defense for this violation type. Include a dedicated paragraph that:
 - Cites historical weather records showing adverse conditions on ${wd.date}
 - Explains that street cleaning/snow operations are typically cancelled in these conditions
-- Argues the city should not issue citations when weather prevents the purpose of the restriction
-- This should be one of the MAIN arguments in the letter`);
+- Argues the city should not issue citations when weather prevents the purpose of the restriction`);
     } else if (relevance === 'supporting' && wd.hasAdverseWeather) {
-      sections.push(`WEATHER DATA - SUPPORTING ARGUMENT (WEAVE INTO THE LETTER):
-Date: ${wd.date}
-Conditions: ${wd.weatherDescription}
-${wd.conditions.length > 0 ? `Notable conditions: ${wd.conditions.join(', ')}` : ''}
-${wd.snowfall ? `Snowfall: ${wd.snowfall} inches` : ''}
-${wd.precipitation ? `Precipitation: ${wd.precipitation} inches` : ''}
-${wd.temperature !== null ? `Temperature: ${Math.round(wd.temperature)}F` : ''}
-
-GUIDANCE: Weather can SUPPORT the defense by explaining:
-- Why signage/markings may have been obscured (snow, ice, rain)
-- Why returning to the vehicle promptly was difficult or unsafe
-- Why visibility conditions made compliance difficult
-- DO NOT make weather the primary argument, but use it to strengthen other points`);
-    } else if (relevance === 'emergency' && wd.hasAdverseWeather) {
-      sections.push(`WEATHER DATA - EMERGENCY/SAFETY CONTEXT:
-Date: ${wd.date}
-Conditions: ${wd.weatherDescription}
-${wd.conditions.length > 0 ? `Notable: ${wd.conditions.join(', ')}` : ''}
-
-GUIDANCE: Weather can support safety arguments:
-- Conditions may have made it unsafe to move the vehicle
-- Emergency shelter from severe weather may have been necessary`);
-    } else if (wd.hasAdverseWeather) {
-      sections.push(`WEATHER CONTEXT (OPTIONAL - USE ONLY IF STRENGTHENS OTHER ARGUMENTS):
-Date: ${wd.date}
-Conditions: ${wd.weatherDescription}
-Note: Weather conditions were present but not severe. Only mention if it genuinely supports another argument.`);
+      // Other parking violations — weather supports but isn't the main argument
+      sections.push(`WEATHER DATA - SUPPORTING CONTEXT (weave in briefly, not a main argument):
+Conditions on ${wd.date}: ${wd.weatherDescription}
+Use ONLY to explain why signage may have been obscured or why returning to the vehicle was difficult. Keep to 1-2 sentences max.`);
+    } else if (!hasStrongEvidence && wd.hasAdverseWeather) {
+      // We have no strong evidence — weather is better than nothing
+      sections.push(`WEATHER DATA - LAST RESORT (use only because we have limited other evidence):
+Conditions on ${wd.date}: ${wd.weatherDescription}
+Since other evidence is limited, you may briefly mention weather conditions if they genuinely affected compliance.`);
     }
+    // If weather is irrelevant to this violation type and we have other evidence, don't include it at all
   }
 
   // ── Section 6: City Sticker Receipt ──
@@ -840,72 +755,36 @@ ${relevantPass.speed_mph && relevantPass.speed_limit_mph && relevantPass.speed_m
 - If the speed limit signage was unclear or recently changed, note that`);
   }
 
-  // ── Section 10: Signage Reports ──
-  if (evidence.signageReports && evidence.signageReports.length > 0) {
-    sections.push(`=== SIGNAGE CONDITION REPORTS NEAR TICKET LOCATION ===
-Community-reported sign issues have been documented near the ticket location:
+  // ── Section 10: FOIA Contest Outcome Data (1.18M real Chicago hearing records) ──
+  if (evidence.foiaData.hasData) {
+    const fd = evidence.foiaData;
+    sections.push(`=== CITY OF CHICAGO FOIA DATA — REAL HEARING OUTCOMES ===
+(from ${fd.totalContested.toLocaleString()} actual contested tickets for this violation code)
 
-${evidence.signageReports.map((r: any, i: number) => `Report ${i + 1}:
-- Address: ${r.address || 'Near ticket location'}
-- Sign Type: ${r.sign_type || 'Parking restriction'}
-- Condition: ${r.condition?.toUpperCase() || 'UNKNOWN'} ${r.obstruction_type ? `(${r.obstruction_type})` : ''}
-- Sign Text: ${r.sign_text || 'N/A'}
-- Reported: ${r.created_at ? new Date(r.created_at).toLocaleDateString() : 'On file'}
-- Verified: ${r.verified ? 'YES' : 'Community report'}
-${r.photo_urls && r.photo_urls.length > 0 ? '- Photos: Available' : ''}`).join('\n\n')}
+Overall win rate: ${fd.winRate}% (${fd.totalDismissed.toLocaleString()} found "Not Liable" out of ${fd.totalContested.toLocaleString()})
+${fd.mailContestWinRate !== null ? `Mail contest win rate: ${fd.mailContestWinRate}% (this letter will be a mail contest)` : ''}
 
-INSTRUCTIONS:
-- Reference these documented sign issues as evidence that signage at or near this location was ${evidence.signageReports.map((r: any) => r.condition).join(', ')}
-- Argue that unclear or damaged signage prevented the driver from knowing about the restriction
-- The city has an obligation to maintain clear, visible signage; failure to do so invalidates citations
-- Present this as "documented signage condition reports from the area" - do not mention crowdsourcing`);
+Top reasons hearings were WON (hearing officer rulings for "Not Liable"):
+${fd.topDismissalReasons.map((r, i) => `  ${i + 1}. "${r.reason}" (${r.count} cases in sample)`).join('\n')}
+
+STRATEGY INSTRUCTIONS (DO NOT cite stats in the letter):
+1. The top dismissal reason tells you what argument to lead with
+2. "Violation is Factually Inconsistent" = argue the facts don't support the citation (use GPS data, receipts, or timeline)
+3. "Signs were Missing or Obscured" = argue signage issues
+4. "Prima Facie Case Not Established by City" = argue the city failed to prove its case
+5. "Affirmative Compliance Defense" = show proof of compliance (receipts, permits)
+6. DO NOT mention FOIA data, statistics, or win rates in the letter
+7. Write the letter using the STRATEGY these outcomes suggest, not citing the data itself`);
   }
 
-  // ── Section 11: Historical Court Data ──
-  if (evidence.courtData.hasData) {
-    const cd = evidence.courtData;
-    sections.push(`=== HISTORICAL COURT DATA (from ${cd.totalCasesAnalyzed} analyzed cases) ===
-
-${cd.successfulGrounds.length > 0 ? `Most Successful Contest Grounds for This Violation:
-${cd.successfulGrounds.map(g => `  - "${g.ground}": ${g.success_rate}% success (${g.cases} cases)`).join('\n')}` : ''}
-
-${cd.similarCases.length > 0 ? `Real Cases Where This Violation Was Dismissed:
-${cd.similarCases.slice(0, 3).map((c: any, i: number) => `${i + 1}. Citation #${c.ticket_number || 'Unknown'} (Case ${c.case_number || 'Unknown'})
-   Location: ${c.location || 'Unknown'} ${c.ward ? `(Ward ${c.ward})` : ''}
-   Argued: ${c.contest_grounds?.join(', ') || 'Not specified'}
-   Evidence Used: ${c.evidence_submitted ? Object.keys(c.evidence_submitted).filter((k: string) => c.evidence_submitted[k]).join(', ') : 'None listed'}
-   Outcome: ${c.outcome?.toUpperCase()}`).join('\n\n')}` : ''}
-
-CRITICAL INSTRUCTIONS FOR USING COURT DATA:
-1. DO NOT cite percentages or statistics directly in the letter
-2. DO NOT mention win rates or success rates in the letter text
-3. INSTEAD: Use subtle, professional language like:
-   - "Similar violations in this area have been successfully contested when..."
-   - "In comparable circumstances, tickets have been dismissed based on..."
-   - "This situation bears resemblance to cases where..."
-4. Write like an experienced attorney who knows what works, not a statistician
-5. The letter should sound confident but NOT cite our internal data analysis
-6. Use the data to INFORM your writing strategy, not to quote it`);
-  }
-
-  // ── Section 12: Ward Intelligence ──
-  if (evidence.wardIntelligence) {
-    const wi = evidence.wardIntelligence;
-    sections.push(`WARD CONTEST INTELLIGENCE (INTERNAL - DO NOT CITE):
-- Win Rate in This Ward: ${wi.win_rate}%
-- Most Successful Defense: ${wi.best_defense || 'N/A'}
-- Season Pattern: ${wi.season_pattern || 'N/A'}
-USE THIS to inform which arguments to emphasize, but never mention ward statistics in the letter.`);
-  }
-
-  // ── Section 13: Street Cleaning Schedule ──
+  // ── Section 11: Street Cleaning Schedule ──
   if (evidence.streetCleaningSchedule && evidence.streetCleaningSchedule.length > 0) {
     const scs = evidence.streetCleaningSchedule;
-    sections.push(`STREET CLEANING SCHEDULE DATA:
+    sections.push(`STREET CLEANING SCHEDULE DATA (city's posted schedule, NOT confirmation cleaning occurred):
 Records for ticket date (${ticket.violation_date}):
 ${scs.map((s: any) => `- Ward ${s.ward}, Section ${s.section}: ${s.status || 'scheduled'}`).join('\n')}
 
-If the schedule shows cleaning was NOT performed on this date, or was cancelled, use this as evidence that the citation was issued even though the restriction purpose was not served.`);
+NOTE: This is the city's schedule. We do NOT have data confirming whether cleaning actually occurred. You may argue that street cleaning is frequently cancelled or rescheduled, and request the city provide proof that cleaning actually took place on this date and block.`);
   }
 
   // ── Final Instructions ──
@@ -922,9 +801,8 @@ Generate a professional, formal contest letter that:
    ${evidence.registrationReceipt ? '- Registration renewal receipt (STRONG - proves compliance)' : ''}
    ${evidence.redLightReceipt ? '- Red light camera GPS data (STRONG - contradicts camera reading)' : ''}
    ${evidence.cameraPassHistory ? '- Speed camera GPS data (STRONG - shows actual speed)' : ''}
-   ${evidence.signageReports ? '- Documented signage issues (SUPPORTING - shows city maintenance failure)' : ''}
-   ${evidence.weatherData?.hasAdverseWeather ? `- Weather conditions (${evidence.weatherRelevanceType === 'primary' ? 'PRIMARY' : 'SUPPORTING'} defense)` : ''}
-   ${evidence.courtData.hasData ? '- Historical case patterns (INFORM strategy, do not cite stats)' : ''}
+   ${evidence.weatherData?.hasAdverseWeather && evidence.weatherRelevanceType === 'primary' ? '- Weather conditions (PRIMARY defense for this violation)' : ''}
+   ${evidence.foiaData.hasData ? '- FOIA hearing outcomes (INFORM strategy only, do not cite stats)' : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the hearing officer, sign with sender name only (Lob adds return address automatically)
@@ -968,10 +846,6 @@ function generateFallbackLetter(
 
   if (evidence.weatherData?.defenseRelevant && evidence.weatherRelevanceType === 'primary') {
     body += `\n\nWeather records for ${evidence.weatherData.date} show ${evidence.weatherData.weatherDescription}. These conditions typically result in cancellation of the restriction cited on this ticket.`;
-  }
-
-  if (evidence.signageReports && evidence.signageReports.length > 0) {
-    body += `\n\nSignage at or near this location has been documented as ${evidence.signageReports.map((r: any) => r.condition).join(', ')}, which may have prevented me from being aware of the restriction.`;
   }
 
   body += `\n\nI respectfully request that this citation be dismissed based on the evidence provided.`;
@@ -1078,10 +952,8 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   if (evidence.registrationReceipt) evidenceSources.push('registration');
   if (evidence.redLightReceipt) evidenceSources.push('red_light_gps');
   if (evidence.cameraPassHistory) evidenceSources.push('speed_camera_gps');
-  if (evidence.signageReports) evidenceSources.push('signage_reports');
-  if (evidence.courtData.hasData) evidenceSources.push('court_data');
+  if (evidence.foiaData.hasData) evidenceSources.push('foia_data');
   if (evidence.kitEvaluation) evidenceSources.push('contest_kit');
-  if (evidence.wardIntelligence) evidenceSources.push('ward_intelligence');
 
   if (anthropic) {
     try {
@@ -1160,10 +1032,10 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
         weather_relevance_type: evidence.weatherRelevanceType,
         kit_used: evidence.kitEvaluation ? violationCode : null,
         estimated_win_rate: evidence.kitEvaluation ? Math.round(evidence.kitEvaluation.estimatedWinRate * 100) : null,
-        court_cases_analyzed: evidence.courtData.totalCasesAnalyzed,
+        foia_win_rate: evidence.foiaData.hasData ? Math.round(evidence.foiaData.winRate * 100) : null,
+        foia_total_contested: evidence.foiaData.totalContested,
         has_receipt_evidence: !!(evidence.cityStickerReceipt || evidence.registrationReceipt),
         has_camera_evidence: !!(evidence.redLightReceipt || evidence.cameraPassHistory),
-        has_signage_evidence: !!(evidence.signageReports && evidence.signageReports.length > 0),
       },
       performed_by: 'autopilot_cron',
     });
