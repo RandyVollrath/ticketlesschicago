@@ -671,25 +671,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             return cur.distance(from: lastParking)
           }()
 
-          // GUARD 1: GPS speed veto — if GPS says we're moving, the user is
-          // still driving and CoreMotion just flickered. This was the Clybourn
-          // bug: CoreMotion flickered to stationary mid-drive, 197m from last
-          // parking, passing the old flicker guard, and firing a false parking
-          // event that also killed camera alerts.
+          // GPS speed veto: if GPS says we're moving, user is still driving.
           let gpsStillMoving = currentSpeed > 1.0
 
-          // GUARD 2: Flicker filter — require BOTH conditions to pass:
-          //   - Automotive for > 30s (not a brief phone vibration)
-          //   - Moved > 200m from last parking (actually went somewhere)
-          // Previously used OR logic (either one passing was enough) which
-          // let through mid-drive flickers on short drives from false parkings.
-          let isLikelyFlicker = automotiveDuration < 30 || distFromLastParking < 200
+          // Flicker filter: BOTH must be true for flicker rejection.
+          // A real drive passes if EITHER duration > 15s OR distance > 100m.
+          // This was the working logic from Feb 8. The stricter version
+          // (OR + 30s/200m) was blocking real short drives.
+          let isLikelyFlicker = automotiveDuration < 15 && distFromLastParking < 100
           self.log("SHORT DRIVE RECOVERY check: automotiveDuration=\(String(format: "%.0f", automotiveDuration))s, distFromLastParking=\(String(format: "%.0f", distFromLastParking))m, gpsSpeed=\(String(format: "%.1f", currentSpeed))m/s, gpsStillMoving=\(gpsStillMoving), isFlicker=\(isLikelyFlicker)")
 
           if gpsStillMoving {
-            self.log("SHORT DRIVE RECOVERY: GPS speed \(String(format: "%.1f", currentSpeed)) m/s > 1.0 — user still driving, skipping (Clybourn bug fix)")
+            self.log("SHORT DRIVE RECOVERY: GPS speed \(String(format: "%.1f", currentSpeed)) m/s > 1.0 — still driving, skipping")
           } else if isLikelyFlicker {
-            self.log("SHORT DRIVE RECOVERY: automotive \(String(format: "%.0f", automotiveDuration))s (< 30s) or dist \(String(format: "%.0f", distFromLastParking))m (< 200m) — likely flicker, skipping")
+            self.log("SHORT DRIVE RECOVERY: automotive \(String(format: "%.0f", automotiveDuration))s (< 15s) AND dist \(String(format: "%.0f", distFromLastParking))m (< 100m) — likely flicker, skipping")
           } else if let loc = self.lastDrivingLocation ?? self.locationManager.location {
             self.log("SHORT DRIVE RECOVERY: CoreMotion automotive→\(activity.stationary ? "stationary" : "walking") but isDriving was false. Firing departure + parking events.")
 
@@ -883,34 +878,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           let stationaryDuration = self.stationaryStartTime.map { Date().timeIntervalSince($0) } ?? 0
 
           if !self.coreMotionSaysAutomotive {
-            // CoreMotion agrees user is not in a vehicle.
-            // THREE guards prevent false positives at red lights:
-            // 1. GPS speed must have been ≈ 0 for at least 15s (red lights rarely have 15s of true zero)
-            // 2. CoreMotion must have been non-automotive for at least 8s continuously
-            //    (not just a single flicker at the instant the timer fires)
-            // 3. GPS speed must currently be < 1.0 m/s (final sanity check)
-            let coreMotionStableDuration = self.coreMotionNotAutomotiveSince.map { Date().timeIntervalSince($0) } ?? 0
-            let currentSpeedCheck = self.locationManager.location?.speed ?? -1
-            let gpsSpeedOk = currentSpeedCheck >= 0 && currentSpeedCheck < 1.0
-
-            if zeroDuration >= self.minZeroSpeedForAgreeSec && coreMotionStableDuration >= self.coreMotionStabilitySec && gpsSpeedOk {
-              self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
-              timer.invalidate()
-              self.speedZeroTimer = nil
-              self.confirmParking(source: "gps_coremotion_agree")
-            } else {
-              var waitReasons: [String] = []
-              if zeroDuration < self.minZeroSpeedForAgreeSec {
-                waitReasons.append("speed≈0 only \(String(format: "%.0f", zeroDuration))s (need \(String(format: "%.0f", self.minZeroSpeedForAgreeSec))s)")
-              }
-              if coreMotionStableDuration < self.coreMotionStabilitySec {
-                waitReasons.append("CoreMotion non-automotive only \(String(format: "%.0f", coreMotionStableDuration))s (need \(String(format: "%.0f", self.coreMotionStabilitySec))s)")
-              }
-              if !gpsSpeedOk {
-                waitReasons.append("GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s (need < 1.0)")
-              }
-              self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
-            }
+            // CoreMotion agrees user is not in a vehicle — confirm parking.
+            // This was the working Feb 8 logic. The added 15s/8s minimum
+            // delays were blocking legitimate parking confirmations.
+            self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion agrees (not automotive)")
+            timer.invalidate()
+            self.speedZeroTimer = nil
+            self.confirmParking(source: "gps_coremotion_agree")
           } else if phoneIsStationary && withinStationaryRadius && stationaryDuration >= self.stationaryDurationSec {
             // Phone hasn't moved (speed < 0.5 m/s) AND still within 50m of parking spot for 2+ min.
             // This means the user is sitting in their parked car (not walking away).
@@ -1116,20 +1090,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     parkingConfirmationTimer = nil
     speedZeroTimer?.invalidate()
     speedZeroTimer = nil
-
-    // GPS SPEED VETO: If GPS currently shows we're moving, abort — this is a
-    // red light or brief CoreMotion flicker, not real parking.
-    // The "location_stationary" source bypasses this since it already proved
-    // 2+ minutes of zero movement which is definitive.
-    if source == "coremotion" || source == "gps_coremotion_agree" {
-      let currentSpeed = locationManager.location?.speed ?? -1
-      if currentSpeed > 1.0 {
-        self.log("confirmParking(\(source)) aborted: GPS speed \(String(format: "%.1f", currentSpeed)) m/s — still moving (red light false positive)")
-        lastStationaryTime = nil
-        locationAtStopStart = nil
-        return
-      }
-    }
 
     // If CoreMotion still reports automotive (engine running / vehicle vibrations),
     // abort parking confirmation — UNLESS this is a speed override (15s of zero speed
