@@ -11,7 +11,7 @@ import { useRouter } from 'next/router';
  *     - Green  = Free street parking, no active restrictions
  *     - Teal   = Metered parking (currently enforced)
  *     - Light  = Metered parking (not enforced right now — free)
- *     - Red    = Restricted NOW (cleaning today, snow/winter ban, permit zone)
+ *     - Red    = Restricted NOW (cleaning today, snow/winter ban)
  *     - Amber  = Restriction within 24hrs
  *     - Gray   = No data
  */
@@ -103,20 +103,6 @@ function isWinterBanActiveNow(): boolean {
   const inSeason = month === 11 || month <= 2; // Dec, Jan, Feb, Mar
   const inHours = hour >= 3 && hour < 7;
   return inSeason && inHours;
-}
-
-// ---------------------------------------------------------------------------
-// Permit zone time check (Mon-Fri 6am-6pm Chicago time)
-// Most Chicago residential permit zones enforce during these hours.
-// ---------------------------------------------------------------------------
-
-function isPermitZoneActiveNow(): boolean {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-  const day = now.getDay(); // 0=Sun … 6=Sat
-  const hour = now.getHours();
-  const isWeekday = day >= 1 && day <= 5;
-  const inHours = hour >= 6 && hour < 18; // 6am-6pm
-  return isWeekday && inHours;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,19 +243,13 @@ export default function DestinationMapView() {
     }
 
     // --- Restyle permit zone lines ---
-    // In parkability mode: RED when permit restriction active (Mon-Fri 6am-6pm), HIDDEN otherwise.
+    // Always visible (hours vary per zone — no time logic until FOIA data arrives).
+    // Odd/even side gets a dashed style to distinguish from "both sides" (solid).
     if (permitLayer) {
-      const permitActive = isPermitZoneActiveNow();
       permitLayer.eachLayer((layer: any) => {
-        if (isParkability) {
-          if (permitActive) {
-            layer.setStyle({ color: PARK_COLORS.restricted, weight: 4, opacity: 0.85, dashArray: '6,3' });
-          } else {
-            layer.setStyle({ opacity: 0, weight: 0 });
-          }
-        } else {
-          layer.setStyle({ color: LAYER_COLORS.permitZone, weight: 4, opacity: 0.8, dashArray: '' });
-        }
+        const oddEven = (layer as any)._oddEven;
+        const dashArray = (oddEven === 'O' || oddEven === 'E') ? '8,4' : '';
+        layer.setStyle({ color: LAYER_COLORS.permitZone, weight: 5, opacity: 0.8, dashArray });
       });
     }
   }, []);
@@ -553,27 +533,54 @@ export default function DestinationMapView() {
         }
 
         // --- Permit zone lines (purple) ---
+        // Two layers: invisible wide hit-target + visible styled line.
+        // Odd/even side gets dashed style; "both sides" gets solid.
         if (permitRes?.features?.length) {
           const permitGeoJSON = {
             type: 'FeatureCollection' as const,
             features: permitRes.features,
           };
-          const permitLayer = L.geoJSON(permitGeoJSON, {
+
+          // Invisible wide layer for easy tapping (20px hit target)
+          const hitLayer = L.geoJSON(permitGeoJSON, {
             style: () => ({
-              color: LAYER_COLORS.permitZone,
-              weight: 4,
-              opacity: 0.8,
+              color: 'transparent',
+              weight: 20,
+              opacity: 0,
             }),
+            interactive: true,
             onEachFeature: (feature: any, layer: any) => {
               const p = feature.properties;
+              const sideLabel = p.oddEven === 'O' ? 'ODD side only' : p.oddEven === 'E' ? 'EVEN side only' : 'Both sides';
+              const sideBg = p.oddEven === 'O' ? '#dbeafe' : p.oddEven === 'E' ? '#fce7f3' : '#e0e7ff';
+              const sideColor = p.oddEven === 'O' ? '#1e40af' : p.oddEven === 'E' ? '#9d174d' : '#4338ca';
               layer.bindPopup(`
-                <div style="font-family:system-ui;font-size:13px">
-                  <div style="font-weight:700;color:${LAYER_COLORS.permitZone}">Permit Zone ${p.zone}</div>
-                  <div style="color:#6C727A;margin-top:2px">${p.street || ''}</div>
-                  <div style="color:#94A3B8;font-size:12px;margin-top:2px">${p.addrRange || ''} (${p.oddEven === 'O' ? 'odd side' : p.oddEven === 'E' ? 'even side' : 'both sides'})</div>
-                  <div style="color:#94A3B8;font-size:11px;margin-top:4px">Permit required — check sign for hours</div>
+                <div style="font-family:system-ui;font-size:13px;min-width:160px">
+                  <div style="font-weight:700;color:${LAYER_COLORS.permitZone};font-size:14px">Zone ${p.zone}</div>
+                  <div style="color:#374151;margin-top:3px;font-weight:500">${p.street || ''}</div>
+                  <div style="color:#6B7280;font-size:12px;margin-top:2px">${p.addrRange || ''}</div>
+                  <div style="margin-top:6px;display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${sideBg};color:${sideColor}">${sideLabel}</div>
+                  <div style="color:#9CA3AF;font-size:11px;margin-top:6px">Permit required — check posted sign for hours</div>
                 </div>
-              `, { maxWidth: 250 });
+              `, { maxWidth: 260 });
+            },
+          }).addTo(map);
+
+          // Visible styled layer (not interactive — clicks pass through to hit layer)
+          const permitLayer = L.geoJSON(permitGeoJSON, {
+            style: (feature: any) => {
+              const oe = feature?.properties?.oddEven;
+              return {
+                color: LAYER_COLORS.permitZone,
+                weight: 5,
+                opacity: 0.8,
+                dashArray: (oe === 'O' || oe === 'E') ? '8,4' : '',
+              };
+            },
+            interactive: false,
+            onEachFeature: (feature: any, layer: any) => {
+              // Store oddEven for restyling on toggle
+              (layer as any)._oddEven = feature?.properties?.oddEven;
             },
           }).addTo(map);
           layersRef.current.permitLayer = permitLayer;
@@ -679,13 +686,13 @@ export default function DestinationMapView() {
           left: '12px',
           right: '12px',
           zIndex: 1000,
-          backgroundColor: parkabilityMode ? (isPermitZoneActiveNow() ? '#fef2f2' : '#f0fdf4') : '#F3E8FF',
-          border: parkabilityMode ? (isPermitZoneActiveNow() ? '1px solid #ef4444' : '1px solid #86efac') : '1px solid #c4b5fd',
+          backgroundColor: '#F3E8FF',
+          border: '1px solid #c4b5fd',
           borderRadius: '10px',
           padding: '8px 14px',
           fontFamily: 'system-ui',
           fontSize: '12px',
-          color: parkabilityMode ? (isPermitZoneActiveNow() ? '#991b1b' : '#166534') : '#5b21b6',
+          color: '#5b21b6',
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
           display: 'flex',
           alignItems: 'center',
@@ -693,14 +700,10 @@ export default function DestinationMapView() {
         }}>
           <span style={{
             width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-            backgroundColor: parkabilityMode ? (isPermitZoneActiveNow() ? '#ef4444' : '#22c55e') : '#8b5cf6',
+            backgroundColor: '#8b5cf6',
           }} />
           <span>
-            <strong>Permit Zone {permitZone}</strong> — {parkabilityMode
-              ? (isPermitZoneActiveNow()
-                ? <span style={{ color: '#dc2626', fontWeight: 700 }}>ACTIVE NOW</span>
-                : <span>off-hours (Mon–Fri 6am–6pm)</span>)
-              : 'permit required Mon–Fri 6am–6pm'}
+            <strong>Permit Zone {permitZone}</strong> — check posted sign for hours
           </span>
         </div>
       )}
@@ -811,6 +814,10 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Meter (free now)</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit zone</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.caution, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Restriction soon</span>
                   </div>
@@ -819,18 +826,8 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Can't park now</span>
                   </div>
                 </div>
-                {/* Restriction status rows */}
+                {/* Snow/winter ban status row */}
                 <div style={{ marginTop: '8px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b' }}>
-                  {isPermitZoneActiveNow() ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
-                      <span>Permit Zones: <strong style={{ color: '#ef4444' }}>ACTIVE</strong> — need permit Mon–Fri 6am–6pm</span>
-                    </div>
-                  ) : (
-                    <div style={{ color: '#9ca3af' }}>
-                      Permit zones: off-hours — enforced Mon–Fri 6am–6pm
-                    </div>
-                  )}
                   {snowBanActive ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                       <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
