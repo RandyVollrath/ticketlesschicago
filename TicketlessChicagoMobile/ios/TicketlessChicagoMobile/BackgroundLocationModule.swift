@@ -115,7 +115,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   }
 
   override func supportedEvents() -> [String]! {
-    return ["onParkingDetected", "onDrivingStarted", "onLocationUpdate"]
+    return ["onParkingDetected", "onDrivingStarted", "onLocationUpdate", "onPossibleDriving"]
   }
 
   // MARK: - Public API
@@ -496,6 +496,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               if !self.continuousGpsActive {
                 self.log("CoreMotion says automotive but GPS speed unknown — starting GPS to verify")
                 self.startContinuousGps()
+                // Emit onPossibleDriving so camera alerts can start immediately
+                // while we wait for GPS to confirm driving. This closes the gap
+                // where the user passes nearby cameras during the GPS cold start.
+                self.sendEvent(withName: "onPossibleDriving", body: [
+                  "timestamp": Date().timeIntervalSince1970 * 1000,
+                  "source": "coremotion_pre_gps",
+                ])
+                self.log("Emitted onPossibleDriving — camera alerts should start now")
               }
               self.log("CoreMotion says automotive but GPS speed ≈ 0 — waiting for GPS speed confirmation")
               return
