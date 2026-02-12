@@ -43,6 +43,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`✅ Successfully fetched ${routes?.length || 0} snow routes`);
 
+    // Fetch snow ban status (single-row table)
+    const { data: banRow } = await supabase
+      .from('snow_route_status')
+      .select('is_active, activation_date, snow_amount_inches')
+      .limit(1)
+      .single();
+
+    const snowBanActive = banRow?.is_active ?? false;
+
     // Transform to GeoJSON format for map
     const geoJsonRoutes = (routes || []).map(route => ({
       type: 'Feature',
@@ -56,7 +65,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       routes: geoJsonRoutes,
-      count: geoJsonRoutes.length
+      count: geoJsonRoutes.length,
+      snowBanActive,
+      snowBanActivatedAt: banRow?.activation_date ?? null,
+      snowAmountInches: banRow?.snow_amount_inches ? Number(banRow.snow_amount_inches) : null,
     });
 
   } catch (error: any) {
