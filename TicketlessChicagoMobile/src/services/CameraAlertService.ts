@@ -341,6 +341,24 @@ class CameraAlertServiceClass {
   private lastLat = 0;
   private lastLng = 0;
 
+  /** Diagnostic: count GPS updates for periodic logging */
+  private gpsUpdateCount = 0;
+  /** Diagnostic: track filter stage rejections */
+  private lastDiagnostic: {
+    totalChecked: number;
+    typeFiltered: number;
+    speedFiltered: number;
+    bboxFiltered: number;
+    distanceFiltered: number;
+    headingFiltered: number;
+    bearingFiltered: number;
+    passed: number;
+    redlightPassed: number;
+    speedPassed: number;
+    nearestRedlightDistance: number;
+    nearestSpeedDistance: number;
+  } | null = null;
+
   // --------------------------------------------------------------------------
   // Initialization
   // --------------------------------------------------------------------------
@@ -547,7 +565,9 @@ class CameraAlertServiceClass {
     this.passTrackingByCamera.clear();
     this.recentTrace = [];
     this.lastAnnounceTime = 0;
-    log.info('Camera alert monitoring started');
+    this.gpsUpdateCount = 0;
+    this.lastDiagnostic = null;
+    log.info(`Camera alert monitoring started (speed=${this.speedAlertsEnabled}, redlight=${this.redLightAlertsEnabled}, cameras=${CHICAGO_CAMERAS.length})`);
   }
 
   /**
@@ -585,6 +605,7 @@ class CameraAlertServiceClass {
     if (!this.isActive || !this.isEnabled) return;
 
     try {
+      this.gpsUpdateCount++;
       this.lastLat = latitude;
       this.lastLng = longitude;
       this.appendTracePoint(latitude, longitude, speed, heading, horizontalAccuracyMeters);
@@ -600,6 +621,16 @@ class CameraAlertServiceClass {
       // Speed filtering is per-camera-type: red light cameras alert at any
       // driving speed (≥1 m/s), speed cameras only at ≥10 mph (4.5 m/s).
       const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius, speed);
+
+      // Periodic diagnostic logging (every 10 GPS updates = ~10s)
+      if (this.gpsUpdateCount % 10 === 1) {
+        const speedMph = speed >= 0 ? Math.round(speed * 2.237) : -1;
+        const diag = this.lastDiagnostic;
+        log.info(`[DIAG] GPS#${this.gpsUpdateCount}: ${latitude.toFixed(5)},${longitude.toFixed(5)} spd=${speedMph}mph hdg=${Math.round(heading)}° radius=${alertRadius}m found=${nearbyCameras.length} ` +
+          `settings(speed=${this.speedAlertsEnabled},redlight=${this.redLightAlertsEnabled}) ` +
+          (diag ? `filter(type=${diag.typeFiltered},spd=${diag.speedFiltered},bbox=${diag.bboxFiltered},dist=${diag.distanceFiltered},hdg=${diag.headingFiltered},brg=${diag.bearingFiltered},pass=${diag.passed}) ` +
+            `nearest(rl=${diag.nearestRedlightDistance === Infinity ? 'none' : Math.round(diag.nearestRedlightDistance) + 'm'},sp=${diag.nearestSpeedDistance === Infinity ? 'none' : Math.round(diag.nearestSpeedDistance) + 'm'})` : 'no-diag'));
+      }
 
       if (nearbyCameras.length === 0) return;
 
@@ -788,6 +819,16 @@ class CameraAlertServiceClass {
   ): Array<{ index: number; camera: CameraLocation; distance: number }> {
     const results: Array<{ index: number; camera: CameraLocation; distance: number }> = [];
 
+    // Diagnostic counters
+    let typeFiltered = 0;
+    let speedFiltered = 0;
+    let bboxFiltered = 0;
+    let distanceFiltered = 0;
+    let headingFiltered = 0;
+    let bearingFiltered = 0;
+    let nearestRedlightDistance = Infinity;
+    let nearestSpeedDistance = Infinity;
+
     const latMin = lat - BBOX_DEGREES;
     const latMax = lat + BBOX_DEGREES;
     const lngMin = lng - BBOX_DEGREES;
@@ -795,34 +836,80 @@ class CameraAlertServiceClass {
 
     for (let i = 0; i < CHICAGO_CAMERAS.length; i++) {
       const cam = CHICAGO_CAMERAS[i];
-      if (!this.isCameraTypeEnabled(cam.type)) continue;
+      if (!this.isCameraTypeEnabled(cam.type)) { typeFiltered++; continue; }
 
       // Per-type speed filtering:
       // - Speed cameras: only alert at ≥10 mph (no point alerting while crawling)
       // - Red light cameras: alert at any driving speed ≥~2 mph
       if (speed >= 0) {
         const minSpeed = cam.type === 'speed' ? MIN_SPEED_SPEED_CAM_MPS : MIN_SPEED_REDLIGHT_MPS;
-        if (speed < minSpeed) continue;
+        if (speed < minSpeed) { speedFiltered++; continue; }
       }
 
       // Fast bounding box filter
-      if (cam.latitude < latMin || cam.latitude > latMax) continue;
-      if (cam.longitude < lngMin || cam.longitude > lngMax) continue;
+      if (cam.latitude < latMin || cam.latitude > latMax) { bboxFiltered++; continue; }
+      if (cam.longitude < lngMin || cam.longitude > lngMax) { bboxFiltered++; continue; }
 
       // Exact distance
       const distance = distanceMeters(lat, lng, cam.latitude, cam.longitude);
+
+      // Track nearest cameras of each type (even if outside alert radius)
+      if (cam.type === 'redlight' && distance < nearestRedlightDistance) {
+        nearestRedlightDistance = distance;
+      } else if (cam.type === 'speed' && distance < nearestSpeedDistance) {
+        nearestSpeedDistance = distance;
+      }
+
       if (distance <= alertRadius) {
         // Direction filter: only alert if user is traveling in a direction
         // this camera monitors. Fail-open if heading unavailable.
-        if (!isHeadingMatch(heading, cam.approaches)) continue;
+        if (!isHeadingMatch(heading, cam.approaches)) {
+          headingFiltered++;
+          // Log red light heading rejections specifically
+          if (cam.type === 'redlight') {
+            log.info(`[DIAG] Red light HEADING REJECT: ${cam.address} approaches=${cam.approaches} userHeading=${Math.round(heading)}° dist=${Math.round(distance)}m`);
+          }
+          continue;
+        }
 
         // Bearing filter: only alert if camera is ahead of us (within ±30° cone).
         // This prevents false alerts from cameras on parallel streets one block over.
-        if (!this.isCameraAhead(lat, lng, cam.latitude, cam.longitude, heading)) continue;
+        if (!this.isCameraAhead(lat, lng, cam.latitude, cam.longitude, heading)) {
+          bearingFiltered++;
+          if (cam.type === 'redlight') {
+            const bearing = this.bearingTo(lat, lng, cam.latitude, cam.longitude);
+            log.info(`[DIAG] Red light BEARING REJECT: ${cam.address} bearing=${Math.round(bearing)}° heading=${Math.round(heading)}° diff=${Math.round(Math.abs(heading - bearing) > 180 ? 360 - Math.abs(heading - bearing) : Math.abs(heading - bearing))}° dist=${Math.round(distance)}m`);
+          }
+          continue;
+        }
 
         results.push({ index: i, camera: cam, distance });
+      } else {
+        distanceFiltered++;
       }
     }
+
+    // Store diagnostic info
+    let redlightPassed = 0;
+    let speedPassed = 0;
+    for (const r of results) {
+      if (r.camera.type === 'redlight') redlightPassed++;
+      else speedPassed++;
+    }
+    this.lastDiagnostic = {
+      totalChecked: CHICAGO_CAMERAS.length,
+      typeFiltered,
+      speedFiltered,
+      bboxFiltered,
+      distanceFiltered,
+      headingFiltered,
+      bearingFiltered,
+      passed: results.length,
+      redlightPassed,
+      speedPassed,
+      nearestRedlightDistance,
+      nearestSpeedDistance,
+    };
 
     // Sort by distance (closest first)
     results.sort((a, b) => a.distance - b.distance);
@@ -965,6 +1052,44 @@ class CameraAlertServiceClass {
       isActive: this.isActive,
       totalCameras: CHICAGO_CAMERAS.length,
       alertedCount: this.alertedCameras.size,
+    };
+  }
+
+  /**
+   * Diagnostic info for debugging camera alert issues.
+   * Returns detailed state including per-type settings and filter stats.
+   */
+  getDiagnosticInfo(): {
+    isEnabled: boolean;
+    isActive: boolean;
+    speedAlertsEnabled: boolean;
+    redLightAlertsEnabled: boolean;
+    hasLoadedSettings: boolean;
+    totalCameras: number;
+    speedCameraCount: number;
+    redlightCameraCount: number;
+    gpsUpdateCount: number;
+    alertedCount: number;
+    lastDiagnostic: typeof this.lastDiagnostic;
+  } {
+    let speedCount = 0;
+    let redlightCount = 0;
+    for (let i = 0; i < CHICAGO_CAMERAS.length; i++) {
+      if (CHICAGO_CAMERAS[i]?.type === 'speed') speedCount++;
+      else if (CHICAGO_CAMERAS[i]?.type === 'redlight') redlightCount++;
+    }
+    return {
+      isEnabled: this.isEnabled,
+      isActive: this.isActive,
+      speedAlertsEnabled: this.speedAlertsEnabled,
+      redLightAlertsEnabled: this.redLightAlertsEnabled,
+      hasLoadedSettings: this.hasLoadedSettings,
+      totalCameras: CHICAGO_CAMERAS.length,
+      speedCameraCount: speedCount,
+      redlightCameraCount: redlightCount,
+      gpsUpdateCount: this.gpsUpdateCount,
+      alertedCount: this.alertedCameras.size,
+      lastDiagnostic: this.lastDiagnostic,
     };
   }
 }
