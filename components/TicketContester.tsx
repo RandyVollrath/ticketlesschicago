@@ -997,7 +997,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                 lineHeight: '1.8'
               }}>
                 <li>SMS alerts before street cleaning, towing alerts, and more</li>
-                <li>Renewal reminders so you never get late registration tickets</li>
+                <li>Renewal reminders to keep your registration current</li>
                 <li>80% reimbursement on eligible tickets (up to $200/year)</li>
               </ul>
             </div>

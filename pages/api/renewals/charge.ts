@@ -312,7 +312,7 @@ async function sendChargeConfirmationEmail(
           </p>
 
           <p style="color: #9ca3af; font-size: 12px;">
-            Autopilot America • Never get another parking ticket
+            Autopilot America • Peace of mind parking
           </p>
         </div>
       `

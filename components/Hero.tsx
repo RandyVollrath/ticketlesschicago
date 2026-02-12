@@ -49,7 +49,7 @@ export default function Hero({ onPrimaryCTA, onSecondaryCTA }: HeroProps) {
         lineHeight: '1.1',
         letterSpacing: '-1px'
       }}>
-        Never Get Blindsided by a Ticket Again
+        Peace of Mind Parking
       </h1>
       <p style={{
         fontSize: '28px',

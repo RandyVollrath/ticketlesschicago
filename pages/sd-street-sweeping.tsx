@@ -107,7 +107,7 @@ export default function SDStreetSweeping() {
     <>
       <Head>
         <title>San Diego Street Sweeping Schedule | Autopilot America</title>
-        <meta name="description" content="Check your street sweeping schedule in San Diego and never get a ticket again." />
+        <meta name="description" content="Check your street sweeping schedule in San Diego. Peace of mind parking starts here." />
       </Head>
 
       <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px' }}>
@@ -348,7 +348,7 @@ export default function SDStreetSweeping() {
                 Want Automatic Reminders?
               </h3>
               <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#333', lineHeight: '1.6' }}>
-                Sign up for free SMS and email reminders before every street cleaning day. Never get a ticket again!
+                Sign up for free SMS and email reminders before every street cleaning day. Peace of mind parking!
               </p>
               <a
                 href="/alerts/signup"

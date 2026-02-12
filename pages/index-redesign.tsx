@@ -169,7 +169,7 @@ export default function LandingPage() {
       overflowX: 'hidden'
     }}>
       <Head>
-        <title>Autopilot America - Never Miss a Renewal. Never Pay an Unfair Ticket.</title>
+        <title>Autopilot America - Peace of Mind Parking</title>
         <meta name="description" content="Free alerts for renewals and street cleaning. $24/year for automatic ticket contesting. Based on 1.2M Chicago ticket outcomes." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -323,7 +323,7 @@ export default function LandingPage() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            Never pay an unfair ticket.
+            Peace of mind parking.
           </span>
         </h1>
 

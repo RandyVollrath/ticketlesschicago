@@ -330,7 +330,7 @@ export default function Pricing() {
             fontWeight: '500'
           }}>
             Worst case: You get 80% of your ticket costs back<br/>
-            Best case: You never get another compliance ticket again
+            Best case: Total peace of mind — compliance handled for you
           </p>
         </section>
 
@@ -443,7 +443,7 @@ export default function Pricing() {
             color: '#374151', 
             marginBottom: '16px' 
           }}>
-            Ready to Never Worry About Compliance Tickets Again?
+            Ready for Peace of Mind Parking?
           </h3>
           <button
             onClick={handleSelectPlan}
