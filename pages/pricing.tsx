@@ -49,7 +49,7 @@ export default function Pricing() {
             color: '#6b7280',
             marginBottom: '32px'
           }}>
-            Protect yourself from compliance tickets and never miss a renewal deadline
+            Less than $2/month to protect yourself from $1,000+ fees
           </p>
           
           {/* Billing Toggle */}

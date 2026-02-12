@@ -296,7 +296,7 @@ export default function GetStarted() {
                   <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
                 </div>
                 <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
-                  Less than $2/month - we fight your tickets for you
+                  Less than $2/month to protect yourself from $1,000+ fees
                 </p>
                 <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>

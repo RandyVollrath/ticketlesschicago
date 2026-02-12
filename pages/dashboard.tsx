@@ -382,7 +382,7 @@ export default function DashboardPage() {
                 $24<span style={{ fontSize: 20, color: COLORS.textMuted }}>/year</span>
               </div>
               <p style={{ fontSize: 14, color: COLORS.textMuted, margin: 0 }}>
-                Less than $2/month. Cancel anytime.
+                Less than $2/month to protect yourself from $1,000+ fees.
               </p>
             </div>
 
