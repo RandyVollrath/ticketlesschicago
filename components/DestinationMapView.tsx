@@ -37,6 +37,8 @@ const PARK_COLORS = {
   restricted: '#ef4444',  // red-500 — cannot park now
   caution: '#f59e0b',     // amber-500 — restriction within 24hrs
   noData: '#d1d5db',      // gray-300 — no schedule / unknown
+  snowInactive: '#9ca3af', // gray-400 — snow route, ban not active
+  permitZone: '#a855f7',  // purple-500 — permit zone in parkability mode
 };
 
 // ---------------------------------------------------------------------------
@@ -159,18 +161,21 @@ export default function DestinationMapView() {
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
 
+  const [snowBanActive, setSnowBanActive] = useState(false);
+
   // Store layer references + raw data for restyling on toggle
   const layersRef = useRef<{
     cleaningLayer: any;
     snowLayer: any;
     winterLayer: any;
     meterLayer: any;
+    permitLayer: any;
     meters: any[];
-  }>({ cleaningLayer: null, snowLayer: null, winterLayer: null, meterLayer: null, meters: [] });
+  }>({ cleaningLayer: null, snowLayer: null, winterLayer: null, meterLayer: null, permitLayer: null, meters: [] });
 
   // Restyle all layers when parkability mode changes
   const applyViewMode = useCallback((isParkability: boolean) => {
-    const { cleaningLayer, snowLayer, winterLayer, meterLayer, meters } = layersRef.current;
+    const { cleaningLayer, snowLayer, winterLayer, meterLayer, permitLayer } = layersRef.current;
 
     // --- Restyle cleaning zones ---
     if (cleaningLayer) {
@@ -187,11 +192,18 @@ export default function DestinationMapView() {
     }
 
     // --- Restyle snow routes ---
+    // In parkability mode: subtle gray when ban is NOT active (event-driven),
+    // red when ban IS active. In restriction mode: always fuchsia.
     if (snowLayer) {
       snowLayer.eachLayer((layer: any) => {
         if (isParkability) {
-          // Snow bans are event-activated; show as caution (user should check if ban is declared)
-          layer.setStyle({ color: PARK_COLORS.caution, weight: 3.5, opacity: 0.85, dashArray: '8,4' });
+          const banActive = (layer as any)._snowBanActive;
+          layer.setStyle({
+            color: banActive ? PARK_COLORS.restricted : PARK_COLORS.snowInactive,
+            weight: 3,
+            opacity: banActive ? 0.85 : 0.45,
+            dashArray: '6,4',
+          });
         } else {
           layer.setStyle({ color: LAYER_COLORS.snowRoute, weight: 3.5, opacity: 0.85, dashArray: '8,4' });
         }
@@ -204,10 +216,10 @@ export default function DestinationMapView() {
       winterLayer.eachLayer((layer: any) => {
         if (isParkability) {
           layer.setStyle({
-            color: winterActive ? PARK_COLORS.restricted : PARK_COLORS.free,
-            weight: 3.5,
-            opacity: 0.85,
-            dashArray: '12,6',
+            color: winterActive ? PARK_COLORS.restricted : PARK_COLORS.snowInactive,
+            weight: 3,
+            opacity: winterActive ? 0.85 : 0.45,
+            dashArray: '10,5',
           });
         } else {
           layer.setStyle({ color: LAYER_COLORS.winterBan, weight: 3.5, opacity: 0.85, dashArray: '12,6' });
@@ -228,6 +240,17 @@ export default function DestinationMapView() {
         } else {
           const color = meterColor(rate);
           layer.setStyle({ color, fillColor: color, fillOpacity: 0.7, weight: 1, opacity: 0.9 });
+        }
+      });
+    }
+
+    // --- Restyle permit zone lines ---
+    if (permitLayer) {
+      permitLayer.eachLayer((layer: any) => {
+        if (isParkability) {
+          layer.setStyle({ color: PARK_COLORS.permitZone, weight: 4, opacity: 0.7, dashArray: '6,3' });
+        } else {
+          layer.setStyle({ color: LAYER_COLORS.permitZone, weight: 4, opacity: 0.8, dashArray: '' });
         }
       });
     }
@@ -351,12 +374,17 @@ export default function DestinationMapView() {
 
       // Load all restriction data in parallel
       try {
-        const [cleaningRes, snowRes, winterRes, meterRes] = await Promise.all([
+        const [cleaningRes, snowRes, winterRes, meterRes, permitRes] = await Promise.all([
           fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null).catch(() => null),
           fetch('/api/get-snow-routes').then(r => r.ok ? r.json() : null).catch(() => null),
           fetch('/api/get-winter-ban-routes').then(r => r.ok ? r.json() : null).catch(() => null),
           fetch('/api/metered-parking').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/permit-zone-lines').then(r => r.ok ? r.json() : null).catch(() => null),
         ]);
+
+        // Track snow ban status for legend
+        const isBanActive = snowRes?.snowBanActive ?? false;
+        setSnowBanActive(isBanActive);
 
         if (cancelled) return;
 
@@ -409,14 +437,20 @@ export default function DestinationMapView() {
               dashArray: '8,4',
             }),
             onEachFeature: (feature: any, layer: any) => {
+              // Stash ban status on each feature for restyling
+              (layer as any)._snowBanActive = isBanActive;
               const p = feature.properties;
+              const banLabel = isBanActive
+                ? '<span style="color:#ef4444;font-weight:600">BAN ACTIVE</span>'
+                : '<span style="color:#22c55e;font-weight:600">No ban currently</span>';
               layer.bindPopup(`
                 <div style="font-family:system-ui;font-size:13px">
                   <div style="font-weight:700;color:${LAYER_COLORS.snowRoute}">2" Snow Ban Route</div>
                   <div style="color:#6C727A;margin-top:2px">${p.on_street || ''}</div>
                   ${p.from_street && p.to_street ? `<div style="color:#94A3B8;font-size:12px;margin-top:2px">${p.from_street} to ${p.to_street}</div>` : ''}
+                  <div style="margin-top:4px;font-size:12px">${banLabel} — Activated when 2"+ snow falls</div>
                 </div>
-              `, { maxWidth: 250 });
+              `, { maxWidth: 270 });
             },
           }).addTo(map);
           layersRef.current.snowLayer = snowLayer;
@@ -498,6 +532,34 @@ export default function DestinationMapView() {
           map.on('zoomend', updateMeterVisibility);
           updateMeterVisibility();
           layersRef.current.meterLayer = meterLayerGroup;
+        }
+
+        // --- Permit zone lines (purple) ---
+        if (permitRes?.features?.length) {
+          const permitGeoJSON = {
+            type: 'FeatureCollection' as const,
+            features: permitRes.features,
+          };
+          const permitLayer = L.geoJSON(permitGeoJSON, {
+            style: () => ({
+              color: LAYER_COLORS.permitZone,
+              weight: 4,
+              opacity: 0.8,
+            }),
+            onEachFeature: (feature: any, layer: any) => {
+              const p = feature.properties;
+              layer.bindPopup(`
+                <div style="font-family:system-ui;font-size:13px">
+                  <div style="font-weight:700;color:${LAYER_COLORS.permitZone}">Permit Zone ${p.zone}</div>
+                  <div style="color:#6C727A;margin-top:2px">${p.street || ''}</div>
+                  <div style="color:#94A3B8;font-size:12px;margin-top:2px">${p.addrRange || ''} (${p.oddEven === 'O' ? 'odd side' : p.oddEven === 'E' ? 'even side' : 'both sides'})</div>
+                  <div style="color:#94A3B8;font-size:11px;margin-top:4px">Permit required — check sign for hours</div>
+                </div>
+              `, { maxWidth: 250 });
+            },
+          }).addTo(map);
+          layersRef.current.permitLayer = permitLayer;
+          console.log(`[map] Rendered ${permitRes.features.length} permit zone lines (${permitRes.total} total zones, ${permitRes.resolved} resolved)`);
         }
 
       } catch (err) {
@@ -676,7 +738,7 @@ export default function DestinationMapView() {
             {parkabilityMode ? (
               /* Parkability collapsed dots */
               <>
-                {[PARK_COLORS.free, PARK_COLORS.metered, PARK_COLORS.meterFree, PARK_COLORS.caution, PARK_COLORS.restricted].map((c, i) => (
+                {[PARK_COLORS.free, PARK_COLORS.metered, PARK_COLORS.meterFree, PARK_COLORS.permitZone, PARK_COLORS.restricted].map((c, i) => (
                   <div key={i} style={{
                     width: '8px', height: '8px', borderRadius: '50%',
                     backgroundColor: c, flexShrink: 0,
@@ -727,6 +789,10 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Meter (free now)</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.permitZone, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit zone</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.caution, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Restriction soon</span>
                   </div>
@@ -734,6 +800,31 @@ export default function DestinationMapView() {
                     <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Can't park now</span>
                   </div>
+                </div>
+                {/* Snow/winter ban status row */}
+                <div style={{ marginTop: '8px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '18px', height: '3px', backgroundColor: snowBanActive ? PARK_COLORS.restricted : PARK_COLORS.snowInactive, borderRadius: '2px', flexShrink: 0 }} />
+                    <span>
+                      2" Snow Ban: {snowBanActive
+                        ? <strong style={{ color: '#ef4444' }}>ACTIVE</strong>
+                        : <span style={{ color: '#6b7280' }}>Not active</span>
+                      }
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                    <div style={{ width: '18px', height: '3px', backgroundColor: isWinterBanActiveNow() ? PARK_COLORS.restricted : PARK_COLORS.snowInactive, borderRadius: '2px', flexShrink: 0 }} />
+                    <span>
+                      Winter Ban (3-7am): {isWinterBanActiveNow()
+                        ? <strong style={{ color: '#ef4444' }}>ACTIVE NOW</strong>
+                        : <span style={{ color: '#6b7280' }}>Dec-Mar only</span>
+                      }
+                    </span>
+                  </div>
+                </div>
+                {/* Uncolored streets note */}
+                <div style={{ marginTop: '6px', fontSize: '11px', color: '#9ca3af', fontStyle: 'italic' }}>
+                  Uncolored streets with no meter dots are likely free parking.
                 </div>
               </>
             ) : (
@@ -764,14 +855,14 @@ export default function DestinationMapView() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.snowRoute, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Snow ban route</span>
+                    <span style={{ color: '#374151' }}>2" Snow ban {snowBanActive ? '(ACTIVE)' : ''}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.winterBan, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Winter ban route</span>
+                    <span style={{ color: '#374151' }}>Winter ban (3-7am)</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '50%', flexShrink: 0 }} />
+                    <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Permit zone</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
