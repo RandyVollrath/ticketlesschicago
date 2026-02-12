@@ -49,7 +49,7 @@ export default function Pricing() {
             color: '#6b7280',
             marginBottom: '32px'
           }}>
-            Less than $2/month to protect yourself from $1,000+ fees
+            Less than $2/month to protect yourself from $1,000+ in fees
           </p>
           
           {/* Billing Toggle */}
