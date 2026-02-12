@@ -1003,8 +1003,16 @@ class BackgroundTaskServiceClass {
 
     CameraAlertService.start();
 
+    // Diagnostic: show camera alert settings at startup
+    const diag = CameraAlertService.getDiagnosticInfo();
+    this.sendDiagnosticNotification(
+      'Camera Alerts Started',
+      `speed=${diag.speedAlertsEnabled ? 'ON' : 'OFF'} redlight=${diag.redLightAlertsEnabled ? 'ON' : 'OFF'} cameras=${diag.totalCameras} (${diag.speedCameraCount}spd/${diag.redlightCameraCount}rl) loaded=${diag.hasLoadedSettings}`
+    );
+
     if (Platform.OS === 'ios') {
       // Subscribe to continuous GPS updates from the native module
+      let iosGpsCount = 0;
       this.cameraLocationUnsubscribe = BackgroundLocationService.addLocationListener(
         (event) => {
           CameraAlertService.onLocationUpdate(
@@ -1014,6 +1022,20 @@ class BackgroundTaskServiceClass {
             event.heading ?? -1,
             event.accuracy ?? null
           );
+          // Periodic diagnostic notification (every 30 GPS updates ≈ 30s)
+          iosGpsCount++;
+          if (iosGpsCount === 30) {
+            const d = CameraAlertService.getDiagnosticInfo();
+            const dd = d.lastDiagnostic;
+            if (dd) {
+              this.sendDiagnosticNotification(
+                'Camera Filter Stats (30s)',
+                `GPS#${d.gpsUpdateCount} alerts=${d.alertedCount} ` +
+                `nearest(rl=${dd.nearestRedlightDistance === Infinity ? 'none' : Math.round(dd.nearestRedlightDistance) + 'm'} sp=${dd.nearestSpeedDistance === Infinity ? 'none' : Math.round(dd.nearestSpeedDistance) + 'm'}) ` +
+                `filter: type=${dd.typeFiltered} spd=${dd.speedFiltered} hdg=${dd.headingFiltered} brg=${dd.bearingFiltered} pass=${dd.passed}(${dd.redlightPassed}rl/${dd.speedPassed}sp)`
+              );
+            }
+          }
         }
       );
       log.info('Camera alerts: subscribed to iOS location updates');
@@ -1027,6 +1049,15 @@ class BackgroundTaskServiceClass {
    * Stop camera proximity alerts.
    */
   private stopCameraAlerts(): void {
+    // Diagnostic: show summary before stopping
+    const diag = CameraAlertService.getDiagnosticInfo();
+    if (diag.gpsUpdateCount > 0) {
+      this.sendDiagnosticNotification(
+        'Camera Alerts Stopped',
+        `GPS updates=${diag.gpsUpdateCount} alerts=${diag.alertedCount} settings(spd=${diag.speedAlertsEnabled ? 'ON' : 'OFF'} rl=${diag.redLightAlertsEnabled ? 'ON' : 'OFF'})`
+      );
+    }
+
     CameraAlertService.stop();
 
     if (this.cameraLocationUnsubscribe) {
