@@ -486,21 +486,39 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           // then onParkingDetected (for the new spot).
 
           // FLICKER GUARD: CoreMotion can briefly flicker to automotive from phone
-          // vibration while the user is still parked. Filter using two signals:
-          //   1. Automotive duration (flicker < 5s, real drive > 15s typically)
-          //   2. Distance from last parking (flicker = 0m, real drive > 200m)
-          // A real drive passes EITHER check. Both must fail for flicker rejection.
+          // vibration while the user is still parked OR flicker to stationary
+          // mid-drive. Three guards prevent false parking here:
+          //   1. GPS speed veto: if speed > 1.0 m/s, still driving (strongest signal)
+          //   2. Automotive duration must be > 30s (flicker is < 5s)
+          //   3. Distance from last parking must be > 200m (actually went somewhere)
+          // Guards 2 and 3 use AND logic — both must pass for a real drive.
           let automotiveDuration = Date().timeIntervalSince(self.automotiveSessionStart ?? Date())
           let currentLoc = self.locationManager.location
+          let currentSpeed = currentLoc?.speed ?? -1
           let distFromLastParking: Double = {
             guard let lastParking = self.lastConfirmedParkingLocation, let cur = currentLoc else { return 0 }
             return cur.distance(from: lastParking)
           }()
-          let isLikelyFlicker = automotiveDuration < 15 && distFromLastParking < 100
-          self.log("SHORT DRIVE RECOVERY check: automotiveDuration=\(String(format: "%.0f", automotiveDuration))s, distFromLastParking=\(String(format: "%.0f", distFromLastParking))m, isFlicker=\(isLikelyFlicker)")
 
-          if isLikelyFlicker {
-            self.log("SHORT DRIVE RECOVERY: automotive \(String(format: "%.0f", automotiveDuration))s (< 15s) + dist \(String(format: "%.0f", distFromLastParking))m (< 100m) — likely flicker, skipping")
+          // GUARD 1: GPS speed veto — if GPS says we're moving, the user is
+          // still driving and CoreMotion just flickered. This was the Clybourn
+          // bug: CoreMotion flickered to stationary mid-drive, 197m from last
+          // parking, passing the old flicker guard, and firing a false parking
+          // event that also killed camera alerts.
+          let gpsStillMoving = currentSpeed > 1.0
+
+          // GUARD 2: Flicker filter — require BOTH conditions to pass:
+          //   - Automotive for > 30s (not a brief phone vibration)
+          //   - Moved > 200m from last parking (actually went somewhere)
+          // Previously used OR logic (either one passing was enough) which
+          // let through mid-drive flickers on short drives from false parkings.
+          let isLikelyFlicker = automotiveDuration < 30 || distFromLastParking < 200
+          self.log("SHORT DRIVE RECOVERY check: automotiveDuration=\(String(format: "%.0f", automotiveDuration))s, distFromLastParking=\(String(format: "%.0f", distFromLastParking))m, gpsSpeed=\(String(format: "%.1f", currentSpeed))m/s, gpsStillMoving=\(gpsStillMoving), isFlicker=\(isLikelyFlicker)")
+
+          if gpsStillMoving {
+            self.log("SHORT DRIVE RECOVERY: GPS speed \(String(format: "%.1f", currentSpeed)) m/s > 1.0 — user still driving, skipping (Clybourn bug fix)")
+          } else if isLikelyFlicker {
+            self.log("SHORT DRIVE RECOVERY: automotive \(String(format: "%.0f", automotiveDuration))s (< 30s) or dist \(String(format: "%.0f", distFromLastParking))m (< 200m) — likely flicker, skipping")
           } else if let loc = self.lastDrivingLocation ?? self.locationManager.location {
             self.log("SHORT DRIVE RECOVERY: CoreMotion automotive→\(activity.stationary ? "stationary" : "walking") but isDriving was false. Firing departure + parking events.")
 
@@ -879,7 +897,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // briefly flickers to stationary from engine-idle vibration loss.
     parkingConfirmationTimer?.invalidate()
     parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
-      self?.confirmParking()
+      guard let self = self else { return }
+      // Re-check CoreMotion state after the 8s debounce — if it went back to
+      // automotive during the wait, this was a red light flicker, not parking.
+      if self.coreMotionSaysAutomotive {
+        self.log("handlePotentialParking: CoreMotion went back to automotive during 8s debounce — red light flicker, aborting")
+        self.lastStationaryTime = nil
+        self.locationAtStopStart = nil
+        return
+      }
+      self.confirmParking()
     }
   }
 
