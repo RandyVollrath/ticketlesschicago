@@ -48,7 +48,7 @@ export default function SnowBanSettings({
         color: '#6b7280',
         lineHeight: '1.6'
       }}>
-        Get notified when Chicago's 2-inch snow parking ban is forecasted or activated. Never get towed or ticketed again.
+        Get notified when Chicago's 2-inch snow parking ban is forecasted or activated. Peace of mind parking all winter.
       </p>
 
       {/* Winter Overnight Parking Ban Notice (if applicable) */}

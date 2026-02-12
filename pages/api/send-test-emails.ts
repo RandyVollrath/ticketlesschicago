@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               <div style="padding: 20px; background: #f9f9f9;">
                 <h2 style="color: #333;">Your account is confirmed and ready!</h2>
                 <p style="font-size: 16px; color: #666;">
-                  Thank you for joining TicketLess Chicago. We'll help you stay on top of your vehicle renewals so you never get an unexpected ticket.
+                  Thank you for joining TicketLess Chicago. We'll help you stay on top of your vehicle renewals — peace of mind parking, always.
                 </p>
                 
                 <div style="background: #e3f2fd; border-left: 4px solid #0066cc; padding: 15px; margin: 15px 0;">
@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 Your account is confirmed and ready!
 
-Thank you for joining TicketLess Chicago. We'll help you stay on top of your vehicle renewals so you never get an unexpected ticket.
+Thank you for joining TicketLess Chicago. We'll help you stay on top of your vehicle renewals — peace of mind parking, always.
 
 What's Next?
 - We'll monitor your renewal dates automatically

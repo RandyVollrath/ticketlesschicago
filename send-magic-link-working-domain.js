@@ -76,7 +76,7 @@ async function sendMagicLink() {
           </p>
 
           <p style="color: #9ca3af; font-size: 12px;">
-            Ticketless America • Never get another parking ticket
+            Ticketless America • Peace of mind parking
           </p>
         </div>
       `

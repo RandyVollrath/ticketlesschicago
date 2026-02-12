@@ -335,7 +335,7 @@ export default function CheckYourStreet() {
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
       <Head>
         <title>Check Your Street - Autopilot America</title>
-        <meta name="description" content="Find out when your street will be cleaned next — instantly. Enter your address and never wake up to a ticket again." />
+        <meta name="description" content="Find out when your street will be cleaned next — instantly. Enter your address for peace of mind parking." />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossOrigin="" />
         <style>{`

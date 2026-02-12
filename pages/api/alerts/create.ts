@@ -412,7 +412,7 @@ export default async function handler(
               Or sign in with Google at <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" style="color: #2563EB;">autopilotamerica.com/login</a>
             </p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-            <p style="color: #9ca3af; font-size: 12px;">Autopilot America - Never get another parking ticket</p>
+            <p style="color: #9ca3af; font-size: 12px;">Autopilot America - Peace of mind parking</p>
           </div>
         `
       })
