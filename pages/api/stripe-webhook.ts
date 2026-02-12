@@ -1090,7 +1090,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                       </p>
 
                       <p style="color: #9ca3af; font-size: 12px;">
-                        Autopilot America • Peace of mind parking
+                        Autopilot America • Peace of Mind Parking
                       </p>
                     </div>
                   `
@@ -1461,7 +1461,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     </p>
 
                     <p style="color: #9ca3af; font-size: 12px;">
-                      Autopilot America • Peace of mind parking
+                      Autopilot America • Peace of Mind Parking
                     </p>
                   </div>
                 `
@@ -1704,7 +1704,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
                           <!-- Footer -->
                           <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 24px 0 0;">
-                            Autopilot America • Peace of mind parking
+                            Autopilot America • Peace of Mind Parking
                           </p>
                         </div>
                       </div>
@@ -2316,7 +2316,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         </div>
                         <p style="color: #666; font-size: 14px;">This link expires in 60 minutes.</p>
                         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-                        <p style="color: #9ca3af; font-size: 12px;">Autopilot America - Peace of mind parking</p>
+                        <p style="color: #9ca3af; font-size: 12px;">Autopilot America - Peace of Mind Parking</p>
                       </div>
                     `
                   })

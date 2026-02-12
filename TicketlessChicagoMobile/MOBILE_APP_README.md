@@ -1,6 +1,6 @@
 # Ticketless Chicago Mobile App
 
-Never get a parking ticket in Chicago again. Auto-detect when you park and get instant alerts about parking restrictions.
+Peace of Mind Parking in Chicago. Auto-detect when you park and get instant alerts about parking restrictions.
 
 ---
 

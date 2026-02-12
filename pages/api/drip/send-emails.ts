@@ -254,7 +254,7 @@ async function sendWelcomeEmail(email: string, firstName?: string) {
 
           <p style="color: #9ca3af; font-size: 13px; line-height: 1.6;">
             Autopilot America<br>
-            Peace of mind parking<br>
+            Peace of Mind Parking<br>
             <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color: #9ca3af;">Unsubscribe</a>
           </p>
         </div>
@@ -327,7 +327,7 @@ async function sendProofEmail(email: string, firstName?: string) {
 
           <p style="color: #9ca3af; font-size: 13px; line-height: 1.6;">
             Autopilot America<br>
-            Peace of mind parking<br>
+            Peace of Mind Parking<br>
             <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color: #9ca3af;">Unsubscribe</a>
           </p>
         </div>
@@ -410,7 +410,7 @@ async function sendSoftSellEmail(email: string, firstName?: string) {
 
           <p style="color: #9ca3af; font-size: 13px; line-height: 1.6;">
             Autopilot America<br>
-            Peace of mind parking<br>
+            Peace of Mind Parking<br>
             <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color: #9ca3af;">Unsubscribe</a>
           </p>
         </div>
