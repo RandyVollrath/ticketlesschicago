@@ -1,0 +1,264 @@
+================================================================================
+DATA INVENTORY SUMMARY FOR PARKING TICKET CONTESTATION
+================================================================================
+
+COMPREHENSIVE ANALYSIS OF ALL DATA SOURCES IN THE SYSTEM
+Generated: 2026-02-12
+Location: /home/randy-vollrath/ticketless-chicago/DATA_SOURCES_INVENTORY.md
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+The Ticketless America system has collected or integrated access to 18 major data 
+sources that can support parking ticket contestation. Of these:
+
+- 5 are CRITICAL for contest letters (parking history, weather, sticker receipts, 
+  registration evidence, street cleaning schedule)
+- 3 are HIGHLY valuable but UNDER-UTILIZED (camera pass history, red light 
+  receipts trace data, signage reports)
+- 4 are EMERGING or NEW (FOIA request infrastructure, towed vehicle patterns)
+- 6 are OPERATIONAL/FOUNDATIONAL (court outcomes, ward intelligence, user 
+  profiles, addresses, utility bills, permit zones)
+
+KEY INSIGHT: The system has MORE DATA available than it currently uses in 
+contest letter generation. Major opportunities exist to expand usage of:
+1. Camera pass history (location timeline)
+2. Red light receipt trace data (speed/stopping evidence)
+3. Signage database (geospatial sign condition lookup)
+4. FOIA infrastructure (city's own evidence)
+
+================================================================================
+CRITICAL DATA SOURCES (Use in Every Contest Letter)
+================================================================================
+
+1. PARKING HISTORY
+   Location: Supabase (inferred table user_parking_history)
+   Data: parked_at, departed_at, GPS coordinates, duration, restrictions detected
+   Evidence: GPS-verified proof user left location before/after ticket time
+   Status: ACTIVE - Used in departure proof arguments
+
+2. WEATHER DATA
+   Location: National Weather Service API (free) + local storage
+   Data: Temperature, precipitation, snow accumulation, wind, visibility
+   Evidence: Proves street cleaning cancelled, snow threshold not met
+   Status: ACTIVE - Integrated into letter generation
+   Code: lib/weather-service.ts
+
+3. CITY STICKER RECEIPTS
+   Table: city_sticker_receipts
+   Data: Purchase email, date forwarded, parsed amount
+   Evidence: Proves vehicle sticker purchased/valid
+   Status: ACTIVE - Email forwarding system operational
+
+4. REGISTRATION EVIDENCE RECEIPTS
+   Table: registration_evidence_receipts
+   Data: Source type, OCR-extracted date/order ID/amount, email content
+   Evidence: License plate sticker or city sticker proof
+   Status: ACTIVE - Dual source support
+
+5. STREET CLEANING SCHEDULE
+   Table: street_cleaning_schedule
+   Data: Daily schedule by block, weather exceptions, side of street
+   Evidence: Determines if cleaning actually occurred that day
+   Status: ACTIVE - Used in street cleaning defenses
+   Code: lib/contest-kits/street-cleaning.ts
+
+================================================================================
+HIGHLY VALUABLE BUT UNDER-UTILIZED DATA
+================================================================================
+
+1. CAMERA PASS HISTORY (EXPAND PRIORITY #1)
+   Table: camera_pass_history
+   Data: timestamp, camera location (lat/lon), speed, direction
+   Current Use: Minimal mention
+   Potential: Timeline conflict (proves user elsewhere at ticket time)
+   Action: Add automatic location/time overlap detection
+
+2. RED LIGHT RECEIPTS TRACE DATA (EXPAND PRIORITY #2)
+   Table: red_light_receipts
+   Data: full_stop_detected, trace JSONB (second-by-second GPS + speed)
+   Current Use: Partial (basic fields only)
+   Potential: Technical defense (proves full stop or below-limit speed)
+   Action: Parse trace JSONB to generate detailed speed analysis
+
+3. SIGNAGE REPORTS (GROW PRIORITY #3)
+   Table: signage_reports
+   Data: Location, condition (good/faded/damaged/obscured/missing), photos
+   Current Use: Basic reference
+   Potential: Geospatial query for signs near ticket location
+   Action: Query nearby signs to find evidence (faded/obscured/missing)
+
+================================================================================
+EMERGING/NEW DATA SOURCES (Ready for Implementation)
+================================================================================
+
+1. FOIA REQUEST INFRASTRUCTURE (NEW CAPABILITY)
+   Table: ticket_foia_requests
+   Status: Table created, no active requests yet
+   Potential: Access city's own evidence (officer notes, photos, calibration)
+   Action: Implement auto-FOIA generation post-contest
+
+2. WARD INTELLIGENCE SYSTEM (STRATEGIC USE)
+   Tables: ward_contest_intelligence, hearing_officer_patterns
+   Data: Win rates by violation/defense/officer, dismissal patterns
+   Status: Active but basic usage
+   Action: Expand to personalize arguments by ward/officer
+
+3. COURT CASE OUTCOMES
+   Table: court_case_outcomes (referenced, not fully tracked)
+   Status: Historical data available
+   Action: Mine for patterns to identify winning arguments
+
+================================================================================
+OPERATIONAL/FOUNDATIONAL DATA
+================================================================================
+
+1. User Profiles (vehicle info: make/model/year/color/plate)
+2. User Addresses (residency proof for permits)
+3. Utility Bills (forwarded via email, OCR-extracted)
+4. Permit Zone Geometries (PostGIS polygons for location verification)
+5. Snow Routes & Routes (PostGIS geometries)
+6. Towed Vehicles (enforcement patterns - unused)
+
+All ACTIVE but largely foundational to support other systems.
+
+================================================================================
+DATA SOURCES BY EVIDENCE VALUE
+================================================================================
+
+CRITICAL (Contest letter would be weak without this):
+  • Parking history (departure proof)
+  • Weather data (weather defenses)
+  • City sticker receipts (sticker defense)
+  • Registration evidence (ownership proof)
+  • Street cleaning schedule (schedule defense)
+
+VERY HIGH (Significant impact when available):
+  • Camera pass history (timeline conflicts)
+  • Red light receipts (speed/behavior evidence)
+
+HIGH (Strategic value, shapes argument selection):
+  • Ward intelligence (violation win rates)
+  • Hearing officer patterns (argument effectiveness)
+  • Court case outcomes (precedent)
+
+MEDIUM (Supporting evidence, shows familiarity):
+  • User addresses (residency)
+  • Permit zones (location verification)
+  • Signage reports (sign condition)
+  • User profiles (vehicle identity)
+
+LOW (Operational, not contest-focused):
+  • Email logs (communication record)
+  • SMS logs (alert delivery)
+  • Towed vehicles (pattern only)
+
+================================================================================
+CURRENTLY UNUSED BUT AVAILABLE DATA SOURCES
+================================================================================
+
+1. CAMERA PASS HISTORY TIMELINE
+   - Could show user was at different camera location at ticket time
+   - Unused: No automatic timeline conflict detection
+   - Action: Add geospatial/temporal overlap checking
+
+2. RED LIGHT RECEIPTS TRACE FIELD
+   - Contains second-by-second speed & GPS trace as JSONB
+   - Unused: Only summary fields are used
+   - Action: Parse trace and generate technical defense
+
+3. SIGNAGE REPORTS GEOSPATIAL DATA
+   - User reports of sign conditions near locations across Chicago
+   - Unused: Not automatically queried for ticket locations
+   - Action: Implement PostGIS spatial join for nearby signs
+
+4. TOWED VEHICLES PATTERN DATA
+   - Shows which streets/blocks have high tow enforcement
+   - Unused: Only used for alerts, not contests
+   - Action: Correlate with ticket locations for selective enforcement args
+
+5. HEARING OFFICER EVIDENCE PREFERENCES
+   - Data shows which officer prefers what evidence type
+   - Unused: Letter generation doesn't tailor evidence presentation
+   - Action: Customize evidence presentation by officer
+
+================================================================================
+OPPORTUNITIES FOR LETTER QUALITY IMPROVEMENT
+================================================================================
+
+IMMEDIATE (2 weeks):
+1. Add camera pass history timeline section to letters
+2. Expand weather condition language to all weather-relevant violations
+3. Add geospatial signage database lookup
+
+SHORT TERM (1 month):
+1. Parse red light receipt traces for speed defense
+2. Generate FOIA requests post-contest for outcome improvement
+3. Add tow enforcement statistics
+
+MEDIUM TERM (2-3 months):
+1. Ward-specific argument optimization
+2. Hearing officer preference adaptation
+3. User-facing evidence collection guidance
+
+LONG TERM:
+1. ML-based evidence relevance scoring
+2. Predictive evidence collection
+3. Outcome feedback loop
+
+================================================================================
+DATA STORAGE & ACCESS PATTERNS
+================================================================================
+
+SUPABASE TABLES (Core):
+  • city_sticker_receipts
+  • registration_evidence_receipts
+  • red_light_receipts
+  • camera_pass_history
+  • parking_history (inferred)
+  • street_cleaning_schedule
+  • snow_routes
+  • parking_permit_zones
+  • ticket_contests
+  • detected_tickets
+  • user_profiles
+  • user_addresses
+  • ward_contest_intelligence
+  • hearing_officer_patterns
+  • signage_reports
+  • ticket_foia_requests
+  • towed_vehicles
+
+EXTERNAL APIS:
+  • National Weather Service (free, no auth)
+  • Chicago Portal Scraper (proprietary parsing)
+  • Cook County API
+
+STORAGE BUCKETS:
+  • ticket_photos
+  • registration_documents
+  • residency_proofs
+  • registration_evidence
+
+MOBILE APP (iOS/Android):
+  • Parking history (CoreLocation + CoreMotion on iOS)
+  • Camera pass history (CoreLocation)
+  • Red light receipts (motion traces)
+  • User profiles (local + sync to cloud)
+
+================================================================================
+FULL DOCUMENTATION
+================================================================================
+
+See: DATA_SOURCES_INVENTORY.md (833 lines)
+
+This file contains:
+- Detailed field-by-field breakdown of each data source
+- Current usage in contest letter generation
+- Code locations where data is accessed
+- Migration files that created each table
+- Specific recommendations for expansion
+- Evidence value assessment for each source
+
+================================================================================
