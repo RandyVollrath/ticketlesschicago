@@ -345,7 +345,7 @@ export default function LandingPage() {
         </div>
 
         <p style={{ marginTop: '24px', fontSize: '14px', color: '#64748B' }}>
-          Less than $2/month to protect yourself from $100+ tickets
+          Less than $2/month to protect yourself from $1,000+ fees
         </p>
 
         {/* Stats */}
@@ -665,7 +665,7 @@ export default function LandingPage() {
             </Button>
 
             <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
-              Less than $2/month
+              Less than $2/month to protect yourself from $1,000+ fees
             </p>
           </div>
         </div>
