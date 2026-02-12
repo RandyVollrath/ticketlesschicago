@@ -28,4 +28,8 @@ RCT_EXTERN_METHOD(getDebugLogs:(int)lineCount
 RCT_EXTERN_METHOD(clearDebugLogs:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getRecentAccelerometerData:(double)seconds
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

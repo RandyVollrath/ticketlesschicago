@@ -260,6 +260,25 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * Get recent accelerometer data from the native rolling buffer.
+   * Returns last N seconds of accelerometer + gravity data at 10Hz.
+   * Used for red light camera evidence (deceleration/stop proof).
+   */
+  async getRecentAccelerometerData(seconds: number = 30): Promise<Array<{
+    timestamp: number;
+    x: number; y: number; z: number;
+    gx: number; gy: number; gz: number;
+  }>> {
+    if (!this.isAvailable()) return [];
+    try {
+      return await BackgroundLocationModule.getRecentAccelerometerData(seconds);
+    } catch (error) {
+      log.error('Error getting accelerometer data', error);
+      return [];
+    }
+  }
+
+  /**
    * Subscribe to real-time location updates (for debugging/display)
    */
   addLocationListener(callback: (event: LocationUpdateEvent) => void): () => void {
