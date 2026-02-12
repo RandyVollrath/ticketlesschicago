@@ -212,7 +212,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.logo}>Autopilot</Text>
-            <Text style={styles.tagline}>Never get a parking ticket again</Text>
+            <Text style={styles.tagline}>Peace of mind parking</Text>
           </View>
 
           {/* Form Card */}
