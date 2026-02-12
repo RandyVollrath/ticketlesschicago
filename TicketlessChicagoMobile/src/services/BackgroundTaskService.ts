@@ -467,6 +467,14 @@ class BackgroundTaskServiceClass {
               });
               this.startCameraAlerts();
               this.handleCarReconnection(drivingTimestamp);
+            },
+            // onPossibleDriving - fires BEFORE onDrivingStarted when CoreMotion
+            // detects automotive but GPS hasn't confirmed speed yet.
+            // Starts camera alerts immediately so we don't miss nearby cameras
+            // during the 5-15 second GPS cold start delay after parking.
+            () => {
+              log.info('POSSIBLE DRIVING - CoreMotion automotive detected, starting camera alerts early');
+              this.startCameraAlerts();
             }
           );
           log.info(`BackgroundLocationService.startMonitoring returned: ${bgStarted}`);
@@ -981,6 +989,17 @@ class BackgroundTaskServiceClass {
    */
   private startCameraAlerts(): void {
     if (!CameraAlertService.isAlertEnabled()) return;
+
+    // Idempotent: if already active (e.g. from onPossibleDriving), don't
+    // re-subscribe or clear alerted cameras. Just make sure CameraAlertService
+    // is started.
+    if (this.cameraLocationUnsubscribe || this.androidDrivingGpsWatchId !== null) {
+      // Already listening — just ensure CameraAlertService is active
+      if (!CameraAlertService.getStatus().isActive) {
+        CameraAlertService.start();
+      }
+      return;
+    }
 
     CameraAlertService.start();
 

@@ -64,6 +64,8 @@ class BackgroundLocationServiceClass {
   private locationSubscription: any = null;
   private onParkingDetected: ((event: ParkingDetectedEvent) => void) | null = null;
   private onDrivingStarted: ((timestamp?: number) => void) | null = null;
+  private onPossibleDriving: (() => void) | null = null;
+  private possibleDrivingSubscription: any = null;
   private isStarted = false;
 
   constructor() {
@@ -121,7 +123,8 @@ class BackgroundLocationServiceClass {
    */
   async startMonitoring(
     onParkingDetected: (event: ParkingDetectedEvent) => void,
-    onDrivingStarted?: (timestamp?: number) => void
+    onDrivingStarted?: (timestamp?: number) => void,
+    onPossibleDriving?: () => void
   ): Promise<boolean> {
     if (!this.isAvailable()) {
       log.warn('Background location not available on this platform');
@@ -137,6 +140,7 @@ class BackgroundLocationServiceClass {
       // Store callbacks
       this.onParkingDetected = onParkingDetected;
       this.onDrivingStarted = onDrivingStarted || null;
+      this.onPossibleDriving = onPossibleDriving || null;
 
       // Subscribe to native events
       if (this.eventEmitter) {
@@ -161,6 +165,20 @@ class BackgroundLocationServiceClass {
             log.debug('Driving started', { timestamp: event?.timestamp, source: event?.source });
             if (this.onDrivingStarted) {
               this.onDrivingStarted(event?.timestamp);
+            }
+          }
+        );
+
+        // onPossibleDriving fires BEFORE onDrivingStarted — when CoreMotion
+        // first detects automotive but GPS hasn't confirmed speed yet.
+        // Used to start camera alerts early so we don't miss nearby cameras
+        // during the GPS cold start period (5-15 seconds).
+        this.possibleDrivingSubscription = this.eventEmitter.addListener(
+          'onPossibleDriving',
+          (event: { timestamp?: number; source?: string }) => {
+            log.info('Possible driving detected (pre-GPS)', { source: event?.source });
+            if (this.onPossibleDriving) {
+              this.onPossibleDriving();
             }
           }
         );
@@ -203,10 +221,15 @@ class BackgroundLocationServiceClass {
       this.locationSubscription.remove();
       this.locationSubscription = null;
     }
+    if (this.possibleDrivingSubscription) {
+      this.possibleDrivingSubscription.remove();
+      this.possibleDrivingSubscription = null;
+    }
 
     this.isStarted = false;
     this.onParkingDetected = null;
     this.onDrivingStarted = null;
+    this.onPossibleDriving = null;
     log.info('Background location monitoring stopped');
   }
 
