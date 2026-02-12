@@ -136,6 +136,29 @@ class BackgroundTaskServiceClass {
       // Initialize camera alert service (TTS for speed/red light cameras)
       await CameraAlertService.initialize();
 
+      // Wire up diagnostic callback so CameraAlertService can surface
+      // filter rejections as visible notifications
+      CameraAlertService.setDiagnosticCallback((title, body) => {
+        this.sendDiagnosticNotification(title, body);
+      });
+
+      // Runtime check: read raw AsyncStorage camera settings and show them
+      // This answers "is redLightAlertsEnabled actually false on this phone?"
+      {
+        const [rawGlobal, rawSpeed, rawRedLight] = await AsyncStorage.multiGet([
+          'cameraAlertsEnabled',
+          'cameraAlertsSpeedEnabled',
+          'cameraAlertsRedLightEnabled',
+        ]);
+        const diag = CameraAlertService.getDiagnosticInfo();
+        await this.sendDiagnosticNotification(
+          'Camera Settings Check',
+          `AsyncStorage: global=${rawGlobal[1] ?? 'NULL'} speed=${rawSpeed[1] ?? 'NULL'} redlight=${rawRedLight[1] ?? 'NULL'}\n` +
+          `Runtime: enabled=${diag.isEnabled} speed=${diag.speedAlertsEnabled} redlight=${diag.redLightAlertsEnabled}\n` +
+          `Cameras: ${diag.totalCameras} (${diag.speedCameraCount}spd/${diag.redlightCameraCount}rl)`
+        );
+      }
+
       // Initialize parking detection state machine (Android).
       // This is the single source of truth for driving/parking state.
       // It replaces the scattered state across SharedPreferences, BluetoothService,

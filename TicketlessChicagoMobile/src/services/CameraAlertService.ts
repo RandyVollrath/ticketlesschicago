@@ -341,6 +341,11 @@ class CameraAlertServiceClass {
   private lastLat = 0;
   private lastLng = 0;
 
+  /** Diagnostic: callback for surfacing diagnostics as visible notifications */
+  private diagnosticCallback: ((title: string, body: string) => void) | null = null;
+  /** Diagnostic: only fire first red-light rejection notification per drive */
+  private hasNotifiedRedlightRejection = false;
+
   /** Diagnostic: count GPS updates for periodic logging */
   private gpsUpdateCount = 0;
   /** Diagnostic: track filter stage rejections */
@@ -557,6 +562,22 @@ class CameraAlertServiceClass {
    * Start listening for camera proximity.
    * Called when driving is detected.
    */
+  /**
+   * Set a callback that receives diagnostic messages for visible notifications.
+   * CameraAlertService can't send notifications directly — BackgroundTaskService
+   * hooks this up to sendDiagnosticNotification().
+   */
+  setDiagnosticCallback(cb: ((title: string, body: string) => void) | null): void {
+    this.diagnosticCallback = cb;
+  }
+
+  private sendDiag(title: string, body: string): void {
+    log.info(`[DIAG] ${title}: ${body}`);
+    if (this.diagnosticCallback) {
+      this.diagnosticCallback(title, body);
+    }
+  }
+
   start(): void {
     if (!this.isEnabled) return;
 
@@ -567,6 +588,7 @@ class CameraAlertServiceClass {
     this.lastAnnounceTime = 0;
     this.gpsUpdateCount = 0;
     this.lastDiagnostic = null;
+    this.hasNotifiedRedlightRejection = false;
     log.info(`Camera alert monitoring started (speed=${this.speedAlertsEnabled}, redlight=${this.redLightAlertsEnabled}, cameras=${CHICAGO_CAMERAS.length})`);
   }
 
@@ -834,9 +856,17 @@ class CameraAlertServiceClass {
     const lngMin = lng - BBOX_DEGREES;
     const lngMax = lng + BBOX_DEGREES;
 
+    let firstRedlightTypeReject = false;
     for (let i = 0; i < CHICAGO_CAMERAS.length; i++) {
       const cam = CHICAGO_CAMERAS[i];
-      if (!this.isCameraTypeEnabled(cam.type)) { typeFiltered++; continue; }
+      if (!this.isCameraTypeEnabled(cam.type)) {
+        typeFiltered++;
+        // Detect if ALL red light cameras are being type-filtered (settings off)
+        if (cam.type === 'redlight' && !firstRedlightTypeReject) {
+          firstRedlightTypeReject = true;
+        }
+        continue;
+      }
 
       // Per-type speed filtering:
       // - Speed cameras: only alert at ≥10 mph (no point alerting while crawling)
@@ -865,9 +895,11 @@ class CameraAlertServiceClass {
         // this camera monitors. Fail-open if heading unavailable.
         if (!isHeadingMatch(heading, cam.approaches)) {
           headingFiltered++;
-          // Log red light heading rejections specifically
-          if (cam.type === 'redlight') {
-            log.info(`[DIAG] Red light HEADING REJECT: ${cam.address} approaches=${cam.approaches} userHeading=${Math.round(heading)}° dist=${Math.round(distance)}m`);
+          // Fire visible notification for first red light heading rejection
+          if (cam.type === 'redlight' && !this.hasNotifiedRedlightRejection) {
+            this.hasNotifiedRedlightRejection = true;
+            this.sendDiag('RL HEADING REJECT',
+              `${cam.address} approaches=${cam.approaches} userHdg=${Math.round(heading)}° dist=${Math.round(distance)}m`);
           }
           continue;
         }
@@ -876,9 +908,12 @@ class CameraAlertServiceClass {
         // This prevents false alerts from cameras on parallel streets one block over.
         if (!this.isCameraAhead(lat, lng, cam.latitude, cam.longitude, heading)) {
           bearingFiltered++;
-          if (cam.type === 'redlight') {
+          if (cam.type === 'redlight' && !this.hasNotifiedRedlightRejection) {
+            this.hasNotifiedRedlightRejection = true;
             const bearing = this.bearingTo(lat, lng, cam.latitude, cam.longitude);
-            log.info(`[DIAG] Red light BEARING REJECT: ${cam.address} bearing=${Math.round(bearing)}° heading=${Math.round(heading)}° diff=${Math.round(Math.abs(heading - bearing) > 180 ? 360 - Math.abs(heading - bearing) : Math.abs(heading - bearing))}° dist=${Math.round(distance)}m`);
+            const diff = Math.abs(heading - bearing) > 180 ? 360 - Math.abs(heading - bearing) : Math.abs(heading - bearing);
+            this.sendDiag('RL BEARING REJECT',
+              `${cam.address} camBearing=${Math.round(bearing)}° userHdg=${Math.round(heading)}° diff=${Math.round(diff)}° (max ±30°) dist=${Math.round(distance)}m`);
           }
           continue;
         }
@@ -887,6 +922,12 @@ class CameraAlertServiceClass {
       } else {
         distanceFiltered++;
       }
+    }
+
+    // If red light cameras are being type-filtered, fire a one-time notification
+    if (firstRedlightTypeReject && this.gpsUpdateCount <= 2) {
+      this.sendDiag('RED LIGHT DISABLED',
+        `redLightAlertsEnabled=${this.redLightAlertsEnabled} isEnabled=${this.isEnabled} — ALL red light cameras skipped by type filter`);
     }
 
     // Store diagnostic info
