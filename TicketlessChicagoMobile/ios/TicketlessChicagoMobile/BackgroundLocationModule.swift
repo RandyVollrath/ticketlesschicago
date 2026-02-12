@@ -8,7 +8,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   private let locationManager = CLLocationManager()
   private let activityManager = CMMotionActivityManager()
+  private let motionManager = CMMotionManager()  // Accelerometer/gyro for evidence
   private var isMonitoring = false
+
+  // Accelerometer rolling buffer for red light evidence (30s at 10Hz = 300 entries)
+  private let accelBufferCapacity = 300
+  private let accelUpdateIntervalHz: Double = 10.0
+  private var accelBuffer: [(timestamp: Double, x: Double, y: Double, z: Double, gx: Double, gy: Double, gz: Double)] = []
+  private var accelBufferLock = NSLock()
+  private var isRecordingAccel = false
 
   // File-based logging for debugging (NSLog doesn't appear in syslog reliably)
   private var logFileHandle: FileHandle?
@@ -208,6 +216,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationManager.stopMonitoringSignificantLocationChanges()
     stopContinuousGps()
     stopMotionActivityMonitoring()
+    stopAccelerometerRecording()
 
     parkingConfirmationTimer?.invalidate()
     parkingConfirmationTimer = nil
@@ -334,6 +343,86 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     self.log("Continuous GPS OFF (saving battery, distanceFilter=10m)")
   }
 
+  // MARK: - Accelerometer: Evidence Recording
+
+  /// Start recording accelerometer + gyro data into a rolling buffer.
+  /// Uses the M-series coprocessor — near-zero battery impact.
+  /// Called when driving starts; data is retrieved by JS for red light receipts.
+  private func startAccelerometerRecording() {
+    guard !isRecordingAccel else { return }
+    guard motionManager.isDeviceMotionAvailable else {
+      self.log("Device motion not available — skipping accelerometer recording")
+      return
+    }
+
+    motionManager.deviceMotionUpdateInterval = 1.0 / accelUpdateIntervalHz
+    let queue = OperationQueue()
+    queue.name = "com.ticketless.accelerometer"
+    queue.maxConcurrentOperationCount = 1
+
+    motionManager.startDeviceMotionUpdates(to: queue) { [weak self] motion, error in
+      guard let self = self, let motion = motion else { return }
+
+      let entry = (
+        timestamp: motion.timestamp,
+        x: motion.userAcceleration.x,
+        y: motion.userAcceleration.y,
+        z: motion.userAcceleration.z,
+        gx: motion.gravity.x,
+        gy: motion.gravity.y,
+        gz: motion.gravity.z
+      )
+
+      self.accelBufferLock.lock()
+      self.accelBuffer.append(entry)
+      if self.accelBuffer.count > self.accelBufferCapacity {
+        self.accelBuffer.removeFirst(self.accelBuffer.count - self.accelBufferCapacity)
+      }
+      self.accelBufferLock.unlock()
+    }
+
+    isRecordingAccel = true
+    self.log("Accelerometer recording started (\(Int(accelUpdateIntervalHz))Hz, \(accelBufferCapacity/Int(accelUpdateIntervalHz))s buffer)")
+  }
+
+  /// Stop accelerometer recording. Called when driving stops.
+  private func stopAccelerometerRecording() {
+    guard isRecordingAccel else { return }
+    motionManager.stopDeviceMotionUpdates()
+    isRecordingAccel = false
+    self.log("Accelerometer recording stopped")
+  }
+
+  /// Bridge method: JS calls this to retrieve the last N seconds of accelerometer data.
+  /// Returns an array of {timestamp, x, y, z, gx, gy, gz} objects.
+  @objc func getRecentAccelerometerData(_ seconds: Double, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    accelBufferLock.lock()
+    let buffer = self.accelBuffer
+    accelBufferLock.unlock()
+
+    guard !buffer.isEmpty else {
+      resolve([])
+      return
+    }
+
+    let cutoff = buffer.last!.timestamp - seconds
+    let filtered = buffer.filter { $0.timestamp >= cutoff }
+
+    let result: [[String: Any]] = filtered.map { entry in
+      [
+        "timestamp": entry.timestamp,
+        "x": round(entry.x * 10000) / 10000,
+        "y": round(entry.y * 10000) / 10000,
+        "z": round(entry.z * 10000) / 10000,
+        "gx": round(entry.gx * 10000) / 10000,
+        "gy": round(entry.gy * 10000) / 10000,
+        "gz": round(entry.gz * 10000) / 10000,
+      ]
+    }
+
+    resolve(result)
+  }
+
   // MARK: - CoreMotion: Primary Driving Detection
 
   private func startMotionActivityMonitoring() {
@@ -422,6 +511,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           self.locationAtStopStart = nil
           // Spin up precise GPS now that we know user is driving
           self.startContinuousGps()
+          // Start recording accelerometer data for red light evidence
+          self.startAccelerometerRecording()
 
           // DEPARTURE TIMING: Use GPS timestamp if available for more accurate timing.
           var departureTimestamp = Date().timeIntervalSince1970 * 1000
@@ -1026,6 +1117,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     // Stop continuous GPS to save battery - back to significantChanges only
     stopContinuousGps()
+    // Stop accelerometer recording (not needed while parked)
+    stopAccelerometerRecording()
 
     // KEEP CoreMotion running even while parked!
     // CoreMotion uses the M-series coprocessor (hardware, ~zero CPU) and is

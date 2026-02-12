@@ -29,6 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
 import CameraPassHistoryService from './CameraPassHistoryService';
 import RedLightReceiptService, { RedLightTracePoint } from './RedLightReceiptService';
+import BackgroundLocationService from './BackgroundLocationService';
 import { distanceMeters, toRad } from '../utils/geo';
 import Logger from '../utils/Logger';
 
@@ -165,8 +166,14 @@ const TARGET_WARNING_SECONDS = 10;
 /** Distance user must move from camera before it can re-alert */
 const COOLDOWN_RADIUS_METERS = 400;
 
-/** Minimum speed (m/s) to trigger alerts - ~10 mph, filters out walking */
-const MIN_SPEED_MPS = 4.5;
+/** Minimum speed (m/s) to trigger speed camera alerts - ~10 mph, filters out walking */
+const MIN_SPEED_SPEED_CAM_MPS = 4.5;
+
+/** Minimum speed (m/s) to trigger red light camera alerts - ~2 mph.
+ *  Red light cameras matter at ANY driving speed. A user going 5 mph
+ *  approaching a red light camera still needs to know it's there.
+ *  This only filters out standing still / slow walking. */
+const MIN_SPEED_REDLIGHT_MPS = 1.0;
 
 /** Minimum time between any two TTS announcements (ms) */
 const MIN_ANNOUNCE_INTERVAL_MS = 5000;
@@ -586,14 +593,13 @@ class CameraAlertServiceClass {
       this.clearDistantCooldowns(latitude, longitude);
       this.updatePassTracking(latitude, longitude, speed, heading);
 
-      // Don't alert if not moving fast enough (filters out walking, sitting)
-      if (speed >= 0 && speed < MIN_SPEED_MPS) return;
-
       // Compute speed-adaptive alert radius: faster = earlier warning
       const alertRadius = this.getAlertRadius(speed);
 
-      // Find cameras within alert radius that match our travel direction
-      const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius);
+      // Find cameras within alert radius that match our travel direction.
+      // Speed filtering is per-camera-type: red light cameras alert at any
+      // driving speed (≥1 m/s), speed cameras only at ≥10 mph (4.5 m/s).
+      const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius, speed);
 
       if (nearbyCameras.length === 0) return;
 
@@ -697,14 +703,8 @@ class CameraAlertServiceClass {
           });
 
           if (camera.type === 'redlight') {
-            RedLightReceiptService.addReceipt({
-              cameraAddress: camera.address,
-              cameraLatitude: camera.latitude,
-              cameraLongitude: camera.longitude,
-              heading: tracking.minHeading >= 0 ? tracking.minHeading : 0,
-              trace: this.getRecentTrace(now),
-              deviceTimestamp: tracking.minDistanceTimestamp,
-            });
+            // Fetch accelerometer data asynchronously (fire-and-forget to not block)
+            this.recordRedLightReceipt(camera, tracking, now);
           }
 
           const speedMph =
@@ -783,7 +783,8 @@ class CameraAlertServiceClass {
     lat: number,
     lng: number,
     heading: number = -1,
-    alertRadius: number = BASE_ALERT_RADIUS_METERS
+    alertRadius: number = BASE_ALERT_RADIUS_METERS,
+    speed: number = -1
   ): Array<{ index: number; camera: CameraLocation; distance: number }> {
     const results: Array<{ index: number; camera: CameraLocation; distance: number }> = [];
 
@@ -795,6 +796,14 @@ class CameraAlertServiceClass {
     for (let i = 0; i < CHICAGO_CAMERAS.length; i++) {
       const cam = CHICAGO_CAMERAS[i];
       if (!this.isCameraTypeEnabled(cam.type)) continue;
+
+      // Per-type speed filtering:
+      // - Speed cameras: only alert at ≥10 mph (no point alerting while crawling)
+      // - Red light cameras: alert at any driving speed ≥~2 mph
+      if (speed >= 0) {
+        const minSpeed = cam.type === 'speed' ? MIN_SPEED_SPEED_CAM_MPS : MIN_SPEED_REDLIGHT_MPS;
+        if (speed < minSpeed) continue;
+      }
 
       // Fast bounding box filter
       if (cam.latitude < latMin || cam.latitude > latMax) continue;
@@ -906,6 +915,44 @@ class CameraAlertServiceClass {
     if (diff > 180) diff = 360 - diff;
 
     return diff <= MAX_BEARING_OFF_HEADING_DEGREES;
+  }
+
+  // --------------------------------------------------------------------------
+  // Red Light Receipt (with accelerometer evidence)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Record a red light receipt with GPS trace + accelerometer data.
+   * Async because fetching accelerometer buffer from native is async.
+   */
+  private async recordRedLightReceipt(
+    camera: CameraLocation,
+    tracking: CameraPassTracking,
+    now: number
+  ): Promise<void> {
+    try {
+      // Fetch the last 30 seconds of accelerometer data from the native buffer
+      const accelData = Platform.OS === 'ios'
+        ? await BackgroundLocationService.getRecentAccelerometerData(30)
+        : [];
+
+      await RedLightReceiptService.addReceipt({
+        cameraAddress: camera.address,
+        cameraLatitude: camera.latitude,
+        cameraLongitude: camera.longitude,
+        heading: tracking.minHeading >= 0 ? tracking.minHeading : 0,
+        trace: this.getRecentTrace(now),
+        deviceTimestamp: tracking.minDistanceTimestamp,
+        accelerometerTrace: accelData.length > 0 ? accelData : undefined,
+        postedSpeedLimitMph: 30, // Chicago citywide default
+      });
+
+      if (accelData.length > 0) {
+        log.info(`Red light receipt recorded with ${accelData.length} accelerometer samples`);
+      }
+    } catch (error) {
+      log.error('Failed to record red light receipt', error);
+    }
   }
 
   // --------------------------------------------------------------------------
