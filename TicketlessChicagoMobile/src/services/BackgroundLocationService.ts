@@ -55,6 +55,7 @@ export interface BackgroundLocationStatus {
   drivingDurationSec?: number;
   lastDrivingLat?: number;
   lastDrivingLng?: number;
+  lastLocationCallbackAgeSec?: number | null;
 }
 
 class BackgroundLocationServiceClass {
@@ -298,6 +299,64 @@ class BackgroundLocationServiceClass {
     } catch (error) {
       log.error('Error getting accelerometer data', error);
       return [];
+    }
+  }
+
+  /**
+   * Returns the native parking-detection debug log tail.
+   */
+  async getDebugLogs(lineCount: number = 200): Promise<string> {
+    if (!this.isAvailable()) return '';
+    try {
+      return await BackgroundLocationModule.getDebugLogs(lineCount);
+    } catch (error) {
+      log.error('Error getting debug logs', error);
+      return '';
+    }
+  }
+
+  /**
+   * Truncate native parking-detection debug log.
+   */
+  async clearDebugLogs(): Promise<boolean> {
+    if (!this.isAvailable()) return false;
+    try {
+      return !!(await BackgroundLocationModule.clearDebugLogs());
+    } catch (error) {
+      log.error('Error clearing debug logs', error);
+      return false;
+    }
+  }
+
+  /**
+   * Metadata for the native debug log file.
+   */
+  async getDebugLogInfo(): Promise<{ exists: boolean; path: string | null; sizeBytes: number }> {
+    if (!this.isAvailable()) return { exists: false, path: null, sizeBytes: 0 };
+    try {
+      const info = await BackgroundLocationModule.getDebugLogInfo();
+      return {
+        exists: !!info?.exists,
+        path: typeof info?.path === 'string' ? info.path : null,
+        sizeBytes: Number(info?.sizeBytes || 0),
+      };
+    } catch (error) {
+      log.error('Error getting debug log info', error);
+      return { exists: false, path: null, sizeBytes: 0 };
+    }
+  }
+
+  /**
+   * Copies the native debug log to a timestamped temp file and returns that path.
+   */
+  async exportDebugLog(): Promise<string | null> {
+    if (!this.isAvailable()) return null;
+    try {
+      const path = await BackgroundLocationModule.exportDebugLog();
+      return typeof path === 'string' ? path : null;
+    } catch (error) {
+      log.error('Error exporting debug log', error);
+      return null;
     }
   }
 

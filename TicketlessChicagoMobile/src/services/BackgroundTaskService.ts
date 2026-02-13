@@ -103,6 +103,10 @@ class BackgroundTaskServiceClass {
   // Timestamp of last real BT event from the native service (ACL connect/disconnect).
   // Delayed re-checks skip if a real event fired recently, since ACL events are authoritative.
   private lastNativeBtEventTime: number = 0;
+  private lastIosHealthSnapshotTime: number = 0;
+  private iosHealthSnapshotInFlight: boolean = false;
+  private readonly iosHealthSnapshotMinIntervalMs: number = 90 * 1000;
+  private readonly iosCallbackStaleThresholdSec: number = 120;
 
   /**
    * Initialize the background task service
@@ -426,6 +430,7 @@ class BackgroundTaskServiceClass {
           const bgStarted = await BackgroundLocationService.startMonitoring(
             // onParkingDetected - fires when user stops driving for 90+ seconds
             async (event: ParkingDetectedEvent) => {
+              void this.captureIosHealthSnapshot('onParkingDetected', { force: true, includeLogTail: true });
               log.info('PARKING DETECTED via background location', {
                 lat: event.latitude,
                 lng: event.longitude,
@@ -485,6 +490,7 @@ class BackgroundTaskServiceClass {
             },
             // onDrivingStarted - fires when user starts driving
             (drivingTimestamp?: number) => {
+              void this.captureIosHealthSnapshot('onDrivingStarted', { force: true, includeLogTail: true });
               log.info('DRIVING STARTED - user departing', {
                 nativeTimestamp: drivingTimestamp ? new Date(drivingTimestamp).toISOString() : 'none',
               });
@@ -496,6 +502,7 @@ class BackgroundTaskServiceClass {
             // Starts camera alerts immediately so we don't miss nearby cameras
             // during the 5-15 second GPS cold start delay after parking.
             () => {
+              void this.captureIosHealthSnapshot('onPossibleDriving');
               log.info('POSSIBLE DRIVING - CoreMotion automotive detected, starting camera alerts early');
               this.startCameraAlerts();
             }
@@ -512,6 +519,7 @@ class BackgroundTaskServiceClass {
             'iOS Monitoring Active',
             `Permission: ${permStatus}, CoreMotion: ${bgStatus.motionAvailable ? 'YES' : 'NO'}, Always: ${bgStatus.hasAlwaysPermission ? 'YES' : 'NO'}. Drive for 2+ min then park to test.`
           );
+          await this.captureIosHealthSnapshot('startMonitoring', { force: true, includeLogTail: true });
         } else {
           // Fallback to motion-only (less reliable in background)
           log.warn('BackgroundLocationModule not available, falling back to motion-only');
@@ -834,6 +842,7 @@ class BackgroundTaskServiceClass {
    * This triggers departure tracking
    */
   private async handleCarReconnection(nativeDrivingTimestamp?: number): Promise<void> {
+    void this.captureIosHealthSnapshot('handleCarReconnection', { force: true, includeLogTail: true });
     log.info('Car reconnection detected via Bluetooth');
     await this.markCarReconnected(nativeDrivingTimestamp);
   }
@@ -1167,6 +1176,7 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
   }, nativeTimestamp?: number): Promise<void> {
+    void this.captureIosHealthSnapshot('handleCarDisconnection', { force: true, includeLogTail: true });
     // Debounce: if handleCarDisconnection was called in the last 30 seconds, skip.
     // Multiple sources can trigger this for the same physical disconnect:
     // native service event, JS-side BluetoothClassic listener, pending event check.
@@ -2281,12 +2291,77 @@ class BackgroundTaskServiceClass {
   }
 
   /**
+   * iOS reliability snapshot:
+   * - Captures native monitoring status + callback staleness
+   * - Captures native debug log metadata
+   * - Optionally logs native debug log tail for incident reconstruction
+   */
+  private async captureIosHealthSnapshot(
+    reason: string,
+    options?: { force?: boolean; includeLogTail?: boolean }
+  ): Promise<void> {
+    if (Platform.OS !== 'ios' || !this.state.isMonitoring || !BackgroundLocationService.isAvailable()) {
+      return;
+    }
+
+    const force = !!options?.force;
+    const includeLogTail = !!options?.includeLogTail;
+    const now = Date.now();
+
+    if (this.iosHealthSnapshotInFlight) return;
+    if (!force && now - this.lastIosHealthSnapshotTime < this.iosHealthSnapshotMinIntervalMs) return;
+
+    this.iosHealthSnapshotInFlight = true;
+    try {
+      const status = await BackgroundLocationService.getStatus();
+      const logInfo = await BackgroundLocationService.getDebugLogInfo();
+      const callbackAgeSec =
+        typeof status.lastLocationCallbackAgeSec === 'number' && Number.isFinite(status.lastLocationCallbackAgeSec)
+          ? Math.round(status.lastLocationCallbackAgeSec)
+          : null;
+
+      log.info(`[iOS Health] ${reason}`, {
+        nativeMonitoring: status.isMonitoring,
+        isDriving: status.isDriving,
+        callbackAgeSec,
+        hasAlwaysPermission: status.hasAlwaysPermission,
+        motionAvailable: status.motionAvailable,
+        debugLogExists: logInfo.exists,
+        debugLogSizeBytes: logInfo.sizeBytes,
+      });
+
+      const callbacksStale = callbackAgeSec !== null && callbackAgeSec >= this.iosCallbackStaleThresholdSec;
+      if (callbacksStale) {
+        await this.sendDiagnosticNotification(
+          'iOS Location Callback Gap',
+          `No native location callback for ${callbackAgeSec}s while monitoring is active.`
+        );
+      }
+
+      if (includeLogTail || callbacksStale) {
+        const logTail = await BackgroundLocationService.getDebugLogs(80);
+        if (logTail && logTail.trim().length > 0) {
+          log.info(`[iOS Health][NativeLogTail][${reason}]\n${logTail}`);
+        } else {
+          log.info(`[iOS Health][NativeLogTail][${reason}] empty`);
+        }
+      }
+    } catch (error) {
+      log.error(`[iOS Health] Failed to capture snapshot (${reason})`, error);
+    } finally {
+      this.lastIosHealthSnapshotTime = Date.now();
+      this.iosHealthSnapshotInFlight = false;
+    }
+  }
+
+  /**
    * Perform periodic check (backup mechanism)
    */
   private async performPeriodicCheck(): Promise<void> {
     if (!this.state.isMonitoring) return;
 
     log.debug('Performing periodic Bluetooth check');
+    void this.captureIosHealthSnapshot('periodic-check');
 
     try {
       const savedDevice = await BluetoothService.getSavedCarDevice();
@@ -2337,6 +2412,7 @@ class BackgroundTaskServiceClass {
     log.debug('App state changed:', nextAppState);
 
     if (nextAppState === 'active' && this.state.isMonitoring) {
+      void this.captureIosHealthSnapshot('app-foreground', { force: true, includeLogTail: true });
       // App came to foreground - only restart periodic check timer if needed
       // Do NOT re-register BT listeners (they persist across app state changes)
       if (!this.monitoringInterval) {
@@ -2349,6 +2425,7 @@ class BackgroundTaskServiceClass {
         log.debug('App foregrounded: monitoring interval already active');
       }
     } else if (nextAppState === 'background' && this.state.isMonitoring) {
+      void this.captureIosHealthSnapshot('app-background');
       // App went to background
       // BT listeners and periodic checks continue running
       log.info('App entered background, monitoring continues');
