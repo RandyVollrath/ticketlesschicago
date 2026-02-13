@@ -18,6 +18,7 @@ import {
   generateEvidenceParagraph,
   ParkingEvidenceResult,
 } from '../../../lib/parking-evidence';
+import { getStreetViewEvidence, StreetViewResult } from '../../../lib/street-view-service';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -435,32 +436,46 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
       }
     }
 
-    // Look up parking location evidence from the mobile app
+    // ── Gather ALL evidence in parallel (same as autopilot system) ──
     let parkingEvidence: ParkingEvidenceResult | null = null;
     let parkingEvidenceText = '';
+    let cityStickerReceipt: any = null;
+    let registrationReceipt: any = null;
+    let redLightReceipt: any = null;
+    let cameraPassHistory: any[] | null = null;
+    let streetViewEvidence: StreetViewResult | null = null;
+    let streetCleaningSchedule: any[] | null = null;
+    let foiaData: {
+      hasData: boolean;
+      totalContested: number;
+      totalDismissed: number;
+      winRate: number;
+      topDismissalReasons: { reason: string; count: number }[];
+      mailContestWinRate: number | null;
+    } = { hasData: false, totalContested: 0, totalDismissed: 0, winRate: 0, topDismissalReasons: [], mailContestWinRate: null };
 
-    try {
-      parkingEvidence = await lookupParkingEvidence(
-        supabase,
-        user.id,
-        contest.ticket_location,
-        contest.ticket_date || contest.extracted_data?.date,
-        contest.extracted_data?.time || null,
-        contest.violation_code,
-        contest.ticket_latitude || null,
-        contest.ticket_longitude || null,
-      );
+    const ticketDate = contest.ticket_date || contest.extracted_data?.date;
+    const violationType = contest.violation_type || contest.extracted_data?.violation_type || '';
+    const evidencePromises: Promise<void>[] = [];
 
-      if (parkingEvidence.hasEvidence) {
-        userEvidence.hasLocationEvidence = true;
-
-        // Generate the evidence paragraph that will go directly in the letter
-        const evidenceParagraph = generateEvidenceParagraph(
-          parkingEvidence,
-          contest.violation_code
+    // 1. GPS Parking Evidence
+    evidencePromises.push((async () => {
+      try {
+        parkingEvidence = await lookupParkingEvidence(
+          supabase,
+          user.id,
+          contest.ticket_location,
+          ticketDate,
+          contest.extracted_data?.time || null,
+          contest.violation_code,
+          contest.ticket_latitude || null,
+          contest.ticket_longitude || null,
         );
 
-        parkingEvidenceText = `
+        if (parkingEvidence?.hasEvidence) {
+          userEvidence.hasLocationEvidence = true;
+          const evidenceParagraph = generateEvidenceParagraph(parkingEvidence, contest.violation_code);
+          parkingEvidenceText = `
 === GPS PARKING EVIDENCE FROM USER'S MOBILE APP ===
 
 The user has the Autopilot parking protection app, which tracks their parking via Bluetooth vehicle connection and GPS. This data provides timestamped, GPS-verified evidence.
@@ -469,14 +484,12 @@ ${parkingEvidence.evidenceSummary}
 
 EVIDENCE STRENGTH: ${Math.round(parkingEvidence.evidenceStrength * 100)}%
 
-${parkingEvidence.departureProof ? `
-KEY DEPARTURE DATA:
+${parkingEvidence.departureProof ? `KEY DEPARTURE DATA:
 - Parked at: ${parkingEvidence.departureProof.parkedAt}
 - Departed at: ${parkingEvidence.departureProof.departureTimeFormatted}
 - Minutes before ticket: ${parkingEvidence.departureProof.minutesBeforeTicket}
 - Distance moved: ${parkingEvidence.departureProof.departureDistanceMeters}m
-- GPS conclusive: ${parkingEvidence.departureProof.isConclusive ? 'YES' : 'Partial'}
-` : ''}
+- GPS conclusive: ${parkingEvidence.departureProof.isConclusive ? 'YES' : 'Partial'}` : ''}
 
 PRE-WRITTEN EVIDENCE PARAGRAPH TO INCORPORATE INTO THE LETTER:
 ${evidenceParagraph}
@@ -487,15 +500,161 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
 3. Reference specific timestamps and distances - these are verifiable GPS records
 4. This is factual, timestamped data - present it confidently as evidence
 5. If departure proof exists, it should be one of the MAIN arguments alongside any other defenses
-6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided
-`;
-      }
-    } catch (evidenceError) {
-      console.error('Failed to look up parking evidence:', evidenceError);
-      // Continue without parking evidence
+6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided`;
+        }
+      } catch (e) { console.error('GPS evidence lookup failed:', e); }
+    })());
+
+    // 2. City Sticker Receipt (for no_city_sticker violations)
+    if (violationType === 'no_city_sticker' || contest.violation_code === '9-64-125' || contest.violation_code === '9-100-010') {
+      evidencePromises.push((async () => {
+        try {
+          const { data } = await supabase
+            .from('city_sticker_receipts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('purchase_date', { ascending: false })
+            .limit(1);
+          if (data && data.length > 0) {
+            cityStickerReceipt = data[0];
+          }
+        } catch (e) { console.error('City sticker receipt lookup failed:', e); }
+      })());
     }
 
-    // Generate evidence checklist (after parking evidence lookup so it can include GPS data)
+    // 3. Registration Evidence Receipt (for expired_plates violations)
+    if (violationType === 'expired_plates' || contest.violation_code === '9-76-160' || contest.violation_code === '9-80-190') {
+      evidencePromises.push((async () => {
+        try {
+          const { data } = await supabase
+            .from('registration_evidence_receipts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('purchase_date', { ascending: false })
+            .limit(1);
+          if (data && data.length > 0) {
+            registrationReceipt = data[0];
+          }
+        } catch (e) { console.error('Registration receipt lookup failed:', e); }
+      })());
+    }
+
+    // 4. Red Light Camera Receipt Data
+    if (violationType === 'red_light' || contest.violation_description?.toLowerCase().includes('red light')) {
+      evidencePromises.push((async () => {
+        try {
+          const { data } = await supabase
+            .from('red_light_receipts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+          if (data && data.length > 0) {
+            const matching = data.find((r: any) => ticketDate && r.violation_date === ticketDate) || data[0];
+            redLightReceipt = matching;
+          }
+        } catch (e) { console.error('Red light receipt lookup failed:', e); }
+      })());
+    }
+
+    // 5. Speed Camera / Camera Pass History
+    if (violationType === 'speed_camera' || violationType === 'red_light' ||
+        contest.violation_description?.toLowerCase().includes('speed') ||
+        contest.violation_description?.toLowerCase().includes('camera')) {
+      evidencePromises.push((async () => {
+        try {
+          let query = supabase
+            .from('camera_pass_history')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('detected_at', { ascending: false })
+            .limit(10);
+          if (ticketDate) {
+            const searchStart = new Date(ticketDate);
+            searchStart.setDate(searchStart.getDate() - 1);
+            const searchEnd = new Date(ticketDate);
+            searchEnd.setDate(searchEnd.getDate() + 2);
+            query = query
+              .gte('detected_at', searchStart.toISOString())
+              .lt('detected_at', searchEnd.toISOString());
+          }
+          const { data } = await query;
+          if (data && data.length > 0) {
+            cameraPassHistory = data;
+          }
+        } catch (e) { console.error('Camera pass history lookup failed:', e); }
+      })());
+    }
+
+    // 6. FOIA Contest Outcomes (1.18M real Chicago hearing records)
+    if (contest.violation_code) {
+      evidencePromises.push((async () => {
+        try {
+          const foiaPrefix = '0' + contest.violation_code.replace(/-/g, '');
+          const { data: foiaSample, count: foiaTotal } = await supabase
+            .from('contested_tickets_foia')
+            .select('disposition, reason, contest_type', { count: 'exact' })
+            .like('violation_code', `${foiaPrefix}%`)
+            .limit(2000);
+
+          if (foiaSample && foiaSample.length > 0 && foiaTotal) {
+            const dismissed = foiaSample.filter((r: any) => r.disposition === 'Not Liable');
+            const sampleWinRate = dismissed.length / foiaSample.length;
+            const reasonCounts: Record<string, number> = {};
+            dismissed.forEach((r: any) => {
+              if (r.reason) reasonCounts[r.reason] = (reasonCounts[r.reason] || 0) + 1;
+            });
+            const topReasons = Object.entries(reasonCounts)
+              .map(([reason, count]) => ({ reason, count }))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 5);
+            const mailContests = foiaSample.filter((r: any) => r.contest_type === 'Mail');
+            const mailWins = mailContests.filter((r: any) => r.disposition === 'Not Liable');
+            const mailWinRate = mailContests.length > 10
+              ? Math.round((mailWins.length / mailContests.length) * 100) : null;
+
+            foiaData = {
+              hasData: true,
+              totalContested: foiaTotal,
+              totalDismissed: Math.round(foiaTotal * sampleWinRate),
+              winRate: Math.round(sampleWinRate * 100),
+              topDismissalReasons: topReasons,
+              mailContestWinRate: mailWinRate,
+            };
+          }
+        } catch (e) { console.error('FOIA data lookup failed:', e); }
+      })());
+    }
+
+    // 7. Google Street View (signage verification)
+    if (contest.ticket_location) {
+      evidencePromises.push((async () => {
+        try {
+          streetViewEvidence = await getStreetViewEvidence(contest.ticket_location, ticketDate);
+        } catch (e) { console.error('Street View lookup failed:', e); }
+      })());
+    }
+
+    // 8. Street Cleaning Schedule (for street cleaning violations)
+    if ((violationType === 'street_cleaning' || contest.violation_code === '9-64-010') && ticketDate) {
+      evidencePromises.push((async () => {
+        try {
+          const { data } = await supabase
+            .from('street_cleaning_schedule')
+            .select('*')
+            .eq('date', ticketDate)
+            .limit(5);
+          if (data && data.length > 0) {
+            streetCleaningSchedule = data;
+          }
+        } catch (e) { /* Schedule lookup is optional */ }
+      })());
+    }
+
+    // Wait for ALL evidence lookups to complete in parallel
+    await Promise.all(evidencePromises);
+
+    // Generate evidence checklist (after all evidence lookups)
     const evidenceChecklist = generateEvidenceChecklist(contest, contestGrounds, ordinanceInfo, parkingEvidence);
 
     // Generate contest letter using Claude
@@ -552,7 +711,67 @@ INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill i
 ` : ''}
 ${weatherDefenseText}
 ${parkingEvidenceText}
-${courtData.hasData ? `IMPORTANT - HISTORICAL COURT DATA (analyzed ${courtData.totalCasesAnalyzed} cases, found ${courtData.matchingCasesCount} matching user's evidence):
+${cityStickerReceipt ? `
+=== CITY STICKER RECEIPT EVIDENCE ===
+The user has a city vehicle sticker purchase receipt on file:
+- Purchase Date: ${cityStickerReceipt.purchase_date || 'On file'}
+- Sticker Number: ${cityStickerReceipt.sticker_number || 'On file'}
+- Vehicle: ${cityStickerReceipt.vehicle_description || contest.license_plate || 'On file'}
+- Amount Paid: ${cityStickerReceipt.amount_paid ? `$${cityStickerReceipt.amount_paid}` : 'On file'}
+
+INSTRUCTIONS: This is direct proof of compliance. The user purchased a city sticker. State clearly that the user was in compliance with the city vehicle sticker requirement at the time of the citation, referencing the purchase date. This receipt is attached as evidence.` : ''}
+${registrationReceipt ? `
+=== VEHICLE REGISTRATION EVIDENCE ===
+The user has vehicle registration/renewal documentation on file:
+- Receipt Type: ${registrationReceipt.receipt_type || 'Registration renewal'}
+- Purchase Date: ${registrationReceipt.purchase_date || 'On file'}
+- Plate Number: ${registrationReceipt.plate_number || contest.license_plate || 'On file'}
+- Expiration Date: ${registrationReceipt.expiration_date || 'See receipt'}
+
+INSTRUCTIONS: This proves the user renewed their registration. State that the vehicle registration was valid or had been renewed at the time of citation. Under Illinois law, there is a grace period for displaying updated registration. The renewal receipt is attached as evidence.` : ''}
+${redLightReceipt ? `
+=== RED LIGHT CAMERA DATA FROM USER'S APP ===
+The user's app captured data from their pass through this red light camera:
+- Speed at Camera: ${redLightReceipt.speed_mph ? `${redLightReceipt.speed_mph} mph` : 'Unknown'}
+- Full Stop Detected: ${redLightReceipt.full_stop_detected === true ? 'YES - Vehicle came to a complete stop' : redLightReceipt.full_stop_detected === false ? 'NO' : 'Unknown'}
+- Timestamp: ${redLightReceipt.detected_at || redLightReceipt.created_at || 'On file'}
+${redLightReceipt.yellow_duration_seconds ? `- Yellow Light Duration: ${redLightReceipt.yellow_duration_seconds} seconds` : ''}
+
+INSTRUCTIONS:
+${redLightReceipt.full_stop_detected === true ? '- The user\'s vehicle CAME TO A COMPLETE STOP. This is strong evidence the driver was driving lawfully.' : ''}
+- Request the city provide the camera calibration records and full video evidence` : ''}
+${cameraPassHistory && cameraPassHistory.length > 0 ? `
+=== SPEED CAMERA GPS DATA FROM USER'S APP ===
+${cameraPassHistory.slice(0, 3).map((p: any, i: number) => `Pass ${i + 1}: Camera: ${p.camera_name || p.camera_id || 'Unknown'}, GPS Speed: ${p.speed_mph ? `${p.speed_mph} mph` : 'Unknown'}, Posted Limit: ${p.speed_limit_mph ? `${p.speed_limit_mph} mph` : 'Unknown'}`).join('\n')}
+
+INSTRUCTIONS: Reference the GPS data as evidence of the user's actual speed.` : ''}
+${streetViewEvidence?.hasImagery ? `
+=== GOOGLE STREET VIEW SIGNAGE EVIDENCE ===
+Location: ${streetViewEvidence.address || `${streetViewEvidence.latitude}, ${streetViewEvidence.longitude}`}
+Imagery Date: ${streetViewEvidence.imageDate || 'Unknown'}
+${streetViewEvidence.signageObservation || ''}
+
+INSTRUCTIONS: Suggest the hearing officer verify signage presence/visibility using Google Street View for this location. Present as publicly available evidence that can be independently verified.` : ''}
+${foiaData.hasData ? `
+=== CITY OF CHICAGO FOIA DATA — REAL HEARING OUTCOMES ===
+(from ${foiaData.totalContested.toLocaleString()} actual contested tickets for this violation code)
+
+Overall win rate: ${foiaData.winRate}% (${foiaData.totalDismissed.toLocaleString()} found "Not Liable" out of ${foiaData.totalContested.toLocaleString()})
+${foiaData.mailContestWinRate !== null ? `Mail contest win rate: ${foiaData.mailContestWinRate}%` : ''}
+
+Top reasons hearings were WON:
+${foiaData.topDismissalReasons.map((r, i) => `  ${i + 1}. "${r.reason}" (${r.count} cases in sample)`).join('\n')}
+
+STRATEGY INSTRUCTIONS (DO NOT cite stats in the letter):
+1. The top dismissal reason tells you what argument to lead with
+2. DO NOT mention FOIA data, statistics, or win rates in the letter
+3. Write the letter using the STRATEGY these outcomes suggest, not citing the data itself` : ''}
+${streetCleaningSchedule && streetCleaningSchedule.length > 0 ? `
+STREET CLEANING SCHEDULE DATA:
+Records for ticket date (${ticketDate}):
+${streetCleaningSchedule.map((s: any) => `- Ward ${s.ward}, Section ${s.section}: ${s.status || 'scheduled'}`).join('\n')}
+NOTE: Request the city provide proof that cleaning actually took place on this date and block.` : ''}
+${courtData.hasData ? `HISTORICAL COURT DATA (analyzed ${courtData.totalCasesAnalyzed} cases, found ${courtData.matchingCasesCount} matching user's evidence):
 
 User's Evidence Availability:
 - Has Photos: ${userEvidence.hasPhotos ? 'YES' : 'NO'}
@@ -628,6 +847,20 @@ Use a formal letter format with proper salutation and closing.`
       // Use fallback template
       contestLetter = generateFallbackLetter(contest, contestGrounds, profile, ordinanceInfo);
     }
+
+    // Track all evidence sources used
+    const evidenceSources: string[] = [];
+    if (parkingEvidence?.hasEvidence) evidenceSources.push('gps_parking');
+    if (weatherData?.hasAdverseWeather) evidenceSources.push('weather');
+    if (cityStickerReceipt) evidenceSources.push('city_sticker');
+    if (registrationReceipt) evidenceSources.push('registration');
+    if (redLightReceipt) evidenceSources.push('red_light_gps');
+    if (cameraPassHistory) evidenceSources.push('speed_camera_gps');
+    if (foiaData.hasData) evidenceSources.push('foia_data');
+    if (kitEvaluation) evidenceSources.push('contest_kit');
+    if (streetViewEvidence?.hasImagery) evidenceSources.push('street_view');
+    if (courtData.hasData) evidenceSources.push('court_data');
+    if (streetCleaningSchedule) evidenceSources.push('street_cleaning_schedule');
 
     // Update contest record with kit tracking data
     const { error: updateError } = await supabase
@@ -712,6 +945,58 @@ Use a formal letter format with proper salutation and closing.`
       } : {
         hasKit: false,
       },
+      // FOIA hearing data
+      foiaData: foiaData.hasData ? {
+        hasData: true,
+        totalContested: foiaData.totalContested,
+        totalDismissed: foiaData.totalDismissed,
+        winRate: foiaData.winRate,
+        mailContestWinRate: foiaData.mailContestWinRate,
+        topReasons: foiaData.topDismissalReasons.slice(0, 3).map(r => r.reason),
+      } : { hasData: false },
+      // Street View signage evidence
+      streetView: streetViewEvidence?.hasImagery ? {
+        hasImagery: true,
+        imageDate: streetViewEvidence.imageDate,
+        imageUrl: streetViewEvidence.imageUrl,
+        thumbnailUrl: streetViewEvidence.thumbnailUrl,
+        signageObservation: streetViewEvidence.signageObservation,
+      } : { hasImagery: false },
+      // Receipt evidence
+      receipts: {
+        citySticker: cityStickerReceipt ? {
+          found: true,
+          purchaseDate: cityStickerReceipt.purchase_date,
+          expirationDate: cityStickerReceipt.expiration_date,
+        } : { found: false },
+        registration: registrationReceipt ? {
+          found: true,
+          purchaseDate: registrationReceipt.purchase_date,
+          expirationDate: registrationReceipt.expiration_date,
+        } : { found: false },
+      },
+      // Camera GPS evidence
+      cameraEvidence: {
+        redLight: redLightReceipt ? {
+          found: true,
+          location: redLightReceipt.camera_location,
+          timestamp: redLightReceipt.timestamp,
+        } : { found: false },
+        speedCamera: cameraPassHistory && cameraPassHistory.length > 0 ? {
+          found: true,
+          passCount: cameraPassHistory.length,
+          location: cameraPassHistory[0].camera_name || cameraPassHistory[0].camera_id || null,
+          speedMph: cameraPassHistory[0].speed_mph || null,
+          speedLimitMph: cameraPassHistory[0].speed_limit_mph || null,
+        } : { found: false },
+      },
+      // Street cleaning schedule
+      streetCleaning: streetCleaningSchedule && streetCleaningSchedule.length > 0 ? {
+        hasData: true,
+        records: streetCleaningSchedule.slice(0, 5),
+      } : { hasData: false },
+      // All evidence sources used
+      evidenceSources,
     });
 
   } catch (error: any) {
