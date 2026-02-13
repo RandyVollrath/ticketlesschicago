@@ -173,7 +173,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Autopilot America - Auto-Contest Chicago Parking Tickets</title>
-        <meta name="description" content="We monitor your plate, find tickets, and mail contest letters automatically. $24/year. Based on 1.2M contested ticket outcomes." />
+        <meta name="description" content="Chicago writes $259 million in parking tickets every year. We automatically contest eligible tickets for you. $49/year with a First Dismissal Guarantee." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -301,7 +301,7 @@ export default function LandingPage() {
           fontWeight: 600,
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <span style={{color: COLORS.accent}}>●</span> 1.2M+ Tickets Analyzed
+          <span style={{color: COLORS.accent}}>●</span> 1.2M+ Chicago Tickets Analyzed
         </div>
 
         <h1 style={{
@@ -314,14 +314,14 @@ export default function LandingPage() {
           margin: '0 auto 24px',
           position: 'relative',
         }}>
-          The city has a system.<br/>
+          Chicago Writes $259 Million in Parking Tickets{' '}
           <span style={{
             background: `linear-gradient(to right, ${COLORS.accent}, #fff)`,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            Now, so do you.
+            Every Year.
           </span>
         </h1>
 
@@ -332,28 +332,39 @@ export default function LandingPage() {
           margin: '0 auto 40px',
           lineHeight: 1.6
         }}>
-          Autopilot monitors your Chicago license plate twice a week for city tickets. When one hits, we automatically mail the contest letter.
+          93% of drivers never contest.<br/>
+          But when they do, 54% win.
+        </p>
+
+        <p style={{
+          fontSize: 'clamp(16px, 2.5vw, 18px)',
+          color: '#CBD5E1',
+          maxWidth: '600px',
+          margin: '0 auto 40px',
+          lineHeight: 1.6
+        }}>
+          We automatically contest eligible Chicago tickets for you — and if we don't get at least one dismissed this year, your membership is free.
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button primary href="/get-started">
-            Protect My Plate <ArrowRight />
+            Become a Founding Member — $49/year <ArrowRight />
           </Button>
-          <Button variant="outline" href="#how-it-works">
-            See How It Works
+          <Button variant="outline" href="/get-started">
+            Start Free Alerts
           </Button>
         </div>
 
         <p style={{ marginTop: '24px', fontSize: '14px', color: '#64748B' }}>
-          Less than $2/month to protect yourself from $1,000+ in fees
+          Built specifically for Chicago's codes, enforcement patterns, and dismissal data.
         </p>
 
         {/* Stats */}
         <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'center', gap: '48px', flexWrap: 'wrap' }}>
           {[
             { value: '1.2M+', label: 'Tickets analyzed' },
-            { value: '54%', label: 'Average dismissal' },
-            { value: '$24', label: 'Per year' },
+            { value: '54%', label: 'Contested tickets dismissed' },
+            { value: '$49', label: 'Per year' },
           ].map((stat, i) => (
             <div key={i} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '36px', fontWeight: 800, fontFamily: FONTS.heading }}>{stat.value}</div>
@@ -375,7 +386,7 @@ export default function LandingPage() {
           {[
             { title: '1. Connect', text: 'Enter your license plate. We scan Chicago databases instantly.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>) },
             { title: '2. Monitor', text: 'Our system checks for new violations every week.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>) },
-            { title: '3. Fight', text: 'We auto-generate and mail the best legal defense based on 1.2M records.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>) },
+            { title: '3. Fight', text: 'We generate, print, and mail a Chicago-specific defense automatically.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>) },
             { title: '4. Relax', text: 'You get a notification when the ticket is dismissed. Total peace of mind.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) }
           ].map((step, i) => (
             <div key={i} style={{
@@ -637,7 +648,7 @@ export default function LandingPage() {
               margin: '0 0 10px 0',
               color: '#fff'
             }}>
-              $24<span style={{fontSize: '18px', color: '#94A3B8'}}>/year</span>
+              $49<span style={{fontSize: '18px', color: '#94A3B8'}}>/year</span>
             </h3>
             <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>We fight your tickets for you</p>
 
@@ -665,9 +676,49 @@ export default function LandingPage() {
             </Button>
 
             <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
-              Less than $2/month to protect yourself from $1,000+ in fees
+              First Dismissal Guarantee — or your money back
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* First Dismissal Guarantee */}
+      <section style={{
+        padding: '60px 5%',
+        maxWidth: '800px',
+        margin: '0 auto',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '48px 40px',
+          borderRadius: '20px',
+          border: `2px solid ${COLORS.accent}`,
+          boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.1)',
+        }}>
+          <div style={{
+            display: 'inline-block',
+            padding: '6px 16px',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            letterSpacing: '1px',
+            color: COLORS.accent,
+            marginBottom: '20px',
+            textTransform: 'uppercase',
+          }}>
+            FIRST DISMISSAL GUARANTEE
+          </div>
+          <p style={{
+            fontSize: '18px',
+            color: COLORS.textDark,
+            lineHeight: 1.7,
+            maxWidth: '560px',
+            margin: '0 auto',
+          }}>
+            If we don't successfully dismiss at least one eligible non-camera ticket this year, you can request a full refund.
+          </p>
         </div>
       </section>
 
@@ -733,19 +784,17 @@ export default function LandingPage() {
             fontWeight: 700,
             marginBottom: '16px'
           }}>
-            Stop paying tickets you could contest
+            Stop Automatically Paying.
           </h2>
-          <p style={{ color: '#94A3B8', marginBottom: '32px', fontSize: '18px' }}>
-            Start free with alerts, or let Autopilot fight your tickets automatically.
+          <p style={{ color: '#94A3B8', marginBottom: '12px', fontSize: '18px' }}>
+            Chicago issues $259 million in parking tickets every year.
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button variant="outline" href="/get-started">
-              Start Free
-            </Button>
-            <Button primary href="/get-started">
-              Get Autopilot - $24/year <ArrowRight />
-            </Button>
-          </div>
+          <p style={{ color: '#CBD5E1', marginBottom: '32px', fontSize: '18px' }}>
+            You don't have to just pay.
+          </p>
+          <Button primary href="/get-started">
+            Become a Founding Member — $49/year <ArrowRight />
+          </Button>
         </div>
       </section>
 
