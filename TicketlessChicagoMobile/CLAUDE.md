@@ -1,7 +1,6 @@
-# Claude Code Instructions
+# Mobile App Instructions (React Native)
 
 ## iOS Deployment
-
 Whenever a `git pull` is requested, always build and deploy to the attached iPhone afterward if one is connected.
 
 - Device: Randy's iPhone (UDID: `00008110-001239311461801E`)
@@ -12,7 +11,6 @@ Whenever a `git pull` is requested, always build and deploy to the attached iPho
 - Skip `xcodebuild clean` unless the build fails (incremental builds are much faster)
 
 ## iPhone Log Collection
-
 Every time the iPhone is connected (or on each `git pull`), capture and push logs so Ubuntu Claude can debug:
 
 1. Capture syslog: `idevicesyslog --udid 00008110-001239311461801E` (run in background, kill after 15-30s)
@@ -20,3 +18,25 @@ Every time the iPhone is connected (or on each `git pull`), capture and push log
 3. Pull crash reports: `idevicecrashreport --udid 00008110-001239311461801E logs/crash_reports_YYYYMMDD/`
 4. Save to `logs/` directory and `git add && git commit && git push origin main`
 5. Note: React Native `console.log` does NOT appear in iOS syslog. For JS-level logs, use the debug overlay (long-press hero card on iOS)
+
+## Testing
+- Run tests: `npm test` (Jest with React Native preset)
+- Test config: `jest.config.js` + `jest.setup.js`
+- Coverage target: `src/**/*.{ts,tsx}`
+
+## Quality Checks
+- Lint: `npm run lint` (ESLint with `@react-native` config)
+- Format: Prettier configured (`.prettierrc.js` — single quotes, trailing commas)
+
+## Key Architecture Notes
+- **Source alias**: `@/*` maps to `src/*` (configured in babel + tsconfig + jest)
+- **Config**: `src/config/config.ts` holds `APP_VERSION`, `BUILD_NUMBER`, Supabase URL/key
+- **Services** in `src/services/` — singleton pattern, initialized at app startup
+- **Native modules**: Android in `android/app/src/main/java/`, iOS in `ios/`
+
+## Cross-Platform Rules
+See root `CLAUDE.md` for detailed cross-platform rules. Key points:
+- Every feature must work on BOTH iOS and Android
+- iOS is stricter than Android on almost everything
+- WebView behavior differs significantly — see root CLAUDE.md "iOS vs Android: Critical Differences"
+- When adding native dependencies, update both platforms in the same commit

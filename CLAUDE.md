@@ -1,5 +1,10 @@
 # Project Instructions
 
+> **Scoped instructions** exist in subdirectories for focused context:
+> - `pages/CLAUDE.md` — Next.js web app patterns, API routes, Vercel deployment
+> - `scripts/CLAUDE.md` — Script conventions, production scripts, how to run
+> - `TicketlessChicagoMobile/CLAUDE.md` — Mobile app build/deploy, iOS logs, testing
+
 ## Codebase Overview
 - **Web app**: Next.js (pages/), deployed to Vercel via push to `main`
 - **Mobile app**: React Native in `TicketlessChicagoMobile/`, iOS + Android

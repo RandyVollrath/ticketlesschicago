@@ -8,8 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "validate": "npm run lint && npm run type-check",
     "deploy": "vercel --prod",
-    "deploy:staging": "vercel"
+    "deploy:staging": "vercel",
+    "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
@@ -73,6 +77,8 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^8.0.0",
     "eslint-config-next": "15.3.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.6",
@@ -85,6 +91,10 @@
     "reminders",
     "automation"
   ],
+  "lint-staged": {
+    "*.{ts,tsx}": "next lint --fix --file",
+    "*.{js,jsx}": "next lint --fix --file"
+  },
   "author": "",
   "license": "ISC"
 }

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '=== Environment Check ===' && node --version && echo '' && echo '=== Git Status ===' && git -C /home/user/ticketlesschicago status --short | head -20 && echo '' && echo '=== Branch ===' && git -C /home/user/ticketlesschicago branch --show-current && echo '' && if [ ! -d /home/user/ticketlesschicago/node_modules ]; then echo 'WARNING: node_modules missing — run npm install'; elif [ /home/user/ticketlesschicago/package.json -nt /home/user/ticketlesschicago/node_modules/.package-lock.json ] 2>/dev/null; then echo 'WARNING: package.json newer than node_modules — run npm install'; else echo 'node_modules: OK'; fi && echo '' && if [ ! -d /home/user/ticketlesschicago/TicketlessChicagoMobile/node_modules ]; then echo 'WARNING: mobile node_modules missing — run npm install in TicketlessChicagoMobile/'; else echo 'mobile node_modules: OK'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
