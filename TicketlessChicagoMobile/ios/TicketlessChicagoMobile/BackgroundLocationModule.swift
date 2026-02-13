@@ -124,7 +124,30 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // to create false parking at wrong addresses with cell-tower GPS.
     restorePersistedParkingState()
 
+    // Listen for app resuming from iOS suspension. When iOS suspends the app,
+    // CoreMotion callbacks freeze — we can miss entire drive+park cycles.
+    // On resume, query CoreMotion history to catch any missed parking.
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(appDidBecomeActive),
+      name: UIApplication.didBecomeActiveNotification,
+      object: nil
+    )
+
     log("BackgroundLocationModule initialized")
+  }
+
+  @objc private func appDidBecomeActive() {
+    guard isMonitoring else { return }
+    guard !isDriving && !coreMotionSaysAutomotive else { return }
+    guard hasConfirmedParkingThisSession else { return }
+
+    self.log("App resumed from suspension — checking CoreMotion history for missed parking")
+    // Reset the flag so checkForMissedParking can run
+    hasCheckedForMissedParking = false
+    if let currentLoc = locationManager.location {
+      checkForMissedParking(currentLocation: currentLoc)
+    }
   }
 
   /// Persist lastConfirmedParkingLocation + hasConfirmedParkingThisSession to UserDefaults
@@ -689,7 +712,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             self.log("SHORT DRIVE RECOVERY: CoreMotion automotive→\(activity.stationary ? "stationary" : "walking") but isDriving was false. Firing departure + parking events.")
 
             // Fire departure event first so previous parking gets a departure time.
-            let departureTimestamp = Date().timeIntervalSince1970 * 1000
+            // Use the automotive session start time (when CoreMotion first said automotive)
+            // instead of current time — the user started driving then, not now.
+            let departureTimestamp = (self.automotiveSessionStart?.timeIntervalSince1970 ?? Date().timeIntervalSince1970) * 1000
             self.sendEvent(withName: "onDrivingStarted", body: [
               "timestamp": departureTimestamp,
               "source": "short_drive_recovery",
@@ -712,6 +737,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             // Clean up driving state and record this as the new parking location
             self.lastConfirmedParkingLocation = loc
             self.hasConfirmedParkingThisSession = true  // Mark parking confirmed so GPS speed veto + distance bypass works for next drive
+            self.hasCheckedForMissedParking = false      // Allow recovery check on next drive
             self.persistParkingState()  // Survive app kills (Clybourn bug fix)
             self.stopContinuousGps()
             self.lastDrivingLocation = nil
@@ -751,10 +777,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       return  // Don't process this location through the normal driving pipeline
     }
 
-    // --- Recovery: app was killed and woken by significantLocationChange ---
+    // --- Recovery: app was killed/suspended and woken by significantLocationChange ---
     // If we're not tracking driving but we just got a location update,
     // check if CoreMotion says we recently drove and are now stopped.
-    // This catches the case where iOS killed us mid-drive.
+    // This catches both:
+    //   1. App killed by iOS → cold restart → CoreMotion not active
+    //   2. App suspended by iOS → CoreMotion "active" but callbacks were frozen
     if !isDriving && !coreMotionSaysAutomotive && isMonitoring {
       // Restart CoreMotion if it was stopped after parking.
       // significantLocationChange fired, meaning user moved ~100-500m,
@@ -763,6 +791,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         self.log("significantLocationChange woke us — restarting CoreMotion")
         startMotionActivityMonitoring()
       }
+      // Always check for missed parking, even if CoreMotion is "active".
+      // When iOS suspends the app, CoreMotion callbacks freeze — the M-chip
+      // continues recording but our callback never fires. On wake, we must
+      // query CoreMotion history to find any drive+park that happened while
+      // we were suspended.
       checkForMissedParking(currentLocation: location)
     }
 
@@ -940,11 +973,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // Look for pattern: automotive activity followed by stationary/walking
       var wasRecentlyDriving = false
       var automotiveDuration: TimeInterval = 0
+      var firstAutomotiveStart: Date? = nil  // When driving actually began
 
       for i in 0..<activities.count {
         let activity = activities[i]
         if activity.automotive {
           wasRecentlyDriving = true
+          if firstAutomotiveStart == nil {
+            firstAutomotiveStart = activity.startDate
+          }
           if i + 1 < activities.count {
             automotiveDuration += activities[i + 1].startDate.timeIntervalSince(activity.startDate)
           }
@@ -957,6 +994,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
       if wasRecentlyDriving && currentlyStationary && automotiveDuration > 0 {
         self.log("RECOVERY: CoreMotion says user drove \(String(format: "%.0f", automotiveDuration))s and is now stationary. Requesting accurate GPS before emitting parking event.")
+
+        // Emit onDrivingStarted so JS records the departure from the previous parking spot.
+        // Use the actual automotive start time from CoreMotion history for accurate departure tracking.
+        let departureTimestamp = (firstAutomotiveStart?.timeIntervalSince1970 ?? Date().timeIntervalSince1970) * 1000
+        self.sendEvent(withName: "onDrivingStarted", body: [
+          "timestamp": departureTimestamp,
+          "source": "recovery_coremotion_history",
+        ])
+        self.log("RECOVERY: onDrivingStarted fired (departure from previous parking)")
 
         // DON'T use the significantLocationChange cell-tower fix as the parking
         // location. That's how the Clybourn bug happens — 300-500m off.
@@ -978,10 +1024,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         self.log("Recovery check: no missed parking (drove: \(wasRecentlyDriving), stationary: \(currentlyStationary), duration: \(String(format: "%.0f", automotiveDuration))s)")
       }
 
-      // Re-start CoreMotion monitoring since we just woke up
-      if !self.coreMotionSaysAutomotive {
-        self.startMotionActivityMonitoring()
+      // Force-restart CoreMotion monitoring after wake from suspension.
+      // When iOS suspends the app, CoreMotion is technically "active" but
+      // callbacks are frozen. Force a stop+start cycle to get fresh callbacks.
+      if self.coreMotionActive {
+        self.activityManager.stopActivityUpdates()
+        self.coreMotionActive = false
+        self.log("Force-stopped stale CoreMotion session after recovery wake")
       }
+      self.startMotionActivityMonitoring()
     }
   }
 
@@ -1014,6 +1065,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     lastConfirmedParkingLocation = location
     hasConfirmedParkingThisSession = true
+    hasCheckedForMissedParking = false  // Allow recovery check on next drive
     persistParkingState()
 
     sendEvent(withName: "onParkingDetected", body: body)
@@ -1168,6 +1220,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     stationaryLocation = nil
     stationaryStartTime = nil
     coreMotionNotAutomotiveSince = nil
+    // Reset recovery flag so the NEXT drive can be recovered if app is suspended.
+    // Without this, the first significantLocationChange wake-up sets this true
+    // and all subsequent recovery checks are permanently blocked.
+    hasCheckedForMissedParking = false
     // lastDrivingLocation intentionally kept after parking - it's the parking spot reference.
     // It gets cleared when the NEXT drive starts (see isDriving=true transitions).
 
