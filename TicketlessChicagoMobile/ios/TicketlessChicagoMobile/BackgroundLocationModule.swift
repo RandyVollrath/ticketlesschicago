@@ -21,6 +21,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   // File-based logging for debugging (NSLog doesn't appear in syslog reliably)
   private var logFileHandle: FileHandle?
   private let logFileName = "parking_detection.log"
+  private var logFileURL: URL?
   private let dateFormatter: DateFormatter = {
     let df = DateFormatter()
     df.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
@@ -45,6 +46,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
     guard let documentsDirectory = paths.first else { return }
     let logFileURL = documentsDirectory.appendingPathComponent(logFileName)
+    self.logFileURL = logFileURL
 
     // Create or append to log file
     if !FileManager.default.fileExists(atPath: logFileURL.path) {
@@ -56,6 +58,64 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     log("=== Log file opened ===")
     log("Log path: \(logFileURL.path)")
+  }
+
+  private func startLocationWatchdog() {
+    locationWatchdogTimer?.invalidate()
+    let timer = Timer.scheduledTimer(withTimeInterval: locationWatchdogIntervalSec, repeats: true) { [weak self] _ in
+      self?.runLocationWatchdog()
+    }
+    RunLoop.main.add(timer, forMode: .common)
+    locationWatchdogTimer = timer
+    self.log("Location watchdog started (\(Int(locationWatchdogIntervalSec))s interval, stale>\(Int(locationCallbackStaleSec))s)")
+  }
+
+  private func stopLocationWatchdog() {
+    locationWatchdogTimer?.invalidate()
+    locationWatchdogTimer = nil
+  }
+
+  private func runLocationWatchdog() {
+    guard isMonitoring else { return }
+
+    guard let lastCallback = lastLocationCallbackTime else {
+      if !continuousGpsActive && (isDriving || coreMotionSaysAutomotive) {
+        self.log("WATCHDOG: no location callbacks yet while driving/automotive — starting GPS")
+        startContinuousGps()
+      }
+      return
+    }
+
+    let staleFor = Date().timeIntervalSince(lastCallback)
+    guard staleFor >= locationCallbackStaleSec else { return }
+
+    if let lastRecovery = lastWatchdogRecoveryTime,
+       Date().timeIntervalSince(lastRecovery) < watchdogRecoveryCooldownSec {
+      return
+    }
+    lastWatchdogRecoveryTime = Date()
+
+    self.log("WATCHDOG: location callbacks stale for \(String(format: "%.0f", staleFor))s (isDriving=\(isDriving), automotive=\(coreMotionSaysAutomotive), gpsActive=\(continuousGpsActive), coreMotionActive=\(coreMotionActive)).")
+
+    if !coreMotionActive && CMMotionActivityManager.isActivityAvailable() {
+      self.log("WATCHDOG: restarting CoreMotion activity updates")
+      startMotionActivityMonitoring()
+    }
+
+    if continuousGpsActive || isDriving || coreMotionSaysAutomotive {
+      self.log("WATCHDOG: restarting continuous GPS")
+      stopContinuousGps()
+      startContinuousGps()
+      return
+    }
+
+    if let currentLoc = locationManager.location {
+      self.log("WATCHDOG: running missed-parking recovery check")
+      hasCheckedForMissedParking = false
+      checkForMissedParking(currentLocation: currentLoc)
+    } else {
+      self.log("WATCHDOG: no current location available for recovery check")
+    }
   }
 
   // Driving state tracking
@@ -70,6 +130,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var coreMotionActive = false                  // Whether CoreMotion activity updates are running
   private var automotiveSessionStart: Date? = nil       // When current automotive session began (for flicker filtering)
   private var lastConfirmedParkingLocation: CLLocation? = nil  // Where we last confirmed parking (for distance-based flicker check)
+  private var lastLocationCallbackTime: Date? = nil
+  private var locationWatchdogTimer: Timer?
+  private var lastWatchdogRecoveryTime: Date? = nil
 
   // UserDefaults keys for persisting critical state across app kills.
   // Without persistence, iOS can kill the app, significantLocationChange wakes it
@@ -106,6 +169,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var coreMotionNotAutomotiveSince: Date? = nil
   private let coreMotionStabilitySec: TimeInterval = 8  // CoreMotion must be non-automotive for 8s
   private let minZeroSpeedForAgreeSec: TimeInterval = 15  // GPS speed≈0 for 15s before gps_coremotion_agree can fire
+  private let locationCallbackStaleSec: TimeInterval = 90
+  private let locationWatchdogIntervalSec: TimeInterval = 20
+  private let watchdogRecoveryCooldownSec: TimeInterval = 60
 
 
   override init() {
@@ -288,6 +354,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // This saves significant battery when user is walking/stationary.
 
     isMonitoring = true
+    lastLocationCallbackTime = Date()
+    startLocationWatchdog()
     let authStatus = locationManager.authorizationStatus
     let authString: String
     switch authStatus {
@@ -308,6 +376,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     stopContinuousGps()
     stopMotionActivityMonitoring()
     stopAccelerometerRecording()
+    stopLocationWatchdog()
 
     parkingConfirmationTimer?.invalidate()
     parkingConfirmationTimer = nil
@@ -331,6 +400,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastConfirmedParkingLocation = nil
     hasConfirmedParkingThisSession = false
     coreMotionNotAutomotiveSince = nil
+    lastLocationCallbackTime = nil
+    lastWatchdogRecoveryTime = nil
     clearPersistedParkingState()
 
     self.log("Monitoring stopped")
@@ -356,6 +427,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     if let lastLoc = lastDrivingLocation {
       result["lastDrivingLat"] = lastLoc.coordinate.latitude
       result["lastDrivingLng"] = lastLoc.coordinate.longitude
+    }
+
+    if let lastCb = lastLocationCallbackTime {
+      result["lastLocationCallbackAgeSec"] = Date().timeIntervalSince(lastCb)
+    } else {
+      result["lastLocationCallbackAgeSec"] = NSNull()
     }
 
     resolve(result)
@@ -396,6 +473,59 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     logFileHandle = try? FileHandle(forWritingTo: logFileURL)
     log("=== Log file cleared ===")
     resolve(true)
+  }
+
+  /// Get debug log path + existence/size for diagnostics.
+  @objc func getDebugLogInfo(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let logFileURL = self.logFileURL else {
+      resolve([
+        "exists": false,
+        "path": NSNull(),
+        "sizeBytes": 0,
+      ])
+      return
+    }
+
+    let exists = FileManager.default.fileExists(atPath: logFileURL.path)
+    var sizeBytes: Int64 = 0
+    if exists,
+       let attrs = try? FileManager.default.attributesOfItem(atPath: logFileURL.path),
+       let size = attrs[.size] as? NSNumber {
+      sizeBytes = size.int64Value
+    }
+
+    resolve([
+      "exists": exists,
+      "path": logFileURL.path,
+      "sizeBytes": sizeBytes,
+    ])
+  }
+
+  /// Copy debug log to tmp with a timestamped name so tooling can pull it easily.
+  @objc func exportDebugLog(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let sourceURL = self.logFileURL else {
+      resolve(NSNull())
+      return
+    }
+    guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+      resolve(NSNull())
+      return
+    }
+
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyyMMdd_HHmmss"
+    let stamp = formatter.string(from: Date())
+    let destURL = FileManager.default.temporaryDirectory.appendingPathComponent("parking_detection_\(stamp).log")
+
+    do {
+      if FileManager.default.fileExists(atPath: destURL.path) {
+        try FileManager.default.removeItem(at: destURL)
+      }
+      try FileManager.default.copyItem(at: sourceURL, to: destURL)
+      resolve(destURL.path)
+    } catch {
+      reject("EXPORT_LOG_FAILED", "Failed to export debug log: \(error.localizedDescription)", error)
+    }
   }
 
   /// Get the last known driving location (probable parking spot)
@@ -767,6 +897,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let location = locations.last else { return }
+    lastLocationCallbackTime = Date()
     let speed = location.speed  // m/s, -1 if unknown
 
     // --- Recovery GPS: waiting for accurate fix after significantLocationChange wake ---
