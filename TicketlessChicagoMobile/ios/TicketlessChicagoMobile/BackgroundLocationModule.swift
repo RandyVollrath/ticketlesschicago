@@ -167,8 +167,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   // The gps_coremotion_agree path requires CoreMotion to have been non-automotive
   // for at least coreMotionStabilitySec continuously, not just at one timer tick.
   private var coreMotionNotAutomotiveSince: Date? = nil
-  private let coreMotionStabilitySec: TimeInterval = 8  // CoreMotion must be non-automotive for 8s
-  private let minZeroSpeedForAgreeSec: TimeInterval = 15  // GPS speed≈0 for 15s before gps_coremotion_agree can fire
+  private let coreMotionStabilitySec: TimeInterval = 6  // CoreMotion must stay non-automotive for 6s
+  private let minZeroSpeedForAgreeSec: TimeInterval = 10  // GPS speed≈0 for 10s before gps_coremotion_agree can fire
   private let locationCallbackStaleSec: TimeInterval = 90
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
@@ -1042,13 +1042,33 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           let stationaryDuration = self.stationaryStartTime.map { Date().timeIntervalSince($0) } ?? 0
 
           if !self.coreMotionSaysAutomotive {
-            // CoreMotion agrees user is not in a vehicle — confirm parking.
-            // This was the working Feb 8 logic. The added 15s/8s minimum
-            // delays were blocking legitimate parking confirmations.
-            self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion agrees (not automotive)")
-            timer.invalidate()
-            self.speedZeroTimer = nil
-            self.confirmParking(source: "gps_coremotion_agree")
+            // CoreMotion agrees user is not in a vehicle.
+            // Require sustained zero speed + stable non-automotive state to
+            // reduce red-light false positives while still confirming quickly.
+            let coreMotionStableDuration = self.coreMotionNotAutomotiveSince.map { Date().timeIntervalSince($0) } ?? zeroDuration
+            let currentSpeedCheck = self.locationManager.location?.speed ?? -1
+            let gpsSpeedOk = currentSpeedCheck >= 0 && currentSpeedCheck < 1.0
+
+            if zeroDuration >= self.minZeroSpeedForAgreeSec &&
+               coreMotionStableDuration >= self.coreMotionStabilitySec &&
+               gpsSpeedOk {
+              self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
+              timer.invalidate()
+              self.speedZeroTimer = nil
+              self.confirmParking(source: "gps_coremotion_agree")
+            } else {
+              var waitReasons: [String] = []
+              if zeroDuration < self.minZeroSpeedForAgreeSec {
+                waitReasons.append("speed≈0 only \(String(format: "%.0f", zeroDuration))s (need \(String(format: "%.0f", self.minZeroSpeedForAgreeSec))s)")
+              }
+              if coreMotionStableDuration < self.coreMotionStabilitySec {
+                waitReasons.append("CoreMotion non-automotive only \(String(format: "%.0f", coreMotionStableDuration))s (need \(String(format: "%.0f", self.coreMotionStabilitySec))s)")
+              }
+              if !gpsSpeedOk {
+                waitReasons.append("GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s (need < 1.0)")
+              }
+              self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
+            }
           } else if phoneIsStationary && withinStationaryRadius && stationaryDuration >= self.stationaryDurationSec {
             // Phone hasn't moved (speed < 0.5 m/s) AND still within 50m of parking spot for 2+ min.
             // This means the user is sitting in their parked car (not walking away).
