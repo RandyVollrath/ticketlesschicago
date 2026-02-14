@@ -78,6 +78,7 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
   'city sticker': 'no_city_sticker',
   'wheel tax': 'no_city_sticker',
   'expired meter': 'expired_meter',
+  'exp. meter': 'expired_meter',
   'parking meter': 'expired_meter',
   'overtime parking': 'expired_meter',
   'street cleaning': 'street_cleaning',
@@ -111,6 +112,9 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
   'bus stop': 'bus_stop',
   'no standing': 'no_standing_time_restricted',
   'no parking': 'parking_prohibited',
+  'parking prohibited': 'parking_prohibited',
+  'parking/standing prohibited': 'parking_prohibited',
+  'standing prohibited': 'parking_prohibited',
   'tow zone': 'no_standing_time_restricted',
   'alley': 'parking_alley',
 };
@@ -540,10 +544,6 @@ async function processFoundTicket(
       source: 'portal_scrape',
       evidence_requested_at: now,
       evidence_deadline: evidenceDeadline.toISOString(),
-      raw_data: {
-        portal_ticket: ticket,
-        scraped_at: now,
-      },
     })
     .select()
     .single();
