@@ -29,6 +29,12 @@ const LAYER_COLORS = {
   meter: '#0d9488',
 };
 
+const PERMIT_COLORS = {
+  both: '#475569',
+  odd: '#2563EB',
+  even: '#F97316',
+};
+
 // --- Parkability colors ---
 const PARK_COLORS = {
   free: '#22c55e',        // green-500 — free, legal, no restrictions
@@ -148,6 +154,97 @@ function cleaningLabel(nextISO: string | null): string {
   return `Next cleaning: ${dateStr}`;
 }
 
+function permitLineStyle(oddEven: string | null | undefined) {
+  if (oddEven === 'O') {
+    return { color: PERMIT_COLORS.odd, dashArray: '8,4' };
+  }
+  if (oddEven === 'E') {
+    return { color: PERMIT_COLORS.even, dashArray: '8,4' };
+  }
+  return { color: PERMIT_COLORS.both, dashArray: '' };
+}
+
+function toLngOffsetDegrees(meters: number, lat: number): number {
+  const cos = Math.cos((lat * Math.PI) / 180);
+  const safeCos = Math.max(Math.abs(cos), 0.2); // avoid huge offsets near poles
+  return meters / (111320 * safeCos);
+}
+
+function toLatOffsetDegrees(meters: number): number {
+  return meters / 111320;
+}
+
+function offsetLineCoordinates(
+  coords: number[][],
+  latMeters: number,
+  lngMeters: number,
+): number[][] {
+  return coords.map(([lng, lat]) => [
+    lng + toLngOffsetDegrees(lngMeters, lat),
+    lat + toLatOffsetDegrees(latMeters),
+  ]);
+}
+
+function axisForLine(coords: number[][]): 'horizontal' | 'vertical' {
+  if (!coords || coords.length < 2) return 'horizontal';
+  const start = coords[0];
+  const end = coords[coords.length - 1];
+  const dLng = Math.abs((end?.[0] ?? 0) - (start?.[0] ?? 0));
+  const dLat = Math.abs((end?.[1] ?? 0) - (start?.[1] ?? 0));
+  return dLng >= dLat ? 'horizontal' : 'vertical';
+}
+
+function offsetByVariant(coords: number[][], oddEven: string | null | undefined, variant: 'restricted' | 'opposite' | 'both_a' | 'both_b') {
+  const axis = axisForLine(coords);
+  const offsetMeters = 4.5;
+
+  if (variant === 'both_a' || variant === 'both_b') {
+    if (axis === 'horizontal') {
+      return offsetLineCoordinates(coords, variant === 'both_a' ? offsetMeters : -offsetMeters, 0);
+    }
+    return offsetLineCoordinates(coords, 0, variant === 'both_a' ? -offsetMeters : offsetMeters);
+  }
+
+  // Chicago convention:
+  // Even = north or west side
+  // Odd = south or east side
+  const evenIsPositiveLat = axis === 'horizontal';
+  const restrictedIsEven = oddEven === 'E';
+  const useEvenSide = variant === 'restricted' ? restrictedIsEven : !restrictedIsEven;
+
+  if (axis === 'horizontal') {
+    const latMeters = (useEvenSide ? 1 : -1) * offsetMeters * (evenIsPositiveLat ? 1 : -1);
+    return offsetLineCoordinates(coords, latMeters, 0);
+  }
+
+  const lngMeters = (useEvenSide ? -1 : 1) * offsetMeters;
+  return offsetLineCoordinates(coords, 0, lngMeters);
+}
+
+function offsetPermitGeometry(
+  geometry: any,
+  oddEven: string | null | undefined,
+  variant: 'restricted' | 'opposite' | 'both_a' | 'both_b',
+) {
+  if (!geometry?.type || !geometry?.coordinates) return geometry;
+
+  if (geometry.type === 'LineString') {
+    return {
+      ...geometry,
+      coordinates: offsetByVariant(geometry.coordinates, oddEven, variant),
+    };
+  }
+
+  if (geometry.type === 'MultiLineString') {
+    return {
+      ...geometry,
+      coordinates: geometry.coordinates.map((line: number[][]) => offsetByVariant(line, oddEven, variant)),
+    };
+  }
+
+  return geometry;
+}
+
 export default function DestinationMapView() {
   const router = useRouter();
   const mapRef = useRef<any>(null);
@@ -155,11 +252,14 @@ export default function DestinationMapView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
-  const [parkabilityMode, setParkabilityMode] = useState(false);
+  const [parkabilityMode, setParkabilityMode] = useState(true);
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
 
   const [snowBanActive, setSnowBanActive] = useState(false);
+  const [alternativeZones, setAlternativeZones] = useState<any[]>([]);
+  const [loadingAlternatives, setLoadingAlternatives] = useState(false);
+  const alternativeKeysRef = useRef<Set<string>>(new Set());
 
   // Store layer references + raw data for restyling on toggle
   const layersRef = useRef<{
@@ -168,20 +268,31 @@ export default function DestinationMapView() {
     winterLayer: any;
     meterLayer: any;
     permitLayer: any;
+    permitParkabilityLayer: any;
     meters: any[];
-  }>({ cleaningLayer: null, snowLayer: null, winterLayer: null, meterLayer: null, permitLayer: null, meters: [] });
+  }>({ cleaningLayer: null, snowLayer: null, winterLayer: null, meterLayer: null, permitLayer: null, permitParkabilityLayer: null, meters: [] });
 
   // Restyle all layers when parkability mode changes
   const applyViewMode = useCallback((isParkability: boolean) => {
-    const { cleaningLayer, snowLayer, winterLayer, meterLayer, permitLayer } = layersRef.current;
+    const { cleaningLayer, snowLayer, winterLayer, meterLayer, permitLayer, permitParkabilityLayer } = layersRef.current;
 
     // --- Restyle cleaning zones ---
     if (cleaningLayer) {
       cleaningLayer.eachLayer((layer: any) => {
         const nextISO = layer.feature?.properties?.nextISO;
+        const ward = layer.feature?.properties?.ward;
+        const section = layer.feature?.properties?.section;
+        const key = `${ward}-${section}`;
+        const isAlternative = alternativeKeysRef.current.has(key);
         if (isParkability) {
-          const color = parkabilityZoneColor(nextISO);
-          layer.setStyle({ fillColor: color, color, fillOpacity: 0.3, weight: 1.5, opacity: 0.7 });
+          const color = isAlternative ? '#16a34a' : parkabilityZoneColor(nextISO);
+          layer.setStyle({
+            fillColor: color,
+            color,
+            fillOpacity: isAlternative ? 0.55 : 0.3,
+            weight: isAlternative ? 2.2 : 1.5,
+            opacity: isAlternative ? 1 : 0.7
+          });
         } else {
           const color = cleaningColor(nextISO);
           layer.setStyle({ fillColor: color, color, fillOpacity: 0.25, weight: 1.5, opacity: 0.7 });
@@ -244,14 +355,29 @@ export default function DestinationMapView() {
 
     // --- Restyle permit zone lines ---
     // Always visible (hours vary per zone — no time logic until FOIA data arrives).
-    // Odd/even side gets a dashed style to distinguish from "both sides" (solid).
+    // "Both sides" renders as two colored lines (odd + even).
     if (permitLayer) {
       permitLayer.eachLayer((layer: any) => {
-        const oddEven = (layer as any)._oddEven;
-        const dashArray = (oddEven === 'O' || oddEven === 'E') ? '8,4' : '';
-        layer.setStyle({ color: LAYER_COLORS.permitZone, weight: 5, opacity: 0.8, dashArray });
+        const color = (layer as any)._permitColor || PERMIT_COLORS.both;
+        const dashArray = (layer as any)._permitDash || '';
+        if (typeof (layer as any).setStyle === 'function') {
+          (layer as any).setStyle({ color, weight: 5, opacity: isParkability ? 0 : 0.85, dashArray });
+        }
       });
     }
+
+    if (permitParkabilityLayer) {
+      permitParkabilityLayer.eachLayer((layer: any) => {
+        if (typeof (layer as any).setStyle === 'function') {
+          (layer as any).setStyle({ opacity: isParkability ? 0.95 : 0, fillOpacity: isParkability ? 0.95 : 0 });
+        }
+      });
+    }
+  }, []);
+
+  const toggleLegendDesktop = useCallback(() => {
+    if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) return;
+    setLegendCollapsed((c) => !c);
   }, []);
 
   // Toggle handler — update state and restyle
@@ -270,6 +396,8 @@ export default function DestinationMapView() {
     const lng = parseFloat(router.query.lng as string);
     const address = (router.query.address as string) || '';
     const permitZone = (router.query.permitZone as string) || '';
+    const ward = (router.query.ward as string) || '';
+    const section = (router.query.section as string) || '';
 
     if (isNaN(lat) || isNaN(lng)) {
       setError('Invalid coordinates');
@@ -552,39 +680,146 @@ export default function DestinationMapView() {
             onEachFeature: (feature: any, layer: any) => {
               const p = feature.properties;
               const sideLabel = p.oddEven === 'O' ? 'ODD side only' : p.oddEven === 'E' ? 'EVEN side only' : 'Both sides';
-              const sideBg = p.oddEven === 'O' ? '#dbeafe' : p.oddEven === 'E' ? '#fce7f3' : '#e0e7ff';
-              const sideColor = p.oddEven === 'O' ? '#1e40af' : p.oddEven === 'E' ? '#9d174d' : '#4338ca';
+              const sideBg = p.oddEven === 'O' ? '#dbeafe' : p.oddEven === 'E' ? '#ffedd5' : '#e2e8f0';
+              const sideColor = p.oddEven === 'O' ? '#1e40af' : p.oddEven === 'E' ? '#c2410c' : '#334155';
+              const oppositeHint = p.oddEven === 'O'
+                ? 'Opposite side may be legal: even-numbered addresses (check signs).'
+                : p.oddEven === 'E'
+                  ? 'Opposite side may be legal: odd-numbered addresses (check signs).'
+                  : 'Both sides are in this permit segment (check signs).';
               layer.bindPopup(`
                 <div style="font-family:system-ui;font-size:13px;min-width:160px">
-                  <div style="font-weight:700;color:${LAYER_COLORS.permitZone};font-size:14px">Zone ${p.zone}</div>
+                  <div style="font-weight:700;color:${p.oddEven === 'O' ? PERMIT_COLORS.odd : p.oddEven === 'E' ? PERMIT_COLORS.even : PERMIT_COLORS.both};font-size:14px">Zone ${p.zone}</div>
                   <div style="color:#374151;margin-top:3px;font-weight:500">${p.street || ''}</div>
                   <div style="color:#6B7280;font-size:12px;margin-top:2px">${p.addrRange || ''}</div>
                   <div style="margin-top:6px;display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${sideBg};color:${sideColor}">${sideLabel}</div>
-                  <div style="color:#9CA3AF;font-size:11px;margin-top:6px">Permit required — check posted sign for hours</div>
+                  <div style="color:#9CA3AF;font-size:11px;margin-top:6px">${oppositeHint}</div>
                 </div>
               `, { maxWidth: 260 });
             },
           }).addTo(map);
 
           // Visible styled layer (not interactive — clicks pass through to hit layer)
-          const permitLayer = L.geoJSON(permitGeoJSON, {
-            style: (feature: any) => {
-              const oe = feature?.properties?.oddEven;
-              return {
-                color: LAYER_COLORS.permitZone,
-                weight: 5,
-                opacity: 0.8,
-                dashArray: (oe === 'O' || oe === 'E') ? '8,4' : '',
-              };
-            },
-            interactive: false,
-            onEachFeature: (feature: any, layer: any) => {
-              // Store oddEven for restyling on toggle
-              (layer as any)._oddEven = feature?.properties?.oddEven;
-            },
-          }).addTo(map);
+          // "Both sides" segments render as two parallel lines:
+          // odd-color + even-color.
+          const permitLayer = L.layerGroup();
+          permitRes.features.forEach((feature: any) => {
+            const oe = feature?.properties?.oddEven;
+            if (oe === 'O' || oe === 'E') {
+              const style = permitLineStyle(oe);
+              const g = L.geoJSON(feature.geometry, {
+                interactive: false,
+                style: {
+                  color: style.color,
+                  weight: 5,
+                  opacity: 0.85,
+                  dashArray: style.dashArray,
+                },
+              });
+              (g as any)._permitColor = style.color;
+              (g as any)._permitDash = style.dashArray;
+              g.addTo(permitLayer);
+            } else {
+              const bothA = offsetPermitGeometry(feature.geometry, oe, 'both_a');
+              const bothB = offsetPermitGeometry(feature.geometry, oe, 'both_b');
+              [
+                { geom: bothA, color: PERMIT_COLORS.odd },
+                { geom: bothB, color: PERMIT_COLORS.even },
+              ].forEach(({ geom, color }) => {
+                const g = L.geoJSON(geom, {
+                  interactive: false,
+                  style: {
+                    color,
+                    weight: 5,
+                    opacity: 0.85,
+                    dashArray: '8,4',
+                  },
+                });
+                (g as any)._permitColor = color;
+                (g as any)._permitDash = '8,4';
+                g.addTo(permitLayer);
+              });
+            }
+          });
+          permitLayer.addTo(map);
           layersRef.current.permitLayer = permitLayer;
+
+          // Parkability permit overlays:
+          // - Odd/even: red restricted side + green likely-opposite side
+          // - Both sides: double red lines
+          const permitParkabilityLayer = L.layerGroup();
+          permitRes.features.forEach((feature: any) => {
+            const oe = feature?.properties?.oddEven;
+            if (oe === 'O' || oe === 'E') {
+              const restrictedGeom = offsetPermitGeometry(feature.geometry, oe, 'restricted');
+              const oppositeGeom = offsetPermitGeometry(feature.geometry, oe, 'opposite');
+
+              L.geoJSON(restrictedGeom, {
+                interactive: false,
+                style: {
+                  color: PARK_COLORS.restricted,
+                  weight: 4.5,
+                  opacity: 0.95,
+                },
+              }).addTo(permitParkabilityLayer);
+
+              L.geoJSON(oppositeGeom, {
+                interactive: false,
+                style: {
+                  color: PARK_COLORS.free,
+                  weight: 4.5,
+                  opacity: 0.95,
+                  dashArray: '',
+                },
+              }).addTo(permitParkabilityLayer);
+            } else {
+              const bothA = offsetPermitGeometry(feature.geometry, oe, 'both_a');
+              const bothB = offsetPermitGeometry(feature.geometry, oe, 'both_b');
+              [
+                { geom: bothA, color: PERMIT_COLORS.odd },
+                { geom: bothB, color: PERMIT_COLORS.even },
+              ].forEach(({ geom, color }) => {
+                L.geoJSON(geom, {
+                  interactive: false,
+                  style: {
+                    color,
+                    weight: 4.5,
+                    opacity: 0.95,
+                  },
+                }).addTo(permitParkabilityLayer);
+              });
+            }
+          });
+          permitParkabilityLayer.addTo(map);
+          layersRef.current.permitParkabilityLayer = permitParkabilityLayer;
+
           console.log(`[map] Rendered ${permitRes.features.length} permit zone lines (${permitRes.total} total zones, ${permitRes.resolved} resolved)`);
+        }
+
+        // --- Alternative parking zones (for "Where to park") ---
+        if (ward && section) {
+          setLoadingAlternatives(true);
+          try {
+            const altUrl = `/api/find-alternative-parking?ward=${encodeURIComponent(ward)}&section=${encodeURIComponent(section)}${address ? `&address=${encodeURIComponent(address)}` : ''}`;
+            const altRes = await fetch(altUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+            if (altRes?.alternatives?.length) {
+              const alternatives = altRes.alternatives.slice(0, 6);
+              setAlternativeZones(alternatives);
+              alternativeKeysRef.current = new Set(
+                alternatives.map((z: any) => `${String(z.ward)}-${String(z.section)}`)
+              );
+              applyViewMode(parkabilityMode);
+            } else {
+              setAlternativeZones([]);
+              alternativeKeysRef.current = new Set();
+              applyViewMode(parkabilityMode);
+            }
+          } finally {
+            setLoadingAlternatives(false);
+          }
+        } else {
+          setAlternativeZones([]);
+          alternativeKeysRef.current = new Set();
         }
 
       } catch (err) {
@@ -592,6 +827,7 @@ export default function DestinationMapView() {
       }
 
       mapRef.current = map;
+      applyViewMode(parkabilityMode);
       setLoading(false);
 
       // Force a resize after mount (WebView sometimes needs this)
@@ -618,7 +854,6 @@ export default function DestinationMapView() {
   }
 
   const permitZone = (router.query.permitZone as string) || '';
-
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       {/* Map container */}
@@ -703,7 +938,7 @@ export default function DestinationMapView() {
             backgroundColor: '#8b5cf6',
           }} />
           <span>
-            <strong>Permit Zone {permitZone}</strong> — check posted sign for hours
+            <strong>Permit Zone {permitZone}</strong> — check posted sign
           </span>
         </div>
       )}
@@ -747,7 +982,9 @@ export default function DestinationMapView() {
           display: 'flex', justifyContent: 'center', paddingTop: '8px',
           paddingBottom: legendCollapsed ? '8px' : '0px',
           cursor: 'pointer',
-        }}>
+        }}
+        onClick={toggleLegendDesktop}
+        >
           <div style={{
             width: '32px', height: '4px', borderRadius: '2px',
             backgroundColor: '#D1D5DB',
@@ -759,11 +996,14 @@ export default function DestinationMapView() {
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             gap: '6px', paddingBottom: '10px',
-          }}>
+            cursor: 'pointer',
+          }}
+          onClick={toggleLegendDesktop}
+          >
             {parkabilityMode ? (
               /* Parkability collapsed dots */
               <>
-                {[PARK_COLORS.free, PARK_COLORS.metered, PARK_COLORS.meterFree, PARK_COLORS.permitZone, PARK_COLORS.restricted].map((c, i) => (
+                {[PARK_COLORS.free, PARK_COLORS.metered, PARK_COLORS.meterFree, PERMIT_COLORS.odd, PERMIT_COLORS.even, PARK_COLORS.restricted].map((c, i) => (
                   <div key={i} style={{
                     width: '8px', height: '8px', borderRadius: '50%',
                     backgroundColor: c, flexShrink: 0,
@@ -779,7 +1019,8 @@ export default function DestinationMapView() {
                   LAYER_COLORS.cleaningLater,
                   LAYER_COLORS.snowRoute,
                   LAYER_COLORS.winterBan,
-                  LAYER_COLORS.permitZone,
+                  PERMIT_COLORS.odd,
+                  PERMIT_COLORS.even,
                   LAYER_COLORS.meter,
                 ].map((c, i) => (
                   <div key={i} style={{
@@ -803,31 +1044,34 @@ export default function DestinationMapView() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.free, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Free parking</span>
+                    <span style={{ color: '#374151' }}>Likely legal now</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.metered, borderRadius: '50%', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Metered (pay now)</span>
+                    <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Do not park now</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.meterFree, borderRadius: '50%', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Meter (free now)</span>
+                    <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.free, borderRadius: '2px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Opposite side may be legal</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Permit zone</span>
+                    <div style={{ width: '18px', height: '7px', borderTop: `2px solid ${PERMIT_COLORS.odd}`, borderBottom: `2px solid ${PERMIT_COLORS.even}`, borderRadius: '1px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit both sides</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.caution, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Restriction soon</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Can't park now</span>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.metered, borderRadius: '50%', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Metered (pay now)</span>
                   </div>
                 </div>
                 {/* Snow/winter ban status row */}
                 <div style={{ marginTop: '8px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '11px', color: '#64748b' }}>
+                  <div style={{ marginBottom: '4px', color: '#475569' }}>
+                    Status is <strong>right now</strong>. Re-check if leaving overnight.
+                  </div>
                   {snowBanActive ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                       <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
@@ -848,6 +1092,9 @@ export default function DestinationMapView() {
                       Winter overnight ban: off-hours — enforced 3-7am, Dec–Mar
                     </div>
                   )}
+                  <div style={{ color: '#9ca3af', marginTop: '4px' }}>
+                    Tap a street for sign-specific details.
+                  </div>
                 </div>
                 {/* Uncolored streets note */}
                 <div style={{ marginTop: '6px', fontSize: '11px', color: '#9ca3af', fontStyle: 'italic' }}>
@@ -889,19 +1136,70 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Winter ban (3-7am)</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.permitZone, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Permit zone</span>
+                    <div style={{ width: '18px', height: '7px', borderTop: `2px solid ${PERMIT_COLORS.odd}`, borderBottom: `2px solid ${PERMIT_COLORS.even}`, borderRadius: '1px', flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit both sides</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Parking meter</span>
+                    <span style={{ color: '#374151' }}>Meter dots by rate</span>
                   </div>
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
+                  Teal shades: lighter = lower rate, darker = higher rate.
+                </div>
+                <div style={{ marginTop: '4px', fontSize: '11px', color: '#64748b' }}>
+                  <span style={{ color: PERMIT_COLORS.odd, fontWeight: 700 }}>Blue dashed</span> = odd side only, <span style={{ color: PERMIT_COLORS.even, fontWeight: 700 }}>Orange dashed</span> = even side only.
                 </div>
               </>
             )}
           </div>
         )}
       </div>
+
+      {/* Alternative zones panel */}
+      {!loading && parkabilityMode && (
+        <div style={{
+          position: 'absolute',
+          left: '12px',
+          right: '12px',
+          bottom: legendCollapsed ? '60px' : '190px',
+          zIndex: 1000,
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          borderRadius: '10px',
+          border: '1px solid #E5E7EB',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+          padding: '10px 12px',
+          fontFamily: 'system-ui',
+        }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+            Nearby Safer Zones
+          </div>
+          {loadingAlternatives ? (
+            <div style={{ fontSize: '12px', color: '#6B7280' }}>Finding nearby options...</div>
+          ) : alternativeZones.length === 0 ? (
+            <div style={{ fontSize: '12px', color: '#6B7280' }}>No nearby alternatives found yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {alternativeZones.slice(0, 4).map((z: any) => (
+                <div
+                  key={`${z.ward}-${z.section}`}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '999px',
+                    backgroundColor: '#ecfdf5',
+                    border: '1px solid #a7f3d0',
+                    fontSize: '11px',
+                    color: '#065f46',
+                    fontWeight: 600
+                  }}
+                >
+                  W{z.ward}-S{z.section}{z.distance_miles ? ` · ${Number(z.distance_miles).toFixed(1)}mi` : ''}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }

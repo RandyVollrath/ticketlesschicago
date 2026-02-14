@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
-import dynamic from 'next/dynamic'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
-import AlternativeParkingZones from '../components/AlternativeParkingZones'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -20,32 +18,6 @@ const COLORS = {
   slate: '#64748B',
   border: '#E2E8F0',
 }
-
-// Dynamically import the map
-const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
-  ssr: false,
-  loading: () => (
-    <div style={{
-      height: '500px',
-      width: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: COLORS.concrete,
-      borderRadius: '12px',
-      color: COLORS.slate
-    }}>
-      <div style={{
-        width: '32px',
-        height: '32px',
-        border: `3px solid ${COLORS.border}`,
-        borderTopColor: COLORS.regulatory,
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite'
-      }} />
-    </div>
-  )
-})
 
 interface SearchResult {
   ward: string
@@ -65,112 +37,19 @@ export default function CheckYourStreet() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [mapData, setMapData] = useState([])
-  const [isLoadingMap, setIsLoadingMap] = useState(true)
-  const [highlightZone, setHighlightZone] = useState<{ ward: string; section: string } | null>(null)
   const [tripStartDate, setTripStartDate] = useState('')
   const [tripEndDate, setTripEndDate] = useState('')
   const [dateRangeResult, setDateRangeResult] = useState<{cleaningDates: string[], hasCleaningDuringTrip: boolean} | null>(null)
-  const [showSnowSafeMode, setShowSnowSafeMode] = useState(false)
-  const [showWinterBanMode, setShowWinterBanMode] = useState(false)
-  const [showMeters, setShowMeters] = useState(false)
-  const [snowRoutes, setSnowRoutes] = useState<any[]>([])
-  const [winterBanRoutes, setWinterBanRoutes] = useState<any[]>([])
-  const [meterLocations, setMeterLocations] = useState<any[]>([])
-  const [alternativeZones, setAlternativeZones] = useState<any[]>([])
-  const [loadingAlternatives, setLoadingAlternatives] = useState(false)
   const [permitZoneResult, setPermitZoneResult] = useState<{ hasPermitZone: boolean; zones: any[] } | null>(null)
   const [snowForecast, setSnowForecast] = useState<{
     hasSignificantSnow: boolean;
     significantSnowWhen: string | null;
   } | null>(null)
 
-  // Load map data on mount
-  useEffect(() => {
-    const fetchMapData = async () => {
-      try {
-        const response = await fetch('/api/get-street-cleaning-data')
-        if (response.ok) {
-          const result = await response.json()
-          const transformedData = result.data?.map((zone: any) => ({
-            type: 'Feature',
-            geometry: zone.geom_simplified,
-            properties: {
-              id: `${zone.ward}-${zone.section}`,
-              ward: zone.ward,
-              section: zone.section,
-              cleaningStatus: zone.cleaningStatus,
-              nextCleaningDateISO: zone.nextCleaningDateISO
-            }
-          })) || []
-          setMapData(transformedData)
-        }
-      } catch (error) {
-        console.error('Error fetching map data:', error)
-      } finally {
-        setIsLoadingMap(false)
-      }
-    }
-    fetchMapData()
-  }, [])
-
-  // Load snow routes (2-inch snow ban)
-  useEffect(() => {
-    const fetchSnowRoutes = async () => {
-      try {
-        const response = await fetch('/api/get-snow-routes')
-        if (response.ok) {
-          const result = await response.json()
-          setSnowRoutes(result.routes || [])
-        }
-      } catch (error) {
-        console.error('Error fetching snow routes:', error)
-      }
-    }
-    fetchSnowRoutes()
-  }, [])
-
-  // Load winter ban routes (winter overnight parking ban)
-  useEffect(() => {
-    const fetchWinterBanRoutes = async () => {
-      try {
-        const response = await fetch('/api/get-winter-ban-routes')
-        if (response.ok) {
-          const result = await response.json()
-          setWinterBanRoutes(result.routes || [])
-          console.log(`Loaded ${result.count} winter ban routes, ${result.successfullyGeocoded || 0} with geometry`)
-        }
-      } catch (error) {
-        console.error('Error fetching winter ban routes:', error)
-      }
-    }
-    fetchWinterBanRoutes()
-  }, [])
-
-  // Load parking meter locations when toggle is enabled
-  useEffect(() => {
-    if (!showMeters) return
-    if (meterLocations.length > 0) return // already loaded
-    const fetchMeters = async () => {
-      try {
-        const response = await fetch('/api/metered-parking')
-        if (response.ok) {
-          const result = await response.json()
-          setMeterLocations(result.meters || [])
-          console.log(`Loaded ${result.count} parking meters`)
-        }
-      } catch (error) {
-        console.error('Error fetching parking meters:', error)
-      }
-    }
-    fetchMeters()
-  }, [showMeters])
-
   // Check URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const urlAddress = urlParams.get('address')
-    const mode = urlParams.get('mode')
 
     if (urlAddress) {
       setAddress(urlAddress)
@@ -180,7 +59,6 @@ export default function CheckYourStreet() {
       }, 100)
     }
 
-    if (mode === 'snow') setShowSnowSafeMode(true)
   }, [])
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -193,7 +71,6 @@ export default function CheckYourStreet() {
     setIsSearching(true)
     setError(null)
     setSearchResult(null)
-    setHighlightZone(null)
     setPermitZoneResult(null)
     setSnowForecast(null)
 
@@ -213,7 +90,6 @@ export default function CheckYourStreet() {
       }
 
       setSearchResult(data)
-      setHighlightZone({ ward: data.ward, section: data.section })
 
       // Process permit zone result (non-blocking)
       if (permitResponse && permitResponse.ok) {
@@ -246,23 +122,6 @@ export default function CheckYourStreet() {
 
   const handleDownloadCalendar = (ward: string, section: string) => {
     window.location.href = `/api/generate-calendar?ward=${ward}&section=${section}`
-  }
-
-  const handleFindAlternativeParking = async () => {
-    if (!searchResult) return
-    setLoadingAlternatives(true)
-    try {
-      const response = await fetch(`/api/find-alternative-parking?ward=${searchResult.ward}&section=${searchResult.section}`)
-      const data = await response.json()
-      if (response.ok && data.alternatives) {
-        setAlternativeZones(data.alternatives)
-        setHighlightZone(null)
-      }
-    } catch (error) {
-      console.error('Error fetching alternative parking:', error)
-    } finally {
-      setLoadingAlternatives(false)
-    }
   }
 
   const handleCheckDateRange = async () => {
@@ -330,6 +189,11 @@ export default function CheckYourStreet() {
 
     return { text: 'No upcoming cleaning', color: COLORS.slate, status: 'none' }
   }
+
+  const mapLat = searchResult?.coordinates?.lat ?? 41.8781
+  const mapLng = searchResult?.coordinates?.lng ?? -87.6298
+  const primaryPermitZone = permitZoneResult?.zones?.[0]?.zone || permitZoneResult?.zones?.[0]?.zone_number || ''
+  const destinationMapUrl = `/destination-map?lat=${encodeURIComponent(String(mapLat))}&lng=${encodeURIComponent(String(mapLng))}${address ? `&address=${encodeURIComponent(address)}` : ''}${primaryPermitZone ? `&permitZone=${encodeURIComponent(String(primaryPermitZone))}` : ''}${searchResult?.ward ? `&ward=${encodeURIComponent(searchResult.ward)}` : ''}${searchResult?.section ? `&section=${encodeURIComponent(searchResult.section)}` : ''}`
 
   return (
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
@@ -727,89 +591,18 @@ export default function CheckYourStreet() {
               </div>
             )}
 
-            {/* Snow Safe Parking Toggle */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '16px',
-              padding: '20px 24px',
-              background: showSnowSafeMode ? `${COLORS.signal}08` : 'white',
-              borderRadius: '16px',
+            <div style={{
+              backgroundColor: 'white',
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: '12px',
+              padding: '14px 16px',
               marginBottom: '16px',
-              border: `2px solid ${showSnowSafeMode ? COLORS.signal : COLORS.border}`,
-              cursor: 'pointer'
+              fontSize: '14px',
+              color: COLORS.slate
             }}>
-              <input
-                type="checkbox"
-                checked={showSnowSafeMode}
-                onChange={(e) => setShowSnowSafeMode(e.target.checked)}
-                style={{ marginTop: '2px', width: '20px', height: '20px', cursor: 'pointer', accentColor: COLORS.signal }}
-              />
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Show 2-Inch Snow Ban Routes
-                </div>
-                <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
-                  Highlight streets near you that are <strong style={{ color: '#ff00ff' }}>affected</strong> by Chicago's 2-inch snow parking ban. Parking prohibited when 2+ inches of snow falls until streets are cleared.
-                </div>
-              </div>
-            </label>
-
-            {/* Winter Overnight Parking Ban Toggle */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '16px',
-              padding: '20px 24px',
-              background: showWinterBanMode ? `${COLORS.regulatory}08` : 'white',
-              borderRadius: '16px',
-              marginBottom: '16px',
-              border: `2px solid ${showWinterBanMode ? COLORS.regulatory : COLORS.border}`,
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={showWinterBanMode}
-                onChange={(e) => setShowWinterBanMode(e.target.checked)}
-                style={{ marginTop: '2px', width: '20px', height: '20px', cursor: 'pointer', accentColor: COLORS.regulatory }}
-              />
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Show Winter Overnight Parking Ban Routes
-                </div>
-                <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
-                  Highlight streets with <strong style={{ color: '#00ff00' }}>winter overnight parking bans</strong>. No parking 3:00 AM - 7:00 AM every night from December 1 - April 1. (~107 miles of major arterials)
-                </div>
-              </div>
-            </label>
-
-            {/* Parking Meters Toggle */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '16px',
-              padding: '20px 24px',
-              background: showMeters ? '#F59E0B08' : 'white',
-              borderRadius: '16px',
-              marginBottom: '16px',
-              border: `2px solid ${showMeters ? '#F59E0B' : COLORS.border}`,
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={showMeters}
-                onChange={(e) => setShowMeters(e.target.checked)}
-                style={{ marginTop: '2px', width: '20px', height: '20px', cursor: 'pointer', accentColor: '#F59E0B' }}
-              />
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Show Parking Meters
-                </div>
-                <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5' }}>
-                  Show <strong style={{ color: '#F59E0B' }}>4,300+ metered parking spots</strong> across Chicago. Color-coded by rate: green ($0.50), blue ($2.50), orange ($4.75), red ($6.50+). Zoom in to see individual meters.
-                </div>
-              </div>
-            </label>
+              Shared map mode is on. Snow routes, winter bans, permit zones, and meters are shown together.
+              Use <strong style={{ color: COLORS.graphite }}>Where to park</strong> on the map for safest nearby zones.
+            </div>
 
             {/* Main Result Card */}
             <div style={{
@@ -923,33 +716,6 @@ export default function CheckYourStreet() {
                     Get Free Alerts
                   </button>
 
-                  {(getCleaningStatus(searchResult.nextCleaningDate).status === 'today' ||
-                    getCleaningStatus(searchResult.nextCleaningDate).status === 'soon') && (
-                    <button
-                      onClick={handleFindAlternativeParking}
-                      disabled={loadingAlternatives}
-                      style={{
-                        backgroundColor: COLORS.signal,
-                        color: 'white',
-                        padding: '12px 20px',
-                        border: 'none',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: loadingAlternatives ? 'not-allowed' : 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        opacity: loadingAlternatives ? 0.6 : 1
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M9 12l2 2 4-4"/>
-                      </svg>
-                      {loadingAlternatives ? 'Finding...' : 'Find Safe Parking Nearby'}
-                    </button>
-                  )}
                 </div>
               )}
             </div>
@@ -1117,79 +883,17 @@ export default function CheckYourStreet() {
             )}
           </div>
 
-          {isLoadingMap ? (
-            <div style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.slate }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                border: `3px solid ${COLORS.border}`,
-                borderTopColor: COLORS.regulatory,
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
-            </div>
-          ) : (
-            <StreetCleaningMap
-              data={mapData}
-              triggerPopup={highlightZone}
-              snowRoutes={snowRoutes}
-              showSnowSafeMode={showSnowSafeMode}
-              winterBanRoutes={winterBanRoutes}
-              showWinterBanMode={showWinterBanMode}
-              meterLocations={meterLocations}
-              showMeters={showMeters}
-              userLocation={searchResult?.coordinates}
-              alternativeZones={alternativeZones}
-            />
-          )}
+          <iframe
+            title="Destination Parking Map"
+            src={destinationMapUrl}
+            style={{
+              width: '100%',
+              height: '600px',
+              border: 'none',
+              display: 'block'
+            }}
+          />
 
-          {/* Map Legend */}
-          <div style={{ padding: '20px 32px', borderTop: `1px solid ${COLORS.border}`, backgroundColor: COLORS.concrete }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '14px', height: '14px', backgroundColor: COLORS.danger, borderRadius: '3px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: COLORS.graphite }}>Red:</strong> Today</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '14px', height: '14px', backgroundColor: COLORS.warning, borderRadius: '3px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: COLORS.graphite }}>Yellow:</strong> 1-3 days</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '14px', height: '14px', backgroundColor: COLORS.signal, borderRadius: '3px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: COLORS.graphite }}>Green:</strong> Later</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '14px', height: '14px', backgroundColor: COLORS.slate, borderRadius: '3px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: COLORS.graphite }}>Gray:</strong> No schedule</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '28px', height: '4px', backgroundColor: '#ff00ff', borderRadius: '2px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: '#ff00ff' }}>Magenta:</strong> 2″ Snow Ban</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '28px', height: '4px', backgroundColor: '#00ff00', borderRadius: '2px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: '#00cc00' }}>Green Line:</strong> Winter Ban</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '14px', height: '14px', backgroundColor: '#8B5CF6', borderRadius: '3px' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: '#8B5CF6' }}>Purple:</strong> Permit Zone</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '14px', height: '14px', backgroundColor: '#F59E0B', borderRadius: '50%' }}></div>
-                <span style={{ color: COLORS.slate }}><strong style={{ color: '#F59E0B' }}>Amber Dot:</strong> Parking Meter</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Park Here Instead - Alternative Parking Zones */}
-          {alternativeZones.length > 0 && (
-            <div style={{ padding: '20px 32px', borderTop: `1px solid ${COLORS.border}` }}>
-              <AlternativeParkingZones
-                alternatives={alternativeZones}
-                onZoneClick={(ward, section) => setHighlightZone({ ward, section })}
-              />
-            </div>
-          )}
         </div>
 
         {/* CTA Section */}

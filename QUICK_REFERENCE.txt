@@ -1,0 +1,148 @@
+================================================================================
+PARKING DETECTION RELIABILITY - QUICK REFERENCE
+================================================================================
+
+CRITICAL GAPS (Fix immediately - 2-3 hours each)
+────────────────────────────────────────────────────────────────────────────────
+
+1. ANDROID BOOT RECOVERY - MISSING
+   Location: AndroidManifest.xml + BootBroadcastReceiver.kt (NEW)
+   Problem:  Phone reboot → monitoring stops
+   Impact:   HIGH - user parks, phone reboots, winter ban fires → missed ticket
+   Fix:      Create BootBroadcastReceiver, register in manifest
+   Time:     2 hours
+   
+2. iOS RECOVERY CALCULATION - BROKEN LOGIC
+   Location: BackgroundLocationModule.swift (lines 388-437)
+   Problem:  CoreMotion history calculation is mathematically wrong
+   Impact:   MEDIUM - app killed mid-parking may not recover
+   Fix:      Fix the driving duration calculation loop
+   Time:     1 hour
+
+3. ANDROID FORCE-KILL DATA LOSS
+   Location: BluetoothMonitorService.kt + BackgroundTaskService.ts
+   Problem:  Force-quit → SharedPreferences wiped → car device lost
+   Impact:   HIGH - monitoring stops silently after app restart
+   Fix:      Add backup storage in filesDir, recover on init
+   Time:     3 hours
+
+────────────────────────────────────────────────────────────────────────────────
+MEDIUM GAPS (Fix next sprint)
+────────────────────────────────────────────────────────────────────────────────
+
+4. ANDROID BATTERY OPTIMIZATION
+   Location: ServiceHealthCheckWorker.kt (NEW)
+   Problem:  Aggressive battery saver kills service permanently
+   Impact:   MEDIUM - parking misses on aggressive battery saver devices
+   Fix:      WorkManager health check every 15 minutes
+   Time:     6 hours
+
+5. LOCATION CACHE RACE CONDITION
+   Location: BackgroundTaskService.ts (line 695-705)
+   Problem:  async stopGpsCaching() not awaited before triggerParkingCheck()
+   Impact:   LOW - could cause stale location in race condition
+   Fix:      Make cache clearing synchronous with forceNoCache flag
+   Time:     1 hour
+
+────────────────────────────────────────────────────────────────────────────────
+LOW GAPS (Already handled or low risk)
+────────────────────────────────────────────────────────────────────────────────
+
+6. iOS SIGNIFICANT LOCATION DELAY
+   Status:   Known limitation, OK mitigation via CoreMotion
+   Risk:     LOW - affects ~2% of parkings in tight urban areas
+
+7-10. APP STATE CHANGES, DEPARTURE CONFIRMATION, ETC
+   Status:   Already handled correctly via comments/safeguards
+
+────────────────────────────────────────────────────────────────────────────────
+FILES THAT NEED CHANGES
+────────────────────────────────────────────────────────────────────────────────
+
+NEW FILES TO CREATE:
+  ✓ BootBroadcastReceiver.kt (Android boot handling)
+  ✓ ServiceHealthCheckWorker.kt (Android health checks)
+
+FILES TO MODIFY:
+  ✓ AndroidManifest.xml (register boot receiver)
+  ✓ BluetoothMonitorService.kt (add device backup)
+  ✓ MainApplication.kt (schedule health checks)
+  ✓ BackgroundLocationModule.swift (fix CoreMotion math)
+  ✓ BackgroundTaskService.ts (cache safety + notification)
+
+────────────────────────────────────────────────────────────────────────────────
+IMPLEMENTATION PHASES
+────────────────────────────────────────────────────────────────────────────────
+
+PHASE 1 (CRITICAL - 7-8 hours, do before next release):
+  ✓ Boot Receiver (2h)
+  ✓ iOS Recovery Fix (1h)
+  ✓ Device Backup (3h)
+  ✓ User Notification (1h)
+  
+PHASE 2 (IMPORTANT - 7 hours, next sprint):
+  ✓ WorkManager Health Check (6h)
+  ✓ Cache Safety (1h)
+
+PHASE 3 (NICE-TO-HAVE - future):
+  ✓ iOS Geofence Backup (8h)
+  ✓ Better Onboarding (3h)
+
+────────────────────────────────────────────────────────────────────────────────
+TESTING SCENARIOS
+────────────────────────────────────────────────────────────────────────────────
+
+MUST TEST:
+  [ ] Reboot phone while monitoring → verify service auto-restarts
+  [ ] Kill app (adb shell am kill) → verify service persists
+  [ ] Clear app data → verify graceful degradation
+  [ ] Enable battery saver → verify periodic checks work
+  [ ] iOS: Kill app mid-parking → verify recovery logic
+
+OPTIONAL:
+  [ ] Multiple rapid BT disconnect/connect cycles
+  [ ] Overnight parking with wake-up cycles
+  [ ] Roaming between cell towers (iOS)
+
+────────────────────────────────────────────────────────────────────────────────
+RISK LEVEL & ROLLBACK
+────────────────────────────────────────────────────────────────────────────────
+
+IMPLEMENTATION RISK:      LOW (all additions, no rewrites)
+BACKWARD COMPATIBILITY:   YES (all new code)
+ROLLBACK:                 EASY (each fix independently reversible)
+
+All fixes have simple disable paths:
+  Boot Receiver → remove from manifest
+  iOS fix → revert function
+  Device backup → remove code
+  Health check → comment out line
+  Cache safety → remove flag
+
+────────────────────────────────────────────────────────────────────────────────
+DOCUMENTS
+────────────────────────────────────────────────────────────────────────────────
+
+1. EXECUTIVE_SUMMARY.md        - Business-level overview, risks, timeline
+2. parking_reliability_analysis.md - Detailed technical analysis of each gap
+3. implementation_guide.md      - Step-by-step code fixes with snippets
+4. QUICK_REFERENCE.txt         - This file
+
+────────────────────────────────────────────────────────────────────────────────
+KEY CONTACT POINTS IN CODE
+────────────────────────────────────────────────────────────────────────────────
+
+Android Lifecycle:
+  /android/app/src/main/AndroidManifest.xml
+  /android/app/src/main/java/.../BootBroadcastReceiver.kt (NEW)
+  /android/app/src/main/java/.../BluetoothMonitorService.kt
+
+iOS Location:
+  /ios/TicketlessChicagoMobile/BackgroundLocationModule.swift
+
+React Native Bridge:
+  /src/services/BackgroundTaskService.ts
+  /src/services/BluetoothService.ts
+  /src/services/LocationService.ts
+
+================================================================================

@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { verifyWebhook } from '../../../lib/webhook-verification';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 
 /**
  * Resend Incoming Email Webhook
@@ -107,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Find the user's most recent pending_evidence ticket
       const { data: pendingTicket } = await supabaseAdmin
         .from('detected_tickets')
-        .select('id, ticket_number, violation_type')
+        .select('id, ticket_number, violation_type, evidence_requested_at')
         .eq('user_id', matchedUserId)
         .eq('status', 'pending_evidence')
         .order('created_at', { ascending: false })
@@ -149,6 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Store the evidence
+        let mailTriggered = false;
         const { data: evidenceRecord, error: evidenceError } = await supabaseAdmin
           .from('ticket_evidence')
           .insert({
@@ -170,9 +172,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await supabaseAdmin
             .from('detected_tickets')
             .update({
+              evidence_deadline: new Date().toISOString(), // immediately eligible for same-day mailing
               evidence_received_at: new Date().toISOString(),
+              evidence_on_time: pendingTicket?.evidence_requested_at
+                ? new Date().getTime() <= (new Date(pendingTicket.evidence_requested_at).getTime() + 48 * 60 * 60 * 1000)
+                : null,
+              status: 'evidence_received',
             })
             .eq('id', pendingTicket.id);
+
+          // Trigger immediate mailing run so evidence-backed letters can be mailed today
+          const triggerResult = await triggerAutopilotMailRun({
+            ticketId: pendingTicket.id,
+            reason: 'evidence_received_resend_webhook',
+          });
+          console.log(`Mail trigger: ${triggerResult.message}`);
+          mailTriggered = triggerResult.triggered;
 
           // Send admin notification about evidence received
           try {
@@ -218,6 +233,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           message: 'Evidence received and saved',
           ticket_number: pendingTicket.ticket_number,
           attachments_count: uploadedAttachments.length,
+          mail_triggered: mailTriggered,
         });
       } else {
         console.log(`⚠️  No pending_evidence ticket found for user ${matchedUserId}`);

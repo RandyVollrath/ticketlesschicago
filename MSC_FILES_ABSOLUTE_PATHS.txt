@@ -1,0 +1,103 @@
+==========================================
+MSC DATABASE USAGE - ABSOLUTE FILE PATHS
+==========================================
+
+Files that USE the MSC (MyStreetCleaning) Database:
+=====================================================
+
+1. /home/randy-vollrath/ticketless-chicago/lib/street-cleaning-schedule-matcher.ts
+   Database: MSC
+   Table: street_cleaning_schedule
+   Operation: READ (SELECT + RPC)
+   Purpose: GPS coordinates to street cleaning schedule
+
+2. /home/randy-vollrath/ticketless-chicago/pages/api/validate-address.ts
+   Database: MSC
+   Table: street_cleaning_schedule
+   Operation: READ (RPC find_section_for_point)
+   Purpose: Address validation during signup
+
+3. /home/randy-vollrath/ticketless-chicago/pages/api/get-street-cleaning-data.ts
+   Database: MSC
+   Table: street_cleaning_schedule
+   Operation: READ (SELECT with pagination)
+   Purpose: Bulk zone data for map visualization
+
+4. /home/randy-vollrath/ticketless-chicago/pages/api/find-section.ts
+   Database: MSC
+   Table: street_cleaning_schedule
+   Operation: READ (RPC + SELECT)
+   Purpose: Main address-to-schedule lookup endpoint
+
+5. /home/randy-vollrath/ticketless-chicago/pages/api/find-alternative-parking.ts
+   Database: MSC
+   Table: street_cleaning_schedule
+   Operation: READ (multiple SELECT queries)
+   Purpose: Safe parking zone finder
+
+6. /home/randy-vollrath/ticketless-chicago/pages/api/get-zone-geometry.ts
+   Database: MSC
+   Table: street_cleaning_schedule
+   Operation: READ (SELECT geometry, block boundaries)
+   Purpose: Zone GeoJSON features for map
+
+Files that USE the MAIN AA Database for Street Cleaning:
+========================================================
+
+7. /home/randy-vollrath/ticketless-chicago/pages/api/get-cleaning-schedule.ts
+   Database: MAIN AA (NOT MSC)
+   Table: street_cleaning_schedule
+   Operation: READ (SELECT)
+   Purpose: Simple schedule lookup
+
+8. /home/randy-vollrath/ticketless-chicago/pages/api/street-cleaning/process.ts
+   Database: MAIN AA (NOT MSC)
+   Tables: street_cleaning_schedule (READ), user_notifications (WRITE)
+   Operation: READ + WRITE
+   Purpose: Notification cron job (7am, 3pm, 7pm)
+
+Configuration Files:
+====================
+
+MSC Database Environment Variables:
+- MSC_SUPABASE_URL
+- MSC_SUPABASE_ANON_KEY
+- MSC_SUPABASE_SERVICE_ROLE_KEY
+
+Main AA Database Environment Variables:
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY
+
+Client Initialization Files:
+/home/randy-vollrath/ticketless-chicago/lib/supabase.ts
+- Defines main AA database client
+- Must add street_cleaning_schedule type support if migrating
+
+Database Types:
+/home/randy-vollrath/ticketless-chicago/lib/database.types.ts
+- Contains TypeScript types for street_cleaning_schedule
+- Already includes all columns needed
+
+Files to REMOVE Migration Dependencies:
+========================================
+
+After migration, these files should be updated to use main AA database:
+- /home/randy-vollrath/ticketless-chicago/lib/street-cleaning-schedule-matcher.ts
+- /home/randy-vollrath/ticketless-chicago/pages/api/validate-address.ts
+- /home/randy-vollrath/ticketless-chicago/pages/api/get-street-cleaning-data.ts
+- /home/randy-vollrath/ticketless-chicago/pages/api/find-section.ts
+- /home/randy-vollrath/ticketless-chicago/pages/api/find-alternative-parking.ts
+- /home/randy-vollrath/ticketless-chicago/pages/api/get-zone-geometry.ts
+
+Files That Are ALREADY CORRECT (use main AA database):
+======================================================
+- /home/randy-vollrath/ticketless-chicago/pages/api/get-cleaning-schedule.ts
+- /home/randy-vollrath/ticketless-chicago/pages/api/street-cleaning/process.ts
+
+Audit Documents Created:
+========================
+- /home/randy-vollrath/ticketless-chicago/MSC_DATABASE_AUDIT.md
+- /home/randy-vollrath/ticketless-chicago/MSC_AUDIT_QUICK_REFERENCE.csv
+- /home/randy-vollrath/ticketless-chicago/MIGRATION_ASSESSMENT_SUMMARY.md
+- /home/randy-vollrath/ticketless-chicago/MSC_FILES_ABSOLUTE_PATHS.txt (this file)

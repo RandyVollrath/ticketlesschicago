@@ -100,8 +100,8 @@ export default async function handler(
       const zone = permitZoneData[0];
       rules.push({
         type: 'permit_zone',
-        message: `You parked in ${zone.zone_name || 'a permit zone'}. Permit required ${zone.hours || 'during restricted hours'}.`,
-        restriction: zone.hours || 'Permit required',
+        message: `You parked in ${zone.zone_name || 'a permit zone'}. Permit may be required. Check posted signs.`,
+        restriction: 'Permit may be required',
         address: zone.street_name || 'Unknown street'
       });
     }

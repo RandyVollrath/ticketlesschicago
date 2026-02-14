@@ -279,7 +279,7 @@ export default async function handler(
         zoneType: result.permitZone.zoneType || undefined,
         permitRequired: result.permitZone.isCurrentlyRestricted,
         severity: result.permitZone.severity,
-        restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
+        restrictionSchedule: undefined,
       },
 
       meteredParking: {

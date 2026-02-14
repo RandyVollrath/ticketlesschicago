@@ -499,7 +499,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              $8/month or $80/year. Automated renewals + up to $200/year ticket reimbursement.
+              Founding Member rate: $49/year. Unlimited automated contesting for eligible tickets.
             </p>
           </div>
 
@@ -1275,10 +1275,10 @@ export default function Protection() {
                 margin: '0 0 8px 0',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                Ticket Reimbursement
+                First Dismissal Guarantee
               </h3>
               <p style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5', margin: 0 }}>
-                80% reimbursement on eligible tickets, up to $200/year.
+                If we don't dismiss at least one eligible non-camera ticket during your membership year, we refund your membership fee.
               </p>
             </div>
 
@@ -1344,7 +1344,7 @@ export default function Protection() {
             See what's covered, how it works, and full guarantee conditions
           </p>
           <button
-            onClick={() => router.push('/protection/guarantee')}
+            onClick={() => router.push('/guarantee')}
             style={{
               backgroundColor: 'white',
               color: COLORS.regulatory,

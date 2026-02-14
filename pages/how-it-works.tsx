@@ -61,8 +61,8 @@ export default function HowItWorks() {
               marginBottom: '24px',
               lineHeight: '1.6'
             }}>
-              Autopilot America offers comprehensive protection against compliance tickets and handles your vehicle registration renewals.
-              We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
+              Autopilot America provides unlimited automated contesting for eligible Chicago tickets and handles the paperwork and mailing for you.
+              First Dismissal Guarantee: if we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full membership refund.
             </p>
             <div style={{
               background: '#dbeafe',
@@ -117,7 +117,7 @@ export default function HowItWorks() {
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              Get timely alerts for street cleaning and snow removal on your block. If you receive a ticket despite following our alerts, we'll reimburse 80% as part of our service guarantee.
+              Get timely alerts for street cleaning and snow removal on your block. If you still receive a ticket, submit it and we handle contest preparation and mailing.
             </p>
             
             <div style={{
@@ -175,7 +175,7 @@ export default function HowItWorks() {
                   alignItems: 'flex-start'
                 }}>
                   <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Submit ticket photo within 7 days for 80% reimbursement</span>
+                  <span style={{ color: '#6b7280' }}>Provide requested documentation within 72 hours (or the contest deadline)</span>
                 </li>
               </ul>
             </div>
@@ -218,7 +218,7 @@ export default function HowItWorks() {
               marginBottom: '16px',
               lineHeight: '1.6'
             }}>
-              Get timely reminders before your city sticker and license plate renewal deadlines. If you receive a ticket, we reimburse 80% up to $200/year.
+              Get timely reminders before your city sticker and license plate renewal deadlines so you can avoid avoidable tickets.
             </p>
             
             <div style={{
@@ -309,8 +309,8 @@ export default function HowItWorks() {
                   listStyle: 'none',
                   color: '#bfdbfe'
                 }}>
-                  <li style={{ marginBottom: '4px' }}>• 80% reimbursement on eligible tickets</li>
-                  <li style={{ marginBottom: '4px' }}>• Up to $200/year total coverage</li>
+                  <li style={{ marginBottom: '4px' }}>• Unlimited automated contesting for eligible tickets</li>
+                  <li style={{ marginBottom: '4px' }}>• First Dismissal Guarantee on eligible non-camera tickets</li>
                   <li style={{ marginBottom: '4px' }}>• Street cleaning tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• Snow removal tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• City sticker violations</li>
@@ -334,7 +334,7 @@ export default function HowItWorks() {
                   <li style={{ marginBottom: '4px' }}>• Towing fees ($150 + $25/night storage)</li>
                   <li style={{ marginBottom: '4px' }}>• Moving violations</li>
                   <li style={{ marginBottom: '4px' }}>• Meter violations</li>
-                  <li style={{ marginBottom: '4px' }}>• Tickets over $200/year total</li>
+                  <li style={{ marginBottom: '4px' }}>• Red-light and speed camera tickets (guarantee exclusion)</li>
                   <li>• Tickets without proper documentation</li>
                 </ul>
               </div>

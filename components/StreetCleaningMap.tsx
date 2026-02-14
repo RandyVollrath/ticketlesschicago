@@ -34,6 +34,8 @@ interface StreetCleaningMapProps {
   showSnowSafeMode?: boolean;
   winterBanRoutes?: any[];
   showWinterBanMode?: boolean;
+  permitZoneLines?: any[];
+  showPermitZones?: boolean;
   userLocation?: { lat: number; lng: number };
   alternativeZones?: any[];
   meterLocations?: MeterData[];
@@ -48,6 +50,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
   showSnowSafeMode = false,
   winterBanRoutes = [],
   showWinterBanMode = false,
+  permitZoneLines = [],
+  showPermitZones = false,
   userLocation,
   alternativeZones = [],
   meterLocations = [],
@@ -309,6 +313,46 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         }
       }
 
+      // Add permit zone line overlays (purple)
+      if (showPermitZones && permitZoneLines.length > 0) {
+        permitZoneLines.forEach((zoneFeature: any) => {
+          if (!zoneFeature?.geometry) return;
+
+          const permitLayer = L.geoJSON(zoneFeature.geometry, {
+            style: {
+              color: '#8B5CF6',
+              weight: 5,
+              opacity: 0.95,
+              fillOpacity: 0,
+            }
+          });
+
+          const zone = zoneFeature.properties?.zone || 'Unknown';
+          const street = zoneFeature.properties?.street || 'Unknown street';
+          const addrRange = zoneFeature.properties?.addrRange || '';
+          const oddEven = zoneFeature.properties?.oddEven || 'Both';
+
+          const permitPopup = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 190px;">
+              <div style="background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: white; padding: 8px 12px; border-radius: 6px; font-weight: 600; text-align: center; margin-bottom: 10px;">
+                🅿️ Permit Zone ${zone}
+              </div>
+              <div style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-size: 13px; color: #5b21b6; font-weight: 600; margin-bottom: 4px;">${street}</div>
+                ${addrRange ? `<div style="font-size: 12px; color: #6d28d9;">Range: ${addrRange}</div>` : ''}
+                <div style="font-size: 12px; color: #6d28d9; margin-top: 3px;">Side: ${oddEven === 'O' ? 'Odd addresses' : oddEven === 'E' ? 'Even addresses' : 'Both sides'}</div>
+              </div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic;">
+                Check posted signs for exact permit rules.
+              </div>
+            </div>
+          `;
+
+          permitLayer.bindPopup(permitPopup);
+          permitLayer.addTo(mapInstanceRef.current);
+        });
+      }
+
       // Add alternative parking zones overlay (bright green with "Park Here Instead")
       if (alternativeZones.length > 0) {
         alternativeZones.forEach((altZone) => {
@@ -492,7 +536,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, winterBanRoutes, showWinterBanMode, meterLocations, showMeters, userLocation, alternativeZones]);
+  }, [data, triggerPopup, snowRoutes, showSnowSafeMode, winterBanRoutes, showWinterBanMode, permitZoneLines, showPermitZones, meterLocations, showMeters, userLocation, alternativeZones]);
 
   return (
     <div 

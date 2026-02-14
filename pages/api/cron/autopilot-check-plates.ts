@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../../../lib/contest-kits/evidence-guidance';
+import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -61,6 +62,10 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
 
 function mapViolationType(code: string): string {
   return VIOLATION_TYPE_MAP[code] || 'other_unknown';
+}
+
+function isCameraViolation(violationType: string): boolean {
+  return violationType === 'red_light' || violationType === 'speed_camera' || violationType.includes('camera');
 }
 
 const DEFAULT_SENDER_ADDRESS = {
@@ -224,6 +229,46 @@ async function sendEvidenceRequestEmail(
   }
 }
 
+async function sendDismissalNotificationEmail(
+  userEmail: string,
+  userName: string,
+  ticketNumber: string,
+  violationDescription: string | null,
+  amount: number | null
+): Promise<boolean> {
+  if (!resend) return false;
+
+  const safeName = userName?.trim() || 'there';
+  const violation = violationDescription || 'parking ticket';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #059669;">Ticket Dismissed</h2>
+      <p>Hi ${safeName},</p>
+      <p>Good news. We found a dismissal update for your ticket in the City system.</p>
+      <div style="background:#ecfdf5;border:1px solid #10b981;padding:16px;border-radius:8px;margin:16px 0;">
+        <p style="margin: 0 0 8px 0;"><strong>Ticket #:</strong> ${ticketNumber}</p>
+        <p style="margin: 0 0 8px 0;"><strong>Violation:</strong> ${violation}</p>
+        ${amount ? `<p style="margin: 0;"><strong>Amount:</strong> $${amount.toFixed(2)}</p>` : ''}
+      </div>
+      <p>We will keep monitoring and notify you about any additional updates.</p>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: [userEmail],
+      subject: `Dismissed: Ticket ${ticketNumber}`,
+      html,
+    });
+    return true;
+  } catch (error) {
+    console.error(`  Failed dismissal email to ${userEmail}:`, error);
+    return false;
+  }
+}
+
 /**
  * Check if kill switches are active
  */
@@ -325,16 +370,87 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
   // Get existing tickets for this plate
   const { data: existingTickets } = await supabaseAdmin
     .from('detected_tickets')
-    .select('ticket_number')
+    .select('id, ticket_number, status')
     .eq('user_id', plate.user_id)
     .eq('plate', plate.plate);
 
-  const existingNumbers = new Set(existingTickets?.map(t => t.ticket_number) || []);
+  const existingByNumber = new Map((existingTickets || []).map((t: any) => [t.ticket_number, t]));
 
   // Process each ticket
   for (const ticket of chicagoTickets) {
-    // Skip if we already have this ticket
-    if (existingNumbers.has(ticket.ticket_number)) {
+    const existing = existingByNumber.get(ticket.ticket_number);
+    if (existing) {
+      const hearingDisposition = (ticket.hearing_disposition || '').toLowerCase();
+      const isDismissed = hearingDisposition.includes('dismissed') || hearingDisposition.includes('not liable');
+      const currentStatus = (existing.status || '').toLowerCase();
+      const alreadyWon = currentStatus === 'won' || currentStatus === 'dismissed';
+
+      if (isDismissed && !alreadyWon) {
+        const amount = parseFloat(ticket.current_amount_due) ||
+                       parseFloat(ticket.fine_level2_amount) ||
+                       parseFloat(ticket.fine_level1_amount) || 0;
+
+        const { error: updateError } = await supabaseAdmin
+          .from('detected_tickets')
+          .update({
+            status: 'won',
+            updated_at: new Date().toISOString(),
+            raw_data: ticket,
+          })
+          .eq('id', existing.id);
+
+        if (updateError) {
+          errors.push(`Failed to mark dismissed ticket ${ticket.ticket_number} as won: ${updateError.message}`);
+        } else {
+          await supabaseAdmin
+            .from('ticket_audit_log')
+            .insert({
+              ticket_id: existing.id,
+              user_id: plate.user_id,
+              action: 'ticket_dismissed',
+              details: {
+                source: 'chicago_api',
+                hearing_disposition: ticket.hearing_disposition || null,
+                ticket_queue: ticket.ticket_queue || null,
+              },
+              performed_by: 'autopilot_cron',
+            });
+        }
+
+        const { data: priorDismissalNotice } = await supabaseAdmin
+          .from('ticket_audit_log')
+          .select('id')
+          .eq('ticket_id', existing.id)
+          .eq('action', 'ticket_dismissed_user_notified')
+          .limit(1)
+          .maybeSingle();
+
+        if (!priorDismissalNotice && emailEnabled && userEmail) {
+          const sent = await sendDismissalNotificationEmail(
+            userEmail,
+            userProfile.first_name || 'there',
+            ticket.ticket_number,
+            ticket.violation_description || null,
+            amount
+          );
+
+          if (sent) {
+            emailsSent++;
+            await supabaseAdmin
+              .from('ticket_audit_log')
+              .insert({
+                ticket_id: existing.id,
+                user_id: plate.user_id,
+                action: 'ticket_dismissed_user_notified',
+                details: {
+                  channel: 'email',
+                  email: userEmail,
+                },
+                performed_by: 'autopilot_cron',
+              });
+          }
+        }
+      }
       continue;
     }
 
@@ -358,7 +474,8 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
                    parseFloat(ticket.fine_level1_amount) || 0;
 
     const violationType = mapViolationType(ticket.violation_code);
-    const evidenceDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    const cameraViolation = isCameraViolation(violationType);
+    const evidenceDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
     // Insert new ticket directly into evidence collection flow
     const { data: newTicket, error: insertError } = await supabaseAdmin
@@ -371,6 +488,8 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         ticket_number: ticket.ticket_number,
         violation_code: ticket.violation_code,
         violation_type: violationType,
+        violation_class: cameraViolation ? 'camera' : 'non_camera',
+        guarantee_covered: !cameraViolation,
         violation_description: ticket.violation_description,
         violation_date: ticket.issue_date,
         amount: amount,
@@ -543,11 +662,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`✅ Complete: ${plates.length} plates checked, ${totalNewTickets} new tickets found, ${totalEvidenceEmailsSent} evidence request emails sent`);
 
+    // Immediately flush any tickets whose evidence windows have expired.
+    const mailTrigger = await triggerAutopilotMailRun({
+      reason: 'autopilot_check_plates_post_run',
+    });
+    console.log(`📬 Mail trigger: ${mailTrigger.message}`);
+
     return res.status(200).json({
       success: true,
       platesChecked: plates.length,
       newTicketsFound: totalNewTickets,
       evidenceEmailsSent: totalEvidenceEmailsSent,
+      mailTrigger: mailTrigger.message,
       errors: allErrors.length > 0 ? allErrors : undefined,
       timestamp: new Date().toISOString(),
     });

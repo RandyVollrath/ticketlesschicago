@@ -175,6 +175,10 @@ function normalizeViolationType(violationType?: string): string {
   return 'other_unknown';
 }
 
+function isCameraViolation(violationType: string): boolean {
+  return violationType === 'red_light' || violationType === 'speed_camera' || violationType.includes('camera');
+}
+
 interface UserProfile {
   full_name: string;
   mailing_address: string;
@@ -337,6 +341,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Normalize violation type from CSV (handles various formats)
       const normalizedViolationType = normalizeViolationType(ticketRow.violation_type);
+      const cameraViolation = isCameraViolation(normalizedViolationType);
 
       // Parse the date flexibly (handles "1-10-26", "1/10/2026", "2026-01-10", etc.)
       const parsedDate = parseDateFlexible(ticketRow.violation_date);
@@ -351,6 +356,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           state: ticketRow.state.toUpperCase(),
           ticket_number: ticketRow.ticket_number,
           violation_type: normalizedViolationType,
+          violation_class: cameraViolation ? 'camera' : 'non_camera',
+          guarantee_covered: !cameraViolation,
           violation_description: ticketRow.violation_type || null,
           violation_date: parsedDate,
           amount: ticketRow.amount || null,

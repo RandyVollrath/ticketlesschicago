@@ -177,7 +177,7 @@ export default function SecurityPage() {
               <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>Ticket Photos:</h3>
               <ul style={{ paddingLeft: '24px', lineHeight: '1.8' }}>
                 <li style={{ marginBottom: '8px' }}>
-                  Stored securely to help you contest unfair tickets and verify reimbursement claims
+                  Stored securely to help you contest unfair tickets and verify guarantee claims
                 </li>
                 <li style={{ marginBottom: '8px' }}>
                   Used for analytics to identify enforcement patterns

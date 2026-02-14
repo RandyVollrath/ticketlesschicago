@@ -18,6 +18,7 @@ import {
   sanitizeString,
   extractFirstPermitZone,
 } from '../../lib/webhook-validator';
+import { ACTIVE_AUTOPILOT_PLAN } from '../../lib/autopilot-plans';
 
 const stripe = new Stripe(stripeConfig.secretKey!, {
   // Using older API version for stability - cast to bypass newer type definitions
@@ -61,6 +62,65 @@ function normalizePhoneNumber(phone: string | null | undefined): string | null {
 
   // Default: assume 10 digits, add +1
   return `+1${digitsOnly}`;
+}
+
+async function requestInitialPortalCheckForUser(userId: string, source: string): Promise<void> {
+  const now = new Date().toISOString();
+
+  try {
+    await supabaseAdmin
+      .from('monitored_plates')
+      .update({
+        last_checked_at: null,
+        updated_at: now,
+      })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+  } catch (error) {
+    console.error(`Failed to prioritize plate checks for user ${userId}:`, error);
+  }
+
+  try {
+    const { data: existingTrigger } = await supabaseAdmin
+      .from('autopilot_admin_settings')
+      .select('value')
+      .eq('key', 'portal_check_trigger')
+      .maybeSingle();
+
+    if (existingTrigger?.value?.status !== 'pending') {
+      await supabaseAdmin
+        .from('autopilot_admin_settings')
+        .upsert({
+          key: 'portal_check_trigger',
+          value: {
+            status: 'pending',
+            requested_at: now,
+            requested_by: `signup:${userId}`,
+            source,
+          },
+          updated_at: now,
+        }, { onConflict: 'key' });
+    }
+  } catch (error) {
+    console.error(`Failed to queue portal check trigger for user ${userId}:`, error);
+  }
+
+  try {
+    await supabaseAdmin
+      .from('ticket_audit_log')
+      .insert({
+        ticket_id: null,
+        user_id: userId,
+        action: 'signup_portal_check_requested',
+        details: {
+          source,
+          requested_at: now,
+        },
+        performed_by: 'stripe_webhook',
+      });
+  } catch (error) {
+    console.error(`Failed to write portal-check audit log for user ${userId}:`, error);
+  }
 }
 
 export const config = {
@@ -1299,11 +1359,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .from('autopilot_subscriptions')
               .upsert({
                 user_id: userId,
-                plan: 'auto_contest',
+                plan: 'autopilot',
+                plan_code: ACTIVE_AUTOPILOT_PLAN.code,
                 status: 'active',
                 stripe_subscription_id: session.subscription as string || null,
                 stripe_customer_id: session.customer as string || null,
                 letters_included_remaining: 12,
+                price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
+                price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
+                price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
+                price_lock_expires_at: null,
+                grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
                 current_period_start: new Date().toISOString(),
                 current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
                 authorized_at: new Date().toISOString(),
@@ -1317,6 +1383,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.error('Error creating autopilot_subscriptions:', subscriptionError);
             } else {
               console.log('✅ autopilot_subscriptions record created');
+              await requestInitialPortalCheckForUser(userId, 'existing_user_upgrade');
             }
 
             // NOTE: Remitter fee is NOT charged upfront
@@ -1593,9 +1660,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .from('autopilot_subscriptions')
               .update({
                 status: 'active',
+                plan: 'autopilot',
+                plan_code: ACTIVE_AUTOPILOT_PLAN.code,
                 stripe_subscription_id: subscriptionId,
                 current_period_end: periodEnd,
                 letters_included_remaining: 999, // Unlimited
+                price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
+                price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
+                price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
+                price_lock_expires_at: null,
+                grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
                 updated_at: new Date().toISOString(),
               })
               .eq('user_id', supabaseUserId);
@@ -1618,6 +1692,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.error('❌ Error setting has_contesting for Autopilot user:', profileUpdateError);
               } else {
                 console.log('✅ has_contesting set to true for user:', supabaseUserId);
+                await requestInitialPortalCheckForUser(supabaseUserId, 'autopilot_checkout');
               }
 
               // Send comprehensive welcome email
@@ -2080,11 +2155,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .from('autopilot_subscriptions')
                 .upsert({
                   user_id: authData.user.id,
-                  plan: 'auto_contest',
+                  plan: 'autopilot',
+                  plan_code: ACTIVE_AUTOPILOT_PLAN.code,
                   status: 'active',
                   stripe_subscription_id: session.subscription as string || null,
                   stripe_customer_id: session.customer as string || null,
                   letters_included_remaining: 12,
+                  price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
+                  price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
+                  price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
+                  price_lock_expires_at: null,
+                  grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
                   current_period_start: new Date().toISOString(),
                   current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
                   authorized_at: new Date().toISOString(),
@@ -2098,6 +2179,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.error('Error creating autopilot_subscriptions for new user:', newUserSubError);
               } else {
                 console.log('✅ autopilot_subscriptions record created for new user');
+                await requestInitialPortalCheckForUser(authData.user.id, 'new_user_checkout');
               }
 
               // Check if user needs winter ban notification (Dec 1 - Apr 1)
@@ -2432,10 +2514,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .eq('user_id', userProfile.user_id);
 
             // Also update autopilot_subscriptions if it exists
+            const mappedStatus =
+              subscription.status === 'active' || subscription.status === 'trialing'
+                ? 'active'
+                : subscription.status === 'past_due'
+                  ? 'past_due'
+                  : 'canceled';
+            const forfeitsLock = ['canceled', 'unpaid', 'incomplete_expired'].includes(subscription.status);
+            const graceUntil = subscription.status === 'past_due'
+              ? new Date(Date.now() + ACTIVE_AUTOPILOT_PLAN.gracePeriodDays * 24 * 60 * 60 * 1000).toISOString()
+              : null;
+
             await supabaseAdmin
               .from('autopilot_subscriptions')
               .update({
-                status: isActive ? 'active' : 'canceled',
+                status: mappedStatus,
+                grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
+                grace_period_ends_at: graceUntil,
+                price_lock: forfeitsLock ? false : ACTIVE_AUTOPILOT_PLAN.priceLock,
+                price_lock_cents: forfeitsLock ? null : ACTIVE_AUTOPILOT_PLAN.priceLockCents,
                 updated_at: new Date().toISOString()
               })
               .eq('user_id', userProfile.user_id);

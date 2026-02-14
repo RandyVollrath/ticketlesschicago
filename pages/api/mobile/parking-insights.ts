@@ -80,6 +80,7 @@ export default async function handler(
       .from('parking_location_history')
       .select('parked_at, cleared_at, on_winter_ban_street, on_snow_route, street_cleaning_date, permit_zone, address')
       .eq('user_id', user.id)
+      .not('address', 'ilike', '%1019 W%Fullerton%')
       .order('parked_at', { ascending: false })
       .limit(500);
 

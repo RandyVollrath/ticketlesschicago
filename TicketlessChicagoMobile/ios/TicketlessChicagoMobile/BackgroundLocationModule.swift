@@ -838,8 +838,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             self.log("SHORT DRIVE RECOVERY: GPS speed \(String(format: "%.1f", currentSpeed)) m/s > 1.0 — still driving, skipping")
           } else if isLikelyFlicker {
             self.log("SHORT DRIVE RECOVERY: automotive \(String(format: "%.0f", automotiveDuration))s (< 15s) AND dist \(String(format: "%.0f", distFromLastParking))m (< 100m) — likely flicker, skipping")
-          } else if let loc = self.lastDrivingLocation ?? self.locationManager.location {
-            self.log("SHORT DRIVE RECOVERY: CoreMotion automotive→\(activity.stationary ? "stationary" : "walking") but isDriving was false. Firing departure + parking events.")
+          } else {
+            self.log("SHORT DRIVE RECOVERY: CoreMotion automotive→\(activity.stationary ? "stationary" : "walking") but isDriving was false. Recovering departure event only.")
 
             // Fire departure event first so previous parking gets a departure time.
             // Use the automotive session start time (when CoreMotion first said automotive)
@@ -850,23 +850,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               "source": "short_drive_recovery",
             ])
 
-            // Delay parking event to give JS time to process departure first.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-              let body: [String: Any] = [
-                "timestamp": Date().timeIntervalSince1970 * 1000,
-                "latitude": loc.coordinate.latitude,
-                "longitude": loc.coordinate.longitude,
-                "accuracy": loc.horizontalAccuracy,
-                "locationSource": "short_drive_recovery",
-                "drivingDurationSec": 0,
-              ]
-              self.sendEvent(withName: "onParkingDetected", body: body)
-              self.log("SHORT DRIVE RECOVERY: onParkingDetected fired at \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
-            }
+            // Do NOT emit a synthetic parking event here.
+            // This path can fire at long signal stops and create false positives.
+            // We only recover departure here; real parking should come from the
+            // normal confirmParking path with stronger evidence.
+            self.log("SHORT DRIVE RECOVERY: departure recovered, skipping synthetic onParkingDetected")
 
-            // Clean up driving state and record this as the new parking location
-            self.lastConfirmedParkingLocation = loc
-            self.hasConfirmedParkingThisSession = true  // Mark parking confirmed so GPS speed veto + distance bypass works for next drive
+            // Clean up driving state (without declaring a new parking confirmation)
+            self.lastConfirmedParkingLocation = nil
+            self.hasConfirmedParkingThisSession = false
             self.hasCheckedForMissedParking = false      // Allow recovery check on next drive
             self.persistParkingState()  // Survive app kills (Clybourn bug fix)
             self.stopContinuousGps()
@@ -874,8 +866,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             self.locationAtStopStart = nil
             self.speedSaysMoving = false
             self.speedZeroStartTime = nil
-          } else {
-            self.log("SHORT DRIVE RECOVERY: No location available — cannot fire parking event")
           }
         }
       }

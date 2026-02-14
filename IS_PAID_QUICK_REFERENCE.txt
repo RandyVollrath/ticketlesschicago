@@ -1,0 +1,72 @@
+================================================================================
+IS_PAID CODE PATHS - QUICK REFERENCE TABLE
+================================================================================
+
+FILE PATH                                          | LINE | SETS TO | CONTEXT
+---------------------------------------------------+------+---------+-------------------------------------------
+supabase/migrations/fix_oauth_user_creation.sql   | 14   | false   | DEFAULT for new OAuth users
+consolidate-to-user-profiles-migration.sql        | 390  | true    | Trigger BEFORE INSERT (COALESCE default)
+add-street-cleaning-migration-correct.sql         | 100  | true    | Column DEFAULT in user_profiles table
+
+pages/api/alerts/create.ts                        | 213  | TRUE    | Free alert signup (marked "paid")
+pages/api/stripe-webhook.ts                       | 2099 | TRUE    | New user profile via Stripe
+pages/api/stripe-webhook.ts                       | 2250 | TRUE    | Existing user update via Stripe
+pages/api/profile.ts                              | 117  | ALLOW   | Allowed field for user updates
+
+run-migration.js                                  | 110  | PRESERVE| Migration preserves existing value
+manual-randy-migration.js                         | 103  | TRUE    | Fallback: existingProfile?.is_paid || true
+scripts/migrate-msc-to-aa.js                      | N/A  | FIELD   | Includes is_paid in migration
+scripts/fix-hellodoll-user.js                     | 91   | TRUE    | One-off user fix
+scripts/fix-mystreetcleaning-user.js              | 36   | TRUE    | One-off user fix
+scripts/test-msc-direct.js                        | 46   | FALSE   | Test script (unpaid test user)
+scripts/fix-hellodoll-profile.js                  | 52   | TRUE    | One-off user fix
+scripts/fix-mystreetcleaning2.js                  | 36   | TRUE    | One-off user fix
+scripts/diagnose-webhook.js                       | 41   | QUERY   | Reads is_paid for debugging
+scripts/consolidate-tables.js                     | 112  | PRESERVE| Consolidation preserves existing value
+
+sql/setup-randy-profile.sql                       | 44   | TRUE    | Test user (Randy) setup
+lib/database.types.ts                             | N/A  | TYPE    | is_paid: boolean | null
+
+================================================================================
+CRITICAL PATHS (Sets is_paid = true in production):
+================================================================================
+
+1. ALERTS SIGNUP (/pages/api/alerts/create.ts:213)
+   - All free alert users are marked as "paid"
+   - Comment: "Free users are considered 'paid' for alerts"
+
+2. STRIPE WEBHOOK (/pages/api/stripe-webhook.ts:2099,2250)
+   - NEW USERS: Always set to true (line 2099)
+   - EXISTING USERS: Always updated to true (line 2250)
+   - NO actual payment verification occurs
+   - Comment: "All Ticketless users are paid"
+
+3. DATABASE TRIGGER (consolidate-to-user-profiles-migration.sql:390)
+   - BEFORE INSERT trigger sets: is_paid := COALESCE(NEW.is_paid, true)
+   - Applies to all direct user_profiles inserts
+
+4. PROFILE UPDATE ENDPOINT (/pages/api/profile.ts:117)
+   - Users can update their own is_paid field if authenticated
+   - No permission validation prevents self-promotion to paid
+
+================================================================================
+CONFLICTING DEFAULTS:
+================================================================================
+
+fix_oauth_user_creation.sql           -> DEFAULT false
+consolidate-to-user-profiles...sql    -> Trigger DEFAULT true (COALESCE)
+add-street-cleaning-migration...sql   -> DEFAULT true
+
+WINNER: Whichever migration ran last or if trigger exists, it's true
+
+================================================================================
+KEY BUSINESS LOGIC OBSERVATIONS:
+================================================================================
+
+- "All Ticketless America users are paid" - repeated comment pattern
+- Free users (alerts) are conflated with paid subscribers in the database
+- Stripe webhook does NOT verify actual payment status before setting is_paid=true
+- No distinction between truly-paid and free-tier users in the database
+- Migration scripts mostly for one-off fixes (hellodoll, mystreetcleaning users)
+
+================================================================================

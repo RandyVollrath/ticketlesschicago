@@ -325,10 +325,10 @@ function DashboardContent({
             color: COLORS.primary,
             marginBottom: 4,
           }}>
-            $24<span style={{ fontSize: 18, color: COLORS.textMuted }}>/year</span>
+            $49<span style={{ fontSize: 18, color: COLORS.textMuted }}>/year</span>
           </div>
           <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>
-            Less than $2/month. Cancel anytime.
+            Founding Member rate. Keep membership active to keep your price.
           </p>
         </div>
 
@@ -526,7 +526,7 @@ function DashboardContent({
             }}>
               <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Plan</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
-                $24/year
+                $49/year
               </div>
             </div>
             <div style={{
@@ -1357,10 +1357,10 @@ export default function SettingsPage() {
                   Want automatic contesting?
                 </p>
                 <p style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 700, color: COLORS.primary }}>
-                  $24<span style={{ fontSize: 16, fontWeight: 500 }}>/year</span>
+                  $49<span style={{ fontSize: 16, fontWeight: 500 }}>/year</span>
                 </p>
                 <p style={{ margin: '0 0 16px', fontSize: 13, color: COLORS.textMuted }}>
-                  We monitor your plate weekly and mail contest letters automatically. 54% average dismissal rate.
+                  We monitor your plate twice a week and mail contest letters automatically. 54% average dismissal rate.
                 </p>
                 <button
                   onClick={handleUpgrade}
@@ -1450,7 +1450,7 @@ export default function SettingsPage() {
             }}>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
-                  Upgrade to Autopilot - $24/year
+                  Upgrade to Autopilot - $49/year
                 </p>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9A3412' }}>
                   Automatic ticket detection &amp; contesting with 54% average dismissal rate
@@ -1951,10 +1951,10 @@ export default function SettingsPage() {
               padding: 16,
             }}>
               <p style={{ margin: 0, fontSize: 14, color: '#9A3412' }}>
-                <strong>Upgrade to Autopilot - $24/year</strong>
+                <strong>Upgrade to Autopilot - $49/year</strong>
               </p>
               <p style={{ margin: '8px 0 0', fontSize: 13, color: '#9A3412' }}>
-                Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate weekly and mail contest letters automatically.
+                Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-block',
@@ -1967,7 +1967,7 @@ export default function SettingsPage() {
                 fontWeight: 600,
                 textDecoration: 'none',
               }}>
-                Upgrade Now - $24/year
+                Upgrade Now - $49/year
               </Link>
             </div>
           ) : undefined}
@@ -2524,10 +2524,10 @@ export default function SettingsPage() {
               padding: 16,
             }}>
               <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
-                Upgrade to Autopilot - $24/year
+                Upgrade to Autopilot - $49/year
               </p>
               <p style={{ margin: '0 0 12px', fontSize: 14, color: '#9A3412' }}>
-                Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate weekly and mail contest letters automatically.
+                Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-block',
@@ -2539,7 +2539,7 @@ export default function SettingsPage() {
                 fontWeight: 600,
                 textDecoration: 'none',
               }}>
-                Upgrade Now - $24/year
+                Upgrade Now - $49/year
               </Link>
             </div>
           ) : undefined}

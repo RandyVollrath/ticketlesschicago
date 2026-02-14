@@ -205,7 +205,7 @@ export default function ProfileUpdates() {
         .from('user_profiles')
         .select('user_id, email, first_name, last_name, license_plate, city_sticker_expiry, license_plate_expiry, has_contesting, phone')
         .or(`city_sticker_expiry.lte.${ninetyDaysStr},license_plate_expiry.lte.${ninetyDaysStr}`)
-        .order('city_sticker_expiry', { ascending: true, nullsLast: true });
+        .order('city_sticker_expiry', { ascending: true });
 
       if (error) throw error;
 
@@ -305,11 +305,11 @@ export default function ProfileUpdates() {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
-      if (!response.ok) throw new Error('Failed to fetch reimbursements');
+      if (!response.ok) throw new Error('Failed to fetch guarantee claims');
       const data = await response.json();
       setReimbursements(data.requests || []);
     } catch (error) {
-      console.error('Error fetching reimbursements:', error);
+      console.error('Error fetching guarantee claims:', error);
       setReimbursements([]);
     } finally {
       setReimbursementsLoading(false);
@@ -341,13 +341,13 @@ export default function ProfileUpdates() {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to process reimbursement');
+      if (!response.ok) throw new Error('Failed to process guarantee claim');
 
       // Refresh the list
       fetchReimbursements();
     } catch (error) {
-      console.error('Error processing reimbursement:', error);
-      alert('Failed to process reimbursement');
+      console.error('Error processing guarantee claim:', error);
+      alert('Failed to process guarantee claim');
     } finally {
       setProcessingReimbursement(null);
     }
@@ -835,19 +835,19 @@ export default function ProfileUpdates() {
           )}
         </div>
 
-        {/* Reimbursement Requests Tracker */}
+        {/* Guarantee Claims Tracker */}
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '32px', border: '1px solid #e5e7eb' }}>
           <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: '0 0 16px 0' }}>
-            🎫 Ticket Reimbursement Requests
+            🎫 First Dismissal Guarantee Claims
           </h2>
 
           {reimbursementsLoading ? (
             <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
-              Loading reimbursement requests...
+              Loading guarantee claims...
             </div>
           ) : reimbursements.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              No reimbursement requests yet
+              No guarantee claims yet
             </div>
           ) : (
             <>
@@ -919,21 +919,21 @@ export default function ProfileUpdates() {
                         </p>
                       </div>
                       <div>
-                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Expected Reimb. (80%)</p>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Annual Fee Refund</p>
                         <p style={{ fontSize: '14px', color: '#059669', margin: 0, fontWeight: '600' }}>
-                          ${(request.ticket_amount * 0.8).toFixed(2)}
+                          $49.00
                         </p>
                       </div>
                       <div>
-                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Payment Method</p>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Refund Method</p>
                         <p style={{ fontSize: '14px', color: '#111827', margin: 0, textTransform: 'capitalize' }}>
-                          {request.payment_method}: {request.payment_details}
+                          Original payment method
                         </p>
                       </div>
                       <div>
-                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Coverage Remaining</p>
-                        <p style={{ fontSize: '14px', color: request.remaining_coverage > 0 ? '#059669' : '#dc2626', margin: 0, fontWeight: '600' }}>
-                          ${request.remaining_coverage.toFixed(2)} / $200
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Refund Scope</p>
+                        <p style={{ fontSize: '14px', color: '#059669', margin: 0, fontWeight: '600' }}>
+                          Membership fee only
                         </p>
                       </div>
                     </div>
@@ -989,7 +989,7 @@ export default function ProfileUpdates() {
                       <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
                         <button
                           onClick={() => {
-                            const amount = prompt(`Enter reimbursement amount (max ${request.remaining_coverage.toFixed(2)}, suggested ${(request.ticket_amount * 0.8).toFixed(2)}):`, (request.ticket_amount * 0.8).toFixed(2));
+                            const amount = prompt('Enter refund amount (default 49.00):', '49.00');
                             if (amount) {
                               const notes = prompt('Admin notes (optional):');
                               processReimbursement(request.id, 'approved', parseFloat(amount), notes || undefined);
@@ -1036,7 +1036,7 @@ export default function ProfileUpdates() {
                     {request.status === 'approved' && (
                       <div style={{ paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
                         <p style={{ fontSize: '14px', color: '#059669', fontWeight: '600', margin: '0 0 8px 0' }}>
-                          Approved: ${request.reimbursement_amount?.toFixed(2)} via {request.payment_method} to {request.payment_details}
+                          Approved for membership fee refund: ${request.reimbursement_amount?.toFixed(2) || '49.00'}
                         </p>
                         <button
                           onClick={() => processReimbursement(request.id, 'paid')}
@@ -1052,7 +1052,7 @@ export default function ProfileUpdates() {
                             cursor: processingReimbursement === request.id ? 'not-allowed' : 'pointer'
                           }}
                         >
-                          Mark as Paid
+                          Issue Refund
                         </button>
                       </div>
                     )}
@@ -1060,7 +1060,7 @@ export default function ProfileUpdates() {
                     {request.status === 'paid' && (
                       <div style={{ paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
                         <p style={{ fontSize: '14px', color: '#059669', fontWeight: '600', margin: 0 }}>
-                          ✅ Paid ${request.reimbursement_amount?.toFixed(2)} on {new Date(request.processed_at!).toLocaleDateString()}
+                          ✅ Refunded ${request.reimbursement_amount?.toFixed(2) || '49.00'} on {new Date(request.processed_at!).toLocaleDateString()}
                         </p>
                       </div>
                     )}

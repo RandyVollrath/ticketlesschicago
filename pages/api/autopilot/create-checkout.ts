@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { ACTIVE_AUTOPILOT_PLAN, AUTOPILOT_PRICE_ID } from '../../../lib/autopilot-plans';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -10,9 +11,6 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-// Autopilot America product price: $24/year
-const AUTOPILOT_PRICE_ID = process.env.STRIPE_AUTOPILOT_PRICE_ID || 'price_autopilot_annual';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -81,10 +79,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       subscription_data: {
         metadata: {
           supabase_user_id: userId,
+          service: 'autopilot',
+          plan_code: ACTIVE_AUTOPILOT_PLAN.code,
+          price_lock: String(ACTIVE_AUTOPILOT_PLAN.priceLock),
         },
       },
       metadata: {
         supabase_user_id: userId,
+        service: 'autopilot',
+        plan_code: ACTIVE_AUTOPILOT_PLAN.code,
       },
     });
 
@@ -94,6 +97,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('autopilot_subscriptions')
       .upsert({
         user_id: userId,
+        plan_code: ACTIVE_AUTOPILOT_PLAN.code,
+        plan: 'autopilot',
+        price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
+        price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
+        price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
+        price_lock_expires_at: null,
+        grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
         stripe_customer_id: customerId,
         status: 'trialing', // Will be updated to 'active' by webhook after payment
         updated_at: new Date().toISOString(),

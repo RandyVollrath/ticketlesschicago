@@ -242,7 +242,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           geo.permitZone = String(zone.zone);
           result.permitZone = {
             inPermitZone: true,
-            message: `Permit Zone ${zone.zone} — permit required during restricted hours`,
+            message: `Permit Zone ${zone.zone} — permit required`,
             zoneName: String(zone.zone),
             severity: 'warning',
           };
@@ -286,7 +286,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
 
   // Build WebView URL
   const mapUrl = geocoded
-    ? `${Config.API_BASE_URL}/destination-map?lat=${geocoded.lat}&lng=${geocoded.lng}&address=${encodeURIComponent(geocoded.address)}${geocoded.permitZone ? `&permitZone=${encodeURIComponent(geocoded.permitZone)}` : ''}`
+    ? `${Config.API_BASE_URL}/destination-map?lat=${geocoded.lat}&lng=${geocoded.lng}&address=${encodeURIComponent(geocoded.address)}${geocoded.permitZone ? `&permitZone=${encodeURIComponent(geocoded.permitZone)}` : ''}${geocoded.ward ? `&ward=${encodeURIComponent(geocoded.ward)}` : ''}${geocoded.section ? `&section=${encodeURIComponent(geocoded.section)}` : ''}`
     : '';
 
   const saveCurrentDestination = useCallback(async () => {

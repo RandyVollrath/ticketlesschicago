@@ -294,7 +294,7 @@ export default function SignIn() {
           }}>
             Don't have an account?{' '}
             <Link href="/get-started" style={{ color: COLORS.regulatory, textDecoration: 'none', fontWeight: 500 }}>
-              Sign up for just $24/year
+              Sign up for just $49/year
             </Link>
           </p>
         </div>

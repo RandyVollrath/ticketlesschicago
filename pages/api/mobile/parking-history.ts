@@ -56,6 +56,7 @@ export default async function handler(
       .from('parking_location_history')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id)
+      .not('address', 'ilike', '%1019 W%Fullerton%')
       .order('parked_at', { ascending: false });
 
     // Apply date filters if provided
@@ -85,9 +86,14 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to fetch parking history' });
     }
 
+    const sanitizedRows = (data || []).map((row: any) => ({
+      ...row,
+      permit_restriction_schedule: null,
+    }));
+
     return res.status(200).json({
       success: true,
-      data: data || [],
+      data: sanitizedRows,
       pagination: {
         total: count || 0,
         limit,

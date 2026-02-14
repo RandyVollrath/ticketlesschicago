@@ -88,6 +88,23 @@ export default async function handler(
 
     const parkedAt = new Date().toISOString();
     const addressValue = input.address || `${input.latitude.toFixed(6)}, ${input.longitude.toFixed(6)}`;
+    const normalizedAddress = addressValue.toLowerCase().replace(/\./g, '').trim();
+
+    // Guardrail: ignore known red-light false-positive location when no parking restriction is present.
+    if (
+      normalizedAddress.includes('1019 w fullerton') &&
+      !input.on_winter_ban_street &&
+      !input.on_snow_route &&
+      !streetCleaningDate &&
+      !input.permit_zone
+    ) {
+      console.log(`Ignoring likely false-positive parking event for user ${userId} at ${addressValue}`);
+      return res.status(200).json({
+        success: true,
+        id: null,
+        message: 'Ignored likely false-positive stop event.'
+      });
+    }
 
     // Insert new parked location (for active parking tracking)
     const { data, error } = await supabaseAdmin
@@ -107,7 +124,7 @@ export default async function handler(
         street_cleaning_ward: input.street_cleaning_ward || null,
         street_cleaning_section: input.street_cleaning_section || null,
         permit_zone: input.permit_zone || null,
-        permit_restriction_schedule: input.permit_restriction_schedule || null,
+        permit_restriction_schedule: null,
 
         is_active: true,
         parked_at: parkedAt,
@@ -137,7 +154,7 @@ export default async function handler(
         street_cleaning_ward: input.street_cleaning_ward || null,
         street_cleaning_section: input.street_cleaning_section || null,
         permit_zone: input.permit_zone || null,
-        permit_restriction_schedule: input.permit_restriction_schedule || null,
+        permit_restriction_schedule: null,
 
         parked_at: parkedAt,
       });

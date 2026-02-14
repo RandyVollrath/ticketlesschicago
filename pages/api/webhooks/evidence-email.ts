@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { verifyWebhook } from '../../../lib/webhook-verification';
+import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 
 /**
  * Evidence Email Webhook
@@ -631,12 +632,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`Total attachments uploaded: ${attachmentUrls.length}`);
     }
 
+    // Update ticket with evidence and SLA tracking
+    const evidenceReceivedAt = new Date().toISOString();
+    const evidenceOnTime = ticket?.evidence_requested_at
+      ? new Date(evidenceReceivedAt).getTime() <= (new Date(ticket.evidence_requested_at).getTime() + 48 * 60 * 60 * 1000)
+      : null;
+
     // Update ticket with evidence
     await supabaseAdmin
       .from('detected_tickets')
       .update({
         user_evidence: JSON.stringify(evidenceData),
-        user_evidence_uploaded_at: new Date().toISOString(),
+        user_evidence_uploaded_at: evidenceReceivedAt,
+        evidence_received_at: evidenceReceivedAt,
+        evidence_on_time: evidenceOnTime,
+        evidence_deadline: evidenceReceivedAt, // make ticket immediately eligible for same-day mailing
         status: 'evidence_received',
       })
       .eq('id', ticket.id);
@@ -697,12 +707,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       attachments.length
     );
 
+    // Trigger immediate mailing run so evidence-backed letters go out same day
+    const triggerResult = await triggerAutopilotMailRun({
+      ticketId: ticket.id,
+      reason: 'evidence_received_webhook',
+    });
+    console.log(`Mail trigger: ${triggerResult.message}`);
+
     return res.status(200).json({
       success: true,
       message: 'Evidence received and processed',
       ticket_id: ticket.id,
       ticket_number: ticket.ticket_number,
       letter_updated: !!letter,
+      mail_triggered: triggerResult.triggered,
     });
 
   } catch (error: any) {
@@ -747,7 +765,7 @@ async function sendUserConfirmation(
                 Thank you for submitting evidence for ticket <strong>${ticketNumber}</strong>.
               </p>
               <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                We've updated your contest letter to include the evidence you provided. Your letter will be mailed to the City of Chicago on the next mailing date.
+                We've updated your contest letter to include the evidence you provided. We'll send your letter to the City of Chicago today.
               </p>
               <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
                 Questions? Reply to this email.

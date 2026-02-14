@@ -93,8 +93,8 @@ export default function SubmitTicket() {
       fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <Head>
-        <title>Submit Ticket for Reimbursement - Autopilot America</title>
-        <meta name="description" content="Submit a parking ticket for reimbursement under your Autopilot Protection" />
+        <title>Submit Ticket for Review - Autopilot America</title>
+        <meta name="description" content="Submit a Chicago ticket for contesting and guarantee eligibility review." />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }
@@ -190,7 +190,7 @@ export default function SubmitTicket() {
             fontFamily: '"Space Grotesk", sans-serif',
             letterSpacing: '-1px'
           }}>
-            Submit Ticket for Reimbursement
+            Submit Ticket for Review
           </h1>
           <p style={{
             fontSize: '16px',
@@ -201,7 +201,7 @@ export default function SubmitTicket() {
             marginLeft: 'auto',
             marginRight: 'auto'
           }}>
-            We reimburse 80% of eligible tickets up to $200/year. Submit your ticket photos and details below.
+            Submit your ticket photos and details below so we can prepare contesting paperwork and evaluate guarantee eligibility.
             Tickets must match the address and vehicle in your profile at the time of issue.
           </p>
         </div>

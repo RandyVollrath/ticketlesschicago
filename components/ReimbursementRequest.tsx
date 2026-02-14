@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface ReimbursementRequestProps {
@@ -9,7 +9,6 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
-  const [remainingCoverage, setRemainingCoverage] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     ticketNumber: '',
@@ -17,41 +16,13 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
     ticketAmount: '',
     ticketType: 'street_cleaning',
     ticketDescription: '',
-    ticketAddress: '',
-    paymentMethod: 'venmo',
-    paymentDetails: ''
+    ticketAddress: ''
   });
 
   const [frontPhoto, setFrontPhoto] = useState<File | null>(null);
   const [backPhoto, setBackPhoto] = useState<File | null>(null);
   const [frontPhotoUrl, setFrontPhotoUrl] = useState('');
   const [backPhotoUrl, setBackPhotoUrl] = useState('');
-
-  useEffect(() => {
-    fetchRemainingCoverage();
-  }, []);
-
-  async function fetchRemainingCoverage() {
-    try {
-      const yearStart = new Date();
-      yearStart.setMonth(0, 1);
-      yearStart.setHours(0, 0, 0, 0);
-
-      const { data: reimbursements } = await supabase
-        .from('reimbursement_requests')
-        .select('reimbursement_amount')
-        .eq('user_id', userId)
-        .eq('status', 'paid')
-        .gte('created_at', yearStart.toISOString());
-
-      const totalReimbursed = (reimbursements || [])
-        .reduce((sum, r) => sum + (parseFloat(r.reimbursement_amount) || 0), 0);
-
-      setRemainingCoverage(200 - totalReimbursed);
-    } catch (error) {
-      console.error('Error fetching coverage:', error);
-    }
-  }
 
   async function uploadPhoto(file: File, type: 'front' | 'back'): Promise<string> {
     const fileExt = file.name.split('.').pop();
@@ -108,14 +79,8 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
       return;
     }
 
-    if (!formData.paymentDetails.trim()) {
-      setMessage(`Please enter your ${formData.paymentMethod} username/handle`);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch('/api/reimbursement/submit', {
+      const response = await fetch('/api/guarantee/ticket-submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,11 +94,10 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit reimbursement request');
+        throw new Error(result.error || 'Failed to submit guarantee review request');
       }
 
-      setMessage('✅ Reimbursement request submitted successfully! We\'ll review it within 3-5 business days.');
-      setRemainingCoverage(result.remainingCoverage);
+      setMessage('✅ Guarantee review submitted successfully. We\'ll review it within 3-5 business days.');
 
       // Reset form
       setFormData({
@@ -142,9 +106,7 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
         ticketAmount: '',
         ticketType: 'street_cleaning',
         ticketDescription: '',
-        ticketAddress: '',
-        paymentMethod: 'venmo',
-        paymentDetails: ''
+        ticketAddress: ''
       });
       setFrontPhoto(null);
       setBackPhoto(null);
@@ -168,15 +130,10 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
     }}>
       <div style={{ marginBottom: '16px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: '0 0 8px 0' }}>
-          🎫 Submit Ticket for Reimbursement
+          🎫 Submit Ticket for Guarantee Review
         </h2>
         <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
-          We reimburse 80% of eligible tickets up to $200/year as a service guarantee, not insurance.
-          {remainingCoverage !== null && (
-            <strong style={{ color: '#059669', marginLeft: '8px' }}>
-              ${remainingCoverage.toFixed(2)} remaining this year
-            </strong>
-          )}
+          We contest eligible tickets and may request evidence to keep guarantee eligibility active.
         </p>
       </div>
 
@@ -230,7 +187,7 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
         {/* Ticket Amount */}
         <div>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-            Ticket Amount * (You'll receive 80%)
+            Ticket Amount
           </label>
           <div style={{ position: 'relative' }}>
             <span style={{ position: 'absolute', left: '12px', top: '10px', color: '#6b7280' }}>$</span>
@@ -257,7 +214,7 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
           </div>
           {formData.ticketAmount && (
             <p style={{ fontSize: '12px', color: '#059669', margin: '4px 0 0 0' }}>
-              Reimbursement: ${(parseFloat(formData.ticketAmount) * 0.8).toFixed(2)} (80%)
+              Estimated fine amount: ${parseFloat(formData.ticketAmount).toFixed(2)}
             </p>
           )}
         </div>
@@ -319,51 +276,6 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
               borderRadius: '6px',
               fontSize: '14px',
               resize: 'vertical'
-            }}
-          />
-        </div>
-
-        {/* Payment Method */}
-        <div>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-            Payment Method *
-          </label>
-          <select
-            value={formData.paymentMethod}
-            onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-            required
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px'
-            }}
-          >
-            <option value="venmo">Venmo</option>
-            <option value="cashapp">Cash App</option>
-            <option value="paypal">PayPal</option>
-            <option value="zelle">Zelle</option>
-          </select>
-        </div>
-
-        {/* Payment Details */}
-        <div>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-            {formData.paymentMethod.charAt(0).toUpperCase() + formData.paymentMethod.slice(1)} Username/Handle *
-          </label>
-          <input
-            type="text"
-            value={formData.paymentDetails}
-            onChange={(e) => setFormData({ ...formData, paymentDetails: e.target.value })}
-            required
-            placeholder={`@yourhandle or phone number`}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px'
             }}
           />
         </div>
@@ -472,7 +384,7 @@ export default function ReimbursementRequest({ userId }: ReimbursementRequestPro
             cursor: (loading || uploading || !frontPhotoUrl || !backPhotoUrl) ? 'not-allowed' : 'pointer'
           }}
         >
-          {loading ? 'Submitting...' : uploading ? 'Uploading Photo...' : 'Submit Reimbursement Request'}
+          {loading ? 'Submitting...' : uploading ? 'Uploading Photo...' : 'Submit Guarantee Review'}
         </button>
       </form>
     </div>

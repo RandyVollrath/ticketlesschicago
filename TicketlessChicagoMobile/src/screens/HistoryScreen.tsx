@@ -92,19 +92,64 @@ const syncDepartureToServer = async (item: ParkingHistoryItem): Promise<void> =>
     if (!userId) return;
 
     const supabase = AuthService.getSupabaseClient();
-    // Match on user + parked_at timestamp (unique enough per user)
-    const { error } = await supabase
+    const parkedAtIso = new Date(item.timestamp).toISOString();
+    const departureIso = new Date(item.departure.confirmedAt).toISOString();
+
+    // First attempt: exact parked_at match
+    const { data: exactUpdatedRows, error } = await supabase
       .from('parking_location_history')
       .update({
         departure_latitude: item.departure.latitude,
         departure_longitude: item.departure.longitude,
-        departure_confirmed_at: new Date(item.departure.confirmedAt).toISOString(),
+        departure_confirmed_at: departureIso,
         departure_distance_meters: item.departure.distanceMeters,
-        cleared_at: new Date(item.departure.confirmedAt).toISOString(),
+        cleared_at: departureIso,
       })
       .eq('user_id', userId)
-      .eq('parked_at', new Date(item.timestamp).toISOString());
-    if (error) log.debug('Sync departure failed (non-fatal)', error.message);
+      .eq('parked_at', parkedAtIso)
+      .select('id');
+
+    if (!error && exactUpdatedRows && exactUpdatedRows.length > 0) return;
+
+    // Fallback: timestamp drift tolerance. Find nearby parking rows and update best match.
+    const { data: candidates, error: candidateError } = await supabase
+      .from('parking_location_history')
+      .select('id, parked_at')
+      .eq('user_id', userId)
+      .is('departure_confirmed_at', null)
+      .order('parked_at', { ascending: false })
+      .limit(20);
+
+    if (candidateError || !candidates || candidates.length === 0) {
+      if (error) log.debug('Sync departure failed (non-fatal)', error.message);
+      return;
+    }
+
+    const targetMs = new Date(parkedAtIso).getTime();
+    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+    const best = candidates
+      .map((c: any) => ({ id: c.id, diff: Math.abs(new Date(c.parked_at).getTime() - targetMs) }))
+      .sort((a: any, b: any) => a.diff - b.diff)[0];
+
+    if (!best || best.diff > SIX_HOURS_MS) return;
+
+    const { error: fallbackUpdateError } = await supabase
+      .from('parking_location_history')
+      .update({
+        departure_latitude: item.departure.latitude,
+        departure_longitude: item.departure.longitude,
+        departure_confirmed_at: departureIso,
+        departure_distance_meters: item.departure.distanceMeters,
+        cleared_at: departureIso,
+      })
+      .eq('id', best.id)
+      .eq('user_id', userId);
+
+    if (fallbackUpdateError) {
+      log.debug('Sync departure fallback failed (non-fatal)', fallbackUpdateError.message);
+    } else {
+      log.debug('Sync departure fallback succeeded', { matchedRecordId: best.id, diffMs: best.diff });
+    }
   } catch (e) {
     log.debug('Sync departure exception (non-fatal)', e);
   }

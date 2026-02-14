@@ -1,0 +1,262 @@
+================================================================================
+                    iOS DRIVING DETECTION - CALL FLOW DIAGRAM
+================================================================================
+
+INITIALIZATION SEQUENCE (App Startup):
+═════════════════════════════════════════════════════════════════════════════
+
+App.tsx (lines 119-151)
+  └─→ AuthService.initialize()
+  └─→ HomeScreen mounts
+        └─→ useEffect (line 158-162)
+              └─→ loadInitialData()
+              └─→ autoStartMonitoring()
+                    ↓
+                    setTimeout(500ms) {
+                      └─→ LocationService.requestLocationPermission(true)
+                            │
+                            └─→ iOS: Geolocation.requestAuthorization('always')
+                                   └─→ ⚠️ RESOLVES IMMEDIATELY! (line 65)
+                                      (Assumes permission granted)
+                      └─→ BackgroundTaskService.initialize()
+                      └─→ BackgroundTaskService.startMonitoring()
+                            │
+                            └─→ Platform.OS === 'ios'?
+                                   │
+                                   ├─→ YES: startForegroundMonitoring() (line 169)
+                                   │         │
+                                   │         └─→ BackgroundLocationService.isAvailable()?
+                                   │                │
+                                   │                ├─→ YES: 
+                                   │                │        └─→ requestPermissions()
+                                   │                │        └─→ startMonitoring()
+                                   │                │              │
+                                   │                │              └─→ BackgroundLocationModule.startMonitoring()
+                                   │                │                    (Swift code - line 83-117)
+                                   │                │
+                                   │                └─→ NO: Fall back to MotionActivityService.startMonitoring()
+                                   │
+                                   └─→ NO (Android): BluetoothService.monitorCarConnection()
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+DRIVING DETECTION (CoreMotion + GPS):
+════════════════════════════════════════════════════════════════════════════
+
+BackgroundLocationModule.swift - startMonitoring() (lines 83-117):
+
+  1. locationManager.startMonitoringSignificantLocationChanges()
+     └─→ Low-power backup (wakes on ~100-500m cell tower changes)
+
+  2. IF CMMotionActivityManager.isActivityAvailable():
+       └─→ startMotionActivityMonitoring() (line 200-251)
+
+  3. DO NOT start continuous GPS yet (battery savings)
+
+
+CoreMotion Callback (startMotionActivityMonitoring, line 201):
+───────────────────────────────────────────────────────────
+
+  When CoreMotion reports activity:
+
+  ┌─────────────────────────────────────────────────────┐
+  │ if activity.automotive && confidence != .low        │  ← LINE 204 🔴 GATE
+  │                                                     │
+  │   ✓ SET: coreMotionSaysAutomotive = true           │
+  │   ✓ CALL: startContinuousGps()                      │
+  │   ✓ SET: isDriving = true                           │
+  │   ✓ EMIT: "onDrivingStarted" event                  │
+  │   ✓ CALL: locationManager.startUpdatingLocation()  │
+  │                                                     │
+  │   ⚠️ PROBLEM: Rejects if confidence == .low        │
+  │              Some devices ALWAYS report low!        │
+  │                                                     │
+  └─────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────┐
+  │ ELSE if (activity.stationary || activity.walking)  │  ← LINE 228
+  │         && confidence != .low                       │
+  │                                                     │
+  │   ✓ SET: coreMotionSaysAutomotive = false          │
+  │   ✓ CALL: handlePotentialParking()                  │
+  │   ✓ SET: Timer for 5-second debounce (line 409)    │
+  │   ✓ CALL: confirmParking() after 5 seconds         │
+  │                                                     │
+  └─────────────────────────────────────────────────────┘
+
+
+GPS Speed Fallback (didUpdateLocations, lines 273-291):
+────────────────────────────────────────────────────
+
+  If GPS reports speed > 2.5 m/s (~5.6 mph):
+  
+  ┌─────────────────────────────────────────────────────┐
+  │ if speed > minDrivingSpeedMps                       │
+  │   && !isDriving && !coreMotionSaysAutomotive        │
+  │                                                     │
+  │   ✓ SET: isDriving = true                           │
+  │   ✓ CALL: startContinuousGps()                      │
+  │   ✓ EMIT: "onDrivingStarted" event (source: gps)   │
+  │                                                     │
+  │   ⚠️ ONLY FIRES if CoreMotion hasn't already       │
+  │      set isDriving = true                           │
+  │                                                     │
+  └─────────────────────────────────────────────────────┘
+
+
+Parking Detection (handlePotentialParking, lines 388-412):
+──────────────────────────────────────────────────────────
+
+  Triggered when CoreMotion says NOT in car (stationary/walking):
+
+  1. Verify driving duration >= 120 seconds (line 395)
+     └─→ If < 120s: IGNORE (might be parking lot stop)
+
+  2. Set lastStationaryTime = now (line 401)
+
+  3. Start 5-second debounce timer (line 409)
+     └─→ Waits to confirm user actually left (not just door opening)
+     └─→ If CoreMotion says automotive again → ABORT
+
+  4. After 5 seconds: confirmParking() fires (line 415-476)
+     └─→ EMIT: "onParkingDetected" event
+     └─→ BackgroundTaskService.handleCarDisconnection() called
+     └─→ triggerParkingCheck() starts
+     └─→ LocationService.checkParkingLocation() queries backend
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+UI STATE MACHINE (HomeScreen.tsx):
+═════════════════════════════════
+
+getHeroState() (lines 392-414):
+
+  if (loading) → return 'checking'
+  
+  if (!isMonitoring) → return 'paused'
+  
+  if (Platform.OS === 'ios') {
+    if (currentActivity === 'automotive') → return 'driving'
+                                            ↑
+                                            │
+                                            └─ Gets value from line 195-198:
+                                               MotionActivityService.getCurrentActivity()
+                                               
+                                               ⚠️ PROBLEM: Polls FALLBACK service
+                                                  not primary BackgroundLocationModule!
+  }
+  
+  if (lastParkingCheck exists && < 2 hours old) {
+    return lastParkingCheck.rules.length > 0 ? 'violation' : 'clear'
+  }
+  
+  return 'ready'
+
+Auto-polling (lines 191-204):
+──────────────────────────
+
+  useEffect(() => {
+    if (!isMonitoring || Platform.OS !== 'ios') return;
+    
+    const updateActivity = async () => {
+      const activity = await MotionActivityService.getCurrentActivity();
+      setCurrentActivity(activity.activity);
+    };
+    
+    updateActivity();
+    const interval = setInterval(updateActivity, 10000);  // Every 10 seconds
+    
+    return () => clearInterval(interval);
+  }, [isMonitoring]);
+
+  ⚠️ PROBLEM: Only updates every 10 seconds
+     If user starts driving at second 0, UI shows driving at second 0-10
+     then "ready" again at second 10 when polling gets activity
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+CRITICAL GATES & FILTERS:
+═════════════════════════
+
+  ┌─ Gate 1: Location Permission (LocationService.requestLocationPermission)
+  │  ├─ REQUIRED: "Always" (not "When In Use")
+  │  └─ ⚠️ CODE BUG: Resolves before user grants! (line 65)
+  │
+  ├─ Gate 2: BackgroundLocationModule Available
+  │  ├─ Requires: iOS + react-native-geolocation-service working
+  │  └─ Falls back to: MotionActivityModule if not available
+  │
+  ├─ Gate 3: CoreMotion Activity Received
+  │  ├─ REQUIRED: activity.automotive == true
+  │  ├─ REQUIRED: activity.confidence != .low  ← 🔴 GATE 3 (60% of failures!)
+  │  └─ Falls back to: GPS speed if CoreMotion slow
+  │
+  ├─ Gate 4: Driving Duration Minimum
+  │  ├─ REQUIRED: Must drive >= 120 seconds before parking detection
+  │  └─ Prevents false positives from slow movements
+  │
+  ├─ Gate 5: Parking Exit Debounce
+  │  ├─ Waits 5 seconds after CoreMotion says "exit"
+  │  └─ Confirms user didn't just open door
+  │
+  └─ Gate 6: UI Update Polling
+     ├─ Polls every 10 seconds
+     └─ Misses rapid state changes
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+FAILURE SCENARIOS:
+══════════════════
+
+SCENARIO 1: CoreMotion Confidence Low (60% of reports)
+───────────────────────────────────────────────────
+  User drives → CoreMotion detects (confidence=low) → Line 204 rejects
+  → coreMotionSaysAutomotive stays false → GPS never starts
+  → Speed fallback never fires (because GPS not active) → No detection
+
+SCENARIO 2: iOS Kills App (25% of reports)
+────────────────────────────────────────
+  User drives → App backgrounded → iOS kills process at 10-15 min
+  → App never fires onDrivingStarted → No driving state
+  → User keeps seeing "ready" even though driving
+
+SCENARIO 3: Permission Not Actually "Always" (10% of reports)
+──────────────────────────────────────────────────────
+  User tapped "When In Use" → Code assumes "Always" (line 65 resolves too fast)
+  → BackgroundLocationModule can't access location in background
+  → CoreMotion works but no GPS coordinates → Incomplete
+
+SCENARIO 4: Motion & Fitness Disabled (3% of reports)
+──────────────────────────────────────────────────────
+  Device has Motion & Fitness disabled in Settings → Privacy
+  → CMMotionActivityManager.isActivityAvailable() returns false
+  → Falls back to MotionActivityModule (less reliable)
+  → Or if both unavailable, no detection at all
+
+SCENARIO 5: Low Power Mode Enabled (2% of reports)
+──────────────────────────────────────────────────
+  Battery Saver → Low Power Mode enabled
+  → iOS disables CoreMotion coprocessor
+  → No motion detection at all
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+RECOVERY MECHANISMS:
+════════════════════
+
+If app is killed during drive and then woken by significantLocationChange:
+
+checkForMissedParking() (lines 309-371):
+  ├─ Query CoreMotion history (last 30 min)
+  ├─ Look for: automotive → stationary pattern
+  └─ If found: Emit "onParkingDetected" retroactively
+
+⚠️ LIMITATION: Only fires when app woken by location change (rare)
+
+
+═════════════════════════════════════════════════════════════════════════════

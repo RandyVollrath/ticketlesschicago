@@ -48,8 +48,11 @@ firebase-admin-key.json
 
 # Mobile secrets
 TicketlessChicagoMobile/android/app/google-services.json
+TicketlessChicagoMobile/logs/
+TicketlessChicagoMobile/release-artifacts/
+debug-screenshots/
+trigger-tow-cron.sh
 
 # Python cache
 __pycache__/
 *.pyc
-

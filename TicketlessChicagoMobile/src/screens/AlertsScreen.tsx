@@ -31,18 +31,52 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const webViewRef = useRef<WebView>(null);
   // Track previous auth state via ref to avoid closure issues with subscribe
   const wasAuthRef = useRef(isAuthenticated);
+  const lastTokenSignatureRef = useRef<string | null>(null);
+
+  const remountWebViewIfTokenChanged = useCallback(() => {
+    const authState = AuthService.getAuthState();
+    const currentSig = authState.session
+      ? `${authState.session.access_token.slice(-16)}:${authState.session.refresh_token.slice(-16)}`
+      : null;
+    if (currentSig !== lastTokenSignatureRef.current) {
+      lastTokenSignatureRef.current = currentSig;
+      setWebViewKey((prev) => prev + 1);
+    }
+  }, []);
+
+  const syncAlertsAuth = useCallback(async () => {
+    // Best-effort re-hydration if auth wasn't initialized yet.
+    if (AuthService.isLoading()) {
+      await AuthService.initialize();
+    }
+
+    const authenticated = AuthService.isAuthenticated();
+    setIsAuthenticated(authenticated);
+    if (!authenticated) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Keep settings WebView auth stable even if access token rotated/expired.
+    await AuthService.refreshToken();
+    remountWebViewIfTokenChanged();
+  }, [remountWebViewIfTokenChanged]);
 
   // Re-check auth when screen is focused (user may have just logged in)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      const authenticated = AuthService.isAuthenticated();
-      setIsAuthenticated(authenticated);
-      if (!authenticated) {
-        setIsLoading(false);
-      }
+      syncAlertsAuth().catch((error) => {
+        log.error('Failed to sync alerts auth on focus', error);
+      });
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, syncAlertsAuth]);
+
+  useEffect(() => {
+    syncAlertsAuth().catch((error) => {
+      log.error('Failed to sync alerts auth on mount', error);
+    });
+  }, [syncAlertsAuth]);
 
   // Subscribe to auth state changes so we catch login/logout from any screen
   useEffect(() => {
@@ -54,12 +88,15 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // bump the key to force a full WebView remount with the new session.
       if (wasAuthRef.current !== nowAuth) {
         wasAuthRef.current = nowAuth;
-        setWebViewKey(prev => prev + 1);
+        remountWebViewIfTokenChanged();
         if (!nowAuth) setIsLoading(false);
+      } else if (nowAuth) {
+        // Session can rotate while staying authenticated (token refresh).
+        remountWebViewIfTokenChanged();
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [remountWebViewIfTokenChanged]);
 
   // Read session fresh each render — combined with webViewKey, this ensures
   // the WebView always gets the current session tokens when it mounts.
@@ -189,6 +226,20 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           >
             <Text style={styles.signInButtonText}>Sign In</Text>
           </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isAuthenticated && !session) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Alerts</Text>
+        </View>
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Syncing your account...</Text>
         </View>
       </SafeAreaView>
     );

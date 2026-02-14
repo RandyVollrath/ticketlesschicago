@@ -162,7 +162,7 @@ export default function GetStarted() {
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete, minHeight: '100vh' }}>
       <Head>
         <title>Start Saving - Autopilot America</title>
-        <meta name="description" content="Stop paying unfair parking tickets. Autopilot America automatically contests your tickets for just $24/year." />
+        <meta name="description" content="Become a Founding Member for $49/year. Price locks while your membership stays active." />
       </Head>
 
       {/* Header */}
@@ -291,12 +291,12 @@ export default function GetStarted() {
                 <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>RECOMMENDED</span>
               </div>
               <div style={{ padding: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$24</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$49</span>
                   <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
                 </div>
                 <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
-                  Less than $2/month to protect yourself from $1,000+ in fees
+                  Founding Member Rate locks while your membership stays active
                 </p>
                 <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -309,7 +309,7 @@ export default function GetStarted() {
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    <strong>Weekly</strong> plate monitoring
+                    <strong>Twice-weekly</strong> plate monitoring
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
@@ -321,7 +321,7 @@ export default function GetStarted() {
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    <strong>54% avg dismissal rate</strong>
+                    <strong>First Dismissal Guarantee</strong>
                   </div>
                 </div>
               </div>
@@ -482,6 +482,14 @@ export default function GetStarted() {
                     borderRadius: 8,
                     marginBottom: 24,
                   }}>
+                    <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
+                      <strong>Founding Member Rate</strong><br />
+                      Founding Members pay $49/year. Your rate is locked as long as you keep an active membership. If your membership is canceled or lapses beyond a 7-day renewal grace period, you may lose your Founding rate and re-subscribe at the then-current price.
+                    </div>
+                    <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
+                      <strong>First Dismissal Guarantee</strong><br />
+                      If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee. Camera tickets (red light / speed cameras) are excluded from the guarantee. Eligibility requires timely cooperation, including providing requested documentation within 72 hours.
+                    </div>
                     <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
                       <input
                         type="checkbox"
@@ -558,7 +566,7 @@ export default function GetStarted() {
                     ? 'Loading...'
                     : selectedPlan === 'free'
                       ? 'Start Free - Complete Profile'
-                      : 'Continue to Payment - $24/year'}
+                      : 'Continue to Payment - $49/year'}
                 </button>
 
                 <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 16, textAlign: 'center' }}>

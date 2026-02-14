@@ -278,7 +278,7 @@ export function QuickActionsInline({ hasProtection = false }: { hasProtection?: 
     {
       id: 'report-ticket',
       label: hasProtection ? 'Report Ticket' : 'Contest Ticket',
-      description: hasProtection ? 'Submit for reimbursement' : 'Fight your ticket',
+      description: hasProtection ? 'Start guarantee review' : 'Fight your ticket',
       color: COLORS.error,
       href: hasProtection ? '/submit-ticket' : '/contest-ticket',
       icon: (

@@ -11,15 +11,15 @@ export default function Support() {
       questions: [
         {
           q: 'What is Autopilot America?',
-          a: 'Autopilot America is a protection plan that helps Chicago drivers avoid compliance tickets (street cleaning, snow removal, city sticker, license plate renewal) through alerts and provides reimbursement if tickets are still received.'
+          a: 'Autopilot America is a Chicago Driver Protection Plan with unlimited automated contesting for eligible tickets, plus free alerts and reminders.'
         },
         {
           q: 'Is this insurance?',
-          a: 'No, this is a protection plan, not insurance. We help you avoid compliance tickets through alerts and reimburse eligible tickets according to our coverage terms.'
+          a: 'No. This is a membership service, not insurance. We automate eligible Chicago ticket contesting and include a First Dismissal Guarantee.'
         },
         {
           q: 'How much does it cost?',
-          a: 'Our protection plan costs $12/month or $120/year (save 2 months with annual billing).'
+          a: 'Founding Member pricing is $49/year. The rate stays locked while your membership remains active.'
         },
         {
           q: 'Can I cancel anytime?',
@@ -28,27 +28,27 @@ export default function Support() {
       ]
     },
     coverage: {
-      title: 'Coverage & Reimbursement',
+      title: 'Coverage & Guarantee',
       questions: [
         {
           q: 'What tickets are covered?',
           a: 'We cover street cleaning tickets ($60 each), snow removal tickets ($60 each), city sticker tickets ($200 each), and license plate renewal tickets if you get them despite following our alerts and meeting our guarantee conditions (see Protection page for details). Towing fees ($150 + $25/night storage) and moving violations are not covered. With Ticket Protection, we send you reminders before your city sticker and license plate renewals expire.'
         },
         {
-          q: 'How much will I be reimbursed?',
-          a: 'We reimburse 80% of eligible tickets up to $200 per year total coverage.'
+          q: 'What does the First Dismissal Guarantee cover?',
+          a: 'If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee.'
         },
         {
-          q: 'What are the requirements for reimbursement?',
-          a: 'You must have alerts enabled, license plate registered, respond to at least one alert, and submit ticket photos within 7 days.'
+          q: 'What makes a ticket eligible for the guarantee?',
+          a: 'It must be a City of Chicago non-camera ticket, issued during your active membership, still eligible to contest, and you must provide requested documentation within 72 hours.'
         },
         {
-          q: 'How long does reimbursement take?',
-          a: 'Reimbursements are typically processed within 3-5 business days after we verify your submission.'
+          q: 'How long does a guarantee review take?',
+          a: 'Most guarantee reviews are processed within 3-5 business days after submission and verification.'
         },
         {
-          q: 'What if I get more than $200 in tickets?',
-          a: 'Our annual coverage limit is $200. Any tickets beyond that amount would be your responsibility.'
+          q: 'Are camera tickets covered by the guarantee?',
+          a: 'No. Red-light and speed camera tickets are excluded from the First Dismissal Guarantee.'
         }
       ]
     },
@@ -69,7 +69,7 @@ export default function Support() {
         },
         {
           q: 'What should I do when I get an alert?',
-          a: 'Move your car before the posted time. If you have Ticket Protection, respond to the alert text (e.g., "Moved") to maintain your street cleaning and snow removal ticket coverage eligibility.'
+          a: 'Move your car before the posted time and keep your profile details current so reminders and contesting workflows stay accurate.'
         }
       ]
     },
@@ -81,8 +81,8 @@ export default function Support() {
           a: 'Go to your account settings and add your license plate number in the vehicle information section.'
         },
         {
-          q: 'How do I submit a ticket for reimbursement?',
-          a: 'Take a clear photo of the front and back of your ticket and upload it through your account dashboard within 7 days.'
+          q: 'How do I request a guarantee review?',
+          a: 'Go to /guarantee-request and submit your account email plus attestations. Ticket IDs are optional but helpful.'
         }
       ]
     }

@@ -113,7 +113,7 @@ export default function TermsOfService() {
                 <strong>Free Alerts:</strong> Street cleaning notifications and reminders via email and SMS
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Ticket Protection:</strong> Agent-based renewal filing service with ticket reimbursement coverage
+                <strong>Founding Member Plan:</strong> Annual membership with unlimited automated contesting for eligible Chicago tickets
               </li>
             </ul>
           </section>
@@ -147,7 +147,7 @@ export default function TermsOfService() {
               4. Your Responsibilities
             </h2>
             <p style={{ marginBottom: '12px' }}>
-              To receive Ticket Protection coverage, you must:
+              To receive First Dismissal Guarantee eligibility, you must:
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px' }}>
               <li style={{ marginBottom: '8px' }}>
@@ -164,11 +164,11 @@ export default function TermsOfService() {
                 Notify us immediately of any changes to your vehicles, address, or contact information
               </li>
               <li style={{ marginBottom: '8px' }}>
-                Submit ticket reimbursement requests within 7 days of receiving a ticket
+                Submit requested ticket documentation within 72 hours (or before the contest deadline, whichever is sooner)
               </li>
             </ul>
             <p style={{ fontWeight: 'bold', color: '#dc2626' }}>
-              IMPORTANT: The ticket reimbursement guarantee is VOID if your profile is incomplete or inaccurate
+              IMPORTANT: Guarantee eligibility is void if your profile information is incomplete or inaccurate
               at the time a ticket is issued.
             </p>
           </section>
@@ -182,29 +182,25 @@ export default function TermsOfService() {
               Renewal Filing Service
             </h3>
             <p style={{ marginBottom: '12px' }}>
-              We will file your city sticker and license plate renewals before they expire. If we fail to file
-              on time and you receive a late renewal ticket, we will reimburse 100% of that ticket (not counted
-              toward your annual reimbursement limit).
+              We provide renewal reminders, but you are responsible for completing filings with the City or State.
+              Missing a renewal after reminders does not create separate cash-claim eligibility.
             </p>
 
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1a1a1a', marginBottom: '12px', marginTop: '16px' }}>
-              Ticket Reimbursement Coverage
+              First Dismissal Guarantee
             </h3>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Covered tickets:</strong> Street cleaning, snow removal, expired city sticker,
-                expired license plate sticker
+                <strong>Eligible tickets:</strong> City of Chicago non-camera tickets issued during an active paid membership period
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Reimbursement rate:</strong> 80% of eligible ticket amounts
+                <strong>Guarantee outcome:</strong> If no eligible non-camera ticket is successfully dismissed during the membership year, member may request a full refund of the membership fee
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Annual limit:</strong> $200 per year total reimbursement
+                <strong>Volume limit:</strong> First 5 eligible tickets per membership year are included in guarantee consideration
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Not covered:</strong> Moving violations, parking meter violations, towing fees,
-                impound fees, tickets issued in other cities, tickets resulting from incomplete/inaccurate
-                profile information
+                <strong>Not covered:</strong> Red-light and speed camera tickets, tickets outside Chicago, tickets not eligible to contest, or tickets with missing/late documentation
               </li>
             </ul>
           </section>
@@ -247,8 +243,7 @@ export default function TermsOfService() {
                 For Free Alerts users: $0 (service provided free of charge)
               </li>
               <li style={{ marginBottom: '8px' }}>
-                For Ticket Protection subscribers: The lesser of (a) $200 (annual reimbursement cap) or
-                (b) the amount you paid in subscription fees in the past 12 months
+                For Founding Members: the amount paid in membership fees during the prior 12 months
               </li>
             </ul>
           </section>
@@ -259,7 +254,7 @@ export default function TermsOfService() {
             </h2>
             <ul style={{ paddingLeft: '24px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Subscription billing:</strong> Monthly ($12/month) or Annual ($120/year)
+                <strong>Subscription billing:</strong> Founding Member Annual plan at $49/year
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Renewal fees:</strong> City sticker ($100), License plate ($155 standard, $164 vanity)
@@ -269,11 +264,10 @@ export default function TermsOfService() {
                 <strong>Permit fees:</strong> $30 one-time fee for residential parking permit filing (if applicable)
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Automatic renewal:</strong> Subscriptions renew automatically until canceled
+                <strong>Automatic renewal:</strong> Subscriptions renew automatically at $49/year while membership remains active
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Refunds:</strong> No refunds for subscription fees. Unused renewal fees may be refunded
-                if cancellation occurs before filing
+                <strong>Refunds:</strong> Membership-fee refunds are available only through approved First Dismissal Guarantee claims
               </li>
             </ul>
           </section>
