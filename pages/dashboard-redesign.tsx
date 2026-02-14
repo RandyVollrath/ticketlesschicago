@@ -683,7 +683,7 @@ export default function DashboardPage() {
               }}>
                 <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Plan</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
-                  $24/year
+                  $49/year
                 </div>
               </div>
               <div style={{

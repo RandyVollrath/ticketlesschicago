@@ -64,37 +64,46 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to fetch parking record' });
     }
 
+    if (data.address && /1019\s+w\.?\s*fullerton/i.test(data.address)) {
+      return res.status(404).json({ error: 'Parking record not found' });
+    }
+
+    const sanitizedData = {
+      ...data,
+      permit_restriction_schedule: null,
+    };
+
     // Calculate duration if both parked_at and cleared_at exist
     let durationMinutes: number | null = null;
-    if (data.parked_at && data.cleared_at) {
-      const parkedTime = new Date(data.parked_at).getTime();
-      const clearedTime = new Date(data.cleared_at).getTime();
+    if (sanitizedData.parked_at && sanitizedData.cleared_at) {
+      const parkedTime = new Date(sanitizedData.parked_at).getTime();
+      const clearedTime = new Date(sanitizedData.cleared_at).getTime();
       durationMinutes = Math.round((clearedTime - parkedTime) / (1000 * 60));
     }
 
     // Build evidence summary for ticket disputes
     const evidenceSummary = {
-      parked_at: data.parked_at,
-      cleared_at: data.cleared_at,
-      departure_confirmed_at: data.departure_confirmed_at,
+      parked_at: sanitizedData.parked_at,
+      cleared_at: sanitizedData.cleared_at,
+      departure_confirmed_at: sanitizedData.departure_confirmed_at,
       parked_location: {
-        latitude: data.latitude,
-        longitude: data.longitude,
-        address: data.address,
+        latitude: sanitizedData.latitude,
+        longitude: sanitizedData.longitude,
+        address: sanitizedData.address,
       },
-      departure_location: data.departure_latitude ? {
-        latitude: data.departure_latitude,
-        longitude: data.departure_longitude,
-        distance_from_parked_meters: data.departure_distance_meters,
-        accuracy_meters: data.departure_accuracy_meters,
+      departure_location: sanitizedData.departure_latitude ? {
+        latitude: sanitizedData.departure_latitude,
+        longitude: sanitizedData.departure_longitude,
+        distance_from_parked_meters: sanitizedData.departure_distance_meters,
+        accuracy_meters: sanitizedData.departure_accuracy_meters,
       } : null,
       duration_minutes: durationMinutes,
-      had_departure_confirmation: !!data.departure_confirmed_at,
+      had_departure_confirmation: !!sanitizedData.departure_confirmed_at,
     };
 
     return res.status(200).json({
       success: true,
-      data,
+      data: sanitizedData,
       evidence_summary: evidenceSummary,
     });
 

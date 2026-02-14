@@ -846,7 +846,7 @@ export default function AlertsSignup() {
             textAlign: 'center'
           }}>
             <p style={{ fontSize: '15px', color: COLORS.slate, margin: '0 0 16px 0' }}>
-              Want automated renewals and 80% ticket reimbursement?
+              Want unlimited automated contesting and a First Dismissal Guarantee?
             </p>
             <button
               onClick={() => router.push('/protection')}
@@ -861,7 +861,7 @@ export default function AlertsSignup() {
                 cursor: 'pointer'
               }}
             >
-              Upgrade to Full Protection - $8/mo
+              Become a Founding Member - $49/year
             </button>
           </div>
         </div>

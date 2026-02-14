@@ -55,7 +55,7 @@ export default async function handler(
     const clearedAt = new Date().toISOString();
     const { data: recentHistory, error: fetchError } = await supabaseAdmin
       .from('parking_location_history')
-      .select('id, latitude, longitude, parked_at, address')
+      .select('id, latitude, longitude, parked_at, address, cleared_at, departure_confirmed_at')
       .eq('user_id', user.id)
       .is('cleared_at', null)
       .order('parked_at', { ascending: false })
@@ -83,6 +83,29 @@ export default async function handler(
 
       if (historyError) {
         console.error('Error updating parking history cleared_at:', historyError);
+      }
+    } else {
+      // Fallback: if there is no uncleared row (race/duplicate reconnect),
+      // reuse the most recent cleared row that still needs departure confirmation.
+      const { data: pendingDepartureRow, error: pendingFetchError } = await supabaseAdmin
+        .from('parking_location_history')
+        .select('id, latitude, longitude, parked_at, address, cleared_at')
+        .eq('user_id', user.id)
+        .not('cleared_at', 'is', null)
+        .is('departure_confirmed_at', null)
+        .order('cleared_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pendingFetchError) {
+        console.error('Error fetching fallback departure row:', pendingFetchError);
+      } else if (pendingDepartureRow) {
+        parkingHistoryId = pendingDepartureRow.id;
+        parkedLocation = {
+          latitude: pendingDepartureRow.latitude,
+          longitude: pendingDepartureRow.longitude,
+          address: pendingDepartureRow.address,
+        };
       }
     }
 

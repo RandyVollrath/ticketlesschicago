@@ -374,7 +374,7 @@ export default function SavingsCalculator({ userId, profile }: SavingsCalculator
                   fontSize: '13px',
                   marginBottom: '12px',
                 }}>
-                  Get automatic city sticker renewal + ticket reimbursement.
+                  Get automated contesting plus the First Dismissal Guarantee.
                   Peace of Mind Parking, always.
                 </div>
                 <a

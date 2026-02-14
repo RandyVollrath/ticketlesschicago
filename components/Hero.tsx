@@ -49,7 +49,7 @@ export default function Hero({ onPrimaryCTA, onSecondaryCTA }: HeroProps) {
         lineHeight: '1.1',
         letterSpacing: '-1px'
       }}>
-        Peace of Mind Parking
+        Protection Fight System
       </h1>
       <p style={{
         fontSize: '28px',
@@ -58,7 +58,7 @@ export default function Hero({ onPrimaryCTA, onSecondaryCTA }: HeroProps) {
         fontWeight: '300',
         lineHeight: '1.4'
       }}>
-        Free alerts for street cleaning, snow removal, city stickers, and license plates. Peace of mind for every driver in Chicago.
+        Free alerts for street cleaning, snow removal, city stickers, and license plates. Protection for every Chicago driver.
       </p>
 
       {/* Primary and Secondary CTAs */}
@@ -189,7 +189,7 @@ export default function Hero({ onPrimaryCTA, onSecondaryCTA }: HeroProps) {
               lineHeight: '1.5',
               margin: 0
             }}>
-              We handle renewals and reimburse 80% of eligible tickets (up to $200/year)
+              We handle the paperwork, mail contests for you, and back it with our First Dismissal Guarantee.
             </p>
           </div>
         </div>

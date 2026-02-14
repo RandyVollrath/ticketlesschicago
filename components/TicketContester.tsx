@@ -998,7 +998,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
               }}>
                 <li>SMS alerts before street cleaning, towing alerts, and more</li>
                 <li>Renewal reminders to keep your registration current</li>
-                <li>80% reimbursement on eligible tickets (up to $200/year)</li>
+                <li>First Dismissal Guarantee with annual membership refund eligibility</li>
               </ul>
             </div>
 

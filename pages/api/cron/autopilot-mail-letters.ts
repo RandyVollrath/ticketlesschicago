@@ -445,7 +445,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('detected_tickets')
       .select('id')
       .eq('status', 'pending_evidence')
-      .lt('evidence_deadline', now);
+      .lte('evidence_deadline', now);
 
     const readyTicketIds = readyTickets?.map(t => t.id) || [];
 
@@ -471,8 +471,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         )
       `)
       .or(`status.eq.pending_evidence,status.eq.approved,status.eq.draft,status.eq.ready`)
-      .order('created_at', { ascending: true })
-      .limit(20); // Process in batches
+      .order('created_at', { ascending: true });
 
     if (!letters || letters.length === 0) {
       console.log('No letters to process');

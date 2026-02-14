@@ -9,8 +9,8 @@
  * On upload:
  * 1. Creates ticket in detected_tickets
  * 2. Generates contest letter in contest_letters
- * 3. Emails user asking for evidence within 72 hours
- * 4. Sets evidence_deadline (72 hours from now)
+ * 3. Emails user asking for evidence within 48 hours
+ * 4. Sets evidence_deadline (48 hours from now)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../../../../lib/contest-kits/evidence-guidance';
+import { triggerAutopilotMailRun } from '../../../../lib/trigger-autopilot-mail';
 
 /**
  * Sleep for a given number of milliseconds
@@ -264,6 +265,10 @@ function normalizeViolationType(input: string): string {
   }
 
   return 'other_unknown';
+}
+
+function isCameraViolation(violationType: string): boolean {
+  return violationType === 'red_light' || violationType === 'speed_camera' || violationType.includes('camera');
 }
 
 // Defense templates by violation type
@@ -898,9 +903,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       rowDetails: [] as RowResult[],
     };
 
-    // Calculate evidence deadline (72 hours from now)
+    // Calculate evidence deadline (48 hours from now)
     const now = new Date();
-    const evidenceDeadline = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+    const evidenceDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
     for (let i = 0; i < tickets.length; i++) {
       const ticket = tickets[i];
@@ -986,6 +991,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Parse the date flexibly (handles "1-10-26", "1/10/2026", "2026-01-10", etc.)
         const parsedDate = parseDateFlexible(ticket.violation_date);
 
+        const normalizedType = ticket.violation_type || 'other_unknown';
+        const cameraViolation = isCameraViolation(normalizedType);
+
         // Create ticket record with evidence deadline
         const { data: newTicket, error: ticketError } = await supabaseAdmin
           .from('detected_tickets')
@@ -996,7 +1004,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             state: ticket.state.toUpperCase(),
             ticket_number: ticket.ticket_number,
             violation_code: ticket.violation_code || null,
-            violation_type: ticket.violation_type || 'other_unknown',
+            violation_type: normalizedType,
+            violation_class: cameraViolation ? 'camera' : 'non_camera',
+            guarantee_covered: !cameraViolation,
             violation_description: ticket.violation_description || null,
             violation_date: parsedDate,
             amount: amount,
@@ -1182,7 +1192,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       results
     );
 
-    return res.status(200).json(results);
+    // Immediately flush tickets whose evidence windows already expired.
+    const mailTrigger = await triggerAutopilotMailRun({
+      reason: 'admin_upload_results_post_run',
+    });
+    console.log(`📬 Mail trigger: ${mailTrigger.message}`);
+
+    return res.status(200).json({
+      ...results,
+      mailTrigger: mailTrigger.message,
+    });
 
   } catch (error: any) {
     console.error('Upload error:', error);

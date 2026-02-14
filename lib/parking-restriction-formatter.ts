@@ -222,7 +222,7 @@ export function formatTwoInchSnowBanRestriction(
 export function formatPermitZoneRestriction(
   status: PermitZoneStatus
 ): FormattedRestriction | null {
-  const { is_currently_restricted, severity, zone_name, restriction_schedule, hours_until_restriction } = status;
+  const { is_currently_restricted, severity, zone_name, hours_until_restriction } = status;
 
   if (severity === 'none') {
     return null;
@@ -241,21 +241,21 @@ export function formatPermitZoneRestriction(
   // Full message
   let message = '';
   if (is_currently_restricted) {
-    message = `You parked in ${zone_name}, which requires a permit during ${restriction_schedule}. You need a valid parking permit or your car may be ticketed.`;
+    message = `You parked in ${zone_name}. A permit may be required right now. Check posted signs.`;
   } else if (hours_until_restriction < 4) {
-    message = `You parked in ${zone_name}. Permit will be required starting in ${hours_until_restriction} hours (${restriction_schedule}).`;
+    message = `You parked in ${zone_name}. Permit enforcement may start soon. Check posted signs.`;
   } else {
-    message = `You parked in ${zone_name}. Parking permit required during ${restriction_schedule}.`;
+    message = `You parked in ${zone_name}. Permit may be required. Check posted signs.`;
   }
 
   // Short message
   let shortMessage = '';
   if (is_currently_restricted) {
-    shortMessage = `Permit required NOW - ${zone_name} (${restriction_schedule})`;
+    shortMessage = `Permit may be required now - ${zone_name}`;
   } else if (hours_until_restriction < 4) {
     shortMessage = `Permit required in ${hours_until_restriction}h - ${zone_name}`;
   } else {
-    shortMessage = `${zone_name} - Permit zone (${restriction_schedule})`;
+    shortMessage = `${zone_name} - Permit zone`;
   }
 
   return {

@@ -1,0 +1,205 @@
+================================================================================
+                    iOS DRIVING DETECTION - PROBLEM SUMMARY
+================================================================================
+
+ISSUE: User reports app doesn't detect driving after 10 minutes despite "Always"
+       location permission being set.
+
+================================================================================
+                            THE ARCHITECTURE
+================================================================================
+
+iOS has TWO parallel driving detection systems:
+
+1. PRIMARY: BackgroundLocationModule.swift (488 lines)
+   - Uses: CoreMotion (M-series chip) + GPS (CLLocationManager)
+   - Battery: Excellent (CoreMotion runs on dedicated coprocessor)
+   - Detection flow:
+     * Starts with low-power significantLocationChange monitoring
+     * Starts CoreMotion continuous activity monitoring
+     * When CoreMotion says "automotive" → turns on continuous GPS
+     * When CoreMotion says "stationary/walking" → triggers parking check
+     * Backup: GPS speed > 2.5 m/s can also trigger driving
+
+2. FALLBACK: MotionActivityModule.swift (144 lines)
+   - Uses: CoreMotion only (no GPS)
+   - Battery: Extremely efficient but less reliable
+   - Only used if BackgroundLocationModule unavailable
+
+================================================================================
+                         TOP 3 MOST LIKELY ISSUES
+================================================================================
+
+#1 (60% PROBABILITY): CoreMotion Confidence Too Low
+───────────────────────────────────────────────────
+PROBLEM: Line 204 in BackgroundLocationModule.swift:
+         if activity.automotive && activity.confidence != .low {
+
+This REJECTS automotive activity if confidence is "low". Some devices 
+always report low confidence for automotive, especially:
+- In some vehicles (SUVs, trucks don't vibrate like sedans)
+- During smooth driving (highway vs city)
+- In certain regions
+
+SYMPTOM: User drives → CoreMotion detects automotive (but with low confidence)
+         → Code ignores it → GPS never turns on → No driving detection
+
+FIX: Change line 204 to accept all confidence levels:
+     if activity.automotive {  // Accept any confidence
+
+────────────────────────────────────────────────────
+
+#2 (25% PROBABILITY): App Killed by iOS
+──────────────────────────────────────
+PROBLEM: iOS kills background apps after 10-30 minutes to save battery.
+         Even though Info.plist specifies "location" in UIBackgroundModes,
+         iOS still terminates the process.
+
+SYMPTOM: User sees "Autopilot is watching" → drives 10 minutes → app still
+         shows "ready" instead of "driving" (app was killed)
+
+VERIFICATION: Xcode Console or iOS Console.app logs show app termination
+
+────────────────────────────────────────────────────
+
+#3 (10% PROBABILITY): Permission Actually Not "Always"
+──────────────────────────────────────────────────────
+PROBLEM: LocationService.requestAuthorization('always') requests permission,
+         but the code resolves BEFORE user actually grants it:
+         
+         setTimeout(() => resolve(true), 500);  // ← Assumes granted!
+
+If user tapped "When In Use" instead of "Always", the app doesn't know.
+
+VERIFICATION: Settings → Autopilot → Location should show "Always"
+
+================================================================================
+                         CRITICAL CODE ISSUES
+================================================================================
+
+BUG #1: HomeScreen Polls Wrong Module (Lines 191-204 in HomeScreen.tsx)
+─────────────────────────────────────────────────────────────────────────
+CURRENT (WRONG):
+  const activity = await MotionActivityService.getCurrentActivity();
+  setCurrentActivity(activity.activity);
+
+PROBLEM: Polls MotionActivityModule (fallback) every 10 seconds, not the
+         primary BackgroundLocationModule that actually detects driving.
+
+FIX: Should poll BackgroundLocationService.getStatus() → isDriving flag
+
+────────────────────────────────────────────────────────────────────────
+
+BUG #2: No Permission Verification (Line 246 in HomeScreen.tsx)
+───────────────────────────────────────────────────────────────
+CURRENT:
+  const hasLocationPermission = await LocationService.requestLocationPermission(true);
+  if (!hasLocationPermission) return;  // ← Always true even if "When In Use"!
+
+FIX: Actually check permission status after requesting:
+  if (Platform.OS === 'ios') {
+    const actual = await BackgroundLocationService.getPermissionStatus();
+    if (actual !== 'always') {
+      Alert.alert('Permission Required', 
+        'Please set Location to "Always" in Settings');
+    }
+  }
+
+────────────────────────────────────────────────────────────────────────
+
+BUG #3: Missing Error Handling (Lines 173-229 in BackgroundTaskService.ts)
+──────────────────────────────────────────────────────────────────────────
+CURRENT:
+  if (BackgroundLocationService.isAvailable()) {
+    // ... start monitoring
+  } else {
+    // Silent fallback to motion-only
+  }
+
+  if Platform.OS !== 'ios':
+    // ... silently fails if BackgroundLocationModule isn't available
+
+PROBLEM: Errors are swallowed. User gets no feedback if system fails.
+
+FIX: Show user a diagnostic screen or error alert
+
+================================================================================
+                            DIAGNOSTIC STEPS
+================================================================================
+
+For User:
+─────────
+1. Check Settings → Autopilot → Location: must say "Always"
+2. Check Settings → Privacy → Motion & Fitness: must be "Enabled"
+3. Check Settings → Battery: turn OFF "Low Power Mode" (disables CoreMotion)
+4. Device must be iPhone 5s or later (needs M-series coprocessor)
+
+For Developer:
+──────────────
+1. Add logging to BackgroundLocationModule.swift line 200:
+   NSLog("CoreMotion: automotive=\(activity.automotive), 
+                    confidence=\(activity.confidence.rawValue)")
+
+2. Add logging to line 184 (startContinuousGps):
+   NSLog("GPS state: was=\(continuousGpsActive) → now=ON")
+
+3. Check XCode Console for "Location auth status: 3" (3=authorizedAlways)
+
+4. Use iOS Console.app to check for app termination logs
+
+5. Add UI diagnostic screen showing:
+   - Location permission status
+   - CoreMotion availability
+   - Current activity (automotive/stationary/unknown)
+   - GPS on/off status
+
+================================================================================
+                         RECOMMENDED FIX PRIORITY
+================================================================================
+
+IMMEDIATE (fixes most common issue):
+  1. Change line 204 in BackgroundLocationModule.swift to accept low confidence
+  2. Fix HomeScreen polling to use BackgroundLocationModule not MotionActivityModule
+  3. Add permission verification with user alert
+
+MEDIUM (robustness):
+  4. Add comprehensive logging
+  5. Improve error handling in BackgroundTaskService
+
+LOW (UX):
+  6. Add diagnostics UI for user troubleshooting
+
+================================================================================
+                           FILE LOCATIONS
+================================================================================
+
+iOS Native Code:
+  /TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.swift
+  /TicketlessChicagoMobile/ios/TicketlessChicagoMobile/MotionActivityModule.swift
+  /TicketlessChicagoMobile/ios/TicketlessChicagoMobile/AppDelegate.swift
+  /TicketlessChicagoMobile/ios/TicketlessChicagoMobile/Info.plist
+
+TypeScript Services:
+  /TicketlessChicagoMobile/src/services/BackgroundLocationService.ts
+  /TicketlessChicagoMobile/src/services/BackgroundTaskService.ts
+  /TicketlessChicagoMobile/src/services/MotionActivityService.ts
+  /TicketlessChicagoMobile/src/services/LocationService.ts
+
+UI:
+  /TicketlessChicagoMobile/src/screens/HomeScreen.tsx
+  /TicketlessChicagoMobile/App.tsx
+
+================================================================================
+                              DETAILED REPORT
+================================================================================
+
+See: iOS_DRIVING_DETECTION_ANALYSIS.md (522 lines)
+
+Contains:
+- Complete architecture breakdown
+- Line-by-line code flow analysis
+- All 7 root cause scenarios
+- Diagnostic checklist
+- Fix recommendations with code examples
+
+================================================================================

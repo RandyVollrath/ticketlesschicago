@@ -1,0 +1,9 @@
+File Path,Database,Table(s),Operation Type,Read/Write,Primary Function,Environment Variables Required
+lib/street-cleaning-schedule-matcher.ts,MSC,street_cleaning_schedule,SELECT + RPC (get_nearest_street_cleaning_zone),READ,"GPS coordinates → next cleaning date, ward, section. Used by mobile app.",MSC_SUPABASE_URL; MSC_SUPABASE_SERVICE_ROLE_KEY
+pages/api/validate-address.ts,MSC,street_cleaning_schedule,RPC (find_section_for_point) + SELECT,READ,"Address validation during signup. Converts coordinates to ward/section.",MSC_SUPABASE_URL; MSC_SUPABASE_ANON_KEY
+pages/api/get-street-cleaning-data.ts,MSC,street_cleaning_schedule,SELECT (paginated),READ,"Bulk fetch all zones with geometry for map visualization. Handles 1000+ rows.",MSC_SUPABASE_URL; MSC_SUPABASE_SERVICE_ROLE_KEY
+pages/api/find-section.ts,MSC,street_cleaning_schedule,RPC (find_section_for_point) + SELECT,READ,"Main endpoint: address → street cleaning schedule. Supports single date or date range.",MSC_SUPABASE_URL; MSC_SUPABASE_ANON_KEY
+pages/api/find-alternative-parking.ts,MSC,street_cleaning_schedule,SELECT (multiple queries),READ,"Safe parking finder. Scans all zones, filters conflicts, calculates haversine distance.",MSC_SUPABASE_URL; MSC_SUPABASE_SERVICE_ROLE_KEY
+pages/api/get-zone-geometry.ts,MSC,street_cleaning_schedule,SELECT,READ,"Zone GeoJSON features with block boundaries (north/south/east/west). Batch request support.",MSC_SUPABASE_URL; MSC_SUPABASE_SERVICE_ROLE_KEY
+pages/api/get-cleaning-schedule.ts,AA (Main DB),street_cleaning_schedule,SELECT,READ,"Simple schedule lookup by ward/section. Uses main AA database (NOT MSC).",NEXT_PUBLIC_SUPABASE_URL; SUPABASE_SERVICE_ROLE_KEY
+pages/api/street-cleaning/process.ts,AA (Main DB),"street_cleaning_schedule, user_notifications",SELECT + INSERT,READ+WRITE,"Cron job (7am, 3pm, 7pm). Sends SMS/email/voice notifications. Logs to user_notifications.",NEXT_PUBLIC_SUPABASE_URL; SUPABASE_SERVICE_ROLE_KEY

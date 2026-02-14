@@ -179,6 +179,9 @@ const MIN_SPEED_REDLIGHT_MPS = 1.0;
 const MIN_ANNOUNCE_INTERVAL_MS = 5000;
 const PASS_CAPTURE_DISTANCE_METERS = 35;
 const PASS_MOVED_AWAY_DELTA_METERS = 20;
+const REDLIGHT_PASS_CAPTURE_DISTANCE_METERS = 22;
+const REDLIGHT_PASS_MOVED_AWAY_DELTA_METERS = 28;
+const REDLIGHT_BEHIND_MIN_ANGLE_DEGREES = 100;
 const PASS_CONFIRM_WINDOW_MS = 3 * 60 * 1000;
 const PASS_DEDUPE_WINDOW_MS = 5 * 60 * 1000;
 const RED_LIGHT_TRACE_WINDOW_MS = 30 * 1000;
@@ -304,6 +307,8 @@ interface CameraPassTracking {
   alertTimestamp: number;
   lastDistanceMeters: number;
   hasBeenWithinPassDistance: boolean;
+  sawAheadHeading: boolean;
+  sawBehindHeading: boolean;
 }
 
 export interface CameraAlertStatus {
@@ -666,6 +671,23 @@ class CameraAlertServiceClass {
         // New camera in range - speak alert
         this.announceCamera(camera, distance, speed);
         this.alertedCameras.set(index, { index, alertedAt: now });
+        const bearingOffHeadingDegrees = this.getBearingOffHeadingDegrees(
+          latitude,
+          longitude,
+          camera.latitude,
+          camera.longitude,
+          heading
+        );
+        const isAheadNow =
+          bearingOffHeadingDegrees !== null &&
+          bearingOffHeadingDegrees <= MAX_BEARING_OFF_HEADING_DEGREES;
+        const isBehindNow =
+          bearingOffHeadingDegrees !== null &&
+          bearingOffHeadingDegrees >= REDLIGHT_BEHIND_MIN_ANGLE_DEGREES;
+        const passCaptureDistanceMeters =
+          camera.type === 'redlight'
+            ? REDLIGHT_PASS_CAPTURE_DISTANCE_METERS
+            : PASS_CAPTURE_DISTANCE_METERS;
         this.passTrackingByCamera.set(index, {
           minDistanceMeters: distance,
           minDistanceTimestamp: now,
@@ -676,7 +698,9 @@ class CameraAlertServiceClass {
           alertSpeedMps: speed,
           alertTimestamp: now,
           lastDistanceMeters: distance,
-          hasBeenWithinPassDistance: distance <= PASS_CAPTURE_DISTANCE_METERS,
+          hasBeenWithinPassDistance: distance <= passCaptureDistanceMeters,
+          sawAheadHeading: isAheadNow,
+          sawBehindHeading: isBehindNow,
         });
         this.lastAnnounceTime = now;
         break; // Only announce one per GPS update
@@ -710,6 +734,27 @@ class CameraAlertServiceClass {
       );
 
       const existing = this.passTrackingByCamera.get(index);
+      const passCaptureDistanceMeters =
+        camera.type === 'redlight'
+          ? REDLIGHT_PASS_CAPTURE_DISTANCE_METERS
+          : PASS_CAPTURE_DISTANCE_METERS;
+      const passMovedAwayDeltaMeters =
+        camera.type === 'redlight'
+          ? REDLIGHT_PASS_MOVED_AWAY_DELTA_METERS
+          : PASS_MOVED_AWAY_DELTA_METERS;
+      const bearingOffHeadingDegrees = this.getBearingOffHeadingDegrees(
+        latitude,
+        longitude,
+        camera.latitude,
+        camera.longitude,
+        heading
+      );
+      const isAheadNow =
+        bearingOffHeadingDegrees !== null &&
+        bearingOffHeadingDegrees <= MAX_BEARING_OFF_HEADING_DEGREES;
+      const isBehindNow =
+        bearingOffHeadingDegrees !== null &&
+        bearingOffHeadingDegrees >= REDLIGHT_BEHIND_MIN_ANGLE_DEGREES;
       const tracking: CameraPassTracking = existing || {
         minDistanceMeters: distance,
         minDistanceTimestamp: now,
@@ -720,7 +765,9 @@ class CameraAlertServiceClass {
         alertSpeedMps: speed,
         alertTimestamp: alerted.alertedAt,
         lastDistanceMeters: distance,
-        hasBeenWithinPassDistance: distance <= PASS_CAPTURE_DISTANCE_METERS,
+        hasBeenWithinPassDistance: distance <= passCaptureDistanceMeters,
+        sawAheadHeading: isAheadNow,
+        sawBehindHeading: isBehindNow,
       };
 
       if (distance < tracking.minDistanceMeters) {
@@ -732,14 +779,22 @@ class CameraAlertServiceClass {
         tracking.minHeading = heading;
       }
 
-      if (distance <= PASS_CAPTURE_DISTANCE_METERS) {
+      if (distance <= passCaptureDistanceMeters) {
         tracking.hasBeenWithinPassDistance = true;
       }
+      if (isAheadNow) tracking.sawAheadHeading = true;
+      if (isBehindNow) tracking.sawBehindHeading = true;
 
       const movedAwayEnough =
-        distance >= tracking.minDistanceMeters + PASS_MOVED_AWAY_DELTA_METERS;
+        distance >= tracking.minDistanceMeters + passMovedAwayDeltaMeters;
+      const hasDirectionalTransition =
+        camera.type !== 'redlight' ||
+        heading < 0 ||
+        (tracking.sawAheadHeading && tracking.sawBehindHeading);
       const isPassCandidate =
-        tracking.hasBeenWithinPassDistance && movedAwayEnough;
+        tracking.hasBeenWithinPassDistance &&
+        movedAwayEnough &&
+        hasDirectionalTransition;
 
       if (isPassCandidate) {
         const recentPassAt = this.recentPasses.get(index) || 0;
@@ -767,12 +822,21 @@ class CameraAlertServiceClass {
           log.info(
             `CAMERA PASS RECORDED: ${camera.type} @ ${camera.address} (distance=${Math.round(
               tracking.minDistanceMeters
-            )}m, speed=${speedMph ?? '?'} mph)`
+            )}m, speed=${speedMph ?? '?'} mph, directionalTransition=${hasDirectionalTransition})`
           );
         }
 
         this.passTrackingByCamera.delete(index);
       } else {
+        if (camera.type === 'redlight' && movedAwayEnough && !hasDirectionalTransition) {
+          log.info(
+            `RL PASS REJECTED (direction): ${camera.address} (min=${Math.round(
+              tracking.minDistanceMeters
+            )}m current=${Math.round(distance)}m bearingOffHeading=${Math.round(
+              bearingOffHeadingDegrees ?? -1
+            )}° sawAhead=${tracking.sawAheadHeading} sawBehind=${tracking.sawBehindHeading})`
+          );
+        }
         tracking.lastDistanceMeters = distance;
         this.passTrackingByCamera.set(index, tracking);
       }
@@ -1043,6 +1107,24 @@ class CameraAlertServiceClass {
     if (diff > 180) diff = 360 - diff;
 
     return diff <= MAX_BEARING_OFF_HEADING_DEGREES;
+  }
+
+  /**
+   * Returns absolute angle (degrees) between travel heading and camera bearing.
+   * 0° means camera is straight ahead, 180° means directly behind.
+   */
+  private getBearingOffHeadingDegrees(
+    userLat: number,
+    userLng: number,
+    camLat: number,
+    camLng: number,
+    heading: number
+  ): number | null {
+    if (heading < 0) return null;
+    const bearingToCamera = this.bearingTo(userLat, userLng, camLat, camLng);
+    let diff = Math.abs(heading - bearingToCamera);
+    if (diff > 180) diff = 360 - diff;
+    return diff;
   }
 
   // --------------------------------------------------------------------------

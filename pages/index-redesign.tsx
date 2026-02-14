@@ -143,7 +143,7 @@ export default function LandingPage() {
     },
     {
       q: "How does Autopilot work?",
-      a: "For $24/year, we monitor Chicago's database weekly for tickets on your plate. When found, we automatically generate and mail contest letters using our database of 1.2M contested tickets."
+      a: "For $49/year, we monitor Chicago's database twice a week for tickets on your plate. When found, we automatically generate and mail contest letters using our database of 1.2M contested tickets."
     },
     {
       q: "Is this legal?",
@@ -169,8 +169,8 @@ export default function LandingPage() {
       overflowX: 'hidden'
     }}>
       <Head>
-        <title>Autopilot America - Peace of Mind Parking</title>
-        <meta name="description" content="Free alerts for renewals and street cleaning. $24/year for automatic ticket contesting. Based on 1.2M Chicago ticket outcomes." />
+        <title>Autopilot America - Chicago Driver Protection System</title>
+        <meta name="description" content="Free alerts for renewals and street cleaning. $49/year for automatic ticket contesting. Based on 1.2M Chicago ticket outcomes." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -323,7 +323,7 @@ export default function LandingPage() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            Peace of Mind Parking.
+            Protection. Fight. System.
           </span>
         </h1>
 
@@ -336,7 +336,7 @@ export default function LandingPage() {
         }}>
           <strong style={{ color: COLORS.accent }}>Free:</strong> Alerts for city sticker, plates, emissions, street cleaning, snow bans.
           <br/>
-          <strong style={{ color: COLORS.accent }}>$24/year:</strong> We monitor, detect, and mail contest letters automatically.
+          <strong style={{ color: COLORS.accent }}>$49/year:</strong> We monitor, detect, and mail contest letters automatically.
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -344,7 +344,7 @@ export default function LandingPage() {
             Get Free Alerts <ArrowRight />
           </Button>
           <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff' }}>
-            Start Autopilot - $24/yr
+            Become a Founding Member - $49/yr
           </Button>
         </div>
 
@@ -465,7 +465,7 @@ export default function LandingPage() {
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>
-              $24/year
+              $49/year
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '28px', marginBottom: '12px', color: '#fff' }}>
               Autopilot
@@ -477,7 +477,7 @@ export default function LandingPage() {
             <div style={{ marginBottom: '32px' }}>
               {[
                 'All free tier features',
-                'Automatic ticket detection (weekly)',
+                'Automatic ticket detection (twice-weekly)',
                 'AI-generated contest letters',
                 'Automatic mailing with delivery tracking',
                 'Full dashboard access',
@@ -493,10 +493,10 @@ export default function LandingPage() {
             </div>
 
             <Button fullWidth href="/get-started" style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>
-              Start Autopilot - $24/yr
+              Become a Founding Member - $49/yr
             </Button>
             <p style={{ fontSize: '12px', color: '#64748B', marginTop: '12px', textAlign: 'center' }}>
-              Less than $2/month. Cancel anytime.
+              Founding Member rate. Keep membership active to keep your price.
             </p>
           </div>
         </div>
@@ -675,7 +675,7 @@ export default function LandingPage() {
               Get Free Alerts <ArrowRight />
             </Button>
             <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff', border: 'none' }}>
-              Start Autopilot - $24/yr
+              Become a Founding Member - $49/yr
             </Button>
           </div>
         </div>

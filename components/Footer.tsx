@@ -84,7 +84,7 @@ export default function Footer({ hideDonation = false }: FooterProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <a href="/alerts/signup" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Free Alerts</a>
               <a href="/protection" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Autopilot Protection</a>
-              <a href="/protection/guarantee" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Service Guarantee</a>
+              <a href="/guarantee" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Service Guarantee</a>
               <a href="/check-ticket" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Ticket Analyzer</a>
             </div>
           </div>

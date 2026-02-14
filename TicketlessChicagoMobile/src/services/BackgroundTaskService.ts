@@ -68,7 +68,7 @@ interface BackgroundTaskState {
   } | null;
 }
 
-const MAX_DEPARTURE_RETRIES = 3;
+const MAX_DEPARTURE_RETRIES = 5;
 const DEPARTURE_RETRY_DELAY_MS = 60 * 1000; // 1 minute between retries
 
 class BackgroundTaskServiceClass {
@@ -445,6 +445,15 @@ class BackgroundTaskServiceClass {
               // 300-500m off, creating false parking at wrong addresses.
               if (event.accuracy && event.accuracy > 150) {
                 log.warn(`Rejecting parking event: GPS accuracy ${event.accuracy.toFixed(0)}m too poor (>150m) — likely cell tower fix. Source: ${event.locationSource}`);
+                return;
+              }
+
+              // GUARD: reject synthetic short-drive recovery parking events.
+              // These events are emitted with drivingDurationSec=0 and are useful for
+              // recovery bookkeeping, but they can create false positives at long
+              // red lights/intersections when the user never actually parked.
+              if (event.locationSource === 'short_drive_recovery') {
+                log.warn('Rejecting parking event from short_drive_recovery source (synthetic recovery event)');
                 return;
               }
 
@@ -1241,6 +1250,8 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
   }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true): Promise<void> {
+    let resolvedCoords: { latitude: number; longitude: number; accuracy?: number } | null = null;
+
     // Guard against duplicate parking checks (e.g., from app state changes re-triggering).
     // ONLY throttle non-real events (periodic checks, retries). Real parking events
     // (BT disconnect, iOS CoreMotion detection) MUST always be processed — the user
@@ -1263,6 +1274,7 @@ class BackgroundTaskServiceClass {
       // captured at the moment the car stopped. Use those instead of getting a fresh fix.
       if (presetCoords?.latitude && presetCoords?.longitude) {
         coords = presetCoords;
+        resolvedCoords = coords;
         gpsSource = 'pre-captured (iOS)';
         log.info(`Using pre-captured parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
       } else {
@@ -1279,9 +1291,11 @@ class BackgroundTaskServiceClass {
             // Prioritize speed on Android for immediate user feedback.
             // Phase 2 burst refinement will correct any drift.
             coords = await LocationService.getCurrentLocation('balanced', false);
+            resolvedCoords = coords;
             gpsSource = `fast-single-android (${coords.accuracy?.toFixed(1)}m)`;
           } else {
             coords = await LocationService.getCurrentLocation('high', true);
+            resolvedCoords = coords;
             gpsSource = `fast-single (${coords.accuracy?.toFixed(1)}m)`;
           }
           log.info(`Fast GPS fix: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
@@ -1295,11 +1309,13 @@ class BackgroundTaskServiceClass {
             const cachedCoords = LocationService.getCachedLocation();
             if (cachedCoords) {
               coords = cachedCoords;
+              resolvedCoords = coords;
               gpsSource = `cache-fallback (${cachedCoords.accuracy?.toFixed(1) || '?'}m)`;
             } else {
               const staleCoords = LocationService.getLastKnownLocation();
               if (staleCoords) {
                 coords = staleCoords;
+                resolvedCoords = coords;
                 gpsSource = `stale-cache (${staleCoords.accuracy?.toFixed(1) || '?'}m)`;
               } else if (Platform.OS === 'ios') {
                 const lastDriving = await BackgroundLocationService.getLastDrivingLocation();
@@ -1309,6 +1325,7 @@ class BackgroundTaskServiceClass {
                     longitude: lastDriving.longitude,
                     accuracy: lastDriving.accuracy,
                   };
+                  resolvedCoords = coords;
                   gpsSource = 'last-driving-fallback';
                 } else {
                   log.error('ALL GPS methods failed');
@@ -1445,6 +1462,29 @@ class BackgroundTaskServiceClass {
       });
     } catch (error) {
       log.error('=== PARKING CHECK FAILED ===', error);
+
+      // Reliability fallback: if we have a resolved location but parking API failed,
+      // still persist a minimal parking history record so users see their latest spot.
+      if (persistParkingEvent && isRealParkingEvent && resolvedCoords) {
+        try {
+          await ParkingHistoryService.addToHistory(
+            resolvedCoords,
+            [],
+            `${resolvedCoords.latitude.toFixed(6)}, ${resolvedCoords.longitude.toFixed(6)}`,
+            nativeTimestamp
+          );
+          AppEvents.emit('parking-history-updated');
+          await this.saveParkedCoords(
+            resolvedCoords,
+            `${resolvedCoords.latitude.toFixed(6)}, ${resolvedCoords.longitude.toFixed(6)}`,
+            undefined
+          );
+          log.warn('Saved fallback parking history entry after API failure');
+        } catch (fallbackError) {
+          log.warn('Failed to save fallback parking history entry', fallbackError);
+        }
+      }
+
       // Only show "Parking Check Failed" notification if ALL of these are true:
       // 1. This was a real parking event (BT disconnect or iOS detection), not a periodic check
       // 2. We haven't successfully checked recently (avoids duplicate error after success)
@@ -2508,6 +2548,16 @@ class BackgroundTaskServiceClass {
       log.info(`Native driving-start timestamp: ${new Date(nativeDrivingTimestamp).toISOString()} (${Math.round(delayMs / 1000)}s ago)`);
     }
 
+    // If we already have a pending departure captured very recently, avoid
+    // re-initializing it from duplicate reconnect signals.
+    if (this.state.pendingDepartureConfirmation) {
+      const existingAgeMs = Date.now() - this.state.pendingDepartureConfirmation.scheduledAt;
+      if (existingAgeMs < 5 * 60 * 1000) {
+        log.info(`Skipping duplicate reconnection handling: departure confirmation already pending (${Math.round(existingAgeMs / 1000)}s old)`);
+        return;
+      }
+    }
+
     this.state.lastCarConnectionStatus = true;
     this.state.lastDisconnectTime = null;
     await this.saveState();
@@ -2559,6 +2609,7 @@ class BackgroundTaskServiceClass {
           retryCount: 0,
           scheduledAt: Date.now(),
           departedAt: departureTime, // When driving actually started (native timestamp)
+          localHistoryItemId: await this.findBestLocalHistoryItemId(departureTime),
         };
         await this.saveState();
         this.scheduleDepartureConfirmation();
@@ -2703,16 +2754,12 @@ class BackgroundTaskServiceClass {
         },
       };
 
-      const targetItemId = pending.localHistoryItemId;
+      const targetItemId = pending.localHistoryItemId || await this.findBestLocalHistoryItemId(pending.departedAt || Date.now());
       if (targetItemId) {
         await ParkingHistoryService.updateItem(targetItemId, departureData);
         log.info('Previous departure finalized (local mode)', targetItemId);
       } else {
-        const recentItem = await ParkingHistoryService.getMostRecent();
-        if (recentItem) {
-          await ParkingHistoryService.updateItem(recentItem.id, departureData);
-          log.info('Previous departure finalized (server mode)', recentItem.id);
-        }
+        log.warn('Could not find matching local history row to finalize previous departure');
       }
     } catch (error) {
       log.warn('Failed to finalize previous departure (non-critical)', error);
@@ -2814,16 +2861,12 @@ class BackgroundTaskServiceClass {
           },
         };
 
-        const targetItemId = pending.localHistoryItemId;
+        const targetItemId = pending.localHistoryItemId || await this.findBestLocalHistoryItemId(departureTime);
         if (targetItemId) {
           await ParkingHistoryService.updateItem(targetItemId, clearanceData);
           log.info('Clearance record saved (local mode)', targetItemId);
         } else {
-          const recentItem = await ParkingHistoryService.getMostRecent();
-          if (recentItem) {
-            await ParkingHistoryService.updateItem(recentItem.id, clearanceData);
-            log.info('Clearance record saved (server mode)', recentItem.id);
-          }
+          log.warn('Could not find matching local history row for clearance record');
         }
       } catch (historyError) {
         log.warn('Failed to save clearance record (non-critical)', historyError);
@@ -2902,6 +2945,30 @@ class BackgroundTaskServiceClass {
     } catch (error) {
       log.error('Manual departure confirmation failed', error);
       return { success: false };
+    }
+  }
+
+  /**
+   * Find the best local parking history row to attach a departure record to.
+   * Picks the nearest item by timestamp that doesn't already have departure data.
+   */
+  private async findBestLocalHistoryItemId(referenceTimestamp: number): Promise<string | undefined> {
+    try {
+      const history = await ParkingHistoryService.getHistory();
+      if (!history || history.length === 0) return undefined;
+
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const candidates = history
+        .filter(item => !item.departure)
+        .map(item => ({ id: item.id, diffMs: Math.abs(item.timestamp - referenceTimestamp) }))
+        .sort((a, b) => a.diffMs - b.diffMs);
+
+      if (candidates.length === 0) return undefined;
+      if (candidates[0].diffMs > DAY_MS) return undefined;
+      return candidates[0].id;
+    } catch (error) {
+      log.warn('findBestLocalHistoryItemId failed', error);
+      return undefined;
     }
   }
 

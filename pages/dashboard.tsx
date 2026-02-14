@@ -379,10 +379,10 @@ export default function DashboardPage() {
                 color: COLORS.primary,
                 marginBottom: 8,
               }}>
-                $24<span style={{ fontSize: 20, color: COLORS.textMuted }}>/year</span>
+                $49<span style={{ fontSize: 20, color: COLORS.textMuted }}>/year</span>
               </div>
               <p style={{ fontSize: 14, color: COLORS.textMuted, margin: 0 }}>
-                Less than $2/month to protect yourself from $1,000+ in fees.
+                Founding Member rate with unlimited automated contesting for eligible tickets.
               </p>
             </div>
 
@@ -684,7 +684,7 @@ export default function DashboardPage() {
               }}>
                 <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Plan</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
-                  $24/year
+                  $49/year
                 </div>
               </div>
               <div style={{

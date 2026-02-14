@@ -177,7 +177,7 @@ export default function PrivacyPolicy() {
             </h2>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Provide services:</strong> Send street cleaning alerts, renewal reminders, and manage reimbursements
+                <strong>Provide services:</strong> Send street cleaning alerts, renewal reminders, and manage guarantee claims
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Send renewal reminders:</strong> Monitor your renewal deadlines and send you timely alerts (Ticket Protection subscribers only)
@@ -295,7 +295,7 @@ export default function PrivacyPolicy() {
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Canceled subscriptions:</strong> We retain data for 12 months after cancellation
-                for reimbursement processing and legal compliance
+                for guarantee claim processing and legal compliance
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Deleted accounts:</strong> You can request full account deletion at any time.

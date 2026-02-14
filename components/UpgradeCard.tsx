@@ -79,7 +79,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               margin: '0 0 20px 0',
               lineHeight: '1.6'
             }}>
-              We handle your sticker renewals automatically. You're covered for up to $200/year in ticket reimbursement.
+              Founding Member plan is active at $49/year with the First Dismissal Guarantee.
             </p>
 
             <div style={{
@@ -89,9 +89,9 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               marginBottom: '20px'
             }}>
               {[
-                'Auto-renewal for city sticker & plates',
-                '$200/year ticket reimbursement',
-                'Concierge support'
+                'Unlimited automated contesting',
+                'First Dismissal Guarantee',
+                'Priority support'
               ].map((item, i) => (
                 <div key={i} style={{
                   display: 'flex',
@@ -135,7 +135,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
                 Submit a Ticket
               </button>
               <button
-                onClick={() => router.push('/protection/guarantee')}
+                onClick={() => router.push('/guarantee')}
                 style={{
                   backgroundColor: 'transparent',
                   color: COLORS.slate,
@@ -231,7 +231,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             margin: '0 0 24px 0',
             lineHeight: '1.6'
           }}>
-            We handle your city sticker and plate renewals automatically, plus reimburse up to $200/year in covered tickets.
+            Chicago Driver Protection Plan with unlimited automated contesting for eligible tickets.
           </p>
 
           <div style={{
@@ -241,9 +241,9 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             marginBottom: '24px'
           }}>
             {[
-              'Auto-renewal — we buy stickers for you',
-              '$200/year ticket reimbursement',
-              'Concierge support'
+              'Founding Member rate: $49/year',
+              'First Dismissal Guarantee',
+              'We handle paperwork and mailing'
             ].map((item, i) => (
               <div key={i} style={{
                 display: 'flex',
@@ -310,13 +310,13 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             marginBottom: '4px',
             fontFamily: '"Space Grotesk", sans-serif'
           }}>
-            $8
+            $49
           </div>
           <div style={{
             fontSize: '13px',
             color: 'rgba(255,255,255,0.6)'
           }}>
-            per month
+            per year
           </div>
         </div>
       </div>

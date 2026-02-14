@@ -6,10 +6,13 @@
 - **Backend**: Supabase (auth, database, RLS policies)
 - **Domain**: autopilotamerica.com
 
-## Deployment Workflow — DO THIS AFTER EVERY FEATURE / BUG FIX
-After completing any feature or fix, always deploy everything:
+## Deployment Workflow — DO THIS AFTER EVERY CHANGE
+After completing any code/content/config change (feature, bug fix, copy update, styling tweak, migration wiring), always deploy everything:
 
 1. **Web app**: Run `npx vercel --prod --yes` from the repo root to deploy to Vercel.
+   - This is mandatory on every completed task in this repo.
+   - Do not stop at "changes made locally."
+   - Report the production deployment URL after each deploy.
 2. **Android APK**: Run `./gradlew assembleRelease` in `TicketlessChicagoMobile/android/`.
 3. **Install on connected devices**: Check via `adb devices`. Install on any connected device:
    ```
@@ -29,6 +32,8 @@ After completing any feature or fix, always deploy everything:
    - **IMPORTANT**: The version must be bumped (new versionCode) or Firebase will reject/deduplicate the upload
 5. **iOS**: user builds locally on Mac by pulling from git and building in Xcode.
 6. **Always push to GitHub after making changes** — the user expects all work deployed to production.
+7. **Completion rule**: A task is not complete until deployment has finished and deployment status/URL is reported.
+8. **No local leftovers**: Never leave a dirty working tree at handoff. Commit, push, and deploy in the same working session for every completed change.
 
 ## Version Bumping
 **Only bump versions for actual releases** (new features, app store submissions, or when Firebase App Distribution needs a distinct build). Do NOT bump for every bug fix or deploy — rebuilding and reinstalling the same version is fine.
@@ -292,6 +297,18 @@ The portal scraper (`lib/chicago-portal-scraper.ts`) looks up parking tickets on
 - Runs Mon/Thu via systemd user timers
 - Script: `scripts/autopilot-check-portal.ts`
 - Fetches monitored plates from Supabase, looks them up, creates contest letters, emails evidence requests
+
+## `is_paid` Field — NEVER Default to True
+
+The `user_profiles.is_paid` column tracks whether a user has an active paid subscription. Its DB column default is `false`.
+
+### Rules
+1. **NEVER set `is_paid: true` in any signup or profile creation flow.** Users start as free. The only code path that should set `is_paid: true` is the Stripe webhook's `checkout.session.completed` handler — i.e., when someone actually pays.
+2. **Free alert signups are NOT paid users.** The alerts/create.ts endpoint creates free accounts. Do not mark them as paid.
+3. **No triggers or defaults should set `is_paid` to true.** If you're writing a migration or trigger that touches `user_profiles`, ensure `is_paid` defaults to `false`.
+
+### History
+A bug in `pages/api/alerts/create.ts` (fixed Feb 2026) was setting `is_paid: true` for every free signup with the comment "Free users are considered 'paid' for alerts." This incorrectly marked ~20 users as paid when only 9 actually were. The bug was a single line — there's nothing ambiguous about it: free users are free.
 
 ## Supabase Details
 - Project ref: `dzhqolbhuqdcpngdayuq`

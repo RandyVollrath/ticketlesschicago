@@ -295,8 +295,8 @@ export default async function handler(
 
             if (!isOwnZone) {
               const result = await sendPushNotification(vehicle.fcm_token, {
-                title: `Permit Zone — Move by ${enforcement.enforcementTimeStr}`,
-                body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Enforcement starts at ${enforcement.enforcementTimeStr}. Move now or risk a $65 ticket.`,
+                title: 'Permit Zone Alert',
+                body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit rules may be active. Check posted signs to avoid a ticket.`,
                 data: {
                   type: 'permit_reminder',
                   lat: vehicle.latitude?.toString(),
@@ -308,7 +308,7 @@ export default async function handler(
                   .update({ permit_zone_notified_at: new Date().toISOString() })
                   .eq('id', vehicle.id);
                 results.permitZoneReminders++;
-                console.log(`Sent permit zone reminder to ${vehicle.user_id} — enforcement at ${enforcement.enforcementTimeStr}`);
+                console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
               } else if (result.invalidToken) {
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })
@@ -353,4 +353,3 @@ export default async function handler(
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
-

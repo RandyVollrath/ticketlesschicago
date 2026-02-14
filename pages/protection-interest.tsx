@@ -221,10 +221,10 @@ export default function ProtectionInterest() {
                   />
                   <div>
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
-                      80% Ticket Reimbursement (up to $200/year)
+                      First Dismissal Guarantee
                     </div>
                     <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      Get reimbursed for street cleaning, renewal, and snow tickets despite our alerts
+                      If we do not dismiss at least one eligible non-camera ticket during your membership year, you can request a full membership refund
                     </div>
                   </div>
                 </label>

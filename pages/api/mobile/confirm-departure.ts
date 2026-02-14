@@ -89,20 +89,40 @@ export default async function handler(
         .select('id, latitude, longitude, parked_at, cleared_at, departure_confirmed_at')
         .eq('id', input.parking_history_id)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        return res.status(404).json({ error: 'Parking history record not found' });
+      if (error) {
+        return res.status(500).json({ error: 'Failed to load parking history record' });
       }
 
-      if (data.departure_confirmed_at) {
+      if (data?.departure_confirmed_at) {
         return res.status(409).json({
           error: 'Departure already confirmed for this record',
           departure_confirmed_at: data.departure_confirmed_at
         });
       }
 
-      historyRecord = data;
+      historyRecord = data || null;
+
+      // If provided ID no longer matches (or was never persisted), gracefully
+      // fall back to the latest row that still needs departure confirmation.
+      if (!historyRecord) {
+        const { data: fallbackByNeedsDeparture, error: fallbackError } = await supabaseAdmin
+          .from('parking_location_history')
+          .select('id, latitude, longitude, parked_at, cleared_at, departure_confirmed_at')
+          .eq('user_id', user.id)
+          .not('cleared_at', 'is', null)
+          .is('departure_confirmed_at', null)
+          .order('cleared_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (fallbackError) {
+          return res.status(500).json({ error: 'Failed to find fallback parking record' });
+        }
+
+        historyRecord = fallbackByNeedsDeparture || null;
+      }
     } else {
       // Find most recent record that has cleared_at but no departure confirmation
       const { data, error } = await supabaseAdmin
@@ -144,6 +164,12 @@ export default async function handler(
       }
 
       historyRecord = data;
+    }
+
+    if (!historyRecord) {
+      return res.status(404).json({
+        error: 'No parking record found that needs departure confirmation'
+      });
     }
 
     // Calculate distance from parked location to current location
