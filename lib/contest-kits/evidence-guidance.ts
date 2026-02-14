@@ -756,6 +756,99 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     weatherQuestion: 'Was the heavy snowfall itself making it impossible/dangerous to move your vehicle?',
   },
 
+  parking_prohibited: {
+    violationType: 'parking_prohibited',
+    emailSubject: 'Parking Prohibited Ticket ($75) - 52% Win Rate - Signage & Circumstances Matter!',
+    title: 'Parking Prohibited Ticket - Signage Is Your Best Defense!',
+    winRate: 0.52,
+    intro: `"Parking/Standing Prohibited" tickets have a solid 52% success rate when contested with the right evidence. These tickets are often issued in areas with confusing or missing signage, temporary restrictions, or where you had a legitimate reason to stop. The key is documenting the signs (or lack thereof) and your circumstances.`,
+    questions: [
+      {
+        text: 'Was there a clearly visible "No Parking" or "No Standing" sign where you parked? Can you go back and photograph the signage (or lack of it)?',
+        whyItMatters: 'Missing, obscured, or confusing signage is the #1 winning defense. If you can show the sign was hidden, damaged, or not there, your odds are excellent.',
+        impactScore: 0.45,
+        goodExample: '"There was no No Parking sign visible from where I parked. The nearest sign was around the corner, not visible from my spot." (Photo attached)',
+      },
+      {
+        text: 'Was this a temporary restriction (construction, event, film shoot, etc.)? Were temporary "No Parking" signs posted, and if so, when were they put up?',
+        whyItMatters: 'Temporary signs must be posted at least 24 hours in advance. If they were posted too late or were not clearly visible, that\'s a strong defense.',
+        impactScore: 0.40,
+        goodExample: '"There was construction nearby but I didn\'t see any temporary No Parking signs. They may have been put up after I parked."',
+      },
+      {
+        text: 'Were you actively loading/unloading passengers or goods, or dealing with a vehicle emergency (flat tire, breakdown)?',
+        whyItMatters: 'Brief stops for loading/unloading or emergencies are recognized exceptions to parking prohibitions.',
+        impactScore: 0.35,
+        goodExample: '"I was dropping off my elderly mother and helping her carry bags inside - I was stopped for about 5 minutes."',
+      },
+      {
+        text: 'Were there multiple or contradictory signs in the area? For example, one sign saying parking is OK and another saying it\'s prohibited?',
+        whyItMatters: 'Contradictory signage creates ambiguity that hearing officers frequently rule in favor of the driver.',
+        impactScore: 0.30,
+        goodExample: '"There was a parking meter on the block (suggesting parking is allowed) but also a No Parking sign further down. Very confusing."',
+      },
+      {
+        text: 'What were the posted hours on the restriction sign? Were you parked outside those hours?',
+        whyItMatters: 'Many parking prohibitions only apply during certain hours (e.g., rush hour, overnight). If you were parked outside those hours, the ticket is invalid.',
+        impactScore: 0.35,
+        goodExample: '"The sign says No Parking 7-9 AM, but my ticket was issued at 10:15 AM."',
+      },
+    ],
+    quickTips: [
+      'Photograph the exact spot where you parked and all nearby signs TODAY',
+      'If there\'s no sign visible from your parking spot, that\'s a strong defense',
+      'Temporary "No Parking" signs (for construction, etc.) must be posted 24 hours in advance',
+      'Check Google Street View for historical images of the signage',
+      'If there were parking meters on the block, note that — meters imply parking is permitted',
+      'Loading/unloading passengers (even briefly) is a valid exception',
+    ],
+    pitfalls: [
+      'Don\'t say you saw the sign but parked anyway',
+      'Don\'t claim loading/unloading if you were parked for a long time',
+      '"I was only there for a few minutes" isn\'t a defense by itself — focus on signage or loading',
+    ],
+    weatherRelevant: true,
+    weatherQuestion: 'Was weather a factor? For example, were you unable to find alternative parking due to snow-covered spots, or did bad weather prevent you from returning to your car quickly?',
+  },
+
+  bus_lane: {
+    violationType: 'bus_lane',
+    emailSubject: 'Bus Lane Ticket - Were You Loading Passengers?',
+    title: 'Bus Lane Ticket - Loading Defense Available!',
+    winRate: 0.22,
+    intro: `Bus lane tickets have a lower success rate (22%), but if you were loading/unloading passengers or the lane markings were unclear, there are valid defenses. The fine makes it worth trying.`,
+    questions: [
+      {
+        text: 'Were you briefly stopped to load or unload passengers? Describe exactly what happened.',
+        whyItMatters: 'Per Chicago Municipal Code 9-103-020(a), stopping to expeditiously load or unload passengers without interfering with any bus is a recognized defense.',
+        impactScore: 0.40,
+        goodExample: '"I was picking up my partner from the curb. I stopped for about 30 seconds with hazards on."',
+      },
+      {
+        text: 'Were the bus lane signs and red pavement markings clearly visible? Were they faded, covered, or hard to see?',
+        whyItMatters: 'Unclear markings = valid defense. Faded red paint or obscured signs are common in Chicago.',
+        impactScore: 0.35,
+        goodExample: '"The red lane markings were very faded and barely visible."',
+      },
+      {
+        text: 'Was this an automated camera ticket (Smart Streets)? Did you receive photos/video with the ticket?',
+        whyItMatters: 'Automated camera systems can produce errors. You can request calibration records.',
+        impactScore: 0.25,
+      },
+    ],
+    quickTips: [
+      'Loading/unloading passengers is the strongest defense',
+      'Photograph the bus lane markings — faded paint is common',
+      'Camera enforcement systems have had accuracy issues in other cities',
+    ],
+    pitfalls: [
+      'Don\'t claim you were loading if you were parked and left the vehicle',
+      'Running into a store is NOT loading/unloading passengers',
+    ],
+    weatherRelevant: true,
+    weatherQuestion: 'Did snow, rain, or debris cover the red bus lane markings, making them invisible?',
+  },
+
   other_unknown: {
     violationType: 'other_unknown',
     emailSubject: 'Parking Ticket Detected - We Need More Information',
@@ -826,22 +919,10 @@ export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): strin
     `;
   });
 
-  // Weather question if applicable
-  if (guidance.weatherRelevant && guidance.weatherQuestion) {
-    html += `
-      <div style="margin-bottom: 24px; padding: 16px; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0;">
-        <p style="margin: 0 0 8px; font-weight: 600; color: #1e40af; font-size: 15px;">
-          Weather Question:
-        </p>
-        <p style="margin: 0; color: #1e3a8a; font-size: 14px;">
-          ${guidance.weatherQuestion}
-        </p>
-        <p style="margin: 8px 0 0; color: #1e3a8a; font-size: 12px; font-style: italic;">
-          (We automatically check weather data, but your memory helps too!)
-        </p>
-      </div>
-    `;
-  }
+  // NOTE: Weather section is now handled by the caller (autopilot-check-portal.ts)
+  // with ACTUAL weather data from Open-Meteo API, not a generic question.
+  // The old "We automatically check weather data" text was misleading.
+  // Callers that don't fetch weather data can still use guidance.weatherQuestion as fallback.
 
   return html;
 }
