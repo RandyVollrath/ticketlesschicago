@@ -31,6 +31,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { lookupMultiplePlates, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../lib/contest-kits/evidence-guidance';
+import { getStreetViewEvidence, StreetViewResult } from '../lib/street-view-service';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -184,6 +185,442 @@ async function fetchChicagoWeather(dateStr: string): Promise<{
     console.log(`      Weather lookup failed: ${err.message}`);
     return null;
   }
+}
+
+/**
+ * Automated evidence bundle — everything we check for the customer
+ */
+interface AutomatedEvidence {
+  // Weather (already existed)
+  weather: {
+    checked: boolean;
+    data: Awaited<ReturnType<typeof fetchChicagoWeather>> | null;
+  };
+  // FOIA win rate data from real hearings
+  foiaWinRate: {
+    checked: boolean;
+    totalContested: number | null;
+    notLiablePercent: number | null;
+    liablePercent: number | null;
+    violationDescription: string | null;
+  };
+  // Parking history GPS match (did our app record them parking near this location?)
+  parkingHistory: {
+    checked: boolean;
+    matchFound: boolean;
+    address: string | null;
+    parkedAt: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    onSnowRoute: boolean | null;
+    permitZone: string | null;
+  };
+  // Street View imagery
+  streetView: {
+    checked: boolean;
+    hasImagery: boolean;
+    imageDate: string | null;
+    imageUrl: string | null;
+    signageObservation: string | null;
+  };
+  // Street cleaning schedule verification (for street_cleaning tickets)
+  streetCleaning: {
+    checked: boolean;
+    relevant: boolean;
+    ward: string | null;
+    section: string | null;
+    message: string | null;
+  };
+  // User alert subscriptions
+  alertSubscriptions: {
+    checked: boolean;
+    hasAlerts: boolean;
+    alertTypes: string[];
+  };
+}
+
+/**
+ * Gather ALL automated evidence for a ticket.
+ * This is the "value we provide" — runs every check we can.
+ */
+async function gatherAutomatedEvidence(
+  userId: string,
+  violationType: string,
+  violationDate: string | null,
+  plate: string,
+): Promise<AutomatedEvidence> {
+  const evidence: AutomatedEvidence = {
+    weather: { checked: false, data: null },
+    foiaWinRate: { checked: false, totalContested: null, notLiablePercent: null, liablePercent: null, violationDescription: null },
+    parkingHistory: { checked: false, matchFound: false, address: null, parkedAt: null, latitude: null, longitude: null, onSnowRoute: null, permitZone: null },
+    streetView: { checked: false, hasImagery: false, imageDate: null, imageUrl: null, signageObservation: null },
+    streetCleaning: { checked: false, relevant: false, ward: null, section: null, message: null },
+    alertSubscriptions: { checked: false, hasAlerts: false, alertTypes: [] },
+  };
+
+  // 1. Weather data
+  if (violationDate) {
+    console.log('      [Evidence] Fetching weather data...');
+    evidence.weather.checked = true;
+    evidence.weather.data = await fetchChicagoWeather(violationDate);
+    if (evidence.weather.data) {
+      console.log(`      [Evidence] Weather: ${evidence.weather.data.summary}${evidence.weather.data.isRelevantForDefense ? ' (DEFENSE RELEVANT!)' : ''}`);
+    }
+  }
+
+  // 2. FOIA win rate lookup
+  console.log('      [Evidence] Looking up FOIA win rate data...');
+  evidence.foiaWinRate.checked = true;
+  try {
+    // Map our violation type to FOIA violation description patterns
+    const foiaSearchTerms: Record<string, string> = {
+      expired_meter: 'EXP. METER',
+      parking_prohibited: 'PARKING/STANDING PROHIBITED',
+      street_cleaning: 'STREET CLEANING',
+      expired_plates: 'EXPIRED PLATES',
+      no_city_sticker: 'CITY STICKER',
+      fire_hydrant: 'FIRE HYDRANT',
+      residential_permit: 'RESIDENTIAL PERMIT',
+      snow_route: 'SNOW ROUTE',
+      double_parking: 'DOUBLE PARK',
+      bus_lane: 'BUS LANE',
+      missing_plate: 'PLATE',
+      bike_lane: 'BIKE LANE',
+      bus_stop: 'BUS STOP',
+    };
+
+    const searchTerm = foiaSearchTerms[violationType];
+    if (searchTerm) {
+      const { data: foiaData } = await supabaseAdmin
+        .from('contested_tickets_foia')
+        .select('disposition')
+        .ilike('violation_description', `%${searchTerm}%`);
+
+      if (foiaData && foiaData.length > 0) {
+        const total = foiaData.length;
+        const notLiable = foiaData.filter((r: any) => r.disposition === 'Not Liable').length;
+        const liable = foiaData.filter((r: any) => r.disposition === 'Liable').length;
+
+        evidence.foiaWinRate.totalContested = total;
+        evidence.foiaWinRate.notLiablePercent = Math.round((notLiable / total) * 1000) / 10;
+        evidence.foiaWinRate.liablePercent = Math.round((liable / total) * 1000) / 10;
+        evidence.foiaWinRate.violationDescription = searchTerm;
+        console.log(`      [Evidence] FOIA: ${evidence.foiaWinRate.notLiablePercent}% Not Liable out of ${total.toLocaleString()} contested (${searchTerm})`);
+      }
+    }
+  } catch (err: any) {
+    console.log(`      [Evidence] FOIA lookup failed: ${err.message}`);
+  }
+
+  // 3. Parking history GPS match
+  if (violationDate) {
+    console.log('      [Evidence] Checking parking history for GPS match...');
+    evidence.parkingHistory.checked = true;
+    try {
+      // Look for parking records within +/- 1 day of the violation
+      const violDate = new Date(violationDate);
+      const dayBefore = new Date(violDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const dayAfter = new Date(violDate.getTime() + 48 * 60 * 60 * 1000).toISOString();
+
+      const { data: parkingRecords } = await supabaseAdmin
+        .from('parking_location_history')
+        .select('address, parked_at, latitude, longitude, on_snow_route, permit_zone')
+        .eq('user_id', userId)
+        .gte('parked_at', dayBefore)
+        .lte('parked_at', dayAfter)
+        .order('parked_at', { ascending: false })
+        .limit(1);
+
+      if (parkingRecords && parkingRecords.length > 0) {
+        const record = parkingRecords[0];
+        evidence.parkingHistory.matchFound = true;
+        evidence.parkingHistory.address = record.address;
+        evidence.parkingHistory.parkedAt = record.parked_at;
+        evidence.parkingHistory.latitude = record.latitude;
+        evidence.parkingHistory.longitude = record.longitude;
+        evidence.parkingHistory.onSnowRoute = record.on_snow_route;
+        evidence.parkingHistory.permitZone = record.permit_zone;
+        console.log(`      [Evidence] Parking match: ${record.address} at ${record.parked_at}`);
+      } else {
+        console.log('      [Evidence] No parking history match found');
+      }
+    } catch (err: any) {
+      console.log(`      [Evidence] Parking history lookup failed: ${err.message}`);
+    }
+  }
+
+  // 4. Street View imagery
+  // Use parking history GPS if available, otherwise skip (portal doesn't give us location)
+  if (evidence.parkingHistory.matchFound && evidence.parkingHistory.latitude && evidence.parkingHistory.longitude) {
+    console.log('      [Evidence] Fetching Street View imagery...');
+    evidence.streetView.checked = true;
+    try {
+      const svResult = await getStreetViewEvidence(
+        { latitude: evidence.parkingHistory.latitude, longitude: evidence.parkingHistory.longitude },
+        violationDate
+      );
+      evidence.streetView.hasImagery = svResult.hasImagery;
+      evidence.streetView.imageDate = svResult.imageDate;
+      evidence.streetView.imageUrl = svResult.imageUrl;
+      evidence.streetView.signageObservation = svResult.signageObservation;
+      if (svResult.hasImagery) {
+        console.log(`      [Evidence] Street View: Imagery from ${svResult.imageDate} available`);
+      } else {
+        console.log('      [Evidence] Street View: No imagery available at this location');
+      }
+    } catch (err: any) {
+      console.log(`      [Evidence] Street View lookup failed: ${err.message}`);
+    }
+  } else if (evidence.parkingHistory.matchFound && evidence.parkingHistory.address) {
+    // Fallback: use address string
+    console.log('      [Evidence] Fetching Street View by address...');
+    evidence.streetView.checked = true;
+    try {
+      const svResult = await getStreetViewEvidence(evidence.parkingHistory.address, violationDate);
+      evidence.streetView.hasImagery = svResult.hasImagery;
+      evidence.streetView.imageDate = svResult.imageDate;
+      evidence.streetView.imageUrl = svResult.imageUrl;
+      evidence.streetView.signageObservation = svResult.signageObservation;
+      if (svResult.hasImagery) {
+        console.log(`      [Evidence] Street View: Imagery from ${svResult.imageDate} available`);
+      }
+    } catch (err: any) {
+      console.log(`      [Evidence] Street View lookup failed: ${err.message}`);
+    }
+  }
+
+  // 5. Street cleaning verification (only for street_cleaning violations)
+  if (violationType === 'street_cleaning' && evidence.parkingHistory.latitude && evidence.parkingHistory.longitude) {
+    console.log('      [Evidence] Checking street cleaning schedule...');
+    evidence.streetCleaning.checked = true;
+    evidence.streetCleaning.relevant = true;
+    // Note: We don't import matchStreetCleaningSchedule directly because it uses a separate
+    // MSC Supabase connection. We can check if the zone exists via our own DB.
+    try {
+      // Use our Supabase to check if there are any street cleaning records near this location
+      const { data: cleaningData } = await supabaseAdmin.rpc(
+        'get_nearest_street_cleaning_zone',
+        {
+          user_lat: evidence.parkingHistory.latitude,
+          user_lng: evidence.parkingHistory.longitude,
+          max_distance_meters: 50,
+        }
+      );
+
+      if (cleaningData && cleaningData.length > 0) {
+        evidence.streetCleaning.ward = cleaningData[0].ward;
+        evidence.streetCleaning.section = cleaningData[0].section;
+        evidence.streetCleaning.message = `Location is in Ward ${cleaningData[0].ward}, Section ${cleaningData[0].section}`;
+        console.log(`      [Evidence] Street cleaning zone: Ward ${cleaningData[0].ward}, Section ${cleaningData[0].section}`);
+      }
+    } catch (err: any) {
+      // This RPC might not exist on the main Supabase — that's OK
+      console.log(`      [Evidence] Street cleaning check skipped: ${err.message}`);
+    }
+  }
+
+  // 6. User alert subscriptions
+  console.log('      [Evidence] Checking user alert subscriptions...');
+  evidence.alertSubscriptions.checked = true;
+  try {
+    const alertTypes: string[] = [];
+
+    // Check street cleaning alerts
+    const { data: scAlerts } = await supabaseAdmin
+      .from('street_cleaning_alerts')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1);
+    if (scAlerts && scAlerts.length > 0) alertTypes.push('Street Cleaning');
+
+    // Check snow route alerts
+    const { data: snowAlerts } = await supabaseAdmin
+      .from('snow_alerts')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1);
+    if (snowAlerts && snowAlerts.length > 0) alertTypes.push('Snow Route');
+
+    // Check sweep alerts
+    const { data: sweepAlerts } = await supabaseAdmin
+      .from('sweep_alerts')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1);
+    if (sweepAlerts && sweepAlerts.length > 0) alertTypes.push('Sweep');
+
+    // Check camera alerts
+    const { data: camAlerts } = await supabaseAdmin
+      .from('camera_alerts')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1);
+    if (camAlerts && camAlerts.length > 0) alertTypes.push('Camera');
+
+    evidence.alertSubscriptions.hasAlerts = alertTypes.length > 0;
+    evidence.alertSubscriptions.alertTypes = alertTypes;
+    console.log(`      [Evidence] Alert subscriptions: ${alertTypes.length > 0 ? alertTypes.join(', ') : 'None'}`);
+  } catch (err: any) {
+    console.log(`      [Evidence] Alert subscription check failed: ${err.message}`);
+  }
+
+  return evidence;
+}
+
+/**
+ * Build the "Here's What We Did For You" HTML section for the email.
+ * Shows the customer every automated check we ran and what we found.
+ */
+function buildValueDemonstrationHtml(evidence: AutomatedEvidence, violationType: string): string {
+  const checks: Array<{ icon: string; label: string; result: string; found: boolean }> = [];
+
+  // Weather check
+  if (evidence.weather.checked) {
+    if (evidence.weather.data) {
+      checks.push({
+        icon: evidence.weather.data.snowfall > 0 ? '&#10052;' : evidence.weather.data.precipitation > 0 ? '&#127783;' : '&#9728;',
+        label: 'Historical Weather Analysis',
+        result: evidence.weather.data.isRelevantForDefense
+          ? `${evidence.weather.data.summary} — <strong style="color:#dc2626;">Weather conditions may support your defense</strong>`
+          : `${evidence.weather.data.summary} — Conditions noted for your record`,
+        found: evidence.weather.data.isRelevantForDefense,
+      });
+    } else {
+      checks.push({
+        icon: '&#9728;',
+        label: 'Historical Weather Analysis',
+        result: 'Weather data unavailable for this date',
+        found: false,
+      });
+    }
+  }
+
+  // FOIA win rate
+  if (evidence.foiaWinRate.checked && evidence.foiaWinRate.totalContested) {
+    const winRate = evidence.foiaWinRate.notLiablePercent || 0;
+    const color = winRate >= 50 ? '#059669' : winRate >= 30 ? '#d97706' : '#dc2626';
+    checks.push({
+      icon: '&#128202;',
+      label: 'Hearing Outcome Analysis',
+      result: `We analyzed <strong>${evidence.foiaWinRate.totalContested.toLocaleString()}</strong> similar contested tickets. <strong style="color:${color};">${winRate}% were dismissed</strong> — these are real outcomes from Chicago hearing data.`,
+      found: winRate >= 40,
+    });
+  }
+
+  // Parking history GPS
+  if (evidence.parkingHistory.checked) {
+    if (evidence.parkingHistory.matchFound) {
+      const parkedTime = evidence.parkingHistory.parkedAt
+        ? new Date(evidence.parkingHistory.parkedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        : '';
+      let extras = '';
+      if (evidence.parkingHistory.onSnowRoute) extras += ' (Snow route)';
+      if (evidence.parkingHistory.permitZone) extras += ` (Permit zone: ${evidence.parkingHistory.permitZone})`;
+      checks.push({
+        icon: '&#128205;',
+        label: 'GPS Location Verification',
+        result: `Your Autopilot app recorded you parked at <strong>${evidence.parkingHistory.address}</strong> on ${parkedTime}${extras}. This GPS data can serve as evidence.`,
+        found: true,
+      });
+    } else {
+      checks.push({
+        icon: '&#128205;',
+        label: 'GPS Location Verification',
+        result: 'No matching parking record found in your app history for this date.',
+        found: false,
+      });
+    }
+  }
+
+  // Street View
+  if (evidence.streetView.checked) {
+    if (evidence.streetView.hasImagery) {
+      checks.push({
+        icon: '&#128247;',
+        label: 'Google Street View Signage Check',
+        result: `Street View imagery from <strong>${evidence.streetView.imageDate || 'available date'}</strong> found at this location. ${evidence.streetView.signageObservation || 'We can reference this to verify posted signage.'}`,
+        found: true,
+      });
+    } else {
+      checks.push({
+        icon: '&#128247;',
+        label: 'Google Street View Signage Check',
+        result: 'No Street View imagery available at this exact location.',
+        found: false,
+      });
+    }
+  }
+
+  // Street cleaning verification
+  if (evidence.streetCleaning.checked && evidence.streetCleaning.relevant) {
+    if (evidence.streetCleaning.ward) {
+      checks.push({
+        icon: '&#128739;',
+        label: 'Street Cleaning Schedule Verification',
+        result: `Location is in <strong>Ward ${evidence.streetCleaning.ward}, Section ${evidence.streetCleaning.section}</strong>. We can verify if cleaning was actually scheduled on your ticket date.`,
+        found: true,
+      });
+    } else {
+      checks.push({
+        icon: '&#128739;',
+        label: 'Street Cleaning Schedule Verification',
+        result: 'Could not determine street cleaning zone for this location.',
+        found: false,
+      });
+    }
+  }
+
+  // Alert subscriptions
+  if (evidence.alertSubscriptions.checked) {
+    if (evidence.alertSubscriptions.hasAlerts) {
+      checks.push({
+        icon: '&#128276;',
+        label: 'Your Active Protections',
+        result: `You have <strong>${evidence.alertSubscriptions.alertTypes.join(', ')}</strong> alerts enabled — showing you take parking compliance seriously.`,
+        found: true,
+      });
+    }
+  }
+
+  if (checks.length === 0) return '';
+
+  const foundCount = checks.filter(c => c.found).length;
+
+  const checkRowsHtml = checks.map(check => `
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; width: 36px; vertical-align: top; font-size: 20px; text-align: center;">
+        ${check.icon}
+      </td>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+        <div style="font-weight: 600; color: #111827; font-size: 14px; margin-bottom: 4px;">${check.label}</div>
+        <div style="color: #4b5563; font-size: 13px; line-height: 1.5;">${check.result}</div>
+      </td>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; width: 28px; vertical-align: top; text-align: center;">
+        ${check.found ? '<span style="color: #059669; font-size: 18px;">&#10003;</span>' : '<span style="color: #9ca3af; font-size: 14px;">&#8212;</span>'}
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="margin: 24px 0; border: 2px solid #1e40af; border-radius: 12px; overflow: hidden;">
+      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%); padding: 16px 20px;">
+        <h3 style="margin: 0; color: white; font-size: 17px; font-weight: 700;">
+          Here's What We've Already Done For You
+        </h3>
+        <p style="margin: 6px 0 0; color: #bfdbfe; font-size: 13px;">
+          We ran ${checks.length} automated checks on your ticket${foundCount > 0 ? ` — found ${foundCount} item${foundCount > 1 ? 's' : ''} that may help your case` : ''}
+        </p>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; background: #f9fafb;">
+        ${checkRowsHtml}
+      </table>
+      <div style="padding: 12px 20px; background: #eff6ff; border-top: 1px solid #dbeafe;">
+        <p style="margin: 0; color: #1e40af; font-size: 12px; line-height: 1.5;">
+          These checks run automatically when we detect a ticket. Your evidence combined with our research makes the strongest possible case.
+        </p>
+      </div>
+    </div>
+  `;
 }
 
 function mapViolationType(description: string): string {
@@ -431,16 +868,7 @@ async function sendEvidenceRequestEmail(
   amount: number | null,
   plate: string,
   evidenceDeadline: Date,
-  weatherData?: {
-    summary: string;
-    tempHigh: number;
-    tempLow: number;
-    precipitation: number;
-    snowfall: number;
-    windSpeed: number;
-    conditions: string[];
-    isRelevantForDefense: boolean;
-  } | null
+  automatedEvidence?: AutomatedEvidence | null,
 ): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) {
     console.log('      RESEND_API_KEY not configured, skipping email');
@@ -470,44 +898,33 @@ async function sendEvidenceRequestEmail(
   const winRateColor = guidance.winRate >= 0.5 ? '#059669' : guidance.winRate >= 0.3 ? '#d97706' : '#dc2626';
   const winRateText = guidance.winRate >= 0.5 ? 'Good odds!' : guidance.winRate >= 0.3 ? 'Worth trying' : 'Challenging but possible';
 
-  // Build weather section with ACTUAL weather data (not the fake "we check automatically" text)
-  let weatherHtml = '';
-  if (guidance.weatherRelevant && weatherData) {
-    const weatherIcon = weatherData.snowfall > 0 ? '&#10052;' : weatherData.precipitation > 0 ? '&#127783;' : weatherData.windSpeed >= 25 ? '&#127744;' : '&#9728;';
-    const weatherColor = weatherData.isRelevantForDefense ? '#dc2626' : '#2563eb';
-    const weatherBg = weatherData.isRelevantForDefense ? '#fef2f2' : '#eff6ff';
-    const weatherBorder = weatherData.isRelevantForDefense ? '#dc2626' : '#3b82f6';
+  // Extract weather data from automated evidence bundle
+  const weatherData = automatedEvidence?.weather?.data || null;
 
+  // Build the "Here's What We Did For You" section — shows ALL automated checks
+  let valueDemoHtml = '';
+  if (automatedEvidence) {
+    valueDemoHtml = buildValueDemonstrationHtml(automatedEvidence, violationType);
+  }
+
+  // Build weather-specific defense callout (separate from the value demo, gives actionable detail)
+  let weatherHtml = '';
+  if (guidance.weatherRelevant && weatherData && weatherData.isRelevantForDefense) {
     weatherHtml = `
-      <div style="margin-bottom: 24px; padding: 20px; background: ${weatherBg}; border-left: 4px solid ${weatherBorder}; border-radius: 0 8px 8px 0;">
-        <p style="margin: 0 0 8px; font-weight: 700; color: ${weatherColor}; font-size: 16px;">
-          ${weatherIcon} Weather on Your Ticket Date
+      <div style="margin-bottom: 24px; padding: 20px; background: #fef2f2; border-left: 4px solid #dc2626; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0 0 8px; font-weight: 700; color: #dc2626; font-size: 16px;">
+          Weather Could Help Your Defense
         </p>
-        <p style="margin: 0 0 12px; color: #374151; font-size: 15px; font-weight: 600;">
-          ${weatherData.summary}
+        <p style="margin: 0; color: #991b1b; font-size: 13px;">
+          ${weatherData.snowfall > 0 ? 'Snow can obscure signs, curb markings, and hydrants. It also makes finding alternative parking harder.' : ''}
+          ${weatherData.precipitation >= 0.25 && weatherData.snowfall === 0 ? 'Heavy rain can make it difficult to return to your car in time, and can obscure ground markings.' : ''}
+          ${weatherData.windSpeed >= 25 ? 'High winds can damage or turn signs, making restrictions unclear.' : ''}
+          ${weatherData.tempLow <= 15 ? 'Extreme cold can make walking back to your car dangerous or slow, and can cause vehicle emergencies.' : ''}
+          Did the weather affect your situation? <strong>Please reply and let us know!</strong>
         </p>
-        ${weatherData.isRelevantForDefense ? `
-          <div style="background: #fee2e2; border: 1px solid #fca5a5; padding: 12px; border-radius: 6px; margin-top: 8px;">
-            <p style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 600;">
-              This weather could help your defense!
-            </p>
-            <p style="margin: 8px 0 0; color: #991b1b; font-size: 13px;">
-              ${weatherData.snowfall > 0 ? 'Snow can obscure signs, curb markings, and hydrants. It also makes finding alternative parking harder.' : ''}
-              ${weatherData.precipitation >= 0.25 && weatherData.snowfall === 0 ? 'Heavy rain can make it difficult to return to your car in time, and can obscure ground markings.' : ''}
-              ${weatherData.windSpeed >= 25 ? 'High winds can damage or turn signs, making restrictions unclear.' : ''}
-              ${weatherData.tempLow <= 15 ? 'Extreme cold can make walking back to your car dangerous or slow, and can cause vehicle emergencies.' : ''}
-              Did the weather affect your situation? <strong>Please reply and let us know!</strong>
-            </p>
-          </div>
-        ` : `
-          <p style="margin: 8px 0 0; color: #1e40af; font-size: 13px;">
-            ${guidance.weatherQuestion || 'Did weather conditions affect your situation in any way? If so, reply and let us know.'}
-          </p>
-        `}
       </div>
     `;
   } else if (guidance.weatherRelevant && !weatherData) {
-    // Fallback: couldn't fetch weather data, ask user
     weatherHtml = `
       <div style="margin-bottom: 24px; padding: 16px; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0;">
         <p style="margin: 0 0 8px; font-weight: 600; color: #1e40af; font-size: 15px;">
@@ -556,6 +973,7 @@ async function sendEvidenceRequestEmail(
             <tr><td style="padding: 8px 0; color: #6b7280;">License Plate:</td><td style="padding: 8px 0; color: #111827; font-weight: 600;">${plate}</td></tr>
           </table>
         </div>
+        ${valueDemoHtml}
         <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 16px; color: #92400e; font-size: 18px;">Help Us Win Your Case</h3>
           <p style="margin: 0 0 16px; color: #92400e; font-size: 14px;">Please <strong>reply to this email</strong> with answers to these questions:</p>
@@ -744,17 +1162,45 @@ async function processFoundTicket(
     console.log(`      Generated contest letter (${defenseType})`);
   }
 
-  // Fetch weather data for the violation date
-  let weatherData = null;
-  if (violationDate) {
-    console.log(`      Fetching weather for ${violationDate}...`);
-    weatherData = await fetchChicagoWeather(violationDate);
-    if (weatherData) {
-      console.log(`      Weather: ${weatherData.summary}${weatherData.isRelevantForDefense ? ' (DEFENSE RELEVANT!)' : ''}`);
-    }
-  }
+  // Gather ALL automated evidence (weather, FOIA, GPS, Street View, alerts, etc.)
+  console.log('      Gathering automated evidence...');
+  const automatedEvidence = await gatherAutomatedEvidence(
+    user_id,
+    violationType,
+    violationDate,
+    plate.toUpperCase(),
+  );
 
-  // Send evidence request email
+  // Store evidence findings in the audit log for reference
+  await supabaseAdmin
+    .from('ticket_audit_log')
+    .insert({
+      ticket_id: newTicket.id,
+      user_id,
+      action: 'automated_evidence_gathered',
+      details: {
+        weather: automatedEvidence.weather.checked ? {
+          summary: automatedEvidence.weather.data?.summary || null,
+          defenseRelevant: automatedEvidence.weather.data?.isRelevantForDefense || false,
+        } : null,
+        foiaWinRate: automatedEvidence.foiaWinRate.checked ? {
+          totalContested: automatedEvidence.foiaWinRate.totalContested,
+          notLiablePercent: automatedEvidence.foiaWinRate.notLiablePercent,
+        } : null,
+        parkingHistory: automatedEvidence.parkingHistory.checked ? {
+          matchFound: automatedEvidence.parkingHistory.matchFound,
+          address: automatedEvidence.parkingHistory.address,
+        } : null,
+        streetView: automatedEvidence.streetView.checked ? {
+          hasImagery: automatedEvidence.streetView.hasImagery,
+          imageDate: automatedEvidence.streetView.imageDate,
+        } : null,
+        alertSubscriptions: automatedEvidence.alertSubscriptions.alertTypes,
+      },
+      performed_by: 'portal_scraper',
+    });
+
+  // Send evidence request email with full automated evidence bundle
   if (userEmail) {
     const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'there';
     const emailSent = await sendEvidenceRequestEmail(
@@ -767,7 +1213,7 @@ async function processFoundTicket(
       amount,
       plate.toUpperCase(),
       evidenceDeadline,
-      weatherData
+      automatedEvidence
     );
     if (emailSent) {
       console.log(`      Sent evidence request email to ${userEmail}`);
