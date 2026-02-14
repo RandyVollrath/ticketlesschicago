@@ -22,6 +22,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var logFileHandle: FileHandle?
   private let logFileName = "parking_detection.log"
   private var logFileURL: URL?
+  private var decisionLogFileHandle: FileHandle?
+  private let decisionLogFileName = "parking_decisions.ndjson"
+  private var decisionLogFileURL: URL?
   private let dateFormatter: DateFormatter = {
     let df = DateFormatter()
     df.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
@@ -58,6 +61,51 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     log("=== Log file opened ===")
     log("Log path: \(logFileURL.path)")
+  }
+
+  private func setupDecisionLogFile() {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    guard let documentsDirectory = paths.first else { return }
+    let decisionURL = documentsDirectory.appendingPathComponent(decisionLogFileName)
+    self.decisionLogFileURL = decisionURL
+
+    if !FileManager.default.fileExists(atPath: decisionURL.path) {
+      FileManager.default.createFile(atPath: decisionURL.path, contents: nil, attributes: nil)
+    }
+
+    decisionLogFileHandle = try? FileHandle(forWritingTo: decisionURL)
+    decisionLogFileHandle?.seekToEndOfFile()
+    log("Decision log path: \(decisionURL.path)")
+  }
+
+  private func appendDecisionLogLine(_ line: String) {
+    guard let data = (line + "\n").data(using: .utf8) else { return }
+    decisionLogFileHandle?.write(data)
+    decisionLogFileHandle?.synchronizeFile()
+  }
+
+  private func decision(_ event: String, _ details: [String: Any] = [:]) {
+    var payload: [String: Any] = details
+    payload["event"] = event
+    payload["ts"] = Date().timeIntervalSince1970 * 1000
+    payload["isDriving"] = isDriving
+    payload["coreMotionAutomotive"] = coreMotionSaysAutomotive
+    payload["speedSaysMoving"] = speedSaysMoving
+    payload["hasConfirmedParkingThisSession"] = hasConfirmedParkingThisSession
+    if let loc = locationManager.location {
+      payload["curLat"] = loc.coordinate.latitude
+      payload["curLng"] = loc.coordinate.longitude
+      payload["curAcc"] = loc.horizontalAccuracy
+      payload["curSpeed"] = loc.speed
+    }
+
+    if let json = try? JSONSerialization.data(withJSONObject: payload, options: []),
+       let line = String(data: json, encoding: .utf8) {
+      appendDecisionLogLine(line)
+      log("[DECISION] \(line)")
+    } else {
+      log("[DECISION] \(event) serialization_failed")
+    }
   }
 
   private func startLocationWatchdog() {
@@ -133,6 +181,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var lastLocationCallbackTime: Date? = nil
   private var locationWatchdogTimer: Timer?
   private var lastWatchdogRecoveryTime: Date? = nil
+  private var lastMotionDecisionSignature: String? = nil
+  private var lastSpeedBucket: String? = nil
 
   // UserDefaults keys for persisting critical state across app kills.
   // Without persistence, iOS can kill the app, significantLocationChange wakes it
@@ -182,6 +232,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   override init() {
     super.init()
     setupLogFile()
+    setupDecisionLogFile()
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
     locationManager.allowsBackgroundLocationUpdates = true
@@ -206,6 +257,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     )
 
     log("BackgroundLocationModule initialized")
+    decision("module_initialized")
   }
 
   @objc private func appDidBecomeActive() {
@@ -335,6 +387,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
 
     guard !isMonitoring else {
+      decision("start_monitoring_skipped_already_active")
       resolve(true)
       return
     }
@@ -359,6 +412,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // This saves significant battery when user is walking/stationary.
 
     isMonitoring = true
+    decision("start_monitoring_success", [
+      "authStatusRaw": locationManager.authorizationStatus.rawValue,
+      "coreMotionAvailable": coreMotionAvailable,
+    ])
     lastLocationCallbackTime = Date()
     startLocationWatchdog()
     let authStatus = locationManager.authorizationStatus
@@ -377,6 +434,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   /// Stop all monitoring
   @objc func stopMonitoring(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    decision("stop_monitoring_called")
     locationManager.stopMonitoringSignificantLocationChanges()
     stopContinuousGps()
     stopMotionActivityMonitoring()
@@ -411,6 +469,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     coreMotionNotAutomotiveSince = nil
     lastLocationCallbackTime = nil
     lastWatchdogRecoveryTime = nil
+    lastMotionDecisionSignature = nil
+    lastSpeedBucket = nil
     clearPersistedParkingState()
 
     self.log("Monitoring stopped")
@@ -508,6 +568,94 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "path": logFileURL.path,
       "sizeBytes": sizeBytes,
     ])
+  }
+
+  /// Get the decision log file contents (last N lines).
+  @objc func getDecisionLogs(_ lineCount: Int, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    guard let documentsDirectory = paths.first else {
+      resolve("")
+      return
+    }
+    let decisionURL = documentsDirectory.appendingPathComponent(decisionLogFileName)
+
+    guard let content = try? String(contentsOf: decisionURL, encoding: .utf8) else {
+      resolve("")
+      return
+    }
+
+    let lines = content.components(separatedBy: "\n")
+    let lastLines = lines.suffix(lineCount > 0 ? lineCount : 200)
+    resolve(lastLines.joined(separator: "\n"))
+  }
+
+  /// Clear the decision log file.
+  @objc func clearDecisionLogs(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    guard let documentsDirectory = paths.first else {
+      resolve(false)
+      return
+    }
+    let decisionURL = documentsDirectory.appendingPathComponent(decisionLogFileName)
+
+    decisionLogFileHandle?.closeFile()
+    try? "".write(to: decisionURL, atomically: true, encoding: .utf8)
+    decisionLogFileHandle = try? FileHandle(forWritingTo: decisionURL)
+    decision("decision_log_cleared")
+    resolve(true)
+  }
+
+  /// Get decision log path + existence/size for diagnostics.
+  @objc func getDecisionLogInfo(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let decisionURL = self.decisionLogFileURL else {
+      resolve([
+        "exists": false,
+        "path": NSNull(),
+        "sizeBytes": 0,
+      ])
+      return
+    }
+
+    let exists = FileManager.default.fileExists(atPath: decisionURL.path)
+    var sizeBytes: Int64 = 0
+    if exists,
+       let attrs = try? FileManager.default.attributesOfItem(atPath: decisionURL.path),
+       let size = attrs[.size] as? NSNumber {
+      sizeBytes = size.int64Value
+    }
+
+    resolve([
+      "exists": exists,
+      "path": decisionURL.path,
+      "sizeBytes": sizeBytes,
+    ])
+  }
+
+  /// Copy decision log to tmp with a timestamped name.
+  @objc func exportDecisionLog(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let sourceURL = self.decisionLogFileURL else {
+      resolve(NSNull())
+      return
+    }
+    guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+      resolve(NSNull())
+      return
+    }
+
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyyMMdd_HHmmss"
+    let stamp = formatter.string(from: Date())
+    let destURL = FileManager.default.temporaryDirectory.appendingPathComponent("parking_decisions_\(stamp).ndjson")
+
+    do {
+      if FileManager.default.fileExists(atPath: destURL.path) {
+        try FileManager.default.removeItem(at: destURL)
+      }
+      try FileManager.default.copyItem(at: sourceURL, to: destURL)
+      resolve(destURL.path)
+    } catch {
+      reject("EXPORT_DECISION_LOG_FAILED", "Failed to export decision log: \(error.localizedDescription)", error)
+    }
   }
 
   /// Copy debug log to tmp with a timestamped name so tooling can pull it easily.
@@ -670,6 +818,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
       // Log every CoreMotion update for diagnostics
       self.log("CoreMotion update: automotive=\(activity.automotive) stationary=\(activity.stationary) walking=\(activity.walking) confidence=\(self.confidenceString(activity.confidence))")
+      let motionSig = "\(activity.automotive)-\(activity.stationary)-\(activity.walking)-\(self.confidenceString(activity.confidence))"
+      if self.lastMotionDecisionSignature != motionSig {
+        self.lastMotionDecisionSignature = motionSig
+        self.decision("coremotion_transition", [
+          "automotive": activity.automotive,
+          "stationary": activity.stationary,
+          "walking": activity.walking,
+          "confidence": self.confidenceString(activity.confidence),
+        ])
+      }
 
       if activity.automotive {
         // ---- DRIVING ----
@@ -898,6 +1056,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     guard let location = locations.last else { return }
     lastLocationCallbackTime = Date()
     let speed = location.speed  // m/s, -1 if unknown
+    let speedBucket: String = {
+      if speed < 0 { return "unknown" }
+      if speed <= 0.5 { return "zeroish" }
+      if speed <= minDrivingSpeedMps { return "slow" }
+      return "moving"
+    }()
+    if speedBucket != lastSpeedBucket {
+      lastSpeedBucket = speedBucket
+      decision("speed_bucket_change", [
+        "bucket": speedBucket,
+        "speed": speed,
+        "accuracy": location.horizontalAccuracy,
+      ])
+    }
 
     // --- Recovery GPS: waiting for accurate fix after significantLocationChange wake ---
     // checkForMissedParking starts GPS and sets this flag. We wait here for a
@@ -1052,6 +1224,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                coreMotionStableDuration >= self.coreMotionStabilitySec &&
                gpsSpeedOk {
               self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
+              self.decision("gps_coremotion_gate_passed", [
+                "zeroDurationSec": zeroDuration,
+                "coreMotionStableSec": coreMotionStableDuration,
+                "gpsSpeed": currentSpeedCheck,
+              ])
               timer.invalidate()
               self.speedZeroTimer = nil
               self.confirmParking(source: "gps_coremotion_agree")
@@ -1067,6 +1244,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                 waitReasons.append("GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s (need < 1.0)")
               }
               self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
+              self.decision("gps_coremotion_gate_wait", [
+                "zeroDurationSec": zeroDuration,
+                "coreMotionStableSec": coreMotionStableDuration,
+                "gpsSpeed": currentSpeedCheck,
+                "reasons": waitReasons.joined(separator: "; "),
+              ])
             }
           } else if phoneIsStationary && withinStationaryRadius && stationaryDuration >= self.stationaryDurationSec {
             // Phone hasn't moved (speed < 0.5 m/s) AND still within 50m of parking spot for 2+ min.
@@ -1278,14 +1461,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private func confirmParking(source: String = "coremotion") {
     guard isDriving, drivingStartTime != nil else {
       self.log("confirmParking(\(source)) skipped: isDriving=\(isDriving), drivingStartTime=\(drivingStartTime != nil)")
+      decision("confirm_parking_skipped_not_driving", ["source": source])
       return
     }
     guard isMonitoring else {
       self.log("confirmParking(\(source)) skipped: monitoring stopped")
+      decision("confirm_parking_skipped_not_monitoring", ["source": source])
       return
     }
     guard !parkingFinalizationPending else {
       self.log("confirmParking(\(source)) skipped: finalization already pending")
+      decision("confirm_parking_skipped_finalization_pending", ["source": source])
       return
     }
 
@@ -1303,6 +1489,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Also allow "location_stationary" — if in same spot for 2+ min, that's definitely parking.
     if coreMotionSaysAutomotive && source != "location_stationary" {
       self.log("CoreMotion still says automotive — aborting parking confirmation (source: \(source))")
+      decision("confirm_parking_aborted_automotive", ["source": source])
       lastStationaryTime = nil
       locationAtStopStart = nil
       return
@@ -1361,6 +1548,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     parkingFinalizationPending = true
     pendingParkingLocation = candidateLocation
+    decision("parking_candidate_ready", [
+      "source": source,
+      "holdSec": parkingFinalizationHoldSec,
+      "locationSource": body["locationSource"] as? String ?? "unknown",
+      "accuracy": body["accuracy"] as? Double ?? -1,
+      "drivingDurationSec": body["drivingDurationSec"] as? Double ?? -1,
+    ])
     parkingFinalizationTimer?.invalidate()
     parkingFinalizationTimer = Timer.scheduledTimer(withTimeInterval: parkingFinalizationHoldSec, repeats: false) { [weak self] _ in
       guard let self = self else { return }
@@ -1403,8 +1597,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         return
       }
       self.log("Stop candidate refined (\(reason)): moved \(String(format: "%.0f", movedMeters))m, acc \(String(format: "%.0f", existing.horizontalAccuracy))→\(String(format: "%.0f", candidate.horizontalAccuracy))m")
+      decision("stop_candidate_refined", [
+        "reason": reason,
+        "movedMeters": movedMeters,
+        "prevAcc": existing.horizontalAccuracy,
+        "newAcc": candidate.horizontalAccuracy,
+      ])
     } else {
       self.log("Stop candidate captured (\(reason)): \(candidate.coordinate.latitude), \(candidate.coordinate.longitude) ±\(candidate.horizontalAccuracy)m")
+      decision("stop_candidate_captured", [
+        "reason": reason,
+        "lat": candidate.coordinate.latitude,
+        "lng": candidate.coordinate.longitude,
+        "acc": candidate.horizontalAccuracy,
+      ])
     }
 
     locationAtStopStart = candidate
@@ -1413,6 +1619,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private func cancelPendingParkingFinalization(reason: String) {
     guard parkingFinalizationPending || parkingFinalizationTimer != nil else { return }
     self.log("Parking finalization cancelled: \(reason)")
+    decision("parking_finalization_cancelled", ["reason": reason])
     parkingFinalizationTimer?.invalidate()
     parkingFinalizationTimer = nil
     parkingFinalizationPending = false
@@ -1424,6 +1631,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     parkingFinalizationPending = false
     pendingParkingLocation = nil
     self.log("PARKING CONFIRMED (source: \(source))")
+    decision("parking_confirmed", [
+      "source": source,
+      "locationSource": body["locationSource"] as? String ?? "unknown",
+      "accuracy": body["accuracy"] as? Double ?? -1,
+      "drivingDurationSec": body["drivingDurationSec"] as? Double ?? -1,
+      "timestamp": body["timestamp"] as? Double ?? -1,
+    ])
 
     // After first confirmed parking, require GPS confirmation to restart driving
     // (prevents CoreMotion flicker from immediately re-entering driving state).
@@ -1431,7 +1645,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastConfirmedParkingLocation = finalizedLocation
     persistParkingState()  // Survive app kills (Clybourn bug fix)
 
-    sendEvent(withName: "onParkingDetected", body: body)
+    var payload = body
+    payload["detectionSource"] = source
+    sendEvent(withName: "onParkingDetected", body: payload)
 
     // Reset driving state
     isDriving = false

@@ -107,6 +107,14 @@ class BackgroundTaskServiceClass {
   private iosHealthSnapshotInFlight: boolean = false;
   private readonly iosHealthSnapshotMinIntervalMs: number = 90 * 1000;
   private readonly iosCallbackStaleThresholdSec: number = 120;
+  private pendingNativeDetectionMeta: {
+    detectionSource?: string;
+    locationSource?: string;
+    accuracy?: number;
+    drivingDurationSec?: number;
+    nativeTimestamp?: number;
+    recordedAt: number;
+  } | null = null;
 
   /**
    * Initialize the background task service
@@ -436,9 +444,18 @@ class BackgroundTaskServiceClass {
                 lng: event.longitude,
                 accuracy: event.accuracy,
                 drivingDuration: event.drivingDurationSec,
+                detectionSource: event.detectionSource,
                 locationSource: event.locationSource,
                 driftMeters: event.driftFromParkingMeters,
               });
+              this.pendingNativeDetectionMeta = {
+                detectionSource: event.detectionSource,
+                locationSource: event.locationSource,
+                accuracy: event.accuracy,
+                drivingDurationSec: event.drivingDurationSec,
+                nativeTimestamp: event.timestamp,
+                recordedAt: Date.now(),
+              };
 
               // GUARD: Reject events with cell-tower-level GPS accuracy (>150m).
               // significantLocationChange recovery uses cell tower fixes that can be
@@ -1185,6 +1202,7 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
   }, nativeTimestamp?: number): Promise<void> {
+    const detectionMeta = this.pendingNativeDetectionMeta;
     void this.captureIosHealthSnapshot('handleCarDisconnection', { force: true, includeLogTail: true });
     // Debounce: if handleCarDisconnection was called in the last 30 seconds, skip.
     // Multiple sources can trigger this for the same physical disconnect:
@@ -1225,7 +1243,8 @@ class BackgroundTaskServiceClass {
     await this.saveState();
 
     // Check parking - use provided coords if available (iOS background location)
-    await this.triggerParkingCheck(parkingCoords, true, nativeTimestamp);
+    await this.triggerParkingCheck(parkingCoords, true, nativeTimestamp, true, detectionMeta || undefined);
+    this.pendingNativeDetectionMeta = null;
 
     // Call the callback if provided (HomeScreen UI refresh)
     if (this.disconnectCallback) {
@@ -1249,7 +1268,14 @@ class BackgroundTaskServiceClass {
     latitude: number;
     longitude: number;
     accuracy?: number;
-  }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true): Promise<void> {
+  }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true, detectionMeta?: {
+    detectionSource?: string;
+    locationSource?: string;
+    accuracy?: number;
+    drivingDurationSec?: number;
+    nativeTimestamp?: number;
+    recordedAt: number;
+  }): Promise<void> {
     let resolvedCoords: { latitude: number; longitude: number; accuracy?: number } | null = null;
 
     // Guard against duplicate parking checks (e.g., from app state changes re-triggering).
@@ -1379,7 +1405,7 @@ class BackgroundTaskServiceClass {
       if (persistParkingEvent) {
         try {
           log.info(`Saving to parking history: addr="${result.address}", rules=${result.rules.length}, coords=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}${nativeTimestamp ? `, nativeTime=${new Date(nativeTimestamp).toISOString()}` : ''}`);
-          await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp);
+          await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp, detectionMeta);
           AppEvents.emit('parking-history-updated');
           log.info('Auto-detection result saved to parking history ✓');
         } catch (historyError) {
@@ -1471,7 +1497,8 @@ class BackgroundTaskServiceClass {
             resolvedCoords,
             [],
             `${resolvedCoords.latitude.toFixed(6)}, ${resolvedCoords.longitude.toFixed(6)}`,
-            nativeTimestamp
+            nativeTimestamp,
+            detectionMeta
           );
           AppEvents.emit('parking-history-updated');
           await this.saveParkedCoords(
@@ -2355,6 +2382,7 @@ class BackgroundTaskServiceClass {
     try {
       const status = await BackgroundLocationService.getStatus();
       const logInfo = await BackgroundLocationService.getDebugLogInfo();
+      const decisionLogInfo = await BackgroundLocationService.getDecisionLogInfo();
       const callbackAgeSec =
         typeof status.lastLocationCallbackAgeSec === 'number' && Number.isFinite(status.lastLocationCallbackAgeSec)
           ? Math.round(status.lastLocationCallbackAgeSec)
@@ -2368,6 +2396,8 @@ class BackgroundTaskServiceClass {
         motionAvailable: status.motionAvailable,
         debugLogExists: logInfo.exists,
         debugLogSizeBytes: logInfo.sizeBytes,
+        decisionLogExists: decisionLogInfo.exists,
+        decisionLogSizeBytes: decisionLogInfo.sizeBytes,
       });
 
       const callbacksStale = callbackAgeSec !== null && callbackAgeSec >= this.iosCallbackStaleThresholdSec;
@@ -2384,6 +2414,12 @@ class BackgroundTaskServiceClass {
           log.info(`[iOS Health][NativeLogTail][${reason}]\n${logTail}`);
         } else {
           log.info(`[iOS Health][NativeLogTail][${reason}] empty`);
+        }
+        const decisionTail = await BackgroundLocationService.getDecisionLogs(80);
+        if (decisionTail && decisionTail.trim().length > 0) {
+          log.info(`[iOS Health][DecisionTail][${reason}]\n${decisionTail}`);
+        } else {
+          log.info(`[iOS Health][DecisionTail][${reason}] empty`);
         }
       }
     } catch (error) {
