@@ -119,6 +119,73 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
   'alley': 'parking_alley',
 };
 
+/**
+ * Fetch actual weather data for Chicago on a given date using Open-Meteo Archive API (free, no key needed).
+ * Returns a human-readable weather summary, or null if lookup fails.
+ */
+async function fetchChicagoWeather(dateStr: string): Promise<{
+  summary: string;
+  tempHigh: number;
+  tempLow: number;
+  precipitation: number;
+  snowfall: number;
+  windSpeed: number;
+  conditions: string[];
+  isRelevantForDefense: boolean;
+} | null> {
+  try {
+    // Chicago coordinates: 41.8781, -87.6298
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=41.8781&longitude=-87.6298&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,wind_speed_10m_max,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=America/Chicago`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log(`      Weather API returned ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data?.daily?.time?.length) {
+      console.log('      Weather API returned no data');
+      return null;
+    }
+
+    const tempHigh = Math.round(data.daily.temperature_2m_max[0]);
+    const tempLow = Math.round(data.daily.temperature_2m_min[0]);
+    const precipitation = data.daily.precipitation_sum[0] || 0;
+    const snowfall = data.daily.snowfall_sum[0] || 0;
+    const windSpeed = Math.round(data.daily.wind_speed_10m_max[0] || 0);
+    const weatherCode = data.daily.weather_code?.[0] || 0;
+
+    // WMO weather codes to conditions
+    const conditions: string[] = [];
+    if (weatherCode >= 71) conditions.push('Snow');
+    else if (weatherCode >= 61) conditions.push('Rain');
+    else if (weatherCode >= 51) conditions.push('Drizzle');
+    else if (weatherCode >= 45) conditions.push('Fog');
+    else if (weatherCode >= 3) conditions.push('Overcast');
+    else if (weatherCode >= 1) conditions.push('Partly Cloudy');
+    else conditions.push('Clear');
+
+    if (snowfall > 0) conditions.push(`${snowfall.toFixed(1)}" snow`);
+    if (precipitation > 0 && snowfall === 0) conditions.push(`${precipitation.toFixed(2)}" rain`);
+    if (windSpeed >= 25) conditions.push('High winds');
+    if (tempLow <= 20) conditions.push('Extreme cold');
+
+    // Determine if weather is relevant for defense
+    const isRelevantForDefense = snowfall > 0 || precipitation >= 0.25 || windSpeed >= 25 || tempLow <= 15 || tempHigh <= 25;
+
+    const summary = `${conditions[0]}, High ${tempHigh}°F / Low ${tempLow}°F` +
+      (precipitation > 0 ? `, ${precipitation.toFixed(2)}" precipitation` : '') +
+      (snowfall > 0 ? `, ${snowfall.toFixed(1)}" snowfall` : '') +
+      (windSpeed >= 20 ? `, winds up to ${windSpeed} mph` : '');
+
+    return { summary, tempHigh, tempLow, precipitation, snowfall, windSpeed, conditions, isRelevantForDefense };
+  } catch (err: any) {
+    console.log(`      Weather lookup failed: ${err.message}`);
+    return null;
+  }
+}
+
 function mapViolationType(description: string): string {
   const lower = description.toLowerCase();
   for (const [key, value] of Object.entries(VIOLATION_TYPE_MAP)) {
@@ -228,6 +295,24 @@ I respectfully request that this citation be DISMISSED for the following reasons
 3. CAMERA SYSTEM ACCURACY: If this citation was issued by an automated camera system (Smart Streets program), I request the full video evidence, camera calibration records, and documentation that the Hayden AI system was functioning correctly. Automated enforcement systems in other cities have produced thousands of erroneous citations.
 
 I request that this ticket be dismissed.`,
+  },
+  parking_prohibited: {
+    type: 'parking_prohibited_challenge',
+    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly parking or standing in a prohibited area.
+
+I respectfully request that this citation be DISMISSED for the following reasons:
+
+1. SIGNAGE REQUIREMENTS: Under Chicago Municipal Code Section 9-64-190, parking restrictions must be clearly posted with visible, legible, and properly positioned signs. I request the City provide documentation that adequate signage was posted at the exact location where my vehicle was parked, including photographs of the signs and their proximity to my vehicle.
+
+2. TEMPORARY RESTRICTION NOTICE: If this was a temporary restriction (construction, special event, or film permit), Chicago Municipal Code requires that temporary "No Parking" signs be posted at least 24 hours in advance of enforcement. I request documentation of when any temporary signs were posted and the permit authorizing the restriction.
+
+3. LOADING/UNLOADING EXCEPTION: If I was briefly stopped to load or unload passengers or goods, this activity is permitted even in no-parking zones under Illinois Vehicle Code 625 ILCS 5/11-1305. A brief stop for this purpose does not constitute "parking."
+
+4. CONTRADICTORY SIGNAGE: Multiple or contradictory signs in the same area create ambiguity that should be resolved in favor of the motorist. I request photographs showing all posted signs within 100 feet of my vehicle's location.
+
+5. BURDEN OF PROOF: The City bears the burden of proving the alleged violation occurred and that proper notice was given to motorists through adequate signage.
+
+I request that this ticket be dismissed. If the City cannot provide documentation of adequate, visible signage at the exact location of the citation, dismissal is the appropriate remedy.`,
   },
   other_unknown: {
     type: 'general_challenge',
@@ -345,7 +430,17 @@ async function sendEvidenceRequestEmail(
   violationDate: string | null,
   amount: number | null,
   plate: string,
-  evidenceDeadline: Date
+  evidenceDeadline: Date,
+  weatherData?: {
+    summary: string;
+    tempHigh: number;
+    tempLow: number;
+    precipitation: number;
+    snowfall: number;
+    windSpeed: number;
+    conditions: string[];
+    isRelevantForDefense: boolean;
+  } | null
 ): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) {
     console.log('      RESEND_API_KEY not configured, skipping email');
@@ -374,6 +469,56 @@ async function sendEvidenceRequestEmail(
   const winRatePercent = Math.round(guidance.winRate * 100);
   const winRateColor = guidance.winRate >= 0.5 ? '#059669' : guidance.winRate >= 0.3 ? '#d97706' : '#dc2626';
   const winRateText = guidance.winRate >= 0.5 ? 'Good odds!' : guidance.winRate >= 0.3 ? 'Worth trying' : 'Challenging but possible';
+
+  // Build weather section with ACTUAL weather data (not the fake "we check automatically" text)
+  let weatherHtml = '';
+  if (guidance.weatherRelevant && weatherData) {
+    const weatherIcon = weatherData.snowfall > 0 ? '&#10052;' : weatherData.precipitation > 0 ? '&#127783;' : weatherData.windSpeed >= 25 ? '&#127744;' : '&#9728;';
+    const weatherColor = weatherData.isRelevantForDefense ? '#dc2626' : '#2563eb';
+    const weatherBg = weatherData.isRelevantForDefense ? '#fef2f2' : '#eff6ff';
+    const weatherBorder = weatherData.isRelevantForDefense ? '#dc2626' : '#3b82f6';
+
+    weatherHtml = `
+      <div style="margin-bottom: 24px; padding: 20px; background: ${weatherBg}; border-left: 4px solid ${weatherBorder}; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0 0 8px; font-weight: 700; color: ${weatherColor}; font-size: 16px;">
+          ${weatherIcon} Weather on Your Ticket Date
+        </p>
+        <p style="margin: 0 0 12px; color: #374151; font-size: 15px; font-weight: 600;">
+          ${weatherData.summary}
+        </p>
+        ${weatherData.isRelevantForDefense ? `
+          <div style="background: #fee2e2; border: 1px solid #fca5a5; padding: 12px; border-radius: 6px; margin-top: 8px;">
+            <p style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 600;">
+              This weather could help your defense!
+            </p>
+            <p style="margin: 8px 0 0; color: #991b1b; font-size: 13px;">
+              ${weatherData.snowfall > 0 ? 'Snow can obscure signs, curb markings, and hydrants. It also makes finding alternative parking harder.' : ''}
+              ${weatherData.precipitation >= 0.25 && weatherData.snowfall === 0 ? 'Heavy rain can make it difficult to return to your car in time, and can obscure ground markings.' : ''}
+              ${weatherData.windSpeed >= 25 ? 'High winds can damage or turn signs, making restrictions unclear.' : ''}
+              ${weatherData.tempLow <= 15 ? 'Extreme cold can make walking back to your car dangerous or slow, and can cause vehicle emergencies.' : ''}
+              Did the weather affect your situation? <strong>Please reply and let us know!</strong>
+            </p>
+          </div>
+        ` : `
+          <p style="margin: 8px 0 0; color: #1e40af; font-size: 13px;">
+            ${guidance.weatherQuestion || 'Did weather conditions affect your situation in any way? If so, reply and let us know.'}
+          </p>
+        `}
+      </div>
+    `;
+  } else if (guidance.weatherRelevant && !weatherData) {
+    // Fallback: couldn't fetch weather data, ask user
+    weatherHtml = `
+      <div style="margin-bottom: 24px; padding: 16px; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0 0 8px; font-weight: 600; color: #1e40af; font-size: 15px;">
+          Weather Question:
+        </p>
+        <p style="margin: 0; color: #1e3a8a; font-size: 14px;">
+          ${guidance.weatherQuestion || 'Were weather conditions a factor?'}
+        </p>
+      </div>
+    `;
+  }
 
   const pitfallsHtml = guidance.pitfalls.length > 0 ? `
     <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 16px; border-radius: 8px; margin: 20px 0;">
@@ -416,6 +561,7 @@ async function sendEvidenceRequestEmail(
           <p style="margin: 0 0 16px; color: #92400e; font-size: 14px;">Please <strong>reply to this email</strong> with answers to these questions:</p>
           ${questionsHtml}
         </div>
+        ${weatherHtml}
         ${quickTipsHtml}
         ${pitfallsHtml}
         <div style="background: #dbeafe; border: 1px solid #3b82f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
@@ -598,6 +744,16 @@ async function processFoundTicket(
     console.log(`      Generated contest letter (${defenseType})`);
   }
 
+  // Fetch weather data for the violation date
+  let weatherData = null;
+  if (violationDate) {
+    console.log(`      Fetching weather for ${violationDate}...`);
+    weatherData = await fetchChicagoWeather(violationDate);
+    if (weatherData) {
+      console.log(`      Weather: ${weatherData.summary}${weatherData.isRelevantForDefense ? ' (DEFENSE RELEVANT!)' : ''}`);
+    }
+  }
+
   // Send evidence request email
   if (userEmail) {
     const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'there';
@@ -610,7 +766,8 @@ async function processFoundTicket(
       violationDate,
       amount,
       plate.toUpperCase(),
-      evidenceDeadline
+      evidenceDeadline,
+      weatherData
     );
     if (emailSent) {
       console.log(`      Sent evidence request email to ${userEmail}`);
