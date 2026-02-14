@@ -654,11 +654,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('Updated ticket with evidence');
 
     // Regenerate letter with AI if we have an existing letter
+    let regeneratedLetterContent: string | null = null;
     if (letter) {
       const originalLetter = letter.letter_content || letter.letter_text || '';
 
       // Use AI to professionally integrate evidence into the letter
-      const newLetterContent = await regenerateLetterWithAI(
+      regeneratedLetterContent = await regenerateLetterWithAI(
         originalLetter,
         evidenceText,
         ticket,
@@ -668,8 +669,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await supabaseAdmin
         .from('contest_letters')
         .update({
-          letter_content: newLetterContent,
-          letter_text: newLetterContent,
+          letter_content: regeneratedLetterContent,
+          letter_text: regeneratedLetterContent,
           status: 'ready',
           evidence_integrated: true,
           evidence_integrated_at: new Date().toISOString(),
@@ -697,14 +698,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Send confirmation email to user
     await sendUserConfirmation(fromEmail, profile?.first_name || 'there', ticket.ticket_number);
 
-    // Notify admin
+    // Notify admin with full details + regenerated letter
     await sendAdminNotification(
       fromEmail,
       subject,
       evidenceText,
       `Evidence received for ticket ${ticket.ticket_number}. Letter regenerated.`,
       ticket.ticket_number,
-      attachments.length
+      attachments.length,
+      {
+        regeneratedLetter: regeneratedLetterContent,
+        attachmentUrls: evidenceData.attachment_urls || [],
+        violationType: ticket.violation_type || ticket.violation_code || null,
+        violationDate: ticket.violation_date || ticket.issue_date || null,
+        amount: ticket.amount || ticket.total_amount || null,
+        plate: ticket.plate_number || ticket.license_plate || null,
+        userName: profile?.full_name || profile?.first_name || null,
+      }
     );
 
     // Trigger immediate mailing run so evidence-backed letters go out same day
@@ -781,7 +791,7 @@ async function sendUserConfirmation(
 }
 
 /**
- * Send admin notification
+ * Send admin notification with full evidence details + regenerated letter
  */
 async function sendAdminNotification(
   fromEmail: string,
@@ -789,9 +799,64 @@ async function sendAdminNotification(
   body: string,
   status: string,
   ticketNumber?: string,
-  attachmentCount?: number
+  attachmentCount?: number,
+  extras?: {
+    regeneratedLetter: string | null;
+    attachmentUrls: string[];
+    violationType: string | null;
+    violationDate: string | null;
+    amount: string | number | null;
+    plate: string | null;
+    userName: string | null;
+  }
 ): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
+
+  // Build attachment links HTML
+  let attachmentLinksHtml = '';
+  if (extras?.attachmentUrls && extras.attachmentUrls.length > 0) {
+    const links = extras.attachmentUrls
+      .map((url, i) => `<a href="${url}" style="color: #2563eb; text-decoration: underline;">Attachment ${i + 1}</a>`)
+      .join(' &nbsp;|&nbsp; ');
+    attachmentLinksHtml = `
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 16px 0;">
+        <p style="margin: 0 0 8px 0; font-weight: 600; color: #1e40af;">Evidence Attachments (${extras.attachmentUrls.length}):</p>
+        <p style="margin: 0;">${links}</p>
+      </div>
+    `;
+  }
+
+  // Build regenerated letter section
+  let letterHtml = '';
+  if (extras?.regeneratedLetter) {
+    letterHtml = `
+      <div style="margin: 20px 0;">
+        <h3 style="color: #065f46; margin-bottom: 8px;">Regenerated Contest Letter</h3>
+        <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px;">
+          <pre style="white-space: pre-wrap; font-family: Georgia, serif; font-size: 13px; line-height: 1.6; margin: 0; color: #1f2937;">${extras.regeneratedLetter}</pre>
+        </div>
+      </div>
+    `;
+  }
+
+  // Build ticket details table
+  let ticketDetailsHtml = '';
+  if (ticketNumber || extras?.violationType || extras?.amount || extras?.plate) {
+    const rows = [
+      ticketNumber ? `<tr><td style="padding: 6px 12px; font-weight: 600; color: #6b7280;">Ticket #</td><td style="padding: 6px 12px;">${ticketNumber}</td></tr>` : '',
+      extras?.violationType ? `<tr><td style="padding: 6px 12px; font-weight: 600; color: #6b7280;">Violation</td><td style="padding: 6px 12px;">${extras.violationType}</td></tr>` : '',
+      extras?.violationDate ? `<tr><td style="padding: 6px 12px; font-weight: 600; color: #6b7280;">Date</td><td style="padding: 6px 12px;">${extras.violationDate}</td></tr>` : '',
+      extras?.amount ? `<tr><td style="padding: 6px 12px; font-weight: 600; color: #6b7280;">Amount</td><td style="padding: 6px 12px;">$${extras.amount}</td></tr>` : '',
+      extras?.plate ? `<tr><td style="padding: 6px 12px; font-weight: 600; color: #6b7280;">Plate</td><td style="padding: 6px 12px;">${extras.plate}</td></tr>` : '',
+      extras?.userName ? `<tr><td style="padding: 6px 12px; font-weight: 600; color: #6b7280;">User</td><td style="padding: 6px 12px;">${extras.userName}</td></tr>` : '',
+    ].filter(Boolean).join('');
+
+    ticketDetailsHtml = `
+      <table style="border-collapse: collapse; margin: 12px 0; font-size: 14px;">
+        ${rows}
+      </table>
+    `;
+  }
 
   try {
     await fetch('https://api.resend.com/emails', {
@@ -802,19 +867,34 @@ async function sendAdminNotification(
       },
       body: JSON.stringify({
         from: 'Autopilot America <alerts@autopilotamerica.com>',
-        to: [process.env.ADMIN_NOTIFICATION_EMAIL || 'hiautopilotamerica@gmail.com'],
-        subject: `Evidence Email: ${status}`,
+        to: ['randyvollrath@gmail.com'],
+        subject: `Evidence Received: Ticket ${ticketNumber || 'Unknown'} from ${extras?.userName || fromEmail}`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Evidence Email Received</h2>
-            <p><strong>Status:</strong> ${status}</p>
-            ${ticketNumber ? `<p><strong>Ticket:</strong> ${ticketNumber}</p>` : ''}
-            <p><strong>From:</strong> ${fromEmail}</p>
-            <p><strong>Subject:</strong> ${subject}</p>
-            ${attachmentCount ? `<p><strong>Attachments:</strong> ${attachmentCount}</p>` : ''}
-            <hr>
-            <p><strong>Message:</strong></p>
-            <pre style="background: #f3f4f6; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${body}</pre>
+          <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
+            <div style="background: #059669; color: white; padding: 20px 24px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 22px;">User Submitted Evidence</h1>
+              <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">${status}</p>
+            </div>
+
+            <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none;">
+              <p style="margin: 0 0 4px 0; color: #6b7280; font-size: 13px;">From</p>
+              <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">${fromEmail}</p>
+
+              ${ticketDetailsHtml}
+
+              <h3 style="color: #374151; margin: 20px 0 8px 0;">User's Evidence Message</h3>
+              <pre style="background: #f3f4f6; padding: 16px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.5; margin: 0;">${body}</pre>
+
+              ${attachmentLinksHtml}
+
+              ${letterHtml}
+
+              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+                <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                  Same-day mailing has been triggered. The letter will be sent via Lob today.
+                </p>
+              </div>
+            </div>
           </div>
         `,
       }),
