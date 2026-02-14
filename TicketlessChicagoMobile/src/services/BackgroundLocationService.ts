@@ -33,6 +33,7 @@ export interface ParkingDetectedEvent {
   longitude?: number;
   accuracy?: number;
   drivingDurationSec?: number;
+  detectionSource?: string;
   locationSource?: 'stop_start' | 'last_driving' | 'last_high_speed' | 'current_fallback' | 'short_drive_recovery' | 'recovery_accurate_gps';
   driftFromParkingMeters?: number;  // How far user walked from car before confirmation
 }
@@ -356,6 +357,66 @@ class BackgroundLocationServiceClass {
       return typeof path === 'string' ? path : null;
     } catch (error) {
       log.error('Error exporting debug log', error);
+      return null;
+    }
+  }
+
+  /**
+   * Returns native parking-decision trace tail (JSON lines).
+   */
+  async getDecisionLogs(lineCount: number = 200): Promise<string> {
+    if (!this.isAvailable() || !BackgroundLocationModule.getDecisionLogs) return '';
+    try {
+      return await BackgroundLocationModule.getDecisionLogs(lineCount);
+    } catch (error) {
+      log.error('Error getting decision logs', error);
+      return '';
+    }
+  }
+
+  /**
+   * Truncate native parking-decision trace.
+   */
+  async clearDecisionLogs(): Promise<boolean> {
+    if (!this.isAvailable() || !BackgroundLocationModule.clearDecisionLogs) return false;
+    try {
+      return !!(await BackgroundLocationModule.clearDecisionLogs());
+    } catch (error) {
+      log.error('Error clearing decision logs', error);
+      return false;
+    }
+  }
+
+  /**
+   * Metadata for native parking-decision trace.
+   */
+  async getDecisionLogInfo(): Promise<{ exists: boolean; path: string | null; sizeBytes: number }> {
+    if (!this.isAvailable() || !BackgroundLocationModule.getDecisionLogInfo) {
+      return { exists: false, path: null, sizeBytes: 0 };
+    }
+    try {
+      const info = await BackgroundLocationModule.getDecisionLogInfo();
+      return {
+        exists: !!info?.exists,
+        path: typeof info?.path === 'string' ? info.path : null,
+        sizeBytes: Number(info?.sizeBytes || 0),
+      };
+    } catch (error) {
+      log.error('Error getting decision log info', error);
+      return { exists: false, path: null, sizeBytes: 0 };
+    }
+  }
+
+  /**
+   * Copy native decision trace to timestamped temp file.
+   */
+  async exportDecisionLog(): Promise<string | null> {
+    if (!this.isAvailable() || !BackgroundLocationModule.exportDecisionLog) return null;
+    try {
+      const path = await BackgroundLocationModule.exportDecisionLog();
+      return typeof path === 'string' ? path : null;
+    } catch (error) {
+      log.error('Error exporting decision log', error);
       return null;
     }
   }

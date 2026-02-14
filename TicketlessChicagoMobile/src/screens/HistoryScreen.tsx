@@ -43,6 +43,14 @@ export interface ParkingHistoryItem {
     latitude: number;
     longitude: number;
   };
+  detectionMeta?: {
+    detectionSource?: string;
+    locationSource?: string;
+    accuracy?: number;
+    drivingDurationSec?: number;
+    nativeTimestamp?: number;
+    recordedAt: number;
+  };
 }
 
 const HISTORY_KEY = StorageKeys.PARKING_HISTORY;
@@ -234,7 +242,13 @@ export const ParkingHistoryService = {
     }
   },
 
-  async addToHistory(coords: Coordinates, rules: ParkingRule[], address?: string, nativeTimestamp?: number): Promise<void> {
+  async addToHistory(
+    coords: Coordinates,
+    rules: ParkingRule[],
+    address?: string,
+    nativeTimestamp?: number,
+    detectionMeta?: ParkingHistoryItem['detectionMeta']
+  ): Promise<void> {
     try {
       // Read existing history directly (avoid `this` binding issues when called cross-module)
       const stored = await AsyncStorage.getItem(HISTORY_KEY);
@@ -256,6 +270,7 @@ export const ParkingHistoryService = {
         address: address || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
         rules,
         timestamp: parkTime,
+        detectionMeta,
       };
 
       const updated = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
