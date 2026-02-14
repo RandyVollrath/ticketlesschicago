@@ -158,6 +158,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var speedZeroStartTime: Date?  // When GPS speed first dropped to ≈0 during this driving session
   private var stationaryLocation: CLLocation?  // Location when we first stopped moving
   private var stationaryStartTime: Date?  // When we first stopped at stationaryLocation
+  private var parkingFinalizationTimer: Timer?  // Short post-confirm hold to suppress red-light false positives
+  private var parkingFinalizationPending = false
+  private var pendingParkingLocation: CLLocation? = nil
 
   // After parking, require GPS confirmation before restarting driving (prevents CoreMotion flicker)
   private var hasConfirmedParkingThisSession = false
@@ -169,6 +172,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var coreMotionNotAutomotiveSince: Date? = nil
   private let coreMotionStabilitySec: TimeInterval = 6  // CoreMotion must stay non-automotive for 6s
   private let minZeroSpeedForAgreeSec: TimeInterval = 10  // GPS speed≈0 for 10s before gps_coremotion_agree can fire
+  private let parkingFinalizationHoldSec: TimeInterval = 7
+  private let parkingFinalizationMaxDriftMeters: Double = 35
   private let locationCallbackStaleSec: TimeInterval = 90
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
@@ -382,6 +387,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     parkingConfirmationTimer = nil
     speedZeroTimer?.invalidate()
     speedZeroTimer = nil
+    parkingFinalizationTimer?.invalidate()
+    parkingFinalizationTimer = nil
     recoveryGpsTimer?.invalidate()
     recoveryGpsTimer = nil
     waitingForAccurateGpsForRecovery = false
@@ -396,6 +403,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     speedZeroStartTime = nil
     stationaryLocation = nil
     stationaryStartTime = nil
+    parkingFinalizationPending = false
+    pendingParkingLocation = nil
     automotiveSessionStart = nil
     lastConfirmedParkingLocation = nil
     hasConfirmedParkingThisSession = false
@@ -679,6 +688,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // Only cancel parking timers if GPS confirms we're actually moving.
         if self.speedSaysMoving {
           // GPS confirms movement — cancel parking timers, we're still driving
+          self.cancelPendingParkingFinalization(reason: "CoreMotion+GPS indicate movement")
           self.parkingConfirmationTimer?.invalidate()
           self.parkingConfirmationTimer = nil
           self.speedZeroTimer?.invalidate()
@@ -788,9 +798,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         if self.isDriving && wasAutomotive {
           // User was driving and has now exited the vehicle.
           // Snapshot the location RIGHT NOW - this is the parking spot.
-          if self.locationAtStopStart == nil {
-            self.locationAtStopStart = self.lastDrivingLocation ?? self.locationManager.location
-            self.log("Car stop location captured: \(self.locationAtStopStart?.coordinate.latitude ?? 0), \(self.locationAtStopStart?.coordinate.longitude ?? 0)")
+          if let stopCandidate = self.lastDrivingLocation ?? self.locationManager.location {
+            self.updateStopLocationCandidate(stopCandidate, reason: "coremotion_exit")
           }
 
           let isWalking = activity.walking
@@ -929,6 +938,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // --- Speed-based driving detection (backup if CoreMotion is slow) ---
     if speed > minDrivingSpeedMps {
       speedSaysMoving = true
+      cancelPendingParkingFinalization(reason: "GPS speed resumed above driving threshold")
 
       // Cancel speed-based parking timer - still moving (red light ended)
       speedZeroTimer?.invalidate()
@@ -968,9 +978,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       // When GPS speed drops to 0 while driving, capture the location
       // immediately. This is likely the parking spot, captured BEFORE the
       // user walks away. Don't wait for CoreMotion confirmation.
-      if isDriving && locationAtStopStart == nil {
-        locationAtStopStart = lastDrivingLocation ?? location
-        self.log("GPS speed≈0 while driving. Captured stop location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+      if isDriving {
+        updateStopLocationCandidate(lastDrivingLocation ?? location, reason: "gps_zero_speed")
       }
 
       // Start GPS speed-based parking timer: repeating check every 3 seconds.
@@ -1275,6 +1284,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       self.log("confirmParking(\(source)) skipped: monitoring stopped")
       return
     }
+    guard !parkingFinalizationPending else {
+      self.log("confirmParking(\(source)) skipped: finalization already pending")
+      return
+    }
 
     // ALWAYS cancel BOTH timers first to prevent double-triggering.
     // Previously only the "other" timer was cancelled, leaving the second
@@ -1295,18 +1308,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       return
     }
 
-    self.log("PARKING CONFIRMED (source: \(source))")
-
-    // After first parking, require GPS confirmation to restart driving (prevents CoreMotion flicker)
-    hasConfirmedParkingThisSession = true
+    self.log("PARKING CANDIDATE READY (source: \(source)) — holding \(String(format: "%.0f", parkingFinalizationHoldSec))s for stability")
 
     // Location priority:
     // 1. locationAtStopStart - captured when CoreMotion first said non-automotive (best)
     // 2. lastDrivingLocation - last GPS while in driving state (very good - includes slow creep)
     // 3. locationManager.location - current GPS (last resort - user may have walked)
     let parkingLocation = locationAtStopStart ?? lastDrivingLocation
-    lastConfirmedParkingLocation = parkingLocation ?? locationManager.location
-    persistParkingState()  // Survive app kills (Clybourn bug fix)
     let currentLocation = locationManager.location
 
     // Use the parking location's GPS timestamp if available — this is when the car
@@ -1348,6 +1356,81 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       body["drivingDurationSec"] = Date().timeIntervalSince(drivingStart)
     }
 
+    let confirmationBody = body
+    let candidateLocation = parkingLocation
+
+    parkingFinalizationPending = true
+    pendingParkingLocation = candidateLocation
+    parkingFinalizationTimer?.invalidate()
+    parkingFinalizationTimer = Timer.scheduledTimer(withTimeInterval: parkingFinalizationHoldSec, repeats: false) { [weak self] _ in
+      guard let self = self else { return }
+      self.parkingFinalizationTimer = nil
+
+      if self.coreMotionSaysAutomotive {
+        self.cancelPendingParkingFinalization(reason: "CoreMotion returned to automotive during finalization hold")
+        return
+      }
+
+      let currentSpeed = self.locationManager.location?.speed ?? -1
+      if currentSpeed >= 1.0 {
+        self.cancelPendingParkingFinalization(reason: "GPS speed \(String(format: "%.1f", currentSpeed)) m/s during finalization hold")
+        return
+      }
+
+      if let pending = self.pendingParkingLocation, let current = self.locationManager.location {
+        let drift = current.distance(from: pending)
+        if drift > self.parkingFinalizationMaxDriftMeters {
+          self.cancelPendingParkingFinalization(reason: "Moved \(String(format: "%.0f", drift))m during finalization hold")
+          return
+        }
+      }
+
+      self.finalizeParkingConfirmation(body: confirmationBody, source: source)
+    }
+  }
+
+  // MARK: - Helpers
+
+  private func updateStopLocationCandidate(_ candidate: CLLocation, reason: String) {
+    guard isDriving else { return }
+    guard candidate.horizontalAccuracy > 0 && candidate.horizontalAccuracy <= 100 else { return }
+
+    if let existing = locationAtStopStart {
+      let movedMeters = existing.distance(from: candidate)
+      let isNewer = candidate.timestamp.timeIntervalSince(existing.timestamp) >= 1
+      let isMeaningfullyMoreAccurate = candidate.horizontalAccuracy < (existing.horizontalAccuracy - 10)
+      if !isNewer && !isMeaningfullyMoreAccurate && movedMeters < 8 {
+        return
+      }
+      self.log("Stop candidate refined (\(reason)): moved \(String(format: "%.0f", movedMeters))m, acc \(String(format: "%.0f", existing.horizontalAccuracy))→\(String(format: "%.0f", candidate.horizontalAccuracy))m")
+    } else {
+      self.log("Stop candidate captured (\(reason)): \(candidate.coordinate.latitude), \(candidate.coordinate.longitude) ±\(candidate.horizontalAccuracy)m")
+    }
+
+    locationAtStopStart = candidate
+  }
+
+  private func cancelPendingParkingFinalization(reason: String) {
+    guard parkingFinalizationPending || parkingFinalizationTimer != nil else { return }
+    self.log("Parking finalization cancelled: \(reason)")
+    parkingFinalizationTimer?.invalidate()
+    parkingFinalizationTimer = nil
+    parkingFinalizationPending = false
+    pendingParkingLocation = nil
+  }
+
+  private func finalizeParkingConfirmation(body: [String: Any], source: String) {
+    let finalizedLocation = pendingParkingLocation ?? locationManager.location
+    parkingFinalizationPending = false
+    pendingParkingLocation = nil
+    self.log("PARKING CONFIRMED (source: \(source))")
+
+    // After first confirmed parking, require GPS confirmation to restart driving
+    // (prevents CoreMotion flicker from immediately re-entering driving state).
+    hasConfirmedParkingThisSession = true
+    lastConfirmedParkingLocation = finalizedLocation
+    persistParkingState()  // Survive app kills (Clybourn bug fix)
+
     sendEvent(withName: "onParkingDetected", body: body)
 
     // Reset driving state
@@ -1384,8 +1467,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // activity and can fire the departure event.
     self.log("Keeping CoreMotion active for departure detection (low power)")
   }
-
-  // MARK: - Helpers
 
   private func confidenceString(_ confidence: CMMotionActivityConfidence) -> String {
     switch confidence {
