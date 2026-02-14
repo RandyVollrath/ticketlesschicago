@@ -1,0 +1,564 @@
+{"duration_ms":"125832","share_with_app_devs":1,"roots_installed":0,"bug_type":"202","os_version":"iPhone OS 26.2.1 (23C71)","slice_uuid":"26D4A592-EC9E-316B-8DE9-748EF20FCEC3","is_first_party":0,"incident_id":"2F3A533E-C6D3-4DDD-BB1D-6EC99183642E","timestamp":"2026-02-12 02:59:13.00 -0600","app_name":"spotlightknowledged","name":"spotlightknowledged"}
+Date/Time:        2026-02-12 02:57:03.973 -0600
+End time:         2026-02-12 02:59:09.806 -0600
+OS Version:       iPhone OS 26.2.1 (Build 23C71)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: 2F3A533E-C6D3-4DDD-BB1D-6EC99183642E
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     7D35B09A-9AE1-3B69-A2D6-BFC8EDA015E4 slid base address 0x18ae1c000, slide 0xae1c000
+
+Command:          spotlightknowledged
+Path:             /System/Library/Frameworks/CoreSpotlight.framework/spotlightknowledged
+Resource Coalition: "com.apple.spotlightknowledged"(799)
+Architecture:     arm64e
+Parent:           UNKNOWN [1]
+PID:              19903
+
+Event:            cpu usage
+Action taken:     none
+CPU:              90 seconds cpu time over 126 seconds (72% cpu average), exceeding limit of 50% cpu over 180 seconds
+CPU limit:        90s
+Limit duration:   180s
+CPU used:         90s
+CPU duration:     126s
+Duration:         125.83s
+Duration Sampled: 115.12s (event starts 2.65s before samples, event ends 8.06s after samples)
+Steps:            27 (10 gigacycles/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 7.35% (415.19 MB / 5650.83 MB)
+
+Time Since Boot:  114044s
+Time Awake Since Boot: 78606s
+Time Since Wake:  3574s
+
+Total CPU Time:   148.225s
+Advisory levels:  Battery -> 3, User -> 3, ThermalPressure -> 0, Combined -> 3
+Free disk space:  11.69 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 63.34% (12667/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY, emoji Emoji
+OS Cryptex File Extents: 15076
+
+Heaviest stack for the target process:
+  8  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+  8  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+  8  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+  8  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+  8  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+  8  ??? (libdispatch.dylib + 42292) [0x1c6a38534]
+  8  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+  8  ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+  8  ??? (SpotlightKnowledgeDaemon + 781748) [0x23d646db4]
+  8  ??? (SpotlightKnowledgeDaemon + 779192) [0x23d6463b8]
+  8  ??? (SpotlightKnowledgeDaemon + 751252) [0x23d63f694]
+  8  ??? (SpotlightKnowledgeDaemon + 354244) [0x23d5de7c4]
+  8  ??? (SpotlightKnowledgeDaemon + 350776) [0x23d5dda38]
+  8  ??? (SpotlightKnowledgeDaemon + 286172) [0x23d5cdddc]
+  8  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+  8  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+  8  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+  8  ??? (SpotlightKnowledgeDaemon + 286388) [0x23d5cdeb4]
+  3  ??? (SpotlightKnowledgeDaemon + 352316) [0x23d5de03c]
+  3  ??? (SpotlightKnowledgeDaemon + 295920) [0x23d5d03f0]
+  3  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+  3  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+  3  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+  3  ??? (SpotlightKnowledgeDaemon + 296136) [0x23d5d04c8]
+  3  ??? (SpotlightKnowledgeDaemon + 353928) [0x23d5de688]
+  2  ??? (SpotlightKnowledgeDaemon + 349448) [0x23d5dd508]
+  2  ??? (SpotlightKnowledgeDaemon + 299640) [0x23d5d1278]
+  2  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+  2  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+  2  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+  2  ??? (SpotlightKnowledgeDaemon + 299856) [0x23d5d1350]
+  1  ??? (SpotlightKnowledgeDaemon + 350140) [0x23d5dd7bc]
+  1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+  1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+  1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+  1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+  1  ??? (KnowledgeGraphKit + 398840) [0x2618bf5f8]
+  1  ??? (KnowledgeGraphKit + 400944) [0x2618bfe30]
+  1  ??? (KnowledgeGraphKit + 576320) [0x2618eab40]
+  1  ??? (KnowledgeGraphKit + 576888) [0x2618ead78]
+  1  ??? (KnowledgeGraphKit + 374540) [0x2618b970c]
+  1  ??? (KnowledgeGraphKit + 960024) [0x261948618]
+  1  ??? (KnowledgeGraphKit + 759196) [0x26191759c]
+
+
+Powerstats for:   spotlightknowledged [19903]
+UUID:             26D4A592-EC9E-316B-8DE9-748EF20FCEC3
+Path:             /System/Library/Frameworks/CoreSpotlight.framework/spotlightknowledged
+Resource Coalition: 8 samples "com.apple.spotlightknowledged"(799)
+Architecture:     arm64e
+Parent:           UNKNOWN [1]
+UID:              501
+Sudden Term:      Tracked (allows idle exit)
+Footprint:        4592 KB -> 5328 KB (+736 KB)
+Pageins:          344 pages
+Start time:       2026-02-12 02:57:12.678 -0600
+End time:         2026-02-12 02:59:01.743 -0600
+Num samples:      8 (30%)
+Num threads:      1
+Primary state:    8 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Background, Requested Thread QoS Background, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 8 samples Active
+Power Source:     0 samples on Battery, 8 samples on AC
+  8  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    8  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+      8  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+        8  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+          8  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+            8  ??? (libdispatch.dylib + 42292) [0x1c6a38534]
+              8  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                8  ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+                  8  ??? (SpotlightKnowledgeDaemon + 781748) [0x23d646db4]
+                    8  ??? (SpotlightKnowledgeDaemon + 779192) [0x23d6463b8]
+                      8  ??? (SpotlightKnowledgeDaemon + 751252) [0x23d63f694]
+                        8  ??? (SpotlightKnowledgeDaemon + 354244) [0x23d5de7c4]
+                          8  ??? (SpotlightKnowledgeDaemon + 350776) [0x23d5dda38]
+                            8  ??? (SpotlightKnowledgeDaemon + 286172) [0x23d5cdddc]
+                              8  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                8  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                  8  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                    8  ??? (SpotlightKnowledgeDaemon + 286388) [0x23d5cdeb4]
+                                      3  ??? (SpotlightKnowledgeDaemon + 352316) [0x23d5de03c]
+                                        3  ??? (SpotlightKnowledgeDaemon + 295920) [0x23d5d03f0]
+                                          3  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                            3  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                              3  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                                3  ??? (SpotlightKnowledgeDaemon + 296136) [0x23d5d04c8]
+                                                  3  ??? (SpotlightKnowledgeDaemon + 353928) [0x23d5de688]
+                                                    2  ??? (SpotlightKnowledgeDaemon + 349448) [0x23d5dd508]
+                                                      2  ??? (SpotlightKnowledgeDaemon + 299640) [0x23d5d1278]
+                                                        2  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                                          2  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                                            2  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                                              2  ??? (SpotlightKnowledgeDaemon + 299856) [0x23d5d1350]
+                                                                1  ??? (SpotlightKnowledgeDaemon + 350140) [0x23d5dd7bc]
+                                                                  1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+                                                                    1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+                                                                      1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+                                                                        1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+                                                                          1  ??? (KnowledgeGraphKit + 398840) [0x2618bf5f8]
+                                                                            1  ??? (KnowledgeGraphKit + 400944) [0x2618bfe30]
+                                                                              1  ??? (KnowledgeGraphKit + 576320) [0x2618eab40]
+                                                                                1  ??? (KnowledgeGraphKit + 576888) [0x2618ead78]
+                                                                                  1  ??? (KnowledgeGraphKit + 374540) [0x2618b970c]
+                                                                                    1  ??? (KnowledgeGraphKit + 960024) [0x261948618]
+                                                                                      1  ??? (KnowledgeGraphKit + 759196) [0x26191759c]
+                                                                1  ??? (SpotlightKnowledgeDaemon + 350112) [0x23d5dd7a0]
+                                                                  1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+                                                                    1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+                                                                      1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+                                                                        1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+                                                                          1  ??? (KnowledgeGraphKit + 398996) [0x2618bf694]
+                                                                            1  ??? (KnowledgeGraphKit + 400116) [0x2618bfaf4]
+                                                                              1  ??? (KnowledgeGraphKit + 579248) [0x2618eb6b0]
+                                                                                1  ??? (KnowledgeGraphKit + 588792) [0x2618edbf8]
+                                                                                  1  ??? (KnowledgeGraphKit + 773536) [0x26191ada0]
+                                                                                    1  ??? (KnowledgeGraphKit + 772580) [0x26191a9e4]
+                                                                                      1  ??? (KnowledgeGraphKit + 722296) [0x26190e578]
+                                                                                        1  ??? (libsqlite3.dylib + 191252) [0x18c6dab14]
+                                                                                          1  ??? (libsqlite3.dylib + 228108) [0x18c6e3b0c]
+                                                                                            1  ??? (libsqlite3.dylib + 724496) [0x18c75ce10]
+                                                                                              1  ??? (libsqlite3.dylib + 730580) [0x18c75e5d4]
+                                                                                                1  ??? (libsqlite3.dylib + 237428) [0x18c6e5f74]
+                                                                                                  1  ??? (libsqlite3.dylib + 747856) [0x18c762950]
+                                                                                                    1  ??? (libsqlite3.dylib + 685016) [0x18c7533d8]
+                                                                                                      1  ??? (libsqlite3.dylib + 113456) [0x18c6c7b30]
+                                                                                                        1  ??? (libsqlite3.dylib + 26476) [0x18c6b276c]
+                                                                                                          1  ??? (libsystem_kernel.dylib + 4560) [0x2388f21d0]
+                                                    1  ??? (SpotlightKnowledgeDaemon + 348640) [0x23d5dd1e0]
+                                                      1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+                                                        1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+                                                          1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+                                                            1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+                                                              1  ??? (KnowledgeGraphKit + 398840) [0x2618bf5f8]
+                                                                1  ??? (KnowledgeGraphKit + 400944) [0x2618bfe30]
+                                                                  1  ??? (KnowledgeGraphKit + 576320) [0x2618eab40]
+                                                                    1  ??? (KnowledgeGraphKit + 576888) [0x2618ead78]
+                                                                      1  ??? (KnowledgeGraphKit + 374540) [0x2618b970c]
+                                                                        1  ??? (KnowledgeGraphKit + 960024) [0x261948618]
+                                                                          1  ??? (KnowledgeGraphKit + 759196) [0x26191759c]
+                                      2  ??? (SpotlightKnowledgeDaemon + 351416) [0x23d5ddcb8]
+                                        2  ??? (SpotlightKnowledgeDaemon + 292372) [0x23d5cf614]
+                                          2  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                            2  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                              2  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                                2  ??? (SpotlightKnowledgeDaemon + 292588) [0x23d5cf6ec]
+                                                  2  ??? (SpotlightKnowledgeDaemon + 352708) [0x23d5de1c4]
+                                                    2  ??? (SpotlightKnowledgeDaemon + 349448) [0x23d5dd508]
+                                                      2  ??? (SpotlightKnowledgeDaemon + 299640) [0x23d5d1278]
+                                                        2  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                                          2  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                                            2  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                                              2  ??? (SpotlightKnowledgeDaemon + 299856) [0x23d5d1350]
+                                                                1  ??? (SpotlightKnowledgeDaemon + 350140) [0x23d5dd7bc]
+                                                                  1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+                                                                    1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+                                                                      1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+                                                                        1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+                                                                          1  ??? (KnowledgeGraphKit + 398840) [0x2618bf5f8]
+                                                                            1  ??? (KnowledgeGraphKit + 400944) [0x2618bfe30]
+                                                                              1  ??? (KnowledgeGraphKit + 576320) [0x2618eab40]
+                                                                                1  ??? (KnowledgeGraphKit + 576888) [0x2618ead78]
+                                                                                  1  ??? (KnowledgeGraphKit + 374540) [0x2618b970c]
+                                                                                    1  ??? (KnowledgeGraphKit + 960024) [0x261948618]
+                                                                                      1  ??? (KnowledgeGraphKit + 759196) [0x26191759c]
+                                                                1  ??? (SpotlightKnowledgeDaemon + 350112) [0x23d5dd7a0]
+                                                                  1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+                                                                    1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+                                                                      1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+                                                                        1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+                                                                          1  ??? (KnowledgeGraphKit + 398996) [0x2618bf694]
+                                                                            1  ??? (KnowledgeGraphKit + 400116) [0x2618bfaf4]
+                                                                              1  ??? (KnowledgeGraphKit + 579248) [0x2618eb6b0]
+                                                                                1  ??? (KnowledgeGraphKit + 588792) [0x2618edbf8]
+                                                                                  1  ??? (KnowledgeGraphKit + 773536) [0x26191ada0]
+                                                                                    1  ??? (KnowledgeGraphKit + 772580) [0x26191a9e4]
+                                                                                      1  ??? (KnowledgeGraphKit + 722296) [0x26190e578]
+                                                                                        1  ??? (libsqlite3.dylib + 191252) [0x18c6dab14]
+                                                                                          1  ??? (libsqlite3.dylib + 228108) [0x18c6e3b0c]
+                                                                                            1  ??? (libsqlite3.dylib + 724496) [0x18c75ce10]
+                                                                                              1  ??? (libsqlite3.dylib + 730580) [0x18c75e5d4]
+                                                                                                1  ??? (libsqlite3.dylib + 237428) [0x18c6e5f74]
+                                                                                                  1  ??? (libsqlite3.dylib + 747856) [0x18c762950]
+                                                                                                    1  ??? (libsqlite3.dylib + 685016) [0x18c7533d8]
+                                                                                                      1  ??? (libsqlite3.dylib + 113456) [0x18c6c7b30]
+                                                                                                        1  ??? (libsqlite3.dylib + 26476) [0x18c6b276c]
+                                                                                                          1  ??? (libsystem_kernel.dylib + 4560) [0x2388f21d0]
+                                      1  ??? (SpotlightKnowledgeDaemon + 351772) [0x23d5dde1c]
+                                        1  ??? (SpotlightKnowledgeDaemon + 287412) [0x23d5ce2b4]
+                                          1  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                            1  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                              1  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                                1  ??? (SpotlightKnowledgeDaemon + 287628) [0x23d5ce38c]
+                                                  1  ??? (SpotlightKnowledgeDaemon + 353196) [0x23d5de3ac]
+                                                    1  ??? (SpotlightKnowledgeDaemon + 349448) [0x23d5dd508]
+                                                      1  ??? (SpotlightKnowledgeDaemon + 299640) [0x23d5d1278]
+                                                        1  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                                          1  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                                            1  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                                              1  ??? (SpotlightKnowledgeDaemon + 299856) [0x23d5d1350]
+                                                                1  ??? (SpotlightKnowledgeDaemon + 350112) [0x23d5dd7a0]
+                                                                  1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+                                                                    1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+                                                                      1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+                                                                        1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+                                                                          1  ??? (KnowledgeGraphKit + 398840) [0x2618bf5f8]
+                                                                            1  ??? (KnowledgeGraphKit + 400944) [0x2618bfe30]
+                                                                              1  ??? (KnowledgeGraphKit + 576320) [0x2618eab40]
+                                                                                1  ??? (KnowledgeGraphKit + 576888) [0x2618ead78]
+                                                                                  1  ??? (KnowledgeGraphKit + 374540) [0x2618b970c]
+                                                                                    1  ??? (KnowledgeGraphKit + 960024) [0x261948618]
+                                                                                      1  ??? (KnowledgeGraphKit + 759196) [0x26191759c]
+                                      1  ??? (SpotlightKnowledgeDaemon + 351588) [0x23d5ddd64]
+                                        1  ??? (SpotlightKnowledgeDaemon + 289892) [0x23d5cec64]
+                                          1  ??? (KnowledgeGraphKit + 417508) [0x2618c3ee4]
+                                            1  ??? (KnowledgeGraphKit + 350092) [0x2618b378c]
+                                              1  ??? (KnowledgeGraphKit + 788668) [0x26191e8bc]
+                                                1  ??? (SpotlightKnowledgeDaemon + 290108) [0x23d5ced3c]
+                                                  1  ??? (SpotlightKnowledgeDaemon + 352952) [0x23d5de2b8]
+                                                    1  ??? (SpotlightKnowledgeDaemon + 348580) [0x23d5dd1a4]
+                                                      1  ??? (KnowledgeGraphKit + 419696) [0x2618c4770]
+                                                        1  ??? (KnowledgeGraphKit + 338776) [0x2618b0b58]
+                                                          1  ??? (KnowledgeGraphKit + 994216) [0x261950ba8]
+                                                            1  ??? (KnowledgeGraphKit + 398600) [0x2618bf508]
+                                                              1  ??? (KnowledgeGraphKit + 398840) [0x2618bf5f8]
+                                                                1  ??? (KnowledgeGraphKit + 400944) [0x2618bfe30]
+                                                                  1  ??? (KnowledgeGraphKit + 576320) [0x2618eab40]
+                                                                    1  ??? (KnowledgeGraphKit + 576888) [0x2618ead78]
+                                                                      1  ??? (KnowledgeGraphKit + 374540) [0x2618b970c]
+                                                                        1  ??? (KnowledgeGraphKit + 959992) [0x2619485f8]
+                                      1  ??? (SpotlightKnowledgeDaemon + 351264) [0x23d5ddc20]
+                                        1  ??? (SpotlightKnowledgeDaemon + 282736) [0x23d5cd070]
+                                          1  ??? (KnowledgeGraphKit + 418848) [0x2618c4420]
+                                            1  ??? (KnowledgeGraphKit + 338916) [0x2618b0be4]
+                                              1  ??? (KnowledgeGraphKit + 427560) [0x2618c6628]
+                                                1  ??? (KnowledgeGraphKit + 348392) [0x2618b30e8]
+                                                  1  ??? (KnowledgeGraphKit + 993484) [0x2619508cc]
+                                                    1  ??? (KnowledgeGraphKit + 396728) [0x2618bedb8]
+                                                      1  ??? (KnowledgeGraphKit + 396904) [0x2618bee68]
+                                                        1  ??? (KnowledgeGraphKit + 544592) [0x2618e2f50]
+                                                          1  ??? (KnowledgeGraphKit + 375376) [0x2618b9a50]
+                                                            1  ??? (KnowledgeGraphKit + 868480) [0x261932080]
+                                                              1  ??? (KnowledgeGraphKit + 888616) [0x261936f28]
+                                                                1  ??? (KnowledgeGraphKit + 887196) [0x26193699c]
+                                                                  1  ??? (KnowledgeGraphKit + 374540) [0x2618b970c]
+                                                                    1  ??? (KnowledgeGraphKit + 960024) [0x261948618]
+                                                                      1  ??? (KnowledgeGraphKit + 759196) [0x26191759c]
+
+  Binary Images:
+           0x102024000 -                ???  spotlightknowledged      <26D4A592-EC9E-316B-8DE9-748EF20FCEC3>  /System/Library/Frameworks/CoreSpotlight.framework/spotlightknowledged
+           0x18c6ac000 -        0x18c8556a3  libsqlite3.dylib         <F94A238E-FF39-3316-B80E-8D89C47986A7>  /usr/lib/libsqlite3.dylib
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib        <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib  <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x2388f1000 -        0x23892bd2b  libsystem_kernel.dylib   <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib
+           0x23d588000 -        0x23d6fd81f  SpotlightKnowledgeDaemon <FA30AA7C-04C8-3CA7-9880-59CA0C089E9E>  /System/Library/PrivateFrameworks/SpotlightKnowledgeDaemon.framework/SpotlightKnowledgeDaemon
+           0x26185e000 -        0x2619926bf  KnowledgeGraphKit        <74B27CD9-F72D-3A7A-BBB1-E3A16A7729B9>  /System/Library/PrivateFrameworks/KnowledgeGraphKit.framework/KnowledgeGraphKit
+
+
+Powerstats for:   routined
+UUID:             AD3561C7-8AFF-320C-AB39-26477B84375C
+Path:             /usr/libexec/routined
+Resource Coalition: 6 samples "com.apple.routined"(17)
+On Behalf Of:     5 samples UNKNOWN [32] (5 samples originated by UNKNOWN [32])
+Architecture:     arm64e
+Start time:       2026-02-12 02:57:07.185 -0600
+End time:         2026-02-12 02:58:26.523 -0600
+Num samples:      6 (22%)
+Primary state:    6 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Background, Requested Thread QoS Background, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 6 samples Active
+Power Source:     0 samples on Battery, 6 samples on AC
+  5  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    5  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+      5  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+        5  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+          3  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+            3  ??? (libdispatch.dylib + 42088) [0x1c6a38468]
+              3  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                3  ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+                  3  ??? (libcoreroutine.dylib + 1404952) [0x23c119018]
+                    3  ??? (libcoreroutine.dylib + 1400024) [0x23c117cd8]
+                      3  ??? (libcoreroutine.dylib + 1401900) [0x23c11842c]
+                        2  ??? (libcoreroutine.dylib + 1406616) [0x23c119698]
+                          2  ??? (libcoreroutine.dylib + 1444004) [0x23c1228a4]
+                            2  ??? (libcoreroutine.dylib + 4122820) [0x23c3b08c4]
+                              2  ??? (libcoreroutine.dylib + 4119584) [0x23c3afc20]
+                                2  ??? (libcoreroutine.dylib + 2798892) [0x23c26d52c]
+                                  2  ??? (libcoreroutine.dylib + 5909844) [0x23c564d54]
+                                    2  ??? (libcoreroutine.dylib + 5895412) [0x23c5614f4]
+                                      2  ??? (libcoreroutine.dylib + 5892496) [0x23c560990]
+                                        2  ??? (libcoreroutine.dylib + 5915804) [0x23c56649c]
+                                          2  ??? (libcoreroutine.dylib + 5921904) [0x23c567c70]
+                                            2  ??? (libcoreroutine.dylib + 1642652) [0x23c15309c]
+                                              1  ??? (libcoreroutine.dylib + 8434240) [0x23c7cd240]
+                                                1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                              1  ??? (libcoreroutine.dylib + 1629128) [0x23c14fbc8]
+                                                1  ??? (Foundation + 10362000) [0x18bf59c90]
+                                                  1  ??? (Foundation + 10361832) [0x18bf59be8]
+                                                    1  ??? (Foundation + 704864) [0x18b624160]
+                                                      1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                        1  ??? (libcoreroutine.dylib + 1406412) [0x23c1195cc]
+                          1  ??? (libcoreroutine.dylib + 1433600) [0x23c120000]
+                            1  ??? (libcoreroutine.dylib + 1434756) [0x23c120484]
+                              1  ??? (libcoreroutine.dylib + 2782240) [0x23c269420]
+                                1  ??? (libcoreroutine.dylib + 3478840) [0x23c313538]
+                                  1  ??? (libcoreroutine.dylib + 2782640) [0x23c2695b0]
+                                    1  ??? (libcoreroutine.dylib + 1438048) [0x23c121160]
+                                      1  ??? (libcoreroutine.dylib + 3546636) [0x23c323e0c]
+                                        1  ??? (libcoreroutine.dylib + 3536816) [0x23c3217b0]
+                                          1  ??? (libcoreroutine.dylib + 3531116) [0x23c32016c]
+                                            1  ??? (CoreData + 1225812) [0x1905c3454]
+                                              1  ??? (libdispatch.dylib + 71872) [0x1c6a3f8c0]
+                                                1  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                                                  1  ??? (CoreData + 6732) [0x190499a4c]
+                                                    1  ??? (libcoreroutine.dylib + 3531492) [0x23c3202e4]
+                                                      1  ??? (libcoreroutine.dylib + 3537344) [0x23c3219c0]
+                                                        1  ??? (libcoreroutine.dylib + 3519708) [0x23c31d4dc]
+                                                          1  ??? (libcoreroutine.dylib + 1534784) [0x23c138b40]
+                                                            1  ??? (CoreData + 1208744) [0x1905bf1a8]
+                                                              1  ??? (Foundation + 9351752) [0x18be63248]
+                                                                1  ??? (Foundation + 9615096) [0x18bea36f8]
+                                                                  1  ??? (Foundation + 9525544) [0x18be8d928]
+                                                                    1  ??? (Foundation + 10398568) [0x18bf62b68]
+                                                                      1  ??? (Foundation + 10173168) [0x18bf2baf0]
+                                                                        1  ??? (CoreFoundation + 1329344) [0x18e04b8c0]
+                                                                          1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+          2  ??? (libdispatch.dylib + 44868) [0x1c6a38f44]
+            2  ??? (libdispatch.dylib + 42088) [0x1c6a38468]
+              2  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                2  ??? (CoreData + 6732) [0x190499a4c]
+                  2  ??? (libcoreroutine.dylib + 3470828) [0x23c3115ec]
+                    1  ??? (libcoreroutine.dylib + 3294004) [0x23c2e6334]
+                      1  ??? (libcoreroutine.dylib + 1262340) [0x23c0f6304]
+                        1  ??? (libcoreroutine.dylib + 1262676) [0x23c0f6454]
+                          1  ??? (libcoreroutine.dylib + 6230172) [0x23c5b309c]
+                            1  ??? (libobjc.A.dylib + 13052) [0x18aeb32fc]
+                              1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                    1  ??? (libcoreroutine.dylib + 3293928) [0x23c2e62e8]
+                      1  ??? (CoreData + 858432) [0x190569940]
+                        1  ??? (CoreData + 362060) [0x1904f064c]
+                          1  ??? (libcoreroutine.dylib + 1534784) [0x23c138b40]
+                            1  ??? (CoreData + 1207460) [0x1905beca4]
+                              1  ??? (CoreData + 1484044) [0x19060250c]
+                                1  ??? (CoreData + 1444864) [0x1905f8c00]
+                                  1  ??? (CoreData + 1490776) [0x190603f58]
+                                    1  ??? (CoreData + 1716316) [0x19063b05c]
+                                      1  ??? (CoreData + 1704252) [0x19063813c]
+                                        1  ??? (CoreData + 2632176) [0x19071a9f0]
+                                          1  ??? (CoreData + 1422212) [0x1905f3384]
+                                            1  ??? (CoreData + 1911480) [0x19066aab8]
+                                              1  ??? (libdispatch.dylib + 71872) [0x1c6a3f8c0]
+                                                1  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                                                  1  ??? (CoreData + 1911760) [0x19066abd0]
+                                                    1  ??? (CoreData + 1422420) [0x1905f3454]
+                                                      1  ??? (CoreData + 826704) [0x190561d50]
+                                                        1  ??? (CoreData + 2757972) [0x190739554]
+                                                          1  ??? (CoreData + 57600) [0x1904a6100]
+                                                            1  ??? (CoreData + 49548) [0x1904a418c]
+                                                              1  ??? (CoreData + 81964) [0x1904ac02c]
+                                                                1  ??? (CoreData + 2141760) [0x1906a2e40]
+                                                                  1  ??? (CoreData + 2423084) [0x1906e792c]
+                                                                    1  ??? (CoreData + 91660) [0x1904ae60c]
+                                                                      1  ??? (libsystem_malloc.dylib + 64288) [0x199376b20]
+                                                                        1  ??? (libsystem_malloc.dylib + 6896) [0x199368af0]
+                                                                          1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+  1  ??? (libsystem_pthread.dylib + 2232) [0x1ea7ef8b8]
+
+  Binary Images:
+           0x102588000 -                ???  routined                <AD3561C7-8AFF-320C-AB39-26477B84375C>  /usr/libexec/routined
+           0x18aeb0000 -        0x18af01b2f  libobjc.A.dylib         <7203A71F-3CE4-3F60-93CF-B3063CAAB174>  /usr/lib/libobjc.A.dylib
+           0x18b578000 -        0x18c3be81f  Foundation              <75D11B29-11A6-3507-87F7-487ACEB1476A>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x18df07000 -        0x18e48d73f  CoreFoundation          <BD79FBF5-83C8-35F5-A0D5-4CA56E602111>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x190498000 -        0x19082847f  CoreData                <C13B03FF-BB75-35C9-9FB5-4CDA1CD580AC>  /System/Library/Frameworks/CoreData.framework/CoreData
+           0x199367000 -        0x1993aacc7  libsystem_malloc.dylib  <21E40163-3A98-3DE0-8CB9-6F7ED91561F6>  /usr/lib/system/libsystem_malloc.dylib
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib       <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x23bfc2000 -        0x23c8062bf  libcoreroutine.dylib    <080B996F-071D-3BDF-810F-7F8A57E9A279>  /usr/lib/libcoreroutine.dylib
+
+
+Powerstats for:   signpost_reporter
+UUID:             2512B6C5-BDEB-3431-92D1-C6F6F0FEED15
+Path:             /usr/libexec/signpost_reporter
+Resource Coalition: 4 samples "com.apple.signpost.signpost_reporter"(1075)
+On Behalf Of:     4 samples UNKNOWN [32] (4 samples originated by UNKNOWN [32])
+Architecture:     arm64e
+Start time:       2026-02-12 02:57:06.622 -0600
+End time:         2026-02-12 02:57:59.849 -0600
+Num samples:      4 (15%)
+Primary state:    4 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Background, Requested Thread QoS Background, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 4 samples Active
+Power Source:     0 samples on Battery, 4 samples on AC
+  4  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    4  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+      4  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+        4  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+          4  ??? (libdispatch.dylib + 44868) [0x1c6a38f44]
+            4  ??? (libdispatch.dylib + 42088) [0x1c6a38468]
+              4  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                4  ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+                  4  ??? (LoggingSupport + 187892) [0x239b36df4]
+                    4  ??? (LoggingSupport + 188540) [0x239b3707c]
+                      4  ??? (LoggingSupport + 130820) [0x239b28f04]
+                        4  ??? (LoggingSupport + 127856) [0x239b28370]
+                          4  ??? (LoggingSupport + 138552) [0x239b2ad38]
+                            4  ??? (LoggingSupport + 128576) [0x239b28640]
+                              4  ??? (LoggingSupport + 131304) [0x239b290e8]
+                                4  ??? (LoggingSupport + 189040) [0x239b37270]
+                                  4  ??? (SignpostCollection + 23332) [0x271f99b24]
+                                    2  ??? (SignpostCollection + 22056) [0x271f99628]
+                                      1  ??? (SignpostSupport + 63164) [0x239e986bc]
+                                        1  ??? (SignpostSupport + 64000) [0x239e98a00]
+                                          1  ??? (SignpostSupport + 62540) [0x239e9844c]
+                                            1  ??? (SignpostSupport + 115600) [0x239ea5390]
+                                              1  ??? (SignpostSupport + 106272) [0x239ea2f20]
+                                                1  ??? (SignpostSupport + 115980) [0x239ea550c]
+                                                  1  ??? (SignpostSupport + 110004) [0x239ea3db4]
+                                                    1  ??? (SignpostSupport + 8212) [0x239e8b014]
+                                                      1  ??? (Foundation + 10169264) [0x18bf2abb0]
+                                                        1  ??? (CoreFoundation + 74648) [0x18df19398]
+                                                          1  ??? (CoreFoundation + 74468) [0x18df192e4]
+                                                            1  ??? (CoreFoundation + 21092) [0x18df0c264]
+                                                              1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                      1  ??? (SignpostSupport + 63092) [0x239e98674]
+                                        1  ??? (SignpostSupport + 63468) [0x239e987ec]
+                                          1  ??? (signpost_reporter + 24408) [0x102609f58]
+                                            1  ??? (signpost_reporter + 6488) [0x102605958]
+                                              1  ??? (signpost_reporter + 6220) [0x10260584c]
+                                                1  ??? (libobjc.A.dylib + 12312) [0x18aeb3018]
+                                                  1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                    2  ??? (SignpostCollection + 22036) [0x271f99614]
+                                      1  ??? (SignpostCollection + 19880) [0x271f98da8]
+                                        1  ??? (SignpostCollection + 15972) [0x271f97e64]
+                                          1  ??? (LoggingSupport + 89968) [0x239b1ef70]
+                                            1  ??? (CoreFoundation + 51912) [0x18df13ac8]
+                                              1  ??? (CoreFoundation + 13136) [0x18df0a350]
+                                                1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                      1  ??? (libobjc.A.dylib + 16408) [0x18aeb4018]
+                                        1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+
+  Binary Images:
+           0x102604000 -                ???  signpost_reporter       <2512B6C5-BDEB-3431-92D1-C6F6F0FEED15>  /usr/libexec/signpost_reporter
+           0x18aeb0000 -        0x18af01b2f  libobjc.A.dylib         <7203A71F-3CE4-3F60-93CF-B3063CAAB174>  /usr/lib/libobjc.A.dylib
+           0x18b578000 -        0x18c3be81f  Foundation              <75D11B29-11A6-3507-87F7-487ACEB1476A>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x18df07000 -        0x18e48d73f  CoreFoundation          <BD79FBF5-83C8-35F5-A0D5-4CA56E602111>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib       <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x239b09000 -        0x239b8ee9f  LoggingSupport          <E7459EA3-EE7B-30CF-9565-CA1B8339ADB6>  /System/Library/PrivateFrameworks/LoggingSupport.framework/LoggingSupport
+           0x239e89000 -        0x239f0d43f  SignpostSupport         <D5BE9B8E-5B72-36C5-B3E0-A2C535C799D0>  /System/Library/PrivateFrameworks/SignpostSupport.framework/SignpostSupport
+           0x271f94000 -        0x271fa10ff  SignpostCollection      <BE91BBA6-2F5B-399C-9B00-DD5A55799292>  /System/Library/PrivateFrameworks/SignpostCollection.framework/SignpostCollection
+
+
+Powerstats for:   siriknowledged
+UUID:             91DA41F8-D721-3DF5-86C9-F9B4F9FEA40B
+Path:             /usr/libexec/siriknowledged
+Resource Coalition: 2 samples "com.apple.siriknowledged"(293)
+On Behalf Of:     2 samples UNKNOWN [32] (2 samples originated by UNKNOWN [19848])
+Architecture:     arm64e
+Start time:       2026-02-12 02:57:30.655 -0600
+End time:         2026-02-12 02:57:30.739 -0600
+Num samples:      2 (7%)
+Primary state:    2 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 2 samples Active
+Power Source:     0 samples on Battery, 2 samples on AC
+  2  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    2  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+      2  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+        2  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+          2  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+            2  ??? (libdispatch.dylib + 41680) [0x1c6a382d0]
+              2  ??? (libdispatch.dylib + 98828) [0x1c6a4620c]
+                2  ??? (libdispatch.dylib + 103736) [0x1c6a47538]
+                  2  ??? (libdispatch.dylib + 26212) [0x1c6a34664]
+                    2  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                      2  ??? (libdispatch.dylib + 27572) [0x1c6a34bb4]
+                        2  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                          2  ??? (CoreKnowledge + 377628) [0x1d3c9a31c]
+                            2  ??? (CoreKnowledge + 444652) [0x1d3caa8ec]
+                              2  ??? (CoreKnowledge + 438812) [0x1d3ca921c]
+                                2  ??? (CoreKnowledge + 450444) [0x1d3cabf8c]
+                                  2  ??? (CoreKnowledge + 444652) [0x1d3caa8ec]
+                                    2  ??? (CoreKnowledge + 447444) [0x1d3cab3d4]
+                                      2  ??? (CascadeSets + 63684) [0x1c21e18c4]
+                                        2  ??? (CascadeSets + 62848) [0x1c21e1580]
+                                          2  ??? (CascadeSets + 63224) [0x1c21e16f8]
+                                            2  ??? (CascadeSets + 198548) [0x1c2202794]
+                                              1  ??? (CascadeSets + 230044) [0x1c220a29c]
+                                                1  ??? (CascadeSets + 230828) [0x1c220a5ac]
+                                                  1  ??? (CascadeSets + 227188) [0x1c2209774]
+                                                    1  ??? (libsystem_kernel.dylib + 24572) [0x2388f6ffc]
+                                                      1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [19848])>
+                                              1  ??? (CascadeSets + 229508) [0x1c220a084]
+                                                1  ??? (CascadeSets + 226668) [0x1c220956c]
+                                                  1  ??? (CascadeSets + 227032) [0x1c22096d8]
+                                                    1  ??? (Foundation + 10269976) [0x18bf43518]
+                                                      1  ??? (Foundation + 10260560) [0x18bf41050]
+                                                        1  ??? (Foundation + 10270272) [0x18bf43640]
+                                                          1  ??? (CoreFoundation + 1522916) [0x18e07ace4]
+                                                            1  ??? (CoreFoundation + 241840) [0x18df420b0]
+                                                              1  ??? (CoreServicesInternal + 3576) [0x1a0f7bdf8]
+                                                                1  ??? (CoreServicesInternal + 5220) [0x1a0f7c464]
+                                                                  1  ??? (libsystem_kernel.dylib + 26244) [0x2388f7684]
+                                                                    1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [19848])>
+
+  Binary Images:
+           0x1006a4000 -                ???  siriknowledged          <91DA41F8-D721-3DF5-86C9-F9B4F9FEA40B>  /usr/libexec/siriknowledged
+           0x18b578000 -        0x18c3be81f  Foundation              <75D11B29-11A6-3507-87F7-487ACEB1476A>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x18df07000 -        0x18e48d73f  CoreFoundation          <BD79FBF5-83C8-35F5-A0D5-4CA56E602111>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1a0f7b000 -        0x1a0fafbb3  CoreServicesInternal    <DBCE5207-C779-3875-80B5-1A05E495BDB7>  /System/Library/PrivateFrameworks/CoreServicesInternal.framework/CoreServicesInternal
+           0x1c21d2000 -        0x1c224e8ff  CascadeSets             <E7A28DDF-1E5D-3408-B3AA-C4854B88CED3>  /System/Library/PrivateFrameworks/CascadeSets.framework/CascadeSets
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib       <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1d3c3e000 -        0x1d3cd571f  CoreKnowledge           <BA950535-469F-347A-A46A-7E786C39E0AE>  /System/Library/PrivateFrameworks/CoreKnowledge.framework/CoreKnowledge
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x2388f1000 -        0x23892bd2b  libsystem_kernel.dylib  <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib

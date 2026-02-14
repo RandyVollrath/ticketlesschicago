@@ -1,0 +1,288 @@
+{"roots_installed":0,"app_name":"Gmail","timestamp":"2026-02-10 15:09:00.00 -0600","app_version":"6.0.260127","slice_uuid":"1766DBBA-2ADC-3FFD-8BBE-74AF53255127","adam_id":"422689480","build_version":"6.0.260127.1803126","bundleID":"com.google.Gmail","duration_ms":"68025777","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.2.1 (23C71)","distributor_id":"com.apple.AppStore","name":"Gmail","incident_id":"03595108-12D6-46C9-9AAC-F93BE8ADAF62"}
+Date/Time:        2026-02-09 20:15:07.333 -0600
+End time:         2026-02-10 15:08:53.110 -0600
+OS Version:       iPhone OS 26.2.1 (Build 23C71)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: 03595108-12D6-46C9-9AAC-F93BE8ADAF62
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     7D35B09A-9AE1-3B69-A2D6-BFC8EDA015E4 slid base address 0x18e534000, slide 0xe534000
+
+Command:          Gmail
+Path:             /private/var/containers/Bundle/Application/88C0B792-DBEC-447E-937F-BEFA29794FD4/Gmail.app/Gmail
+Identifier:       com.google.Gmail
+Version:          6.0.260127 (6.0.260127.1803126)
+Adam ID:          422689480
+Is First Party:   No
+Beta Identifier:  48D22F4F-683E-4496-BD7A-A15668411D1D
+Resource Coalition: "com.google.Gmail"(1478)
+On Behalf Of:     16 samples UNKNOWN [35] (13 samples originated by Gmail [15995], 3 samples originated by UNKNOWN [35, 14859])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+PID:              15995
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.77 MB of file backed memory dirtied over 68026 seconds (15.78 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.77 MB
+Writes duration:  68026s
+Duration:         68025.78s
+Duration Sampled: 22437.19s (event starts 44251.43s before samples, event ends 1337.16s after samples)
+Steps:            19 (10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 7.89% (445.72 MB / 5650.83 MB)
+
+Advisory levels:  Battery -> 2, User -> 3, ThermalPressure -> 0, Combined -> 2
+Free disk space:  13.23 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 60.16% (12033/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY, emoji Emoji
+OS Cryptex File Extents: 15076
+
+Heaviest stack for the target process:
+  19  ??? (libsystem_pthread.dylib + 2240) [0x1edf078c0]
+  11  ??? (libsystem_pthread.dylib + 4988) [0x1edf0837c]
+  11  ??? (libdispatch.dylib + 83708) [0x1ca15a6fc]
+  8   ??? (libdispatch.dylib + 82108) [0x1ca15a0bc]
+  8   ??? (libdispatch.dylib + 230492) [0x1ca17e45c]
+  8   ??? (libdispatch.dylib + 112636) [0x1ca1617fc]
+  8   ??? (libdispatch.dylib + 6876) [0x1ca147adc]
+  8   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6310808) [0x116788b98]
+  8   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6313264) [0x116789530]
+  8   ??? (Foundation + 457364) [0x18ecffa94]
+  8   ??? (Foundation + 457956) [0x18ecffce4]
+  8   ??? (Foundation + 268096) [0x18ecd1740]
+  8   ??? (Foundation + 461316) [0x18ed00a04]
+  8   ??? (Foundation + 461292) [0x18ed009ec]
+  8   ??? (Foundation + 461264) [0x18ed009d0]
+  8   ??? (Foundation + 474232) [0x18ed03c78]
+  7   ??? (libsystem_kernel.dylib + 20516) [0x23c00e024]
+
+
+Powerstats for:   Gmail [15995]
+UUID:             1766DBBA-2ADC-3FFD-8BBE-74AF53255127
+Path:             /private/var/containers/Bundle/Application/88C0B792-DBEC-447E-937F-BEFA29794FD4/Gmail.app/Gmail
+Identifier:       com.google.Gmail
+Version:          6.0.260127 (6.0.260127.1803126)
+Adam ID:          422689480
+Is First Party:   No
+Beta Identifier:  48D22F4F-683E-4496-BD7A-A15668411D1D
+Resource Coalition: 19 samples "com.google.Gmail"(1478)
+On Behalf Of:     16 samples UNKNOWN [35] (13 samples originated by Gmail [15995], 3 samples originated by UNKNOWN [35, 14859])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+UID:              501
+Footprint:        41.69 MB -> 162.67 MB (+120.98 MB) (max 210.22 MB )
+Pageins:          28139 pages
+Start time:       2026-02-10 08:32:38.762 -0600
+End time:         2026-02-10 14:46:35.951 -0600
+Num samples:      19 (100%)
+Num threads:      11
+Primary state:    5 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Background, Requested Thread QoS Utility, Override Thread QoS Unspecified, e-core
+User Activity:    1 samples Idle, 18 samples Active
+Power Source:     19 samples on Battery, 0 samples on AC
+  19  ??? (libsystem_pthread.dylib + 2240) [0x1edf078c0]
+    11  ??? (libsystem_pthread.dylib + 4988) [0x1edf0837c]
+      11  ??? (libdispatch.dylib + 83708) [0x1ca15a6fc]
+        8   ??? (libdispatch.dylib + 82108) [0x1ca15a0bc]
+          8   ??? (libdispatch.dylib + 230492) [0x1ca17e45c]
+            8   ??? (libdispatch.dylib + 112636) [0x1ca1617fc]
+              8   ??? (libdispatch.dylib + 6876) [0x1ca147adc]
+                8   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6310808) [0x116788b98]
+                  8   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6313264) [0x116789530]
+                    8   ??? (Foundation + 457364) [0x18ecffa94]
+                      8   ??? (Foundation + 457956) [0x18ecffce4]
+                        8   ??? (Foundation + 268096) [0x18ecd1740]
+                          8   ??? (Foundation + 461316) [0x18ed00a04]
+                            8   ??? (Foundation + 461292) [0x18ed009ec]
+                              8   ??? (Foundation + 461264) [0x18ed009d0]
+                                8   ??? (Foundation + 474232) [0x18ed03c78]
+                                  7   ??? (libsystem_kernel.dylib + 20516) [0x23c00e024]
+                                    5   <on behalf of UNKNOWN [35] (originated by Gmail [15995])>
+                                    2   <on behalf of UNKNOWN [35] (originated by Gmail [15995]), Effective Thread QoS Utility>
+                                  1   ??? (libsystem_kernel.dylib + 33360) [0x23c011250]
+                                    1   <on behalf of UNKNOWN [35] (originated by Gmail [15995]), Effective Thread QoS Utility>
+        3   ??? (libdispatch.dylib + 81736) [0x1ca159f48]
+          3   ??? (libdispatch.dylib + 25340) [0x1ca14c2fc]
+            3   ??? (libdispatch.dylib + 227300) [0x1ca17d7e4]
+              3   ??? (libdispatch.dylib + 112636) [0x1ca1617fc]
+                3   ??? (libdispatch.dylib + 6876) [0x1ca147adc]
+                  3   ??? (Gmail + 140136396) [0x10b274fcc]
+                    3   ??? (Gmail + 140136652) [0x10b2750cc]
+                      3   ??? (Gmail + 140138396) [0x10b27579c]
+                        3   ??? (Gmail + 140196848) [0x10b283bf0]
+                          3   ??? (Gmail + 139333004) [0x10b1b0d8c]
+                            2   ??? (Gmail + 140308248) [0x10b29ef18]
+                              2   ??? (Gmail + 140309552) [0x10b29f430]
+                                2   ??? (Gmail + 139389608) [0x10b1beaa8]
+                                  2   ??? (Gmail + 139388364) [0x10b1be5cc]
+                                    2   ??? (Gmail + 136614844) [0x10af193bc]
+                                      2   ??? (Gmail + 120123452) [0x109f5f03c]
+                                        2   ??? (Gmail + 120123024) [0x109f5ee90]
+                                          2   ??? (Gmail + 120124100) [0x109f5f2c4]
+                                            2   ??? (Gmail + 136794128) [0x10af45010]
+                                              2   ??? (Gmail + 136794792) [0x10af452a8]
+                                                2   ??? (Gmail + 120095052) [0x109f5814c]
+                                                  2   ??? (Gmail + 120095204) [0x109f581e4]
+                                                    2   ??? (Gmail + 120094332) [0x109f57e7c]
+                                                      2   ??? (Gmail + 120091192) [0x109f57238]
+                                                        2   ??? (libsqlite3.dylib + 34196) [0x18fdcc594]
+                                                          2   ??? (libsqlite3.dylib + 35136) [0x18fdcc940]
+                                                            2   ??? (libsqlite3.dylib + 37368) [0x18fdcd1f8]
+                                                              2   ??? (libsqlite3.dylib + 47480) [0x18fdcf978]
+                                                                2   ??? (libsqlite3.dylib + 53308) [0x18fdd103c]
+                                                                  2   ??? (libsqlite3.dylib + 786708) [0x18fe84114]
+                                                                    2   ??? (libsqlite3.dylib + 75084) [0x18fdd654c]
+                                                                      2   ??? (libsqlite3.dylib + 680488) [0x18fe6a228]
+                                                                        2   ??? (libsqlite3.dylib + 94252) [0x18fddb02c]
+                                                                          2   ??? (libsqlite3.dylib + 98372) [0x18fddc044]
+                                                                            1   ??? (libsqlite3.dylib + 103580) [0x18fddd49c]
+                                                                              1   <on behalf of UNKNOWN [35] (originated by Gmail [15995]), Effective Thread QoS Default, Requested Thread QoS User Initiated, p-core>
+                                                                            1   ??? (libsqlite3.dylib + 100720) [0x18fddc970]
+                                                                              1   ??? (libsqlite3.dylib + 686144) [0x18fe6b840]
+                                                                                1   ??? (libsqlite3.dylib + 106284) [0x18fdddf2c]
+                                                                                  1   ??? (libsystem_kernel.dylib + 33600) [0x23c011340]
+                                                                                    1   <Requested Thread QoS User Initiated>
+                            1   ??? (Gmail + 140203760) [0x10b2856f0]
+                              1   ??? (Gmail + 140213732) [0x10b287de4]
+                                1   ??? (Gmail + 67059880) [0x106cc40a8]
+                                  1   ??? (Gmail + 4630212) [0x10313a6c4]
+                                    1   ??? (Gmail + 4950928) [0x103188b90]
+                                      1   ??? (Gmail + 4955964) [0x103189f3c]
+                                        1   ??? (libsqlite3.dylib + 33108) [0x18fdcc154]
+                                          1   ??? (libsqlite3.dylib + 191252) [0x18fdf2b14]
+                                            1   ??? (libsqlite3.dylib + 222300) [0x18fdfa45c]
+                                              1   ??? (libsqlite3.dylib + 1329884) [0x18ff08adc]
+                                                1   ??? (libsqlite3.dylib + 1474744) [0x18ff2c0b8]
+                                                  1   ??? (libsqlite3.dylib + 191252) [0x18fdf2b14]
+                                                    1   ??? (libsqlite3.dylib + 209304) [0x18fdf7198]
+                                                      1   ??? (libsqlite3.dylib + 310120) [0x18fe0fb68]
+                                                        1   ??? (libsqlite3.dylib + 319240) [0x18fe11f08]
+                                                          1   ??? (libsqlite3.dylib + 311024) [0x18fe0fef0]
+                                                            1   ??? (libsqlite3.dylib + 695752) [0x18fe6ddc8]
+                                                              1   ??? (libsqlite3.dylib + 328232) [0x18fe14228]
+                                                                1   ??? (libsystem_kernel.dylib + 27704) [0x23c00fc38]
+                                                                  1   <on behalf of UNKNOWN [35] (originated by Gmail [15995]), Frontmost App, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+    8   ??? (libsystem_pthread.dylib + 5048) [0x1edf083b8]
+      8   ??? (libdispatch.dylib + 85220) [0x1ca15ace4]
+        8   ??? (libdispatch.dylib + 87020) [0x1ca15b3ec]
+          7   ??? (libdispatch.dylib + 44868) [0x1ca150f44]
+            7   ??? (libdispatch.dylib + 42088) [0x1ca150468]
+              7   ??? (libdispatch.dylib + 112636) [0x1ca1617fc]
+                7   ??? (libdispatch.dylib + 6876) [0x1ca147adc]
+                  3   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6285940) [0x116782a74]
+                    3   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6352168) [0x116792d28]
+                      3   ??? (Foundation + 457364) [0x18ecffa94]
+                        3   ??? (Foundation + 457956) [0x18ecffce4]
+                          3   ??? (Foundation + 268096) [0x18ecd1740]
+                            3   ??? (Foundation + 461316) [0x18ed00a04]
+                              3   ??? (Foundation + 461292) [0x18ed009ec]
+                                3   ??? (Foundation + 461264) [0x18ed009d0]
+                                  2   ??? (Foundation + 474232) [0x18ed03c78]
+                                    2   ??? (libsystem_kernel.dylib + 20516) [0x23c00e024]
+                                      1   <on behalf of UNKNOWN [35] (originated by UNKNOWN [35]), Effective Thread QoS Default, Requested Thread QoS Background, p-core>
+                                      1   <Requested Thread QoS User Initiated>
+                                  1   ??? (Foundation + 474760) [0x18ed03e88]
+                                    1   ??? (Foundation + 462640) [0x18ed00f30]
+                                      1   ??? (Foundation + 463660) [0x18ed0132c]
+                                        1   ??? (libsystem_kernel.dylib + 21664) [0x23c00e4a0]
+                                          1   <on behalf of UNKNOWN [35] (originated by UNKNOWN [14859]), Frontmost App, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                  2   ??? (Gmail + 140136396) [0x10b274fcc]
+                    2   ??? (Gmail + 140136652) [0x10b2750cc]
+                      2   ??? (Gmail + 140138396) [0x10b27579c]
+                        2   ??? (Gmail + 140196848) [0x10b283bf0]
+                          2   ??? (Gmail + 136792624) [0x10af44a30]
+                            2   ??? (Gmail + 120158040) [0x109f67758]
+                              2   ??? (Gmail + 120096396) [0x109f5868c]
+                                2   ??? (Gmail + 120090580) [0x109f56fd4]
+                                  2   ??? (libsqlite3.dylib + 33108) [0x18fdcc154]
+                                    2   ??? (libsqlite3.dylib + 192004) [0x18fdf2e04]
+                                      2   ??? (libsqlite3.dylib + 329244) [0x18fe1461c]
+                                        2   ??? (libsqlite3.dylib + 563580) [0x18fe4d97c]
+                                          2   ??? (libsqlite3.dylib + 1165968) [0x18fee0a90]
+                                            2   ??? (libsqlite3.dylib + 408608) [0x18fe27c20]
+                                              2   ??? (libsqlite3.dylib + 328232) [0x18fe14228]
+                                                2   ??? (libsystem_kernel.dylib + 27704) [0x23c00fc38]
+                                                  1   <on behalf of UNKNOWN [35] (originated by Gmail [15995]), Frontmost App, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                                                  1   <on behalf of UNKNOWN [35] (originated by Gmail [15995]), Requested Thread QoS User Initiated>
+                  1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6311612) [0x116788ebc]
+                    1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6307288) [0x116787dd8]
+                      1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6317012) [0x11678a3d4]
+                        1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6352168) [0x116792d28]
+                          1   ??? (Foundation + 457364) [0x18ecffa94]
+                            1   ??? (Foundation + 457956) [0x18ecffce4]
+                              1   ??? (Foundation + 268096) [0x18ecd1740]
+                                1   ??? (Foundation + 461316) [0x18ed00a04]
+                                  1   ??? (Foundation + 461292) [0x18ed009ec]
+                                    1   ??? (Foundation + 461264) [0x18ed009d0]
+                                      1   ??? (Foundation + 474232) [0x18ed03c78]
+                                        1   ??? (libsystem_kernel.dylib + 20516) [0x23c00e024]
+                                          1   <on behalf of UNKNOWN [35] (originated by Gmail [15995]), Frontmost App, Effective Thread QoS User Initiated, p-core>
+                  1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6156220) [0x116762fbc]
+                    1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6156480) [0x1167630c0]
+                      1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4308672) [0x11659fec0]
+                        1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4313080) [0x1165a0ff8]
+                          1   ??? (libdispatch.dylib + 71872) [0x1ca1578c0]
+                            1   ??? (libdispatch.dylib + 112636) [0x1ca1617fc]
+                              1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4313228) [0x1165a108c]
+                                1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4317216) [0x1165a2020]
+                                  1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4294816) [0x11659c8a0]
+                                    1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4457968) [0x1165c45f0]
+                                      1   ??? (libdispatch.dylib + 71872) [0x1ca1578c0]
+                                        1   ??? (libdispatch.dylib + 112636) [0x1ca1617fc]
+                                          1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4458048) [0x1165c4640]
+                                            1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4294880) [0x11659c8e0]
+                                              1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4295880) [0x11659ccc8]
+                                                1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4447656) [0x1165c1da8]
+                                                  1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 4446812) [0x1165c1a5c]
+                                                    1   ??? (libsqlite3.dylib + 191252) [0x18fdf2b14]
+                                                      1   ??? (libsqlite3.dylib + 222300) [0x18fdfa45c]
+                                                        1   ??? (libsqlite3.dylib + 1211400) [0x18feebc08]
+                                                          1   ??? (libsqlite3.dylib + 1263780) [0x18fef88a4]
+                                                            1   ??? (libsqlite3.dylib + 191252) [0x18fdf2b14]
+                                                              1   ??? (libsqlite3.dylib + 209304) [0x18fdf7198]
+                                                                1   ??? (libsqlite3.dylib + 310120) [0x18fe0fb68]
+                                                                  1   ??? (libsqlite3.dylib + 319240) [0x18fe11f08]
+                                                                    1   ??? (libsqlite3.dylib + 311100) [0x18fe0ff3c]
+                                                                      1   ??? (libsqlite3.dylib + 693180) [0x18fe6d3bc]
+                                                                        1   ??? (libsqlite3.dylib + 328232) [0x18fe14228]
+                                                                          1   ??? (libsystem_kernel.dylib + 27704) [0x23c00fc38]
+                                                                            1   <Frontmost App, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+          1   ??? (libdispatch.dylib + 44920) [0x1ca150f78]
+            1   ??? (libdispatch.dylib + 42088) [0x1ca150468]
+              1   ??? (libdispatch.dylib + 112636) [0x1ca1617fc]
+                1   ??? (libdispatch.dylib + 6876) [0x1ca147adc]
+                  1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6356128) [0x116793ca0]
+                    1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6357676) [0x1167942ac]
+                      1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6361512) [0x1167951a8]
+                        1   ??? (<6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212> + 6362680) [0x116795638]
+                          1   ??? (Foundation + 457364) [0x18ecffa94]
+                            1   ??? (Foundation + 457956) [0x18ecffce4]
+                              1   ??? (Foundation + 268096) [0x18ecd1740]
+                                1   ??? (Foundation + 461316) [0x18ed00a04]
+                                  1   ??? (Foundation + 461292) [0x18ed009ec]
+                                    1   ??? (Foundation + 461264) [0x18ed009d0]
+                                      1   ??? (Foundation + 474232) [0x18ed03c78]
+                                        1   ??? (libsystem_kernel.dylib + 20516) [0x23c00e024]
+                                          1   <on behalf of UNKNOWN [35] (originated by UNKNOWN [14859]), Frontmost App, Effective Thread QoS Utility>
+
+  Binary Images:
+           0x102cd0000 -                ???  com.google.Gmail 6.0.260127 (6.0.260127.1803126) <1766DBBA-2ADC-3FFD-8BBE-74AF53255127>  /private/var/containers/Bundle/Application/88C0B792-DBEC-447E-937F-BEFA29794FD4/Gmail.app/Gmail
+           0x116184000 -                ???  ???                                              <6BF6C78E-F7AF-31E0-A3AC-DD9EEA990212>
+           0x18ec90000 -        0x18fad681f  Foundation                                       <75D11B29-11A6-3507-87F7-487ACEB1476A>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x18fdc4000 -        0x18ff6d6a3  libsqlite3.dylib                                 <F94A238E-FF39-3316-B80E-8D89C47986A7>  /usr/lib/libsqlite3.dylib
+           0x1ca146000 -        0x1ca18c21f  libdispatch.dylib                                <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1edf07000 -        0x1edf1344f  libsystem_pthread.dylib                          <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x23c009000 -        0x23c043d2b  libsystem_kernel.dylib                           <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib

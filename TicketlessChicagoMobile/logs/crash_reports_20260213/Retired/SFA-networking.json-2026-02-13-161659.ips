@@ -1,0 +1,2 @@
+{"bug_type":"226","timestamp":"2026-02-13 16:16:59.00 -0600","os_version":"iPhone OS 26.2.1 (23C71)","roots_installed":0,"incident_id":"90D2A89D-27B0-4934-B9D1-5AB7CCCE3C08"}
+{"postTime":1771021018955,"events":[{"build":"23C71","clientId":0,"eventType":"networkingHealthSummary","version":"26.2.1","product":"iPhone OS","topic":"xp_swe_network_perf","soft_failure_count":0,"eventLinkID":"263C4BC8-FFF5-4B0D-8F65-9E9776D52159","hard_failure_count":0,"modelid":"iPhone14,4","success_count":0,"uptime":25134968602624}]}

@@ -1,0 +1,349 @@
+{"duration_ms":"28769970","share_with_app_devs":1,"roots_installed":0,"bug_type":"145","os_version":"iPhone OS 26.2.1 (23C71)","slice_uuid":"0F8BC38B-32BD-34B0-8DB3-BC10E10D9521","is_first_party":0,"incident_id":"7932C0D9-30D9-4636-B5C7-AF6702212B3B","timestamp":"2026-02-11 08:15:55.00 -0600","app_name":"logd","name":"logd"}
+Date/Time:        2026-02-11 00:15:30.365 -0600
+End time:         2026-02-11 08:15:00.335 -0600
+OS Version:       iPhone OS 26.2.1 (Build 23C71)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: 7932C0D9-30D9-4636-B5C7-AF6702212B3B
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     7D35B09A-9AE1-3B69-A2D6-BFC8EDA015E4 slid base address 0x18ae1c000, slide 0xae1c000
+
+Command:          logd
+Path:             /usr/libexec/logd
+Resource Coalition: "com.apple.logd"(7)
+On Behalf Of:     2 samples SpringBoard [35] (2 samples originated by SpringBoard [35]), 2 samples UNKNOWN [4640, 5448] (2 samples originated by UNKNOWN [32]), 1 sample duetexpertd [545] (1 sample originated by duetexpertd [545])
+Architecture:     arm64e
+Parent:           launchd [1]
+PID:              33
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.77 MB of file backed memory dirtied over 28770 seconds (37.32 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.77 MB
+Writes duration:  28770s
+Duration:         28769.97s
+Duration Sampled: 28739.50s (event starts 27.09s before samples, event ends 3.37s after samples)
+Steps:            956 (10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 7.55% (426.81 MB / 5650.83 MB)
+
+Advisory levels:  Battery -> 2, User -> 3, ThermalPressure -> 0, Combined -> 2
+Free disk space:  13.69 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 60.74% (12149/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY
+OS Cryptex File Extents: 15076
+
+Heaviest stack for the target process:
+  53  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+  53  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+  53  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+  53  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+  53  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+  50  ??? (libdispatch.dylib + 42088) [0x1c6a38468]
+  50  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+  50  ??? (libdispatch.dylib + 70736) [0x1c6a3f450]
+  42  ??? (logd + 23128) [0x100595a58]
+  42  ??? (logd + 26700) [0x10059684c]
+  40  ??? (logd + 41788) [0x10059a33c]
+  40  ??? (libsystem_kernel.dylib + 29344) [0x2388f82a0]
+
+
+Powerstats for:   logd [33]
+UUID:             0F8BC38B-32BD-34B0-8DB3-BC10E10D9521
+Path:             /usr/libexec/logd
+Resource Coalition: 53 samples "com.apple.logd"(7)
+On Behalf Of:     2 samples SpringBoard [35] (2 samples originated by SpringBoard [35]), 2 samples UNKNOWN [4640, 5448] (2 samples originated by UNKNOWN [32]), 1 sample duetexpertd [545] (1 sample originated by duetexpertd [545])
+Architecture:     arm64e
+Parent:           launchd [1]
+UID:              272
+Footprint:        8896 KB -> 7328 KB (-1568 KB) (max 10.64 MB )
+Pageins:          77 pages
+Start time:       2026-02-11 00:15:57.457 -0600
+End time:         2026-02-11 08:12:51.794 -0600
+Num samples:      53 (6%)
+Num threads:      46
+Primary state:    31 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Utility, Requested Thread QoS Utility, Override Thread QoS Unspecified, e-core
+User Activity:    22 samples Idle, 31 samples Active
+Power Source:     38 samples on Battery, 15 samples on AC
+  53  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    53  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+      53  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+        53  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+          53  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+            50  ??? (libdispatch.dylib + 42088) [0x1c6a38468]
+              50  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                50  ??? (libdispatch.dylib + 70736) [0x1c6a3f450]
+                  42  ??? (logd + 23128) [0x100595a58]
+                    42  ??? (logd + 26700) [0x10059684c]
+                      40  ??? (logd + 41788) [0x10059a33c]
+                        40  ??? (libsystem_kernel.dylib + 29344) [0x2388f82a0]
+                          4   <Effective Thread QoS Default>
+                          2   <Effective Thread QoS Default, Requested Thread QoS Default>
+                          2   <Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                          1   <on behalf of SpringBoard [35] (originated by SpringBoard [35]), Effective Thread QoS User Initiated, Requested Thread QoS Default, p-core>
+                          1   <on behalf of duetexpertd [545] (originated by duetexpertd [545]), Effective Thread QoS Default, Requested Thread QoS Default>
+                          1   <on behalf of SpringBoard [35] (originated by SpringBoard [35]), Effective Thread QoS User Initiated, Requested Thread QoS Default>
+                      1   ??? (logd + 42036) [0x10059a434]
+                        1   ??? (logd + 61520) [0x10059f050]
+                          1   ??? (libsystem_kernel.dylib + 25892) [0x2388f7524]
+                            1   <Effective Thread QoS Default>
+                      1   ??? (logd + 41672) [0x10059a2c8]
+                        1   ??? (logd + 51288) [0x10059c858]
+                          1   ??? (logd + 53232) [0x10059cff0]
+                            1   ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                  8   ??? (logd + 26700) [0x10059684c]
+                    8   ??? (logd + 41788) [0x10059a33c]
+                      8   ??? (libsystem_kernel.dylib + 29344) [0x2388f82a0]
+                        8   <Effective Thread QoS User Initiated>
+            2   ??? (libdispatch.dylib + 42292) [0x1c6a38534]
+              2   ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                2   ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+                  2   ??? (logd + 65960) [0x1005a01a8]
+                    2   ??? (logd + 65852) [0x1005a013c]
+                      2   ??? (libdispatch.dylib + 71872) [0x1c6a3f8c0]
+                        2   ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                          2   ??? (logd + 66236) [0x1005a02bc]
+                            2   ??? (libdispatch.dylib + 71872) [0x1c6a3f8c0]
+                              2   ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                                1   ??? (logd + 66540) [0x1005a03ec]
+                                  1   ??? (logd + 41788) [0x10059a33c]
+                                    1   ??? (libsystem_kernel.dylib + 29344) [0x2388f82a0]
+                                      1   <on behalf of UNKNOWN [5448] (originated by UNKNOWN [32]), Requested Thread QoS Background>
+                                1   ??? (logd + 66448) [0x1005a0390]
+                                  1   ??? (logd + 41788) [0x10059a33c]
+                                    1   ??? (libsystem_kernel.dylib + 29344) [0x2388f82a0]
+                                      1   <on behalf of UNKNOWN [4640] (originated by UNKNOWN [32]), Requested Thread QoS Background>
+            1   ??? (libdispatch.dylib + 41680) [0x1c6a382d0]
+              1   ??? (libdispatch.dylib + 98828) [0x1c6a4620c]
+                1   ??? (libdispatch.dylib + 103736) [0x1c6a47538]
+                  1   ??? (libdispatch.dylib + 26212) [0x1c6a34664]
+                    1   ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                      1   ??? (logd + 4272) [0x1005910b0]
+                        1   ??? (logd + 6292) [0x100591894]
+                          1   ??? (logd + 6912) [0x100591b00]
+                            1   ??? (logd + 9504) [0x100592520]
+                              1   ??? (logd + 10148) [0x1005927a4]
+                                1   ??? (logd + 12076) [0x100592f2c]
+                                  1   ??? (logd + 19712) [0x100594d00]
+                                    1   ??? (logd + 23128) [0x100595a58]
+                                      1   ??? (logd + 26764) [0x10059688c]
+                                        1   ??? (logd + 51288) [0x10059c858]
+                                          1   ??? (logd + 53232) [0x10059cff0]
+                                            1   ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+
+  Binary Images:
+           0x100590000 -                ???  logd                    <0F8BC38B-32BD-34B0-8DB3-BC10E10D9521>  /usr/libexec/logd
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib       <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x2388f1000 -        0x23892bd2b  libsystem_kernel.dylib  <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib
+
+
+Powerstats for:   com.apple.StreamingUnzipService
+UUID:             0E95BDA4-DDA9-3163-A1CF-81A481AED685
+Path:             /System/Library/PrivateFrameworks/StreamingZip.framework/XPCServices/com.apple.StreamingUnzipService.xpc/com.apple.StreamingUnzipService
+Identifier:       com.apple.StreamingUnzipService
+Version:          1.0 (1)
+Resource Coalition: 75 samples "com.apple.installcoordination_proxy"(983), 12 samples "com.apple.appstored"(265)
+On Behalf Of:     75 samples UNKNOWN [3484, 4416, 5164, 5390] (75 samples originated by UNKNOWN [3484, 4416, 5164, 5390]), 12 samples appstored [5162] (12 samples originated by nsurlsessiond [217])
+Architecture:     arm64
+Start time:       2026-02-11 00:24:39.361 -0600
+End time:         2026-02-11 02:51:12.748 -0600
+Num samples:      87 (9%)
+Primary state:    75 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Default, Requested Thread QoS Default, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 87 samples Active
+Power Source:     0 samples on Battery, 87 samples on AC
+  87  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    87  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+      87  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+        87  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+          87  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+            87  ??? (libdispatch.dylib + 41680) [0x1c6a382d0]
+              87  ??? (libdispatch.dylib + 126508) [0x1c6a4ce2c]
+                87  ??? (libdispatch.dylib + 41680) [0x1c6a382d0]
+                  87  ??? (libdispatch.dylib + 123076) [0x1c6a4c0c4]
+                    87  ??? (libdispatch.dylib + 112708) [0x1c6a49844]
+                      87  ??? (libxpc.dylib + 84176) [0x1a21c88d0]
+                        87  ??? (libxpc.dylib + 76796) [0x1a21c6bfc]
+                          87  ??? (Foundation + 172028) [0x18b5a1ffc]
+                            87  ??? (Foundation + 172356) [0x18b5a2144]
+                              87  ??? (Foundation + 10937676) [0x18bfe654c]
+                                87  ??? (Foundation + 172700) [0x18b5a229c]
+                                  87  ??? (com.apple.StreamingUnzipService + 15776) [0x1003bbda0]
+                                    87  ??? (Foundation + 9369448) [0x18be67768]
+                                      87  ??? (com.apple.StreamingUnzipService + 16324) [0x1003bbfc4]
+                                        76  ??? (com.apple.StreamingUnzipService + 25636) [0x1003be424]
+                                          76  ??? (com.apple.StreamingUnzipService + 59660) [0x1003c690c]
+                                            76  ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                              28  <on behalf of UNKNOWN [4416] (originated by UNKNOWN [4416])>
+                                              19  <on behalf of UNKNOWN [5164] (originated by UNKNOWN [5164])>
+                                              19  <on behalf of UNKNOWN [5390] (originated by UNKNOWN [5390])>
+                                              9   <on behalf of UNKNOWN [3484] (originated by UNKNOWN [3484])>
+                                              1   <on behalf of appstored [5162] (originated by nsurlsessiond [217]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+                                        11  ??? (com.apple.StreamingUnzipService + 26004) [0x1003be594]
+                                          11  ??? (com.apple.StreamingUnzipService + 59660) [0x1003c690c]
+                                            11  ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                              11  <on behalf of appstored [5162] (originated by nsurlsessiond [217]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+
+  Binary Images:
+           0x1003b8000 -                ???  com.apple.StreamingUnzipService 1.0 (1) <0E95BDA4-DDA9-3163-A1CF-81A481AED685>  /System/Library/PrivateFrameworks/StreamingZip.framework/XPCServices/com.apple.StreamingUnzipService.xpc/com.apple.StreamingUnzipService
+           0x18b578000 -        0x18c3be81f  Foundation                              <75D11B29-11A6-3507-87F7-487ACEB1476A>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x1a21b4000 -        0x1a2205fbf  libxpc.dylib                            <C7EC77A9-E543-30AA-9C2D-854214EB2289>  /usr/lib/system/libxpc.dylib
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib                       <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib                 <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x2388f1000 -        0x23892bd2b  libsystem_kernel.dylib                  <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib
+
+
+Powerstats for:   installd
+UUID:             E2351A69-2793-39C1-B687-EF2CFBBEEDC4
+Path:             /usr/libexec/installd
+Resource Coalition: 69 samples "com.apple.mobile.installd"(430)
+On Behalf Of:     69 samples installcoordinationd [239] (65 samples originated by nsurlsessiond [217], 4 samples originated by UNKNOWN [34, 4416, 5164, 5390])
+Architecture:     arm64
+Start time:       2026-02-11 01:28:34.983 -0600
+End time:         2026-02-11 02:51:13.557 -0600
+Num samples:      69 (7%)
+Primary state:    65 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Utility, Requested Thread QoS Utility, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 69 samples Active
+Power Source:     0 samples on Battery, 69 samples on AC
+  67  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    67  ??? (libsystem_pthread.dylib + 4988) [0x1ea7f037c]
+      67  ??? (libdispatch.dylib + 83708) [0x1c6a426fc]
+        67  ??? (libdispatch.dylib + 82108) [0x1c6a420bc]
+          67  ??? (libdispatch.dylib + 230428) [0x1c6a6641c]
+            67  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+              67  ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+                63  ??? (installd + 88276) [0x1004a18d4]
+                  63  ??? (installd + 86624) [0x1004a1260]
+                    63  ??? (installd + 163908) [0x1004b4044]
+                      61  ??? (installd + 159356) [0x1004b2e7c]
+                        61  ??? (installd + 260988) [0x1004cbb7c]
+                          61  ??? (installd + 249204) [0x1004c8d74]
+                            61  ??? (installd + 264000) [0x1004cc740]
+                              61  ??? (installd + 248764) [0x1004c8bbc]
+                                61  ??? (installd + 247736) [0x1004c87b8]
+                                  61  ??? (libParallelCompression.dylib + 55848) [0x2a39d5a28]
+                                    61  ??? (libParallelCompression.dylib + 85308) [0x2a39dcd3c]
+                                      61  ??? (libParallelCompression.dylib + 282124) [0x2a3a0ce0c]
+                                        61  ??? (libParallelCompression.dylib + 88604) [0x2a39dda1c]
+                                          61  ??? (libParallelCompression.dylib + 57996) [0x2a39d628c]
+                                            61  ??? (libParallelCompression.dylib + 160528) [0x2a39ef310]
+                                              47  ??? (libParallelCompression.dylib + 159028) [0x2a39eed34]
+                                                47  ??? (libParallelCompression.dylib + 134364) [0x2a39e8cdc]
+                                                  47  ??? (libParallelCompression.dylib + 281812) [0x2a3a0ccd4]
+                                                    47  ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                                      47  <on behalf of installcoordinationd [239] (originated by nsurlsessiond [217])>
+                                              12  ??? (libParallelCompression.dylib + 159128) [0x2a39eed98]
+                                                12  ??? (libParallelCompression.dylib + 134364) [0x2a39e8cdc]
+                                                  12  ??? (libParallelCompression.dylib + 281812) [0x2a3a0ccd4]
+                                                    12  ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                                      12  <on behalf of installcoordinationd [239] (originated by nsurlsessiond [217])>
+                                              2   ??? (libParallelCompression.dylib + 159184) [0x2a39eedd0]
+                                                2   ??? (libParallelCompression.dylib + 134208) [0x2a39e8c40]
+                                                  2   ??? (libParallelCompression.dylib + 281812) [0x2a3a0ccd4]
+                                                    2   ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                                      2   <on behalf of installcoordinationd [239] (originated by nsurlsessiond [217])>
+                      2   ??? (installd + 160448) [0x1004b32c0]
+                        2   ??? (installd + 308136) [0x1004d73a8]
+                          2   ??? (installd + 37952) [0x100495440]
+                            1   ??? (MobileInstallation + 149560) [0x1ca8ce838]
+                              1   ??? (MobileInstallation + 148564) [0x1ca8ce454]
+                                1   ??? (MobileInstallation + 149060) [0x1ca8ce644]
+                                  1   ??? (MobileInstallation + 125280) [0x1ca8c8960]
+                                    1   ??? (InstalledContentLibrary + 373800) [0x1bcac8428]
+                                      1   ??? (Foundation + 457364) [0x18b5e7a94]
+                                        1   ??? (Foundation + 457956) [0x18b5e7ce4]
+                                          1   ??? (Foundation + 268096) [0x18b5b9740]
+                                            1   ??? (Foundation + 461316) [0x18b5e8a04]
+                                              1   ??? (Foundation + 461292) [0x18b5e89ec]
+                                                1   ??? (Foundation + 461264) [0x18b5e89d0]
+                                                  1   ??? (Foundation + 474232) [0x18b5ebc78]
+                                                    1   ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                                      1   <on behalf of installcoordinationd [239] (originated by nsurlsessiond [217])>
+                            1   ??? (MobileInstallation + 149224) [0x1ca8ce6e8]
+                              1   ??? (MobileInstallation + 146808) [0x1ca8cdd78]
+                                1   ??? (IconFoundation + 81036) [0x1c5284c8c]
+                                  1   ??? (IconFoundation + 79112) [0x1c5284508]
+                                    1   ??? (IconFoundation + 175476) [0x1c529bd74]
+                                      1   ??? (IconFoundation + 156636) [0x1c52973dc]
+                                        1   ??? (IconFoundation + 191272) [0x1c529fb28]
+                                          1   ??? (IconFoundation + 186904) [0x1c529ea18]
+                                            1   ??? (IconFoundation + 190468) [0x1c529f804]
+                                              1   ??? (IconFoundation + 193784) [0x1c52a04f8]
+                                                1   ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                                  1   <on behalf of installcoordinationd [239] (originated by nsurlsessiond [217])>
+                4   ??? (installd + 86200) [0x1004a10b8]
+                  4   ??? (installd + 74752) [0x10049e400]
+                    4   ??? (installd + 163908) [0x1004b4044]
+                      3   ??? (installd + 160448) [0x1004b32c0]
+                        3   ??? (installd + 308136) [0x1004d73a8]
+                          3   ??? (installd + 37952) [0x100495440]
+                            3   ??? (MobileInstallation + 149224) [0x1ca8ce6e8]
+                              3   ??? (MobileInstallation + 146808) [0x1ca8cdd78]
+                                3   ??? (IconFoundation + 81036) [0x1c5284c8c]
+                                  3   ??? (IconFoundation + 79112) [0x1c5284508]
+                                    2   ??? (IconFoundation + 175476) [0x1c529bd74]
+                                      2   ??? (IconFoundation + 156636) [0x1c52973dc]
+                                        1   ??? (IconFoundation + 191576) [0x1c529fc58]
+                                          1   ??? (IconFoundation + 182744) [0x1c529d9d8]
+                                            1   ??? (libsystem_kernel.dylib + 33360) [0x2388f9250]
+                                              1   <on behalf of installcoordinationd [239] (originated by UNKNOWN [5164]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                        1   ??? (IconFoundation + 190616) [0x1c529f898]
+                                          1   ??? (IconFoundation + 182744) [0x1c529d9d8]
+                                            1   ??? (libsystem_kernel.dylib + 33360) [0x2388f9250]
+                                              1   <on behalf of installcoordinationd [239] (originated by UNKNOWN [5390]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                    1   ??? (IconFoundation + 175368) [0x1c529bd08]
+                                      1   ??? (CoreFoundation + 888544) [0x18dfdfee0]
+                                        1   ??? (CoreFoundation + 85880) [0x18df1bf78]
+                                          1   ??? (IconFoundation + 177392) [0x1c529c4f0]
+                                            1   ??? (IconFoundation + 150968) [0x1c5295db8]
+                                              1   ??? (IconFoundation + 204120) [0x1c52a2d58]
+                                                1   ??? (IconFoundation + 186904) [0x1c529ea18]
+                                                  1   ??? (IconFoundation + 190468) [0x1c529f804]
+                                                    1   ??? (IconFoundation + 193784) [0x1c52a04f8]
+                                                      1   ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                                                        1   <on behalf of installcoordinationd [239] (originated by UNKNOWN [34]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                      1   ??? (installd + 159356) [0x1004b2e7c]
+                        1   ??? (installd + 260988) [0x1004cbb7c]
+                          1   ??? (installd + 249204) [0x1004c8d74]
+                            1   ??? (installd + 264000) [0x1004cc740]
+                              1   ??? (installd + 248804) [0x1004c8be4]
+                                1   ??? (installd + 246796) [0x1004c840c]
+                                  1   ??? (libsystem_kernel.dylib + 84096) [0x238905880]
+                                    1   <on behalf of installcoordinationd [239] (originated by UNKNOWN [4416]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+  2   ??? (libsystem_pthread.dylib + 2252) [0x1ea7ef8cc]
+    2   ??? (libsystem_pthread.dylib + 17484) [0x1ea7f344c]
+      2   ??? (libParallelCompression.dylib + 71776) [0x2a39d9860]
+        2   ??? (libdispatch.dylib + 27572) [0x1c6a34bb4]
+          2   ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+            2   ??? (libParallelCompression.dylib + 166296) [0x2a39f0998]
+              2   ??? (libParallelCompression.dylib + 169668) [0x2a39f16c4]
+                2   ??? (libParallelCompression.dylib + 170204) [0x2a39f18dc]
+                  2   ??? (libParallelCompression.dylib + 88532) [0x2a39dd9d4]
+                    2   ??? (libParallelCompression.dylib + 58912) [0x2a39d6620]
+                      2   ??? (libsystem_kernel.dylib + 20516) [0x2388f6024]
+                        2   <on behalf of installcoordinationd [239] (originated by nsurlsessiond [217])>
+
+  Binary Images:
+           0x10048c000 -                ???  installd                     <E2351A69-2793-39C1-B687-EF2CFBBEEDC4>  /usr/libexec/installd
+           0x18b578000 -        0x18c3be81f  Foundation                   <75D11B29-11A6-3507-87F7-487ACEB1476A>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x18df07000 -        0x18e48d73f  CoreFoundation               <BD79FBF5-83C8-35F5-A0D5-4CA56E602111>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1bca6d000 -        0x1bcb6f89f  InstalledContentLibrary      <72BDB3CE-2507-3966-BF0C-4568FBCCD4C0>  /System/Library/PrivateFrameworks/InstalledContentLibrary.framework/InstalledContentLibrary
+           0x1c5271000 -        0x1c52cff3f  IconFoundation               <778D6B8B-03C8-306F-85B8-1791E230490E>  /System/Library/PrivateFrameworks/IconFoundation.framework/IconFoundation
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib            <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1ca8aa000 -        0x1ca8df5ff  MobileInstallation           <40DCA68D-65D1-33D3-A4AE-DC8AFF2D8B1E>  /System/Library/PrivateFrameworks/MobileInstallation.framework/MobileInstallation
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib      <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x2388f1000 -        0x23892bd2b  libsystem_kernel.dylib       <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib
+           0x2a39c8000 -        0x2a3a2e23f  libParallelCompression.dylib <26AA4739-ACB7-30E3-9F76-B2ABD8EA0276>  /usr/lib/libParallelCompression.dylib
