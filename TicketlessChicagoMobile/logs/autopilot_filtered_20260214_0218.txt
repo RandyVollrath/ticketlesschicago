@@ -1,0 +1,90 @@
+Feb 14 02:18:39.523284 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:39.805411 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:39.892329 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:40.282926 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:40.490508 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:41.417213 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:41.611581 locationd[46500] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 14 02:18:41.612919 locationd[46500] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 14 02:18:41.613053 locationd[46500] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:41.617294 locationd[46500] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 14 02:18:42.272736 milod(CoreMotion)[40334] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:43.006452 corespeechd(CoreMotion)[42665] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:43.319255 locationd[46500] <Info>: Notifying new gyro bias fit of timestamp 792749923.315441
+Feb 14 02:18:43.320550 locationd(CoreAnalytics)[46500] <Info>: Dropping "com.apple.CoreMotion.GyroBiasFit" as it isn't used in any transform (not in the config or budgeted?)
+Feb 14 02:18:44.101629 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:44.164130 locationd[46500] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 14 02:18:44.164918 locationd[46500] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 14 02:18:44.165122 locationd[46500] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:44.168130 locationd[46500] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 14 02:18:44.238581 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.243811 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.248331 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.248340 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.252203 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.252217 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.282944 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.282987 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.310174 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.310219 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.319550 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.319563 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.331761 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.331795 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.335705 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:44.336216 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.336262 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.340025 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.340045 Gmail(CoreFoundation)[46397] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x119a9e770> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x119a9e5f0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Feb 14 02:18:44.518273 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:44.803270 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:44.890349 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:45.281154 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:45.488805 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:46.417185 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:46.719148 locationd[46500] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 14 02:18:46.721841 locationd[46500] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 14 02:18:46.722259 locationd[46500] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 14 02:18:46.722509 locationd[46500] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:47.281774 milod(CoreMotion)[40334] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:48.002840 corespeechd(CoreMotion)[42665] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:49.099124 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:49.270587 locationd[46500] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 14 02:18:49.270646 locationd[46500] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 14 02:18:49.270806 locationd[46500] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:49.273389 locationd[46500] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 14 02:18:49.335873 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:49.518220 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:49.803336 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:49.890424 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:50.280909 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:50.488810 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:51.417069 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:51.823465 locationd[46500] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 14 02:18:51.824235 locationd[46500] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 14 02:18:51.824332 locationd[46500] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:51.827487 locationd[46500] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 14 02:18:52.287211 milod(CoreMotion)[40334] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:52.984101 locationd(CoreAnalytics)[46500] <Info>: Dropping "com.apple.CoreMotion.InertialOdometry" as it isn't used in any transform (not in the config or budgeted?)
+Feb 14 02:18:53.003847 corespeechd(CoreMotion)[42665] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:54.099133 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:54.335932 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:54.368620 locationd[46500] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 14 02:18:54.372811 locationd[46500] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 14 02:18:54.372921 locationd[46500] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:54.374591 locationd[46500] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 14 02:18:54.518190 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:54.803388 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:54.889542 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:55.281121 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:55.324341 locationd[46500] <Info>: CL: CLLocationController::onStatusNotification
+Feb 14 02:18:55.324370 locationd[46500] <Debug>: {"msg":"CLLocationController::onStatusNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:55.488885 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:56.417119 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:56.915361 locationd[46500] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 14 02:18:56.916774 locationd[46500] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 14 02:18:56.916928 locationd[46500] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x89cd01800"}
+Feb 14 02:18:56.919397 locationd[46500] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 14 02:18:57.288050 milod(CoreMotion)[40334] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:58.003813 corespeechd(CoreMotion)[42665] <Debug>: Ping timer fired, resetting watchdog
+Feb 14 02:18:59.101093 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
