@@ -9,6 +9,10 @@
 ## Deployment Workflow — DO THIS AFTER EVERY CHANGE
 After completing any code/content/config change (feature, bug fix, copy update, styling tweak, migration wiring), always deploy everything:
 
+0. **No dirty working tree at handoff (mandatory)**:
+   - Before you report completion, run `git status --porcelain` and ensure it is empty.
+   - If not empty: finish the work (or revert partial edits), then **commit**, **pull --rebase**, **push**, and **deploy** in the same session.
+
 1. **Web app**: Run `npx vercel --prod --yes` from the repo root to deploy to Vercel.
    - This is mandatory on every completed task in this repo.
    - Do not stop at "changes made locally."
