@@ -213,6 +213,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var parkingFinalizationTimer: Timer?  // Short post-confirm hold to suppress red-light false positives
   private var parkingFinalizationPending = false
   private var pendingParkingLocation: CLLocation? = nil
+  private var queuedParkingBody: [String: Any]? = nil
+  private var queuedParkingSource: String? = nil
+  private var queuedParkingAt: Date? = nil
 
   // After parking, require GPS confirmation before restarting driving (prevents CoreMotion flicker)
   private var hasConfirmedParkingThisSession = false
@@ -227,6 +230,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let minWalkingEvidenceSec: TimeInterval = 4
   private let minZeroSpeedNoWalkingSec: TimeInterval = 20
   private let finalizationCancelSpeedMps: Double = 2.2
+  private let queuedParkingGraceSec: TimeInterval = 25
   private let parkingFinalizationHoldSec: TimeInterval = 7
   private let parkingFinalizationMaxDriftMeters: Double = 35
   private let locationCallbackStaleSec: TimeInterval = 90
@@ -468,6 +472,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     stationaryStartTime = nil
     parkingFinalizationPending = false
     pendingParkingLocation = nil
+    queuedParkingBody = nil
+    queuedParkingSource = nil
+    queuedParkingAt = nil
     automotiveSessionStart = nil
     lastConfirmedParkingLocation = nil
     hasConfirmedParkingThisSession = false
@@ -1089,6 +1096,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         "accuracy": location.horizontalAccuracy,
       ])
     }
+    evaluateQueuedParkingCandidate()
 
     // --- Recovery GPS: waiting for accurate fix after significantLocationChange wake ---
     // checkForMissedParking starts GPS and sets this flag. We wait here for a
@@ -1130,6 +1138,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     if speed > minDrivingSpeedMps {
       speedSaysMoving = true
       cancelPendingParkingFinalization(reason: "GPS speed resumed above driving threshold")
+      if queuedParkingAt != nil {
+        decision("parking_candidate_queue_cleared", ["reason": "driving_resumed"])
+        queuedParkingAt = nil
+        queuedParkingBody = nil
+        queuedParkingSource = nil
+      }
 
       // Cancel speed-based parking timer - still moving (red light ended)
       speedZeroTimer?.invalidate()
@@ -1602,6 +1616,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       let walkingEvidenceSec = self.coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
       let hasWalkingEvidence = walkingEvidenceSec >= self.minWalkingEvidenceSec
       if !hasWalkingEvidence && currentSpeed >= self.finalizationCancelSpeedMps {
+        self.queueParkingCandidateForRetry(
+          body: confirmationBody,
+          source: source,
+          reason: "finalization_speed_without_walking"
+        )
         self.cancelPendingParkingFinalization(reason: "GPS speed \(String(format: "%.1f", currentSpeed)) m/s during finalization hold (no walking evidence)")
         return
       }
@@ -1619,6 +1638,51 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   }
 
   // MARK: - Helpers
+
+  private func queueParkingCandidateForRetry(body: [String: Any], source: String, reason: String) {
+    queuedParkingBody = body
+    queuedParkingSource = source
+    queuedParkingAt = Date()
+    decision("parking_candidate_queued", [
+      "source": source,
+      "reason": reason,
+      "graceSec": queuedParkingGraceSec,
+      "locationSource": body["locationSource"] as? String ?? "unknown",
+    ])
+  }
+
+  private func evaluateQueuedParkingCandidate() {
+    guard let queuedAt = queuedParkingAt, let body = queuedParkingBody, let source = queuedParkingSource else { return }
+    let age = Date().timeIntervalSince(queuedAt)
+    if age > queuedParkingGraceSec {
+      decision("parking_candidate_queue_expired", [
+        "source": source,
+        "ageSec": age,
+      ])
+      queuedParkingAt = nil
+      queuedParkingBody = nil
+      queuedParkingSource = nil
+      return
+    }
+    guard isDriving && !parkingFinalizationPending else { return }
+    guard !coreMotionSaysAutomotive else { return }
+
+    let walkingEvidenceSec = coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
+    let hasWalkingEvidence = walkingEvidenceSec >= minWalkingEvidenceSec
+    let currentSpeed = locationManager.location?.speed ?? -1
+    guard hasWalkingEvidence && currentSpeed >= 0 && currentSpeed < 1.3 else { return }
+
+    decision("parking_candidate_queue_recovered", [
+      "source": source,
+      "ageSec": age,
+      "walkingEvidenceSec": walkingEvidenceSec,
+      "currentSpeed": currentSpeed,
+    ])
+    queuedParkingAt = nil
+    queuedParkingBody = nil
+    queuedParkingSource = nil
+    finalizeParkingConfirmation(body: body, source: "\(source)_queued_retry")
+  }
 
   private func updateStopLocationCandidate(_ candidate: CLLocation, reason: String) {
     guard isDriving else { return }
@@ -1697,6 +1761,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     coreMotionNotAutomotiveSince = nil
     coreMotionWalkingSince = nil
     coreMotionStationarySince = nil
+    queuedParkingBody = nil
+    queuedParkingSource = nil
+    queuedParkingAt = nil
     // Reset recovery flag so the NEXT drive can be recovered if app is suspended.
     // Without this, the first significantLocationChange wake-up sets this true
     // and all subsequent recovery checks are permanently blocked.
