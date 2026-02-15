@@ -217,6 +217,7 @@ export default function LandingPage() {
 
         {/* Mobile Menu Button */}
         <button
+          type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="mobile-menu-btn"
           style={{
@@ -225,6 +226,8 @@ export default function LandingPage() {
             border: 'none',
             cursor: 'pointer',
             color: COLORS.textLight,
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
           }}
         >
           {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
