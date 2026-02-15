@@ -51,4 +51,10 @@ RCT_EXTERN_METHOD(getRecentAccelerometerData:(double)seconds
                   resolve:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(setCameraAlertSettings:(BOOL)enabled
+                  speedEnabled:(BOOL)speedEnabled
+                  redlightEnabled:(BOOL)redlightEnabled
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

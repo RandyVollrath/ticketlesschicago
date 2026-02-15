@@ -495,6 +495,15 @@ class CameraAlertServiceClass {
     }
 
     log.info(`Camera alerts ${enabled ? 'enabled' : 'disabled'}`);
+
+    // Keep iOS-native background camera notifications in sync with user setting.
+    if (Platform.OS === 'ios') {
+      await BackgroundLocationService.setCameraAlertSettings(
+        this.isEnabled,
+        this.speedAlertsEnabled,
+        this.redLightAlertsEnabled
+      );
+    }
   }
 
   isAlertEnabled(): boolean {
@@ -512,6 +521,14 @@ class CameraAlertServiceClass {
       this.stop();
     }
     log.info(`Speed camera alerts ${enabled ? 'enabled' : 'disabled'}`);
+
+    if (Platform.OS === 'ios') {
+      await BackgroundLocationService.setCameraAlertSettings(
+        this.isEnabled,
+        this.speedAlertsEnabled,
+        this.redLightAlertsEnabled
+      );
+    }
   }
 
   async setRedLightAlertsEnabled(enabled: boolean): Promise<void> {
@@ -525,6 +542,14 @@ class CameraAlertServiceClass {
       this.stop();
     }
     log.info(`Red-light camera alerts ${enabled ? 'enabled' : 'disabled'}`);
+
+    if (Platform.OS === 'ios') {
+      await BackgroundLocationService.setCameraAlertSettings(
+        this.isEnabled,
+        this.speedAlertsEnabled,
+        this.redLightAlertsEnabled
+      );
+    }
   }
 
   isSpeedAlertsEnabled(): boolean {

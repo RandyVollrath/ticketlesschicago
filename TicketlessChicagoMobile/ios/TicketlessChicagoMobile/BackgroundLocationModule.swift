@@ -1,6 +1,8 @@
 import Foundation
 import CoreLocation
 import CoreMotion
+import UIKit
+import UserNotifications
 import React
 
 @objc(BackgroundLocationModule)
@@ -189,6 +191,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var gpsFallbackStartLocation: CLLocation? = nil
   private var gpsFallbackPossibleDrivingEmitted = false
 
+  // Camera alerts (native iOS fallback for when JS is suspended in background)
+  private var cameraAlertsEnabled = false
+  private var cameraSpeedEnabled = false
+  private var cameraRedlightEnabled = false
+  private var alertedCameraAtByIndex: [Int: Date] = [:]
+  private var lastCameraAlertAt: Date? = nil
+
+  private let kCameraAlertsEnabledKey = "bg_camera_alerts_enabled"
+  private let kCameraSpeedEnabledKey = "bg_camera_alerts_speed_enabled"
+  private let kCameraRedlightEnabledKey = "bg_camera_alerts_redlight_enabled"
+
   // UserDefaults keys for persisting critical state across app kills.
   // Without persistence, iOS can kill the app, significantLocationChange wakes it
   // with a fresh instance where all guards are nil/false, and cell-tower GPS
@@ -244,11 +257,27 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
 
+  // Camera alert tuning: match JS defaults
+  private let camBaseAlertRadiusMeters: Double = 150
+  private let camMaxAlertRadiusMeters: Double = 250
+  private let camTargetWarningSec: Double = 10
+  private let camCooldownRadiusMeters: Double = 400
+  private let camMinSpeedSpeedCamMps: Double = 4.5
+  private let camMinSpeedRedlightMps: Double = 1.0
+  private let camAnnounceMinIntervalSec: TimeInterval = 5
+  private let camAlertDedupeSec: TimeInterval = 3 * 60
+  private let camBBoxDegrees: Double = 0.0025
+  private let camHeadingToleranceDeg: Double = 45
+  private let camMaxBearingOffHeadingDeg: Double = 30
+  private let speedCamEnforceStartHour = 6
+  private let speedCamEnforceEndHour = 23
+
 
   override init() {
     super.init()
     setupLogFile()
     setupDecisionLogFile()
+    restorePersistedCameraSettings()
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
     locationManager.allowsBackgroundLocationUpdates = true
@@ -274,6 +303,42 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     log("BackgroundLocationModule initialized")
     decision("module_initialized")
+  }
+
+  private func restorePersistedCameraSettings() {
+    let d = UserDefaults.standard
+    if d.object(forKey: kCameraAlertsEnabledKey) != nil {
+      cameraAlertsEnabled = d.bool(forKey: kCameraAlertsEnabledKey)
+    }
+    if d.object(forKey: kCameraSpeedEnabledKey) != nil {
+      cameraSpeedEnabled = d.bool(forKey: kCameraSpeedEnabledKey)
+    }
+    if d.object(forKey: kCameraRedlightEnabledKey) != nil {
+      cameraRedlightEnabled = d.bool(forKey: kCameraRedlightEnabledKey)
+    }
+    log("Restored camera settings: enabled=\(cameraAlertsEnabled) speed=\(cameraSpeedEnabled) redlight=\(cameraRedlightEnabled)")
+  }
+
+  private func persistCameraSettings() {
+    let d = UserDefaults.standard
+    d.set(cameraAlertsEnabled, forKey: kCameraAlertsEnabledKey)
+    d.set(cameraSpeedEnabled, forKey: kCameraSpeedEnabledKey)
+    d.set(cameraRedlightEnabled, forKey: kCameraRedlightEnabledKey)
+  }
+
+  @objc func setCameraAlertSettings(_ enabled: Bool, speedEnabled: Bool, redlightEnabled: Bool,
+                                    resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    cameraAlertsEnabled = enabled
+    cameraSpeedEnabled = speedEnabled
+    cameraRedlightEnabled = redlightEnabled
+    persistCameraSettings()
+    decision("camera_settings_updated", [
+      "enabled": enabled,
+      "speedEnabled": speedEnabled,
+      "redlightEnabled": redlightEnabled,
+    ])
+    log("Camera settings updated: enabled=\(enabled) speed=\(speedEnabled) redlight=\(redlightEnabled)")
+    resolve(true)
   }
 
   @objc private func appDidBecomeActive() {
@@ -1438,6 +1503,724 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         "coreMotionAutomotive": coreMotionSaysAutomotive,
       ])
     }
+
+    // Native camera alerts: only when backgrounded (JS often suspended)
+    // and only while we believe the user is driving/automotive.
+    let appState = UIApplication.shared.applicationState
+    if appState != .active && (isDriving || coreMotionSaysAutomotive || speedSaysMoving) {
+      maybeSendNativeCameraAlert(location)
+    }
+  }
+
+  // MARK: - Native Camera Alerts (Background)
+
+  private struct NativeCameraDef {
+    let type: String   // "speed" | "redlight"
+    let address: String
+    let lat: Double
+    let lng: Double
+    let approaches: [String]
+  }
+
+  // CAMERA_DATA_BEGIN (generated)
+  private static let chicagoCameras: [NativeCameraDef] = [
+    // CAMERA_ENTRIES_BEGIN
+    // Generated from TicketlessChicagoMobile/src/data/chicago-cameras.ts (510 cameras)
+    NativeCameraDef(type: "speed", address: "3450 W 71st St", lat: 41.7644, lng: -87.7097, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "6247 W Fullerton Ave", lat: 41.9236, lng: -87.7825, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "6250 W Fullerton Ave", lat: 41.9238, lng: -87.7826, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "5509 W Fullerton Ave", lat: 41.9239, lng: -87.7639, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "5446 W Fullerton Ave", lat: 41.9241, lng: -87.763, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "4843 W Fullerton Ave", lat: 41.9241, lng: -87.748, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3843 W 111th St", lat: 41.6912, lng: -87.7172, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "6523 N Western Ave", lat: 42.0003, lng: -87.6898, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "4433 N Western Ave", lat: 41.9623, lng: -87.6886, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "7739 S Western Ave", lat: 41.7526, lng: -87.6828, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "7738 S Western Ave", lat: 41.75269, lng: -87.6831, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "2550 W 79th St", lat: 41.7502, lng: -87.6874, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "5529 S Western Ave", lat: 41.79249, lng: -87.6839, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "7833 S Pulaski Rd", lat: 41.7504, lng: -87.7218, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "7826 S Pulaski Rd", lat: 41.7505, lng: -87.7221, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "3832 W 79th St", lat: 41.74969, lng: -87.7196, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "115 N Ogden Ave", lat: 41.8832, lng: -87.6641, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "2721 W Montrose Ave", lat: 41.9611, lng: -87.697, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "2705 W Irving Park Ave", lat: 41.9539, lng: -87.6962, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "2712 W Irving Park Ave", lat: 41.9541, lng: -87.6966, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "5520 S Western Ave", lat: 41.7928, lng: -87.6842, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "2115 S Western Ave", lat: 41.8534, lng: -87.6855, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "2108 S Western Ave", lat: 41.8536, lng: -87.6858, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "346 W 76th St", lat: 41.7564, lng: -87.6338, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "3542 E 95th St", lat: 41.723, lng: -87.537, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "1110 S Pulaski Rd", lat: 41.8676, lng: -87.7254, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "3212 W 55th St", lat: 41.7936, lng: -87.7042, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "8345 S Ashland Ave", lat: 41.7417, lng: -87.6631, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "3111 N Ashland Ave", lat: 41.9383, lng: -87.6685, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "5006 S Western Blvd", lat: 41.8028, lng: -87.6837, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "7157 S South Chicago Ave", lat: 41.7647, lng: -87.6037, approaches: ["NWB"]),
+    NativeCameraDef(type: "speed", address: "8043 W Addison St", lat: 41.945, lng: -87.8282, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "5885 N Ridge Ave", lat: 41.98891, lng: -87.66856, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "2443 N Ashland", lat: 41.92642, lng: -87.66806, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "1732 W 99th St", lat: 41.71398, lng: -87.66672, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "2700 W 103rd St", lat: 41.7065, lng: -87.6892, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "10540 S Western Ave", lat: 41.70148, lng: -87.68162, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "515 S Central Ave", lat: 41.8733, lng: -87.7645, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "4041 W Chicago Ave", lat: 41.8952, lng: -87.7277, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "1901 E 75th St", lat: 41.75869, lng: -87.5785, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "1117 S Pulaski Rd", lat: 41.8674, lng: -87.7251, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "8318 S Ashland Ave", lat: 41.7425, lng: -87.6634, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "6020 W Foster Ave", lat: 41.9758, lng: -87.7786, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "8006 W Addison St", lat: 41.945, lng: -87.8271, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "2900 W Ogden Ave", lat: 41.8604, lng: -87.6987, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "3534 N Western Ave", lat: 41.946, lng: -87.6884, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "4429 N Broadway Ave", lat: 41.9626, lng: -87.6555, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "3137 W Peterson Ave", lat: 41.9903, lng: -87.7095, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3115 N Narragansett Ave", lat: 41.93699, lng: -87.7857, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "3911 W Diversey Ave", lat: 41.9318, lng: -87.7254, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "6226 W Irving Park Rd", lat: 41.9531, lng: -87.7828, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "1306 W 76th St", lat: 41.756, lng: -87.657, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "450 N Columbus Dr", lat: 41.89009, lng: -87.6204, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "2917 W Roosevelt Rd", lat: 41.8664, lng: -87.6991, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "901 N Clark St", lat: 41.8988, lng: -87.6313, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "4432 N Lincoln Ave", lat: 41.9623, lng: -87.6846, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "1444 W Division St", lat: 41.9035, lng: -87.6644, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "3314 W 16th St", lat: 41.8591, lng: -87.7083, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3230 N Milwaukee Ave", lat: 41.9397, lng: -87.7251, approaches: ["SB", "WB"]),
+    NativeCameraDef(type: "speed", address: "19 E Chicago Ave", lat: 41.8966, lng: -87.629, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "3100 W Augusta Blvd", lat: 41.89929, lng: -87.7045, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "8020 W Forest Preserve Ave", lat: 41.9442, lng: -87.8275, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "732 N Pulaski Rd", lat: 41.8945, lng: -87.7262, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "7122 S South Chicago Ave", lat: 41.7652, lng: -87.6048, approaches: ["SEB"]),
+    NativeCameraDef(type: "speed", address: "3130 N Ashland Ave", lat: 41.9388, lng: -87.6688, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "1226 S Western Ave", lat: 41.90379, lng: -87.6872, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "6935 W Addison St", lat: 41.94543, lng: -87.80021, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "4124 W Foster Ave", lat: 41.9755, lng: -87.7317, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "6125 N Cicero Ave", lat: 41.9921, lng: -87.7485, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "4925 S Archer Ave", lat: 41.8036, lng: -87.721, approaches: ["NEB", "SWB"]),
+    NativeCameraDef(type: "speed", address: "4350 W 79th St", lat: 41.74949, lng: -87.7289, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "10318 S Indianapolis Ave", lat: 41.7076, lng: -87.5298, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "445 W 127th St", lat: 41.6632, lng: -87.6337, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "2928 S Halsted St", lat: 41.8408, lng: -87.6463, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "5433 S Pulaski Ave", lat: 41.79399, lng: -87.723, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "4246 W 47th St", lat: 41.8078, lng: -87.7301, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "4516 W Marquette Rd", lat: 41.77129, lng: -87.7358, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "14 W Chicago Ave", lat: 41.8968, lng: -87.6288, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "2638 W Fullerton Ave", lat: 41.9249, lng: -87.6941, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "1635 N Ashland Ave", lat: 41.9117, lng: -87.6676, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "1229 N Western Ave", lat: 41.9039, lng: -87.6869, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "2329 W Division St", lat: 41.9029, lng: -87.6858, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "2109 E 87th St", lat: 41.737, lng: -87.5729, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "6510 W Bryn Mawr Ave", lat: 41.983, lng: -87.7908, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "3217 W 55th St", lat: 41.7934, lng: -87.7043, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "1507 W 83rd St", lat: 41.743, lng: -87.6611, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3655 W Jackson Blvd", lat: 41.8771, lng: -87.7182, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "630 S State St", lat: 41.8738, lng: -87.6277, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "4436 N Western Ave", lat: 41.9624, lng: -87.6889, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "4446 N Broadway Ave", lat: 41.9629, lng: -87.656, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "7508 W Touhy Ave", lat: 42.0116, lng: -87.8142, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "7518 S Vincennes Ave", lat: 41.7571, lng: -87.6318, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "4707 W Peterson Ave", lat: 41.9898, lng: -87.7462, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "4674 W Peterson Ave", lat: 41.99, lng: -87.7453, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "2501 W Irving Park Rd", lat: 41.9539, lng: -87.6913, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "655 W. Root St.", lat: 41.8189, lng: -87.6425, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "6330 S Dr Martin Luther King Jr Dr", lat: 41.7793, lng: -87.6161, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "3601 N Milwaukee Ave", lat: 41.9466, lng: -87.736, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "5432 W Lawrence Ave", lat: 41.9678, lng: -87.7639, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "4909 N Cicero Ave", lat: 41.9701, lng: -87.7477, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "4123 N Central Ave", lat: 41.9557, lng: -87.7669, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "5428 S Pulaski S Rd", lat: 41.79419, lng: -87.7233, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "3851 W 79th St", lat: 41.7494, lng: -87.7191, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "5454 W Irving Park", lat: 41.9533, lng: -87.7643, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "1142 W Irving Park Rd", lat: 41.9545, lng: -87.6589, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "11153 S Vincennes Ave", lat: 41.6907, lng: -87.6641, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "536 E Morgan Dr", lat: 41.7935, lng: -87.6119, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "6514 W Belmont Ave", lat: 41.9384, lng: -87.7891, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "4040 W Chicago Ave", lat: 41.8954, lng: -87.7277, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "1638 N Ashland Ave", lat: 41.9118, lng: -87.6679, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "506 S Central Ave", lat: 41.8736, lng: -87.7648, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "341 W 76th St", lat: 41.7561, lng: -87.6336, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "3535 E 95th St", lat: 41.7228, lng: -87.5376, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "4042 W North Ave", lat: 41.90999, lng: -87.7281, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "1111 N Humboldt Blvd", lat: 41.9014, lng: -87.7021, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "3521 N Western Ave", lat: 41.9456, lng: -87.6881, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "4929 S Pulaski Rd", lat: 41.8033, lng: -87.7233, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "5030 S Pulaski Rd", lat: 41.8014, lng: -87.7235, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "629 S State St", lat: 41.8738, lng: -87.6274, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "2445 W 51st St", lat: 41.801, lng: -87.6861, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "1455 W Division St", lat: 41.9033, lng: -87.6649, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "3034 W Foster Ave", lat: 41.9759, lng: -87.7048, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "5330 S Cottage Grove Ave", lat: 41.7977, lng: -87.6064, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "1215 E 83RD ST", lat: 41.7442, lng: -87.5933, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "5816 W Jackson Blvd", lat: 41.8772, lng: -87.7704, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "3809 W Belmont Ave", lat: 41.939, lng: -87.7226, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "4319 W 47th St", lat: 41.8076, lng: -87.7318, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "449 N Columbus Dr", lat: 41.89, lng: -87.6202, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "2432 N Ashland Ave", lat: 41.9262, lng: -87.6683, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "2080 W Pershing Rd", lat: 41.8232, lng: -87.678, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "4949 W Lawrence Ave", lat: 41.9679, lng: -87.7523, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "1754 N Pulaski Rd", lat: 41.9134, lng: -87.7266, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "5120 N Pulaski Rd", lat: 41.9743, lng: -87.7282, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "3536 S Wallace St", lat: 41.8297, lng: -87.6413, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "5471 W Higgins Rd", lat: 41.9692, lng: -87.764, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "6443 W Belmont Ave", lat: 41.9382, lng: -87.7877, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "1334 W Garfield Blvd", lat: 41.79419, lng: -87.6587, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "1315 W Garfield Blvd", lat: 41.7936, lng: -87.6579, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "324 S Kedzie Ave", lat: 41.8766, lng: -87.7061, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "324 E Illinois St", lat: 41.8909, lng: -87.6193, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "6909 S Kedzie Ave", lat: 41.7677, lng: -87.7027, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "6818 S Kedzie Ave", lat: 41.7691, lng: -87.703, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "2912 W Roosevelt Rd", lat: 41.8666, lng: -87.699, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "2549 W Addison St", lat: 41.9466, lng: -87.6905, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "57 E 95th St", lat: 41.7216, lng: -87.6215, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "62 E 95th St", lat: 41.7219, lng: -87.6214, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "2440 W 51st St", lat: 41.8012, lng: -87.6859, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "3646 W Madison St", lat: 41.88089, lng: -87.7179, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "2223 N Kedzie Blvd", lat: 41.92199, lng: -87.707, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "4620 W Belmont Ave", lat: 41.939, lng: -87.7431, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "5440 W Grand Ave", lat: 41.9182, lng: -87.7623, approaches: ["WB", "EB"]),
+    NativeCameraDef(type: "speed", address: "2513 W 55th St", lat: 41.7937, lng: -87.6872, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3810 W Belmont Ave", lat: 41.9393, lng: -87.7228, approaches: ["WB"]),
+    NativeCameraDef(type: "speed", address: "3047 W Jackson Blvd", lat: 41.8772, lng: -87.7029, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3116 N Narragansett Ave", lat: 41.93699, lng: -87.786, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "215 E 63rd St", lat: 41.78, lng: -87.6198, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "4053 W North Ave", lat: 41.9097, lng: -87.7286, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "5532 S Kedzie Ave", lat: 41.79249, lng: -87.7037, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "819 E 71st St", lat: 41.7658, lng: -87.6036, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "1817 N Clark St", lat: 41.9159, lng: -87.6344, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "8740 S Vincennes St", lat: 41.73469, lng: -87.6459, approaches: ["SWB", "NEB"]),
+    NativeCameraDef(type: "speed", address: "1455 W Grand Ave", lat: 41.891, lng: -87.6646, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "2310 E 103rd St", lat: 41.7081, lng: -87.5676, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "4118 N Ashland Ave", lat: 41.9568, lng: -87.669, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "3510 W 55th St", lat: 41.7935, lng: -87.7121, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "7115 N Sheridan Rd", lat: 42.0122, lng: -87.663, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "2716 W Logan Blvd", lat: 41.9286, lng: -87.6958, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "1341 W Jackson Blvd", lat: 41.8778, lng: -87.6611, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "4716 N Ashland", lat: 41.9676, lng: -87.6695, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "3665 N Austin Ave", lat: 41.9473, lng: -87.7765, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "5059 N Damen Ave", lat: 41.974, lng: -87.6793, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "6824 W Foster Ave", lat: 41.9756, lng: -87.7986, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "220 W Fullerton Ave", lat: 41.9258, lng: -87.6349, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "5432 N Central Ave", lat: 41.98, lng: -87.7683, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "5857 N Broadway", lat: 41.9887, lng: -87.6601, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "6151 N Sheridan Rd", lat: 41.9938, lng: -87.6554, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "7732 S Cottage Grove Ave", lat: 41.75372, lng: -87.60533, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "2650 W Peterson Ave", lat: 41.9906, lng: -87.6962, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3358 S Ashland Ave", lat: 41.83244, lng: -87.66575, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "6616 N Central Ave", lat: 42.0014, lng: -87.7625, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "441 E 71st St", lat: 41.76569, lng: -87.61362, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "8590 S Martin Luther King Dr", lat: 41.7386, lng: -87.6147, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "1635 N LaSalle", lat: 41.9122, lng: -87.633, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "49 W 85th St", lat: 41.73991, lng: -87.62662, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "5941 N Nagle", lat: 41.99002, lng: -87.78753, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "614 W 47th Street", lat: 41.80901, lng: -87.6416, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "1477 W. Cermak Rd", lat: 41.8523, lng: -87.6631, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "147 S Desplaines St", lat: 41.8799, lng: -87.644, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "6201 S Pulaski Rd", lat: 41.78033, lng: -87.72263, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "4021 W Belmont Ave", lat: 41.939, lng: -87.72888, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "6198 S Pulaski Rd", lat: 41.78037, lng: -87.72297, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "812 S Racine Ave", lat: 41.87141, lng: -87.6569, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "216 S Jefferson St", lat: 41.87876, lng: -87.64267, approaches: ["NB"]),
+    NativeCameraDef(type: "speed", address: "2948 W 47th St", lat: 41.80827, lng: -87.69862, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "4298 w 59th St", lat: 41.78593, lng: -87.7301, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "2718 S Kedzie Ave", lat: 41.84211, lng: -87.7051, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "851 W 103rd St", lat: 41.70684, lng: -87.6448, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "3624 S Western Ave", lat: 41.8278, lng: -87.6851, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "200 S Michigan Ave", lat: 41.87944, lng: -87.62452, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "2711 N Pulaski", lat: 41.9307, lng: -87.7269, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "451 E Grand Ave", lat: 41.89179, lng: -87.61597, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "5050 W Fullerton Ave", lat: 41.9242, lng: -87.7534, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "2622 N. Laramie Ave", lat: 41.92859, lng: -87.75641, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "4424 W Diversey Ave", lat: 41.93172, lng: -87.73789, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "8134 S Yates Blvd", lat: 41.74709, lng: -87.56623, approaches: ["NB", "SB"]),
+    NativeCameraDef(type: "speed", address: "2740 S Archer Ave", lat: 41.8442, lng: -87.653, approaches: ["SEB", "NWB"]),
+    NativeCameraDef(type: "speed", address: "504 W 69th Ave", lat: 41.76901, lng: -87.63818, approaches: ["EB", "WB"]),
+    NativeCameraDef(type: "speed", address: "8550 S Lafayette Ave", lat: 41.7388, lng: -87.6256, approaches: ["SB"]),
+    NativeCameraDef(type: "speed", address: "4451 W 79th St", lat: 41.74931, lng: -87.73281, approaches: ["EB"]),
+    NativeCameraDef(type: "speed", address: "2448 Clybourn", lat: 41.9262, lng: -87.6709, approaches: ["SEB", "NWB"]),
+    NativeCameraDef(type: "speed", address: "9618 S. Ewing", lat: 41.7207, lng: -87.5354, approaches: ["SB", "NB"]),
+    NativeCameraDef(type: "speed", address: "385 Michigan Ave", lat: 41.87744, lng: -87.62408, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Central Avenue", lat: 41.92431, lng: -87.7661, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "800 North Western Ave", lat: 41.89543, lng: -87.6867, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "6400 West Fullerton Avenue", lat: 41.92356, lng: -87.78583, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "5600 West Diversey Avenue", lat: 41.93136, lng: -87.76588, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Addison", lat: 41.94665, lng: -87.6887, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Foster Ave", lat: 41.97598, lng: -87.6887, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3200 North Pulaski Rd", lat: 41.93935, lng: -87.72729, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "6000 W Addison Street", lat: 41.94574, lng: -87.77688, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "11900 South Halsted", lat: 41.67812, lng: -87.64206, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 West Diversey Avenue", lat: 41.93154, lng: -87.74614, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "6400 West Fullerton Avenue", lat: 41.92381, lng: -87.7847, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "7600 South Stony Island Avenue", lat: 41.75671, lng: -87.58561, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Ashland Avenue", lat: 41.92528, lng: -87.66819, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1 East 79th Street", lat: 41.75105, lng: -87.62419, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1300 W Irving Park Road", lat: 41.95432, lng: -87.66262, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Ashland Avenue", lat: 41.92499, lng: -87.66808, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "6300 South Kedzie Ave", lat: 41.77869, lng: -87.70305, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 North Kedzie Avenue", lat: 41.93878, lng: -87.70765, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "600 South Cicero Avenue", lat: 41.8735, lng: -87.74513, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "?200 N. Upper Wacker Dr", lat: 41.88547, lng: -87.63681, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 West 55th Street", lat: 41.79345, lng: -87.70393, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "5500 S. Pulaski", lat: 41.7937, lng: -87.72329, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5075 West Montrose Avenue", lat: 41.96066, lng: -87.75406, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "400 West Belmont Ave", lat: 41.94017, lng: -87.6389, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "7100 South Cottage Grove Avenue", lat: 41.76515, lng: -87.60543, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "150 North Sacramento Boulevard", lat: 41.89529, lng: -87.70209, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3700 West Irving Park Road", lat: 41.95376, lng: -87.719, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "8700 South Vincennes", lat: 41.73643, lng: -87.6451, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Diversey Avenue", lat: 41.93177, lng: -87.72741, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3600 North Harlem Avenue", lat: 41.94493, lng: -87.80688, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4400 North Western Avenue", lat: 41.961, lng: -87.68862, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4700 S. Western Avenue", lat: 41.80813, lng: -87.6843, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 North Lakeshore Drive", lat: 41.94035, lng: -87.63887, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5500 South Kedzie Avenue", lat: 41.79373, lng: -87.70362, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1200 West Devon Ave", lat: 41.99813, lng: -87.66099, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4000 N Clark Street", lat: 41.95417, lng: -87.66199, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "848 West 87th Street", lat: 41.73602, lng: -87.64556, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4800 West Chicago Avenue", lat: 41.89494, lng: -87.74609, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "6300 South Pulaski Rd", lat: 41.77891, lng: -87.72291, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4400 West Ogden Avenue", lat: 41.84747, lng: -87.73476, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4800 North Western Avenue", lat: 41.96898, lng: -87.68897, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4440 West Lawrence Avenue", lat: 41.96817, lng: -87.73976, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1600 East 79th St", lat: 41.75155, lng: -87.58502, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "0 N. Ashland Ave", lat: 41.88122, lng: -87.66663, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "7100 S. Ashland", lat: 41.76456, lng: -87.66366, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2000 West Division", lat: 41.90316, lng: -87.67749, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "800 West 79th Street", lat: 41.75059, lng: -87.64443, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "800 West Fullerton Avenue", lat: 41.92549, lng: -87.64842, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4000 W. 55th St", lat: 41.79326, lng: -87.72274, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "5930 N Clark Street", lat: 41.98922, lng: -87.66979, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1600 West 87th St", lat: 41.73582, lng: -87.66262, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2000 East 95th St", lat: 41.72249, lng: -87.57581, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Foster Ave", lat: 41.97559, lng: -87.72792, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1200 North Pulaski Road", lat: 41.9025, lng: -87.72621, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "800 West North Avenue", lat: 41.91095, lng: -87.64784, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2800 N Western Avenue", lat: 41.93182, lng: -87.6878, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "800 North Central Avenue", lat: 41.89513, lng: -87.7655, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West North Ave", lat: 41.91026, lng: -87.68769, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3200 West Armitage Avenue", lat: 41.91744, lng: -87.70668, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1200 South Canal Street", lat: 41.86693, lng: -87.63912, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Armitage Avenue", lat: 41.9172, lng: -87.72625, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "7900 S. South Chicago Ave", lat: 41.75126, lng: -87.5851, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "100 West Chicago Avenue", lat: 41.89659, lng: -87.63142, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "5600 West Fullerton Avenue", lat: 41.92414, lng: -87.7656, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3200 W. Belmont", lat: 41.93968, lng: -87.70771, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Western Avenue", lat: 41.92459, lng: -87.68757, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 West 47th ST", lat: 41.80821, lng: -87.70362, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3200 N. Kedzie Ave", lat: 41.93945, lng: -87.7078, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "6400 North California Avenue", lat: 41.9973, lng: -87.69958, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2348 South Kostner Avenue", lat: 41.84804, lng: -87.73451, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4000 W Lawrence Avenue", lat: 41.96819, lng: -87.72843, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "1600 N. Kostner", lat: 41.90956, lng: -87.73627, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1600 West Lawrence Avenue", lat: 41.96882, lng: -87.66992, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4800 West Peterson Avenue", lat: 41.99, lng: -87.74784, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2800 North Central Avenue", lat: 41.93157, lng: -87.76635, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "7200 West Addison", lat: 41.9452, lng: -87.8075, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3000 West Chicago Avenue", lat: 41.89564, lng: -87.70195, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4400 W. North", lat: 41.90973, lng: -87.73652, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "9900 South Halsted St", lat: 41.71402, lng: -87.6428, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1600 North Western Ave", lat: 41.91014, lng: -87.68715, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "6400 North Western Avenue", lat: 41.99745, lng: -87.6898, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "30 West 87th Street", lat: 41.7362, lng: -87.62583, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2800 West Diversey", lat: 41.92331, lng: -87.69719, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1900 North Ashland Ave", lat: 41.9159, lng: -87.66777, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West 63rd St", lat: 41.77921, lng: -87.68403, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2000 W Diversey Parkway", lat: 41.9323, lng: -87.67803, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2000 North Kedzie Avenue", lat: 41.91757, lng: -87.70707, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "7200 North Western Avenue", lat: 42.01199, lng: -87.69015, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2800 West Devon Avenue", lat: 41.99752, lng: -87.69997, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2800 North Cicero Avenue", lat: 41.93127, lng: -87.74651, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4200 South Cicero Avenue", lat: 41.81709, lng: -87.74322, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "5200 North Broadway St", lat: 41.97605, lng: -87.65979, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 W Diversey Avenue", lat: 41.93229, lng: -87.68739, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Belmont Ave", lat: 41.93901, lng: -87.72757, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Cermak Road", lat: 41.85196, lng: -87.68613, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "6000 North Cicero Avenue", lat: 41.9903, lng: -87.74836, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Montrose Avenue", lat: 41.96135, lng: -87.6883, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "8700 South Lafayette Avenue", lat: 41.73666, lng: -87.62552, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2600 South Kedzie Avenue", lat: 41.84478, lng: -87.70512, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 West Harrison Street", lat: 41.87305, lng: -87.74539, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3200 North Harlem Ave", lat: 41.93766, lng: -87.80668, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1000 West Foster Ave", lat: 41.97645, lng: -87.65452, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3600 North Cicero Avenue", lat: 41.94579, lng: -87.74696, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1 East 75th Street", lat: 41.75823, lng: -87.62424, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "800 West Roosevelt Road", lat: 41.86703, lng: -87.64739, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "5600 West Belmont Avenue", lat: 41.93868, lng: -87.76606, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4000 N Central Avenue", lat: 41.95348, lng: -87.76704, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1600 North Homan Avenue", lat: 41.90982, lng: -87.71185, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "800 North Sacramento Avenue", lat: 41.88375, lng: -87.70118, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3216 West Addison St", lat: 41.94653, lng: -87.70919, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4700 South Cicero Ave", lat: 41.80796, lng: -87.74333, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5000 South Archer Ave", lat: 41.80194, lng: -87.72385, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Clark St", lat: 41.92504, lng: -87.64018, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "5930 N Clark Street", lat: 41.99019, lng: -87.67017, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West 79th St", lat: 41.75014, lng: -87.6824, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3600 North Elston Ave", lat: 41.94686, lng: -87.70926, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "6400 North Sheridan Road", lat: 41.99852, lng: -87.66062, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "?628 N. Michigan Ave", lat: 41.89368, lng: -87.62433, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2400 N Laramie Avenue", lat: 41.92385, lng: -87.75611, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4800 North Elston Avenue", lat: 41.9679, lng: -87.73976, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5200 West Madison Street", lat: 41.88026, lng: -87.75554, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1200 South Pulaski Road", lat: 41.86586, lng: -87.72508, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4000 North Pulaski Road", lat: 41.95398, lng: -87.72769, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1 S. Western Ave", lat: 41.88092, lng: -87.68626, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "?300 S. Michigan Ave", lat: 41.87795, lng: -87.62412, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1600 West Cortland St", lat: 41.91607, lng: -87.66832, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "9500 South Jeffery Ave", lat: 41.72281, lng: -87.57541, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "3500 S. Western", lat: 41.83059, lng: -87.68515, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "500 North Columbus Drive", lat: 41.89073, lng: -87.62014, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "500 West Roosevelt Road", lat: 41.86737, lng: -87.6387, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "500 North Columbus Drive", lat: 41.89121, lng: -87.62023, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3600 North Western Avenue", lat: 41.94652, lng: -87.68803, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "100 North Cicero Avenue", lat: 41.88216, lng: -87.74545, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "6700 South Western Avenue", lat: 41.77225, lng: -87.68358, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1200 S. Kostner", lat: 41.86578, lng: -87.73486, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "5200 West Irving Park Road", lat: 41.95338, lng: -87.75672, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2000 West Division", lat: 41.90323, lng: -87.67686, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "6400 North Western Avenue", lat: 41.99803, lng: -87.68997, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5200 South Cicero Ave", lat: 41.79817, lng: -87.74373, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 West 63rd St", lat: 41.77903, lng: -87.70277, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "800 West 111th St", lat: 41.69254, lng: -87.64193, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3100 S Dr Martin L King", lat: 41.83813, lng: -87.61723, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4800 N Pulaski Road", lat: 41.96852, lng: -87.72811, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "6300 South Damen Avenue", lat: 41.77954, lng: -87.67397, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4400 W. Roosevelt", lat: 41.86595, lng: -87.73539, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "7200 North Western Avenue", lat: 42.0126, lng: -87.69031, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2200 S. Pulaski", lat: 41.85195, lng: -87.72489, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "100 West Chicago Avenue", lat: 41.89667, lng: -87.63101, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Pulaski Rd", lat: 41.92416, lng: -87.72677, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Chicago Ave", lat: 41.8957, lng: -87.68737, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "1 North Halsted Street", lat: 41.88207, lng: -87.64748, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5200 North Sheridan Road", lat: 41.97666, lng: -87.65504, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "300 North Hamlin Avenue", lat: 41.88494, lng: -87.72081, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1000 West Hollywood Ave", lat: 41.98561, lng: -87.65477, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4700 West Irving Park Road", lat: 41.95356, lng: -87.74428, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "6300 South Damen Avenue", lat: 41.77903, lng: -87.67381, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Van Buren Street", lat: 41.87617, lng: -87.68575, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2400 W. Madison", lat: 41.88125, lng: -87.68591, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "800 West Roosevelt Road", lat: 41.86728, lng: -87.64644, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "6000 North California Avenue", lat: 41.99013, lng: -87.69936, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1200 North Ashland Avenue", lat: 41.90305, lng: -87.66736, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3400 West North Ave", lat: 41.91002, lng: -87.7121, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "7600 South Stony Island Avenue", lat: 41.75717, lng: -87.58617, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "3200 West 79th St", lat: 41.74964, lng: -87.70275, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Lawrence Avenue", lat: 41.96856, lng: -87.68937, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Irving Park Rd", lat: 41.95372, lng: -87.72724, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1000 West Hollywood Ave", lat: 41.98548, lng: -87.65564, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "7432 West Touhy Avenue", lat: 42.01161, lng: -87.81185, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "5500 South Wentworth Avenue", lat: 41.79383, lng: -87.63034, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 North Central Avenue", lat: 41.93893, lng: -87.76666, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Armitage Avenue", lat: 41.91713, lng: -87.72678, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West 63rd St", lat: 41.7786, lng: -87.72325, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "7100 South Cottage Grove Avenue", lat: 41.76633, lng: -87.60571, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Roosevelt Road", lat: 41.86627, lng: -87.72473, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "5200 N. Nagle", lat: 41.97543, lng: -87.7877, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1600 N Pulaski Avenue", lat: 41.90967, lng: -87.72636, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5400 South Archer Ave", lat: 41.79887, lng: -87.74237, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "150 North Sacramento Boulevard", lat: 41.8844, lng: -87.7014, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "7900 South Western Ave", lat: 41.74973, lng: -87.6827, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "7900 South Kedzie Ave", lat: 41.75017, lng: -87.70255, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4000 N Austin Avenue", lat: 41.95277, lng: -87.77671, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "?5200 N. Northwest Hwy", lat: 41.97592, lng: -87.76981, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2800 West Irving Park Road", lat: 41.95387, lng: -87.69863, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "1600 W. Madison", lat: 41.88156, lng: -87.6664, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "200 West Garfield Blvd", lat: 41.79446, lng: -87.63011, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "6700 South Stony Island Ave", lat: 41.77319, lng: -87.58617, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1600 West Division Street", lat: 41.90332, lng: -87.66781, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 W. Peterson", lat: 41.99099, lng: -87.68974, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "7100 South Kedzie Avenue", lat: 41.76468, lng: -87.7029, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Halsted Street", lat: 41.9251, lng: -87.64868, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "7500 South State Street", lat: 41.75788, lng: -87.62489, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "7900 South Stony Island Ave", lat: 41.75203, lng: -87.5859, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 W North Avenue", lat: 41.9095, lng: -87.74644, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3800 West Madison Street", lat: 41.88071, lng: -87.72117, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2800 West Peterson Avenue", lat: 41.99039, lng: -87.69978, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2000 North Cicero Avenue", lat: 41.91675, lng: -87.74604, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "1 South Halsted Street", lat: 41.8815, lng: -87.64725, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "6000 N. Western Ave", lat: 41.99057, lng: -87.68892, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "9500 South Halsted Street", lat: 41.72211, lng: -87.64359, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "6300 South State St", lat: 41.78026, lng: -87.6254, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 West Fullerton Ave", lat: 41.92431, lng: -87.74588, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "5600 W Irving Park Road", lat: 41.95313, lng: -87.76743, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "5200 West Madison Street", lat: 41.8805, lng: -87.75465, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Western Avenue", lat: 41.92524, lng: -87.6878, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1200 West Foster Ave", lat: 41.97626, lng: -87.66029, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3600 North Central Avenue", lat: 41.94606, lng: -87.76672, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 West 47th St", lat: 41.80774, lng: -87.74265, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4000 W North Avenue", lat: 41.9099, lng: -87.726, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2800 North Kimball Avenue", lat: 41.93172, lng: -87.71224, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West 79th Street", lat: 41.74961, lng: -87.72139, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "6000 W Irving Park Road", lat: 41.95299, lng: -87.77715, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "1600 North Halsted Street", lat: 41.91061, lng: -87.6482, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2800 North California Ave", lat: 41.93188, lng: -87.69745, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "6000 W Diversey Avenue", lat: 41.93103, lng: -87.77638, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "7900 South State Street", lat: 41.75069, lng: -87.62512, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "5600 West Lake Street", lat: 41.88771, lng: -87.76539, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "6700 South Cornell Drive", lat: 41.77311, lng: -87.58586, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "?100 E. Ontario St", lat: 41.89335, lng: -87.6237, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "5500 S Western Ave", lat: 41.79419, lng: -87.68421, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "7900 South Pulaski Road", lat: 41.74985, lng: -87.72204, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2000 West Fullerton Ave", lat: 41.92494, lng: -87.67859, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "6400 North Milwaukee Avenue", lat: 41.99763, lng: -87.78822, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2800 North Pulaski Road", lat: 41.93207, lng: -87.72703, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "800 W. DIVISION", lat: 41.90368, lng: -87.6477, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "5200 North Pulaski Rd", lat: 41.97583, lng: -87.72831, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 North Cicero Ave", lat: 41.9676, lng: -87.74766, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 West 71st Street", lat: 41.76445, lng: -87.70238, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1600 W. 71st", lat: 41.76495, lng: -87.66336, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "?5232 N. Central Ave", lat: 41.97706, lng: -87.7685, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5600 West Chicago Avenue", lat: 41.89479, lng: -87.76558, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "6000 W Diversey Avenue", lat: 41.93119, lng: -87.77562, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3100 South Kedzie Avenue", lat: 41.83753, lng: -87.70493, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4400 West Grand Ave", lat: 41.9101, lng: -87.73653, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1600 West 95th Street", lat: 41.72109, lng: -87.66314, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2426 North Damen Ave", lat: 41.9261, lng: -87.67801, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "3400 West Diversey Avenue", lat: 41.93192, lng: -87.71264, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "7432 West Touhy Avenue", lat: 42.01151, lng: -87.81262, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "5200 West Irving Park Road", lat: 41.95322, lng: -87.75741, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4700 S. Western Avenue", lat: 41.80873, lng: -87.68457, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "300 North Hamlin Avenue", lat: 41.8855, lng: -87.72103, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "?340 W. Upper?Wacker Dr", lat: 41.88597, lng: -87.63743, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "6400 W. Irving Pk", lat: 41.95289, lng: -87.78691, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Cicero Ave", lat: 41.92458, lng: -87.74644, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Fullerton Ave", lat: 41.92461, lng: -87.72642, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "3600 North Cicero Avenue", lat: 41.94636, lng: -87.74715, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4000 West Chicago Avenue", lat: 41.89532, lng: -87.72632, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "5200 North Western Ave", lat: 41.97613, lng: -87.68922, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 North Cicero Avenue", lat: 41.96832, lng: -87.74765, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5000 South Archer Ave", lat: 41.80269, lng: -87.72302, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "2600 South Kedzie Avenue", lat: 41.84408, lng: -87.70494, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 West Marquette Road", lat: 41.77203, lng: -87.68299, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1200 N. HALSTED", lat: 41.90335, lng: -87.64802, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "6400 W. Irving Pk", lat: 41.95301, lng: -87.78627, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "?5616 W. Foster Ave", lat: 41.97561, lng: -87.76988, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "9500 South Halsted Street", lat: 41.72126, lng: -87.64299, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "400 North Central Avenue", lat: 41.88794, lng: -87.76513, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "1200 North Pulaski Road", lat: 41.9029, lng: -87.72635, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2200 South Western Avenue", lat: 41.85273, lng: -87.68579, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "6400 W. Foster", lat: 41.9757, lng: -87.78743, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "7200 West Belmont Ave", lat: 41.93807, lng: -87.80636, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4700 West Irving Park Road", lat: 41.95334, lng: -87.7451, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "2800 West Diversey", lat: 41.93207, lng: -87.698, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "6400 West Devon Avenue", lat: 41.99739, lng: -87.78737, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4700 South Kedzie Ave", lat: 41.80782, lng: -87.70386, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "100 North Cicero Avenue", lat: 41.88148, lng: -87.74521, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "?100 E. Jackson Blvd", lat: 41.87823, lng: -87.62485, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3500 S. Western", lat: 41.83, lng: -87.6849, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "3200 West 31st Street", lat: 41.83732, lng: -87.70445, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1600 West Irving Park Road", lat: 41.95419, lng: -87.6695, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4000 W. Cermak", lat: 41.85172, lng: -87.72434, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4400 North Milwaukee Avenue", lat: 41.96043, lng: -87.75419, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "5600 West Addison Street", lat: 41.94582, lng: -87.76717, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "4000 North Ashland Avenue", lat: 41.95401, lng: -87.66889, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "11100 South Halsted St", lat: 41.69259, lng: -87.64251, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "800 North Pulaski Road", lat: 41.89562, lng: -87.7261, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4800 West Armitage Avenue", lat: 41.91687, lng: -87.74654, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "6300 South Western Ave", lat: 41.77893, lng: -87.68351, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4800 W North Avenue", lat: 41.90972, lng: -87.74573, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "800 West 99th St", lat: 41.714, lng: -87.64329, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "800 West 119th Street", lat: 41.67786, lng: -87.64154, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "0 North Hamlin Boulevard", lat: 41.8805, lng: -87.72058, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2800 West Irving Park Road", lat: 41.95409, lng: -87.69779, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "1 East 63rd St", lat: 41.78008, lng: -87.62507, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "7900 South Halsted Street", lat: 41.75044, lng: -87.64395, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "400 East 31st Street", lat: 41.83835, lng: -87.61806, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "5200 W Fullerton Avenue", lat: 41.92421, lng: -87.75571, approaches: ["WB"]),
+    NativeCameraDef(type: "redlight", address: "4800 North Ashland Avenue", lat: 41.96914, lng: -87.66957, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2400 W 55th Street", lat: 41.79378, lng: -87.68451, approaches: ["EB"]),
+    NativeCameraDef(type: "redlight", address: "3600 N Austin Avenue", lat: 41.94599, lng: -87.77642, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "4000 North Elston Avenue", lat: 41.95405, lng: -87.71979, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "8700 South Ashland Ave", lat: 41.73609, lng: -87.66307, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "9500 South Ashland Avenue", lat: 41.72157, lng: -87.66285, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "800 North Cicero Avenue", lat: 41.89484, lng: -87.74573, approaches: ["NB"]),
+    NativeCameraDef(type: "redlight", address: "2400 North Clark St", lat: 41.92575, lng: -87.64063, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "2800 N Damen Avenue", lat: 41.93248, lng: -87.67814, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "?5232 N. Milwaukee Ave", lat: 41.97672, lng: -87.76878, approaches: ["SEB"]),
+    NativeCameraDef(type: "redlight", address: "400 South Western Avenue", lat: 41.87651, lng: -87.68647, approaches: ["SB"]),
+    NativeCameraDef(type: "redlight", address: "4200 South Cicero Avenue", lat: 41.81737, lng: -87.7436, approaches: ["SB"]),
+    // CAMERA_ENTRIES_END
+  ]
+  // CAMERA_DATA_END (generated)
+
+  private func maybeSendNativeCameraAlert(_ location: CLLocation) {
+    guard cameraAlertsEnabled else { return }
+    let speed = location.speed
+    let heading = location.course  // -1 if invalid
+    let lat = location.coordinate.latitude
+    let lng = location.coordinate.longitude
+    let acc = location.horizontalAccuracy
+
+    // Require at least somewhat-credible GPS in background before alerting
+    if acc <= 0 || acc > 120 { return }
+
+    // Dedupe overall announcements
+    if let last = lastCameraAlertAt, Date().timeIntervalSince(last) < camAnnounceMinIntervalSec {
+      return
+    }
+
+    // Clear cooldowns for cameras we've moved far away from
+    for (idx, _) in alertedCameraAtByIndex {
+      let cam = Self.chicagoCameras[idx]
+      let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
+      if dist > camCooldownRadiusMeters {
+        alertedCameraAtByIndex.removeValue(forKey: idx)
+      }
+    }
+
+    let alertRadius = cameraAlertRadiusMeters(speedMps: speed)
+
+    // Bounding box filter
+    let latMin = lat - camBBoxDegrees
+    let latMax = lat + camBBoxDegrees
+    let lngMin = lng - camBBoxDegrees
+    let lngMax = lng + camBBoxDegrees
+
+    var bestIdx: Int? = nil
+    var bestDist: Double = Double.greatestFiniteMagnitude
+
+    for i in 0..<Self.chicagoCameras.count {
+      let cam = Self.chicagoCameras[i]
+
+      // Type + schedule filters
+      if cam.type == "speed" {
+        guard cameraSpeedEnabled else { continue }
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour < speedCamEnforceStartHour || hour >= speedCamEnforceEndHour { continue }
+      } else {
+        guard cameraRedlightEnabled else { continue }
+      }
+
+      // Speed filters (fail-open if speed unknown)
+      if speed >= 0 {
+        let minSpeed = (cam.type == "speed") ? camMinSpeedSpeedCamMps : camMinSpeedRedlightMps
+        if speed < minSpeed { continue }
+      }
+
+      // Fast bbox
+      if cam.lat < latMin || cam.lat > latMax { continue }
+      if cam.lng < lngMin || cam.lng > lngMax { continue }
+
+      let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
+      if dist > alertRadius { continue }
+
+      // Per-camera dedupe
+      if let lastAlert = alertedCameraAtByIndex[i], Date().timeIntervalSince(lastAlert) < camAlertDedupeSec {
+        continue
+      }
+
+      if !isHeadingMatch(headingDeg: heading, approaches: cam.approaches) { continue }
+      if !isCameraAhead(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, headingDeg: heading) { continue }
+
+      if dist < bestDist {
+        bestDist = dist
+        bestIdx = i
+      }
+    }
+
+    guard let idx = bestIdx else { return }
+    let cam = Self.chicagoCameras[idx]
+
+    // Local notification
+    let title = cam.type == "redlight" ? "Red-light camera ahead" : "Speed camera ahead"
+    let body = cam.address
+    scheduleCameraLocalNotification(title: title, body: body, id: "cam-\(idx)")
+
+    alertedCameraAtByIndex[idx] = Date()
+    lastCameraAlertAt = Date()
+    decision("native_camera_alert_fired", [
+      "idx": idx,
+      "type": cam.type,
+      "address": cam.address,
+      "distanceMeters": bestDist,
+      "alertRadiusMeters": alertRadius,
+      "speedMps": speed,
+      "heading": heading,
+      "accuracy": acc,
+    ])
+    log("NATIVE CAMERA ALERT: \(title) @ \(cam.address) (dist=\(String(format: \"%.0f\", bestDist))m, radius=\(String(format: \"%.0f\", alertRadius))m)")
+  }
+
+  private func cameraAlertRadiusMeters(speedMps: Double) -> Double {
+    if speedMps < 0 { return camBaseAlertRadiusMeters }
+    let dynamic = speedMps * camTargetWarningSec
+    return max(camBaseAlertRadiusMeters, min(dynamic, camMaxAlertRadiusMeters))
+  }
+
+  private func scheduleCameraLocalNotification(title: String, body: String, id: String) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      let allowed = settings.authorizationStatus == .authorized ||
+                    settings.authorizationStatus == .provisional ||
+                    settings.authorizationStatus == .ephemeral
+      if !allowed {
+        self.log("Camera notification skipped: notifications not authorized (status=\(settings.authorizationStatus.rawValue))")
+        return
+      }
+
+      let content = UNMutableNotificationContent()
+      content.title = title
+      content.body = body
+      content.sound = UNNotificationSound.default
+
+      // Fire immediately (short delay to avoid iOS dropping same-tick notifications)
+      let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+      let req = UNNotificationRequest(identifier: id + "-" + String(Int(Date().timeIntervalSince1970)), content: content, trigger: trigger)
+      UNUserNotificationCenter.current().add(req) { err in
+        if let err = err {
+          self.log("Camera notification add failed: \(err.localizedDescription)")
+        }
+      }
+    }
+  }
+
+  private func haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+    let r = 6371000.0
+    let dLat = (lat2 - lat1) * Double.pi / 180.0
+    let dLon = (lon2 - lon1) * Double.pi / 180.0
+    let a = sin(dLat/2) * sin(dLat/2) +
+            cos(lat1 * Double.pi / 180.0) * cos(lat2 * Double.pi / 180.0) *
+            sin(dLon/2) * sin(dLon/2)
+    let c = 2 * atan2(sqrt(a), sqrt(1-a))
+    return r * c
+  }
+
+  private func bearingTo(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+    let dLon = (lon2 - lon1) * Double.pi / 180.0
+    let lat1R = lat1 * Double.pi / 180.0
+    let lat2R = lat2 * Double.pi / 180.0
+    let y = sin(dLon) * cos(lat2R)
+    let x = cos(lat1R) * sin(lat2R) - sin(lat1R) * cos(lat2R) * cos(dLon)
+    let brng = atan2(y, x) * 180.0 / Double.pi
+    return fmod((brng + 360.0), 360.0)
+  }
+
+  private func isCameraAhead(userLat: Double, userLng: Double, camLat: Double, camLng: Double, headingDeg: Double) -> Bool {
+    if headingDeg < 0 { return true }  // fail-open
+    let bearing = bearingTo(lat1: userLat, lon1: userLng, lat2: camLat, lon2: camLng)
+    var diff = abs(headingDeg - bearing)
+    if diff > 180 { diff = 360 - diff }
+    return diff <= camMaxBearingOffHeadingDeg
+  }
+
+  private func isHeadingMatch(headingDeg: Double, approaches: [String]) -> Bool {
+    if headingDeg < 0 { return true }      // fail-open
+    if approaches.isEmpty { return true }  // fail-open
+
+    let mapping: [String: Double] = [
+      "NB": 0,
+      "NEB": 45,
+      "EB": 90,
+      "SEB": 135,
+      "SB": 180,
+      "SWB": 225,
+      "WB": 270,
+      "NWB": 315,
+    ]
+
+    for a in approaches {
+      guard let target = mapping[a] else { return true } // unknown approach => fail-open
+      var diff = abs(headingDeg - target)
+      if diff > 180 { diff = 360 - diff }
+      if diff <= camHeadingToleranceDeg { return true }
+    }
+    return false
   }
 
   /// Recovery check: query CoreMotion history to see if we missed a parking event
