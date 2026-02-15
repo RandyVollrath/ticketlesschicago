@@ -197,6 +197,37 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor �
 4. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
 5. **After parking confirmation, `isDriving` resets to false.** The ONLY way it gets set back to true is via CoreMotion reporting automotive or GPS speed > 2.5 m/s. If neither is running, the app is permanently stuck in "parked" state.
 
+## iOS Camera Alerts — Background Reality (Critical)
+
+**Problem:** On iOS, JavaScript can be suspended while the app is in the background even if native location/motion continues. This means a JS-based camera alert pipeline (e.g. `CameraAlertService.onLocationUpdate`) can miss alerts even when departure/parking detection later looks correct.
+
+**Rule:** If camera alerts must work in background, implement a native iOS fallback that:
+- Runs on native location callbacks (not JS timers).
+- Triggers a local notification (not TTS) when near a camera.
+- Dedupes/cooldowns to avoid spam.
+- Uses the same filters as JS (speed windows, heading/approach match, bearing-ahead cone).
+
+### Current Implementation (Feb 15, 2026)
+- Native implementation: `TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.swift`
+  - Fires local notifications for nearby cameras when app is backgrounded.
+  - Only runs when driving/automotive is true (or GPS speed indicates movement).
+  - Camera dataset is embedded in Swift for guaranteed compilation.
+- JS settings sync:
+  - `TicketlessChicagoMobile/src/services/BackgroundLocationService.ts` exposes `setCameraAlertSettings(...)`.
+  - `TicketlessChicagoMobile/src/services/CameraAlertService.ts` calls it whenever camera settings change.
+  - `TicketlessChicagoMobile/src/services/BackgroundTaskService.ts` also pushes settings at startup for safety.
+
+### Data Generation
+- Script: `scripts/generate_ios_camera_data.ts`
+- Inserts 510 Chicago camera entries into the Swift file between `// CAMERA_ENTRIES_BEGIN` and `// CAMERA_ENTRIES_END`.
+
+### Testing Checklist (iOS)
+- Install a build that includes the native camera code (pulling JS is not enough).
+- Ensure iOS notification permission is enabled for the app.
+- Enable camera alerts in app settings (this must sync native settings).
+- Background the app and drive past a known red-light camera.
+- Expect a banner local notification ("Red-light camera ahead") even if JS is suspended.
+
 ## Parking State Machine — Single Source of Truth
 
 The Android parking detection state machine (`ParkingDetectionStateMachine.ts`) is the **single source of truth** for whether the user is driving or parked. Departure tracking DEPENDS on this state machine being in the correct state.
