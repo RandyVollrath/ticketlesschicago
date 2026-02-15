@@ -41,6 +41,8 @@ const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const MIN_DISCONNECT_DURATION_MS = 30 * 1000; // 30 seconds (to avoid false positives)
 const DEPARTURE_CONFIRMATION_DELAY_MS = 60 * 1000; // 60s after car starts — enough time to clear the block
 const MIN_PARKING_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes - prevent duplicate checks
+const LOW_ACCURACY_RECOVERY_DELAY_MS = 25000; // 25s retry window for poor native GPS fixes
+const RECENT_DRIVING_WINDOW_MS = 20 * 60 * 1000; // treat onDrivingStarted as recent for 20 minutes
 
 // Periodic rescan: re-check parking at last location every 4 hours while parked
 const RESCAN_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -107,6 +109,9 @@ class BackgroundTaskServiceClass {
   private iosHealthSnapshotInFlight: boolean = false;
   private readonly iosHealthSnapshotMinIntervalMs: number = 90 * 1000;
   private readonly iosCallbackStaleThresholdSec: number = 120;
+  private lastIosDrivingStartedAt: number = 0;
+  private lastAcceptedParkingEventAt: number = 0;
+  private lowAccuracyRecoveryTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingNativeDetectionMeta: {
     detectionSource?: string;
     locationSource?: string;
@@ -381,6 +386,7 @@ class BackgroundTaskServiceClass {
       clearTimeout(this.departureConfirmationTimeout);
       this.departureConfirmationTimeout = null;
     }
+    this.clearLowAccuracyRecovery();
 
     // Stop parking-while-parked timers
     this.stopRescanTimer();
@@ -456,12 +462,19 @@ class BackgroundTaskServiceClass {
                 nativeTimestamp: event.timestamp,
                 recordedAt: Date.now(),
               };
+              this.clearLowAccuracyRecovery();
 
               // GUARD: Reject events with cell-tower-level GPS accuracy (>150m).
               // significantLocationChange recovery uses cell tower fixes that can be
               // 300-500m off, creating false parking at wrong addresses.
               if (event.accuracy && event.accuracy > 150) {
-                log.warn(`Rejecting parking event: GPS accuracy ${event.accuracy.toFixed(0)}m too poor (>150m) — likely cell tower fix. Source: ${event.locationSource}`);
+                log.warn(`Low-accuracy parking event (${event.accuracy.toFixed(0)}m) — scheduling delayed recovery check instead of dropping`);
+                await this.persistParkingRejection('low_accuracy_initial_event', event, {
+                  accuracy: event.accuracy,
+                  threshold: 150,
+                  recoveryDelayMs: LOW_ACCURACY_RECOVERY_DELAY_MS,
+                });
+                this.scheduleLowAccuracyRecovery(event, this.pendingNativeDetectionMeta || undefined);
                 return;
               }
 
@@ -471,6 +484,7 @@ class BackgroundTaskServiceClass {
               // red lights/intersections when the user never actually parked.
               if (event.locationSource === 'short_drive_recovery') {
                 log.warn('Rejecting parking event from short_drive_recovery source (synthetic recovery event)');
+                await this.persistParkingRejection('short_drive_recovery_source', event);
                 return;
               }
 
@@ -488,8 +502,20 @@ class BackgroundTaskServiceClass {
                       parked.latitude, parked.longitude
                     );
                     if (dist < 500) {
-                      log.warn(`Rejecting duplicate parking event: already PARKED, new location is ${dist.toFixed(0)}m from current parking (< 500m). Source: ${event.locationSource}`);
-                      return;
+                      const hasRecentDriving =
+                        this.lastIosDrivingStartedAt > 0 &&
+                        Date.now() - this.lastIosDrivingStartedAt < RECENT_DRIVING_WINDOW_MS &&
+                        this.lastIosDrivingStartedAt > this.lastAcceptedParkingEventAt;
+                      if (!hasRecentDriving) {
+                        log.warn(`Rejecting duplicate parking event: already PARKED, new location is ${dist.toFixed(0)}m from current parking (< 500m), and no recent onDrivingStarted`);
+                        await this.persistParkingRejection('duplicate_nearby_parked_without_recent_departure', event, {
+                          distanceMeters: dist,
+                          lastIosDrivingStartedAt: this.lastIosDrivingStartedAt || null,
+                          lastAcceptedParkingEventAt: this.lastAcceptedParkingEventAt || null,
+                        });
+                        return;
+                      }
+                      log.info(`Nearby parking event allowed due to recent onDrivingStarted (dist ${dist.toFixed(0)}m)`);
                     }
                     log.info(`State is PARKED but new location is ${dist.toFixed(0)}m away — processing as new parking spot`);
                   }
@@ -510,12 +536,14 @@ class BackgroundTaskServiceClass {
               const parkingCoords = event.latitude && event.longitude
                 ? { latitude: event.latitude, longitude: event.longitude, accuracy: event.accuracy }
                 : undefined;
+              this.lastAcceptedParkingEventAt = Date.now();
               // Pass the native event timestamp so parking history records
               // when the car ACTUALLY stopped, not when the check completes.
               await this.handleCarDisconnection(parkingCoords, event.timestamp);
             },
             // onDrivingStarted - fires when user starts driving
             (drivingTimestamp?: number) => {
+              this.lastIosDrivingStartedAt = drivingTimestamp || Date.now();
               void this.captureIosHealthSnapshot('onDrivingStarted', { force: true, includeLogTail: true });
               log.info('DRIVING STARTED - user departing', {
                 nativeTimestamp: drivingTimestamp ? new Date(drivingTimestamp).toISOString() : 'none',
@@ -2428,6 +2456,69 @@ class BackgroundTaskServiceClass {
       this.lastIosHealthSnapshotTime = Date.now();
       this.iosHealthSnapshotInFlight = false;
     }
+  }
+
+  private async persistParkingRejection(reason: string, event: ParkingDetectedEvent, extra?: Record<string, unknown>): Promise<void> {
+    try {
+      const key = 'PARKING_EVENT_REJECTIONS_V1';
+      const raw = await AsyncStorage.getItem(key);
+      const arr: any[] = raw ? JSON.parse(raw) : [];
+      const record = {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        ts: Date.now(),
+        reason,
+        event: {
+          timestamp: event.timestamp,
+          latitude: event.latitude,
+          longitude: event.longitude,
+          accuracy: event.accuracy,
+          drivingDurationSec: event.drivingDurationSec,
+          detectionSource: event.detectionSource,
+          locationSource: event.locationSource,
+          driftFromParkingMeters: event.driftFromParkingMeters,
+        },
+        extra: extra || {},
+      };
+      const next = [record, ...arr].slice(0, 200);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      log.warn(`[ParkingReject] ${reason}`, { id: record.id, ...extra });
+    } catch (e) {
+      log.warn('Failed to persist parking rejection record', e);
+    }
+  }
+
+  private clearLowAccuracyRecovery(): void {
+    if (this.lowAccuracyRecoveryTimeout) {
+      clearTimeout(this.lowAccuracyRecoveryTimeout);
+      this.lowAccuracyRecoveryTimeout = null;
+    }
+  }
+
+  private scheduleLowAccuracyRecovery(
+    event: ParkingDetectedEvent,
+    detectionMeta?: {
+      detectionSource?: string;
+      locationSource?: string;
+      accuracy?: number;
+      drivingDurationSec?: number;
+      nativeTimestamp?: number;
+      recordedAt: number;
+    }
+  ): void {
+    this.clearLowAccuracyRecovery();
+    this.lowAccuracyRecoveryTimeout = setTimeout(async () => {
+      this.lowAccuracyRecoveryTimeout = null;
+      try {
+        log.info('[LowAccuracyRecovery] Retrying parking check after poor native accuracy');
+        await this.triggerParkingCheck(undefined, true, event.timestamp, true, detectionMeta);
+      } catch (e) {
+        log.warn('[LowAccuracyRecovery] Retry failed', e);
+      } finally {
+        if (this.pendingNativeDetectionMeta?.nativeTimestamp === event.timestamp) {
+          this.pendingNativeDetectionMeta = null;
+        }
+      }
+    }, LOW_ACCURACY_RECOVERY_DELAY_MS);
   }
 
   /**
