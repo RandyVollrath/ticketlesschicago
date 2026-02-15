@@ -1,0 +1,80 @@
+Feb 15 17:00:16.980620 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.CompassCalibration" as it isn't used in any transform (not in the config or budgeted?)
+Feb 15 17:00:17.550956 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:17.665031 corespeechd(CoreMotion)[64382] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:17.725708 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:17.731605 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:17.731750 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:17.733357 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:17.810951 locationd[60844] <Info>: CL: CLLocationController::onStatusNotification
+Feb 15 17:00:17.811156 locationd[60844] <Debug>: {"msg":"CLLocationController::onStatusNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:20.234014 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:20.278239 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:20.279931 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:20.280024 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:20.282260 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:20.466909 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:20.649398 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:20.787161 locationd[60844] <Notice>: os_transaction created: (0x17035e400) CLLocationDatabase::getLocation
+Feb 15 17:00:20.787739 locationd[60844] <Notice>: os_transaction releasing: (0x17035e400) CLLocationDatabase::getLocation
+Feb 15 17:00:20.934491 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:21.021469 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:21.412371 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:21.620008 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:21.801533 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:21.854003 locationd[60844] <Notice>: os_transaction created: (0x1702d5c40) GetIdentifyingInformation
+Feb 15 17:00:21.854174 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.apple.chrono.WidgetRenderer-Default:", "bundleId":"com.apple.chrono.WidgetRenderer-Default", "bundlePath":"\/Applications\/WidgetRenderer_Default.app", "executablePath":"\/Applications\/WidgetRenderer_Default.app\/WidgetRenderer_Default", "platformSpecificBundleId":"", "pluginBundleIds":"(\n)", "isAppClip":0}
+Feb 15 17:00:21.854215 locationd[60844] <Notice>: os_transaction releasing: (0x1702d5c40) GetIdentifyingInformation
+Feb 15 17:00:22.548432 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:22.662702 corespeechd(CoreMotion)[64382] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:22.819971 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:22.820230 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:22.820369 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:22.823005 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:25.231158 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:25.374838 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:25.376675 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:25.376810 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:25.379096 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:25.466125 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:25.649384 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:25.934471 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:26.021378 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:26.412327 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:26.619922 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:26.806134 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:27.548235 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:27.662424 corespeechd(CoreMotion)[64382] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:27.930639 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:27.932274 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:27.932424 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:27.934758 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:30.231306 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:30.467278 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:30.489063 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:30.489768 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:30.492908 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:30.493608 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:30.649305 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:30.934718 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:31.022478 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:31.412216 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:31.622427 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:31.681213 locationd(BiomeStreams)[60844] <Debug>: BMComputeSourceClient not notifying biomed because there are no downstream subscriptions for Device.Wireless.WiFiAvailabilityStatus found in storage domain: User
+Feb 15 17:00:31.804517 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:32.548206 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:32.662433 corespeechd(CoreMotion)[64382] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:33.042557 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:33.043933 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:33.043981 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:33.045155 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:35.231171 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:35.467046 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:35.598126 locationd[60844] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Feb 15 17:00:35.601544 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 15 17:00:35.601713 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 15 17:00:35.602979 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 15 17:00:35.649280 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:35.935176 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:36.021263 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:36.412257 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 15 17:00:36.620728 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
