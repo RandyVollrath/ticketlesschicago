@@ -185,6 +185,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var lastSpeedBucket: String? = nil
   private var coreMotionWalkingSince: Date? = nil
   private var coreMotionStationarySince: Date? = nil
+  private var gpsFallbackDrivingSince: Date? = nil
+  private var gpsFallbackStartLocation: CLLocation? = nil
+  private var gpsFallbackPossibleDrivingEmitted = false
 
   // UserDefaults keys for persisting critical state across app kills.
   // Without persistence, iOS can kill the app, significantLocationChange wakes it
@@ -200,6 +203,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let minDrivingDurationSec: TimeInterval = 10   // 10 sec of driving before we care about stops (was 120→60→30→10; covers moving car one block for street cleaning)
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
   private let minDrivingSpeedMps: Double = 2.5           // ~5.6 mph - threshold to START driving state via speed
+  private let gpsFallbackDrivingSpeedMps: Double = 4.2   // ~9.4 mph fallback when CoreMotion misses automotive
+  private let gpsFallbackDrivingDurationSec: TimeInterval = 8
+  private let gpsFallbackMinDistanceMeters: Double = 90
+  private let gpsFallbackMaxAccuracyMeters: Double = 80
   private let speedCheckIntervalSec: TimeInterval = 3    // Re-check parking every 3s while speed≈0
   private let stationaryRadiusMeters: Double = 50        // Consider "same location" if within 50m
   private let stationaryDurationSec: TimeInterval = 120  // 2 minutes in same spot = definitely parked
@@ -485,6 +492,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastWatchdogRecoveryTime = nil
     lastMotionDecisionSignature = nil
     lastSpeedBucket = nil
+    gpsFallbackDrivingSince = nil
+    gpsFallbackStartLocation = nil
+    gpsFallbackPossibleDrivingEmitted = false
     clearPersistedParkingState()
 
     self.log("Monitoring stopped")
@@ -1128,6 +1138,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       checkForMissedParking(currentLocation: location)
     }
 
+    if isDriving && (gpsFallbackDrivingSince != nil || gpsFallbackStartLocation != nil) {
+      decision("gps_fallback_reset", ["reason": "driving_already_active"])
+      gpsFallbackDrivingSince = nil
+      gpsFallbackStartLocation = nil
+      gpsFallbackPossibleDrivingEmitted = false
+    }
+
     // --- Update driving location continuously while in driving state ---
     // Save at ANY speed while CoreMotion says automotive (captures 1 mph creep into spot)
     if isDriving || coreMotionSaysAutomotive {
@@ -1174,11 +1191,93 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "timestamp": departureTimestamp,
           "source": "gps_speed_confirmed",
         ])
+        gpsFallbackDrivingSince = nil
+        gpsFallbackStartLocation = nil
+        gpsFallbackPossibleDrivingEmitted = false
       } else if !isDriving && !coreMotionSaysAutomotive {
-        self.log("GPS speed > threshold (\(String(format: "%.1f", speed)) m/s) but CoreMotion not automotive — waiting for CoreMotion")
+        // GPS fallback for missed CoreMotion automotive transitions.
+        // We require sustained higher speed + decent accuracy + real displacement
+        // so this path does not trigger on short red-light movement noise.
+        let accuracy = location.horizontalAccuracy
+        if accuracy > 0 && accuracy <= gpsFallbackMaxAccuracyMeters && speed >= gpsFallbackDrivingSpeedMps {
+          if gpsFallbackDrivingSince == nil {
+            gpsFallbackDrivingSince = location.timestamp
+            gpsFallbackStartLocation = location
+            gpsFallbackPossibleDrivingEmitted = false
+            decision("gps_fallback_started", [
+              "speed": speed,
+              "accuracy": accuracy,
+            ])
+            self.log("GPS fallback tracking started (speed \(String(format: "%.1f", speed)) m/s, acc \(String(format: "%.0f", accuracy))m)")
+          }
+
+          let fallbackStart = gpsFallbackDrivingSince ?? location.timestamp
+          let fallbackDuration = location.timestamp.timeIntervalSince(fallbackStart)
+          let fallbackDistance: Double = {
+            guard let startLoc = gpsFallbackStartLocation else { return 0 }
+            return location.distance(from: startLoc)
+          }()
+
+          if !gpsFallbackPossibleDrivingEmitted && fallbackDuration >= 3 {
+            gpsFallbackPossibleDrivingEmitted = true
+            sendEvent(withName: "onPossibleDriving", body: [
+              "timestamp": Date().timeIntervalSince1970 * 1000,
+              "source": "gps_speed_fallback_preconfirm",
+            ])
+            self.log("Emitted onPossibleDriving from GPS fallback preconfirm")
+          }
+
+          if fallbackDuration >= gpsFallbackDrivingDurationSec &&
+             fallbackDistance >= gpsFallbackMinDistanceMeters {
+            isDriving = true
+            drivingStartTime = fallbackStart
+            lastDrivingLocation = nil
+            locationAtStopStart = nil
+            startContinuousGps()
+            startAccelerometerRecording()
+            decision("gps_fallback_promoted_to_driving", [
+              "durationSec": fallbackDuration,
+              "distanceMeters": fallbackDistance,
+              "speed": speed,
+              "accuracy": accuracy,
+            ])
+            self.log("Driving started (GPS fallback: duration \(String(format: "%.0f", fallbackDuration))s, distance \(String(format: "%.0f", fallbackDistance))m, speed \(String(format: "%.1f", speed)) m/s)")
+            sendEvent(withName: "onDrivingStarted", body: [
+              "timestamp": fallbackStart.timeIntervalSince1970 * 1000,
+              "source": "gps_speed_fallback",
+            ])
+            gpsFallbackDrivingSince = nil
+            gpsFallbackStartLocation = nil
+            gpsFallbackPossibleDrivingEmitted = false
+          } else {
+            self.log("GPS fallback waiting: duration \(String(format: "%.0f", fallbackDuration))s/\(String(format: "%.0f", gpsFallbackDrivingDurationSec))s, distance \(String(format: "%.0f", fallbackDistance))m/\(String(format: "%.0f", gpsFallbackMinDistanceMeters))m")
+          }
+        } else if gpsFallbackDrivingSince != nil || gpsFallbackStartLocation != nil {
+          decision("gps_fallback_reset", [
+            "reason": "accuracy_or_speed_failed",
+            "speed": speed,
+            "accuracy": accuracy,
+          ])
+          self.log("GPS fallback reset (speed \(String(format: "%.1f", speed)) m/s, acc \(String(format: "%.0f", accuracy))m)")
+          gpsFallbackDrivingSince = nil
+          gpsFallbackStartLocation = nil
+          gpsFallbackPossibleDrivingEmitted = false
+        }
+        self.log("GPS speed > threshold (\(String(format: "%.1f", speed)) m/s) but CoreMotion not automotive — using fallback guard")
       }
     } else if speed >= 0 && speed <= 0.5 {
       speedSaysMoving = false
+      if gpsFallbackDrivingSince != nil || gpsFallbackStartLocation != nil {
+        let elapsed = gpsFallbackDrivingSince.map { location.timestamp.timeIntervalSince($0) } ?? 0
+        decision("gps_fallback_reset", [
+          "reason": "speed_dropped",
+          "elapsedSec": elapsed,
+        ])
+        self.log("GPS fallback reset: speed dropped to \(String(format: "%.1f", speed)) m/s after \(String(format: "%.0f", elapsed))s")
+        gpsFallbackDrivingSince = nil
+        gpsFallbackStartLocation = nil
+        gpsFallbackPossibleDrivingEmitted = false
+      }
 
       // When GPS speed drops to 0 while driving, capture the location
       // immediately. This is likely the parking spot, captured BEFORE the
@@ -1313,6 +1412,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           }
         }
       }
+    }
+    if speed >= 0 && speed < minDrivingSpeedMps && (gpsFallbackDrivingSince != nil || gpsFallbackStartLocation != nil) {
+      let elapsed = gpsFallbackDrivingSince.map { location.timestamp.timeIntervalSince($0) } ?? 0
+      decision("gps_fallback_reset", [
+        "reason": "below_driving_threshold",
+        "speed": speed,
+        "elapsedSec": elapsed,
+      ])
+      self.log("GPS fallback reset: speed \(String(format: "%.1f", speed)) m/s below driving threshold")
+      gpsFallbackDrivingSince = nil
+      gpsFallbackStartLocation = nil
+      gpsFallbackPossibleDrivingEmitted = false
     }
 
     // Send location updates to JS (only while continuous GPS is active to save overhead)
@@ -1761,6 +1872,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     coreMotionNotAutomotiveSince = nil
     coreMotionWalkingSince = nil
     coreMotionStationarySince = nil
+    gpsFallbackDrivingSince = nil
+    gpsFallbackStartLocation = nil
+    gpsFallbackPossibleDrivingEmitted = false
     queuedParkingBody = nil
     queuedParkingSource = nil
     queuedParkingAt = nil
