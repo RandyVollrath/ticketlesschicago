@@ -13141,3 +13141,17 @@
 [2026-02-15 05:04:20.973] CoreMotion update: automotive=false stationary=true walking=false confidence=high
 [2026-02-15 05:04:24.166] CoreMotion update: automotive=false stationary=true walking=false confidence=high
 [2026-02-15 05:04:25.772] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-15 12:42:55.446] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-15 12:42:58.116] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-15 14:21:25.304] === Log file opened ===
+[2026-02-15 14:21:25.305] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-15 14:21:25.306] Restored persisted parking location: 41.92625395642519, -87.66396626961749 ±13.973821878088456m (age: 34976s)
+[2026-02-15 14:21:25.306] Restored hasConfirmedParkingThisSession = true from UserDefaults
+[2026-02-15 14:21:25.306] BackgroundLocationModule initialized
+[2026-02-15 14:21:25.319] Auth changed: 3
+[2026-02-15 14:21:26.752] Cleared persisted parking state from UserDefaults
+[2026-02-15 14:21:26.752] Monitoring stopped
+[2026-02-15 14:21:26.762] CoreMotion available: true
+[2026-02-15 14:21:26.763] CoreMotion activity monitoring started
+[2026-02-15 14:21:26.763] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-15 14:21:26.772] CoreMotion update: automotive=false stationary=false walking=true confidence=high
