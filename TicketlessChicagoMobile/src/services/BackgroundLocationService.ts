@@ -77,6 +77,19 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * iOS-native camera alerts (background-safe). Mirrors CameraAlertService settings.
+   */
+  async setCameraAlertSettings(enabled: boolean, speedEnabled: boolean, redlightEnabled: boolean): Promise<boolean> {
+    if (Platform.OS !== 'ios' || !BackgroundLocationModule?.setCameraAlertSettings) return false;
+    try {
+      return await BackgroundLocationModule.setCameraAlertSettings(enabled, speedEnabled, redlightEnabled);
+    } catch (e) {
+      log.warn('Failed to set native camera settings', e);
+      return false;
+    }
+  }
+
+  /**
    * Check if the service is available (iOS only)
    */
   isAvailable(): boolean {
