@@ -204,6 +204,7 @@ export default function MobileNav({ user, protectionStatus = 'none', onLogout }:
     <>
       {/* Hamburger Button */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close menu' : 'Open menu'}
         aria-expanded={isOpen}
@@ -218,25 +219,30 @@ export default function MobileNav({ user, protectionStatus = 'none', onLogout }:
           borderRadius: '10px',
           cursor: 'pointer',
           transition: 'background-color 0.2s',
+          position: 'relative',
+          zIndex: 1003,
+          WebkitTapHighlightColor: 'transparent',
+          touchAction: 'manipulation',
         }}
       >
         <HamburgerIcon isOpen={isOpen} />
       </button>
 
       {/* Backdrop */}
-      <div
-        onClick={() => setIsOpen(false)}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.5)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 1001,
-          opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? 'auto' : 'none',
-          transition: 'opacity 0.3s ease',
-        }}
-      />
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            // iOS Safari can get weird with backdropFilter layers intercepting taps.
+            // Only mount this overlay when open to prevent "dead" hamburger taps.
+            backdropFilter: 'blur(4px)',
+            zIndex: 1001,
+          }}
+        />
+      )}
 
       {/* Drawer */}
       <div
@@ -251,6 +257,7 @@ export default function MobileNav({ user, protectionStatus = 'none', onLogout }:
           zIndex: 1002,
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          pointerEvents: isOpen ? 'auto' : 'none',
           display: 'flex',
           flexDirection: 'column',
           fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
