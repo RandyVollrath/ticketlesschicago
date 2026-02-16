@@ -24,6 +24,7 @@ export default function SignIn() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isAppleDevice, setIsAppleDevice] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -36,6 +37,18 @@ export default function SignIn() {
     };
     checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    // Apple OAuth on web is most common on iOS/macOS Safari.
+    // Keep UI standard while avoiding a confusing option on non-Apple devices.
+    if (typeof navigator === 'undefined') return;
+    const ua = navigator.userAgent || '';
+    const platform = (navigator as any).platform || '';
+    const apple =
+      /iPhone|iPad|iPod|Macintosh/i.test(ua) ||
+      /iPhone|iPad|iPod|Mac/i.test(platform);
+    setIsAppleDevice(apple);
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +90,24 @@ export default function SignIn() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
         },
@@ -168,6 +199,39 @@ export default function SignIn() {
             Sign in to your Autopilot America account and keep avoiding those parking tickets.
           </p>
 
+          {/* Social sign-in */}
+          {isAppleDevice && (
+            <button
+              type="button"
+              onClick={handleAppleSignIn}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                borderRadius: 10,
+                border: `1px solid ${COLORS.border}`,
+                backgroundColor: '#000000',
+                color: COLORS.white,
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  fill="currentColor"
+                  d="M16.365 1.43c0 1.14-.48 2.205-1.24 3.03-.77.84-2.04 1.49-3.11 1.4-.12-1.09.39-2.22 1.13-3.03.82-.89 2.24-1.54 3.22-1.4ZM20.64 17.3c-.46 1.07-.67 1.55-1.27 2.51-.84 1.33-2.02 2.99-3.5 3.01-1.31.02-1.65-.86-3.44-.85-1.79.01-2.17.87-3.48.86-1.48-.02-2.61-1.52-3.45-2.85-2.35-3.73-2.6-8.1-1.15-10.35 1.02-1.58 2.64-2.5 4.16-2.5 1.54 0 2.51.86 3.79.86 1.24 0 1.99-.86 3.77-.86 1.35 0 2.77.74 3.79 2.01-3.34 1.83-2.8 6.58.78 8.16Z"
+                />
+              </svg>
+              Continue with Apple
+            </button>
+          )}
+
           {/* Google Sign-In Button */}
           <button
             type="button"
@@ -183,7 +247,7 @@ export default function SignIn() {
               fontSize: 16,
               fontWeight: 500,
               cursor: loading ? 'not-allowed' : 'pointer',
-              marginBottom: 24,
+              marginBottom: 20,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -206,7 +270,7 @@ export default function SignIn() {
             marginBottom: 24,
           }}>
             <div style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
-            <span style={{ fontSize: 14, color: COLORS.slate }}>or</span>
+            <span style={{ fontSize: 14, color: COLORS.slate }}>or continue with email</span>
             <div style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
           </div>
 
