@@ -38,6 +38,9 @@ Implemented and now active in code:
   - Added `scripts/auto-tune-reliability.js` to produce threshold recommendations from recent logs.
   - Added `scripts/reliability-release-gate.js` to fail releases when miss/unwind/fallback rates exceed configured limits.
   - Added `npm run deploy:safe` to run reliability gate before prod deploy.
+- Additional parking confirmation hardening:
+  - Queued parking recovery no longer depends only on walking evidence; it can now recover with sustained non-automotive + zero-speed evidence or recent car-disconnect evidence.
+  - Added stale-location guard at confirmation time and fresh-GPS refinement (`current_refined`) so old/low-quality stop snapshots are replaced or blocked before final parking confirmation.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`
@@ -102,6 +105,10 @@ Target outcomes:
 6. Reliability is now gateable before release.
    - Added auto-tune recommendation script (`tune:reliability`).
    - Added release gate script (`gate:reliability`) to fail bad reliability profiles.
+
+7. Confirmation now guards stale GPS snapshots.
+   - If the captured stop location is old/weak, the system now prefers a fresh, high-quality current fix.
+   - If location quality is too stale/coarse and there is no strong parking evidence, confirmation is blocked instead of emitting a likely-wrong event.
 
 ### Core hypotheses behind this version
 
