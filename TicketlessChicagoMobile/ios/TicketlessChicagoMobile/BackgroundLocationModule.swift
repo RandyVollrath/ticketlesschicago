@@ -681,6 +681,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let hotspotMergeRadiusMeters: Double = 80
   private let hotspotBlockRadiusMeters: Double = 90
   private let hotspotBlockMinReports: Int = 2
+  private let parkingCandidateMaxAgeSec: TimeInterval = 40
+  private let parkingCandidateHardStaleSec: TimeInterval = 75
+  private let parkingCandidateFreshReplacementAgeSec: TimeInterval = 12
+  private let parkingCandidatePreferredAccuracyMeters: Double = 70
+  private let parkingCandidateHardMaxAccuracyMeters: Double = 120
 
   // Camera alert tuning: match JS defaults
   private let camBaseAlertRadiusMeters: Double = 150
@@ -3339,8 +3344,64 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // 1. locationAtStopStart - captured when CoreMotion first said non-automotive (best)
     // 2. lastDrivingLocation - last GPS while in driving state (very good - includes slow creep)
     // 3. locationManager.location - current GPS (last resort - user may have walked)
-    let parkingLocation = locationAtStopStart ?? lastDrivingLocation
+    var parkingLocation = locationAtStopStart ?? lastDrivingLocation
+    var parkingLocationSource = locationAtStopStart != nil ? "stop_start" : "last_driving"
     let currentLocation = locationManager.location
+    if let candidate = parkingLocation {
+      let candidateAgeSec = Date().timeIntervalSince(candidate.timestamp)
+      let candidateAcc = candidate.horizontalAccuracy
+      let candidateWeak = candidateAgeSec > parkingCandidateMaxAgeSec ||
+        (candidateAcc > 0 && candidateAcc > parkingCandidatePreferredAccuracyMeters)
+
+      if candidateWeak, let current = currentLocation {
+        let currentAgeSec = Date().timeIntervalSince(current.timestamp)
+        let currentAcc = current.horizontalAccuracy
+        let currentSpeed = current.speed
+        let currentUsable =
+          currentAgeSec >= 0 &&
+          currentAgeSec <= parkingCandidateFreshReplacementAgeSec &&
+          currentAcc > 0 &&
+          currentAcc <= parkingCandidatePreferredAccuracyMeters &&
+          currentSpeed >= 0 &&
+          currentSpeed < 1.4
+
+        if currentUsable {
+          parkingLocation = current
+          parkingLocationSource = "current_refined"
+          self.log("Parking location refined to fresh current GPS (age \(String(format: "%.0f", candidateAgeSec))s→\(String(format: "%.0f", currentAgeSec))s, acc \(String(format: "%.0f", candidateAcc))→\(String(format: "%.0f", currentAcc))m)")
+          decision("parking_location_refined_to_current", [
+            "source": source,
+            "candidateAgeSec": candidateAgeSec,
+            "candidateAccuracy": candidateAcc,
+            "currentAgeSec": currentAgeSec,
+            "currentAccuracy": currentAcc,
+            "currentSpeed": currentSpeed,
+          ])
+        }
+      }
+
+      let selectedAgeSec = Date().timeIntervalSince(parkingLocation?.timestamp ?? candidate.timestamp)
+      let selectedAcc = parkingLocation?.horizontalAccuracy ?? candidateAcc
+      if source != "location_stationary" &&
+         selectedAgeSec > parkingCandidateHardStaleSec &&
+         selectedAcc > 0 &&
+         selectedAcc > parkingCandidateHardMaxAccuracyMeters &&
+         !hasRecentDisconnectEvidence &&
+         walkingEvidenceSec < minWalkingEvidenceSec {
+        self.log("Parking candidate blocked by stale/low-quality location (age=\(String(format: "%.0f", selectedAgeSec))s, acc=\(String(format: "%.0f", selectedAcc))m)")
+        decision("confirm_parking_blocked_stale_location", [
+          "source": source,
+          "ageSec": selectedAgeSec,
+          "accuracy": selectedAcc,
+          "hasRecentDisconnectEvidence": hasRecentDisconnectEvidence,
+          "walkingEvidenceSec": walkingEvidenceSec,
+        ])
+        tripSummaryLowConfidenceBlockedCount += 1
+        lastStationaryTime = nil
+        locationAtStopStart = nil
+        return
+      }
+    }
     let hotspotCandidate = parkingLocation ?? currentLocation
     let hotspot = hotspotInfo(near: hotspotCandidate)
     let walkingEvidenceSec = coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
@@ -3445,7 +3506,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       body["latitude"] = loc.coordinate.latitude
       body["longitude"] = loc.coordinate.longitude
       body["accuracy"] = loc.horizontalAccuracy
-      body["locationSource"] = locationAtStopStart != nil ? "stop_start" : "last_driving"
+      body["locationSource"] = parkingLocationSource
       self.log("Parking at (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m")
     } else if let loc = currentLocation {
       body["latitude"] = loc.coordinate.latitude
@@ -3705,14 +3766,31 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     let walkingEvidenceSec = coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
     let hasWalkingEvidence = walkingEvidenceSec >= minWalkingEvidenceSec
+    let nonAutomotiveStableSec = coreMotionNotAutomotiveSince.map { Date().timeIntervalSince($0) } ?? 0
+    let zeroDurationSec = speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
+    let hasRecentDisconnectEvidence: Bool = {
+      guard let disconnectedAt = lastCarAudioDisconnectedAt else { return false }
+      let age = Date().timeIntervalSince(disconnectedAt)
+      return age >= 0 && age <= carDisconnectEvidenceWindowSec
+    }()
     let currentSpeed = locationManager.location?.speed ?? -1
-    guard hasWalkingEvidence && currentSpeed >= 0 && currentSpeed < 1.3 else { return }
+    let hasLongStillEvidence =
+      currentSpeed >= 0 &&
+      currentSpeed < 1.0 &&
+      zeroDurationSec >= minZeroSpeedNoWalkingSec &&
+      nonAutomotiveStableSec >= coreMotionStabilitySec
+    guard currentSpeed >= 0 && currentSpeed < 1.3 else { return }
+    guard hasWalkingEvidence || hasLongStillEvidence || hasRecentDisconnectEvidence else { return }
 
     decision("parking_candidate_queue_recovered", [
       "source": source,
       "ageSec": age,
       "walkingEvidenceSec": walkingEvidenceSec,
       "currentSpeed": currentSpeed,
+      "hasLongStillEvidence": hasLongStillEvidence,
+      "zeroDurationSec": zeroDurationSec,
+      "nonAutomotiveStableSec": nonAutomotiveStableSec,
+      "hasRecentDisconnectEvidence": hasRecentDisconnectEvidence,
     ])
     queuedParkingAt = nil
     queuedParkingBody = nil

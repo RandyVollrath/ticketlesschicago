@@ -34,7 +34,7 @@ export interface ParkingDetectedEvent {
   accuracy?: number;
   drivingDurationSec?: number;
   detectionSource?: string;
-  locationSource?: 'stop_start' | 'last_driving' | 'last_high_speed' | 'current_fallback' | 'short_drive_recovery' | 'recovery_accurate_gps';
+  locationSource?: 'stop_start' | 'last_driving' | 'last_high_speed' | 'current_fallback' | 'current_refined' | 'short_drive_recovery' | 'recovery_accurate_gps';
   driftFromParkingMeters?: number;  // How far user walked from car before confirmation
 }
 
