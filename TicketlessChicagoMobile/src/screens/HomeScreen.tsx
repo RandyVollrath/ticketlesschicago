@@ -27,6 +27,7 @@ import BluetoothService from '../services/BluetoothService';
 import ParkingDetectionStateMachine, { ParkingState, ParkingDetectionSnapshot } from '../services/ParkingDetectionStateMachine';
 import MotionActivityService from '../services/MotionActivityService';
 import BackgroundLocationService, { LocationUpdateEvent } from '../services/BackgroundLocationService';
+import GroundTruthService from '../services/GroundTruthService';
 import AppEvents from '../services/AppEvents';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
@@ -796,6 +797,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         lastParkingCheck.coords.latitude,
         lastParkingCheck.coords.longitude
       );
+      await GroundTruthService.recordEvent({
+        type: 'parking_false_positive',
+        timestamp: Date.now(),
+        latitude: lastParkingCheck.coords.latitude,
+        longitude: lastParkingCheck.coords.longitude,
+      });
       setLastParkingCheck(null);
       setShowGroundTruthBanner(false);
       await AsyncStorage.removeItem(StorageKeys.LAST_PARKING_LOCATION);
@@ -812,6 +819,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         lastParkingCheck.coords.latitude,
         lastParkingCheck.coords.longitude
       );
+      await GroundTruthService.recordEvent({
+        type: 'parking_confirmed',
+        timestamp: Date.now(),
+        latitude: lastParkingCheck.coords.latitude,
+        longitude: lastParkingCheck.coords.longitude,
+      });
       setShowGroundTruthBanner(false);
       Alert.alert('Thanks', 'Confirmed. This helps tune parking detection at this location.');
     } catch (e) {

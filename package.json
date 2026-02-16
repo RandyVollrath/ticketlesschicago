@@ -13,7 +13,9 @@
     "analyze:parking": "node scripts/analyze-parking-decisions.js",
     "replay:parking-camera": "node scripts/replay-parking-camera-log.js",
     "harness:camera-drive": "node scripts/camera-drive-harness.js",
-    "report:parking-camera": "node scripts/daily-parking-camera-report.js"
+    "report:parking-camera": "node scripts/daily-parking-camera-report.js",
+    "tune:reliability": "node scripts/auto-tune-reliability.js",
+    "gate:reliability": "node scripts/reliability-release-gate.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
