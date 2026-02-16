@@ -27,8 +27,9 @@ After changing iOS parking or camera detection logic:
 
 1. Export both logs from the app (`parking_detection.log` and `parking_decisions.ndjson`) and commit them when troubleshooting.
 2. Run `node scripts/analyze-parking-decisions.js <path-to-ndjson>` to inspect trip summaries, guard cancellations, unknown fallback usage, and camera alert outcomes.
-3. Validate that `native_camera_alert_fired` and (if applicable) `native_camera_candidate_rejected` events appear with clear reasons.
-4. Keep the one-tap correction loop active in-app (`Not parked` / `I parked here`) so repeated false-positive spots are suppressed.
+3. Replay real-world parking/camera logs with `node scripts/replay-parking-camera-log.js TicketlessChicagoMobile/logs/parking_detection.log --strict` before/after tuning thresholds.
+4. Validate that `native_camera_alert_fired` and (if applicable) `native_camera_candidate_rejected` events appear with clear reasons.
+5. Keep the one-tap correction loop active in-app (`Not parked` / `I parked here`) so repeated false-positive spots are suppressed.
 
 ## Commit/Deploy Discipline
 
