@@ -44,6 +44,8 @@ Implemented and now active in code:
   - Stale-location blocks now queue a retry candidate (`stale_retry_candidate`) instead of dropping the parking pipeline, reducing missed parks when GPS quality catches up a few seconds later.
   - Added trip-summary counter `parkingStaleLocationBlockedCount` so stale-fix pressure is visible in post-drive diagnostics.
   - Added adaptive GPS fallback for missed driving starts: when a recent car-audio signal exists, fallback driving promotion uses lower speed/distance/duration thresholds to reduce missed departures and delayed camera startup.
+  - Added native `monitoring_heartbeat` diagnostics every 20 seconds while monitoring is active (plus stop snapshot), capturing motion/gps/timer/queue/lockout/vehicle-signal state for full timeline debugging.
+  - Expanded iOS status payload with queue/timer/signal/heartbeat fields so runtime state can be inspected without pulling full raw logs.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`
