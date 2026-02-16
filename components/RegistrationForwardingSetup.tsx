@@ -59,20 +59,23 @@ export default function RegistrationForwardingSetup({ forwardingEmail }: Registr
         </div>
 
         <div className="mt-6 rounded-lg border border-gray-200 p-4">
-          <h4 className="text-sm font-semibold text-gray-900">Create 2 Gmail filters (about 2 minutes)</h4>
-          <ol className="mt-3 list-decimal list-inside space-y-2 text-sm text-gray-700">
+          <h4 className="text-sm font-semibold text-gray-900">4 quick steps (about 2 minutes)</h4>
+          <ol className="mt-3 list-decimal list-inside space-y-3 text-sm text-gray-700">
             <li>
-              Filter 1 sender: <code className="bg-gray-100 px-2 py-0.5 rounded">chicagovehiclestickers@sebis.com</code>
+              Copy your forwarding address above
             </li>
             <li>
-              Filter 2 sender: <code className="bg-gray-100 px-2 py-0.5 rounded">ecommerce@ilsos.gov</code>
+              In Gmail, search for <code className="bg-gray-100 px-2 py-0.5 rounded">chicagovehiclestickers@sebis.com</code>
             </li>
             <li>
-              For each filter, choose <strong>Forward it to</strong> and select your forwarding address above.
+              Click the filter icon &rarr; <strong>Create filter</strong> &rarr; <strong>Forward it to</strong> your address
+            </li>
+            <li>
+              Repeat for <code className="bg-gray-100 px-2 py-0.5 rounded">ecommerce@ilsos.gov</code>
             </li>
           </ol>
           <p className="mt-3 text-xs text-gray-500">
-            If you get ticketed before the sticker is applied, these receipts can be used as contest evidence.
+            That's it! If you get ticketed before your sticker is applied, these receipts become your contest evidence. You can do this later — just bookmark this page.
           </p>
         </div>
       </div>
