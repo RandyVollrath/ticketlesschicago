@@ -112,7 +112,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   }
 
   private func beginTripSummary(source: String, departureTimestampMs: Double) {
-    guard tripSummaryId == nil else { return }
+    if tripSummaryId != nil {
+      emitTripSummary(outcome: "park_missed_possible")
+    }
     let now = Date()
     tripSummaryId = UUID().uuidString
     tripSummaryStart = now
@@ -130,6 +132,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryGpsZeroSamples = 0
     tripSummaryGpsMovingSamples = 0
     tripSummaryMaxSpeedMps = 0
+    tripSummaryFinalizationCancelledCount = 0
+    tripSummaryCameraAlertCount = 0
+    tripSummaryWatchdogRecoveries = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
     decision("trip_summary_started", [
@@ -179,6 +184,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     let now = Date()
     let durationSec = tripSummaryStart.map { now.timeIntervalSince($0) } ?? 0
+    let cameraAlertOutcome: String = {
+      if tripSummaryCameraAlertCount > 0 { return "camera_alert_fired" }
+      if tripSummaryGpsMovingSamples >= 25 { return "camera_alert_missed_possible" }
+      return "camera_not_expected"
+    }()
+    let parkingGuardOutcome: String = tripSummaryFinalizationCancelledCount > 0 ? "false_positive_guarded" : "no_guard_cancellations"
     decision("trip_summary", [
       "tripId": tripId,
       "outcome": outcome,
@@ -202,6 +213,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "carAudioDisconnects": tripSummaryCarAudioDisconnects,
       "carAudioConnectedAtEnd": carAudioConnected,
       "stopWindowMaxSpeedMps": stopWindowMaxSpeedMps,
+      "finalizationCancelledCount": tripSummaryFinalizationCancelledCount,
+      "cameraAlertCount": tripSummaryCameraAlertCount,
+      "watchdogRecoveries": tripSummaryWatchdogRecoveries,
+      "cameraAlertOutcome": cameraAlertOutcome,
+      "parkingGuardOutcome": parkingGuardOutcome,
     ])
 
     tripSummaryId = nil
@@ -222,6 +238,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryMaxSpeedMps = 0
     tripSummaryCarAudioConnects = 0
     tripSummaryCarAudioDisconnects = 0
+    tripSummaryFinalizationCancelledCount = 0
+    tripSummaryCameraAlertCount = 0
+    tripSummaryWatchdogRecoveries = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
   }
@@ -291,6 +310,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
   }
 
+  private func hasRecentVehicleSignal(_ windowSec: TimeInterval = 180) -> Bool {
+    if carAudioConnected { return true }
+    if let connectedAt = lastCarAudioConnectedAt {
+      let age = Date().timeIntervalSince(connectedAt)
+      if age >= 0 && age <= windowSec { return true }
+    }
+    if let disconnectedAt = lastCarAudioDisconnectedAt {
+      let age = Date().timeIntervalSince(disconnectedAt)
+      if age >= 0 && age <= windowSec { return true }
+    }
+    return false
+  }
+
   private func startLocationWatchdog() {
     locationWatchdogTimer?.invalidate()
     let timer = Timer.scheduledTimer(withTimeInterval: locationWatchdogIntervalSec, repeats: true) { [weak self] _ in
@@ -327,6 +359,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastWatchdogRecoveryTime = Date()
 
     self.log("WATCHDOG: location callbacks stale for \(String(format: "%.0f", staleFor))s (isDriving=\(isDriving), automotive=\(coreMotionSaysAutomotive), gpsActive=\(continuousGpsActive), coreMotionActive=\(coreMotionActive)).")
+    recordHealthRecovery(reason: "stale_callbacks", staleForSec: staleFor)
 
     if !coreMotionActive && CMMotionActivityManager.isActivityAvailable() {
       self.log("WATCHDOG: restarting CoreMotion activity updates")
@@ -346,6 +379,66 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       checkForMissedParking(currentLocation: currentLoc)
     } else {
       self.log("WATCHDOG: no current location available for recovery check")
+    }
+  }
+
+  private func recordHealthRecovery(reason: String, staleForSec: TimeInterval) {
+    let now = Date()
+    if let windowStart = healthRecoveryWindowStart {
+      if now.timeIntervalSince(windowStart) > healthRecoveryWarnWindowSec {
+        healthRecoveryWindowStart = now
+        healthRecoveryCount = 0
+      }
+    } else {
+      healthRecoveryWindowStart = now
+    }
+    healthRecoveryCount += 1
+    tripSummaryWatchdogRecoveries += 1
+    decision("health_recovered", [
+      "reason": reason,
+      "staleForSec": staleForSec,
+      "recoveryCount": healthRecoveryCount,
+      "windowSec": healthRecoveryWarnWindowSec,
+    ])
+
+    let canWarn: Bool = {
+      guard healthRecoveryCount >= healthRecoveryWarnThreshold else { return false }
+      guard let lastWarn = lastHealthWarningAt else { return true }
+      return now.timeIntervalSince(lastWarn) >= healthWarnCooldownSec
+    }()
+    if canWarn {
+      lastHealthWarningAt = now
+      sendHealthWarningNotification(
+        title: "Background monitoring needs attention",
+        body: "We recovered from repeated background interruptions. Open the app to verify Location Always, Motion, and notifications are enabled."
+      )
+    }
+  }
+
+  private func sendHealthWarningNotification(title: String, body: String) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      let allowed = settings.authorizationStatus == .authorized ||
+                    settings.authorizationStatus == .provisional ||
+                    settings.authorizationStatus == .ephemeral
+      guard allowed else {
+        self.log("Health notification skipped: notifications not authorized (status=\(settings.authorizationStatus.rawValue))")
+        return
+      }
+      let content = UNMutableNotificationContent()
+      content.title = title
+      content.body = body
+      content.sound = UNNotificationSound.default
+      let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+      let req = UNNotificationRequest(
+        identifier: "health-\(Int(Date().timeIntervalSince1970))",
+        content: content,
+        trigger: trigger
+      )
+      UNUserNotificationCenter.current().add(req) { err in
+        if let err = err {
+          self.log("Health notification add failed: \(err.localizedDescription)")
+        }
+      }
     }
   }
 
@@ -378,6 +471,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var lastCarAudioConnectedAt: Date? = nil
   private var lastCarAudioDisconnectedAt: Date? = nil
   private var lastVehicleSignalPollAt: Date? = nil
+  private var healthRecoveryCount = 0
+  private var healthRecoveryWindowStart: Date? = nil
+  private var lastHealthWarningAt: Date? = nil
   private var tripSummaryId: String? = nil
   private var tripSummaryStart: Date? = nil
   private var tripSummaryDepartureMs: Double? = nil
@@ -396,6 +492,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var tripSummaryMaxSpeedMps: Double = 0
   private var tripSummaryCarAudioConnects = 0
   private var tripSummaryCarAudioDisconnects = 0
+  private var tripSummaryFinalizationCancelledCount = 0
+  private var tripSummaryCameraAlertCount = 0
+  private var tripSummaryWatchdogRecoveries = 0
   private var tripLastMotionState: String? = nil
   private var tripLastMotionAt: Date? = nil
 
@@ -472,6 +571,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let locationCallbackStaleSec: TimeInterval = 90
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
+  private let healthRecoveryWarnThreshold = 3
+  private let healthRecoveryWarnWindowSec: TimeInterval = 15 * 60
+  private let healthWarnCooldownSec: TimeInterval = 30 * 60
   private let bootstrapGpsWindowSec: TimeInterval = 75
   private var stopWindowMaxSpeedMps: Double = 0
 
@@ -804,6 +906,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastCarAudioConnectedAt = nil
     lastCarAudioDisconnectedAt = nil
     lastVehicleSignalPollAt = nil
+    healthRecoveryCount = 0
+    healthRecoveryWindowStart = nil
+    lastHealthWarningAt = nil
     lastLocationCallbackTime = nil
     lastWatchdogRecoveryTime = nil
     lastMotionDecisionSignature = nil
@@ -830,6 +935,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     @unknown default: motionAuthString = "unknown"
     }
 
+    let bgRefreshStatus = UIApplication.shared.backgroundRefreshStatus
+    let bgRefreshString: String
+    switch bgRefreshStatus {
+    case .available: bgRefreshString = "available"
+    case .denied: bgRefreshString = "denied"
+    case .restricted: bgRefreshString = "restricted"
+    @unknown default: bgRefreshString = "unknown"
+    }
+
     var result: [String: Any] = [
       "isMonitoring": isMonitoring,
       "isDriving": isDriving,
@@ -840,24 +954,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "motionAvailable": CMMotionActivityManager.isActivityAvailable(),
       "motionAuthStatus": motionAuthString,
       "gpsOnlyMode": gpsOnlyMode,
+      "backgroundRefreshStatus": bgRefreshString,
+      "lowPowerModeEnabled": ProcessInfo.processInfo.isLowPowerModeEnabled,
+      "vehicleSignalConnected": carAudioConnected,
+      "healthRecoveryCount": healthRecoveryCount,
     ]
 
-    if let drivingStart = drivingStartTime {
-      result["drivingDurationSec"] = Date().timeIntervalSince(drivingStart)
-    }
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      result["notificationsAuthorized"] =
+        settings.authorizationStatus == .authorized ||
+        settings.authorizationStatus == .provisional ||
+        settings.authorizationStatus == .ephemeral
+      if let drivingStart = self.drivingStartTime {
+        result["drivingDurationSec"] = Date().timeIntervalSince(drivingStart)
+      }
 
-    if let lastLoc = lastDrivingLocation {
-      result["lastDrivingLat"] = lastLoc.coordinate.latitude
-      result["lastDrivingLng"] = lastLoc.coordinate.longitude
-    }
+      if let lastLoc = self.lastDrivingLocation {
+        result["lastDrivingLat"] = lastLoc.coordinate.latitude
+        result["lastDrivingLng"] = lastLoc.coordinate.longitude
+      }
 
-    if let lastCb = lastLocationCallbackTime {
-      result["lastLocationCallbackAgeSec"] = Date().timeIntervalSince(lastCb)
-    } else {
-      result["lastLocationCallbackAgeSec"] = NSNull()
-    }
+      if let lastCb = self.lastLocationCallbackTime {
+        result["lastLocationCallbackAgeSec"] = Date().timeIntervalSince(lastCb)
+      } else {
+        result["lastLocationCallbackAgeSec"] = NSNull()
+      }
 
-    resolve(result)
+      resolve(result)
+    }
   }
 
   /// Get the debug log file contents (last N lines)
@@ -1950,7 +2074,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Native camera alerts: only when backgrounded (JS often suspended)
     // and only while we believe the user is driving/automotive.
     let appState = UIApplication.shared.applicationState
-    if appState != .active && (isDriving || coreMotionSaysAutomotive || speedSaysMoving) {
+    let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120)
+    if appState != .active && cameraArmed {
       maybeSendNativeCameraAlert(location)
     }
   }
@@ -2568,6 +2693,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     alertedCameraAtByIndex[idx] = Date()
     lastCameraAlertAt = Date()
+    tripSummaryCameraAlertCount += 1
     decision("native_camera_alert_fired", [
       "idx": idx,
       "type": cam.type,
@@ -3057,6 +3183,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private func cancelPendingParkingFinalization(reason: String) {
     guard parkingFinalizationPending || parkingFinalizationTimer != nil else { return }
     self.log("Parking finalization cancelled: \(reason)")
+    tripSummaryFinalizationCancelledCount += 1
     decision("parking_finalization_cancelled", ["reason": reason])
     parkingFinalizationTimer?.invalidate()
     parkingFinalizationTimer = nil

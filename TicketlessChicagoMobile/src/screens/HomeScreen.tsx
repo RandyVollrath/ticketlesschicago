@@ -183,6 +183,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [showBatteryWarning, setShowBatteryWarning] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const [motionDenied, setMotionDenied] = useState(false);
+  const [notificationsDenied, setNotificationsDenied] = useState(false);
+  const [backgroundRefreshBlocked, setBackgroundRefreshBlocked] = useState(false);
+  const [lowPowerWarning, setLowPowerWarning] = useState(false);
+  const [healthRecoveryWarning, setHealthRecoveryWarning] = useState(false);
   const [homePermitZone, setHomePermitZone] = useState<string | null>(null);
   const [showParkingMap, setShowParkingMap] = useState(false);
   const [showPlateNudge, setShowPlateNudge] = useState(false);
@@ -309,6 +313,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setMotionDenied(true);
         } else {
           setMotionDenied(false);
+        }
+        try {
+          const status = await BackgroundLocationService.getStatus();
+          setNotificationsDenied(status.notificationsAuthorized === false);
+          setBackgroundRefreshBlocked(status.backgroundRefreshStatus === 'denied' || status.backgroundRefreshStatus === 'restricted');
+          setLowPowerWarning(status.lowPowerModeEnabled === true);
+          setHealthRecoveryWarning((status.healthRecoveryCount ?? 0) >= 3);
+        } catch (e) {
+          // Non-critical
         }
       }
     });
@@ -442,6 +455,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         if (motionAuth === 'denied' || motionAuth === 'restricted') {
           setMotionDenied(true);
         }
+        const bgStatus = await BackgroundLocationService.getStatus();
+        setNotificationsDenied(bgStatus.notificationsAuthorized === false);
+        setBackgroundRefreshBlocked(bgStatus.backgroundRefreshStatus === 'denied' || bgStatus.backgroundRefreshStatus === 'restricted');
+        setLowPowerWarning(bgStatus.lowPowerModeEnabled === true);
+        setHealthRecoveryWarning((bgStatus.healthRecoveryCount ?? 0) >= 3);
       } catch (e) {
         // Non-critical
       }
@@ -978,6 +996,74 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           >
             <Text style={styles.permissionBannerBtnText}>Open Settings</Text>
           </TouchableOpacity>
+        </View>
+      )}
+      {notificationsDenied && Platform.OS === 'ios' && !locationDenied && (
+        <View style={styles.permissionBanner} accessibilityRole="alert">
+          <View style={styles.permissionBannerContent}>
+            <MaterialCommunityIcons name="bell-off" size={18} color={colors.warning} />
+            <View style={styles.permissionBannerTextWrap}>
+              <Text style={styles.permissionBannerTitle}>Notifications disabled</Text>
+              <Text style={styles.permissionBannerBody}>
+                Camera and reliability alerts need notifications enabled. Turn notifications on for consistent warnings.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.permissionBannerBtn}
+            onPress={() => Linking.openSettings()}
+            accessibilityLabel="Open device settings to enable notifications"
+            accessibilityRole="button"
+          >
+            <Text style={styles.permissionBannerBtnText}>Open Settings</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {backgroundRefreshBlocked && Platform.OS === 'ios' && !locationDenied && (
+        <View style={styles.permissionBanner} accessibilityRole="alert">
+          <View style={styles.permissionBannerContent}>
+            <MaterialCommunityIcons name="refresh-off" size={18} color={colors.warning} />
+            <View style={styles.permissionBannerTextWrap}>
+              <Text style={styles.permissionBannerTitle}>Background App Refresh off</Text>
+              <Text style={styles.permissionBannerBody}>
+                iOS may suspend background monitoring when Background App Refresh is off. Enable it for consistent parking and camera behavior.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.permissionBannerBtn}
+            onPress={() => Linking.openSettings()}
+            accessibilityLabel="Open device settings to enable Background App Refresh"
+            accessibilityRole="button"
+          >
+            <Text style={styles.permissionBannerBtnText}>Open Settings</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {lowPowerWarning && Platform.OS === 'ios' && !locationDenied && (
+        <View style={styles.permissionBanner} accessibilityRole="alert">
+          <View style={styles.permissionBannerContent}>
+            <MaterialCommunityIcons name="battery-alert" size={18} color={colors.warning} />
+            <View style={styles.permissionBannerTextWrap}>
+              <Text style={styles.permissionBannerTitle}>Low Power Mode is on</Text>
+              <Text style={styles.permissionBannerBody}>
+                Low Power Mode can throttle motion and GPS updates in background. Turn it off when you want maximum detection reliability.
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+      {healthRecoveryWarning && Platform.OS === 'ios' && !locationDenied && (
+        <View style={styles.permissionBanner} accessibilityRole="alert">
+          <View style={styles.permissionBannerContent}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.warning} />
+            <View style={styles.permissionBannerTextWrap}>
+              <Text style={styles.permissionBannerTitle}>Background reliability warning</Text>
+              <Text style={styles.permissionBannerBody}>
+                We recovered from repeated iOS background interruptions recently. Keep app refresh enabled and open the app if alerts seem delayed.
+              </Text>
+            </View>
+          </View>
         </View>
       )}
       <ScrollView
