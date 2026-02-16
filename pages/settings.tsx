@@ -2760,7 +2760,6 @@ export default function SettingsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
               {TICKET_TYPES.map(type => {
                 const isChecked = isPaidUser && allowedTicketTypes.includes(type.id);
-                const isEvidenceOnly = (type as any).evidenceOnly;
                 return (
                 <label key={type.id} style={{
                   display: 'flex',
@@ -2783,11 +2782,6 @@ export default function SettingsPage() {
                   />
                   <span style={{ flex: 1 }}>
                     {type.label}
-                    {isEvidenceOnly && (
-                      <span style={{ display: 'block', fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-                        We'll email you to collect evidence for your contest
-                      </span>
-                    )}
                   </span>
                   <span style={{
                     fontSize: 11,
