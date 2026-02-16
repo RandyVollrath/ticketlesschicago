@@ -1,0 +1,456 @@
+Feb 16 01:17:21.210610 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.230732 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.260960 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.270717 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.290547 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.310463 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.330525 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.350437 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.370473 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.390384 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.410395 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.430300 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.450209 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.470198 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.478390 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:21.490222 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.510135 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.530042 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.550048 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.570088 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.590038 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.610001 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.629863 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.649904 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.669804 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.690023 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.709583 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.729843 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.749735 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.769622 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.789854 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.809584 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.829565 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.849527 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.869470 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.889363 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.909389 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.929371 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.949190 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.969165 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:21.982955 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:21.983506 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:21.984349 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 01:17:21.989283 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.009199 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.029145 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.049096 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.080086 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.088990 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.113295 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.128841 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.148632 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.168907 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.188566 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.208528 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.228644 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.248515 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.268476 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.288460 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.308517 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.328303 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.348460 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.368905 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.388381 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.408364 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.431499 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.448358 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.468257 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.488246 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.508135 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.528134 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.548029 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.568041 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.588004 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.608140 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.628359 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.648093 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.667979 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.687928 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.709067 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.728031 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.747905 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.767845 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.787881 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.807734 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.827698 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.847693 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.867572 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.887340 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.907241 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.927781 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.966607 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.973957 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:22.987129 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.007077 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.027035 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.046993 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.067167 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.086902 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.106890 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.126859 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.146766 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.166998 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.186744 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.206696 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.226699 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.246669 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.266627 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.286597 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.306836 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.326726 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.346692 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.366613 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.386540 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.406785 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.426533 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.446546 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.466445 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.486389 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.493474 corespeechd(CoreMotion)[75886] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:23.506384 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.526308 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.546251 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.566333 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.586221 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.606196 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.626081 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.645781 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.665794 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.685789 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.705758 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.725694 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.745708 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.765704 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.785671 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.805648 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.825568 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.845656 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.865485 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.885541 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.905515 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.925486 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.945474 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.965369 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:23.985260 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.005280 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.025175 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.045185 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.065130 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.085059 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.105148 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.125175 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.145127 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.159159 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:24.165143 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.185226 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.205007 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.224991 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.244983 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.264916 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.284858 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.304784 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.324726 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.344698 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.364640 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.384633 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.393172 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:24.404539 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.427453 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.444213 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.464199 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.484255 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.504179 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.524595 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.532062 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:24.532173 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:24.532276 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 01:17:24.544167 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.564116 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.575584 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:24.584048 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.604063 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.624027 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.644030 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.664027 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.684000 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.704023 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.724006 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.744278 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.764051 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.783971 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.803613 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.823613 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.843669 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.860546 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:24.863633 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.883737 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.903772 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.923697 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.943706 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.947802 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:24.963655 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:24.983517 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.004268 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.023480 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.043437 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.063366 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.083336 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.103279 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.123253 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.143239 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.163197 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.184856 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.202981 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.223251 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.242899 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.265373 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.284365 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.302978 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.319898 locationd[60844] <Info>: CL: CLLocationController::onAppNotification
+Feb 16 01:17:25.320003 locationd[60844] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:25.320237 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLLocationControllerSilo", "FromCohortId":"6", "ToDispatchSilo":"CLClientManagerSilo", "ToCohortId":"4"}
+Feb 16 01:17:25.323117 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.338409 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:25.343518 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.362575 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.382585 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.409740 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.422558 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.442459 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.462373 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.482317 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.502346 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.522236 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.542223 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.545758 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:25.562225 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.582141 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.602158 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.622162 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.642033 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.661980 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.681965 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.701997 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.722005 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.734272 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:25.741965 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.761848 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.781871 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.801723 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.821759 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.841628 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.861764 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.881752 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.901712 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.921535 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.941553 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.961428 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:25.982253 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:26.001464 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:26.021330 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:26.046807 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:26.083262 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76396] with taskState 3
+Feb 16 01:17:26.087551 SpringBoard(HangTracer)[35] <Notice>: Received RB Notification for CPU Role change of process(76396) 'fyi.ticketless.app'. Changed from (unknown) to None at Mon Feb 16 01:05:38 2026
+Feb 16 01:17:26.092097 SpringBoard(CoreMotion)[35] <Debug>: [Accelerometer] x,<private>,y,<private>,z,<private>,timestamp,<private>
+Feb 16 01:17:26.095743 SpringBoard(RunningBoardServices)[35] <Notice>: Received state update for 76396 (app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>, running-suspended-NotVisible
+Feb 16 01:17:26.096495 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76396]
+Feb 16 01:17:26.097100 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76396] with taskState 3
+Feb 16 01:17:26.097180 SpringBoard(CoreMotion)[35] <Info>: SpringBoard calling setDeviceMotionCallback:0x0 info:0x0 interval:0.000000 fsync:0
+Feb 16 01:17:26.097189 SpringBoard(CoreMotion)[35] <Info>: CLDeviceMotion::removeDeviceMotionDispatcher removing dispatcher with property: CLDeviceMotionProperties<DeviceMotion=3AxisDynamicGyro>
+Feb 16 01:17:26.097198 SpringBoard(CoreMotion)[35] <Info>: CLDeviceMotion::minimumUpdateIntervalChanged,notification,9,minimumUpdateInterval,0.000000
+Feb 16 01:17:26.097211 SpringBoard(CoreMotion)[35] <Info>: minimumUpdateInterval GyroOnly:0.000000, 3AxisDynamicGyro:0.000000, 6Axis:0.000000, 6AxisThrottledGyro:0.000000, 9Axis:0.000000, 9AxisWithNorthReference:0.000000, 9AxisWithTrueNorthReference:0.000000, BuildGYTT:0.000000, 6AxisAlwaysOnSPU:0.000000
+Feb 16 01:17:26.097221 SpringBoard(CoreMotion)[35] <Info>: CLDeviceMotion::numberOfClientsChanged notification:9, from:1, to:0
+Feb 16 01:17:26.097241 SpringBoard(CoreMotion)[35] <Info>: numberOfClients GyroOnly:0, 3AxisDynamicGyro:0, 6Axis:0, 6AxisThrottledGyro:0, 9Axis:0, 9AxisWithNorthReference:0, 9AxisWithTrueNorthReference:0, BuildGYTT:0, 6AxisAlwaysOnSPU:0
+Feb 16 01:17:26.097301 SpringBoard(CoreMotion)[35] <Notice>: Stopping device motion, mode=0x22
+Feb 16 01:17:26.097362 SpringBoard(CoreMotion)[35] <Info>: SpringBoard is disabling power conservation for parallax.
+Feb 16 01:17:26.097380 SpringBoard(CoreMotion)[35] <Info>: Setting accelerometer update interval to 0.000000
+Feb 16 01:17:26.097407 SpringBoard(CoreMotion)[35] <Debug>: [CLIoHidInterface] Apply all dirty device properties
+Feb 16 01:17:26.097931 backboardd(IOHIDSensorPowerLoggingFilter)[71] <Debug>: IOHIDSensorPowerLoggingFilter: set report interval:0 client:IOHIDEventSystemConnection uuid:902D525B-AC56-46F7-98C1-18AEAFC34C00 pid:35 process:SpringBoard type:Rate Controlled entitlements:0x18 caller:CoreMotion: _ZN16CLMotionActivity4initEv + 272 attributes:{
+Feb 16 01:17:26.098069 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76396]
+Feb 16 01:17:26.098117 SpringBoard(CoreMotion)[35] <Notice>: [CLIoHidInterface] Property for usage pair {65280, 3}: {ReportInterval = 0} was set successfully
+Feb 16 01:17:26.098126 SpringBoard(CoreMotion)[35] <Info>: Setting batch interval to 0.000000
+Feb 16 01:17:26.098135 SpringBoard(CoreMotion)[35] <Debug>: [CLIoHidInterface] Apply all dirty device properties
+Feb 16 01:17:26.098152 SpringBoard(CoreMotion)[35] <Notice>: [CLIoHidInterface] Property for usage pair {65280, 3}: {BatchInterval = 10000} was set successfully
+Feb 16 01:17:26.098180 SpringBoard(CoreMotion)[35] <Debug>: [CLIoHidInterface] Apply all dirty device properties
+Feb 16 01:17:26.098191 SpringBoard(HangTracer)[35] <Notice>: Received RB Notification for CPU Role change of process(76396) 'fyi.ticketless.app'. Changed from (unknown) to None at Mon Feb 16 01:05:38 2026
+Feb 16 01:17:26.098234 SpringBoard(CoreMotion)[35] <Notice>: [CLIoHidInterface] Property for usage pair {65280, 9}: {GyroProperties = {
+Feb 16 01:17:26.098243 SpringBoard(CoreMotion)[35] <Debug>: [CLIoHidInterface] Apply all dirty device properties
+Feb 16 01:17:26.098556 SpringBoard(CoreMotion)[35] <Notice>: [CLIoHidInterface] Property for usage pair {65280, 9}: {ReportInterval = 0} was set successfully
+Feb 16 01:17:26.098569 SpringBoard(CoreMotion)[35] <Debug>: [CLIoHidInterface] Apply all dirty device properties
+Feb 16 01:17:26.098599 backboardd(IOHIDSensorPowerLoggingFilter)[71] <Debug>: IOHIDSensorPowerLoggingFilter: set report interval:0 client:IOHIDEventSystemConnection uuid:902D525B-AC56-46F7-98C1-18AEAFC34C00 pid:35 process:SpringBoard type:Rate Controlled entitlements:0x18 caller:CoreMotion: _ZN16CLMotionActivity4initEv + 272 attributes:{
+Feb 16 01:17:26.099193 SpringBoard(CoreMotion)[35] <Notice>: [CLIoHidInterface] Property for usage pair {65280, 9}: {GyroExtLevelTriggerSync = 0} was set successfully
+Feb 16 01:17:26.099227 SpringBoard(CoreMotion)[35] <Debug>: [CLIoHidInterface] Apply all dirty device properties
+Feb 16 01:17:26.099296 SpringBoard(CoreMotion)[35] <Notice>: [CLIoHidInterface] Property for usage pair {65280, 9}: {BatchInterval = 15000} was set successfully
+Feb 16 01:17:26.099320 SpringBoard(CoreMotion)[35] <Info>: Setting gyro batch interval to: 15000 us
+Feb 16 01:17:26.103423 locationd[60844] <Notice>: os_transaction created: (0x16fefe400) CLLocationDatabase::getLocation
+Feb 16 01:17:26.103542 locationd[60844] <Notice>: os_transaction releasing: (0x16fefe400) CLLocationDatabase::getLocation
+Feb 16 01:17:26.127646 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76396]
+Feb 16 01:17:26.127823 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76396]
+Feb 16 01:17:26.135876 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:26.474410 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:26.615684 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:26.716131 ChatGPT(CoreLocation)[76738] <Info>: CL: CLLocationManager
+Feb 16 01:17:26.716285 ChatGPT(CoreLocation)[76738] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"initWithEffectiveBundleIdentifier:bundlePath:websiteIdentifier:delegate:silo:", "self":"0x11d852450", "identifier":"", "bundlePath":""}
+Feb 16 01:17:26.716534 ChatGPT(CoreLocation)[76738] <Debug>: {"msg":"state transition", "event":"state_transition", "state":"LocationManager", "id":"0x11d852450", "property":"init", "new":{"trackRunInfoEnabled":false,"previousAuthorizationStatusValid":false,"paused":false,"requestingLocation":false,"updatingVehicleSpeed":false,"desiredAccuracy":-1,"allowsBackgroundLocationUpdates":false,"dynamicAccuracyReductionEnabled":false,"distanceFilter":-1,"allowsLocationPrompts":true,"activityType":0,"groundAltitudeEnabled":false,"pausesLocationUpdatesAutomatically":0,"fusionInfoEnabled":false,"isAuthorizedForWidgetUpdates":false,"updatingVehicleHeading":false,"batchingLocation":false,"showsBackgroundLocationIndicator":false,"updatingLocation":false,"updatingHeading":false,"previousAuthorizationStatus":0,"allowsMapCorrection":true,"matchInfoEnabled":false,"allowsAlteredAccessoryLocations":false,"limitsPrecision":false,"courtesyPromptNeeded":false,"headingFilter":1}}
+Feb 16 01:17:26.717287 ChatGPT(CoreLocation)[76738] <Info>: CL: CLLocationManager
+Feb 16 01:17:26.717315 ChatGPT(CoreLocation)[76738] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"setDesiredAccuracy:", "self":"0x11d852450", "accuracy":"10.000000"}
+Feb 16 01:17:26.717364 ChatGPT(CoreLocation)[76738] <Info>: CL: CLLocationManager
+Feb 16 01:17:26.717387 ChatGPT(CoreLocation)[76738] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"setDelegate:", "self":"0x11d852450", "delegate":"0x10e56fec0"}
+Feb 16 01:17:26.719967 locationd[60844] <Debug>: {"msg":"updated BackgroundLocationCapability", "Client":"icom.openai.chat:", "BackgroundLocationCapability":0}
+Feb 16 01:17:26.721691 locationd[60844] <Info>: {"msg":"Creating subscription due to demand", "type":"22CLLocationSubscription"}
+Feb 16 01:17:26.721705 locationd(CoreFoundation)[60844] <Debug>: found no value for key CLLocationSubscription.AutopauseThreshold in CFPrefsPlistSource<0x791434100> (Domain: com.apple.locationd, User: mobile, ByHost: No, Container: (null), Contents Need Refresh: No)
+Feb 16 01:17:27.083569 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:27.083631 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:27.083682 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 01:17:27.169444 locationd[60844] <Info>: CL: CLLocationController::onAppNotification
+Feb 16 01:17:27.169513 locationd[60844] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:27.169529 locationd[60844] <Notice>: os_transaction created: (0x170019c40) GetIdentifyingInformation
+Feb 16 01:17:27.169905 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.apple.InputUI:", "bundleId":"com.apple.InputUI", "bundlePath":"\/Applications\/InputUI.app", "executablePath":"\/Applications\/InputUI.app\/InputUI", "platformSpecificBundleId":"", "pluginBundleIds":"(\n)", "isAppClip":0}
+Feb 16 01:17:27.169929 locationd[60844] <Notice>: os_transaction releasing: (0x170019c40) GetIdentifyingInformation
+Feb 16 01:17:27.217385 ChatGPT(CoreLocation)[76738] <Info>: CL: CLLocationManager
+Feb 16 01:17:27.217489 ChatGPT(CoreLocation)[76738] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"onClientEventRegistration:", "self":"0x11d852450", "clientKey":"icom.openai.chat:"}
+Feb 16 01:17:27.217773 ChatGPT(CoreLocation)[76738] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x11d852450", "delegate":"0x10e56fec0", "selector":"locationManagerDidChangeAuthorization:", "authorizationStatus":"NotDetermined", "limitsPrecision":0, "isAuthorizedForWidgetUpdates":0}
+Feb 16 01:17:27.581978 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:27.896635 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:27.899192 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.CompassCalibration" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:27.962806 locationd[60844] <Info>: CL: CLLocationController::onAppNotification
+Feb 16 01:17:27.962878 locationd[60844] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:27.962952 locationd[60844] <Notice>: os_transaction created: (0x170131c40) GetIdentifyingInformation
+Feb 16 01:17:27.963186 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.apple.StickerKit.StickerPickerService:", "bundleId":"com.apple.StickerKit.StickerPickerService", "bundlePath":"\/Applications\/StickerPickerService.app", "executablePath":"\/Applications\/StickerPickerService.app\/StickerPickerService", "platformSpecificBundleId":"", "pluginBundleIds":"(\n)", "isAppClip":0}
+Feb 16 01:17:27.963205 locationd[60844] <Notice>: os_transaction releasing: (0x170131c40) GetIdentifyingInformation
+Feb 16 01:17:28.035455 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.035596 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.035902 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:28.035927 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:28.038425 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 01:17:28.038445 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:28.039561 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 01:17:28.123063 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.ProvisionalOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.234456 SpringBoard(CoreMotion)[35] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.234493 SpringBoard(CoreMotion)[35] <Notice>: Gesture notification: 4(PreDetection), Mode:Normal, Start:FaceUp, End:FaceUpSlanted, HostAwake, 1, Inferred:0
+Feb 16 01:17:28.234599 SpringBoard(CoreMotion)[35] <Debug>: Skipping redundant gesture update
+Feb 16 01:17:28.234632 audiomxd(CoreMotion)[110] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.234662 audiomxd(CoreMotion)[110] <Notice>: Gesture notification: 4(PreDetection), Mode:Normal, Start:FaceUp, End:FaceUpSlanted, HostAwake, 1, Inferred:0
+Feb 16 01:17:28.234688 audiomxd(CoreMotion)[110] <Debug>: Skipping redundant gesture update
+Feb 16 01:17:28.234723 biometrickitd(CoreMotion)[119] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.234755 corespeechd(CoreMotion)[75886] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.234769 biometrickitd(CoreMotion)[119] <Notice>: Gesture notification: 4(PreDetection), Mode:Normal, Start:FaceUp, End:FaceUpSlanted, HostAwake, 1, Inferred:0
+Feb 16 01:17:28.234797 biometrickitd(CoreMotion)[119] <Debug>: Skipping redundant gesture update
+Feb 16 01:17:28.490659 corespeechd(CoreMotion)[75886] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:28.492898 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.ProvisionalOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.525549 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:28.533685 locationd[60844] <Notice>: os_transaction created: (0x16ff01c40) GetIdentifyingInformation
+Feb 16 01:17:28.534832 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.apple.InputUI:", "bundleId":"com.apple.InputUI", "bundlePath":"\/Applications\/InputUI.app", "executablePath":"\/Applications\/InputUI.app\/InputUI", "platformSpecificBundleId":"", "pluginBundleIds":"(\n)", "isAppClip":0}
+Feb 16 01:17:28.534892 locationd[60844] <Notice>: os_transaction releasing: (0x16ff01c40) GetIdentifyingInformation
+Feb 16 01:17:28.672573 SpringBoard(CoreMotion)[35] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.673150 SpringBoard(CoreMotion)[35] <Notice>: Gesture notification: 1(Detected), Mode:Normal, Start:FaceUp, End:PortraitSlanted, HostAwake, 1, Inferred:0
+Feb 16 01:17:28.673543 SpringBoard(CoreAnalytics)[35] <Info>: Dropping "com.apple.CoreMotion.WakeGesture" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.674555 biometrickitd(CoreMotion)[119] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.674587 biometrickitd(CoreMotion)[119] <Notice>: Gesture notification: 1(Detected), Mode:Normal, Start:FaceUp, End:PortraitSlanted, HostAwake, 1, Inferred:0
+Feb 16 01:17:28.674640 audiomxd(CoreMotion)[110] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.674688 audiomxd(CoreMotion)[110] <Notice>: Gesture notification: 1(Detected), Mode:Normal, Start:FaceUp, End:PortraitSlanted, HostAwake, 1, Inferred:0
+Feb 16 01:17:28.674709 corespeechd(CoreMotion)[75886] <Debug>: numberOfSpectators,<private>
+Feb 16 01:17:28.674898 biometrickitd(CoreAnalytics)[119] <Info>: Dropping "com.apple.CoreMotion.WakeGesture" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.674955 biometrickitd(CoreMotion)[119] <Notice>: Gesture state notified,Detected,eventTimestamp,347149.643348,currentTime,347149.646327
+Feb 16 01:17:28.674977 SpringBoard(CoreMotion)[35] <Notice>: Gesture state notified,Detected,eventTimestamp,347149.643348,currentTime,347149.646323
+Feb 16 01:17:28.675099 audiomxd(CoreAnalytics)[110] <Info>: Dropping "com.apple.CoreMotion.WakeGesture" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.675149 audiomxd(CoreMotion)[110] <Notice>: Gesture state notified,Detected,eventTimestamp,347149.643348,currentTime,347149.647018
+Feb 16 01:17:28.834928 backboardd(CoreMotion)[71] <Debug>: AOO update: <private>
+Feb 16 01:17:28.834947 backboardd(CoreMotion)[71] <Notice>: Received orientation. (FaceUp to Portrait) Timestamp 347149.798946
+Feb 16 01:17:28.835013 backboardd(CoreMotion)[71] <Notice>: Updating client handler: Orientation Portrait, Callback mode: -1
+Feb 16 01:17:28.835061 backboardd[71] <Notice>: Updating device orientation from CoreMotion to: portrait (1)
+Feb 16 01:17:28.836065 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.DeviceOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 01:17:28.836080 SpringBoard(CoreMotion)[35] <Debug>: AOO update: <private>
+Feb 16 01:17:28.836280 SpringBoard(CoreMotion)[35] <Debug>: New orientation,1,Prev orientation,1
+Feb 16 01:17:28.836301 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 01:17:29.134393 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:29.157550 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:29.313209 locationd[60844] <Notice>: os_transaction created: (0x16ff8dc40) GetIdentifyingInformation
+Feb 16 01:17:29.313244 locationd[60844] <Info>: CL: CLLocationController::onAppNotification
+Feb 16 01:17:29.313388 locationd[60844] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:29.313836 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.apple.InputUI:", "bundleId":"com.apple.InputUI", "bundlePath":"\/Applications\/InputUI.app", "executablePath":"\/Applications\/InputUI.app\/InputUI", "platformSpecificBundleId":"", "pluginBundleIds":"(\n)", "isAppClip":0}
+Feb 16 01:17:29.313893 locationd[60844] <Notice>: os_transaction releasing: (0x16ff8dc40) GetIdentifyingInformation
+Feb 16 01:17:29.382668 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:29.383333 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:29.384102 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:29.393157 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:29.400950 locationd[60844] <Notice>: os_transaction created: (0x170249c40) GetIdentifyingInformation
+Feb 16 01:17:29.401076 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.apple.InputUI:", "bundleId":"com.apple.InputUI", "bundlePath":"\/Applications\/InputUI.app", "executablePath":"\/Applications\/InputUI.app\/InputUI", "platformSpecificBundleId":"", "pluginBundleIds":"(\n)", "isAppClip":0}
+Feb 16 01:17:29.401104 locationd[60844] <Notice>: os_transaction releasing: (0x170249c40) GetIdentifyingInformation
+Feb 16 01:17:29.401288 locationd[60844] <Notice>: os_transaction created: (0x170249c40) GetIdentifyingInformation
+Feb 16 01:17:29.401384 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.apple.StickerKit.StickerPickerService:", "bundleId":"com.apple.StickerKit.StickerPickerService", "bundlePath":"\/Applications\/StickerPickerService.app", "executablePath":"\/Applications\/StickerPickerService.app\/StickerPickerService", "platformSpecificBundleId":"", "pluginBundleIds":"(\n)", "isAppClip":0}
+Feb 16 01:17:29.401403 locationd[60844] <Notice>: os_transaction releasing: (0x170249c40) GetIdentifyingInformation
+Feb 16 01:17:29.575544 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:29.639048 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 01:17:29.639917 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:29.640011 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:29.800883 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:29.801639 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
+Feb 16 01:17:29.860733 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:29.947837 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:30.322736 locationd[60844] <Info>: CL: CLLocationController::onAppNotification
+Feb 16 01:17:30.323217 locationd[60844] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:30.323481 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLLocationControllerSilo", "FromCohortId":"6", "ToDispatchSilo":"CLClientManagerSilo", "ToCohortId":"4"}
+Feb 16 01:17:30.338656 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:30.546139 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:30.732667 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:31.286358 duetexpertd(CoreLocation)[545] <Info>: CL: CLLocationManager
+Feb 16 01:17:31.286746 duetexpertd(CoreLocation)[545] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"location", "self":"0xd570b4110"}
+Feb 16 01:17:31.289182 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Feb 16 01:17:31.289375 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Feb 16 01:17:31.356906 duetexpertd(CoreLocation)[545] <Info>: CL: CLLocationManager
+Feb 16 01:17:31.357082 duetexpertd(CoreLocation)[545] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"location", "self":"0xd570b4110"}
+Feb 16 01:17:31.358395 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Feb 16 01:17:31.358754 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Feb 16 01:17:31.384546 duetexpertd(CoreLocation)[545] <Info>: CL: CLLocationManager
+Feb 16 01:17:31.384795 duetexpertd(CoreLocation)[545] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"location", "self":"0xd570b4110"}
+Feb 16 01:17:31.385892 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Feb 16 01:17:31.386095 locationd(LocationSupport)[60844] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Feb 16 01:17:31.474712 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:33.491049 corespeechd(CoreMotion)[75886] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:34.157507 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:34.394685 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:34.575610 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:34.755780 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:34.755868 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:34.756145 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 01:17:34.860065 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:34.947749 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:35.344480 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:35.556608 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:35.736734 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:36.474335 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:36.661215 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:36.661413 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:36.670011 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 01:17:36.672403 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:36.673971 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 01:17:37.307513 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 01:17:37.308801 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:37.308840 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:38.491144 corespeechd(CoreMotion)[75886] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:39.156527 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:39.393352 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:39.575649 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:39.860714 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:39.871442 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 01:17:39.872124 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:39.872330 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 01:17:39.875644 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 01:17:39.876130 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 01:17:39.876366 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 01:17:39.948440 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:40.338658 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:40.545470 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 01:17:40.733038 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
