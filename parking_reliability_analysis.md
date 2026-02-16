@@ -43,6 +43,7 @@ Implemented and now active in code:
   - Added stale-location guard at confirmation time and fresh-GPS refinement (`current_refined`) so old/low-quality stop snapshots are replaced or blocked before final parking confirmation.
   - Stale-location blocks now queue a retry candidate (`stale_retry_candidate`) instead of dropping the parking pipeline, reducing missed parks when GPS quality catches up a few seconds later.
   - Added trip-summary counter `parkingStaleLocationBlockedCount` so stale-fix pressure is visible in post-drive diagnostics.
+  - Added adaptive GPS fallback for missed driving starts: when a recent car-audio signal exists, fallback driving promotion uses lower speed/distance/duration thresholds to reduce missed departures and delayed camera startup.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`
