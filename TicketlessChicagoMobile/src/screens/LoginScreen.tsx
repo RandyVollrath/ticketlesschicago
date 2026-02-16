@@ -219,7 +219,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           <View style={styles.formCard}>
             <Text style={styles.formTitle}>Sign In</Text>
             <Text style={styles.formSubtitle}>
-              Enter your email and we'll send you a magic link to sign in instantly - no password needed.
+              Sign in with your Google or Apple account to get started.
             </Text>
 
             {error && (
@@ -268,14 +268,12 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               </TouchableOpacity>
             )}
 
-            {/* Divider */}
+            {/* Magic link commented out — may bring back later
             <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or sign in with email</Text>
               <View style={styles.dividerLine} />
             </View>
-
-            {/* Email field */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email</Text>
               <TextInput
@@ -290,20 +288,12 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                accessibilityLabel="Email address"
-                accessibilityHint="Enter your email to receive a magic link"
               />
             </View>
-
-            {/* Magic Link Button */}
             <TouchableOpacity
               style={[styles.primaryButton, loading && styles.buttonDisabled]}
               onPress={handleMagicLink}
               disabled={loading || googleLoading}
-              accessibilityLabel="Send magic link"
-              accessibilityRole="button"
-              accessibilityHint="Sends a sign-in link to your email"
-              accessibilityState={{ disabled: loading || googleLoading }}
             >
               {loading ? (
                 <ActivityIndicator color={colors.white} />
@@ -311,21 +301,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                 <Text style={styles.primaryButtonText}>Send Magic Link</Text>
               )}
             </TouchableOpacity>
-
-            <View style={styles.benefitsContainer}>
-              <View style={styles.benefitRow}>
-                <Text style={styles.benefitIcon}>✨</Text>
-                <Text style={styles.benefitText}>No password to remember</Text>
-              </View>
-              <View style={styles.benefitRow}>
-                <Text style={styles.benefitIcon}>🔒</Text>
-                <Text style={styles.benefitText}>Secure one-time link</Text>
-              </View>
-              <View style={styles.benefitRow}>
-                <Text style={styles.benefitIcon}>⚡</Text>
-                <Text style={styles.benefitText}>Sign in with one click</Text>
-              </View>
-            </View>
+            */}
           </View>
 
           <Text style={styles.disclaimer}>

@@ -359,6 +359,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var lastStationaryTime: Date? = nil
   private var continuousGpsActive = false              // Whether high-frequency GPS is running
   private var coreMotionActive = false                  // Whether CoreMotion activity updates are running
+  private var gpsOnlyMode = false                       // True when CoreMotion is denied/restricted — GPS speed is primary driving signal
   private var automotiveSessionStart: Date? = nil       // When current automotive session began (for flicker filtering)
   private var lastConfirmedParkingLocation: CLLocation? = nil  // Where we last confirmed parking (for distance-based flicker check)
   private var lastLocationCallbackTime: Date? = nil
@@ -701,22 +702,39 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Start CoreMotion - this is the primary driving detection.
     // Runs on the M-series coprocessor, nearly zero battery.
     let coreMotionAvailable = CMMotionActivityManager.isActivityAvailable()
-    self.log("CoreMotion available: \(coreMotionAvailable)")
-    if coreMotionAvailable {
+    let coreMotionAuthStatus = CMMotionActivityManager.authorizationStatus()
+    self.log("CoreMotion available: \(coreMotionAvailable), authStatus: \(coreMotionAuthStatus.rawValue)")
+
+    if coreMotionAvailable && (coreMotionAuthStatus == .authorized || coreMotionAuthStatus == .notDetermined) {
       startMotionActivityMonitoring()
+      gpsOnlyMode = false
       self.log("CoreMotion activity monitoring started")
     } else {
-      self.log("WARNING: CoreMotion NOT available on this device")
+      gpsOnlyMode = true
+      if coreMotionAuthStatus == .denied {
+        self.log("WARNING: CoreMotion permission DENIED by user — entering GPS-only mode")
+      } else if coreMotionAuthStatus == .restricted {
+        self.log("WARNING: CoreMotion RESTRICTED (parental controls?) — entering GPS-only mode")
+      } else {
+        self.log("WARNING: CoreMotion NOT available on this device — entering GPS-only mode")
+      }
+      // In GPS-only mode, we run continuous GPS at low frequency so the
+      // speed-based fallback can detect driving. This uses more battery
+      // than CoreMotion but is the only option when CoreMotion is denied.
+      self.log("Starting low-frequency continuous GPS for GPS-only driving detection")
+      locationManager.distanceFilter = 20  // 20m between updates (saves battery vs kCLDistanceFilterNone)
+      locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+      locationManager.startUpdatingLocation()
+      continuousGpsActive = true
     }
-
-    // Do NOT start continuous GPS yet - wait until CoreMotion detects driving.
-    // This saves significant battery when user is walking/stationary.
 
     startVehicleSignalMonitoring()
     isMonitoring = true
     decision("start_monitoring_success", [
       "authStatusRaw": locationManager.authorizationStatus.rawValue,
       "coreMotionAvailable": coreMotionAvailable,
+      "coreMotionAuthStatus": coreMotionAuthStatus.rawValue,
+      "gpsOnlyMode": gpsOnlyMode,
     ])
     lastLocationCallbackTime = Date()
     startLocationWatchdog()
@@ -731,7 +749,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     case .restricted: authString = "RESTRICTED"
     @unknown default: authString = "UNKNOWN"
     }
-    self.log("Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=\(authString), coreMotion=\(coreMotionAvailable))")
+    self.log("Monitoring started (significantChanges + \(gpsOnlyMode ? "GPS-ONLY" : "CoreMotion"), auth=\(authString), coreMotion=\(coreMotionAvailable), gpsOnlyMode=\(gpsOnlyMode))")
     resolve(true)
   }
 
@@ -793,6 +811,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     gpsFallbackDrivingSince = nil
     gpsFallbackStartLocation = nil
     gpsFallbackPossibleDrivingEmitted = false
+    gpsOnlyMode = false
     clearPersistedParkingState()
 
     self.log("Monitoring stopped")
@@ -801,6 +820,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   /// Get current monitoring status
   @objc func getStatus(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let motionAuthStatus = CMMotionActivityManager.authorizationStatus()
+    let motionAuthString: String
+    switch motionAuthStatus {
+    case .authorized: motionAuthString = "authorized"
+    case .denied: motionAuthString = "denied"
+    case .restricted: motionAuthString = "restricted"
+    case .notDetermined: motionAuthString = "notDetermined"
+    @unknown default: motionAuthString = "unknown"
+    }
+
     var result: [String: Any] = [
       "isMonitoring": isMonitoring,
       "isDriving": isDriving,
@@ -809,6 +838,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "coreMotionActive": coreMotionActive,
       "hasAlwaysPermission": locationManager.authorizationStatus == .authorizedAlways,
       "motionAvailable": CMMotionActivityManager.isActivityAvailable(),
+      "motionAuthStatus": motionAuthString,
+      "gpsOnlyMode": gpsOnlyMode,
     ]
 
     if let drivingStart = drivingStartTime {
@@ -1038,13 +1069,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   /// Stop continuous GPS (called after parking confirmed)
   /// significantLocationChange remains active as low-power backup
+  /// In GPS-only mode (CoreMotion denied), drops to low-frequency instead of stopping
   private func stopContinuousGps() {
     guard continuousGpsActive else { return }
-    locationManager.stopUpdatingLocation()
-    // Restore distance filter to save power when not actively driving
-    locationManager.distanceFilter = 10
-    continuousGpsActive = false
-    self.log("Continuous GPS OFF (saving battery, distanceFilter=10m)")
+    if gpsOnlyMode {
+      // Don't fully stop GPS — we need it to detect the next drive.
+      // Drop to low-frequency updates to save battery while parked.
+      locationManager.distanceFilter = 20
+      locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+      self.log("Continuous GPS → low-frequency (GPS-only mode, distanceFilter=20m, accuracy=100m)")
+      // Keep continuousGpsActive = true so location callbacks keep flowing
+    } else {
+      locationManager.stopUpdatingLocation()
+      // Restore distance filter to save power when not actively driving
+      locationManager.distanceFilter = 10
+      continuousGpsActive = false
+      self.log("Continuous GPS OFF (saving battery, distanceFilter=10m)")
+    }
   }
 
   /// Briefly run high-frequency GPS after monitor start/resume to avoid a blind

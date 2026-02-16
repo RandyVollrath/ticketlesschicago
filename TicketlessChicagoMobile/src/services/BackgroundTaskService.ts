@@ -10,7 +10,7 @@
  * Falls back to foreground-only monitoring if background fetch is not available.
  */
 
-import { Platform, AppState, AppStateStatus, NativeModules, NativeEventEmitter } from 'react-native';
+import { Platform, AppState, AppStateStatus, NativeModules, NativeEventEmitter, Alert, Linking } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
@@ -445,6 +445,27 @@ class BackgroundTaskServiceClass {
               'Location Permission Needed',
               'Please allow location access when prompted. Choose "Always Allow" for automatic parking detection.'
             );
+          }
+
+          // Pre-permission primer for CoreMotion (Motion & Fitness)
+          // iOS only prompts ONCE for CoreMotion. If user denies, we can never re-prompt.
+          // Show a friendly explanation before the system dialog appears.
+          const motionAuthStatus = await MotionActivityService.getAuthorizationStatus();
+          log.info('CoreMotion authorization status:', motionAuthStatus);
+
+          if (motionAuthStatus === 'notDetermined') {
+            // Show primer before system prompt fires
+            await new Promise<void>((resolve) => {
+              Alert.alert(
+                'Automatic Parking Detection',
+                'Autopilot uses your phone\'s motion sensors to detect when you park and start driving. This lets us automatically check for parking restrictions.\n\nOn the next screen, please tap "Allow" to enable this feature.',
+                [{ text: 'Continue', onPress: () => resolve() }],
+                { cancelable: false }
+              );
+            });
+          } else if (motionAuthStatus === 'denied' || motionAuthStatus === 'restricted') {
+            log.warn(`CoreMotion ${motionAuthStatus} — will use GPS-only fallback for driving detection`);
+            // Don't block startup — GPS-only mode will kick in via native module
           }
 
           // Start monitoring - this handles everything:

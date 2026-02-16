@@ -53,6 +53,8 @@ export interface BackgroundLocationStatus {
   isDriving: boolean;
   hasAlwaysPermission: boolean;
   motionAvailable: boolean;
+  motionAuthStatus?: 'authorized' | 'denied' | 'restricted' | 'notDetermined' | 'unknown';
+  gpsOnlyMode?: boolean;
   drivingDurationSec?: number;
   lastDrivingLat?: number;
   lastDrivingLng?: number;
