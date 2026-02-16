@@ -621,6 +621,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let gpsFallbackDrivingSpeedMps: Double = 4.2   // ~9.4 mph fallback when CoreMotion misses automotive
   private let gpsFallbackDrivingDurationSec: TimeInterval = 8
   private let gpsFallbackMinDistanceMeters: Double = 90
+  private let gpsFallbackWithVehicleSpeedMps: Double = 2.8   // ~6.3 mph when recent car signal is present
+  private let gpsFallbackWithVehicleDurationSec: TimeInterval = 5
+  private let gpsFallbackWithVehicleMinDistanceMeters: Double = 45
   private let gpsFallbackMaxAccuracyMeters: Double = 80
   private let speedCheckIntervalSec: TimeInterval = 3    // Re-check parking every 3s while speed≈0
   private let stationaryRadiusMeters: Double = 50        // Consider "same location" if within 50m
@@ -2036,7 +2039,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // We require sustained higher speed + decent accuracy + real displacement
         // so this path does not trigger on short red-light movement noise.
         let accuracy = location.horizontalAccuracy
-        if accuracy > 0 && accuracy <= gpsFallbackMaxAccuracyMeters && speed >= gpsFallbackDrivingSpeedMps {
+        let hasVehicleSignalBoost = hasRecentVehicleSignal(150)
+        let fallbackSpeedThreshold = hasVehicleSignalBoost ? gpsFallbackWithVehicleSpeedMps : gpsFallbackDrivingSpeedMps
+        let fallbackDurationThreshold = hasVehicleSignalBoost ? gpsFallbackWithVehicleDurationSec : gpsFallbackDrivingDurationSec
+        let fallbackDistanceThreshold = hasVehicleSignalBoost ? gpsFallbackWithVehicleMinDistanceMeters : gpsFallbackMinDistanceMeters
+        if accuracy > 0 && accuracy <= gpsFallbackMaxAccuracyMeters && speed >= fallbackSpeedThreshold {
           if gpsFallbackDrivingSince == nil {
             gpsFallbackDrivingSince = location.timestamp
             gpsFallbackStartLocation = location
@@ -2044,8 +2051,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             decision("gps_fallback_started", [
               "speed": speed,
               "accuracy": accuracy,
+              "hasVehicleSignalBoost": hasVehicleSignalBoost,
+              "speedThreshold": fallbackSpeedThreshold,
+              "durationThreshold": fallbackDurationThreshold,
+              "distanceThreshold": fallbackDistanceThreshold,
             ])
-            self.log("GPS fallback tracking started (speed \(String(format: "%.1f", speed)) m/s, acc \(String(format: "%.0f", accuracy))m)")
+            self.log("GPS fallback tracking started (speed \(String(format: "%.1f", speed)) m/s, acc \(String(format: "%.0f", accuracy))m, vehicleBoost=\(hasVehicleSignalBoost))")
           }
 
           let fallbackStart = gpsFallbackDrivingSince ?? location.timestamp
@@ -2065,8 +2076,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             self.log("Emitted onPossibleDriving from GPS fallback preconfirm")
           }
 
-          if fallbackDuration >= gpsFallbackDrivingDurationSec &&
-             fallbackDistance >= gpsFallbackMinDistanceMeters {
+          if fallbackDuration >= fallbackDurationThreshold &&
+             fallbackDistance >= fallbackDistanceThreshold {
             isDriving = true
             drivingStartTime = fallbackStart
             lastDrivingLocation = nil
@@ -2078,6 +2089,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               "distanceMeters": fallbackDistance,
               "speed": speed,
               "accuracy": accuracy,
+              "hasVehicleSignalBoost": hasVehicleSignalBoost,
+              "speedThreshold": fallbackSpeedThreshold,
+              "durationThreshold": fallbackDurationThreshold,
+              "distanceThreshold": fallbackDistanceThreshold,
             ])
             self.log("Driving started (GPS fallback: duration \(String(format: "%.0f", fallbackDuration))s, distance \(String(format: "%.0f", fallbackDistance))m, speed \(String(format: "%.1f", speed)) m/s)")
             sendEvent(withName: "onDrivingStarted", body: [
@@ -2090,13 +2105,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             gpsFallbackStartLocation = nil
             gpsFallbackPossibleDrivingEmitted = false
           } else {
-            self.log("GPS fallback waiting: duration \(String(format: "%.0f", fallbackDuration))s/\(String(format: "%.0f", gpsFallbackDrivingDurationSec))s, distance \(String(format: "%.0f", fallbackDistance))m/\(String(format: "%.0f", gpsFallbackMinDistanceMeters))m")
+            self.log("GPS fallback waiting: duration \(String(format: "%.0f", fallbackDuration))s/\(String(format: "%.0f", fallbackDurationThreshold))s, distance \(String(format: "%.0f", fallbackDistance))m/\(String(format: "%.0f", fallbackDistanceThreshold))m, vehicleBoost=\(hasVehicleSignalBoost)")
           }
         } else if gpsFallbackDrivingSince != nil || gpsFallbackStartLocation != nil {
           decision("gps_fallback_reset", [
             "reason": "accuracy_or_speed_failed",
             "speed": speed,
             "accuracy": accuracy,
+            "vehicleSignalRecent": hasRecentVehicleSignal(150),
           ])
           self.log("GPS fallback reset (speed \(String(format: "%.1f", speed)) m/s, acc \(String(format: "%.0f", accuracy))m)")
           gpsFallbackDrivingSince = nil
